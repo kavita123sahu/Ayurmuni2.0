@@ -1,45 +1,53 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect } from 'react'
+import { Provider } from 'react-redux'
+import Navigator from './src/navigation/Navigator'
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { store } from './src/reduxfile/Store';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+const toastConfig = {
+
+  success: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{
+        borderLeftColor: '#0D614E',   
+      }}
+      text2Style={{
+        fontSize: 12,
+        color: '#0D614E',             
+        textAlign: 'center'
+      }}
+    />
+  ),
+
+  error: (props: any) => (
+    <ErrorToast
+      {...props}
+      text2Style={{
+        fontSize: 12,
+        textAlign: 'center'
+      }}
+    />
+  ),
+
+};
+
+const App = () => {
+
+  useEffect(() => {
+    console.log("Hello Debugger");
+  }, []);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
+    <>
+    
+    </>
+    // <Provider store={store}>
+    //   <Navigator />
+    //   <Toast config={toastConfig} />
+    // </Provider>
+  )
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;
+export default App
