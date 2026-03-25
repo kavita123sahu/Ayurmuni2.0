@@ -14,7 +14,7 @@ export const Colors = {
   toggleColor: '#9C2B5F',
   greyBorder: '#9093D8',
   textColor: '#1E293B',
-  subTextColor: '#1E1E1ECC',
+  subTextColor: '#475569',
   errorColor: '#DF0C34',
   blackColor50: 'rgba(0, 0, 0, 0.5)',
   greyColor25: '#A6A8D6',
@@ -28,6 +28,7 @@ export const Colors = {
   orangeColor: '#2576BC',
   borderColor: "#4CAF50",
   bgcolor: '#0D614E0D',
+  BGIcon : "#0D6E5D1A",
   purpleColor:
     'linear-gradient(106.5deg, rgba(255, 215, 185, 0.91) 23%, rgba(223, 159, 247, 0.8) 93%)',
   orangeColorWithOpa:

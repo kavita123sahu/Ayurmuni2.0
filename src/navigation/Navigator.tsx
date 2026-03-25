@@ -15,28 +15,23 @@ import {
   View,
 } from "react-native";
 
-import { Colors } from "../common/Colors";
-import { Images } from "../common/Images";
-
 import Login from "../screens/auth/Login";
 import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
 
 import HomePage from "../screens/home/HomePage";
 import consultHome from "../screens/consult/consultHome";
-import CenterWellness from "../screens/centers/CenterWellness";
 import ProfilePage from "../screens/profile/ProfilePage";
 import CartPage from "../screens/cart/CartPage";
 
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import NetworkError from "../screens/NetworkError";
+import CustomeTab from "../components/CustomeTab";
 
 enableScreens();
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-
-const screen_height = Dimensions.get("screen").height;
 
 const hideHeader = { headerShown: false };
 
@@ -74,124 +69,16 @@ const TabStack = () => {
   return (
     <Tab.Navigator
       initialRouteName="Home"
+      tabBar={(props) => <CustomeTab {...props} />} // 🔥 CUSTOM TAB
       screenOptions={{
-        tabBarStyle: {
-          backgroundColor: Colors.white,
-          height: screen_height * 0.08,
-        },
-        tabBarActiveTintColor: Colors.primaryColor,
-        tabBarInactiveTintColor: Colors.tabtrasparent,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          bottom: 5,
-          fontWeight: "500",
-        },
+        headerShown: false,
       }}
     >
-      {/* Home */}
-      <Tab.Screen
-        name="Home"
-        component={HomePage}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={Images.home}
-              style={{
-                height: 20,
-                width: 20,
-                tintColor: focused
-                  ? Colors.primaryColor
-                  : Colors.tabtrasparent,
-              }}
-            />
-          ),
-        }}
-      />
-
-      {/* Cart */}
-      <Tab.Screen
-        name="Cart"
-        component={CartPage}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={Images.shop}
-              style={{
-                height: 20,
-                width: 20,
-                tintColor: focused
-                  ? Colors.primaryColor
-                  : Colors.tabtrasparent,
-              }}
-            />
-          ),
-        }}
-      />
-
-      {/* Consultation */}
-      <Tab.Screen
-        name="Consultation"
-        component={consultHome}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={Images.consult}
-              style={{
-                height: 20,
-                width: 20,
-                tintColor: focused
-                  ? Colors.primaryColor
-                  : Colors.tabtrasparent,
-              }}
-            />
-          ),
-        }}
-      />
-
-      {/* Centers */}
-      <Tab.Screen
-        name="Centers"
-        component={CenterWellness}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={Images.centers}
-              style={{
-                height: 20,
-                width: 20,
-                tintColor: focused
-                  ? Colors.primaryColor
-                  : Colors.tabtrasparent,
-              }}
-            />
-          ),
-        }}
-      />
-
-      {/* Profile */}
-      <Tab.Screen
-        name="Profile"
-        component={ProfilePage}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={Images.profile}
-              style={{
-                height: 20,
-                width: 20,
-                tintColor: focused
-                  ? Colors.primaryColor
-                  : Colors.tabtrasparent,
-              }}
-            />
-          ),
-        }}
-      />
+      <Tab.Screen name="Home" component={HomePage} />
+      <Tab.Screen name="Cart" component={CartPage} />
+      <Tab.Screen name="Consult" component={consultHome} />
+      {/* <Tab.Screen name="Centers" component={CenterWellness} /> */}
+      <Tab.Screen name="Profile" component={ProfilePage} />
     </Tab.Navigator>
   );
 };
@@ -227,10 +114,10 @@ const SplashStack = () => {
   );
 };
 
-
 // 🔥 MAIN NAVIGATOR
 const MainNavigator = () => {
   return (
+
     <Stack.Navigator screenOptions={hideHeader}>
       <Stack.Screen name="SplashStack" component={SplashStack} />
       <Stack.Screen name="AuthStack" component={AuthStack} />
