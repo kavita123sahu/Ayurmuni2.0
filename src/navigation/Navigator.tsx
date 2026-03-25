@@ -27,7 +27,8 @@ import consultHome from "../screens/consult/consultHome";
 import CenterWellness from "../screens/centers/CenterWellness";
 import ProfilePage from "../screens/profile/ProfilePage";
 import CartPage from "../screens/cart/CartPage";
-
+import ProductsScreen from "../screens/products/ProductsScreen";
+import TopCategories from "../screens/products/TopCategories";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import NetworkError from "../screens/NetworkError";
 
@@ -41,7 +42,7 @@ const screen_height = Dimensions.get("screen").height;
 const hideHeader = { headerShown: false };
 
 
-// 🔥 TAB STACK
+
 const TabStack = () => {
   const navigation = useNavigation();
   const navState = useNavigationState((state) => state);
@@ -151,8 +152,29 @@ const TabStack = () => {
         }}
       />
 
+      {/* Products */}
+      {/* <Tab.Screen
+        name="Products"
+        component={ProductsScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <Image
+              source={Images.shop}
+              style={{
+                height: 20,
+                width: 20,
+                tintColor: focused
+                  ? Colors.primaryColor
+                  : Colors.tabtrasparent,
+              }}
+            />
+          ),
+        }}
+      /> */}
+
       {/* Centers */}
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Centers"
         component={CenterWellness}
         options={{
@@ -170,10 +192,10 @@ const TabStack = () => {
             />
           ),
         }}
-      />
+      /> */}
 
       {/* Profile */}
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Profile"
         component={ProfilePage}
         options={{
@@ -191,7 +213,7 @@ const TabStack = () => {
             />
           ),
         }}
-      />
+      /> */}
     </Tab.Navigator>
   );
 };
@@ -201,7 +223,9 @@ const TabStack = () => {
 const HomeStack = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="TabStack" component={TabStack} />
+      {/* <Stack.Screen name="TabStack" component={TabStack} /> */}
+
+       <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
     </Stack.Navigator>
   );
 };
@@ -232,8 +256,8 @@ const SplashStack = () => {
 const MainNavigator = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="SplashStack" component={SplashStack} />
-      <Stack.Screen name="AuthStack" component={AuthStack} />
+      {/* <Stack.Screen name="SplashStack" component={SplashStack} />
+      <Stack.Screen name="AuthStack" component={AuthStack} /> */}
       <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>
   );

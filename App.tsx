@@ -4,6 +4,7 @@ import Navigator from './src/navigation/Navigator'
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 
 import { store } from './src/reduxfile/Store';
+import ProductsScreen from './src/screens/products/ProductsScreen';
 
 const toastConfig = {
 
@@ -40,13 +41,15 @@ const App = () => {
   }, []);
 
   return (
-    <>
+
+  
     
-    </>
-    // <Provider store={store}>
-    //   <Navigator />
-    //   <Toast config={toastConfig} />
-    // </Provider>
+    <Provider store={store}>
+      <Navigator />
+      <Toast config={toastConfig} />
+    </Provider>
+
+    
   )
 }
 

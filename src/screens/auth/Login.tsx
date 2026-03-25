@@ -155,12 +155,15 @@ const Login: React.FC = (props: any) => {
 
 
             {phoneNumber.length === 10 && !isLoading ? (
-              <GradientButton
-                onPress={onLogin}
-                text='Proced to Generate OTP'
-              />
-            ) 
-            :
+              // <GradientButton
+              //   onPress={onLogin}
+              //   text='Proced to Generate OTP'
+              // />
+
+              <>
+              </>
+            )
+              :
               isLoading ? (
                 <TouchableOpacity
                   // onPress={onLogin}
@@ -182,6 +185,9 @@ const Login: React.FC = (props: any) => {
                   //   onPress={onLogin}
                   //   text='Generate OTP'
                   // />
+
+                  <>
+                  </>
                 )
             }
 
