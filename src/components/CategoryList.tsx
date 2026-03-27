@@ -12,15 +12,17 @@ interface Category {
   id: string;
   name: string;
   icon: any;
-  navigation : any
+
 }
 
 const CategoryList = ({ data, navigation }: any) => {
+    console.log("navigation=========>",navigation)
 
   const handlePress = (item: Category) => {
-    // navigation.navigate('TopCategories', {
-    //   categoryName: item.name,
-    // });
+    navigation.navigate('TopCategories', {
+      categoryName: item.name,
+    });
+    
   };
 
   return (

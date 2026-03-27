@@ -4,45 +4,44 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Image,
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { Ionicons } from '../common/Vector';
 
 type Props = {
   title: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
-  leftIcon?: string;
-  rightIcon?: string;
+  leftIcon?: any;     
+  rightIcon?: any;    
 };
 
 const AppHeader: React.FC<Props> = ({
   title,
   onLeftPress,
   onRightPress,
-  leftIcon = 'chevron-back',
+  leftIcon,
   rightIcon,
 }) => {
   return (
     <View style={styles.container}>
-      
-      {/* Left Icon */}
+
       <TouchableOpacity onPress={onLeftPress} style={styles.iconBox}>
-        <Ionicons name={leftIcon as any} size={20} color="#111" />
-      </TouchableOpacity>
-
-      {/* Title */}
-      <Text style={styles.title}>{title}</Text>
-
-      {/* Right Icon */}
-      <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
-        {rightIcon ? (
-          <Ionicons name={rightIcon as any} size={20} color="#111" />
-        ) : (
-          <View style={{ width: 20 }} /> // balance layout
+        {leftIcon && (
+          <Image source={leftIcon} style={styles.icon} />
         )}
       </TouchableOpacity>
+
+      <Text style={styles.title}>{title}</Text>
+
+      {rightIcon ? (
+        <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
+          <Image source={rightIcon} style={styles.icon} />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.iconBox} /> 
+      )}
 
     </View>
   );
@@ -65,9 +64,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  icon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
   },
 
   title: {

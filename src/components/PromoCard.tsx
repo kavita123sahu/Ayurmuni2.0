@@ -10,48 +10,59 @@ import {
 } from 'react-native';
 
 interface Props {
-  onPress: () => void;
+  onPress?: () => void;
   image: ImageSourcePropType;
-  arrowIcon: ImageSourcePropType;
+  arrowIcon?: ImageSourcePropType;
+
+  title: string;
+  desc: string;
+  tag?: string;
+
+  showButton?: boolean; 
 }
 
-const PromoCard: React.FC<Props> = ({ onPress, image, arrowIcon }) => {
+const PromoCard: React.FC<Props> = ({
+  onPress,
+  image,
+  arrowIcon,
+  title,
+  desc,
+  tag,
+  showButton = true, 
+}) => {
   return (
     <View style={styles.card}>
 
-      {/* 🔥 MAIN ROW */}
+      {/* ROW */}
       <View style={styles.row}>
 
-        {/* LEFT CONTENT */}
         <View style={styles.content}>
 
-          <View style={styles.tagContainer}>
-            <Text style={styles.tag}>SUMMER SALE</Text>
-          </View>
+          {tag && (
+            <View style={styles.tagContainer}>
+              <Text style={styles.tag}>{tag}</Text>
+            </View>
+          )}
 
-          <Text style={styles.title}>
-            Up to 40% OFF on{'\n'}Supplements
-          </Text>
-
-          <Text style={styles.desc}>
-            Keep your immunity strong this season.
-          </Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.desc}>{desc}</Text>
 
         </View>
 
-        {/* RIGHT IMAGE */}
         <Image source={image} style={styles.image} />
-
       </View>
 
-      {/* DIVIDER */}
-      <View style={styles.divider} />
+      {/* 👇 CONDITIONALLY SHOW */}
+      {showButton && (
+        <>
+          <View style={styles.divider} />
 
-      {/* BUTTON */}
-      <TouchableOpacity style={styles.btnRow} onPress={onPress}>
-        <Text style={styles.btnText}>Shop Now</Text>
-        <Image source={arrowIcon} style={styles.arrow} />
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.btnRow} onPress={onPress}>
+            <Text style={styles.btnText}>Shop Now</Text>
+            {arrowIcon && <Image source={arrowIcon} style={styles.arrow} />}
+          </TouchableOpacity>
+        </>
+      )}
 
     </View>
   );

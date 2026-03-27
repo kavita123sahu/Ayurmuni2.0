@@ -125,8 +125,8 @@ const AuthStack = () => {
 };
 
 
-// 🔥 SPLASH STACK  
 
+// 🔥 SPLASH STACK
 const SplashStack = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
@@ -141,11 +141,10 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-
     <Stack.Navigator screenOptions={hideHeader}>
-      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
-      <Stack.Screen name="AuthStack" component={AuthStack} options={hideHeader} />
-      <Stack.Screen name="HomeStack" component={HomeStack} options={hideHeader} />
+      <Stack.Screen name="SplashStack" component={SplashStack} />
+      <Stack.Screen name="AuthStack" component={AuthStack} />
+      <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>
   );
 };

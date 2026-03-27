@@ -14,6 +14,8 @@ export const Images = {
     consultant: require('../assets/images/consultant.png'),
     askmuniIcon: require('../assets/images/askMuniIcon.png'),
     wellness: require('../assets/images/wellnessIcon.png'),
+    detailimage: require('../assets/images/Detailimage.png'),
+    share: require('../assets/images/Share.png'),
     searchIcon: require('../assets/images/search.png'),
     micIcon: require('../assets/images/Mic.png'),
     linemark: require('../assets/images/Linemark.png'),
@@ -55,7 +57,13 @@ export const Images = {
     ImageContain: require('../assets/images/imagecontain.png'),
     QnAMain: require('../assets/images/QnAMain.png'),
     NextArrow: require('../assets/images/NextAroow.png'),
-    PlusBag: require('../assets/images/PlusBag.png')
+    PlusBag: require('../assets/images/PlusBag.png'),
+    star: require('../assets/images/grade.png'),
+    nutritionIcon: require('../assets/images/nutritionIcon.png'),
+    deleteitem: require('../assets/images/DeleteItem.png'),
+
+    
+    
 }
 
 export const Icons = {
