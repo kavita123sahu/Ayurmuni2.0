@@ -19,8 +19,7 @@ import *as _AUTH_SERVICE from '../../services/AuthService'
 import { showSuccessToast } from '../../config/Key';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import LinearGradient from 'react-native-linear-gradient';
-
+import GradientButton from '../../components/GradientButton';
 
 
 
@@ -117,7 +116,6 @@ const Login: React.FC = (props: any) => {
               style={styles.logo}
               resizeMode='contain'
             />
-
           </View>
 
           <View style={styles.welcomeContainer}>
@@ -155,13 +153,13 @@ const Login: React.FC = (props: any) => {
 
 
             {phoneNumber.length === 10 && !isLoading ? (
-              // <GradientButton
-              //   onPress={onLogin}
-              //   text='Proced to Generate OTP'
-              // />
 
-              <>
-              </>
+              <GradientButton
+                onPress={onLogin}
+                color={false}
+                text='Send OTP'
+              />
+
             )
               :
               isLoading ? (
@@ -181,13 +179,12 @@ const Login: React.FC = (props: any) => {
                 </TouchableOpacity>
               ) :
                 (
-                  // <GradientButton
-                  //   onPress={onLogin}
-                  //   text='Generate OTP'
-                  // />
 
-                  <>
-                  </>
+                  <GradientButton
+                    onPress={onLogin}
+                    color={true}
+                    text='Send OTP'
+                  />
                 )
             }
 

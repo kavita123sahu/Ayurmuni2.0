@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
+import { Styles } from '../../common/Styles';
 
 const AppointmentScreen = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -27,8 +28,8 @@ const AppointmentScreen = () => {
         <Image source={{ uri: item.image }} style={styles.avatar} />
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{item.doctorName}</Text>
-          <Text style={styles.specialty}>{item.specialty}</Text>
+          <Text style={Styles.name}>{item.doctorName}</Text>
+          <Text style={Styles.specialty}>{item.specialty}</Text>
         </View>
 
         <View
@@ -64,8 +65,8 @@ const AppointmentScreen = () => {
             <Text style={styles.icon}>📅</Text>
           </View>
           <View>
-            <Text style={styles.label}>DATE</Text>
-            <Text style={styles.value}>{item.date}</Text>
+            <Text style={Styles.label}>DATE</Text>
+            <Text style={Styles.value}>{item.date}</Text>
           </View>
         </View>
 
@@ -75,8 +76,8 @@ const AppointmentScreen = () => {
             <Text style={styles.icon}>⏰</Text>
           </View>
           <View>
-            <Text style={styles.label}>TIME</Text>
-            <Text style={styles.value}>{item.time}</Text>
+            <Text style={Styles.label}>TIME</Text>
+            <Text style={Styles.value}>{item.time}</Text>
           </View>
         </View>
 
@@ -86,7 +87,7 @@ const AppointmentScreen = () => {
       {item.status === 'CONFIRMED' ? (
         <View style={styles.btnRow}>
           <TouchableOpacity style={styles.outlineBtn}>
-            <Text style={styles.outlineText}>Reschedule</Text>
+            <Text style={Styles.outlineText}>Reschedule</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.primaryBtn}>
@@ -95,7 +96,7 @@ const AppointmentScreen = () => {
         </View>
       ) : (
         <TouchableOpacity style={styles.cancelBtn}>
-          <Text style={styles.cancelText}>Cancel Appointment</Text>
+          <Text style={Styles.cancelText}>Cancel Appointment</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -228,17 +229,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
-  name: {
-    fontSize: 14,
-    color: Colors.textColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  specialty: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontFamily: Fonts.PoppinsMedium,
-  },
+ 
 
   status: {
     paddingHorizontal: 10,
@@ -249,7 +240,7 @@ const styles = StyleSheet.create({
   confirmed: {
     backgroundColor: "#10B9811A",
   },
-
+  
   pending: {
     backgroundColor: '#FEE2E2',
   },
@@ -290,17 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  label: {
-    fontSize: 10,
-    color: Colors.subTextColor,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  value: {
-    fontSize: 12,
-    color: Colors.textColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
+ 
 
 
   btnRow: {

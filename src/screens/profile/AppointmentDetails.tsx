@@ -10,6 +10,10 @@ import {
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { useNavigation } from '@react-navigation/native';
+import { Styles } from '../../common/Styles';
+import { Fonts } from '../../common/Fonts';
+import { Ionicons } from '../../common/Vector';
+import { Colors } from '../../common/Colors';
 
 /* ================= TYPES ================= */
 type AppointmentDetails = {
@@ -48,25 +52,31 @@ const PrimaryButton = ({
 }) => {
   return (
     <TouchableOpacity style={styles.primaryBtn} onPress={onPress}>
-      <Text style={styles.primaryText}>{title}</Text>
+      <View style={styles.content}>
+        <Ionicons name="videocam" size={18} color="#fff" />
+        <Text style={styles.primaryText}>{title}</Text>
+      </View>
     </TouchableOpacity>
   );
 };
 
 /* ================= SCREEN ================= */
-const AppointmentDetails: React.FC = () => {
+const AppointmentDetailsScreen: React.FC = () => {
+
+
+
+
 
 
   return (
     <SafeAreaView style={styles.container}>
 
       <AppHeader
-        title="FAQ"
+        title="Appointment Details"
         // onLeftPress={() => navigation.goBack()}
         // rightIcon="search"
-        onRightPress={() => console.log('Search clicked')}
+        // onRightPress={() => console.log('Search clicked')}
       />
-
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -78,21 +88,40 @@ const AppointmentDetails: React.FC = () => {
             <Image source={{ uri: data.image }} style={styles.avatar} />
 
             <View>
-              <Text style={styles.name}>{data.doctorName}</Text>
-              <Text style={styles.specialty}>{data.specialty}</Text>
+              <Text style={Styles.name}>{data.doctorName}</Text>
+              <Text style={Styles.specialty}>{data.specialty}</Text>
             </View>
           </View>
 
+
           {/* Date + Time (Single Box Figma Match) */}
           <View style={styles.dateTimeBox}>
+
+
+            {/* DATE */}
             <View style={styles.dtItem}>
-              <Text style={styles.icon}>📅</Text>
-              <Text style={styles.dtText}>{data.date}</Text>
+               <View style={styles.iconCircle}>
+                          <Text style={styles.icon}>📅</Text>
+                        </View>
+             
+              <View style={styles.textContainer}>
+                <Text style={styles.label}>DATE</Text>
+                <Text style={styles.value}>{data.date}</Text>
+              </View>
             </View>
 
+            {/* TIME */}
             <View style={styles.dtItem}>
-              <Text style={styles.icon}>⏰</Text>
-              <Text style={styles.dtText}>{data.time}</Text>
+               <View style={styles.iconCircle}>
+                          <Text style={styles.icon}>⏰</Text>
+                        </View>
+
+             
+
+              <View style={styles.textContainer}>
+                <Text style={styles.label}>TIME</Text>
+                <Text style={styles.value}>{data.time}</Text>
+              </View>
             </View>
           </View>
 
@@ -104,43 +133,47 @@ const AppointmentDetails: React.FC = () => {
           </TouchableOpacity>
 
           <Text style={styles.techText}>
-            ✔ Technical Check: Test Audio & Video
+            Technical Check: Test Audio & Video
           </Text>
         </View>
 
         {/* Patient Info Card */}
+        {/* Title OUTSIDE */}
+        <Text style={Styles.sectionTitle}>Patient Information</Text>
+
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Patient Information</Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Name</Text>
-            <Text style={styles.value}>{data.patientName}</Text>
+            <Text style={Styles.label}>Name</Text>
+            <Text style={Styles.value}>{data.patientName}</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Age</Text>
-            <Text style={styles.value}>{data.age}</Text>
+            <Text style={Styles.label}>Age</Text>
+            <Text style={Styles.value}>{data.age}</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Gender</Text>
-            <Text style={styles.value}>{data.gender}</Text>
+            <Text style={Styles.label}>Gender</Text>
+            <Text style={Styles.value}>{data.gender}</Text>
           </View>
+
         </View>
 
         {/* Reason Card */}
+        <Text style={Styles.sectionTitle}>Reason for Visit</Text>
+
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Reason for Visit</Text>
           <Text style={styles.reason}>{data.reason}</Text>
         </View>
 
         {/* Bottom Actions */}
         <TouchableOpacity style={styles.outlineBtn}>
-          <Text style={styles.outlineText}>Reschedule</Text>
+          <Text style={Styles.outlineText}>Reschedule</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelBtn}>
-          <Text style={styles.cancelText}>Cancel Appointment</Text>
+          <Text style={Styles.cancelText}>Cancel Appointment</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -148,12 +181,13 @@ const AppointmentDetails: React.FC = () => {
   );
 };
 
-export default AppointmentDetails;
+export default AppointmentDetailsScreen;
 
 /* ================= STYLES ================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+
     backgroundColor: '#F7F8FA',
   },
 
@@ -165,12 +199,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 18,
 
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
   },
+
+
 
   row: {
     flexDirection: 'row',
@@ -180,57 +211,86 @@ const styles = StyleSheet.create({
   avatar: {
     width: 55,
     height: 55,
-    borderRadius: 28,
+    borderRadius: 16,
     marginRight: 12,
   },
 
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
 
-  specialty: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
+
+
 
   /* DATE TIME */
   dateTimeBox: {
-    marginTop: 14,
-    backgroundColor: '#F3F4F6',
+    flex: 1,
+
+    // backgroundColor: '#F8FAFC', // light bg like figma
     borderRadius: 12,
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
 
   dtItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    // padding:10
+    paddingVertical: 10
+    // 50-50 layout with small gap
+  },
+
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.bgcolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
 
   icon: {
-    fontSize: 14,
+    fontSize: 18,
+    marginRight: 10,
   },
 
-  dtText: {
-    marginLeft: 6,
-    fontSize: 13,
-    color: '#374151',
+  textContainer: {
+    flexDirection: 'column',
   },
+
+  label: {
+    fontSize: 11,
+    color: '#94A3B8', // gray label
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  value: {
+    fontSize: 14,
+    color: '#0F172A', // dark text
+    fontWeight: '600',
+  },
+
+
 
   /* BUTTONS */
   primaryBtn: {
-    backgroundColor: '#0A8F5A',
-    marginTop: 16,
-    paddingVertical: 13,
+    backgroundColor: Colors.primaryColor,
     borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   primaryText: {
     color: '#fff',
-    fontWeight: '600',
+    marginLeft: 8,
     fontSize: 14,
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   secondaryBtn: {
@@ -243,22 +303,18 @@ const styles = StyleSheet.create({
 
   secondaryText: {
     color: '#0A8F5A',
-    fontWeight: '500',
+    fontFamily: Fonts.PoppinsSemiBold
   },
 
   techText: {
     marginTop: 10,
-    fontSize: 12,
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#0A8F5A',
     textAlign: 'center',
   },
 
-  /* SECTION */
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
+  
 
   infoRow: {
     flexDirection: 'row',
@@ -266,20 +322,14 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
 
-  label: {
-    color: '#6B7280',
-    fontSize: 13,
-  },
 
-  value: {
-    fontWeight: '500',
-    fontSize: 13,
-  },
 
   reason: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#374151',
     lineHeight: 20,
+    fontFamily : Fonts.PoppinsMedium,
+    fontStyle: 'italic'
   },
 
   /* BOTTOM BUTTONS */
@@ -293,10 +343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  outlineText: {
-    color: '#0A8F5A',
-    fontWeight: '500',
-  },
+  
 
   cancelBtn: {
     marginHorizontal: 16,
@@ -308,8 +355,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  cancelText: {
-    color: '#EF4444',
-    fontWeight: '500',
-  },
+  
 });

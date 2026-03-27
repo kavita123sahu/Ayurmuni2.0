@@ -1,4 +1,5 @@
 export const Images = {
+    backIcon:require('../assets/images/BackButoon.png'),
     newlogo:require('../assets/images/MainIcon.png'),
     MobileLogo:require('../assets/images/MobileLogo.png'),
     splashlogo: require('../assets/images/logo.png'),
@@ -27,10 +28,12 @@ export const Images = {
     verifylogo: require('../assets/images/verifyLogo.png'),
     messageIcon: require('../assets/images/messageIcon.png'),
     prescription: require('../assets/images/prescription.png'),
+    backgroundFlower: require('../assets/images/backgroundFlower.png'),
+    meditationIcon: require('../assets/images/meditationIcon.png'),
+    googleIcon: require('../assets/images/googleIcon.png'),
+    phoneIcon: require('../assets/images/phoneIcon.png'),
     frame1: require('../assets/images/Frame1.png'),
     spinner: require('../assets/images/Spinner-Gradient.png')
-
-
 }
 
 export const Icons = {
