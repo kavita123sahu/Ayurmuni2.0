@@ -5,16 +5,17 @@ import { Fonts } from "./Fonts";
 
 export const Styles = {
    name: {
-    fontSize: 14,
+    fontSize: 18,
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   specialty: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6B7280',
     fontFamily: Fonts.PoppinsMedium,
   },
+  
 
    label: {
     fontSize: 12,
@@ -27,6 +28,13 @@ export const Styles = {
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+
+     subtitle: {
+    fontSize: 14,
+    color: '#0D614E',
+    fontFamily : Fonts.PoppinsMedium
+  },
+
   
   sectionTitle: {
     marginTop: 15,
@@ -62,6 +70,10 @@ export const Styles = {
     color: '#0F766E',
     fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold
+  },
+ IconSize: {
+    height: 22,
+    width: 22
   },
 
 };

@@ -57,7 +57,7 @@ const FAQScreen: React.FC = () => {
       {/* Feedback */}
       <Text style={styles.feedbackTitle}>Was this article helpful?</Text>
 
-      <View style={styles.feedbackButtons}>
+      <View style={styles.feedBackButtons}>
         <TouchableOpacity style={styles.yesBtn}>
           <Text style={styles.yesText}>👍 Yes</Text>
         </TouchableOpacity>
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontWeight: "500",
   },
-  feedbackButtons: {
+  feedBackButtons: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 10,

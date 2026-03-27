@@ -15,6 +15,8 @@ import { Styles } from '../../common/Styles';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import SelectedPatientCard from './SelectedPatient';
+import Header from '../../components/Header';
+import { Images } from '../../common/Images';
 
 const dummyPatients: Patient[] = [
   {
@@ -57,17 +59,12 @@ const PatientDetails: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* ── HEADER ── */}
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.headerTitle}>Patient Details</Text>
-            <Text style={styles.headerSub}>Manage family profiles</Text>
-          </View>
-          {/* spacer so title stays centered */}
-          <View style={styles.backBtn} />
-        </View>
+        <Header
+          title="Patient Details"
+          subtitle="Manage family profiles"
+          backIcon={require('../../assets/images/BackButton.png')}
+          onBack={() => { }}
+        />
 
         {/* ── CURRENTLY SELECTED CARD ── */}
 
@@ -92,9 +89,7 @@ const PatientDetails: React.FC = () => {
         </View>
 
 
-        <View style={styles.card}>
-
-
+        <View style={{marginBottom:10}}>
           <FlatList
             data={patients}
             renderItem={({ item }) => (
@@ -108,7 +103,7 @@ const PatientDetails: React.FC = () => {
         {/* ── INFO BOX ── */}
         <View style={styles.infoBox}>
           <View style={styles.iconCircle}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
+            <Image source={Images.notification} style={styles.IconSize} />
           </View>
 
           <View style={styles.infoContent}>
@@ -265,11 +260,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
+
   // ── Info Box ──
   infoBox: {
-
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 25,
+    paddingVertical: 25,
     backgroundColor: Colors.bgcolor,
     padding: 14,
     borderWidth: 1.5,
@@ -290,22 +285,29 @@ const styles = StyleSheet.create({
 
     marginRight: 8,
   },
+
+  IconSize: {
+    height: 22,
+    width: 22
+  },
+
   infoIcon: {
     fontSize: 16,
     marginTop: 1,
   },
   infoContent: {
     flex: 1,
+
   },
   infoTitle: {
-    fontSize: 14,
-    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
     marginBottom: 4,
   },
   infoText: {
     fontSize: 12,
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsRegular,
     color: Colors.subTextColor,
     lineHeight: 14,
   },

@@ -1,7 +1,8 @@
 export const Images = {
-    backIcon:require('../assets/images/BackButoon.png'),
-    newlogo:require('../assets/images/MainIcon.png'),
-    MobileLogo:require('../assets/images/MobileLogo.png'),
+    backIcon: require('../assets/images/BackButton.png'),
+    newlogo: require('../assets/images/MainIcon.png'),
+    arrow: require('../assets/images/arrow.png'),
+    MobileLogo: require('../assets/images/MobileLogo.png'),
     splashlogo: require('../assets/images/logo.png'),
     networkissue: require('../assets/images/networklogo.png'),
     ellipsebackground: require('../assets/images/Ellipse.png'),
@@ -42,6 +43,27 @@ export const Images = {
 
     
     
+    verify: require('../assets/images/verify.png'),
+    editButton: require('../assets/images/editButton.png'),
+    unverify: require('../assets/images/unverify.png'),
+    notification: require('../assets/images/notification.png'),
+    clock: require('../assets/images/clock.png'),
+    calender: require('../assets/images/calender.png'),
+    video: require('../assets/images/video.png'),
+    leaf1: require('../assets/images/leaf1.png'),
+    leaf2: require('../assets/images/leaf2.png'),
+    favourite: require('../assets/images/Favourite.png'),
+    logout: require('../assets/images/logout.png'),
+    setting: require('../assets/images/setting.png'),
+    patient: require('../assets/images/patient.png'),
+    payment: require('../assets/images/payment.png'),
+    orders: require('../assets/images/orders.png'),
+    profileEdit: require('../assets/images/profileEdit.png'),
+    medical: require('../assets/images/medical.png'),
+    ImageContain: require('../assets/images/imagecontain.png'),
+    QnAMain: require('../assets/images/QnAMain.png'),
+    NextArrow: require('../assets/images/NextAroow.png'),
+    PlusBag: require('../assets/images/PlusBag.png')
 }
 
 export const Icons = {

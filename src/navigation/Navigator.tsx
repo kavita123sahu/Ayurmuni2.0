@@ -14,7 +14,6 @@ import {
   ToastAndroid,
   View,
 } from "react-native";
-
 import Login from "../screens/auth/Login";
 import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
@@ -30,12 +29,19 @@ import NetworkError from "../screens/NetworkError";
 import CustomeTab from "../components/CustomeTab";
 import AppointmentScreen from "../screens/profile/Appointment";
 import ProductDetails from "../screens/products/ProductDetails";
+import OrderHistoryScreen from "../screens/profile/OrderHistory";
+import AppointmentDetailsScreen from "../screens/profile/AppointmentDetails";
+import { RootBottomParamList, RootStackParamList } from "../../type";
+import PatientDetails from "../screens/patient/PatientDetails";
+import TermsCondition from "../screens/TermsCondition";
+import Onboarding from "../screens/auth/Onboarding";
+import PatientFAQ from "../screens/PatientFAQ";
 
 enableScreens();
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<RootBottomParamList>();
 const hideHeader = { headerShown: false };
 
 
@@ -78,6 +84,7 @@ const TabStack = () => {
       }}
     >
       <Tab.Screen name="Home" component={ProductsScreen} />
+      <Tab.Screen name="Home" component={HomePage} />
       <Tab.Screen name="Cart" component={CartPage} />
       <Tab.Screen name="Consult" component={consultHome} />
       {/* <Tab.Screen name="Centers" component={CenterWellness} /> */}
@@ -86,16 +93,18 @@ const TabStack = () => {
   );
 };
 
-
 // 🔥 HOME STACK
 const HomeStack = () => {
   return (
-    <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="TabStack" component={TabStack} />
-      <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
-      <Stack.Screen name="TopCategories" component={TopCategories} />
-      <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} />
-      <Stack.Screen name="ProductDetails" component={ProductDetails} />
+    <Stack.Navigator initialRouteName="TabStack" screenOptions={hideHeader}>
+      <Stack.Screen name="TabStack" component={TabStack} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Appointments" component={AppointmentScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PatientDetails" component={PatientDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PatientFAQ" component={PatientFAQ} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="TermsCondition" component={TermsCondition} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
@@ -104,31 +113,40 @@ const HomeStack = () => {
 // 🔥 AUTH STACK
 const AuthStack = () => {
   return (
-    <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="OtpVerify" component={OtpVerify} />
+    <Stack.Navigator initialRouteName="Login" screenOptions={hideHeader}>
+      <Stack.Screen name="Login" component={Login} options={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }} />
+      <Stack.Screen name="OtpVerify" component={OtpVerify} options={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }} />
     </Stack.Navigator>
   );
 };
 
 
+// 🔥 SPLASH STACK  
 
-// 🔥 SPLASH STACK
 const SplashStack = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="Splash" component={Splash} />
+      <Stack.Screen name="Splash" component={Splash} options={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }} />
     </Stack.Navigator>
   );
 };
 
-// 🔥 MAIN NAVIGATOR
+
 const MainNavigator = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="SplashStack" component={SplashStack} />
-      <Stack.Screen name="AuthStack" component={AuthStack} />
-      <Stack.Screen name="HomeStack" component={HomeStack} />
+      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
+      <Stack.Screen name="AuthStack" component={AuthStack} options={hideHeader} />
+      <Stack.Screen name="HomeStack" component={HomeStack} options={hideHeader} />
     </Stack.Navigator>
   );
 };
@@ -139,9 +157,13 @@ const Navigator = () => {
   const isConnected = useNetworkStatus();
 
   return (
-    <NavigationContainer>
+
+    <NavigationContainer >
+
       {isConnected ? <MainNavigator /> : <NetworkError />}
+
     </NavigationContainer>
+
   );
 };
 

@@ -11,8 +11,15 @@ import {
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { Styles } from '../../common/Styles';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // path adjust kar
+import { RootStackParamList } from '../../../type';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AppointmentScreen = () => {
+
+  const navigation = useNavigation<NavigationProp>(); // ✅ FIX
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
 
 
@@ -21,7 +28,7 @@ const AppointmentScreen = () => {
   const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', },];
 
   const renderItem = ({ item }: { item: Appointment }) => (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AppointmentDetails')}>
 
       {/* Top Row */}
       <View style={styles.row}>
@@ -99,7 +106,7 @@ const AppointmentScreen = () => {
           <Text style={Styles.cancelText}>Cancel Appointment</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -229,7 +236,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
- 
+
 
   status: {
     paddingHorizontal: 10,
@@ -240,7 +247,7 @@ const styles = StyleSheet.create({
   confirmed: {
     backgroundColor: "#10B9811A",
   },
-  
+
   pending: {
     backgroundColor: '#FEE2E2',
   },
@@ -273,7 +280,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    
+
     marginRight: 8,
   },
 
@@ -281,7 +288,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
- 
+
 
 
   btnRow: {

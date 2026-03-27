@@ -9,6 +9,7 @@ import {
 import { Styles } from '../../common/Styles';
 import { FontAwesome5, Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
+import { Fonts } from '../../common/Fonts';
 
 interface Props {
   name: string;
@@ -38,16 +39,16 @@ const SelectedPatientCard: React.FC<Props> = ({
         {/* Avatar with SELF badge */}
         <View style={styles.avatarWrapper}>
           <Image source={{ uri: image }} style={styles.avatar} />
-         
+
         </View>
 
         {/* Name & Phone */}
         <View style={styles.info}>
-            <View style={styles.selfBadge}>
+          <View style={styles.selfBadge}>
             <Text style={styles.selfBadgeText}>SELF</Text>
           </View>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.phone}>{phone}</Text>
+          <Text style={Styles.name}>{name}</Text>
+          <Text style={Styles.value}>{phone}</Text>
         </View>
       </View>
 
@@ -74,7 +75,7 @@ const SelectedPatientCard: React.FC<Props> = ({
         {/* View Records */}
         <TouchableOpacity onPress={onViewRecords} style={styles.viewRecordsBtn}>
           <Text style={Styles.addBtn}>View Records  </Text>
-          <FontAwesome5 name='arrow-right' color = {Colors.primaryColor} />
+          <FontAwesome5 name='arrow-right' color={Colors.primaryColor} />
         </TouchableOpacity>
       </View>
     </View>
@@ -87,18 +88,15 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 20,
+
   },
 
   // ── Top Row ──
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding :10,
     marginBottom: 14,
   },
   avatarWrapper: {
@@ -106,23 +104,23 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   avatar: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 70,
+    height: 70,
+    borderRadius: 12,
   },
   selfBadge: {
-   
+
     alignSelf: "flex-start",
     // left: 16,
-    backgroundColor: '#0F766E',
+    backgroundColor: Colors.bgcolor,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   selfBadgeText: {
-    color: '#fff',
+    color: Colors.green,
     fontSize: 8,
-    fontWeight: '700',
+    fontFamily: Fonts.PoppinsRegular,
     letterSpacing: 0.6,
   },
   info: {
@@ -145,11 +143,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     marginBottom: 12,
   },
-  
+
   // ── Bottom Row ──
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding:10,
     justifyContent: 'space-between',
   },
   avatarGroup: {
@@ -157,9 +156,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   initialsCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 35,
+    height: 35,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -173,8 +172,8 @@ const styles = StyleSheet.create({
   viewRecordsBtn: {
     paddingVertical: 4,
     paddingLeft: 8,
-    flexDirection:'row',
-    alignItems:'center'
+    flexDirection: 'row',
+    alignItems: 'center'
   },
   viewRecordsText: {
     fontSize: 13,

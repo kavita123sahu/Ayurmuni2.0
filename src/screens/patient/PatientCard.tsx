@@ -6,6 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { Styles } from '../../common/Styles';
+import { Colors } from '../../common/Colors';
+import { Fonts } from '../../common/Fonts';
+import { Feather, Ionicons } from '../../common/Vector';
+import { Images } from '../../common/Images';
 
 export interface Patient {
   id: string;
@@ -30,8 +35,8 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect }) => {
       <Image source={{ uri: patient.image }} style={styles.avatar} />
 
       <View style={styles.info}>
-        <Text style={styles.name}>{patient.name}</Text>
-        <Text style={styles.relation}>Relation: {patient.relation}</Text>
+        <Text style={[styles.name,{marginBottom:-4}]}>{patient.name}</Text>
+        <Text style={Styles.specialty}>Relation: <Text style={styles.subtitle}> {patient.relation}</Text></Text>
       </View>
 
       <View style={styles.actions}>
@@ -39,14 +44,15 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect }) => {
           onPress={() => {}}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.editIcon}>✏️</Text>
+           <Image source={Images.editButton}  style={styles.IconSize} />
+          {/* <Feather  name='edit' color={Colors.primaryColor} /> */}
         </TouchableOpacity>
 
-        {patient.selected && (
-          <View style={styles.checkCircle}>
-            <Text style={styles.checkMark}>✓</Text>
-          </View>
-        )}
+        {patient.selected ? (
+          // <View style={styles.checkCircle}>
+             <Image source={Images.verify}  style={styles.IconSize} />
+          // </View>
+        ) :  <Image source={Images.unverify} style={styles.IconSize} /> }
       </View>
     </TouchableOpacity>
   );
@@ -58,30 +64,30 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
+    padding: 15,
+    borderRadius: 16,
     marginBottom: 8,
     backgroundColor: '#fff',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: 'transparent',
   },
   itemSelected: {
-    borderColor: '#0F766E',
+    borderColor: Colors.primaryColor,
     backgroundColor: '#F0FDFA',
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
     marginRight: 12,
   },
   info: {
     flex: 1,
   },
   name: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontSize: 16,
+     color: Colors.textColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   relation: {
     fontSize: 12,
@@ -110,4 +116,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+   subtitle: {
+    fontSize: 14,
+    color: '#0D614E',
+    fontFamily : Fonts.PoppinsMedium
+  },
+  IconSize:{
+    height : 22,
+    width:22
+  }
 });

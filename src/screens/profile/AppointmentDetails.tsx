@@ -47,12 +47,14 @@ const data: AppointmentDetails = {
 const PrimaryButton = ({
   title,
   onPress,
+  page
 }: {
   title: string;
+  page: string
   onPress?: () => void;
 }) => {
   return (
-    <TouchableOpacity style={styles.primaryBtn} onPress={onPress}>
+    <TouchableOpacity style={[styles.primaryBtn,{backgroundColor: page=='appoint' ?  Colors.primaryColor: Colors.errorColor }]} onPress={onPress}>
       <View style={styles.content}>
         <Ionicons name="videocam" size={18} color="#fff" />
         <Text style={styles.primaryText}>{title}</Text>
@@ -62,23 +64,19 @@ const PrimaryButton = ({
 };
 
 /* ================= SCREEN ================= */
-const AppointmentDetailsScreen: React.FC = () => {
+const AppointmentDetailScreen = (props: any) => {
 
-
-
-
-
-
+  console.log("propsss", props)
   return (
     <SafeAreaView style={styles.container}>
 
       <AppHeader
-        title="Product Details"
-        leftIcon={Images.backIcon}
-        //   onLeftPress={() => navigation.goBack()}
-
+        title="Appointment Details"
+        onLeftPress={() => props.navigation.goBack()}
+        rightIcon="search"
+        onRightPress={() => console.log('Search clicked')}
       />
-
+      
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Doctor Card */}
@@ -127,7 +125,7 @@ const AppointmentDetailsScreen: React.FC = () => {
           </View>
 
           {/* Buttons */}
-          <PrimaryButton title="Join Video Call" />
+          <PrimaryButton title="Join Video Call" page='appoint' />
 
           <TouchableOpacity style={styles.secondaryBtn}>
             <Text style={styles.secondaryText}>Chat with Doctor</Text>
@@ -182,7 +180,7 @@ const AppointmentDetailsScreen: React.FC = () => {
   );
 };
 
-export default AppointmentDetailsScreen;
+export default AppointmentDetailScreen;
 
 /* ================= STYLES ================= */
 const styles = StyleSheet.create({

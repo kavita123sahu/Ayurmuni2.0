@@ -26,6 +26,7 @@ export const GetQuestionOptions = async () => {
 
 
 export const AssesmentSubmit = async (data: Object) => {
+
     return new Promise(async (resolve, reject) => {
         try {
 
@@ -40,6 +41,7 @@ export const AssesmentSubmit = async (data: Object) => {
             console.log(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter)
             let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter);
             let response = await serverResponse.json();
+            console.log("resposeeesubmitttt-->", response)
             resolve(response);
         }
         catch (error) {
@@ -56,7 +58,7 @@ export const GetAssessmentPercentage = async () => {
             const user = await Utils.getData('_USER_INFO');
             const id = customer_id || user?.id;
 
-            console.log("customeriddddddddddddddd", id , customer_id, user.id)
+            console.log("customeriddddddddddddddd", id, customer_id, user.id)
 
             let fetchParameter = {
                 method: Method.GET,
@@ -69,6 +71,30 @@ export const GetAssessmentPercentage = async () => {
             let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/profile/${id}/`, fetchParameter);
             // let response = await serverResponse.json();
             resolve(serverResponse);
+        }
+        catch (error) {
+            reject(error);
+        }
+    })
+}
+
+export const AssesmentYesSubmit = async (data: Object) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+
+            let fetchParameter = {
+                method: Method.POST,
+                body: JSON.stringify(data),
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            }
+            console.log(BaseUrl.base_url + `healthcare/ayurveda/profile/submitwithoutform/`, fetchParameter)
+            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/profile/submitwithoutform/`, fetchParameter);
+            let response = await serverResponse.json();
+            console.log("resposeeeewihtoutttttttttt-->", response)
+            resolve(response);
         }
         catch (error) {
             reject(error);
