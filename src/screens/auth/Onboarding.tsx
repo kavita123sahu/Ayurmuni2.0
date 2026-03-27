@@ -25,9 +25,11 @@ import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
 import { launchImageLibrary, launchCamera, MediaType, ImagePickerResponse, ImageLibraryOptions, CameraOptions, Asset } from 'react-native-image-picker';
 import { EmailValidator } from '../../common/Validator';
-import { GenderOption, genderOptions } from '../../common/datafile';
 import { RouteProp, useIsFocused, useRoute } from '@react-navigation/native';
-import GradientButton from '../../component/GradientButton';
+import { genderOptions } from '../../common/DataInterface';
+import CommonButton from '../../components/CommonButton';
+import { Images } from '../../common/Images';
+
 
 interface FormData {
     firstName: string;
@@ -48,7 +50,7 @@ interface FormErrors {
 
 
 const Onboarding = (props: any) => {
-    // Single form data object
+
     const [isLoading, setIsLoading] = useState(false);
     const [Isloading, setUSERID] = useState('')
     const [formData, setFormData] = useState<FormData>({
@@ -60,8 +62,6 @@ const Onboarding = (props: any) => {
         user: ''
     });
 
-
-    // Single error object
     const [errors, setErrors] = useState<FormErrors>({
         firstName: '',
         lastName: '',
@@ -80,7 +80,6 @@ const Onboarding = (props: any) => {
     const getUser = async () => {
         try {
             const user_id = await Utils.getData('_USER_ID');
-            // setUSERID(user_id);
             setFormData(prev => ({ ...prev, user: user_id }));
         } catch (error) {
             console.log(error);
@@ -211,11 +210,7 @@ const Onboarding = (props: any) => {
             isValid = false;
         }
 
-        // if (!formData.profileImage) {
-        //     newErrors.profileImage = 'Profile Image is required';
-        //     showSuccessToast('Profile Image is required', 'error');
-        //     isValid = false;
-        // }
+
 
         setErrors(newErrors);
         return isValid;
@@ -234,8 +229,7 @@ const Onboarding = (props: any) => {
         send_data.append('last_name', formData.lastName);
         send_data.append('email', formData.email);
         send_data.append('gender', formData.gender);
-        // mobile_number //
-        // date_of_birth //
+
 
         if (formData.profileImage && formData.profileImage.uri) {
             const imageFile = {
@@ -271,7 +265,6 @@ const Onboarding = (props: any) => {
                 Utils.storeData('_USER_INFO', jsonResponse.data);
                 // Utils.storeData('_USER_ID', jsonResponse?.data?.user);
                 showSuccessToast('Welcome to Ayurmuni', 'success');
-                // props.navigation.replace('HomeStack', { screen: 'Home' });
                 props.navigation.navigate('PatientFAQ');
             } else {
                 setIsLoading(false);
@@ -285,164 +278,197 @@ const Onboarding = (props: any) => {
     };
 
 
-    const renderGenderOption = (option: GenderOption) => (
-        <TouchableOpacity
-            key={option.id}
-            style={styles.genderOption}
-            onPress={() => handleFieldChange('gender', option.value)}
-        >
-            <View style={styles.radioButton}>
-                {formData.gender === option.value && (
-                    <View style={styles.radioButtonSelected} />
-                )}
-            </View>
-            <Text style={styles.genderLabel}>{option.label}</Text>
-        </TouchableOpacity>
-    );
+   
+
+    const [dob, setDob] = useState({ day: '', month: '', year: '' });
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#ffffff" />
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Personal Information</Text>
-                <View style={styles.headerSpacer} />
-            </View>
+            <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} // adjust if header present
             >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
-                        style={styles.container}
-                        contentContainerStyle={{ paddingBottom: 30 }}
-                        keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 30 }}
                     >
                         <View style={styles.content}>
-                            <View style={styles.imageSection}>
-                                <TouchableOpacity style={styles.imageContainer} onPress={handleAddImage}>
-                                    {formData.profileImage ? (
-                                        <Image source={{ uri: formData.profileImage.uri }} style={styles.profileImage} />
-                                    ) : (
-                                        <View style={styles.addImagePlaceholder}>
-                                            <Ionicons name="camera" size={24} color="#CCCCCC" />
-                                            <Text style={styles.addImageText}>Add Image</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
 
-                            <View style={styles.formSection}>
-                                <View style={styles.nameRow}>
-                                    <View style={styles.inputGroup}>
-                                        <Text style={styles.label}>
-                                            First name<Text style={styles.required}>*</Text>
-                                        </Text>
-                                        <TextInput
-                                            style={[styles.input, errors.firstName && styles.inputError]}
-                                            value={formData.firstName}
-                                            onChangeText={(text) => handleFieldChange('firstName', text)}
-                                            placeholder="First name"
-                                            placeholderTextColor="#CCCCCC"
-                                        />
-                                        {errors.firstName ? (
-                                            <Text style={styles.errorText}>{errors.firstName}</Text>
-                                        ) : null}
-                                    </View>
-
-                                    <View style={styles.inputGroup}>
-                                        <Text style={styles.label}>Last name*</Text>
-                                        <TextInput
-                                            style={[styles.input, errors.lastName && styles.inputError]}
-                                            value={formData.lastName}
-                                            onChangeText={(text) => handleFieldChange('lastName', text)}
-                                            placeholder="Last name"
-                                            placeholderTextColor="#CCCCCC"
-                                        />
-                                        {errors.lastName ? (
-                                            <Text style={styles.errorText}>{errors.lastName}</Text>
-                                        ) : null}
-                                    </View>
-                                </View>
-
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.label}>Email</Text>
-                                    <TextInput
-                                        style={[styles.input, errors.email && styles.inputError]}
-                                        value={formData.email}
-                                        onChangeText={(text) => handleFieldChange('email', text)}
-                                        placeholder="Email"
-                                        placeholderTextColor="#CCCCCC"
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                        autoCorrect={false}
-                                    />
-                                    {errors.email ? (
-                                        <Text style={styles.errorText}>{errors.email}</Text>
-                                    ) : null}
-                                </View>
-
-                                <View style={styles.genderSection}>
-                                    <Text style={styles.label}>
-                                        Gender<Text style={styles.required}>*</Text>
-                                    </Text>
-                                    <View style={styles.genderOptions}>
-                                        {genderOptions.map(renderGenderOption)}
-                                    </View>
-                                    {errors.gender ? (
-                                        <Text style={styles.errorText}>{errors.gender}</Text>
-                                    ) : null}
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.buttonContainer}>
-
-
-                            {isLoading ? (
-                                <TouchableOpacity
-                                    // onPress={handleProcees}
-                                    disabled={true}
-                                    style={[styles.verifyButton, styles.verifyButtonLoading]}
-                                >
-
-                                    <ActivityIndicator size="small" color={Colors.primaryColor} />
-                                    <Text style={[styles.verifyButtonText, styles.loadingText]}>
-                                        Processing...
-
-                                    </Text>
-
-                                </TouchableOpacity>
-                            ) : (
-                                <GradientButton
-                                    onPress={handleProcees}
-                                    text='Proceed'
+                            {/* HEADER */}
+                            <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                                <Image
+                                    source={require('../../assets/images/BackButton.png')}
+                                    style={styles.backIcon}
                                 />
-                                // <LinearGradient
-                                //     colors={
-                                //         (!formData.firstName.trim() || !formData.lastName.trim() || !formData.gender)
-                                //             ? [Colors.tabinactive, Colors.tabinactive]
-                                //             : [Colors.secondaryColor, Colors.primaryColor]
-                                //     }
-                                //     style={styles.proceedButton}
-                                // >
-                                //     <TouchableOpacity
-                                //         // onPress={handleProcees}
-                                //         style={styles.touchableStyle}>
-                                //         <Text style={styles.proceedButtonText}>
-                                //             Proceed
-                                //         </Text>
-                                //     </TouchableOpacity>
-                                // </LinearGradient>
+                            </TouchableOpacity>
 
-                            )}
+                            <Text style={styles.title}>Create Account</Text>
+                            <Text style={styles.subtitle}>
+                                Join our healthcare community today for better health management.
+                            </Text>
+
+                            {/* PROFILE IMAGE */}
+                            <View style={styles.imageWrapper}>
+                                <TouchableOpacity onPress={handleAddImage}>
+
+                                    <View style={styles.imageCircle}>
+                                        {formData.profileImage ? (
+                                            <Image
+                                                source={{ uri: formData.profileImage.uri }}
+                                                style={styles.profileImage}
+                                            />
+                                        ) : (
+                                            
+                                            <Image
+                                                source={Images.ImageContain}
+                                                style={styles.profileImage}
+                                            />
+                                        )}
+                                    </View>
+
+                                </TouchableOpacity>
+
+                                <Text style={styles.uploadText}>Upload Photo</Text>
+                            </View>
+
+
+                            {/* NAME */}
+
+                            <View style={styles.row}>
+
+                                {/* FIRST NAME */}
+                                <View style={styles.inputWrapper}>
+                                    <Text style={styles.label}>First Name</Text>
+                                    <TextInput
+                                        placeholder="ABC"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={formData.firstName}
+                                        onChangeText={(t) => handleFieldChange('firstName', t)}
+                                        style={[
+                                            styles.inputHalf,
+                                            formData.firstName && styles.inputFilled
+                                        ]}
+                                    />
+                                </View>
+
+                                {/* LAST NAME */}
+                                <View style={styles.inputWrapper}>
+                                    <Text style={styles.label}>Last Name</Text>
+                                    <TextInput
+                                        placeholder="XYZ"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={formData.lastName}
+                                        onChangeText={(t) => handleFieldChange('lastName', t)}
+                                        style={[
+                                            styles.inputHalf,
+                                            formData.lastName && styles.inputFilled
+                                        ]}
+                                    />
+                                </View>
+
+                            </View>
+
+                            {/* GENDER */}
+                            <Text style={styles.label}>Gender</Text>
+
+                            <View style={styles.genderRow}>
+                                {genderOptions.map((item : any) => (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        onPress={() => handleFieldChange('gender', item.value)}
+                                        style={[
+                                            styles.genderBtn,
+                                            formData.gender === item.value && styles.genderActive,
+                                        ]}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.genderText,
+                                                formData.gender === item.value && styles.genderTextActive
+                                            ]}
+                                        >
+                                            {item.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+
+                            {/* DOB */}
+                            <Text style={styles.label}>D.O.B</Text>
+                            <View style={styles.row}>
+                                <TextInput
+                                    placeholder="DD"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={dob.day}
+                                    onChangeText={(t) => setDob({ ...dob, day: t })}
+                                    style={[
+                                        styles.inputThird,
+                                        dob.day && styles.inputFilled
+                                    ]}
+                                    keyboardType="number-pad"
+                                    maxLength={2}
+                                />
+
+                                <TextInput
+                                    placeholder="MM"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={dob.month}
+                                    onChangeText={(t) => setDob({ ...dob, month: t })}
+                                    style={[
+                                        styles.inputThird,
+                                        dob.month && styles.inputFilled
+                                    ]}
+                                    keyboardType="number-pad"
+                                    maxLength={2}
+                                />
+
+                                <TextInput
+                                    placeholder="YYYY"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={dob.year}
+                                    onChangeText={(t) => setDob({ ...dob, year: t })}
+                                    style={[
+                                        styles.inputThird,
+                                        dob.year && styles.inputFilled
+                                    ]}
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                />
+                            </View>
+
+                            {/* EMAIL */}
+                            <Text style={styles.label}>Email Address</Text>
+                            <TextInput
+                                placeholder="email@gmail.com"
+                                placeholderTextColor="#9CA3AF"
+                                value={formData.email}
+                                onChangeText={(t) => handleFieldChange('email', t)}
+                                style={[
+                                    styles.inputFull,
+                                    formData.email && styles.inputFilled
+                                ]}
+                            />
+
                         </View>
+
+                        
+                        {/* BUTTON */}
+                        <View style={styles.bottom}>
+                            <CommonButton
+                                title="Proceed"
+                                onPress={handleProcees}
+                                loading={isLoading}
+                            />
+
+                            <Text style={styles.loginText}>
+                                Already have an account? <Text style={styles.login}>Login</Text>
+                            </Text>
+                        </View>
+
                     </ScrollView>
                 </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
@@ -450,202 +476,229 @@ const Onboarding = (props: any) => {
     );
 };
 
+export default Onboarding;
+
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#F9FAFB',
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingTop: 40,
-        paddingBottom: 20,
+
+    content: {
+        paddingHorizontal: 20,
     },
-    backButton: {
+    cameraImage: {
+        width: 14,
+        height: 14,
+        resizeMode: 'contain',
+    },
+    cameraFullIcon: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
         width: 40,
         height: 40,
+        resizeMode: 'contain',
+    },
+
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 40,
+        marginBottom: 10,
+
+    },
+
+    title: {
+        fontSize: 30,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#18181B',
+        fontWeight: 700,
+
+    },
+    profileImageFull: {
+        width: 128,
+        height: 128,
+        borderRadius: 64,
+        resizeMode: 'cover',
+    },
+
+    subtitle: {
+        fontSize: 16,
+        color: '#71717A',
+        marginTop: 6,
+        marginBottom: 25,
+        fontFamily: Fonts.PoppinsRegular,
+        lineHeight: 20,
+        fontWeight: 400
+    },
+
+    imageWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 25,
+    },
+
+    imageCircle: {
+        width: 138,
+        height: 138,
+        borderRadius: 64,
+        overflow: 'hidden',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    headerTitle: {
-        flex: 1,
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: Colors.textColor,
-        textAlign: 'center',
-        marginLeft: 10,
-    },
-    headerSpacer: {
-        width: 40,
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 20,
-    },
-    imageSection: {
-        alignItems: 'center',
-        paddingVertical: 30,
-    },
-    imageContainer: {
-        width: 150,
-        height: 150,
-        borderRadius: 50,
-        overflow: 'hidden',
-    },
+
     profileImage: {
         width: '100%',
         height: '100%',
-        backgroundColor: '#F8F8F8',
-        borderWidth: 2,
-        borderColor: '#E8E8E8',
-        borderRadius: 150,
-        justifyContent: 'center',
-        alignItems: 'center',
-        resizeMode: 'cover',
+        resizeMode: 'contain',
     },
-    addImagePlaceholder: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#F8F8F8',
-        borderWidth: 2,
-        borderColor: '#E8E8E8',
-        borderRadius: 150,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    addImageText: {
-        fontSize: 12,
-        color: '#CCCCCC',
-        marginTop: 4,
-    },
-    formSection: {
-        justifyContent: "center"
-    },
-    nameRow: {
-        flexDirection: 'row',
-        gap: 15,
-        marginBottom: 25,
-    },
-    inputGroup: {
-        flex: 1,
-    },
-    label: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: Colors.textColor,
-        marginBottom: 8,
-    },
-    required: {
-        color: Colors.textColor,
-    },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderColor: '#E8E8E8',
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        fontFamily: Fonts.PoppinsRegular,
-        fontSize: 16,
-        color: Colors.textColor,
-        backgroundColor: '#FAFAFA',
-    },
-    inputError: {
-        borderColor: '#FF6B6B',
-        borderWidth: 1,
-    },
-    errorText: {
-        fontSize: 12,
-        color: '#FF6B6B',
-        marginTop: 4,
-        fontFamily: Fonts.PoppinsRegular,
-    },
-    genderSection: {
-        marginBottom: 30,
-        marginTop: 30,
-    },
-    genderOptions: {
-        flexDirection: 'row',
-        gap: 20,
-        marginTop: 8,
-    },
-    genderOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    radioButton: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#CCCCCC',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    radioButtonSelected: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#4CAF50',
-    },
-    genderLabel: {
-        fontSize: 14,
-        color: Colors.textColor,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    buttonContainer: {
-        paddingBottom: 30,
-        paddingHorizontal: 15,
-    },
-    proceedButton: {
-        height: 50,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    touchableStyle: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    proceedButtonDisabled: {
-        borderRadius: 8,
-        backgroundColor: Colors.tabinactive,
-    },
-    proceedButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#ffffff',
-    },
-    proceedButtonTextDisabled: {
-        color: Colors.primaryColor,
-    },
-    verifyButtonLoading: {
-        backgroundColor: '#f0f0f0',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    verifyButton: {
-        height: 50,
-        backgroundColor: '#E8EDE3',
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
+    backIcon: {
+        width: 44,
+        height: 44,
+
     },
 
-    verifyButtonText: {
-        color: Colors.primaryColor,
-        fontSize: 16,
-        fontWeight: '600',
+    cameraIcon: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#C7E7DB',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    loadingText: {
-        marginLeft: 8,
-        color: Colors.primaryColor,
+    inputWrapper: {
+        width: '48%',
+    },
+
+    uploadText: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#0D614E',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+        alignItems: 'flex-start',
+    },
+
+    inputHalf: {
+        width: '100%',
+        height: 50,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        backgroundColor: '#fff',
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#111827',
+    },
+
+    inputThird: {
+        width: '30%',
+        height: 50,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        textAlign: 'center',
+        backgroundColor: '#fff',
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#111827',
+        padding: 0,
+    },
+
+    inputFull: {
+        height: 50,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        backgroundColor: '#fff',
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#111827',
+    },
+
+    inputFilled: {
+        backgroundColor: '#0D614E0D',
+        borderColor: '#0D614E33',
+        color: '#0D614E',
+    },
+
+    label: {
+        fontSize: 13,
+        marginBottom: 6,
+        color: '#111827',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    genderRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 15,
+    },
+
+    genderBtn: {
+        flex: 1,
+        height: 45,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+
+    genderActive: {
+        backgroundColor: '#0D614E0D',
+        borderColor: '#0D614E33',
+    },
+
+    genderText: {
+        color: '#9CA3AF',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    genderTextActive: {
+        color: '#0D614E',
+    },
+
+    bottom: {
+        paddingHorizontal: 20,
+        marginTop: 20,
+    },
+
+    button: {
+        backgroundColor: '#0D614E',
+        height: 52,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    loginText: {
+        textAlign: 'center',
+        marginTop: 15,
+        color: '#6B7280',
+    },
+
+    login: {
+        color: '#0D614E',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 });
-
-export default Onboarding;

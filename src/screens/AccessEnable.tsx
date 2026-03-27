@@ -46,7 +46,7 @@ const AccessEnable: React.FC = (props) => {
             <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
             <View style={styles.header}>
-                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <TouchableOpacity onPress={handleBack} style={styles.BackButton}>
                     <Ionicons name="arrow-back" size={24} color="#333" />
                 </TouchableOpacity>
             </View>
@@ -100,7 +100,7 @@ const AccessEnable: React.FC = (props) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#ffffff' },
     header: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 20 },
-    backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+    BackButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
     content: { flex: 1, paddingHorizontal: 30, alignItems: 'center' },
     iconContainer: { marginTop: 40, marginBottom: 40, position: 'relative' },
     gearIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.white, justifyContent: 'center', alignItems: 'center', position: 'relative' },

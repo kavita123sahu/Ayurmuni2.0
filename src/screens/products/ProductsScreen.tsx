@@ -56,7 +56,7 @@ const ProductsScreen = () => {
         <Header
           title="Products"
           subtitle="Choose best product"
-          backIcon={require('../../assets/images/backButton.png')}
+          backIcon={require('../../assets/images/BackButton.png')}
           onBack={() => {}}
         />
 

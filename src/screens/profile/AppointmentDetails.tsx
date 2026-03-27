@@ -14,6 +14,7 @@ import { Styles } from '../../common/Styles';
 import { Fonts } from '../../common/Fonts';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
+import { Images } from '../../common/Images';
 
 /* ================= TYPES ================= */
 type AppointmentDetails = {
@@ -46,12 +47,14 @@ const data: AppointmentDetails = {
 const PrimaryButton = ({
   title,
   onPress,
+  page
 }: {
   title: string;
+  page: string
   onPress?: () => void;
 }) => {
   return (
-    <TouchableOpacity style={styles.primaryBtn} onPress={onPress}>
+    <TouchableOpacity style={[styles.primaryBtn,{backgroundColor: page=='appoint' ?  Colors.primaryColor: Colors.errorColor }]} onPress={onPress}>
       <View style={styles.content}>
         <Ionicons name="videocam" size={18} color="#fff" />
         <Text style={styles.primaryText}>{title}</Text>
@@ -61,23 +64,19 @@ const PrimaryButton = ({
 };
 
 /* ================= SCREEN ================= */
-const AppointmentDetailsScreen: React.FC = () => {
+const AppointmentDetailScreen = (props: any) => {
 
-
-
-
-
-
+  console.log("propsss", props)
   return (
     <SafeAreaView style={styles.container}>
 
       <AppHeader
         title="Appointment Details"
-        // onLeftPress={() => navigation.goBack()}
-        // rightIcon="search"
-        // onRightPress={() => console.log('Search clicked')}
+        onLeftPress={() => props.navigation.goBack()}
+        rightIcon="search"
+        onRightPress={() => console.log('Search clicked')}
       />
-
+      
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Doctor Card */}
@@ -100,10 +99,10 @@ const AppointmentDetailsScreen: React.FC = () => {
 
             {/* DATE */}
             <View style={styles.dtItem}>
-               <View style={styles.iconCircle}>
-                          <Text style={styles.icon}>📅</Text>
-                        </View>
-             
+              <View style={styles.iconCircle}>
+                  <Image source={Images.calender}  style={Styles.IconSize} />
+              </View>
+
               <View style={styles.textContainer}>
                 <Text style={styles.label}>DATE</Text>
                 <Text style={styles.value}>{data.date}</Text>
@@ -112,11 +111,11 @@ const AppointmentDetailsScreen: React.FC = () => {
 
             {/* TIME */}
             <View style={styles.dtItem}>
-               <View style={styles.iconCircle}>
-                          <Text style={styles.icon}>⏰</Text>
-                        </View>
+              <View style={styles.iconCircle}>
+                <Image source={Images.clock}  style={Styles.IconSize} />
+              </View>
 
-             
+
 
               <View style={styles.textContainer}>
                 <Text style={styles.label}>TIME</Text>
@@ -126,7 +125,7 @@ const AppointmentDetailsScreen: React.FC = () => {
           </View>
 
           {/* Buttons */}
-          <PrimaryButton title="Join Video Call" />
+          <PrimaryButton title="Join Video Call" page='appoint' />
 
           <TouchableOpacity style={styles.secondaryBtn}>
             <Text style={styles.secondaryText}>Chat with Doctor</Text>
@@ -181,7 +180,7 @@ const AppointmentDetailsScreen: React.FC = () => {
   );
 };
 
-export default AppointmentDetailsScreen;
+export default AppointmentDetailScreen;
 
 /* ================= STYLES ================= */
 const styles = StyleSheet.create({
@@ -314,7 +313,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  
+
 
   infoRow: {
     flexDirection: 'row',
@@ -328,7 +327,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
-    fontFamily : Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsMedium,
     fontStyle: 'italic'
   },
 
@@ -343,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  
+
 
   cancelBtn: {
     marginHorizontal: 16,
@@ -355,5 +354,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  
+
 });

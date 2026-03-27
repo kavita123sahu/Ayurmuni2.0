@@ -38,7 +38,7 @@ const App = () => {
 
   return (
    
-    <Provider store={store}>
+    <Provider store={store} >
       <Navigator />
       <Toast config={toastConfig} />
     </Provider>

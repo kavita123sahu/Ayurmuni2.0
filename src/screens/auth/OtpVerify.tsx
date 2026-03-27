@@ -85,26 +85,18 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
             const JSONData = await response.json();
 
-            console.log("verify_otp_response", response, JSONData);
+            console.log("verify_otp_response--->", JSONData);
 
             if (status === 200) {
+                console.log(JSONData?.is_new_user,)
                 Utils.storeData('_USER_ID', JSONData?.user_id);
-                showSuccessToast(response.message || 'OTP verified successfully', 'success');
-
-                if (data?.is_customer) {
-
-                    props.navigation.replace('HomeStack', { screen: 'Home' });
-                }
-
-                else {
-                    props.navigation.replace('HomeStack', {
-                        screen: 'TermsConditions',
-                        params: {
-                            agreed: false
-                        }
-                    })
-
-                }
+                // showSuccessToast(JSONData.message || 'OTP verified successfully', 'success');
+                props.navigation.replace('HomeStack', {
+                    screen: 'TermsCondition',
+                    params: {
+                        agreed: false
+                    }
+                })
             }
 
             else {
@@ -143,7 +135,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             const { data, message = "", status } = response;
             const datauser = await response.json()
             console.log("verify_otp_login_response", datauser);
-
 
             if (response?.status === 200) {
                 const roles = datauser?.roles || [];

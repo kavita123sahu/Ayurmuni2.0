@@ -39,7 +39,7 @@ export const showSuccessToast = (message: string, type: string) => {
         autoHide: true,
         topOffset: Platform.OS === 'ios' ? 40 : 100,
 
-        text2Style: { 
+        text2Style: {
             textAlign: 'center',
             fontFamily: Fonts.PoppinsMedium,
             fontSize: 12,
@@ -53,14 +53,14 @@ export const getExpectedDeliveryDate = (rangeStr: string) => {
     const [day, month] = rangeStr.split("–")[0].trim().split(" ");
     const year = new Date().getFullYear();
 
-    const months: any = { 
+    const months: any = {
         Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 
+        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
     };
 
     const date = new Date(year, months[month], parseInt(day));
 
-    return date.toLocaleDateString("en-GB", { 
+    return date.toLocaleDateString("en-GB", {
         weekday: "long",
         day: "numeric",
         month: "short"

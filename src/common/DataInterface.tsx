@@ -13,9 +13,25 @@ export interface Step {
   text: string;
 }
 
+export interface GenderOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+
 
 export interface FAQ {
   question: string;
   description: string;
   steps: Step[];
 }
+
+
+export const genderOptions: GenderOption[] = [
+  { id: '1', label: 'Male', value: 'male' },
+  { id: '2', label: 'Female', value: 'female' },
+  { id: '3', label: 'Others', value: 'others' },
+];
+
+

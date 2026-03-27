@@ -1,88 +1,141 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images'; // 👈 leaf images
+import { Colors } from '../common/Colors';
+import { Styles } from '../common/Styles';
+import DashboardCard from './DashboardCard';
+
+
 
 const ProfileHeader = ({ user }: any) => {
   return (
-    <View style={styles.card}>
-      <Image source={{ uri: user.image }} style={styles.avatar} />
+    <View style={styles.wrapper}>
+      <View
 
-      <Text style={styles.name}>{user.name}</Text>
-      <Text style={styles.email}>{user.email}</Text>
+        style={styles.container}
+      >
+        {/* 🌿 Leaf Background */}
+        <Image source={Images.leaf1} style={styles.leafLeft} />
+        <Image source={Images.leaf2} style={styles.leafRight} />
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{user.consults}</Text>
-          <Text style={styles.statLabel}>CONSULTS</Text>
+        {/* Avatar */}
+        <View style={styles.avatarWrapper}>
+          <Image source={{ uri: user.image }} style={styles.avatar} />
+
+          <View style={styles.editIcon}>
+            <Image source={Images.profileEdit} style={Styles.IconSize} />
+          </View>
         </View>
 
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{user.orders}</Text>
-          <Text style={styles.statLabel}>ORDERS</Text>
-        </View>
+        {/* Name */}
+        <Text style={styles.name}>{user.name}</Text>
 
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{user.reports}</Text>
-          <Text style={styles.statLabel}>REPORTS</Text>
+        {/* Info */}
+        <Text style={styles.info}>
+          {user.phone} • {user.email}
+        </Text>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {DashboardCard(user.consults, 'CONSULTS')}
+          {DashboardCard(user.orders, 'ORDERS')}
+          {DashboardCard(user.reports, 'REPORTS')}
         </View>
       </View>
     </View>
   );
 };
 
+
+
 export default React.memo(ProfileHeader);
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+  wrapper: {
+    flex: 1,
+  },
+
+  container: {
+    borderRadius: 28,
+    paddingTop: 28,
+    paddingBottom: 22,
     alignItems: 'center',
-    marginTop: 10,
+    overflow: 'hidden', // 👈 IMPORTANT for leaf cut
+  },
+
+  // 🌿 Leaves
+  leafLeft: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+    opacity: 0.5,
+  },
+
+  leafRight: {
+    position: 'absolute',
+    top: 100,
+    right: 5,
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+    opacity: 0.5,
+  },
+  avatarWrapper: {
+    width: 110,
+    height: 110,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#DDEBE8',
+    backgroundColor: '#FFFFFF',
+
+    justifyContent: 'center', // 👈 center image vertically
+    alignItems: 'center',     // 👈 center image horizontally
+
+    marginBottom: 12,
   },
 
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 40,
-    marginBottom: 8,
+    width: 85,
+    height: 85,
+    borderRadius: 16, // 👈 square rounded (NOT circle)
   },
 
-  name: {
-    fontSize: 16,
-    fontFamily: Fonts.PoppinsSemiBold,
+  editIcon: {
+    position: 'absolute',
+    bottom: 1,
+    right: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // 👈 white border like figma
   },
 
-  email: {
+  editText: {
+    color: '#fff',
     fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 14,
+  },
+  name: {
+    fontSize: 18,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#1A1A1A',
   },
 
+  info: {
+    fontSize: 12,
+    color: Colors.subTextColor,
+    marginTop: 4,
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 18,
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
   },
 
-  statBox: {
-    backgroundColor: '#F3F5F7',
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: '30%',
-  },
 
-  statNumber: {
-    fontSize: 15,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  statLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    marginTop: 2,
-  },
 });

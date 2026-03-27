@@ -14,7 +14,6 @@ import {
   ToastAndroid,
   View,
 } from "react-native";
-
 import Login from "../screens/auth/Login";
 import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
@@ -27,12 +26,20 @@ import CartPage from "../screens/cart/CartPage";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import NetworkError from "../screens/NetworkError";
 import CustomeTab from "../components/CustomeTab";
+import AppointmentScreen from "../screens/profile/Appointment";
+import OrderHistoryScreen from "../screens/profile/OrderHistory";
+import AppointmentDetailsScreen from "../screens/profile/AppointmentDetails";
+import { RootBottomParamList, RootStackParamList } from "../../type";
+import PatientDetails from "../screens/patient/PatientDetails";
+import TermsCondition from "../screens/TermsCondition";
+import Onboarding from "../screens/auth/Onboarding";
+import PatientFAQ from "../screens/PatientFAQ";
 
 enableScreens();
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<RootBottomParamList>();
 const hideHeader = { headerShown: false };
 
 
@@ -83,12 +90,18 @@ const TabStack = () => {
   );
 };
 
-
 // 🔥 HOME STACK
 const HomeStack = () => {
   return (
-    <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="TabStack" component={TabStack} />
+    <Stack.Navigator initialRouteName="TabStack"  screenOptions={hideHeader}>
+      <Stack.Screen name="TabStack" component={TabStack} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Appointments" component={AppointmentScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PatientDetails" component={PatientDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PatientFAQ" component={PatientFAQ} options={{ headerShown: false, animation: 'slide_from_right' }}/>
+      <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false, animation: 'slide_from_right' }}/>
+      <Stack.Screen name="TermsCondition" component={TermsCondition} options={{ headerShown: false, animation: 'slide_from_right' }}/>
+      <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
@@ -97,9 +110,15 @@ const HomeStack = () => {
 // 🔥 AUTH STACK
 const AuthStack = () => {
   return (
-    <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="OtpVerify" component={OtpVerify} />
+    <Stack.Navigator initialRouteName="Login" screenOptions={hideHeader}>
+      <Stack.Screen name="Login" component={Login} options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+            }} />
+      <Stack.Screen name="OtpVerify" component={OtpVerify} options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+            }} />
     </Stack.Navigator>
   );
 };
@@ -109,7 +128,10 @@ const AuthStack = () => {
 const SplashStack = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="Splash" component={Splash} />
+      <Stack.Screen name="Splash" component={Splash} options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+            }} />
     </Stack.Navigator>
   );
 };
@@ -118,10 +140,10 @@ const SplashStack = () => {
 const MainNavigator = () => {
   return (
 
-    <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="SplashStack" component={SplashStack} />
-      <Stack.Screen name="AuthStack" component={AuthStack} />
-      <Stack.Screen name="HomeStack" component={HomeStack} />
+    <Stack.Navigator  screenOptions={hideHeader}>
+      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
+      <Stack.Screen name="AuthStack" component={AuthStack} options={hideHeader}  />
+      <Stack.Screen name="HomeStack" component={HomeStack} options={hideHeader} />
     </Stack.Navigator>
   );
 };
@@ -132,9 +154,13 @@ const Navigator = () => {
   const isConnected = useNetworkStatus();
 
   return (
-    <NavigationContainer>
-      {isConnected ? <MainNavigator /> : <NetworkError />}
+   
+    <NavigationContainer >
+   
+       {isConnected ? <MainNavigator /> : <NetworkError />}
+  
     </NavigationContainer>
+    
   );
 };
 
