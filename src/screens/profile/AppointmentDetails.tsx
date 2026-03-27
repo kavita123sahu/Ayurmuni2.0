@@ -14,6 +14,7 @@ import { Styles } from '../../common/Styles';
 import { Fonts } from '../../common/Fonts';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
+import { Images } from '../../common/Images';
 
 /* ================= TYPES ================= */
 type AppointmentDetails = {
@@ -72,10 +73,10 @@ const AppointmentDetailsScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
 
       <AppHeader
-        title="Appointment Details"
-        // onLeftPress={() => navigation.goBack()}
-        // rightIcon="search"
-        // onRightPress={() => console.log('Search clicked')}
+        title="Product Details"
+        leftIcon={Images.backIcon}
+        //   onLeftPress={() => navigation.goBack()}
+
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -100,10 +101,10 @@ const AppointmentDetailsScreen: React.FC = () => {
 
             {/* DATE */}
             <View style={styles.dtItem}>
-               <View style={styles.iconCircle}>
-                          <Text style={styles.icon}>📅</Text>
-                        </View>
-             
+              <View style={styles.iconCircle}>
+                <Text style={styles.icon}>📅</Text>
+              </View>
+
               <View style={styles.textContainer}>
                 <Text style={styles.label}>DATE</Text>
                 <Text style={styles.value}>{data.date}</Text>
@@ -112,11 +113,11 @@ const AppointmentDetailsScreen: React.FC = () => {
 
             {/* TIME */}
             <View style={styles.dtItem}>
-               <View style={styles.iconCircle}>
-                          <Text style={styles.icon}>⏰</Text>
-                        </View>
+              <View style={styles.iconCircle}>
+                <Text style={styles.icon}>⏰</Text>
+              </View>
 
-             
+
 
               <View style={styles.textContainer}>
                 <Text style={styles.label}>TIME</Text>
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  
+
 
   infoRow: {
     flexDirection: 'row',
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
-    fontFamily : Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsMedium,
     fontStyle: 'italic'
   },
 
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  
+
 
   cancelBtn: {
     marginHorizontal: 16,
@@ -355,5 +356,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  
+
 });

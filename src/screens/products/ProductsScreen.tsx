@@ -104,7 +104,7 @@ const ProductsScreen = () => {
         <Header
           title="Products"
           subtitle="Choose best product"
-          backIcon={require('../../assets/images/backButton.png')}
+          backIcon={require('../../assets/images/BackButoon.png')}
           onBack={() => { }}
         />
 
@@ -114,16 +114,20 @@ const ProductsScreen = () => {
         />
 
         <PromoCard
-          onPress={() => { }}
+          title="Up to 40% OFF on\nSupplements"
+          desc="Keep your immunity strong this season."
+          tag="SUMMER SALE"
           image={require('../../assets/images/cosmetic.png')}
           arrowIcon={require('../../assets/images/arrow.png')}
+          onPress={() => { }}
+          showButton={true}
         />
 
         <SectionHeader title="Recent Products" actionText="View History" />
         <RecentProductsList data={recentProducts} />
 
         <SectionHeader title="Top Category" />
-        {/* <CategoryList data={categories} navigation={navigation} /> */}
+        <CategoryList data={categories} navigation={navigation} />
 
         <SectionHeader title="Top Selling Products" actionText="View all" />
         <TopSellingList data={topSelling} />

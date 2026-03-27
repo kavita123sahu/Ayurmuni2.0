@@ -13,7 +13,9 @@ export const Images = {
     consultant: require('../assets/images/consultant.png'),
     askmuniIcon: require('../assets/images/askMuniIcon.png'),
     wellness: require('../assets/images/wellnessIcon.png'),
-    searchIcon: require('../assets/images/Search.png'),
+    detailimage: require('../assets/images/Detailimage.png'),
+    share: require('../assets/images/Share.png'),
+    searchIcon: require('../assets/images/search.png'),
     micIcon: require('../assets/images/Mic.png'),
     linemark: require('../assets/images/Linemark.png'),
     takechnageIcons: require('../assets/images/TakechangeIcon.png'),
@@ -33,7 +35,13 @@ export const Images = {
     googleIcon: require('../assets/images/googleIcon.png'),
     phoneIcon: require('../assets/images/phoneIcon.png'),
     frame1: require('../assets/images/Frame1.png'),
-    spinner: require('../assets/images/Spinner-Gradient.png')
+    spinner: require('../assets/images/Spinner-Gradient.png'),
+    star: require('../assets/images/grade.png'),
+    nutritionIcon: require('../assets/images/nutritionIcon.png'),
+    deleteitem: require('../assets/images/DeleteItem.png'),
+
+    
+    
 }
 
 export const Icons = {

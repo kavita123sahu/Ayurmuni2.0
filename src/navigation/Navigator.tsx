@@ -28,6 +28,8 @@ import TopCategories from "../screens/products/TopCategories";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import NetworkError from "../screens/NetworkError";
 import CustomeTab from "../components/CustomeTab";
+import AppointmentScreen from "../screens/profile/Appointment";
+import ProductDetails from "../screens/products/ProductDetails";
 
 enableScreens();
 
@@ -75,7 +77,7 @@ const TabStack = () => {
         headerShown: false,
       }}
     >
-      <Tab.Screen name="Home" component={HomePage} />
+      <Tab.Screen name="Home" component={ProductsScreen} />
       <Tab.Screen name="Cart" component={CartPage} />
       <Tab.Screen name="Consult" component={consultHome} />
       {/* <Tab.Screen name="Centers" component={CenterWellness} /> */}
@@ -89,9 +91,11 @@ const TabStack = () => {
 const HomeStack = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      {/* <Stack.Screen name="TabStack" component={TabStack} /> */}
-
-       <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
+      <Stack.Screen name="TabStack" component={TabStack} />
+      <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
+      <Stack.Screen name="TopCategories" component={TopCategories} />
+      <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} />
+      <Stack.Screen name="ProductDetails" component={ProductDetails} />
     </Stack.Navigator>
   );
 };
@@ -108,6 +112,7 @@ const AuthStack = () => {
 };
 
 
+
 // 🔥 SPLASH STACK
 const SplashStack = () => {
   return (
@@ -120,10 +125,9 @@ const SplashStack = () => {
 // 🔥 MAIN NAVIGATOR
 const MainNavigator = () => {
   return (
-
     <Stack.Navigator screenOptions={hideHeader}>
-      {/* <Stack.Screen name="SplashStack" component={SplashStack} />
-      <Stack.Screen name="AuthStack" component={AuthStack} /> */}
+      <Stack.Screen name="SplashStack" component={SplashStack} />
+      <Stack.Screen name="AuthStack" component={AuthStack} />
       <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>
   );
