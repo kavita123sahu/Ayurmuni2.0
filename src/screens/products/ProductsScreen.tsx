@@ -96,6 +96,13 @@ const ProductsScreen = () => {
   ];
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+
+      <Header
+          title="Products"
+          subtitle="Choose best product"
+          backIcon={require('../../assets/images/BackButton.png')}
+          onBack={() => {}}
+       />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}

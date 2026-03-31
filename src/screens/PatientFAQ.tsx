@@ -6,7 +6,8 @@ import {
     StyleSheet,
     ScrollView,
     StatusBar,
-    Image
+    Image,
+    Dimensions
 } from 'react-native';
 
 import LottieView from 'lottie-react-native';
@@ -28,6 +29,10 @@ interface StepConfig {
     options?: any[];
     conditional?: (answers: any) => boolean;
 }
+
+const { width, height } = Dimensions.get('window');
+
+const scale = (size: number) => (width / 375) * size;
 
 const PatientFAQ = (props: any) => {
 
@@ -108,7 +113,6 @@ const PatientFAQ = (props: any) => {
 
     const progress = step / (visibleSteps.length - 1);
 
-    // ✅ helper (convert ID → lowercase single dosha)
     const getSingleDosha = (value: string) => {
         return value.toLowerCase().split(/[-\s]+/)[0];
     };
@@ -127,7 +131,6 @@ const PatientFAQ = (props: any) => {
     const handleNext = async () => {
         console.log("=======.>", current)
 
-        // ✅ YES FLOW API
         if (current.key === 'prakritiType') {
 
             const selectedId = selectedChoices['prakritiType'];
@@ -149,7 +152,6 @@ const PatientFAQ = (props: any) => {
             }
         }
 
-        // EXISTING NO FLOW
         if (
             current.key !== 'knowPrakriti' &&
             current.key !== 'prakritiType' &&
@@ -215,7 +217,6 @@ const PatientFAQ = (props: any) => {
             >
                 <View style={styles.content}>
 
-                    {/* HEADER */}
                     {current.type !== 'intro' && (
                         <View style={styles.header}>
                             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -232,7 +233,6 @@ const PatientFAQ = (props: any) => {
                         </View>
                     )}
 
-                    {/* PROGRESS */}
                     {step > 0 && (
                         <>
                             <Text style={styles.stepText}>
@@ -245,7 +245,6 @@ const PatientFAQ = (props: any) => {
                         </>
                     )}
 
-                    {/* INTRO */}
                     {step === 0 && (
                         <View style={styles.introContainer}>
                             <Image source={Images.QnAMain} style={styles.qnaImage} />
@@ -260,7 +259,6 @@ const PatientFAQ = (props: any) => {
                         </View>
                     )}
 
-                    {/* KNOW PRAKRITI */}
                     {current.key === 'knowPrakriti' && (
                         <>
                             <Text style={styles.questionText}>{current.question}</Text>
@@ -291,7 +289,6 @@ const PatientFAQ = (props: any) => {
                         </>
                     )}
 
-                    {/* OPTIONS */}
                     {current.type === 'single' && current.key !== 'knowPrakriti' && (
                         <>
                             <Text style={styles.questionText}>{current.question}</Text>
@@ -384,254 +381,258 @@ const PatientFAQ = (props: any) => {
 export default PatientFAQ;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginBottom:20,
+    marginTop:30
+  },
 
-    content: {
-        flex: 1,
-        paddingHorizontal: 24,
-    },
+  content: {
+    flex: 1,
+    paddingHorizontal: width * 0.06,
+  },
 
-    introContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  introContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: height * 0.05,
+  },
 
-    qnaImage: {
-        width: 400,
-        height: 400,
-        resizeMode: 'contain',
-        marginBottom: 40,
-    },
+  qnaImage: {
+    width: width * 0.5,
+    height: width * 0.5,
+    resizeMode: 'contain',
+    marginBottom: height * 0.05,
+  },
 
-    title: {
-        fontSize: 30,
-        color: '#111827',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+  title: {
+    fontSize: scale(28),
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+  },
 
-    greenText: {
-        color: Colors.questionGreen,
-    },
+  greenText: {
+    color: Colors.questionGreen,
+  },
 
-    subtitle: {
-        fontSize: 19,
-        color: '#6B7280',
-        textAlign: 'center',
-        marginTop: 10,
-        paddingHorizontal: 30,
-    },
+  subtitle: {
+    fontSize: scale(15),
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: width * 0.08,
+    lineHeight: scale(22),
+  },
 
-    questionText: {
-        fontSize: 30,
-        marginVertical: 20,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+  questionText: {
+    fontSize: scale(26),
+    marginVertical: height * 0.02,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 
-    header: {
-        height: 70,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  header: {
+    height: height * 0.09,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-    backButton: {
-        position: 'absolute',
-        left: 0,
-    },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+  },
 
-    backIcon: {
-        width: 60,
-        height: 60,
-        resizeMode: 'contain',
-    },
+  backIcon: {
+    width: width * 0.12,
+    height: width * 0.12,
+    resizeMode: 'contain',
+  },
 
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1A1A1A',
-    },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
 
-    skipHeaderBtn: {
-        position: 'absolute',
-        right: 0,
-    },
+  skipHeaderBtn: {
+    position: 'absolute',
+    right: 0,
+  },
 
-    skipHeaderText: {
-        fontSize: 16,
-        color: Colors.questionGreen,
-    },
+  skipHeaderText: {
+    fontSize: scale(15),
+    color: Colors.questionGreen,
+  },
 
-    stepText: {
-        marginTop: 10,
-        fontSize: 17,
-        color: '#6B7280',
-    },
+  stepText: {
+    marginTop: 10,
+    fontSize: scale(14),
+    color: '#6B7280',
+  },
 
-    progressContainer: {
-        height: 6,
-        marginVertical: 10,
-        borderRadius: 50,
-        overflow: 'hidden',
-        backgroundColor: '#E5E7EB',
-    },
+  progressContainer: {
+    height: 6,
+    marginVertical: 10,
+    borderRadius: 50,
+    overflow: 'hidden',
+    backgroundColor: '#E5E7EB',
+  },
 
-    progressBar: {
-        height: '100%',
-        borderRadius: 50,
-        backgroundColor: Colors.questionGreen,
-    },
+  progressBar: {
+    height: '100%',
+    borderRadius: 50,
+    backgroundColor: Colors.questionGreen,
+  },
 
-    footer: {
-        padding: 24,
-    },
+  footer: {
+    paddingHorizontal: width * 0.06,
+    paddingBottom: height * 0.03,
+    paddingTop: height * 0.02,
+  },
 
-    proceedButton: {
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 10,
-        backgroundColor: Colors.questionGreen,
-    },
+  proceedButton: {
+    paddingVertical: height * 0.02,
+    borderRadius: 16,
+    marginBottom: 10,
+    backgroundColor: Colors.questionGreen,
+  },
 
-    proceedButtonDisabled: {
-        backgroundColor: '#D1D5DB',
-    },
+  proceedButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
 
-    proceedButtonText: {
-        color: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-    },
+  proceedButtonText: {
+    color: '#fff',
+    fontSize: scale(16),
+    fontFamily: Fonts.PoppinsMedium,
+  },
 
-    nextRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  nextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-    nextArrow: {
-        width: 18,
-        height: 18,
-        marginLeft: 5,
-    },
+  nextArrow: {
+    width: scale(16),
+    height: scale(16),
+    marginLeft: 5,
+  },
 
-    bottomSkipBtn: {
-        marginTop: 10,
-        padding: 16,
-        borderWidth: 1,
-        borderRadius: 16,
-        alignItems: 'center',
-        borderColor: '#D1D5DB',
-    },
+  bottomSkipBtn: {
+    marginTop: 10,
+    paddingVertical: height * 0.02,
+    borderWidth: 1,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderColor: '#D1D5DB',
+  },
 
-    bottomSkipText: {
-        color: Colors.questionGreen,
-        fontFamily: Fonts.PoppinsMedium,
-    },
+  bottomSkipText: {
+    color: Colors.questionGreen,
+    fontSize: scale(15),
+    fontFamily: Fonts.PoppinsMedium,
+  },
 
-    secureText: {
-        marginTop: 10,
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#94A3B8',
-    },
+  prakritiDesc: {
+    fontSize: scale(14),
+    marginBottom: 20,
+    color: '#64748B',
+    lineHeight: scale(20),
+  },
 
-    prakritiDesc: {
-        fontSize: 16,
-        marginBottom: 20,
-        color: '#64748B',
-    },
+  prakritiRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
 
-    prakritiRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-    },
+  prakritiBtn: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: height * 0.018,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderColor: '#E5E7EB',
+  },
 
-    prakritiBtn: {
-        flex: 1,
-        marginHorizontal: 5,
-        paddingVertical: 14,
-        borderWidth: 1,
-        borderRadius: 12,
-        alignItems: 'center',
-        borderColor: '#E5E7EB',
-    },
+  prakritiBtnActive: {
+    backgroundColor: Colors.questionGreen,
+  },
 
-    prakritiBtnActive: {
-        backgroundColor: Colors.questionGreen,
-    },
+  prakritiText: {
+    fontSize: scale(14),
+    color: '#111827',
+  },
 
-    prakritiText: {
-        color: '#111827',
-    },
+  prakritiTextActive: {
+    color: '#fff',
+  },
 
-    prakritiTextActive: {
-        color: '#fff',
-    },
+  prakritiImage: {
+    width: width * 0.3,
+    height: width * 0.3,
+    marginTop: height * 0.06,
+    opacity: 0.2,
+    alignSelf: 'center',
+  },
 
-    prakritiImage: {
-        width: 120,
-        height: 120,
-        marginTop: 60,
-        opacity: 0.2,
-        alignSelf: 'center',
-    },
+  thankYouContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-    thankYouContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  thankYouTitle: {
+    fontSize: scale(24),
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 
-    thankYouTitle: {
-        fontSize: 26,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+  card: {
+    minHeight: height * 0.08,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.05,
+    paddingRight: 48,
+    backgroundColor: '#fff',
+    borderColor: '#E5E7EB',
+  },
 
-    card: {
-        minHeight: 60,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderRadius: 14,
-        paddingVertical: 16,
-        paddingHorizontal: 18,
-        paddingRight: 48,
-        backgroundColor: '#fff',
-        borderColor: '#E5E7EB',
-    },
+  activeCard: {
+    backgroundColor: Colors.questionGreen,
+    borderColor: Colors.questionGreen,
+  },
 
-    activeCard: {
-        backgroundColor: Colors.questionGreen,
-        borderColor: Colors.questionGreen,
-    },
+  text: {
+    fontSize: scale(14),
+    lineHeight: scale(20),
+    color: '#111827',
+  },
 
-    text: {
-        fontSize: 15,
-        lineHeight: 20,
-        color: '#111827',
-    },
+  activeText: {
+    color: '#fff',
+  },
 
-    activeText: {
-        color: '#fff',
-    },
+  iconContainer: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-    iconContainer: {
-        position: 'absolute',
-        right: 16,
-        top: 0,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    tickCircle: {
-        width: 20,
-        height: 20,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F1F5F9',
-    },
+  tickCircle: {
+    width: scale(20),
+    height: scale(20),
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+  },
 });

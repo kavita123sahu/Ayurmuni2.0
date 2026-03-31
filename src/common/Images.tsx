@@ -37,6 +37,18 @@ export const Images = {
     phoneIcon: require('../assets/images/phoneIcon.png'),
     frame1: require('../assets/images/Frame1.png'),
     spinner: require('../assets/images/Spinner-Gradient.png'),
+    star: require('../assets/images/grade.png'),
+    nutritionIcon: require('../assets/images/nutritionIcon.png'),
+    deleteitem: require('../assets/images/DeleteItem.png'),
+    camera: require('../assets/images/camera.png'),
+    organic: require('../assets/images/organic.png'),
+    promoIcon: require('../assets/images/promoIcon.png'),
+    arrowRight: require('../assets/images/arrowRight.png'),
+
+
+
+
+
     verify: require('../assets/images/verify.png'),
     editButton: require('../assets/images/editButton.png'),
     unverify: require('../assets/images/unverify.png'),
@@ -58,12 +70,21 @@ export const Images = {
     QnAMain: require('../assets/images/QnAMain.png'),
     NextArrow: require('../assets/images/NextAroow.png'),
     PlusBag: require('../assets/images/PlusBag.png'),
-    star: require('../assets/images/grade.png'),
-    nutritionIcon: require('../assets/images/nutritionIcon.png'),
-    deleteitem: require('../assets/images/DeleteItem.png'),
+    shopCart: require('../assets/images/shopcart.png'),
+    wishlist: require('../assets/images/wishlist.png'),
+    glutenFree: require('../assets/images/glutenFree.png'),
+    highFiber: require('../assets/images/highFiber.png'),
+    location: require('../assets/images/location.png'),
+    visa: require('../assets/images/visa.png'),
+    card: require('../assets/images/card.png'),
+    flash: require('../assets/images/flash.png'),
+    cash: require('../assets/images/cash.png'),
+    upi: require('../assets/images/upi.png'),
+    truck: require('../assets/images/truck.png'),
+    // location: require('../assets/images/location.png'),
 
-    
-    
+
+
 }
 
 export const Icons = {

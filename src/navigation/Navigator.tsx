@@ -142,9 +142,9 @@ const SplashStack = () => {
 const MainNavigator = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
-      <Stack.Screen name="SplashStack" component={SplashStack} />
-      <Stack.Screen name="AuthStack" component={AuthStack} />
-      <Stack.Screen name="HomeStack" component={HomeStack} />
+      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
+      <Stack.Screen name="AuthStack" component={AuthStack} options={hideHeader} />
+      <Stack.Screen name="HomeStack" component={HomeStack} options={hideHeader} />
     </Stack.Navigator>
   );
 };
@@ -158,7 +158,9 @@ const Navigator = () => {
 
     <NavigationContainer >
 
-      {isConnected ? <MainNavigator /> : <NetworkError />}
+      {/* {isConnected ?  */}
+      <MainNavigator />
+      {/* : <NetworkError />} */}
 
     </NavigationContainer>
 

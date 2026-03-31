@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   FlatList,
@@ -10,53 +10,35 @@ import {
 
 const { width } = Dimensions.get('window');
 
-const DEFAULT_WIDTH = width - 48;
-const DEFAULT_HEIGHT = 300;
+const DEFAULT_WIDTH = width * 0.84;
+const DEFAULT_HEIGHT = 240;
 const SPACING = 12;
 
 type Props = {
   images: any[];
   itemWidth?: number;
   itemHeight?: number;
-  showIndicator?: boolean; 
+  showIndicator?: boolean;
 };
 
 const Detailimages: React.FC<Props> = ({
   images,
   itemWidth,
   itemHeight,
-  showIndicator = true, 
+  showIndicator = true,
 }) => {
 
   const finalWidth = itemWidth ?? DEFAULT_WIDTH;
   const finalHeight = itemHeight ?? DEFAULT_HEIGHT;
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isAutoPlay, setIsAutoPlay] = useState(false);
-
-  const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    if (!images || images.length === 0 || !isAutoPlay) return;
-
-    const interval = setInterval(() => {
-      setActiveIndex((prev) => {
-        const nextIndex = (prev + 1) % images.length;
-
-        flatListRef.current?.scrollToOffset({
-          offset: nextIndex * (finalWidth + SPACING),
-          animated: true,
-        });
-
-        return nextIndex;
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [isAutoPlay, images, finalWidth]);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   if (!images || images.length === 0) return null;
+
+  const SIDE_GAP = (width - finalWidth) / 2;
 
   return (
     <View>
@@ -67,15 +49,18 @@ const Detailimages: React.FC<Props> = ({
         showsHorizontalScrollIndicator={false}
         keyExtractor={(_, index) => index.toString()}
 
+        // ✅ SNAP
         snapToInterval={finalWidth + SPACING}
         snapToAlignment="start"
-        decelerationRate="fast"
-        bounces={false}
-        scrollEventThrottle={16}
+        decelerationRate={0.98}
+        disableIntervalMomentum={true}
 
+        bounces={false}
+
+        // ✅ START LEFT + LAST FIX
         contentContainerStyle={{
-          paddingLeft: 24,
-          paddingRight: 24,
+          paddingLeft: 0,
+          paddingRight: SIDE_GAP,
         }}
 
         onMomentumScrollEnd={(e) => {
@@ -85,26 +70,33 @@ const Detailimages: React.FC<Props> = ({
           setActiveIndex(index);
         }}
 
-        onTouchStart={() => setIsAutoPlay(false)}
-
+        // ✅ SMOOTH ANIMATION DRIVER
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }
         )}
 
-        renderItem={({ item }) => (
-          <Image
-            source={typeof item === 'string' ? { uri: item } : item}
+        scrollEventThrottle={16}
+
+        renderItem={({ item, index }) => (
+          <View
             style={{
-              width: finalWidth,
-              height: finalHeight,
-              borderRadius: 24,
-              marginRight: SPACING,
+              marginLeft: index === 0 ? 0 : SPACING,
             }}
-          />
+          >
+            <Image
+              source={typeof item === 'string' ? { uri: item } : item}
+              style={{
+                width: finalWidth,
+                height: finalHeight,
+                borderRadius: 24,
+              }}
+            />
+          </View>
         )}
       />
 
+      {/* 🔥 SMOOTH INDICATOR */}
       {showIndicator && (
         <View style={styles.indicatorContainer}>
           {images.map((_, index) => {
@@ -114,15 +106,21 @@ const Detailimages: React.FC<Props> = ({
               (index + 1) * (finalWidth + SPACING),
             ];
 
-            const dotWidth = scrollX.interpolate({
+            const widthAnim = scrollX.interpolate({
               inputRange,
               outputRange: [6, 18, 6],
               extrapolate: 'clamp',
             });
 
-            const opacity = scrollX.interpolate({
+            const opacityAnim = scrollX.interpolate({
               inputRange,
               outputRange: [0.3, 1, 0.3],
+              extrapolate: 'clamp',
+            });
+
+            const colorAnim = scrollX.interpolate({
+              inputRange,
+              outputRange: ['#A0C4B8', '#0D614E', '#A0C4B8'],
               extrapolate: 'clamp',
             });
 
@@ -132,8 +130,9 @@ const Detailimages: React.FC<Props> = ({
                 style={[
                   styles.dot,
                   {
-                    width: dotWidth,
-                    opacity,
+                    width: widthAnim,
+                    opacity: opacityAnim,
+                    backgroundColor: colorAnim,
                   },
                 ]}
               />
@@ -157,7 +156,6 @@ const styles = StyleSheet.create({
   dot: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#0D614E',
     marginHorizontal: 4,
   },
 });
