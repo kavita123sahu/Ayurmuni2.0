@@ -62,18 +62,14 @@ const Login: React.FC = (props: any) => {
         showSuccessToast(response.message || 'OTP send successfully', 'success');
 
         if (!JSONReponse.is_new_user && JSONReponse.is_customer) {
-          // props.navigation.navigate('HomeStack', { Screen: 'Home' });
           props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });    // chnage krwana h backned s is_customer wrong aa rh h
         }
 
         else if (JSONReponse.is_new_user && !JSONReponse.is_customer) {
-          // User true, Customer false - OtpVerify with newUser true
           props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });
-          // props.navigation.navigate('HomeStack', { screen: 'Onboarding' });
         }
 
         else if (!JSONReponse.is_new_user && !JSONReponse.is_customer) {
-          // User false, Customer true - OtpVerify without newUser flag
           props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });
         }
 
@@ -97,17 +93,20 @@ const Login: React.FC = (props: any) => {
     }
   };
 
+  const isValid = phoneNumber.length === 10;
+
 
   return (
 
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
           style={styles.container}
-          keyboardShouldPersistTaps="handled" // Yeh important hai
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
 
           <View style={styles.logoContainer}>
@@ -124,7 +123,6 @@ const Login: React.FC = (props: any) => {
               Elevate your healthy lifestyle experience{'\n'}
               with our trusted, seamless and{'\n'}
               efficient services.
-              {/* Tender Name : {tendername} */}
             </Text>
 
           </View>
@@ -135,15 +133,32 @@ const Login: React.FC = (props: any) => {
 
           <View style={styles.formContainer}>
 
-            <View style={styles.phoneInputContainer}>
+            <Text style={styles.inputLabel}>Mobile Number</Text>
+
+            <View
+              style={[
+                styles.phoneInputContainer,
+                isValid && styles.phoneInputContainerActive,
+              ]}
+            >
               <View style={styles.countryCodeContainer}>
-                <Text style={styles.countryCode}>+91</Text>
+                <Text
+                  style={[
+                    styles.countryCode,
+                    isValid && styles.countryCodeActive,
+                  ]}
+                >
+                  +91
+                </Text>
               </View>
 
               <TextInput
-                style={styles.phoneInput}
+                style={[
+                  styles.phoneInput,
+                  isValid && styles.phoneInputActive,
+                ]}
                 placeholder="XXX-XXX-XXXX"
-                placeholderTextColor="#C7C7C7"
+                placeholderTextColor="#9CA3AF"
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
                 keyboardType="numeric"
@@ -152,41 +167,31 @@ const Login: React.FC = (props: any) => {
             </View>
 
 
-            {phoneNumber.length === 10 && !isLoading ? (
-
-              <GradientButton
-                onPress={onLogin}
-                color={false}
-                text='Send OTP'
-              />
-
-            )
-              :
-              isLoading ? (
-                <TouchableOpacity
-                  // onPress={onLogin}
-                  disabled={true}
-                  style={[styles.verifyButton, styles.verifyButtonLoading]}
-
+            <TouchableOpacity
+              onPress={onLogin}
+              disabled={phoneNumber.length !== 10 || isLoading}
+              style={[
+                styles.button,
+                phoneNumber.length === 10
+                  ? styles.buttonActive
+                  : styles.buttonDisabled,
+              ]}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text
+                  style={[
+                    styles.buttonText,
+                    phoneNumber.length === 10
+                      ? styles.textActive
+                      : styles.textDisabled,
+                  ]}
                 >
-
-                  <ActivityIndicator size="small" color={Colors.questionGreen} />
-                  <Text style={[styles.verifyButtonText, styles.loadingText]}>
-                    Processing...
-
-                  </Text>
-
-                </TouchableOpacity>
-              ) :
-                (
-
-                  <GradientButton
-                    onPress={onLogin}
-                    color={true}
-                    text='Send OTP'
-                  />
-                )
-            }
+                  Send OTP
+                </Text>
+              )}
+            </TouchableOpacity>
 
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
@@ -207,36 +212,36 @@ const Login: React.FC = (props: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     paddingHorizontal: 24,
   },
   logo: {
-    width: 180,
-    height: 120,
+    width: 76,
+    height: 76,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 80,
+    marginTop: 120,
     marginBottom: 30,
   },
 
   welcomeContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 10,
     paddingHorizontal: 5
   },
   welcomeTitle: {
-    fontSize: 24,
-    color: Colors.questionGreen,
+    fontSize: 26,
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   welcomeSubtitle: {
     fontSize: 14,
     color: Colors.subTextColor,
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
   },
   formContainer: {
     flex: 1, marginTop: 10,
@@ -244,10 +249,9 @@ const styles = StyleSheet.create({
   },
   formContainer1: {
     alignItems: 'center',
-    paddingHorizontal: 20
+    paddingHorizontal: 20,
+    marginBottom: 50
   },
-
-
   phoneInputContainer: {
     flexDirection: 'row',
     marginBottom: 24,
@@ -256,6 +260,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
   },
+  phoneInputContainerActive: {
+  borderColor: Colors.bgborderColor, 
+  backgroundColor: Colors.onfillColor, 
+},
+phoneInputActive: {
+  color: Colors.primaryColor, 
+},
+countryCodeActive: {
+  color: Colors.primaryColor,
+},
   countryCodeContainer: {
     backgroundColor: '#F5F5F5',
     paddingHorizontal: 16,
@@ -266,7 +280,7 @@ const styles = StyleSheet.create({
   },
   countryCode: {
     fontSize: 16,
-    color: Colors.questionGreen,
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsMedium,
   },
   phoneInput: {
@@ -277,7 +291,6 @@ const styles = StyleSheet.create({
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsMedium,
   },
-
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,22 +312,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 10,
   },
-
   termsText: {
     fontSize: 14,
     color: Colors.subTextColor,
     fontFamily: Fonts.PoppinsMedium,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 20,
   },
   linkText: {
-    color: Colors.questionGreen,
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsMedium,
     fontSize: 14
   },
   loadingText: {
     marginLeft: 8,
-    color: Colors.questionGreen,
+    color: Colors.primaryColor,
   },
   verifyButtonLoading: {
     backgroundColor: '#f0f0f0',
@@ -330,11 +342,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-
   verifyButtonText: {
     color: Colors.questionGreen,
     fontSize: 16,
     fontWeight: '600',
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: Colors.black,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  button: {
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  buttonActive: {
+    backgroundColor: Colors.primaryColor,
+  },
+  buttonDisabled: {
+    backgroundColor: Colors.bottomBg,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  textActive: {
+    color: Colors.white,
+  },
+  textDisabled: {
+    color: '#64748B',
   },
 });
 

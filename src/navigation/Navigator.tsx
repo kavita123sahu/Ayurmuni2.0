@@ -160,7 +160,9 @@ const Navigator = () => {
 
     <NavigationContainer >
 
-      {isConnected ? <MainNavigator /> : <NetworkError />}
+      {/* {isConnected ?  */}
+      <MainNavigator /> 
+      {/* : <NetworkError />} */}
 
     </NavigationContainer>
 

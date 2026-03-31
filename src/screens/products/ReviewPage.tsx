@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, FlatList } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
@@ -58,15 +58,17 @@ const ReviewPage = () => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+
+            <AppHeader
+                title="Foxtail millet (Kangni)"
+                leftIcon={Images.backIcon}
+            />
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
             >
 
-                <AppHeader
-                    title="Foxtail millet (Kangni)"
-                    leftIcon={Images.backIcon}
-                />
+
 
                 <View style={styles.ratingContainer}>
 
@@ -111,7 +113,7 @@ const ReviewPage = () => {
 
                 <View style={styles.filterRow}>
                     {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
-                        <Text
+                        <TouchableOpacity
                             key={item}
                             style={[
                                 styles.filterBtn,
@@ -127,7 +129,7 @@ const ReviewPage = () => {
                             >
                                 {item}
                             </Text>
-                        </Text>
+                        </TouchableOpacity>
                     ))}
                 </View>
 
@@ -176,7 +178,6 @@ const styles = StyleSheet.create({
 
     ratingContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 24,
         marginTop: 20,
     },
 
@@ -184,21 +185,21 @@ const styles = StyleSheet.create({
         fontSize: 48,
         fontWeight: '900',
         color: '#0D614E',
-        lineHeight:60
+        lineHeight: 60
     },
 
     stars: {
         color: '#FACC15',
         marginTop: 4,
-        
+
     },
 
     totalReviews: {
         marginTop: 4,
         color: '#64748B',
         fontSize: 14,
-        fontFamily:Fonts.PoppinsSemiBold,
-        lineHeight:20
+        fontFamily: Fonts.PoppinsSemiBold,
+        lineHeight: 20
     },
 
     progressRow: {
@@ -230,12 +231,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#64748B',
         width: 30,
-        fontFamily:Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsMedium
     },
 
     sectionTitle: {
         marginTop: 20,
-        paddingHorizontal: 24,
         fontSize: 16,
         fontWeight: '700',
         marginBottom: 12,
@@ -245,23 +245,24 @@ const styles = StyleSheet.create({
     filterRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 24,
-        marginTop: 10,
+        marginTop: 26,
     },
 
     filterBtn: {
         backgroundColor: '#E6F4F1',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
+        paddingHorizontal: 18,
+        paddingVertical: 8,
         borderRadius: 10,
         marginRight: 8,
-        marginBottom: 10,
-        marginTop:12
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     filterText: {
         color: '#0D614E',
         fontSize: 12,
+        textAlign: 'center',
+
     },
     activeFilterBtn: {
         backgroundColor: '#0D614E',
@@ -275,8 +276,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8f6f6',
         borderRadius: 16,
         padding: 16,
-        marginHorizontal: 24,
-        marginTop: 10,
+        marginTop: 14,
     },
 
     reviewHeaderRow: {
@@ -301,21 +301,21 @@ const styles = StyleSheet.create({
     name: {
         fontWeight: '700',
         fontSize: 14,
-        lineHeight:20,
-        color:'#0F172A'
+        lineHeight: 20,
+        color: '#0F172A'
     },
 
     verified: {
         fontSize: 10,
         color: '#64748B',
-        lineHeight:15,
-        fontFamily:Fonts.PoppinsMedium
+        lineHeight: 15,
+        fontFamily: Fonts.PoppinsMedium
     },
 
     time: {
         fontSize: 12,
         color: '#94A3B8',
-        fontFamily:Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsMedium
     },
 
     reviewText: {

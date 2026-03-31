@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images'; // 👈 leaf images
+import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
 import { Styles } from '../common/Styles';
 import DashboardCard from './DashboardCard';
@@ -38,11 +38,13 @@ const ProfileHeader = ({ user }: any) => {
         </Text>
 
         {/* Stats */}
-        <View style={styles.statsRow}>
-          {DashboardCard(user.consults, 'CONSULTS')}
-          {DashboardCard(user.orders, 'ORDERS')}
-          {DashboardCard(user.reports, 'REPORTS')}
-        </View>
+        <DashboardCard
+          data={[
+            { value: "02", label: "TUTORIALS" },
+            { value: "14", label: "CHEMICALS" },
+            { value: "05", label: "REPORTS" },
+          ]}
+        />
       </View>
     </View>
   );

@@ -7,10 +7,12 @@ import App from './App';
 import { name as appName } from './app.json';
 import FAQScreen from './src/screens/auth/OtpVerify';
 import ProfilePage from './src/screens/patient/PatientDetails';
-import ProductsScreen from './src/screens/profile/ProfilePage';
-import  ReviewPage from './src/'
+import ProductDetails from './src/screens/products/ProductDetails';
+import  ReviewPage from './src/screens/products/ReviewPage';
+import  Checkout from './src/screens/products/Checkout';
+import PatientFAQ from './src/screens/PatientFAQ';
 
 
-AppRegistry.registerComponent(appName, () => ReviewPage);
+AppRegistry.registerComponent(appName, () => Checkout);
 
 

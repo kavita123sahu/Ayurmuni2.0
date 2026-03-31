@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, StyleSheet, Image } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity } from 'react-native'
 import React from 'react'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Detailimages from '../../components/Detailimages'
 import { Fonts } from '../../common/Fonts'
+import DashboardCard from '../../components/DashboardCard'
+import PrimaryButton from '../../components/PrimaryButton'
 
 const ProductDetails = () => {
     const product = {
@@ -23,19 +25,22 @@ const ProductDetails = () => {
     return (
 
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+
+            <AppHeader
+                title="Product Details"
+                leftIcon={Images.backIcon}
+                rightIcon={Images.share}
+                //   onLeftPress={() => navigation.goBack()}
+                onRightPress={() => console.log("Share clicked")}
+            />
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
             >
-                <AppHeader
-                    title="Product Details"
-                    leftIcon={Images.backIcon}
-                    rightIcon={Images.share}
-                    //   onLeftPress={() => navigation.goBack()}
-                    onRightPress={() => console.log("Share clicked")}
-                />
 
-                <Detailimages images={product.images} />
+                <View>
+                    <Detailimages images={product.images} />
+                </View>
 
                 <View style={styles.infoContainer}>
 
@@ -70,6 +75,19 @@ const ProductDetails = () => {
                         </View>
                     </View>
                 </View>
+
+
+                <Text style={styles.subHeader}>Product Highlights</Text>
+
+
+
+                <DashboardCard
+                    data={[
+                        { image: Images.organic, label: "100% Organic" },
+                        { image: Images.glutenFree, label: "Gluten Free" },
+                        { image: Images.highFiber, label: "High Fiber" },
+                    ]}
+                />
 
                 <View style={styles.sectionContainer}>
 
@@ -137,9 +155,32 @@ const ProductDetails = () => {
                     </View>
 
                 </View>
+                
 
+
+                
 
             </ScrollView>
+
+            <View style={styles.buttonrow}>
+
+                    <TouchableOpacity style={styles.wishlistBox}>
+                        <Image
+                            source={Images.wishlist} 
+                            style={styles.wishlistIcon}
+                        />
+                    </TouchableOpacity>
+
+                    <View style={{ flex: 1 }}>
+                        <PrimaryButton
+                            title="Add to Cart"
+                            icon={Images.shopCart}
+                            backgroundColor="#0D614E"
+                            textColor="#FFFFFF"
+                        />
+                    </View>
+
+                </View>
         </SafeAreaView>
 
 
@@ -152,8 +193,10 @@ export default ProductDetails
 
 const styles = StyleSheet.create({
     infoContainer: {
-        paddingHorizontal: 24,
         marginTop: 16,
+        marginBottom: 30,
+
+
     },
     topRow: {
         flexDirection: 'row',
@@ -173,9 +216,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#0D614E1A',
-        paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
+        paddingHorizontal: 8,
     },
     star: {
         fontSize: 14,
@@ -226,7 +269,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        paddingHorizontal: 6,
         height: 36,
         borderWidth: 1,
         borderColor: '#0D614E1A'
@@ -245,21 +287,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+
     sectionContainer: {
-        paddingHorizontal: 24,
+
         marginTop: 20,
     },
+
     card: {
         backgroundColor: '#F6F6F6',
         borderRadius: 16,
-        padding: 16,
+        padding: 16
     },
+
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: '#0F172A',
         lineHeight: 28,
     },
+
     titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -289,7 +335,7 @@ const styles = StyleSheet.create({
     },
     value: {
         fontSize: 14,
-        fontWeight: '400',
+        fontFamily:Fonts.PoppinsSemiBold,
         color: '#0F172A',
         lineHeight: 20
     },
@@ -309,6 +355,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginTop: 10,
+        marginBottom: 40
     },
     reviewTop: {
         flexDirection: 'row',
@@ -341,7 +388,7 @@ const styles = StyleSheet.create({
         color: '#475569',
         fontSize: 12,
         lineHeight: 18,
-        fontWeight: 400
+        fontFamily:Fonts.PoppinsMedium
     },
     nameRow: {
         flexDirection: 'row',
@@ -349,4 +396,37 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flex: 1,
     },
+
+    subHeader: {
+        fontSize: 18,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 10
+
+
+    },
+
+    buttonrow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    gap: 12,
+  },
+
+  wishlistBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+    backgroundColor: "#0D614E1A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  wishlistIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: "contain",
+  },
+
+    
 });

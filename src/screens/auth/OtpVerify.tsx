@@ -127,7 +127,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             const send_data = {
                 phone_number: `+91${phoneNumber}`,
                 OTP: otpCode,
-                // role: 'customer'
             };
 
             const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
@@ -265,21 +264,17 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                             />
                         </TouchableOpacity>
 
-                        {/* TITLE */}
                         <Text style={styles.title}>
                             Verify Your Mobile Number
                         </Text>
 
-                        {/* SUBTITLE */}
                         <Text style={styles.subtitle}>
                             Please enter the 4 digit code sent to your mobile number
                             <Text style={styles.phone}> +91 {phoneNumber}</Text>
                         </Text>
 
-                        {/* LABEL */}
                         <Text style={styles.otpLabel}>Enter OTP</Text>
 
-                        {/* OTP BOXES */}
                         <View style={styles.otpContainer}>
                             {otp.map((digit, index) => (
                                 <TextInput
@@ -303,12 +298,10 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                             ))}
                         </View>
 
-                        {/* TIMER */}
                         <Text style={styles.timer}>
                             00:{resendTimer < 10 ? `0${resendTimer}` : resendTimer}
                         </Text>
 
-                        {/* RESEND */}
                         <TouchableOpacity
                             onPress={onResendPress}
                             disabled={resendTimer > 0}>
@@ -324,7 +317,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                             </Text>
                         </TouchableOpacity>
 
-                        {/* BUTTON */}
                         {
                             otp.join('').length === 4 && !isLoading ? (
                                 <TouchableOpacity
@@ -356,9 +348,8 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
-        paddingTop: 20,
+        paddingTop: 10,
     },
-
     backBtn: {
         width: 40,
         height: 40,
@@ -366,36 +357,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
-        marginTop: 30
+        marginTop: 20
     },
-
     backIcon: {
-        width: 60,
-        height: 60,
+        width: 40,
+        height: 40,
         resizeMode: 'contain',
     },
-
     title: {
         fontSize: 30,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#111827',
         marginBottom: 6,
-
     },
-
     subtitle: {
         fontSize: 16,
-        color: '#88879C',
+        color: Colors.subTextColor,
         fontFamily: Fonts.PoppinsRegular,
         lineHeight: 24,
         marginBottom: 20,
     },
-
     phone: {
-        color: '#111827',
         fontFamily: Fonts.PoppinsMedium,
     },
-
     otpLabel: {
         fontSize: 14,
         color: '#111827',
@@ -403,40 +387,12 @@ const styles = StyleSheet.create({
         marginBottom: 14,
         fontWeight: 'bold'
     },
-
     otpContainer: {
         flexDirection: 'row',
         // justifyContent: 'space-between',
         marginBottom: 20,
         gap: 20
     },
-
-    // otpInput: {
-    //     width: 54,
-    //     height: 54,
-    //     borderRadius: 12,
-    //     borderWidth: 1,
-    //     borderColor: '#0D614E33',
-    //     backgroundColor: '#fff',
-    //     fontSize: 20,
-    //     fontFamily: Fonts.PoppinsSemiBold,
-    //     color: '#0D614E0D',
-    //     // display:"flex",
-    //     textAlign:"center",
-    //      textAlignVertical: 'center',
-    //     // alignItems: 'center',
-    //     // justifyContent: 'center',
-
-    // },
-
-    // otpFilled: {
-    //     borderColor: '#0D614E33',
-    //     backgroundColor: '#0D614E0D',
-    //     color: '#0D614E',
-    //     textAlign:"center",
-    //      textAlignVertical: 'center',
-
-    // },
     otpInput: {
         width: 54,
         height: 54,
@@ -469,23 +425,23 @@ const styles = StyleSheet.create({
 
     resendText: {
         fontSize: 14,
-        color: '#6B7280',
+        color: Colors.subTextColor,
         fontFamily: Fonts.PoppinsRegular,
         marginBottom: 30,
     },
 
     resendLink: {
-        color: '#0D614E',
+        color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsMedium,
     },
 
     disabled: {
-        color: '#9CA3AF',
+        color: Colors.bottomBg,
     },
 
     activeBtn: {
         height: 52,
-        backgroundColor: '#0D614E',
+        backgroundColor: Colors.primaryColor,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
@@ -506,7 +462,7 @@ const styles = StyleSheet.create({
     },
 
     disabledBtnText: {
-        color: '#9CA3AF',
+        color: '#64748B',
         fontSize: 16,
         fontFamily: Fonts.PoppinsSemiBold,
     },

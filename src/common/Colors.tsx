@@ -1,11 +1,13 @@
 export const Colors = {
-  white: '#fff',
-  black: '#000000',   //#71A33F   old Primary color    // old secondaryu color 71A33F    // tabttransparentcolro : 77946cff
-  primaryColor: '#0F5B4D',    // new primary color 
+  white: '#ffff',
+  black: '#000000',   
+  primaryColor: '#0D614E',    
   secondaryColor: '#466425',
+  bgborderColor:'#0D614E33',
+  onfillColor:'#0D614E0D',
   questionGreen:'#0D614E',
   tabinactive: '#E8EDE3',
-  bottomBg: '#EDEEF5',
+  bottomBg: '#E5E7EB',
   bottomActive: '#A52238',
   tabtrasparent: '#46642533',
   bottomInactive: '#9093D8',
@@ -14,7 +16,7 @@ export const Colors = {
   toggleColor: '#9C2B5F',
   greyBorder: '#9093D8',
   textColor: '#1E293B',  
-  subTextColor: '#475569',
+  subTextColor: '#6B7280',
   errorColor: '#EF4444',
   blackColor50: 'rgba(0, 0, 0, 0.5)',
   greyColor25: '#A6A8D6',

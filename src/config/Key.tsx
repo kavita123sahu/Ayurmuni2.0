@@ -42,7 +42,7 @@ export const showSuccessToast = (message: string, type: string) => {
         text2Style: {
             textAlign: 'center',
             fontFamily: Fonts.PoppinsMedium,
-            fontSize: 12,
+            fontSize: 18,
             color: type === 'success' ? '#0D614E' : 'red'
         },
     });
