@@ -124,7 +124,7 @@ const Onboarding = (props: any) => {
 
         launchCamera(options, (response: ImagePickerResponse) => {
             if (response.didCancel || response.errorMessage) {
-                // showSuccessToast('Camera cancelled or error', 'error');
+                showSuccessToast('Camera cancelled or error', 'error');
                 return;
             }
 
@@ -290,6 +290,12 @@ const Onboarding = (props: any) => {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
+                <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                    <Image
+                        source={require('../../assets/images/BackButton.png')}
+                        style={styles.backIcon}
+                    />
+                </TouchableOpacity>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
                         showsVerticalScrollIndicator={false}
@@ -298,12 +304,7 @@ const Onboarding = (props: any) => {
                         <View style={styles.content}>
 
                             {/* HEADER */}
-                            <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                                <Image
-                                    source={require('../../assets/images/BackButton.png')}
-                                    style={styles.backIcon}
-                                />
-                            </TouchableOpacity>
+
 
                             <Text style={styles.title}>Create Account</Text>
                             <Text style={styles.subtitle}>
@@ -314,19 +315,31 @@ const Onboarding = (props: any) => {
                             <View style={styles.imageWrapper}>
                                 <TouchableOpacity onPress={handleAddImage}>
 
-                                    <View style={styles.imageCircle}>
-                                        {formData.profileImage ? (
-                                            <Image
-                                                source={{ uri: formData.profileImage.uri }}
-                                                style={styles.profileImage}
-                                            />
-                                        ) : (
+                                    <View style={styles.profileContainer}>
 
+                                        {/* BIG LIGHT CIRCLE */}
+                                        <View style={styles.bigCircle}>
+                                            {formData.profileImage ? (
+                                                <Image
+                                                    source={{ uri: formData.profileImage.uri }}
+                                                    style={styles.profileImage}
+                                                />
+                                            ) : (
+                                                <Image
+                                                    source={Images.ImageContain}
+                                                    style={styles.profileImage}
+                                                />
+                                            )}
+                                        </View>
+
+                                        {/* SMALL GREEN CIRCLE */}
+                                        <TouchableOpacity style={styles.smallCircle} onPress={handleAddImage}>
                                             <Image
-                                                source={Images.ImageContain}
-                                                style={styles.profileImage}
+                                                source={Images.camera}
+                                                style={styles.cameraImage}
                                             />
-                                        )}
+                                        </TouchableOpacity>
+
                                     </View>
 
                                 </TouchableOpacity>
@@ -334,12 +347,8 @@ const Onboarding = (props: any) => {
                                 <Text style={styles.uploadText}>Upload Photo</Text>
                             </View>
 
-
-                            {/* NAME */}
-
                             <View style={styles.row}>
 
-                                {/* FIRST NAME */}
                                 <View style={styles.inputWrapper}>
                                     <Text style={styles.label}>First Name</Text>
                                     <TextInput
@@ -463,10 +472,6 @@ const Onboarding = (props: any) => {
                                 onPress={handleProcees}
                                 loading={isLoading}
                             />
-
-                            <Text style={styles.loginText}>
-                                Already have an account? <Text style={styles.login}>Login</Text>
-                            </Text>
                         </View>
 
                     </ScrollView>
@@ -483,15 +488,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
+        marginBottom: 20,
     },
 
     content: {
         paddingHorizontal: 20,
-    },
-    cameraImage: {
-        width: 14,
-        height: 14,
-        resizeMode: 'contain',
+
     },
     cameraFullIcon: {
         position: 'absolute',
@@ -510,6 +512,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 40,
         marginBottom: 10,
+        paddingHorizontal: 20,
+        marginLeft:20
 
     },
 
@@ -528,7 +532,7 @@ const styles = StyleSheet.create({
     },
 
     subtitle: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#71717A',
         marginTop: 6,
         marginBottom: 25,
@@ -551,12 +555,48 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    profileContainer: {
+        width: 140,
+        height: 140,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    bigCircle: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: '#0D614E1A', 
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
 
     profileImage: {
-        width: '100%',
-        height: '100%',
+        width: 140,
+        height: 140,
         resizeMode: 'contain',
     },
+
+    smallCircle: {
+        position: 'absolute',
+        bottom: 5,
+        right: 5,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: Colors.primaryColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    cameraImage: {
+        width: 18,
+        height: 18,
+        tintColor: '#fff',
+    },
+
+
     backIcon: {
         width: 44,
         height: 44,
@@ -565,15 +605,17 @@ const styles = StyleSheet.create({
 
     cameraIcon: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
-        backgroundColor: '#C7E7DB',
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        bottom: 5,
+        right: 5,
+        backgroundColor: Colors.primaryColor,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
+        elevation: 3,
     },
+
     inputWrapper: {
         width: '48%',
     },
@@ -635,7 +677,7 @@ const styles = StyleSheet.create({
     },
 
     label: {
-        fontSize: 13,
+        fontSize: 14,
         marginBottom: 6,
         color: '#111827',
         fontFamily: Fonts.PoppinsMedium,

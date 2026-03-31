@@ -141,21 +141,6 @@ const Splash = (props: any) => {
     }
   }, [isFocused]);
 
-  // const getAllStoredData = async () => {
-  //   try {
-  //     const keys = await AsyncStorage.getAllKeys();
-  //     const result = await AsyncStorage.multiGet(keys);
-
-  //     const allData = {};
-  //     result.forEach(([key, value]) => {
-  //       allData[key] = value ? JSON.parse(value) : null;
-  //     });
-
-  //     return allData;
-  //   } catch (error) {
-  //     console.log('Error fetching AsyncStorage data', error);
-  //   }
-  // };
 
 
   const getUser = async () => {

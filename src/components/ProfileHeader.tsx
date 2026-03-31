@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, Dimensions, ImageBackground } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images'; // 👈 leaf images
+import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
 import { Styles } from '../common/Styles';
 import DashboardCard from './DashboardCard';
@@ -55,6 +55,7 @@ const ProfileHeader = ({ user }: any) => {
         </Text>
 
         {/* Stats */}
+<<<<<<< HEAD
         <View style={styles.statsRow}>
           <DashboardCard
             data={[
@@ -65,6 +66,15 @@ const ProfileHeader = ({ user }: any) => {
           />
         </View>
 
+=======
+        <DashboardCard
+          data={[
+            { value: "02", label: "TUTORIALS" },
+            { value: "14", label: "CHEMICALS" },
+            { value: "05", label: "REPORTS" },
+          ]}
+        />
+>>>>>>> dev_abhay
       </View>
     </View>
   );
