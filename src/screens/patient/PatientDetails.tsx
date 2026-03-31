@@ -40,7 +40,7 @@ const dummyPatients: Patient[] = [
   },
 ];
 
-const PatientDetails: React.FC = () => {
+const PatientDetails: React.FC = (props : any) => {
   const [patients, setPatients] = useState<Patient[]>(dummyPatients);
 
   const handleSelect = (id: string) => {
@@ -52,73 +52,75 @@ const PatientDetails: React.FC = () => {
   const selectedPatient = patients.find(p => p.selected);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
         {/* ── HEADER ── */}
-        <Header
-          title="Patient Details"
-          subtitle="Manage family profiles"
-          backIcon={require('../../assets/images/BackButton.png')}
-          onBack={() => { }}
-        />
-
-        {/* ── CURRENTLY SELECTED CARD ── */}
-
-        <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
-
-        <SelectedPatientCard
-          name="Arjun Sharma"
-          phone="+91 9876543210"
-          relation="Self"
-          image="https://i.pravatar.cc/100?img=3"
-        // onViewRecords={() => navigation.navigate('Records')}
-        />
-
-        {/* ── PATIENT LIST CARD ── */}
-
-        <View style={styles.rowBetween}>
-          <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
-
-          <TouchableOpacity >
-            <Text style={Styles.addBtn}> + Add Patient</Text>
-          </TouchableOpacity>
-        </View>
-
-
-        <View style={{marginBottom:10}}>
-          <FlatList
-            data={patients}
-            renderItem={({ item }) => (
-              <PatientCard patient={item} onSelect={handleSelect} />
-            )}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
+        <View style={{ paddingHorizontal: 10 }}>
+          <Header
+            title="Patient Details"
+            subtitle="Manage family profiles"
+            backIcon={require('../../assets/images/BackButton.png')}
+            onBack={() => {props.navigation.goBack()}}
           />
-        </View>
 
-        {/* ── INFO BOX ── */}
-        <View style={styles.infoBox}>
-          <View style={styles.iconCircle}>
-            <Image source={Images.notification} style={styles.IconSize} />
+          {/* ── CURRENTLY SELECTED CARD ── */}
+
+          <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
+
+          <SelectedPatientCard
+            name="Arjun Sharma"
+            phone="+91 9876543210"
+            relation="Self"
+            image="https://i.pravatar.cc/100?img=3"
+          // onViewRecords={() => navigation.navigate('Records')}
+          />
+
+          {/* ── PATIENT LIST CARD ── */}
+
+          <View style={styles.rowBetween}>
+            <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
+
+            <TouchableOpacity >
+              <Text style={Styles.addBtn}>+  Add Patient</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Switching Patients</Text>
-            <Text style={styles.infoText}>
-              Selecting a different family member will update your dashboard and
-              appointments for that profile.
-            </Text>
-          </View>
-        </View>
 
-        {/* ── VERSION ── */}
-        <Text style={styles.version}>APP VERSION 1.2</Text>
+          <View style={{ marginBottom: 10 }}>
+            <FlatList
+              data={patients}
+              renderItem={({ item }) => (
+                <PatientCard patient={item} onSelect={handleSelect}  navigation ={props.navigation}/>
+              )}
+              keyExtractor={item => item.id}
+              scrollEnabled={false}
+            />
+          </View>
+
+          {/* ── INFO BOX ── */}
+          <View style={styles.infoBox}>
+            <View style={styles.iconCircle}>
+              <Image source={Images.notification} style={styles.IconSize} />
+            </View>
+
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Switching Patients</Text>
+              <Text style={styles.infoText}>
+                Selecting a different family member will update your dashboard and
+                appointments for that profile.
+              </Text>
+            </View>
+          </View>
+
+          {/* ── VERSION ── */}
+          <Text style={styles.version}>APP VERSION 1.2</Text>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -127,6 +129,7 @@ export default PatientDetails;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    // paddingBottom:80,
     backgroundColor: '#F1F5F9',
   },
   scroll: {
@@ -258,26 +261,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+    marginTop: 10
   },
 
 
   // ── Info Box ──
   infoBox: {
     paddingHorizontal: 25,
-    paddingVertical: 25,
+    paddingVertical: 35,
     backgroundColor: Colors.bgcolor,
-    padding: 14,
+    padding: 16,
     borderWidth: 1.5,
     borderColor: Colors.BGIcon,
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
+    gap: 16,
+
   },
   iconCircle: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     borderRadius: 8,
     backgroundColor: Colors.BGIcon,
     justifyContent: 'center',
@@ -287,8 +291,8 @@ const styles = StyleSheet.create({
   },
 
   IconSize: {
-    height: 22,
-    width: 22
+    height: 24,
+    width: 24
   },
 
   infoIcon: {
@@ -303,11 +307,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
-    marginBottom: 4,
+    marginBottom: 2
   },
   infoText: {
     fontSize: 12,
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
     color: Colors.subTextColor,
     lineHeight: 14,
   },
@@ -315,8 +319,10 @@ const styles = StyleSheet.create({
   // ── Version ──
   version: {
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
     color: '#94A3B8',
-    marginTop: 4,
+    marginTop: 30,
+    marginBottom: 30
   },
 });

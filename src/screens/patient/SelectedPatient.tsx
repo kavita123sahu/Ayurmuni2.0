@@ -89,14 +89,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 20,
-
+    borderWidth:1,
+    borderColor:Colors.borderColor
   },
 
   // ── Top Row ──
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding :10,
+    padding: 10,
     marginBottom: 14,
   },
   avatarWrapper: {
@@ -109,18 +110,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   selfBadge: {
-
     alignSelf: "flex-start",
     // left: 16,
-    backgroundColor: Colors.bgcolor,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: '#E8F3F1',
+    borderRadius: 14,
+    padding:5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   selfBadgeText: {
-    color: Colors.green,
-    fontSize: 8,
-    fontFamily: Fonts.PoppinsRegular,
+    color: Colors.primaryColor,
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
     letterSpacing: 0.6,
   },
   info: {
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding:10,
+    padding: 10,
     justifyContent: 'space-between',
   },
   avatarGroup: {

@@ -198,7 +198,7 @@ const Splash = (props: any) => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={'#466425'} barStyle={'light-content'} />
-
+      
       <Animatable.View
         animation="slideInDown"
         duration={1500}

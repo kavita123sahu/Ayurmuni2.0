@@ -130,6 +130,7 @@ const ProductsScreen = () => {
         <CategoryList data={categories} navigation={navigation} />
 
         <SectionHeader title="Top Selling Products" actionText="View all" />
+        
         <TopSellingList data={topSelling} />
 
       </ScrollView>

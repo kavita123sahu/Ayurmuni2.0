@@ -278,7 +278,7 @@ const Onboarding = (props: any) => {
     };
 
 
-   
+
 
     const [dob, setDob] = useState({ day: '', month: '', year: '' });
 
@@ -321,7 +321,7 @@ const Onboarding = (props: any) => {
                                                 style={styles.profileImage}
                                             />
                                         ) : (
-                                            
+
                                             <Image
                                                 source={Images.ImageContain}
                                                 style={styles.profileImage}
@@ -368,14 +368,14 @@ const Onboarding = (props: any) => {
                                         ]}
                                     />
                                 </View>
-
+                                
                             </View>
 
                             {/* GENDER */}
                             <Text style={styles.label}>Gender</Text>
 
                             <View style={styles.genderRow}>
-                                {genderOptions.map((item : any) => (
+                                {genderOptions.map((item: any) => (
                                     <TouchableOpacity
                                         key={item.id}
                                         onPress={() => handleFieldChange('gender', item.value)}
@@ -455,7 +455,7 @@ const Onboarding = (props: any) => {
 
                         </View>
 
-                        
+
                         {/* BUTTON */}
                         <View style={styles.bottom}>
                             <CommonButton

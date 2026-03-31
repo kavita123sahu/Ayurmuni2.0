@@ -20,7 +20,7 @@ export type RootStackParamList = {
     PatientDetails : undefined;
     TermsCondition : undefined;
     PatientFAQ : undefined;
-
+EditPatientDetail : undefined;
 
 
 

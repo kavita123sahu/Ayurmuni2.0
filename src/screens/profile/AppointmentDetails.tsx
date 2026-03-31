@@ -68,10 +68,11 @@ const AppointmentDetailScreen = (props: any) => {
 
   console.log("propsss", props)
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
 
       <AppHeader
         title="Appointment Details"
+        leftIcon={Images.backIcon}
         onLeftPress={() => props.navigation.goBack()}
         rightIcon="search"
         onRightPress={() => console.log('Search clicked')}
@@ -88,7 +89,7 @@ const AppointmentDetailScreen = (props: any) => {
 
             <View>
               <Text style={Styles.name}>{data.doctorName}</Text>
-              <Text style={Styles.specialty}>{data.specialty}</Text>
+              <Text style={[Styles.specialty,{color:Colors.primaryColor}]}>{data.specialty}</Text>
             </View>
           </View>
 
@@ -108,7 +109,6 @@ const AppointmentDetailScreen = (props: any) => {
                 <Text style={styles.value}>{data.date}</Text>
               </View>
             </View>
-
             {/* TIME */}
             <View style={styles.dtItem}>
               <View style={styles.iconCircle}>
@@ -125,11 +125,13 @@ const AppointmentDetailScreen = (props: any) => {
           </View>
 
           {/* Buttons */}
-          <PrimaryButton title="Join Video Call" page='appoint' />
+          <View style={{paddingHorizontal:10}}>
+            <PrimaryButton title="Join Video Call" page='appoint' />
 
           <TouchableOpacity style={styles.secondaryBtn}>
             <Text style={styles.secondaryText}>Chat with Doctor</Text>
           </TouchableOpacity>
+          </View>
 
           <Text style={styles.techText}>
             Technical Check: Test Audio & Video
@@ -167,16 +169,18 @@ const AppointmentDetailScreen = (props: any) => {
         </View>
 
         {/* Bottom Actions */}
-        <TouchableOpacity style={styles.outlineBtn}>
+       <View style={{paddingHorizontal:10}}>
+         <TouchableOpacity style={styles.outlineBtn}>
           <Text style={Styles.outlineText}>Reschedule</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelBtn}>
           <Text style={Styles.cancelText}>Cancel Appointment</Text>
         </TouchableOpacity>
+       </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -186,7 +190,7 @@ export default AppointmentDetailScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
+paddingBottom:80,
     backgroundColor: '#F7F8FA',
   },
 
@@ -197,6 +201,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 16,
     borderRadius: 18,
+    borderWidth:1,
+    borderColor: Colors.borderColor
 
   },
 
@@ -256,16 +262,26 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 11,
-    color: '#94A3B8', // gray label
-    fontWeight: '600',
+    // fontSize: 11,
+    // color: '#94A3B8', // gray label
+    // fontWeight: '600',
     marginBottom: 2,
+
+        fontSize: 12,
+        
+    color: '#94A3B8',
+    // color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsMedium,
   },
 
+
+  
+
   value: {
+     fontFamily: Fonts.PoppinsMedium,
+
     fontSize: 14,
-    color: '#0F172A', // dark text
-    fontWeight: '600',
+    color: '#0F172A',
   },
 
 
@@ -308,7 +324,7 @@ const styles = StyleSheet.create({
   techText: {
     marginTop: 10,
     fontSize: 14,
-    fontFamily: Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsMedium,
     color: '#0A8F5A',
     textAlign: 'center',
   },
@@ -336,7 +352,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#0A8F5A',
+    borderColor: '#0D614E99',
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -346,9 +362,9 @@ const styles = StyleSheet.create({
 
   cancelBtn: {
     marginHorizontal: 16,
-    marginTop: 10,
+    marginTop: 15,
     marginBottom: 30,
-    backgroundColor: '#FEE2E2',
+    // backgroundColor: '#FEE2E2',
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',

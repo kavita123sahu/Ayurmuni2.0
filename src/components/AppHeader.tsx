@@ -32,6 +32,7 @@ const AppHeader: React.FC<Props> = ({
           <Image source={leftIcon} style={styles.icon} />
         )}
       </TouchableOpacity>
+      
 
       <Text style={styles.title}>{title}</Text>
 
@@ -55,22 +56,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 10,
     paddingBottom: 12,
     backgroundColor: '#fff',
+      paddingTop: 25,
   },
 
   iconBox: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   icon: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     resizeMode: 'contain',
   },
 

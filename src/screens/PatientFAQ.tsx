@@ -6,7 +6,8 @@ import {
     StyleSheet,
     ScrollView,
     StatusBar,
-    Image
+    Image,
+    Platform
 } from 'react-native';
 
 import LottieView from 'lottie-react-native';
@@ -16,6 +17,9 @@ import { Fonts } from '../common/Fonts';
 import { Ionicons } from '../common/Vector';
 import *as _ASSESS_SERVICE from '../services/AssesmentService';
 import { Images } from '../common/Images';
+import { utils } from 'xlsx';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Utils } from '../common/Utils';
 
 
 
@@ -33,7 +37,23 @@ const PatientFAQ = (props: any) => {
 
     const navigation = useNavigation();
 
-    console.log("propscustomer", props)
+    const [CUSTOMER_ID, setCUSTOMER_ID] = useState('')
+
+
+    useEffect(() => {
+        myFunc()
+    }, [])
+
+
+    const myFunc = async () => {
+        const data = await Utils.getData('_USER_INFO');
+        console.log("customeridddd",data?.id);
+        setCUSTOMER_ID(data?.id)
+
+
+    };
+
+
 
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState<any>({});
@@ -136,7 +156,7 @@ const PatientFAQ = (props: any) => {
 
             if (selectedId) {
                 const payload = {
-                    customer: "97ee1622-6d15-49c6-8a5f-7ecf29a36627",
+                    customer: CUSTOMER_ID,
                     dominant_dosha: getSingleDosha(selectedId)
                 };
                 console.log("========payload", payload)
@@ -159,25 +179,28 @@ const PatientFAQ = (props: any) => {
 
             if (choice_id) {
                 const payload = {
-                    customer_id: "97ee1622-6d15-49c6-8a5f-7ecf29a36627",
+                    customer_id: CUSTOMER_ID,
                     answers: [
                         {
                             question_id: current.key,
-                            choice_id: choice_id
-                        }
-                    ]
+                            choice_id: choice_id,
+                        },
+                    ],
                 };
-
-                console.log("paloddddddddddd", payload);
+                console.log("payloaddddd", payload);
 
                 try {
-                    await _ASSESS_SERVICE.AssesmentSubmit(payload);
+                    const response = await _ASSESS_SERVICE.AssesmentSubmit(payload);
+
+                    // ✅ yaha pura response print hoga
+                    console.log("APIRESPONSEassessment:", response);
+
                 } catch (error) {
+                    // ❌ error bhi properly print hoga
                     console.log("POST ERROR:", error);
                 }
             }
         }
-
         if (current.type === 'thankyou') {
             props.navigation.replace('HomeStack', { screen: 'Home' });
             return;

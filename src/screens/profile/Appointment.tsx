@@ -14,6 +14,8 @@ import { Styles } from '../../common/Styles';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // path adjust kar
 import { RootStackParamList } from '../../../type';
+import Header from '../../components/Header';
+import { Images } from '../../common/Images';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -23,9 +25,9 @@ const AppointmentScreen = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
 
 
-  type Appointment = { id: string; doctorName: string; specialty: string; date: string; time: string; status: 'CONFIRMED' | 'PENDING'; image: string; };
+  type Appointment = { id: string; doctorName: string; specialty: string; date: string; time: string; status: 'CONFIRMED' | 'PENDING' | 'CANCELLED'; image: string; };
 
-  const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', },];
+  const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', },];
 
   const renderItem = ({ item }: { item: Appointment }) => (
     <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AppointmentDetails')}>
@@ -44,7 +46,11 @@ const AppointmentScreen = () => {
             styles.status,
             item.status === 'CONFIRMED'
               ? styles.confirmed
-              : styles.pending,
+              : item.status === 'PENDING'
+                ? styles.pending
+                : item.status === 'CANCELLED'
+                  ? styles.cancelled
+                  : {}, // ✅ empty object fallback
           ]}
         >
           <Text
@@ -54,12 +60,17 @@ const AppointmentScreen = () => {
                 color:
                   item.status === 'CONFIRMED'
                     ? Colors.green
-                    : '#FF6B6B',
+                    : item.status === 'CANCELLED'
+                      ? '#FF6B6B'
+                      : item.status === 'PENDING'
+                        ? '#EA580C'
+                        : '#000', // fallback
               },
             ]}
           >
             {item.status}
           </Text>
+
         </View>
       </View>
 
@@ -69,8 +80,14 @@ const AppointmentScreen = () => {
         {/* DATE */}
         <View style={styles.infoItem}>
           <View style={styles.iconCircle}>
-            <Text style={styles.icon}>📅</Text>
+            <Image source={Images.calender} style={Styles.IconSize} />
           </View>
+
+
+          {/* <View style={styles.iconCircle}>
+            <Text style={styles.icon}>📅</Text>
+          </View> */}
+
           <View>
             <Text style={Styles.label}>DATE</Text>
             <Text style={Styles.value}>{item.date}</Text>
@@ -80,7 +97,7 @@ const AppointmentScreen = () => {
         {/* TIME */}
         <View style={styles.infoItem}>
           <View style={styles.iconCircle}>
-            <Text style={styles.icon}>⏰</Text>
+            <Image source={Images.clock} style={Styles.IconSize} />
           </View>
           <View>
             <Text style={Styles.label}>TIME</Text>
@@ -110,10 +127,14 @@ const AppointmentScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
 
-      {/* Header */}
-      <Text style={styles.header}>My Appointments</Text>
+      <Header
+        title="My Appointment"
+        subtitle="Manage your visits "
+        backIcon={require('../../assets/images/BackButton.png')}
+        onBack={() => {navigation.goBack() }}
+      />
 
       {/* Tabs */}
       <View style={styles.tabWrapper}>
@@ -153,7 +174,7 @@ const AppointmentScreen = () => {
         data={dummyData}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 1, paddingVertical: 15, paddingBottom: 70 }}
       />
 
       {/* Bottom Button */}
@@ -161,7 +182,7 @@ const AppointmentScreen = () => {
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
 
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -171,6 +192,8 @@ export default AppointmentScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginBottom: 30,
+    paddingHorizontal: 20,
     backgroundColor: '#F7F8FA',
   },
 
@@ -218,9 +241,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 14,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
     shadowRadius: 6,
   },
 
@@ -248,9 +270,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B9811A",
   },
 
-  pending: {
+  cancelled: {
     backgroundColor: '#FEE2E2',
   },
+  pending: {
+    backgroundColor: '#FFF7ED',
+  },
+
 
   statusText: {
     fontSize: 10,
@@ -348,6 +374,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryColor,
     paddingVertical: 14,
     borderRadius: 12,
+
     alignItems: 'center',
   },
 

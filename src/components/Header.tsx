@@ -48,8 +48,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    // paddingHorizontal: 16,
+    paddingTop: 25,
+    // backgroundColor:Colors.white,
     paddingBottom: 10,
   },
 

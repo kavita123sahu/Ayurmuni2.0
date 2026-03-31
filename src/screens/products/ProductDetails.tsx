@@ -159,7 +159,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        
     },
+
     tag: {
         backgroundColor: '#0D614E1A',
         color: '#0D614E',

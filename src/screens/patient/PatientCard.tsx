@@ -22,18 +22,21 @@ export interface Patient {
 
 interface Props {
   patient: Patient;
+  navigation : any,
   onSelect: (id: string) => void;
 }
 
-const PatientCard: React.FC<Props> = ({ patient, onSelect }) => {
+const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
   return (
     <TouchableOpacity
       style={[styles.item, patient.selected && styles.itemSelected]}
       onPress={() => onSelect(patient.id)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: patient.image }} style={styles.avatar} />
+   
+        <Image source={{ uri: patient.image }} style={styles.avatar} />
 
+    
       <View style={styles.info}>
         <Text style={[styles.name,{marginBottom:-4}]}>{patient.name}</Text>
         <Text style={Styles.specialty}>Relation: <Text style={styles.subtitle}> {patient.relation}</Text></Text>
@@ -41,7 +44,7 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect }) => {
 
       <View style={styles.actions}>
         <TouchableOpacity
-          onPress={() => {}}
+          onPress={() => {navigation.navigate('EditPatientDetail')}}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
            <Image source={Images.editButton}  style={styles.IconSize} />
@@ -69,17 +72,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: Colors.borderColor
   },
   itemSelected: {
     borderColor: Colors.primaryColor,
     backgroundColor: '#F0FDFA',
+    borderWidth:0.5,
+
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 14,
     marginRight: 12,
+    backgroundColor: Colors.bgcolor
   },
   info: {
     flex: 1,
