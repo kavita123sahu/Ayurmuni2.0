@@ -132,7 +132,7 @@ const AppointmentScreen = () => {
       <Header
         title="My Appointment"
         subtitle="Manage your visits "
-        backIcon={require('../../assets/images/BackButton.png')}
+        backIcon={Images.backIcon}
         onBack={() => {navigation.goBack() }}
       />
 

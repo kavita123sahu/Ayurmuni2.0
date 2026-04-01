@@ -6,7 +6,7 @@ export const BaseUrl = {
     url: 'https://clikshop.co.in/api/v1/',
     urlV3: 'https://clikshop.co.in/api/v3/',
     base: 'https://clikshop.co.in/',
-    base_url: 'https://t4frlm3l-8000.inc1.devtunnels.ms/',
+    base_url: 'https://jb56c8mh-8002.inc1.devtunnels.ms/',
 };
 
 export const Method = {
@@ -43,7 +43,7 @@ export const showSuccessToast = (message: string, type: string) => {
             textAlign: 'center',
             fontFamily: Fonts.PoppinsMedium,
             fontSize: 18,
-            color: type === 'success' ? '#0D614E' : 'red'
+            color: type === 'success' ? '#0D614E' : '#F43F5E'
         },
     });
 }

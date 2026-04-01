@@ -48,7 +48,7 @@ const SelectedPatientCard: React.FC<Props> = ({
             <Text style={styles.selfBadgeText}>SELF</Text>
           </View>
           <Text style={Styles.name}>{name}</Text>
-          <Text style={Styles.value}>{phone}</Text>
+          <Text style={[Styles.value, {color:'#64748B', fontFamily : Fonts.PoppinsRegular}]}>{phone}</Text>
         </View>
       </View>
 
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F3F1',
     borderRadius: 14,
     padding:5,
+    marginBottom:5,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },

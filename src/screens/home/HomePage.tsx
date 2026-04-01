@@ -109,19 +109,22 @@ const HomePage: React.FC = (props: any) => {
 
       <HomeHeader />
 
-      <SearchBar
-        placeholder="Search doctors, medicine and products..."
-        icon={require('../../assets/images/search.png')}
-      />
+      <View style={{ paddingHorizontal: 10 }}>
+        <SearchBar
+          placeholder="Search doctors, medicine and products..."
+          icon={require('../../assets/images/search.png')}
+        />
+      </View>
 
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
-        <TouchableOpacity style={{ paddingHorizontal: 10 }} onPress={() => props.navigation.navigate('PatientFAQ')} >
+        <TouchableOpacity style={{ paddingHorizontal: 10 }} onPress={() => props.navigation.navigate('PatientFAQ', {
+          steps: true
+        })}>
           <PrakritiCard
-            title="Your Prakriti profile is ready"
+            title={PakritiData?.answered_percentage === 100 ? "Your Prakriti profile is ready" : 'Know Your Prakriti'}
             status="Profile Complete"
-
             progress={Math.round(PakritiData?.answered_percentage ?? 0)}
           />
         </TouchableOpacity>
@@ -146,10 +149,10 @@ const HomePage: React.FC = (props: any) => {
         </View>
 
         <SectionHeader title="Top Medicines" actionText="View all" />
-        <TopSellingList data={topSelling} />
+        <TopSellingList data={topSelling} navigation={props.navigation} />
 
         <SectionHeader title="Top Products" actionText="View all" />
-        <TopSellingList data={topSelling} />
+        <TopSellingList data={topSelling} navigation={props.navigation} />
 
 
 

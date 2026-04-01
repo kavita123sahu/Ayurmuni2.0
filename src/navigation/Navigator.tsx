@@ -34,6 +34,13 @@ import Onboarding from "../screens/auth/Onboarding";
 import PatientFAQ from "../screens/PatientFAQ";
 import EditPatientDetail from "../screens/patient/EditPatientDetail";
 import OrderHistory from "../screens/orders/OrderHistory";
+import ProductsScreen from "../screens/products/ProductsScreen";
+import TopCategories from "../screens/products/TopCategories";
+import ProductDetails from "../screens/products/ProductDetails";
+import ReviewPage from "../screens/products/ReviewPage";
+import MyCart from "../screens/products/MyCart";
+import Checkout from "../screens/products/Checkout";
+import MedicalRecords from "../screens/profile/MedicalRecords";
 
 enableScreens();
 
@@ -82,7 +89,7 @@ const TabStack = () => {
       }}
     >
       <Tab.Screen name="Home" component={HomePage} />
-      <Tab.Screen name="Cart" component={CartPage} />
+      <Tab.Screen name="Cart" component={ProductsScreen} />
       <Tab.Screen name="Consult" component={consultHome} />
       {/* <Tab.Screen name="Centers" component={CenterWellness} /> */}
       <Tab.Screen name="Profile" component={ProfilePage} />
@@ -101,8 +108,14 @@ const HomeStack = () => {
       <Stack.Screen name="PatientFAQ" component={PatientFAQ} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="TermsCondition" component={TermsCondition} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="TopCategories" component={TopCategories} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EditPatientDetail" component={EditPatientDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ReviewPage" component={ReviewPage} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MyCart" component={MyCart} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MedicalRecords" component={MedicalRecords} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

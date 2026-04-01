@@ -21,10 +21,10 @@ const AppInputField = ({
         {leftIcon && (
           <Image source={leftIcon} style={styles.leftIcon} />
         )}
-
+        
         <TextInput
           placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#6B7280"
           value={value}
           onChangeText={onChangeText}
           style={styles.input}
@@ -47,10 +47,10 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#475569',
     marginBottom: 6,
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   inputContainer: {
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: '#111827',
+    color: Colors.textColor,
     fontFamily: Fonts.PoppinsMedium,
   },
 

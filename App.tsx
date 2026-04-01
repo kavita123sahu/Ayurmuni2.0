@@ -24,6 +24,7 @@ const toastConfig = {
       {...props}
       text2Style={{
         fontSize: 12,
+          color: '#F43F5E', 
         textAlign: 'center'
       }}
     />

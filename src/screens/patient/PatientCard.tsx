@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   },
   itemSelected: {
     borderColor: Colors.primaryColor,
-    backgroundColor: '#F0FDFA',
+    // backgroundColor: '#F0FDFA',
     borderWidth:0.5,
 
   },

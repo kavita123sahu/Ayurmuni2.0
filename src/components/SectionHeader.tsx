@@ -27,7 +27,7 @@ export default SectionHeader;
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 16,
+    marginHorizontal: 4,  //14
     marginTop: 20,
     marginBottom: 8,
     flexDirection: 'row',

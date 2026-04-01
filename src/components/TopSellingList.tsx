@@ -11,9 +11,11 @@ import {
 interface Props {
   data: any[];
   isGrid?: boolean;
+  navigation: any
 }
 
-const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
+const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) => {
+  console.log("navigationnnnnnnnn", navigation)
   const [showAll, setShowAll] = useState(false);
 
   // ✅ Show only 6 initially
@@ -41,9 +43,9 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
       columnWrapperStyle={
         isGrid
           ? {
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }
+            justifyContent: 'space-between',
+            marginBottom: 14,
+          }
           : undefined
       }
       renderItem={({ item }) => {
@@ -57,7 +59,7 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
         }
 
         return (
-          <View style={[styles.card, isGrid && styles.gridCard]}>
+          <TouchableOpacity onPress={() => navigation.navigate('ProductDetails')} style={[styles.card, isGrid && styles.gridCard]}>
             {/* BADGE */}
             {item.tag && (
               <View style={styles.badge}>
@@ -100,33 +102,33 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
                 />
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         );
       }}
 
       // ✅ Discover More Button
       ListFooterComponent={
-  isGrid && data.length > 6 ? (
-    <View style={styles.footerContainer}>
+        isGrid && data.length > 6 ? (
+          <View style={styles.footerContainer}>
 
-      {/* BUTTON */}
-      {!showAll && (
-        <TouchableOpacity
-          style={styles.discoverBtn}
-          onPress={() => setShowAll(true)}
-        >
-          <Text style={styles.discoverText}>Discover More</Text>
-        </TouchableOpacity>
-      )}
+            {/* BUTTON */}
+            {!showAll && (
+              <TouchableOpacity
+                style={styles.discoverBtn}
+                onPress={() => setShowAll(true)}
+              >
+                <Text style={styles.discoverText}>Discover More</Text>
+              </TouchableOpacity>
+            )}
 
-      {/* COUNT TEXT */}
-      <Text style={styles.countText}>
-        Showing {showAll ? data.length : 6} of {data.length} items
-      </Text>
+            {/* COUNT TEXT */}
+            <Text style={styles.countText}>
+              Showing {showAll ? data.length : 6} of {data.length} items
+            </Text>
 
-    </View>
-  ) : null
-}
+          </View>
+        ) : null
+      }
     />
   );
 };
@@ -245,28 +247,28 @@ const styles = StyleSheet.create({
   },
 
   footerContainer: {
-  alignItems: 'center',
-  marginTop: 20,
-  marginBottom: 10,
-},
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
 
-discoverBtn: {
-  backgroundColor: '#0D614E',
-  paddingVertical: 12,
-  paddingHorizontal: 28,
-  borderRadius: 12,
-},
+  discoverBtn: {
+    backgroundColor: '#0D614E',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+  },
 
-discoverText: {
-  color: '#FFFFFF',
-  fontSize: 14,
-  fontWeight: '700',
-},
+  discoverText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
-countText: {
-  marginTop: 8,
-  fontSize: 12,
-  color: '#94A3B8',
-  marginBottom:40
-},
+  countText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 40
+  },
 });

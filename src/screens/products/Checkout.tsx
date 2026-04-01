@@ -7,13 +7,14 @@ import {
     TouchableOpacity,
     Image,
     TextInput,
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 
-const Checkout: React.FC = () => {
+const Checkout: React.FC = (props : any) => {
     const [deliveryMethod, setDeliveryMethod] = useState('standard');
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [upiId, setUpiId] = useState('');
@@ -49,7 +50,9 @@ const Checkout: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <AppHeader title="Checkout" leftIcon={Images.backIcon} />
+
+            <StatusBar   />
+            <AppHeader title="Checkout" leftIcon={Images.backIcon} onLeftPress={()=>props.navigation.goBack()} />
 
             <ScrollView contentContainerStyle={styles.content}>
 

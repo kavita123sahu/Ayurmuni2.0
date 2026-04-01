@@ -1,5 +1,5 @@
 export const Images = {
-    backIcon: require('../assets/images/BackButton.png'),
+    backIcon: require('../assets/images/backButton.png'),
     newlogo: require('../assets/images/MainIcon.png'),
     arrow: require('../assets/images/arrow.png'),
     MobileLogo: require('../assets/images/MobileLogo.png'),
@@ -46,8 +46,7 @@ export const Images = {
     arrowRight: require('../assets/images/arrowRight.png'),
 
 
-
-
+    upload: require('../assets/images/Upload.png'),
 
     verify: require('../assets/images/verify.png'),
     editButton: require('../assets/images/editButton.png'),

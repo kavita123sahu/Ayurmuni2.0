@@ -10,6 +10,7 @@ import CategoryList from '../../components/CategoryList';
 import TopSellingList from '../../components/TopSellingList';
 import SectionHeader from '../../components/SectionHeader';
 import { useNavigation } from '@react-navigation/native';
+import { Images } from '../../common/Images';
 
 
 const ProductsScreen = () => {
@@ -100,7 +101,7 @@ const ProductsScreen = () => {
       <Header
           title="Products"
           subtitle="Choose best product"
-          backIcon={require('../../assets/images/BackButton.png')}
+          backIcon={Images.backIcon}
           onBack={() => {}}
        />
       <ScrollView
@@ -108,12 +109,6 @@ const ProductsScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       >
 
-        <Header
-          title="Products"
-          subtitle="Choose best product"
-          backIcon={require('../../assets/images/BackButton.png')}
-          onBack={() => {}}
-        />
 
         <SearchBar
           placeholder="Search seeds, oils..."
@@ -138,7 +133,7 @@ const ProductsScreen = () => {
 
         <SectionHeader title="Top Selling Products" actionText="View all" />
         
-        <TopSellingList data={topSelling} />
+        <TopSellingList data={topSelling}  navigation={navigation}  />
 
       </ScrollView>
     </SafeAreaView>

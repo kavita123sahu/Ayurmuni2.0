@@ -55,7 +55,6 @@ const ProfileHeader = ({ user }: any) => {
         </Text>
 
         {/* Stats */}
-<<<<<<< HEAD
         <View style={styles.statsRow}>
           <DashboardCard
             data={[
@@ -66,15 +65,6 @@ const ProfileHeader = ({ user }: any) => {
           />
         </View>
 
-=======
-        <DashboardCard
-          data={[
-            { value: "02", label: "TUTORIALS" },
-            { value: "14", label: "CHEMICALS" },
-            { value: "05", label: "REPORTS" },
-          ]}
-        />
->>>>>>> dev_abhay
       </View>
     </View>
   );
@@ -102,8 +92,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     left: 10,
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     resizeMode: 'contain',
     opacity: 0.5,
   },
@@ -170,12 +160,11 @@ avatarBg: {
 
   avatarWrapper: {
     width: 110,
-    // height: 110,
+    height: 110,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#DDEBE8',
     backgroundColor: '#FFFFFF',
-
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -198,8 +187,8 @@ avatarBg: {
   },
 
   avatar: {
-    width: 85,
-    height: 85,
+    width: 90,
+    height: 90,
     borderRadius: 16,
   },
 

@@ -8,7 +8,9 @@ import { Fonts } from '../../common/Fonts'
 import DashboardCard from '../../components/DashboardCard'
 import PrimaryButton from '../../components/PrimaryButton'
 
-const ProductDetails = () => {
+const ProductDetails = (props: any) => {
+
+    console.log("propssssssssssssssssss", props)
     const product = {
         id: 1,
         name: "Fresh Apple",
@@ -30,7 +32,7 @@ const ProductDetails = () => {
                 title="Product Details"
                 leftIcon={Images.backIcon}
                 rightIcon={Images.share}
-                //   onLeftPress={() => navigation.goBack()}
+                onLeftPress={() => props.navigation.goBack()}
                 onRightPress={() => console.log("Share clicked")}
             />
             <ScrollView
@@ -78,9 +80,6 @@ const ProductDetails = () => {
 
 
                 <Text style={styles.subHeader}>Product Highlights</Text>
-
-
-
                 <DashboardCard
                     data={[
                         { image: Images.organic, label: "100% Organic" },
@@ -118,16 +117,16 @@ const ProductDetails = () => {
 
                     </View>
 
-                    <View style={styles.reviewHeader}>
+                    <TouchableOpacity style={styles.reviewHeader} onPress={() => props.navigation.navigate('ReviewPage')}>
                         <Text style={styles.sectionTitle}>Customer Reviews</Text>
 
                         <Text
                             style={styles.viewAll}
-                            onPress={() => console.log('View All clicked')}
+
                         >
                             View All
                         </Text>
-                    </View>
+                    </TouchableOpacity>
 
                     <View style={styles.reviewCard}>
 
@@ -155,32 +154,33 @@ const ProductDetails = () => {
                     </View>
 
                 </View>
-                
 
 
-                
+
+
 
             </ScrollView>
 
             <View style={styles.buttonrow}>
 
-                    <TouchableOpacity style={styles.wishlistBox}>
-                        <Image
-                            source={Images.wishlist} 
-                            style={styles.wishlistIcon}
-                        />
-                    </TouchableOpacity>
+                <TouchableOpacity style={styles.wishlistBox}>
+                    <Image
+                        source={Images.wishlist}
+                        style={styles.wishlistIcon}
+                    />
+                </TouchableOpacity>
 
-                    <View style={{ flex: 1 }}>
-                        <PrimaryButton
-                            title="Add to Cart"
-                            icon={Images.shopCart}
-                            backgroundColor="#0D614E"
-                            textColor="#FFFFFF"
-                        />
-                    </View>
-
+                <View style={{ flex: 1 }} >
+                    <PrimaryButton
+                        title="Add to Cart"
+                        icon={Images.shopCart}
+                        onPress={() => props.navigation.navigate('MyCart')}
+                        backgroundColor="#0D614E"
+                        textColor="#FFFFFF"
+                    />
                 </View>
+
+            </View>
         </SafeAreaView>
 
 
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        
+
     },
 
     tag: {
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     },
     value: {
         fontSize: 14,
-        fontFamily:Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
         lineHeight: 20
     },
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
         color: '#475569',
         fontSize: 12,
         lineHeight: 18,
-        fontFamily:Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsMedium
     },
     nameRow: {
         flexDirection: 'row',
@@ -409,26 +409,26 @@ const styles = StyleSheet.create({
     },
 
     buttonrow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    gap: 12,
-  },
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+        gap: 12,
+    },
 
-  wishlistBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 12,
-    backgroundColor: "#0D614E1A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    wishlistBox: {
+        width: 58,
+        height: 58,
+        borderRadius: 12,
+        backgroundColor: "#0D614E1A",
+        alignItems: "center",
+        justifyContent: "center",
+    },
 
-  wishlistIcon: {
-    width: 22,
-    height: 22,
-    resizeMode: "contain",
-  },
+    wishlistIcon: {
+        width: 22,
+        height: 22,
+        resizeMode: "contain",
+    },
 
-    
+
 });

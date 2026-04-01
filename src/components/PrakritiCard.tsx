@@ -10,6 +10,7 @@ type Props = {
   title: string;
   status: string;
   progress: number; // 0 - 100
+  
 
 };
 
@@ -17,6 +18,7 @@ const PrakritiCard: React.FC<Props> = ({
   title,
   status,
   progress,
+  
 }) => {
   console.log("progressss", progress);
   // 🔥 Theme logic
@@ -72,7 +74,7 @@ const PrakritiCard: React.FC<Props> = ({
             size={20}
             color={color}
           /> */}
-          <Image  source={progress === 100 ? Images.approved : Images.clock} style={Styles.IconSize} tintColor={Colors.green}/>
+          <Image  source={progress === 100 ? Images.approved : Images.clock} style={Styles.IconSize} tintColor={progress===100 ? Colors.green : progress > 30 ? "#FFC107": "#F43F5E"}/>
         </View>
       </View>
 

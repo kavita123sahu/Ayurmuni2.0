@@ -681,6 +681,7 @@ import { Ionicons } from '../common/Vector';
 import *as _ASSESS_SERVICE from '../services/AssesmentService';
 import { Images } from '../common/Images';
 import { Utils } from '../common/Utils';
+import { showSuccessToast } from '../config/Key';
 
 
 
@@ -720,9 +721,12 @@ const PatientFAQ = (props: any) => {
 
 
     const myFunc = async () => {
+        const customer_id = await Utils.getData('_CUSTOMER_ID');
         const data = await Utils.getData('_USER_INFO');
-        console.log("customeridddd", data?.id);
-        setCUSTOMER_ID(data?.id)
+        const id = customer_id || data?.id;
+
+        console.log("customeridddd", id);
+        setCUSTOMER_ID(id)
 
     };
 
@@ -809,29 +813,38 @@ const PatientFAQ = (props: any) => {
     const handleNext = async () => {
         console.log("=======.>", current)
 
+        let isSuccess = true; // 👈 control flag
+
         // ✅ YES FLOW API
         if (current.key === 'prakritiType') {
 
             const selectedId = selectedChoices['prakritiType'];
-            console.log("=========>  id", selectedId)
-
 
             if (selectedId) {
                 const payload = {
                     customer: CUSTOMER_ID,
                     dominant_dosha: getSingleDosha(selectedId)
                 };
-                console.log("========payload", payload)
+
                 try {
-                    await _ASSESS_SERVICE.AssesmentYesSubmit(payload);
-                    console.log("YES API:", payload);
+                    const response: any = await _ASSESS_SERVICE.AssesmentYesSubmit(payload);
+                    console.log("YES API RESPONSE:", response);
+
+                    // 👇 IMPORTANT CHECK
+                    if (!response?.ok) {
+                        isSuccess = false;
+                        showSuccessToast("Failed! Data not save  ❌", "error");
+                    }
+
                 } catch (e) {
+                    isSuccess = false;
+                    showSuccessToast("Something went wrong ❌", "error");
                     console.log("YES API ERROR:", e);
                 }
             }
         }
 
-        // EXISTING NO FLOW
+        // ✅ NO FLOW
         if (
             current.key !== 'knowPrakriti' &&
             current.key !== 'prakritiType' &&
@@ -847,30 +860,42 @@ const PatientFAQ = (props: any) => {
                             question_id: current.key,
                             choice_id: choice_id,
                         },
+                        
                     ],
                 };
-                console.log("payloaddddd", payload);
 
                 try {
-                    const response = await _ASSESS_SERVICE.AssesmentSubmit(payload);
+                    const response: any = await _ASSESS_SERVICE.AssesmentSubmit(payload);
+                    console.log("API RESPONSE:", response);
 
-                    // ✅ yaha pura response print hoga
-                    console.log("APIRESPONSEassessment:", response);
+                    // 👇 IMPORTANT CHECK
+                    if (!response?.ok) {
+                        isSuccess = false;
+                        showSuccessToast("Failed! Answer not save ❌", 'error');
+                    }
 
                 } catch (error) {
-                    // ❌ error bhi properly print hoga
+                    isSuccess = false;
+                    showSuccessToast("API Error ❌", 'error');
                     console.log("POST ERROR:", error);
                 }
             }
         }
+
+        // ❌ agar fail hua → yahin stop
+        if (!isSuccess) {
+            return;
+        }
+
+        // ✅ THANK YOU SCREEN
         if (current.type === 'thankyou') {
             props.navigation.replace('HomeStack', { screen: 'Home' });
             return;
         }
 
+        // ✅ NEXT TAB TABHI JAB SUCCESS HO
         setStep(step + 1);
     };
-
     const handleBack = () => {
         if (step > 0) setStep(step - 1);
     };
@@ -1106,6 +1131,7 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textAlign: 'center',
         marginTop: 10,
+        fontFamily : Fonts.PoppinsMedium,
         paddingHorizontal: width * 0.08,
         lineHeight: scale(22),
     },
@@ -1135,7 +1161,7 @@ const styles = StyleSheet.create({
 
     headerTitle: {
         fontSize: scale(18),
-        fontWeight: '600',
+       fontFamily : Fonts.PoppinsSemiBold,
         color: '#1A1A1A',
     },
 
@@ -1147,12 +1173,14 @@ const styles = StyleSheet.create({
     skipHeaderText: {
         fontSize: scale(15),
         color: Colors.questionGreen,
+        fontFamily:Fonts.PoppinsMedium
     },
 
     stepText: {
         marginTop: 10,
         fontSize: scale(14),
         color: '#6B7280',
+        fontFamily : Fonts.PoppinsMedium,
     },
 
     progressContainer: {
@@ -1223,6 +1251,7 @@ const styles = StyleSheet.create({
         fontSize: scale(14),
         marginBottom: 20,
         color: '#64748B',
+        fontFamily : Fonts.PoppinsMedium,
         lineHeight: scale(20),
     },
 
@@ -1295,10 +1324,14 @@ const styles = StyleSheet.create({
         fontSize: scale(14),
         lineHeight: scale(20),
         color: '#111827',
+        
+        fontFamily : Fonts.PoppinsMedium,
     },
 
     activeText: {
         color: '#fff',
+        
+        fontFamily : Fonts.PoppinsMedium,
     },
 
     iconContainer: {

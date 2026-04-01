@@ -63,7 +63,7 @@ const PatientDetails: React.FC = (props : any) => {
           <Header
             title="Patient Details"
             subtitle="Manage family profiles"
-            backIcon={require('../../assets/images/BackButton.png')}
+            backIcon={Images.backIcon}
             onBack={() => {props.navigation.goBack()}}
           />
 

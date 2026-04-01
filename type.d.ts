@@ -17,13 +17,16 @@ export type RootStackParamList = {
     Appointments: undefined;
     OrderHistory: undefined;
     TabStack: undefined;
-    PatientDetails : undefined;
-    TermsCondition : undefined;
-    PatientFAQ : undefined;
-EditPatientDetail : undefined;
-
-
-
+    PatientDetails: undefined;
+    TermsCondition: undefined;
+    PatientFAQ: undefined;
+    EditPatientDetail: undefined;
+    ProductDetails: undefined;
+    TopCategories: undefined;
+    ReviewPage : undefined;
+    MyCart : undefined;
+    Checkout : undefined;
+    MedicalRecords: undefined;
 
 };
 

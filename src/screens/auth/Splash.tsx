@@ -154,7 +154,7 @@ const Splash = (props: any) => {
         if (result.status === 200) {
           Utils.storeData('_USER_INFO', JSONUser);
           dispatch(setUserInfo(JSONUser));
-
+          
           setTimeout(() => {
             props.navigation.replace('HomeStack', { screeen: 'Home' })
           }, 1000);

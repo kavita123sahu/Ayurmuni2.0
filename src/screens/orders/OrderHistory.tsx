@@ -4,6 +4,7 @@ import { Fonts } from '../../common/Fonts';
 import OrderCard from '../../components/OrderCard';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
+import { Images } from '../../common/Images';
 
 
 const DATA = [
@@ -37,7 +38,7 @@ const OrderHistory = (props: any) => {
             <Header
                 title="Order History"
                 subtitle="Track your medicines & labs"
-                backIcon={require('../../assets/images/BackButton.png')}
+                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 

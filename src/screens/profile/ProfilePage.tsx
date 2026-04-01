@@ -149,7 +149,7 @@ const ProfilePage = ({ navigation }: any) => {
             <Header
                 title="Profile"
                 subtitle="Manage your account"
-                backIcon={require('../../assets/images/BackButton.png')}
+                backIcon={Images.backIcon}
                 onBack={() => { }}
             />
 
@@ -179,7 +179,16 @@ const ProfilePage = ({ navigation }: any) => {
                 <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity> */}
 
-                <PrimaryButton title="Logout" page='profile' onPress={logout} />
+                <PrimaryButton
+                    title="Logout"
+                    icon={Images.shopCart}
+                    backgroundColor=""
+                    textColor="#FFFFFF"
+                    onPress={logout}
+
+
+
+                />
 
 
                 <Text style={styles.version}>APP VERSION 1.2</Text>
