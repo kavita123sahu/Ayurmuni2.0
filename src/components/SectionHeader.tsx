@@ -27,9 +27,12 @@ export default SectionHeader;
 
 const styles = StyleSheet.create({
   container: {
+<<<<<<< HEAD
     marginHorizontal: 4,  //14
+=======
+>>>>>>> dev_abhay
     marginTop: 20,
-    marginBottom: 8,
+    marginBottom: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
