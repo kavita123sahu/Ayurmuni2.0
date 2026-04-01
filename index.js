@@ -15,7 +15,6 @@ import  CheckOut from './src/screens/medicines/CheckOut';
 import PatientFAQ from './src/screens/PatientFAQ';
 
 
-AppRegistry.registerComponent(appName, () =>App );
-
+AppRegistry.registerComponent(appName, () => App);
 
 
