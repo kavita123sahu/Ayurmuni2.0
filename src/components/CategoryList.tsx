@@ -31,7 +31,7 @@ const CategoryList = ({ data, navigation }: any) => {
       showsHorizontalScrollIndicator={false}
       data={data}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={{ paddingHorizontal: 10 }}
+      contentContainerStyle={{gap:14}}
       renderItem={({ item }) => (
         <TouchableOpacity
           style={styles.item}
@@ -54,7 +54,6 @@ export default CategoryList;
 const styles = StyleSheet.create({
   item: {
     alignItems: 'center',
-    marginHorizontal: 8,
   },
   circle: {
     width: 70,

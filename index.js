@@ -9,10 +9,10 @@ import FAQScreen from './src/screens/auth/OtpVerify';
 import ProfilePage from './src/screens/patient/PatientDetails';
 import ProductDetails from './src/screens/products/ProductDetails';
 import  ReviewPage from './src/screens/products/ReviewPage';
-import  Checkout from './src/screens/products/Checkout';
+import  CheckOut from './src/screens/medicines/CheckOut';
 import PatientFAQ from './src/screens/PatientFAQ';
 
 
-AppRegistry.registerComponent(appName, () => Checkout);
+AppRegistry.registerComponent(appName, () => CheckOut);
 
 

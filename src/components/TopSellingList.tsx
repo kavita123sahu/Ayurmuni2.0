@@ -16,10 +16,8 @@ interface Props {
 const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
   const [showAll, setShowAll] = useState(false);
 
-  // ✅ Show only 6 initially
   const displayData = showAll ? data : data.slice(0, 6);
 
-  // ✅ Add dummy item if odd (for grid balance)
   const formattedData =
     isGrid && displayData.length % 2 !== 0
       ? [...displayData, { id: 'empty', empty: true }]
@@ -33,11 +31,12 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
       horizontal={!isGrid}
       numColumns={isGrid ? 2 : 1}
       showsHorizontalScrollIndicator={false}
+
+      // ✅ 🔥 REMOVE ALL HORIZONTAL PADDING
       contentContainerStyle={{
-        paddingLeft: isGrid ? 0 : 16,
-        paddingHorizontal: isGrid ? 16 : 0,
         paddingBottom: 20,
       }}
+
       columnWrapperStyle={
         isGrid
           ? {
@@ -46,18 +45,15 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
             }
           : undefined
       }
+
       renderItem={({ item }) => {
-        // ✅ Empty placeholder
         if (item.empty) {
-          return (
-            <View
-              style={[styles.card, styles.gridCard, styles.emptyCard]}
-            />
-          );
+          return <View style={[styles.card, styles.gridCard, styles.emptyCard]} />;
         }
 
         return (
           <View style={[styles.card, isGrid && styles.gridCard]}>
+            
             {/* BADGE */}
             {item.tag && (
               <View style={styles.badge}>
@@ -80,7 +76,6 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
                 <Text style={styles.subtitle}>{item.subtitle}</Text>
               )}
 
-              {/* PRICE */}
               <View style={styles.priceContainer}>
                 {item.oldPrice && (
                   <Text style={styles.oldPrice}>Rs. {item.oldPrice}</Text>
@@ -104,29 +99,24 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
         );
       }}
 
-      // ✅ Discover More Button
       ListFooterComponent={
-  isGrid && data.length > 6 ? (
-    <View style={styles.footerContainer}>
+        isGrid && data.length > 6 ? (
+          <View style={styles.footerContainer}>
+            {!showAll && (
+              <TouchableOpacity
+                style={styles.discoverBtn}
+                onPress={() => setShowAll(true)}
+              >
+                <Text style={styles.discoverText}>Discover More</Text>
+              </TouchableOpacity>
+            )}
 
-      {/* BUTTON */}
-      {!showAll && (
-        <TouchableOpacity
-          style={styles.discoverBtn}
-          onPress={() => setShowAll(true)}
-        >
-          <Text style={styles.discoverText}>Discover More</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* COUNT TEXT */}
-      <Text style={styles.countText}>
-        Showing {showAll ? data.length : 6} of {data.length} items
-      </Text>
-
-    </View>
-  ) : null
-}
+            <Text style={styles.countText}>
+              Showing {showAll ? data.length : 6} of {data.length} items
+            </Text>
+          </View>
+        ) : null
+      }
     />
   );
 };
@@ -138,7 +128,7 @@ const styles = StyleSheet.create({
     width: 160,
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
-    marginRight: 14,
+    marginRight: 14, // ✅ only for horizontal list
     borderWidth: 1,
     borderColor: '#F1F5F9',
     height: 240,
@@ -245,28 +235,28 @@ const styles = StyleSheet.create({
   },
 
   footerContainer: {
-  alignItems: 'center',
-  marginTop: 20,
-  marginBottom: 10,
-},
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
 
-discoverBtn: {
-  backgroundColor: '#0D614E',
-  paddingVertical: 12,
-  paddingHorizontal: 28,
-  borderRadius: 12,
-},
+  discoverBtn: {
+    backgroundColor: '#0D614E',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+  },
 
-discoverText: {
-  color: '#FFFFFF',
-  fontSize: 14,
-  fontWeight: '700',
-},
+  discoverText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
-countText: {
-  marginTop: 8,
-  fontSize: 12,
-  color: '#94A3B8',
-  marginBottom:40
-},
+  countText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 40,
+  },
 });
