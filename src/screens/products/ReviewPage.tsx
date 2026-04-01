@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, FlatList } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
@@ -6,7 +6,8 @@ import { Images } from '../../common/Images'
 import Detailimages from '../../components/Detailimages'
 import { Fonts } from '../../common/Fonts'
 
-const ReviewPage = () => {
+const ReviewPage = (props: any) => {
+    
 
     const ratingData = {
         average: 4.8,
@@ -59,16 +60,17 @@ const ReviewPage = () => {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
 
-            <AppHeader
-                title="Foxtail millet (Kangni)"
-                leftIcon={Images.backIcon}
-            />
+             <AppHeader
+                    title="Foxtail millet (Kangni)"
+                    leftIcon={Images.backIcon}
+                    onLeftPress={() => props.navigation.goBack()}
+                />
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
+                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal:15 }}
             >
 
-
+               
 
                 <View style={styles.ratingContainer}>
 
@@ -104,6 +106,8 @@ const ReviewPage = () => {
                 </View>
 
                 <Text style={styles.sectionTitle}>User Photos</Text>
+
+
                 <Detailimages
                     images={product.images}
                     itemWidth={128}
@@ -113,7 +117,7 @@ const ReviewPage = () => {
 
                 <View style={styles.filterRow}>
                     {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
-                        <TouchableOpacity
+                        <Text
                             key={item}
                             style={[
                                 styles.filterBtn,
@@ -129,7 +133,7 @@ const ReviewPage = () => {
                             >
                                 {item}
                             </Text>
-                        </TouchableOpacity>
+                        </Text>
                     ))}
                 </View>
 
@@ -178,6 +182,7 @@ const styles = StyleSheet.create({
 
     ratingContainer: {
         flexDirection: 'row',
+        paddingHorizontal: 24,
         marginTop: 20,
     },
 
@@ -236,6 +241,7 @@ const styles = StyleSheet.create({
 
     sectionTitle: {
         marginTop: 20,
+        paddingHorizontal: 24,
         fontSize: 16,
         fontWeight: '700',
         marginBottom: 12,
@@ -245,24 +251,23 @@ const styles = StyleSheet.create({
     filterRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginTop: 26,
+        paddingHorizontal: 24,
+        marginTop: 10,
     },
 
     filterBtn: {
         backgroundColor: '#E6F4F1',
-        paddingHorizontal: 18,
-        paddingVertical: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
         borderRadius: 10,
         marginRight: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
+        marginBottom: 10,
+        marginTop: 12
     },
 
     filterText: {
         color: '#0D614E',
         fontSize: 12,
-        textAlign: 'center',
-
     },
     activeFilterBtn: {
         backgroundColor: '#0D614E',
@@ -276,7 +281,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8f6f6',
         borderRadius: 16,
         padding: 16,
-        marginTop: 14,
+        marginHorizontal: 10,
+        marginTop: 10,
     },
 
     reviewHeaderRow: {

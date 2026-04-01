@@ -6,6 +6,7 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
+import { Fonts } from '../common/Fonts';
 
 interface Props {
   placeholder?: string;
@@ -36,9 +37,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    // marginHorizontal: 16,
     marginVertical: 10,
     paddingHorizontal: 14,
-    height: 50,
+    height: 55,
+
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
@@ -55,6 +58,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    fontFamily : Fonts.PoppinsRegular,
     color: '#0F172A',
   },
 });

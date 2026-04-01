@@ -22,20 +22,25 @@ import HomePage from "../screens/home/HomePage";
 import consultHome from "../screens/consult/consultHome";
 import ProfilePage from "../screens/profile/ProfilePage";
 import CartPage from "../screens/cart/CartPage";
-import ProductsScreen from "../screens/products/ProductsScreen";
-import TopCategories from "../screens/products/TopCategories";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import NetworkError from "../screens/NetworkError";
 import CustomeTab from "../components/CustomeTab";
 import AppointmentScreen from "../screens/profile/Appointment";
-import ProductDetails from "../screens/products/ProductDetails";
-import OrderHistoryScreen from "../screens/profile/OrderHistory";
 import AppointmentDetailsScreen from "../screens/profile/AppointmentDetails";
 import { RootBottomParamList, RootStackParamList } from "../../type";
 import PatientDetails from "../screens/patient/PatientDetails";
 import TermsCondition from "../screens/TermsCondition";
 import Onboarding from "../screens/auth/Onboarding";
 import PatientFAQ from "../screens/PatientFAQ";
+import EditPatientDetail from "../screens/patient/EditPatientDetail";
+import OrderHistory from "../screens/orders/OrderHistory";
+import ProductsScreen from "../screens/products/ProductsScreen";
+import TopCategories from "../screens/products/TopCategories";
+import ProductDetails from "../screens/products/ProductDetails";
+import ReviewPage from "../screens/products/ReviewPage";
+import MyCart from "../screens/products/MyCart";
+import Checkout from "../screens/products/Checkout";
+import MedicalRecords from "../screens/profile/MedicalRecords";
 
 enableScreens();
 
@@ -83,9 +88,8 @@ const TabStack = () => {
         headerShown: false,
       }}
     >
-      <Tab.Screen name="Home" component={ProductsScreen} />
       <Tab.Screen name="Home" component={HomePage} />
-      <Tab.Screen name="Cart" component={CartPage} />
+      <Tab.Screen name="Cart" component={ProductsScreen} />
       <Tab.Screen name="Consult" component={consultHome} />
       {/* <Tab.Screen name="Centers" component={CenterWellness} /> */}
       <Tab.Screen name="Profile" component={ProfilePage} />
@@ -98,13 +102,20 @@ const HomeStack = () => {
   return (
     <Stack.Navigator initialRouteName="TabStack" screenOptions={hideHeader}>
       <Stack.Screen name="TabStack" component={TabStack} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="OrderHistory" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Appointments" component={AppointmentScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientDetails" component={PatientDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientFAQ" component={PatientFAQ} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="TermsCondition" component={TermsCondition} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="TopCategories" component={TopCategories} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="EditPatientDetail" component={EditPatientDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ReviewPage" component={ReviewPage} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MyCart" component={MyCart} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MedicalRecords" component={MedicalRecords} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
@@ -127,8 +138,8 @@ const AuthStack = () => {
 };
 
 
-// 🔥 SPLASH STACK  
 
+// 🔥 SPLASH STACK
 const SplashStack = () => {
   return (
     <Stack.Navigator screenOptions={hideHeader}>
@@ -143,10 +154,10 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={hideHeader}>
-      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
-      <Stack.Screen name="AuthStack" component={AuthStack} options={hideHeader} />
-      <Stack.Screen name="HomeStack" component={HomeStack} options={hideHeader} />
+    <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
+      <Stack.Screen name="SplashStack" component={SplashStack} />
+      <Stack.Screen name="AuthStack" component={AuthStack} />
+      <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>
   );
 };
@@ -161,7 +172,7 @@ const Navigator = () => {
     <NavigationContainer >
 
       {/* {isConnected ?  */}
-      <MainNavigator /> 
+      <MainNavigator />
       {/* : <NetworkError />} */}
 
     </NavigationContainer>

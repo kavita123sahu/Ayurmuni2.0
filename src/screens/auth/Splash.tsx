@@ -141,21 +141,6 @@ const Splash = (props: any) => {
     }
   }, [isFocused]);
 
-  // const getAllStoredData = async () => {
-  //   try {
-  //     const keys = await AsyncStorage.getAllKeys();
-  //     const result = await AsyncStorage.multiGet(keys);
-
-  //     const allData = {};
-  //     result.forEach(([key, value]) => {
-  //       allData[key] = value ? JSON.parse(value) : null;
-  //     });
-
-  //     return allData;
-  //   } catch (error) {
-  //     console.log('Error fetching AsyncStorage data', error);
-  //   }
-  // };
 
 
   const getUser = async () => {
@@ -169,7 +154,7 @@ const Splash = (props: any) => {
         if (result.status === 200) {
           Utils.storeData('_USER_INFO', JSONUser);
           dispatch(setUserInfo(JSONUser));
-
+          
           setTimeout(() => {
             props.navigation.replace('HomeStack', { screeen: 'Home' })
           }, 1000);
@@ -198,7 +183,7 @@ const Splash = (props: any) => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={'#466425'} barStyle={'light-content'} />
-
+      
       <Animatable.View
         animation="slideInDown"
         duration={1500}

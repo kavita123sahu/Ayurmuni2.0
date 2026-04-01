@@ -96,6 +96,9 @@ const ProfilePage = ({ navigation }: any) => {
 
     // ✅ MENU ITEM
     const MenuItem = ({ item }: any) => {
+        const isDisabled =
+            item.title === 'Settings' || item.title === 'Payments';
+
         return (
             <TouchableOpacity
                 style={styles.card}
@@ -103,18 +106,26 @@ const ProfilePage = ({ navigation }: any) => {
                 onPress={() => handleNavigation(item)}
             >
                 {/* Left Icon Box */}
-                <View style={styles.iconContainer}>
-                    <Image source={item.icon} style={styles.icon} />
-
+                <View
+                    style={[
+                        styles.iconContainer,
+                        { backgroundColor: isDisabled ? '#F8FAFC' : '#E8F3F1' },
+                    ]}
+                >
+                    <Image
+                        source={item.icon}
+                        style={[
+                            styles.icon,
+                            { tintColor: isDisabled ? '#64748B' : '#1B5E54' },
+                        ]}
+                    />
                 </View>
 
                 {/* Title */}
                 <Text style={styles.title}>{item.title}</Text>
 
-                {/* Right Arrow */}
-
+                {/* Arrow */}
                 <Image source={Images.arrow} style={{ height: 25, width: 25 }} />
-                {/* <Text style={styles.arrow}>›</Text> */}
             </TouchableOpacity>
         );
     };
@@ -138,14 +149,16 @@ const ProfilePage = ({ navigation }: any) => {
             <Header
                 title="Profile"
                 subtitle="Manage your account"
-                backIcon={require('../../assets/images/BackButton.png')}
+                backIcon={Images.backIcon}
                 onBack={() => { }}
             />
 
             <ScrollView showsVerticalScrollIndicator={false}>
 
                 {/* PROFILE CARD */}
+
                 <ProfileHeader user={user} />
+
 
                 {/* ACCOUNT */}
                 <Section title="Account">
@@ -166,7 +179,16 @@ const ProfilePage = ({ navigation }: any) => {
                 <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity> */}
 
-                <PrimaryButton title="Logout" page='profile' onPress={logout} />
+                <PrimaryButton
+                    title="Logout"
+                    icon={Images.shopCart}
+                    backgroundColor=""
+                    textColor="#FFFFFF"
+                    onPress={logout}
+
+
+
+                />
 
 
                 <Text style={styles.version}>APP VERSION 1.2</Text>
@@ -183,7 +205,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
-        paddingBottom: 60
+        paddingBottom: 100
 
     },
 
@@ -217,7 +239,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 14,
         borderRadius: 14,
-        borderWidth: 1.5, borderColor: Colors.BGIcon,
+        borderWidth: 1.5, borderColor: "#F1F5F9",
         marginBottom: 12,
 
 
@@ -265,9 +287,10 @@ const styles = StyleSheet.create({
 
     version: {
         textAlign: 'center',
-        fontFamily: Fonts.PoppinsRegular,
+        fontFamily: Fonts.PoppinsMedium,
         fontSize: 14,
         marginTop: 10,
-        color: Colors.subTextColor,
+        paddingVertical: 10,
+        color: "#A1A1AA",
     },
 });

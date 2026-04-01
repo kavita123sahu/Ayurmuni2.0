@@ -1,11 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { MaterialIcons } from '../common/Vector';
+import { Fonts } from '../common/Fonts';
+import { Colors } from '../common/Colors';
+import { Images } from '../common/Images';
+import { Styles } from '../common/Styles';
 
 type Props = {
   title: string;
   status: string;
   progress: number; // 0 - 100
+  
 
 };
 
@@ -13,6 +18,7 @@ const PrakritiCard: React.FC<Props> = ({
   title,
   status,
   progress,
+  
 }) => {
   console.log("progressss", progress);
   // 🔥 Theme logic
@@ -28,11 +34,11 @@ const PrakritiCard: React.FC<Props> = ({
   const getColor = () => {
     switch (theme) {
       case 'green':
-        return '#22C55E';
+        return '#10B981';
       case 'yellow':
-        return '#F5A623';
+        return '#FFC107';
       default:
-        return '#FF4D4F';
+        return '#F43F5E';
     }
   };
 
@@ -57,17 +63,18 @@ const PrakritiCard: React.FC<Props> = ({
         <View>
           <Text style={styles.title}>{title}</Text>
           <Text style={[styles.status, { color }]}>
-            {progress === 100 ? 'Completed' : status}
+            {progress === 100 ? 'Profile Complete' : status}
           </Text>
         </View>
 
         {/* Icon */}
         <View style={[styles.iconBox, { backgroundColor: bgColor }]}>
-          <MaterialIcons
+          {/* <MaterialIcons
             name={progress === 100 ? 'verified' : 'access-time'}
             size={20}
             color={color}
-          />
+          /> */}
+          <Image  source={progress === 100 ? Images.approved : Images.clock} style={Styles.IconSize} tintColor={progress===100 ? Colors.green : progress > 30 ? "#FFC107": "#F43F5E"}/>
         </View>
       </View>
 
@@ -101,7 +108,9 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 16,
+    // padding: 16,
+    paddingHorizontal:20,
+    paddingVertical:20,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E5EAF0',
@@ -115,14 +124,14 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1D2939',
+   fontFamily : Fonts.PoppinsMedium,
+    color: Colors.textColor,
   },
 
   status: {
     marginTop: 4,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    fontFamily : Fonts.PoppinsMedium
   },
 
   iconBox: {
@@ -141,20 +150,21 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 12,
-    color: '#98A2B3',
-    fontWeight: '500',
+    color: '#94A3B8',
+    marginBottom:4,
+   fontFamily : Fonts.PoppinsSemiBold
   },
 
   percent: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily : Fonts.PoppinsSemiBold
   },
 
   progressBarBg: {
     marginTop: 6,
-    height: 8,
+    height: 9,
     backgroundColor: '#E5EAF0',
-    borderRadius: 10,
+    borderRadius: 9,
     overflow: 'hidden',
   },
 

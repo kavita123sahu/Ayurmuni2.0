@@ -1,5 +1,5 @@
 export const Images = {
-    backIcon: require('../assets/images/BackButton.png'),
+    backIcon: require('../assets/images/backButton.png'),
     newlogo: require('../assets/images/MainIcon.png'),
     arrow: require('../assets/images/arrow.png'),
     MobileLogo: require('../assets/images/MobileLogo.png'),
@@ -10,7 +10,6 @@ export const Images = {
     robotIcon: require('../assets/images/friendly-robot.png'),
     askbutton: require('../assets/images/AskButton.png'),
     organicIcon: require('../assets/images/organicIcon.png'),
-    medicines: require('../assets/images/medicines.png'),
     consultant: require('../assets/images/consultant.png'),
     askmuniIcon: require('../assets/images/askMuniIcon.png'),
     wellness: require('../assets/images/wellnessIcon.png'),
@@ -36,6 +35,7 @@ export const Images = {
     googleIcon: require('../assets/images/googleIcon.png'),
     phoneIcon: require('../assets/images/phoneIcon.png'),
     frame1: require('../assets/images/Frame1.png'),
+    approved: require('../assets/images/approved.png'),
     spinner: require('../assets/images/Spinner-Gradient.png'),
     star: require('../assets/images/grade.png'),
     nutritionIcon: require('../assets/images/nutritionIcon.png'),
@@ -61,8 +61,7 @@ export const Images = {
     medicine: require('../assets/images/medicine.png'),
 
 
-
-
+    upload: require('../assets/images/Upload.png'),
 
     verify: require('../assets/images/verify.png'),
     editButton: require('../assets/images/editButton.png'),
@@ -97,6 +96,15 @@ export const Images = {
     upi: require('../assets/images/upi.png'),
     truck: require('../assets/images/truck.png'),
     // location: require('../assets/images/location.png'),
+
+
+
+    medicine: require('../assets/images/medicine.png'),
+    products: require('../assets/images/products.png'),
+    moreButton: require('../assets/images/moreButton.png'),
+
+    bookDoctor: require('../assets/images/bookDoctor.png'),
+    BackgroundImage: require('../assets/images/BGImage.png'),
 
 
 

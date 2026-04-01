@@ -265,7 +265,9 @@ const Onboarding = (props: any) => {
                 Utils.storeData('_USER_INFO', jsonResponse.data);
                 // Utils.storeData('_USER_ID', jsonResponse?.data?.user);
                 showSuccessToast('Welcome to Ayurmuni', 'success');
-                props.navigation.navigate('PatientFAQ');
+                props.navigation.navigate('PatientFAQ',{
+                    steps : false
+                });
             } else {
                 setIsLoading(false);
                 showSuccessToast(message || 'Login failed', 'error');
@@ -292,7 +294,7 @@ const Onboarding = (props: any) => {
             >
                 <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                     <Image
-                        source={require('../../assets/images/BackButton.png')}
+                        source={Images.backIcon}
                         style={styles.backIcon}
                     />
                 </TouchableOpacity>
@@ -377,7 +379,7 @@ const Onboarding = (props: any) => {
                                         ]}
                                     />
                                 </View>
-
+                                
                             </View>
 
                             {/* GENDER */}

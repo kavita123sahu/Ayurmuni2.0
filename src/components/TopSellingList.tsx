@@ -11,9 +11,11 @@ import {
 interface Props {
   data: any[];
   isGrid?: boolean;
+  navigation: any
 }
 
-const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
+const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) => {
+  console.log("navigationnnnnnnnn", navigation)
   const [showAll, setShowAll] = useState(false);
 
   const displayData = showAll ? data : data.slice(0, 6);
@@ -40,9 +42,9 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
       columnWrapperStyle={
         isGrid
           ? {
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }
+            justifyContent: 'space-between',
+            marginBottom: 14,
+          }
           : undefined
       }
 
@@ -52,8 +54,7 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
         }
 
         return (
-          <View style={[styles.card, isGrid && styles.gridCard]}>
-            
+          <TouchableOpacity onPress={() => navigation.navigate('ProductDetails')} style={[styles.card, isGrid && styles.gridCard]}>
             {/* BADGE */}
             {item.tag && (
               <View style={styles.badge}>
@@ -95,13 +96,15 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
                 />
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         );
       }}
 
       ListFooterComponent={
         isGrid && data.length > 6 ? (
           <View style={styles.footerContainer}>
+
+            {/* BUTTON */}
             {!showAll && (
               <TouchableOpacity
                 style={styles.discoverBtn}
@@ -111,9 +114,11 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false }) => {
               </TouchableOpacity>
             )}
 
+            {/* COUNT TEXT */}
             <Text style={styles.countText}>
               Showing {showAll ? data.length : 6} of {data.length} items
             </Text>
+
           </View>
         ) : null
       }
@@ -128,7 +133,7 @@ const styles = StyleSheet.create({
     width: 160,
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
-    marginRight: 14, // ✅ only for horizontal list
+    marginRight: 14, 
     borderWidth: 1,
     borderColor: '#F1F5F9',
     height: 240,
@@ -257,6 +262,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     color: '#94A3B8',
-    marginBottom: 40,
+    marginBottom: 40
   },
 });

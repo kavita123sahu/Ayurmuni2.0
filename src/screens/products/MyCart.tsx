@@ -42,10 +42,10 @@ const initialData: CartItem[] = [
     },
 ];
 
-const MyCart: React.FC = () => {
+const MyCart: React.FC = (props: any) => {
     const [cart, setCart] = useState<CartItem[]>(initialData);
     const [promoCode, setPromoCode] = useState('');
-    const [discount, setDiscount] = useState(10.00); 
+    const [discount, setDiscount] = useState(10.00);
 
     const increaseQty = (id: string) => {
         setCart(prev =>
@@ -79,7 +79,7 @@ const MyCart: React.FC = () => {
             setDiscount(50);
         } else {
             setDiscount(10);
-            Alert.alert('Invalid Promo Code'); 
+            Alert.alert('Invalid Promo Code');
         }
     };
 
@@ -88,6 +88,7 @@ const MyCart: React.FC = () => {
             <AppHeader
                 title="My Cart"
                 leftIcon={Images.backIcon}
+                onLeftPress={()=>props.navigation.goBack()}
                 rightIcon={Images.deleteitem}
             />
 
@@ -107,13 +108,13 @@ const MyCart: React.FC = () => {
                         </View>
 
                         <View style={styles.qtyBox}>
-                            <TouchableOpacity onPress={() => increaseQty(item.id)}>
+                            <TouchableOpacity onPress={() => increaseQty(item.id)} style={{ padding: 10, borderRadius: 5, }} >
                                 <Text style={styles.plus}>+</Text>
                             </TouchableOpacity>
 
                             <Text style={styles.qty}>{item.quantity}</Text>
 
-                            <TouchableOpacity onPress={() => decreaseQty(item.id)}>
+                            <TouchableOpacity onPress={() => decreaseQty(item.id)} style={{ padding: 10, borderRadius: 5 }}>
                                 <Text style={styles.minus}>−</Text>
                             </TouchableOpacity>
                         </View>
@@ -150,15 +151,16 @@ const MyCart: React.FC = () => {
                     <Text style={styles.tax}>INCLUSIVE OF TAXES</Text>
                 </View>
 
-                <TouchableOpacity style={styles.checkout}>
-                    <View style={styles.checkoutRow}>
-                        <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-
-                        <Image source={Images.arrowRight} style={styles.checkoutIcon} />
-                    </View>
-                </TouchableOpacity>
-
             </ScrollView>
+
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('Checkout')}>
+                <View style={styles.checkoutRow}>
+                    <Text style={styles.checkoutText}>Proceed to Checkout</Text>
+
+                    <Image source={Images.arrowRight} style={styles.checkoutIcon} />
+                </View>
+            </TouchableOpacity>
+
         </SafeAreaView>
     );
 };
@@ -324,10 +326,12 @@ const styles = StyleSheet.create({
 
     checkout: {
         backgroundColor: '#0D614E',
-        marginTop: 20,
+        // marginTop: 20,
         paddingVertical: 18,
         borderRadius: 14,
         alignItems: 'center',
+        marginHorizontal: 20,
+        // gap: 12,
     },
 
     checkoutRow: {
@@ -351,7 +355,7 @@ const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',   
+        alignItems: 'center',
         marginBottom: 10,
     },
 
@@ -362,13 +366,13 @@ const styles = StyleSheet.create({
     },
 
     rowValue: {
-        color: '#0F172A',   
+        color: '#0F172A',
         fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     discountValue: {
-        color: '#0D614E',   
+        color: '#0D614E',
     },
 
     // 🔥 TOTAL FIX
@@ -394,7 +398,8 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#94A3B8',
         textAlign: 'right',
-        top:-10
+        fontFamily: Fonts.PoppinsRegular,
+        top: -10
     },
 
 

@@ -5,13 +5,13 @@ import { Fonts } from "./Fonts";
 
 export const Styles = {
    name: {
-    fontSize: 18,
+    fontSize: 16,
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   specialty: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
     fontFamily: Fonts.PoppinsMedium,
   },
@@ -38,11 +38,11 @@ export const Styles = {
   
   sectionTitle: {
     marginTop: 15,
-    marginHorizontal: 16,
+    marginHorizontal: 5,
     marginBottom: 6,
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: Colors.textColor,
+    color: Colors.headercolor,
   },
 
   outlineText: {
@@ -52,6 +52,7 @@ export const Styles = {
 
   cancelText: {
     color: '#EF4444',
+     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
@@ -73,7 +74,7 @@ export const Styles = {
   },
  IconSize: {
     height: 22,
-    width: 22
+    width: 22,
   },
 
 };

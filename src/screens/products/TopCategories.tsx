@@ -7,6 +7,7 @@ import SearchBar from '../../components/SearchBar';
 import PromoCard from '../../components/PromoCard';
 import SectionHeader from '../../components/SectionHeader';
 import TopSellingList from '../../components/TopSellingList';
+import { Images } from '../../common/Images';
 
 const TopCategories = (props: any) => {
 
@@ -237,7 +238,7 @@ const TopCategories = (props: any) => {
       <Header
         title={categoryName}
         subtitle="Organic product"
-        backIcon={require('../../assets/images/BackButoon.png')}
+        backIcon={Images.backIcon}
         onBack={() => navigation.goBack()}
       />
 
@@ -253,7 +254,7 @@ const TopCategories = (props: any) => {
         showButton={false}
       />
       <SectionHeader title="Top  Selling Products" actionText="View all" />
-      <TopSellingList data={topSelling} isGrid={true} />
+      <TopSellingList data={topSelling} isGrid={true}  navigation={props.navigation}  />
     </View>
   );
 };

@@ -13,8 +13,8 @@ type Props = {
   title: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
-  leftIcon?: any;     
-  rightIcon?: any;    
+  leftIcon?: any;
+  rightIcon?: any;
 };
 
 const AppHeader: React.FC<Props> = ({
@@ -33,6 +33,7 @@ const AppHeader: React.FC<Props> = ({
         )}
       </TouchableOpacity>
 
+
       <Text style={styles.title}>{title}</Text>
 
       {rightIcon ? (
@@ -40,12 +41,20 @@ const AppHeader: React.FC<Props> = ({
           <Image source={rightIcon} style={styles.icon} />
         </TouchableOpacity>
       ) : (
-        <View style={styles.iconBox} /> 
+        <View style={styles.iconBox} />
       )}
 
     </View>
   );
 };
+
+
+//  rightIcon === "skip" ? (
+//         <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
+//           {/* <Image source={rightIcon} style={styles.icon} /> */}
+//           <Text style={{ color: 'red' }}>Skip</Text>
+//         </TouchableOpacity>
+//       ) :
 
 export default AppHeader;
 
@@ -54,23 +63,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: 20,
     paddingBottom: 12,
     backgroundColor: '#fff',
+    paddingTop: 25,
   },
 
   iconBox: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   icon: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     resizeMode: 'contain',
   },
 

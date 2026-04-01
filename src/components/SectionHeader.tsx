@@ -1,6 +1,7 @@
 // components/SectionHeader.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Fonts } from '../common/Fonts';
 
 interface Props {
   title: string;
@@ -26,18 +27,19 @@ export default SectionHeader;
 
 const styles = StyleSheet.create({
   container: {
+    marginHorizontal: 4,  //14
     marginTop: 20,
     marginBottom: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   title: {
-    fontWeight: '700',
+    fontFamily :Fonts.PoppinsSemiBold,
     fontSize: 18,
   },
   action: {
     color: '#0D614E',
     fontSize: 14,
-    fontWeight: '700',
+   fontFamily : Fonts.PoppinsSemiBold
   },
 });

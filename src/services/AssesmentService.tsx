@@ -40,9 +40,9 @@ export const AssesmentSubmit = async (data: Object) => {
             }
             console.log(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter)
             let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter);
-            let response = await serverResponse.json();
-            console.log("resposeeesubmitttt-->", response)
-            resolve(response);
+            // let response = await serverResponse.json();
+            // console.log("resposeeesubmitttt-->", response)
+            resolve(serverResponse);
         }
         catch (error) {
             reject(error);

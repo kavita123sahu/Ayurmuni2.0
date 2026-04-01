@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   FlatList,
   View,
@@ -6,29 +6,47 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+// 🔥 Dynamic sizing (5 items visible approx)
+const ITEM_SIZE = width / 5;
 
 interface Category {
   id: string;
   name: string;
   icon: any;
-
 }
 
-const CategoryList = ({ data, navigation }: any) => {
-    console.log("navigation=========>",navigation)
+const CategoryList = ({ data = [], navigation }: any) => {
 
-  const handlePress = (item: Category) => {
+  const handlePress = useCallback((item: Category) => {
     navigation.navigate('TopCategories', {
       categoryName: item.name,
     });
-    
-  };
+  }, [navigation]);
+
+  const renderItem = ({ item }: { item: Category }) => (
+    <TouchableOpacity
+      style={[styles.item, { width: ITEM_SIZE }]}
+      onPress={() => handlePress(item)}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.circle, { width: ITEM_SIZE - 10, height: ITEM_SIZE - 10 }]}>
+        <Image source={item.icon} style={styles.icon} />
+      </View>
+
+      <Text numberOfLines={1} style={styles.text}>
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <FlatList
       horizontal
-      showsHorizontalScrollIndicator={false}
       data={data}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{gap:14}}
@@ -49,25 +67,30 @@ const CategoryList = ({ data, navigation }: any) => {
   );
 };
 
-export default CategoryList;
+export default React.memo(CategoryList);
 
 const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 8,
+  },
+
   item: {
     alignItems: 'center',
   },
+
   circle: {
-    width: 70,
-    height: 70,
-    borderRadius: 24,
+    borderRadius: 20,
     backgroundColor: '#0D614E1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   icon: {
-    width: 34,
-    height: 34,
+    width: 28,
+    height: 28,
     resizeMode: 'contain',
   },
+
   text: {
     marginTop: 6,
     fontSize: 12,
