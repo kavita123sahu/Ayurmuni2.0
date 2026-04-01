@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     },
 
     content: {
-        padding: 20,
+        paddingBottom: 20, paddingHorizontal: 20
     },
 
     sectionTitle: {
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
 
     home: {
         fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 16,
+        fontSize: 14,
         color: '#0F172A'
     },
 
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
         paddingVertical: 18,
         borderRadius: 14,
         alignItems: 'center',
-        marginHorizontal:20
+        marginHorizontal: 20
     },
 
     checkoutRow: {
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
         height: 24,
         marginLeft: 8,
         tintColor: '#fff',
-        top:-2
+        top: -2
     },
 
 });

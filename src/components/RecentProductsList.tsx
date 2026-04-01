@@ -22,15 +22,12 @@ const RecentProductsList: React.FC<Props> = ({ data }) => {
       renderItem={({ item }) => (
         <View style={styles.card}>
 
-          {/* IMAGE BOX */}
           <View style={styles.imageBox}>
             <Image source={item.image} style={styles.img} />
           </View>
 
-          {/* RIGHT CONTENT */}
           <View style={styles.rightSection}>
 
-            {/* TOP TEXT */}
             <View>
               <Text style={styles.name} numberOfLines={1}>
                 {item.name}
@@ -41,7 +38,6 @@ const RecentProductsList: React.FC<Props> = ({ data }) => {
               </Text>
             </View>
 
-            {/* 🔥 BOTTOM ROW (IMPORTANT) */}
             <View style={styles.bottomRow}>
               <Text style={styles.price}>
                 ₹ {item.price.toFixed(2)}
@@ -67,8 +63,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth:1,
-    marginHorizontal: 16,
-    marginVertical: 8,
     padding: 14,
     borderColor:'#F1F5F9',
     backgroundColor: '#FFFFFF',

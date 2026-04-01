@@ -26,9 +26,8 @@ export default SectionHeader;
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 16,
     marginTop: 20,
-    marginBottom: 8,
+    marginBottom: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
