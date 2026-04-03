@@ -24,7 +24,7 @@ const NetworkError: React.FC<NetworkErrorProps> = ({ onGoBack }) => {
             <View style={styles.topSection}>
                 <Image source={Images.networkissue} resizeMode='cover' style={{ height: 150, width: 150 }} />
             </View>
-
+            
             <ImageBackground
                 source={Images.ellipsebackground}
                 style={styles.bottomSection}>

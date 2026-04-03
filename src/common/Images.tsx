@@ -15,12 +15,10 @@ export const Images = {
     linemark: require('../assets/images/Linemark.png'),
     takechnageIcons: require('../assets/images/TakechangeIcon.png'),
 
-    
+
     ellipsebackground: require('../assets/images/ellipsebackground.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),
-
     user: require('../assets/images/user.png'),
-
     DebitCard: require('../assets/images/debitcard.png'),
     UPIMethod: require('../assets/images/UPIMethod.png'),
 
@@ -107,8 +105,6 @@ export const Images = {
     truck: require('../assets/images/truck.png'),
     bellnotification: require('../assets/images/bellnotification.png'),
 
-
-    
     currentLocation: require('../assets/images/currentLocation.png'),
     sosIcon: require('../assets/images/sosIcon.png'),
     doctorSOS: require('../assets/images/doctorSOS.png'),
@@ -130,14 +126,11 @@ export const Images = {
     tickk: require('../assets/images/tickk.png'),
     warning: require('../assets/images/warning.png'),
     doctorImage: require('../assets/images/doctorImage.png'),
-    
+
 
 
     bookDoctor: require('../assets/images/bookDoctor.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),
-
-
-
     Email: require('../assets/images/email.png'),
     Biometric: require('../assets/images/biometric.png'),
     HelpCenter: require('../assets/images/helpcenter.png'),
