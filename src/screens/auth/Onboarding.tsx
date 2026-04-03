@@ -265,9 +265,7 @@ const Onboarding = (props: any) => {
                 Utils.storeData('_USER_INFO', jsonResponse.data);
                 // Utils.storeData('_USER_ID', jsonResponse?.data?.user);
                 showSuccessToast('Welcome to Ayurmuni', 'success');
-                props.navigation.navigate('PatientFAQ',{
-                    steps : false
-                });
+                props.navigation.navigate('PatientFAQ');
             } else {
                 setIsLoading(false);
                 showSuccessToast(message || 'Login failed', 'error');
@@ -337,7 +335,7 @@ const Onboarding = (props: any) => {
                                         {/* SMALL GREEN CIRCLE */}
                                         <TouchableOpacity style={styles.smallCircle} onPress={handleAddImage}>
                                             <Image
-                                                source={Images.camera}
+                                                source={Images.calender}
                                                 style={styles.cameraImage}
                                             />
                                         </TouchableOpacity>
@@ -379,7 +377,7 @@ const Onboarding = (props: any) => {
                                         ]}
                                     />
                                 </View>
-                                
+
                             </View>
 
                             {/* GENDER */}
@@ -515,7 +513,7 @@ const styles = StyleSheet.create({
         marginTop: 40,
         marginBottom: 10,
         paddingHorizontal: 20,
-        marginLeft:20
+        marginLeft: 20
 
     },
 
@@ -568,7 +566,7 @@ const styles = StyleSheet.create({
         width: 140,
         height: 140,
         borderRadius: 70,
-        backgroundColor: '#0D614E1A', 
+        backgroundColor: '#0D614E1A',
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',

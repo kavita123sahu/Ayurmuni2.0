@@ -37,17 +37,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-<<<<<<< HEAD
-    // marginHorizontal: 16,
-    marginVertical: 10,
-    paddingHorizontal: 14,
-    height: 55,
-
-=======
     marginVertical: 10,
     paddingHorizontal: 14,
     height: 50,
->>>>>>> dev_abhay
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,

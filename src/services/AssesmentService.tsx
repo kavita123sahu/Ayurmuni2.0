@@ -5,6 +5,12 @@ import { BaseUrl, Method } from "../config/Key";
 export const GetQuestionOptions = async () => {
 
     return new Promise(async (resolve, reject) => {
+
+        const customer_id = await Utils.getData('_CUSTOMER_ID');
+        const user = await Utils.getData('_USER_INFO');
+        const id = customer_id || user?.id;
+        console.log("userprofile---->>>", user, customer_id, "id===>", id);
+
         try {
             let fetchParameter = {
                 method: Method.GET,
@@ -13,8 +19,9 @@ export const GetQuestionOptions = async () => {
                     'Content-Type': 'application/json',
                 },
             }
-
-            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/questions/`, fetchParameter);
+            console.log("urllassessmenttttttt", BaseUrl.base_url + `healthcare/ayurveda/questions/?customer_id=${id}`)
+            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/questions/?customer_id=${id}`, fetchParameter);
+            console.log("questionnnnnnnnnnnnnn", serverResponse)
             let response = await serverResponse.json();
             resolve(response);
         }

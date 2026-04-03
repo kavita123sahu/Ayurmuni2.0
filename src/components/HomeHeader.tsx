@@ -4,14 +4,20 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
+    Image,
 } from 'react-native';
 import { MaterialIcons, Feather } from '../common/Vector';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import * as ProfileServices from '../services/ProfileServices';
 import { Utils } from '../common/Utils';
+import { Fonts } from '../common/Fonts';
+import { Colors } from '../common/Colors';
+import { Images } from '../common/Images';
+import { Styles } from '../common/Styles';
 
 interface Address {
     city: string;
+    
     house_details: string;
     is_default: boolean;
 }
@@ -30,6 +36,7 @@ const HomeHeader = () => {
 
     // 🔥 Optimized API Call
     const fetchUserData = useCallback(async () => {
+     
         try {
             const token = await Utils.getData('_TOKEN');
             if (!token) return;
@@ -41,9 +48,13 @@ const HomeHeader = () => {
 
             setUser(json);
 
+            console.log("jsonnnnnnnnnnnnnn", json);
+
             const defaultAddress = json.addresses?.find(
                 (item) => item.is_default
             );
+
+            console.log("addresssssssssssssssss", defaultAddress)
 
             setAddress(defaultAddress || null);
         } catch (error) {
@@ -65,7 +76,6 @@ const HomeHeader = () => {
                 {/* LEFT SECTION */}
                 <View style={styles.leftSection}>
 
-                    {/* Profile Avatar */}
                     <TouchableOpacity
                         style={styles.profileCircle}
                         onPress={() => navigation.navigate('Profile')}
@@ -75,16 +85,28 @@ const HomeHeader = () => {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Location */}
-                    <View style={styles.locationContainer}>
-                        <Text style={styles.locationLabel}>Your Location</Text>
+                    {/* 📍 Location Section */}
+                    <View style={styles.locationMain}>
 
-                        <View style={styles.locationRow}>
-                            <MaterialIcons name="location-on" size={18} color="#1F7A63" />
-                            <Text style={styles.locationText}>
-                                {address?.city || 'Select City'}
+                        <View style={styles.profileCircle}>
+                            <Image source={Images.location} tintColor={Colors.primaryColor} style={{ height: 22, width: 22, }} />
+
+                        </View>
+                        <View style={styles.locationContainer}>
+
+                            {/* Header */}
+                            <Text style={styles.locationLabel}>
+                                {address?.city || 'Select Location'}
                             </Text>
-                            <Feather name="chevron-down" size={16} />
+
+                            {/* Sub Header Row */}
+                            <View style={styles.locationRow}>
+                                <Text style={styles.locationText}>
+                                    {address?.house_details.slice(0,22) || 'Select City'}
+                                </Text>
+                                <Feather name="chevron-down" size={16} />
+                            </View>
+
                         </View>
                     </View>
 
@@ -112,8 +134,8 @@ export default React.memo(HomeHeader);
 
 const styles = StyleSheet.create({
     container: {
-        padding: 16,
-        marginTop:15,
+        padding: 15,
+        marginTop: 15,
         backgroundColor: '#F7F7F7',
     },
 
@@ -126,11 +148,10 @@ const styles = StyleSheet.create({
     leftSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
     },
 
-    locationContainer: {
-        marginLeft: 10,
-    },
+
 
     profileCircle: {
         height: 42,
@@ -147,24 +168,33 @@ const styles = StyleSheet.create({
         color: '#1D2939',
     },
 
+    locationMain: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+
+    locationContainer: {
+        flexDirection: 'column',
+    },
+
     locationLabel: {
         fontSize: 12,
-        color: '#98A2B3',
+        color: Colors.textColor,
+        fontFamily: Fonts.PoppinsMedium
     },
 
     locationRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 2,
+        gap: 4,
     },
 
     locationText: {
-        fontSize: 15,
-        fontWeight: '600',
-        marginHorizontal: 4,
-        color: '#1D2939',
+        fontSize: 14,
+       fontFamily : Fonts.PoppinsSemiBold,
+        color: '#111827',
     },
-
     rightIcons: {
         flexDirection: 'row',
         alignItems: 'center',

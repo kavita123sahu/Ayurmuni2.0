@@ -11,11 +11,12 @@ import SectionHeader from '../../components/SectionHeader';
 import ActionCards from '../../components/ActionCards';
 import { Images } from '../../common/Images';
 import BrandList from '../../components/BrandList';
+import { useNavigation } from '@react-navigation/native';
 
 
 const MedicineScreen = () => {
 
-    // const navigation = useNavigation();
+    const navigation = useNavigation();
     const productImage = require('../../assets/images/RecentsImage.png');
     const categoryImage = require('../../assets/images/CategiryImage.png');
 
@@ -100,11 +101,12 @@ const MedicineScreen = () => {
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
 
             <Header
-                title="Products"
-                subtitle="Medicine Store"
-                backIcon={require('../../assets/images/BackButton.png')}
-                onBack={() => { }}
+                title="Medicine Store"
+                subtitle="Health & Wellness"
+                backIcon={Images.backIcon}
+                onBack={() => { navigation.goBack() }}
             />
+
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
@@ -138,12 +140,12 @@ const MedicineScreen = () => {
                 <RecentProductsList data={recentProducts} />
 
                 <SectionHeader title="Shop by Concern" />
-                <CategoryList data={categories} />
+                <CategoryList data={categories} navigation ={navigation} />
 
                 <SectionHeader title="Trusted Brands" />
-               
-               
-               <BrandList
+
+
+                <BrandList
                     data={[
                         {
                             id: '1',
@@ -166,10 +168,10 @@ const MedicineScreen = () => {
 
 
                 <SectionHeader title="Medicines" actionText="View all" />
-                <TopSellingList data={Medicines} />
+                <TopSellingList data={Medicines} navigation={navigation} />
 
                 <SectionHeader title="Ayurveda" actionText="View all" />
-                <TopSellingList data={Medicines} />
+                <TopSellingList data={Medicines} navigation={navigation} />
 
             </ScrollView>
         </SafeAreaView>

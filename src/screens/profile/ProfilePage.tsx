@@ -40,7 +40,8 @@ const ProfilePage = ({ navigation }: any) => {
 
     const preferenceMenu = [
         { id: 6, title: 'Payments', icon: Images.payment },
-        { id: 7, title: 'Settings', icon: Images.setting },
+         { id: 7, title: 'FAQ', icon: Images.FAQ },
+        { id: 8, title: 'Settings', icon: Images.setting },
     ];
 
     // ✅ TITLE BASED NAVIGATION
@@ -64,17 +65,24 @@ const ProfilePage = ({ navigation }: any) => {
                 break;
 
             case 'Favourite Doctor':
-                navigation.navigate('FavDoctors');
+                navigation.navigate('HelpCenterScreen');
                 break;
 
             case 'Payments':
-                navigation.navigate('Payments');
+                navigation.navigate('PaymentsScreen');
                 break;
 
             case 'Settings':
                 navigation.navigate('Settings');
                 break;
 
+                
+            case 'FAQ':
+                navigation.navigate('FAQScreen');
+                break;
+
+                
+          
             default:
                 console.log('No navigation defined for:', item.title);
         }
@@ -97,13 +105,15 @@ const ProfilePage = ({ navigation }: any) => {
     // ✅ MENU ITEM
     const MenuItem = ({ item }: any) => {
         const isDisabled =
-            item.title === 'Settings' || item.title === 'Payments';
+            item.title === 'Settings' || item.title === 'Payments' || item.title ==='FAQ';
 
         return (
             <TouchableOpacity
                 style={styles.card}
                 activeOpacity={0.7}
-                onPress={() => handleNavigation(item)}
+                onPress={() => 
+                    
+                    handleNavigation(item)}
             >
                 {/* Left Icon Box */}
                 <View
@@ -181,9 +191,11 @@ const ProfilePage = ({ navigation }: any) => {
 
                 <PrimaryButton
                     title="Logout"
-                    icon={Images.shopCart}
-                    backgroundColor=""
-                    textColor="#FFFFFF"
+                    icon={Images.logout}
+                    backgroundColor="#FEF2F2"
+                    textColor={Colors.errorColor}
+                    borderColor='#FFCECE'
+                    TextFont={Fonts.PoppinsRegular}
                     onPress={logout}
 
 

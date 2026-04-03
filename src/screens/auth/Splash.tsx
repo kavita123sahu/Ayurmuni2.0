@@ -191,7 +191,7 @@ const Splash = (props: any) => {
         style={styles.logoContainer}
       >
         <Image
-          source={Images.splashlogo}
+          source={Images.FinalLogo}
           style={styles.logo}
           resizeMode="contain"
         />

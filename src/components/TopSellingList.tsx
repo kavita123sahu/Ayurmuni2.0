@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { Fonts } from '../common/Fonts';
 
 interface Props {
   data: any[];
@@ -54,12 +55,7 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
         }
 
         return (
-<<<<<<< HEAD
           <TouchableOpacity onPress={() => navigation.navigate('ProductDetails')} style={[styles.card, isGrid && styles.gridCard]}>
-=======
-          <View style={[styles.card, isGrid && styles.gridCard]}>
-            
->>>>>>> dev_abhay
             {/* BADGE */}
             {item.tag && (
               <View style={styles.badge}>
@@ -108,24 +104,6 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
       ListFooterComponent={
         isGrid && data.length > 6 ? (
           <View style={styles.footerContainer}>
-<<<<<<< HEAD
-
-            {/* BUTTON */}
-            {!showAll && (
-              <TouchableOpacity
-                style={styles.discoverBtn}
-                onPress={() => setShowAll(true)}
-              >
-                <Text style={styles.discoverText}>Discover More</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* COUNT TEXT */}
-            <Text style={styles.countText}>
-              Showing {showAll ? data.length : 6} of {data.length} items
-            </Text>
-
-=======
             {!showAll && (
               <TouchableOpacity
                 style={styles.discoverBtn}
@@ -138,7 +116,6 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
             <Text style={styles.countText}>
               Showing {showAll ? data.length : 6} of {data.length} items
             </Text>
->>>>>>> dev_abhay
           </View>
         ) : null
       }
@@ -274,18 +251,14 @@ const styles = StyleSheet.create({
 
   discoverText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 14, fontFamily : Fonts.PoppinsMedium,
   },
 
   countText: {
     marginTop: 8,
     fontSize: 12,
     color: '#94A3B8',
-<<<<<<< HEAD
+    fontFamily : Fonts.PoppinsRegular,
     marginBottom: 40
-=======
-    marginBottom: 40,
->>>>>>> dev_abhay
   },
 });

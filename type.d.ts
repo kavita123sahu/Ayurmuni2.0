@@ -27,7 +27,13 @@ export type RootStackParamList = {
     MyCart : undefined;
     Checkout : undefined;
     MedicalRecords: undefined;
-
+    OrderConfirmation : undefined;
+    MedicineScreen : undefined;
+    ProductsScreen: undefined;
+    FAQScreen: undefined;
+    HelpCenterScreen : undefined;
+Settings : undefined;
+PaymentsScreen : undefined;
 };
 
 

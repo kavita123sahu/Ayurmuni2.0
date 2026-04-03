@@ -177,6 +177,7 @@ const ProductDetails = (props: any) => {
                         onPress={() => props.navigation.navigate('MyCart')}
                         backgroundColor="#0D614E"
                         textColor="#FFFFFF"
+                          TextFont={Fonts.PoppinsRegular}
                     />
                 </View>
 

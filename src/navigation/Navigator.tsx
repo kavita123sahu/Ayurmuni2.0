@@ -41,6 +41,12 @@ import ReviewPage from "../screens/products/ReviewPage";
 import MyCart from "../screens/products/MyCart";
 import Checkout from "../screens/products/Checkout";
 import MedicalRecords from "../screens/profile/MedicalRecords";
+import OrderConfirmation from "../screens/products/OrderConfirmation";
+import MedicineScreen from "../screens/medicines/MedicineScreen";
+import FAQScreen from "../screens/profile/FAQScreen";
+import HelpCenterScreen from "../screens/profile/HelpCenter";
+import SettingsScreen from "../screens/profile/Settings";
+import PaymentsScreen from "../screens/profile/PaymentScreen";
 
 enableScreens();
 
@@ -116,6 +122,13 @@ const HomeStack = () => {
       <Stack.Screen name="MyCart" component={MyCart} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="MedicalRecords" component={MedicalRecords} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MedicineScreen" component={MedicineScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProductsScreen" component={ProductsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="FAQScreen" component={FAQScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

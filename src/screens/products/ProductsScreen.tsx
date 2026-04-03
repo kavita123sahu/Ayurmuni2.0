@@ -101,7 +101,7 @@ const ProductsScreen = () => {
           title="Products"
           subtitle="Choose best product"
           backIcon={Images.backIcon}
-          onBack={() => {}}
+          onBack={() => {navigation.goBack()}}
        />
       <ScrollView
         showsVerticalScrollIndicator={false}

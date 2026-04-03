@@ -150,6 +150,7 @@ const MedicalRecords = (props: any) => {
                     icon={Images.upload}
                     onPress={() => console.log}
                     backgroundColor="#0D614E"
+                      TextFont={Fonts.PoppinsRegular}
                     textColor="#FFFFFF" />
             </View>
 

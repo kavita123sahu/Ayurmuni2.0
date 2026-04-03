@@ -30,6 +30,7 @@ import { doctorsData, product, topSelling } from '../../common/DataInterface';
 import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useIsFocused } from '@react-navigation/native';
+import HomeCategory from './HomeCategory';
 
 
 
@@ -107,7 +108,7 @@ const HomePage: React.FC = (props: any) => {
 
       <StatusBar backgroundColor={Colors.primaryColor} barStyle="dark-content" />
 
-      <HomeHeader />
+      <HomeHeader   />
 
       <View style={{ paddingHorizontal: 10 }}>
         <SearchBar
@@ -119,9 +120,7 @@ const HomePage: React.FC = (props: any) => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
-        <TouchableOpacity style={{ paddingHorizontal: 10 }} onPress={() => props.navigation.navigate('PatientFAQ', {
-          steps: true
-        })}>
+        <TouchableOpacity style={{ paddingHorizontal: 10 }} onPress={() => props.navigation.navigate('PatientFAQ')}>
           <PrakritiCard
             title={PakritiData?.answered_percentage === 100 ? "Your Prakriti profile is ready" : 'Know Your Prakriti'}
             status="Profile Complete"
@@ -129,8 +128,7 @@ const HomePage: React.FC = (props: any) => {
           />
         </TouchableOpacity>
 
-
-        <CategoryList data={categories} navigation={props.navigation} />
+        <HomeCategory data={categories} navigation={props.navigation} />
 
         <SectionHeader title="Top Doctors" actionText="View all" />
 
@@ -138,23 +136,29 @@ const HomePage: React.FC = (props: any) => {
         <TopDoctorsCard data={doctorsData} navigation={props.navigation} />
 
 
-
         <View style={{ paddingHorizontal: 10 }}>
           <Detailimages
             images={product.images}
             itemWidth={itemWidth}
             itemHeight={180}
+            
 
           />
         </View>
 
         <SectionHeader title="Top Medicines" actionText="View all" />
-        <TopSellingList data={topSelling} navigation={props.navigation} />
+
+        <View style={{ paddingHorizontal: 10 }}>
+
+          <TopSellingList data={topSelling} navigation={props.navigation} />
+
+        </View>
 
         <SectionHeader title="Top Products" actionText="View all" />
-        <TopSellingList data={topSelling} navigation={props.navigation} />
 
-
+        <View style={{ paddingHorizontal: 10 }}>
+          <TopSellingList data={topSelling} navigation={props.navigation} />
+        </View>
 
       </ScrollView>
 

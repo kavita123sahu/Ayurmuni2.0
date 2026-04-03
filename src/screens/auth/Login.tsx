@@ -111,7 +111,7 @@ const Login: React.FC = (props: any) => {
 
           <View style={styles.logoContainer}>
             <Image
-              source={Images.newlogo}
+              source={Images.FinalLogo}
               style={styles.logo}
               resizeMode='contain'
             />

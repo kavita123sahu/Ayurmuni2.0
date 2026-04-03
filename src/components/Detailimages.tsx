@@ -90,6 +90,7 @@ const Detailimages: React.FC<Props> = ({
                 width: finalWidth,
                 height: finalHeight,
                 borderRadius: 24,
+                resizeMode: 'contain'
               }}
             />
           </View>

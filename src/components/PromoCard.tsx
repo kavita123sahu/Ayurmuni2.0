@@ -8,6 +8,7 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
+import { Fonts } from '../common/Fonts';
 
 interface Props {
   onPress?: () => void;
@@ -72,10 +73,12 @@ export default PromoCard;
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
+    // marginHorizontal: 5,
     marginTop: 12,
-    padding: 16,
+    padding: 18,
     borderRadius: 24,
+    paddingHorizontal:20,
+    paddingVertical:20,
     backgroundColor: '#0D614E0D',
     borderWidth: 1,
     borderColor: '#0D614E33',
@@ -108,21 +111,23 @@ const styles = StyleSheet.create({
 
   tag: {
     fontSize: 10,
-    color: '#0D614E',
-    fontWeight: '700',
+    color: '#0D614E',fontFamily : Fonts.PoppinsSemiBold
   },
 
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily : Fonts.PoppinsSemiBold,
     color: '#1E293B',
     lineHeight: 24,
+    marginTop:10,
+    marginBottom:8
   },
 
   desc: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#64748B',
-    marginTop: 6,
+    
+     fontFamily : Fonts.PoppinsMedium,
   },
 
   divider: {

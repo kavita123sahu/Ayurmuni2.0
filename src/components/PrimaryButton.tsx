@@ -7,6 +7,7 @@ type Props = {
   icon?: any; // image source
   backgroundColor?: string;
   textColor?: string;
+  TextFont : string;
   borderColor?: string;
 };
 
@@ -16,6 +17,7 @@ const PrimaryButton = ({
   icon,
   backgroundColor = "#0D614E",
   textColor = "#FFFFFF",
+  TextFont,
   borderColor = "transparent",
 }: Props) => {
   return (
@@ -31,10 +33,10 @@ const PrimaryButton = ({
     >
       <View style={styles.content}>
         {icon && (
-          <Image source={icon} style={styles.icon} />
+          <Image source={icon} style={styles.icon} tintColor={textColor} />
         )}
 
-        <Text style={[styles.primaryText, { color: textColor }]}>
+        <Text style={[styles.primaryText, { color: textColor ,  fontFamily: TextFont,}]}>
           {title}
         </Text>
       </View>

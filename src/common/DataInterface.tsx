@@ -38,12 +38,10 @@ export const genderOptions: GenderOption[] = [
 
   export  const product = {
         images: [
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
+            Images.HomeBanner,
+            Images.HomeBanner,
+            Images.HomeBanner,
+            Images.HomeBanner,
         ],
     };
 

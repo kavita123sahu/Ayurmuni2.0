@@ -26,7 +26,7 @@ type OrderItemType = {
     price: string;
 };
 
-const OrderConfirmation: React.FC = () => {
+const OrderConfirmation: React.FC = (props : any) => {
 
     const [showModal, setShowModal] = useState(false);
 
@@ -37,6 +37,7 @@ const OrderConfirmation: React.FC = () => {
 
         return () => clearTimeout(timer);
     }, []);
+    
 
     useEffect(() => {
         const backAction = () => {
@@ -93,6 +94,8 @@ const OrderConfirmation: React.FC = () => {
             <AppHeader
                 title="Order Confirmation"
                 leftIcon={Images.backIcon}
+                onLeftPress={()=>props.navigation.goBack()}
+
             />
 
             <ScrollView

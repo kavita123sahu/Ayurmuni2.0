@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Header from '../../components/Header';
@@ -8,6 +8,8 @@ import PromoCard from '../../components/PromoCard';
 import SectionHeader from '../../components/SectionHeader';
 import TopSellingList from '../../components/TopSellingList';
 import { Images } from '../../common/Images';
+import { Styles } from '../../common/Styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const TopCategories = (props: any) => {
 
@@ -226,14 +228,10 @@ const TopCategories = (props: any) => {
       image: productImage,
       tag: 'Bestselling',
     },
-    
-
-
   ];
 
-
   return (
-    <View style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
 
       <Header
         title={categoryName}
@@ -242,11 +240,14 @@ const TopCategories = (props: any) => {
         onBack={() => navigation.goBack()}
       />
 
-      <SearchBar
+      <View style={styles.flexContain}>
+        <SearchBar
         placeholder="Search seeds, oils..."
         icon={require('../../assets/images/search.png')}
       />
-      <PromoCard
+
+        <ScrollView style={{ flex: 1, }} showsVerticalScrollIndicator={false}>
+        <PromoCard 
         title="The Wellness Essentials"
         desc="Discover our loved organic selections, cold-pressed to preserve nature’s power."
         tag="CURATED EXCELLENCE"
@@ -254,9 +255,21 @@ const TopCategories = (props: any) => {
         showButton={false}
       />
       <SectionHeader title="Top  Selling Products" actionText="View all" />
+
       <TopSellingList data={topSelling} isGrid={true}  navigation={props.navigation}  />
-    </View>
+      
+      </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 };
 
 export default TopCategories;
+
+
+const styles = StyleSheet.create({
+  flexContain:{
+    flex:1,
+    paddingHorizontal:20
+  }
+})

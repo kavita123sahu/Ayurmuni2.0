@@ -48,14 +48,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-<<<<<<< HEAD
-    // paddingHorizontal: 16,
-    paddingTop: 25,
-    // backgroundColor:Colors.white,
-=======
     paddingHorizontal: 20,
     paddingTop: 20,
->>>>>>> dev_abhay
     paddingBottom: 10,
   },
 

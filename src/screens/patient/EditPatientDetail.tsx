@@ -1,14 +1,59 @@
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native'
-import React from 'react'
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native'
+import React, { useState } from 'react'
 import { Fonts } from '../../common/Fonts'
 import AppInputField from '../../components/AppInputField'
 import { Images } from '../../common/Images'
 import AppHeader from '../../components/AppHeader'
 import SectionHeader from '../../components/SectionHeader'
 import { Styles } from '../../common/Styles'
+import PrimaryButton from '../../components/PrimaryButton'
+import { Colors } from '../../common/Colors'
 
 export default function EditPatientDetail(props: any) {
+
+    const [dob, setDob] = useState('');
+    const [gender, setGender] = useState('');
+    const [fullname, setFullName] = useState('');
+    const [bloodG, setBloodG] = useState('');
+    const [height, setHeight] = useState('');
+    const [phonenumber, setPhoneNumber] = useState('');
+    const [email, setEmail] = useState('');
+    const [EmergencyNO, setEmergencyNO] = useState('');
+    const [relation, setRelation] = useState('');
+    const [contactName, setContactName] = useState('');
+    const [insurance, setInsurance] = useState('');
+    const [policyNO, setPolicyNO] = useState('');
+    const [valid, setValid] = useState('');
+
+
+    const BottomButton = ({onPress, title, backgroundColor,borderColor,textColor }: any)=>{
+        return (
+             <TouchableOpacity
+                onPress={onPress}
+                style={[
+                    styles.primaryBtn,
+                    {
+                        backgroundColor,
+                        borderColor,
+                    },
+                ]}
+            >
+                <View style={styles.content}>
+
+                    <Text style={[styles.primaryText, { color: textColor }]}>
+                        {title}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        )
+    }
+
+
+   
     return (
+
+
+
         <View style={{ flex: 1, }}>
 
             <AppHeader
@@ -19,10 +64,9 @@ export default function EditPatientDetail(props: any) {
                 onRightPress={() => console.log('Search clicked')}
             />
 
-            <ScrollView style={{ flex: 1, paddingHorizontal: 22, marginBottom:50 }}>
+            <ScrollView style={{ flex: 1, paddingHorizontal: 22, marginBottom: 50 }}>
 
                 <SectionHeader title="Personal Information" />
-
 
 
                 <AppInputField label="Full Name" placeholder="John Doe" />
@@ -30,13 +74,26 @@ export default function EditPatientDetail(props: any) {
                 <AppInputField
                     label="Date of Birth"
                     placeholder="DD/MM/YYYY"
+                    value={dob}
+                    onChangeText={setDob}
                     rightIcon={Images.calender}
                 />
 
-                <AppInputField
+                {/* <AppInputField
                     label="Gender"
                     placeholder="Select Gender"
                     rightIcon={Images.arrow}
+                /> */}
+
+
+
+
+                <AppInputField
+                    label="Gender"
+                    value={gender}
+                    placeholder="Select Gender"
+                    rightIcon={Images.arrow}
+                    onChangeText={setGender}
                 />
 
                 <AppInputField label="Blood Group" placeholder="A+" />
@@ -110,12 +167,35 @@ export default function EditPatientDetail(props: any) {
                     placeholder="MM/YYYY"
                     rightIcon={Images.calender}
                 />
+                <View style={styles.buttonrow}>
+
+                    <BottomButton
+                        title="Cancel"
+                        icon={Images.shopCart}
+                          onPress={() => props.navigation.navigate('MyCart')}
+                        backgroundColor="#FFFFFF"
+                        borderColor ={Colors.borderColor}
+                        textColor={Colors.subTextColor}
+                    />
+
+
+  <BottomButton
+                        title="Save Changes"
+                        icon={Images.shopCart}
+                        borderColor ={Colors.primaryColor}
+                          onPress={() => props.navigation.navigate('MyCart')}
+                        backgroundColor="#0D614E"
+                        textColor="#FFFFFF"
+                    />
+                </View>
+
 
 
             </ScrollView>
         </View>
     )
 }
+
 
 const styles = StyleSheet.create({
     sectionTitle: {
@@ -149,5 +229,43 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
         fontSize: 18,
         color: "#F43F5E"
+    },
+    buttonrow: {
+        flexDirection: 'row',
+        flex: 1,
+        width: '100%',
+        marginTop:20,
+        marginBottom:20,
+        justifyContent: 'space-between',
+        gap: 10, // spacing between buttons
+    },
+
+    primaryBtn: {
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        borderWidth: 1,
+        flex:1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    content: {
+        
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    primaryText: {
+        marginLeft: 8,
+        fontSize: 18,
+        fontFamily: Fonts.PoppinsRegular,
+        top: 2
+    },
+
+    icon: {
+        width: 22,
+        height: 22,
+        resizeMode: "contain",
     },
 })

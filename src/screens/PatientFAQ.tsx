@@ -734,6 +734,7 @@ const PatientFAQ = (props: any) => {
 
 
 
+
     const getQuestionList = async () => {
         try {
             let response: any = await _ASSESS_SERVICE.GetQuestionOptions();
@@ -746,6 +747,7 @@ const PatientFAQ = (props: any) => {
                 options: q.choices
             }));
 
+            console.log("Apisrepssssssssssssssss", apiSteps);
             setDynamicSteps(apiSteps);
 
         } catch (error) {
@@ -794,6 +796,30 @@ const PatientFAQ = (props: any) => {
     const current = visibleSteps[step];
 
     const progress = step / (visibleSteps.length - 1);
+
+    useEffect(() => {
+        if (!current?.options?.length) return;
+
+        const alreadyAnswered = answers[current.key!];
+
+        const preSelected = current.options.find(
+            (opt: any) => opt.is_selected
+        );
+
+        if (!alreadyAnswered && preSelected) {
+            setAnswers((prev: any) => ({
+                ...prev,
+                [current.key!]: preSelected.text
+            }));
+
+            setSelectedChoices((prev: any) => ({
+                ...prev,
+                [current.key!]: preSelected.id
+            }));
+        }
+
+    }, [current]);
+
 
     const getSingleDosha = (value: string) => {
         return value.toLowerCase().split(/[-\s]+/)[0];
@@ -860,7 +886,7 @@ const PatientFAQ = (props: any) => {
                             question_id: current.key,
                             choice_id: choice_id,
                         },
-                        
+
                     ],
                 };
 
@@ -1131,7 +1157,7 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textAlign: 'center',
         marginTop: 10,
-        fontFamily : Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
         paddingHorizontal: width * 0.08,
         lineHeight: scale(22),
     },
@@ -1161,7 +1187,7 @@ const styles = StyleSheet.create({
 
     headerTitle: {
         fontSize: scale(18),
-       fontFamily : Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
         color: '#1A1A1A',
     },
 
@@ -1173,14 +1199,14 @@ const styles = StyleSheet.create({
     skipHeaderText: {
         fontSize: scale(15),
         color: Colors.questionGreen,
-        fontFamily:Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsMedium
     },
 
     stepText: {
         marginTop: 10,
         fontSize: scale(14),
         color: '#6B7280',
-        fontFamily : Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     progressContainer: {
@@ -1251,7 +1277,7 @@ const styles = StyleSheet.create({
         fontSize: scale(14),
         marginBottom: 20,
         color: '#64748B',
-        fontFamily : Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
         lineHeight: scale(20),
     },
 
@@ -1324,14 +1350,14 @@ const styles = StyleSheet.create({
         fontSize: scale(14),
         lineHeight: scale(20),
         color: '#111827',
-        
-        fontFamily : Fonts.PoppinsMedium,
+
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     activeText: {
         color: '#fff',
-        
-        fontFamily : Fonts.PoppinsMedium,
+
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     iconContainer: {

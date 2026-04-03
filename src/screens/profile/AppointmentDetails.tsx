@@ -126,7 +126,7 @@ const AppointmentDetailScreen = (props: any) => {
 
           {/* Buttons */}
           <View style={{paddingHorizontal:10}}>
-            <PrimaryButton title="Join Video Call" page='appoint' />
+            <PrimaryButton title="Join Video Call" page='appoint'  />
 
           <TouchableOpacity style={styles.secondaryBtn}>
             <Text style={styles.secondaryText}>Chat with Doctor</Text>

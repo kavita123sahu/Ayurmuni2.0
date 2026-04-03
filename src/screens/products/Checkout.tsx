@@ -152,7 +152,7 @@ const Checkout: React.FC = (props : any) => {
 
             </ScrollView>
 
-            <TouchableOpacity style={styles.checkout}>
+            <TouchableOpacity style={styles.checkout} onPress={()=>props.navigation.navigate('OrderConfirmation')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Proceed to Checkout</Text>
 
