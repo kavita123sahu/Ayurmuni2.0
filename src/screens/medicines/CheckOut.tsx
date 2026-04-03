@@ -7,7 +7,7 @@ import { Fonts } from '../../common/Fonts';
 
 const CheckOut = () => {
 
-    const [selectedSpeed, setSelectedSpeed] = useState('standard'); // ✅ NEW
+    const [selectedSpeed, setSelectedSpeed] = useState('standard'); 
 
     const orderData = [
         {
@@ -15,21 +15,21 @@ const CheckOut = () => {
             name: 'Amoxicillin',
             desc: '500mg • 20 Capsules',
             price: '$18.50',
-            icon: Images.medicine,
+            icon: Images.detailimage,
         },
         {
             id: '2',
             name: 'Paracetamol',
             desc: '500mg • 10 Tablets',
             price: '$5.25',
-            icon: Images.medicine,
+            icon: Images.detailimage,
         },
         {
             id: '3',
             name: 'Cough Syrup',
             desc: '100ml • Sugar Free',
             price: '$12.90',
-            icon: Images.medicine,
+            icon: Images.detailimage,
         },
     ];
 
@@ -75,7 +75,6 @@ const CheckOut = () => {
                     </View>
                 </View>
 
-                {/* ORDER SUMMARY + ADD MORE */}
                 <View style={styles.rowBetween}>
                     <Text style={styles.sectionTitle}>Order Summary</Text>
                     <TouchableOpacity>
@@ -268,9 +267,9 @@ const styles = StyleSheet.create({
     },
 
     icon: {
-        height: 18,
-        width: 18,
-        tintColor: '#0D614E',
+        height: 40,
+        width: 40,
+        // tintColor: '#0D614E',
     },
 
     addressTitle: {
@@ -314,9 +313,9 @@ const styles = StyleSheet.create({
     },
 
     smallIcon: {
-        height: 18,
-        width: 18,
-        tintColor: '#0D614E',
+        height: 36,
+        width: 36,
+        // tintColor: '#0D614E',
     },
 
     medName: {
