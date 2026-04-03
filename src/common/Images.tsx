@@ -1,5 +1,5 @@
 export const Images = {
-    backIcon: require('../assets/images/backButton.png'),
+    backIcon: require('../assets/images/BackButton.png'),
     newlogo: require('../assets/images/MainIcon.png'),
     arrow: require('../assets/images/arrow.png'),
     splashlogo: require('../assets/images/logo.png'),
@@ -15,6 +15,8 @@ export const Images = {
     linemark: require('../assets/images/Linemark.png'),
     takechnageIcons: require('../assets/images/TakechangeIcon.png'),
 
+    
+    ellipsebackground: require('../assets/images/ellipsebackground.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),
 
     user: require('../assets/images/user.png'),
@@ -59,8 +61,11 @@ export const Images = {
     Instruction: require('../assets/images/instruction.png'),
 
 
+    prItem: require('../assets/images/prItem.png'),
+    office: require('../assets/images/office.png'),
+    waitClock: require('../assets/images/waitClock.png'),
     upload: require('../assets/images/Upload.png'),
-
+    track: require('../assets/images/track.png'),
     verify: require('../assets/images/verify.png'),
     editButton: require('../assets/images/editButton.png'),
     unverify: require('../assets/images/unverify.png'),
@@ -104,9 +109,29 @@ export const Images = {
 
 
     
+    currentLocation: require('../assets/images/currentLocation.png'),
+    sosIcon: require('../assets/images/sosIcon.png'),
+    doctorSOS: require('../assets/images/doctorSOS.png'),
+    downArrow: require('../assets/images/downArrow.png'),
     medicine: require('../assets/images/medicine.png'),
     products: require('../assets/images/products.png'),
     moreButton: require('../assets/images/moreButton.png'),
+    flashred: require('../assets/images/flashred.png'),
+    gpay: require('../assets/images/gpay.png'),
+    lock: require('../assets/images/lock.png'),
+    net: require('../assets/images/net.png'),
+    paytm: require('../assets/images/paytm.png'),
+    pci: require('../assets/images/pci.png'),
+    phonepay: require('../assets/images/phonepay.png'),
+    ssl: require('../assets/images/ssl.png'),
+    timer: require('../assets/images/timer.png'),
+    rightArrow: require('../assets/images/rightArrow.png'),
+    gps: require('../assets/images/gps.png'),
+    tickk: require('../assets/images/tickk.png'),
+    warning: require('../assets/images/warning.png'),
+    doctorImage: require('../assets/images/doctorImage.png'),
+    
+
 
     bookDoctor: require('../assets/images/bookDoctor.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),

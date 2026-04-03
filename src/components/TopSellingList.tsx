@@ -104,6 +104,8 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
       ListFooterComponent={
         isGrid && data.length > 6 ? (
           <View style={styles.footerContainer}>
+
+            {/* BUTTON */}
             {!showAll && (
               <TouchableOpacity
                 style={styles.discoverBtn}
@@ -113,9 +115,11 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
               </TouchableOpacity>
             )}
 
+            {/* COUNT TEXT */}
             <Text style={styles.countText}>
               Showing {showAll ? data.length : 6} of {data.length} items
             </Text>
+
           </View>
         ) : null
       }
@@ -130,7 +134,7 @@ const styles = StyleSheet.create({
     width: 160,
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
-    marginRight: 14, // ✅ only for horizontal list
+    marginRight: 14, 
     borderWidth: 1,
     borderColor: '#F1F5F9',
     height: 240,

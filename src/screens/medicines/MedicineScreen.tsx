@@ -16,6 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 
 const MedicineScreen = () => {
 
+
+
     const navigation = useNavigation();
     const productImage = require('../../assets/images/RecentsImage.png');
     const categoryImage = require('../../assets/images/CategiryImage.png');
@@ -172,7 +174,6 @@ const MedicineScreen = () => {
 
                 <SectionHeader title="Ayurveda" actionText="View all" />
                 <TopSellingList data={Medicines} navigation={navigation} />
-
             </ScrollView>
         </SafeAreaView>
     );

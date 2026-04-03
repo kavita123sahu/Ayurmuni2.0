@@ -50,17 +50,20 @@ const CategoryList = ({ data = [], navigation }: any) => {
       horizontal
       data={data}
       keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-      initialNumToRender={5}
-      maxToRenderPerBatch={5}
-      windowSize={5}
-      getItemLayout={(_, index) => ({
-        length: ITEM_SIZE,
-        offset: ITEM_SIZE * index,
-        index,
-      })}
+      contentContainerStyle={{gap:14}}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={styles.item}
+          onPress={() => handlePress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.circle}>
+            <Image source={item.icon} style={styles.icon} />
+          </View>
+
+          <Text style={styles.text}>{item.name}</Text>
+        </TouchableOpacity>
+      )}
     />
   );
 };
@@ -74,7 +77,6 @@ const styles = StyleSheet.create({
 
   item: {
     alignItems: 'center',
-    marginHorizontal: 4,
   },
 
   circle: {
