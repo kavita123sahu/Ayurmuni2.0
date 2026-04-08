@@ -20,9 +20,10 @@ type CardType = {
 
 type Props = {
     data: CardType[];
+    onpress: (item: any) => void;
 };
 
-const ActionCards: React.FC<Props> = ({ data }) => {
+const ActionCards: React.FC<Props> = ({ data, onpress }) => {
     return (
         <View style={styles.row}>
             {data.map((item) => (
@@ -30,7 +31,7 @@ const ActionCards: React.FC<Props> = ({ data }) => {
                     key={item.id}
                     style={styles.card}
                     activeOpacity={0.8}
-                    onPress={item.onPress}
+                     onPress={() => onpress(item)} 
                 >
 
                     <Image source={item.bgIcon} style={styles.bgIcon} />

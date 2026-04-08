@@ -14,14 +14,14 @@ import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 
-const SOSDoctorAssigned = () => {
+const SOSConfirmed = (props : any) => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
 
             <SOSHeader
                 title="SOS Confirmed"
-                onBackPress={() => console.log("Back")}
+                onBackPress={() => props.navigation.goBack()}
             />
 
             <ScrollView contentContainerStyle={styles.container}>
@@ -63,7 +63,7 @@ const SOSDoctorAssigned = () => {
                     <Text style={styles.primaryText}>Join Video Consultation</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.secondaryBtn}>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={()=> props.navigation.navigate('SOSCancel')}>
                     <Text style={styles.secondaryText}>Cancel SOS</Text>
                 </TouchableOpacity>
 
@@ -77,7 +77,7 @@ const SOSDoctorAssigned = () => {
     )
 }
 
-export default SOSDoctorAssigned;
+export default SOSConfirmed;
 
 const styles = StyleSheet.create({
 

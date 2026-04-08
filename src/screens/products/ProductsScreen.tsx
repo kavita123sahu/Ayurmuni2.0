@@ -95,19 +95,23 @@ const ProductsScreen = () => {
     },
   ];
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+
+    <SafeAreaView style={{
+      flex: 1, marginBottom: 30,
+      paddingHorizontal: 20, backgroundColor: '#FDFDFB'
+    }}>
 
       <Header
-          title="Products"
-          subtitle="Choose best product"
-          backIcon={Images.backIcon}
-          onBack={() => {navigation.goBack()}}
-       />
+        title="Products"
+        subtitle="Choose best product"
+        backIcon={Images.backIcon}
+        onBack={() => { navigation.goBack() }}
+      />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
-
 
         <SearchBar
           placeholder="Search seeds, oils..."
@@ -125,14 +129,16 @@ const ProductsScreen = () => {
         />
 
         <SectionHeader title="Recent Products" actionText="View History" />
+
         <RecentProductsList data={recentProducts} />
 
         <SectionHeader title="Top Category" />
+
         <CategoryList data={categories} navigation={navigation} />
 
         <SectionHeader title="Top Selling Products" actionText="View all" />
-        
-        <TopSellingList data={topSelling}  navigation={navigation}  />
+
+        <TopSellingList data={topSelling} navigation={navigation} />
 
       </ScrollView>
     </SafeAreaView>

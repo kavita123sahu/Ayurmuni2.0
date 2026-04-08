@@ -41,7 +41,7 @@ const AppHeader: React.FC<Props> = ({
           <Image source={rightIcon} style={styles.icon} />
         </TouchableOpacity>
       ) : (
-        <View style={styles.iconBox} />
+        <View style={styles.iconBox1} />
       )}
 
     </View>
@@ -70,17 +70,35 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    // width: 40,
+    // height: 40,
+    // borderRadius: 10,
+    // justifyContent: 'center',
+    // alignItems: 'center',
+
+    height: 40,
+    width: 40,
+    borderRadius: 12,
+    backgroundColor: "#EEEEEE",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
+  iconBox1: {
+    height: 40,
+    width: 40,
+    borderRadius: 12,
+    // backgroundColor: "#EEEEEE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   icon: {
-    width: 50,
-    height: 50,
-    resizeMode: 'contain',
+    height: 40,
+    width: 40,
+    resizeMode: "contain",
+    // width: 50,
+    // height: 50,
+    // resizeMode: 'contain',
   },
 
   title: {

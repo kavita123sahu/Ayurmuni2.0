@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { Fonts } from '../common/Fonts';
 
 const { width } = Dimensions.get('window');
 
@@ -50,20 +51,17 @@ const CategoryList = ({ data = [], navigation }: any) => {
       horizontal
       data={data}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={{gap:14}}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.item}
-          onPress={() => handlePress(item)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.circle}>
-            <Image source={item.icon} style={styles.icon} />
-          </View>
-
-          <Text style={styles.text}>{item.name}</Text>
-        </TouchableOpacity>
-      )}
+      renderItem={renderItem}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.container}
+      initialNumToRender={5}
+      maxToRenderPerBatch={5}
+      windowSize={5}
+      getItemLayout={(_, index) => ({
+        length: ITEM_SIZE,
+        offset: ITEM_SIZE * index,
+        index,
+      })}
     />
   );
 };
@@ -72,11 +70,13 @@ export default React.memo(CategoryList);
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 8,
+    paddingLeft:-10
+    // paddingHorizontal: 8,
   },
 
   item: {
     alignItems: 'center',
+    marginHorizontal: 2,
   },
 
   circle: {
@@ -95,7 +95,6 @@ const styles = StyleSheet.create({
   text: {
     marginTop: 6,
     fontSize: 12,
-    color: '#1E293B',
-    fontWeight: '400',
+    color: '#1E293B', fontFamily : Fonts.PoppinsSemiBold,
   },
 });

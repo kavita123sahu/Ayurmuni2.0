@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Product } from '../types';
+import { Fonts } from '../common/Fonts';
 
 interface Props {
   data: Product[];
@@ -40,7 +41,7 @@ const RecentProductsList: React.FC<Props> = ({ data }) => {
 
             <View style={styles.bottomRow}>
               <Text style={styles.price}>
-                ₹ {item.price.toFixed(2)}
+                Rs. {item.price.toFixed(2)}
               </Text>
 
               <TouchableOpacity style={styles.btn}>
@@ -92,15 +93,14 @@ const styles = StyleSheet.create({
 
   name: {
     fontSize: 16,
-    fontWeight: '700',
+   fontFamily : Fonts.PoppinsSemiBold,
     color: '#1E293B',
   },
 
   sub: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 3,
-    fontWeight: '400',
+     fontFamily : Fonts.PoppinsMedium,
   },
 
   bottomRow: {
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
 
   price: {
     fontSize: 18,
-    fontWeight: '400',
+     fontFamily : Fonts.PoppinsSemiBold,
     color: '#0D614E',
   },
 
@@ -125,7 +125,6 @@ const styles = StyleSheet.create({
 
   btnText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '400',
+    fontSize: 12, fontFamily : Fonts.PoppinsMedium,
   },
 });

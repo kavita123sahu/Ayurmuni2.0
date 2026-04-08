@@ -21,9 +21,7 @@ import Splash from "../screens/auth/Splash";
 import HomePage from "../screens/home/HomePage";
 import consultHome from "../screens/consult/consultHome";
 import ProfilePage from "../screens/profile/ProfilePage";
-import CartPage from "../screens/cart/CartPage";
 import { useNetworkStatus } from "../hooks/useDebaunce";
-import NetworkError from "../screens/NetworkError";
 import CustomeTab from "../components/CustomeTab";
 import AppointmentScreen from "../screens/profile/Appointment";
 import AppointmentDetailsScreen from "../screens/profile/AppointmentDetails";
@@ -38,7 +36,7 @@ import ProductsScreen from "../screens/products/ProductsScreen";
 import TopCategories from "../screens/products/TopCategories";
 import ProductDetails from "../screens/products/ProductDetails";
 import ReviewPage from "../screens/products/ReviewPage";
-import MyCart from "../screens/products/MyCart";
+import MyCart from "../screens/cart/MyCart";
 import Checkout from "../screens/products/Checkout";
 import MedicalRecords from "../screens/profile/MedicalRecords";
 import OrderConfirmation from "../screens/products/OrderConfirmation";
@@ -47,6 +45,18 @@ import FAQScreen from "../screens/profile/FAQScreen";
 import HelpCenterScreen from "../screens/profile/HelpCenter";
 import SettingsScreen from "../screens/profile/Settings";
 import PaymentsScreen from "../screens/profile/PaymentScreen";
+import EmergencySOS from "../screens/SOS/EmergencySOS";
+import SOSPayment from "../screens/SOS/SOSPayment";
+import SOSRequest from "../screens/SOS/SOSRequest";
+import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
+import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
+import SOSConfirmed from "../screens/SOS/SOSConfirmed";
+import NotificationsScreen from "../screens/NotificationsScreen";
+import ManageAdrees from "../screens/ManageAdrees";
+import Prescription from "../screens/medicines/Prescription";
+import VerifyPresciption from "../screens/medicines/VerifyPresciption";
+import MedicineCheckOut from "../screens/medicines/CheckOut";
+import OrderStatus from "../screens/medicines/OrderStatus";
 
 enableScreens();
 
@@ -89,16 +99,22 @@ const TabStack = () => {
   return (
     <Tab.Navigator
       initialRouteName="Home"
-      tabBar={(props) => <CustomeTab {...props} />} // 🔥 CUSTOM TAB
+      tabBar={(props) => <CustomeTab {...props} />}
       screenOptions={{
         headerShown: false,
       }}
     >
+
       <Tab.Screen name="Home" component={HomePage} />
-      <Tab.Screen name="Cart" component={ProductsScreen} />
-      <Tab.Screen name="Consult" component={consultHome} />
-      {/* <Tab.Screen name="Centers" component={CenterWellness} /> */}
+      <Tab.Screen name="Cart" component={MyCart} />
+
+      <Tab.Screen name="History" component={OrderHistory} />
       <Tab.Screen name="Profile" component={ProfilePage} />
+       <Tab.Screen
+    name="Consult"
+    component={consultHome}
+    options={{ tabBarButton: () => null }} // 👈 hide from default tab
+  />
     </Tab.Navigator>
   );
 };
@@ -129,6 +145,18 @@ const HomeStack = () => {
       <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SOSPayment" component={SOSPayment} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="EmergencySOS" component={EmergencySOS} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SOSCancel" component={SOSCancelScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SOSConfirmed" component={SOSConfirmed} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SearchScreen" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MedicineCheckOut" component={MedicineCheckOut} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="OrderStatus" component={OrderStatus} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

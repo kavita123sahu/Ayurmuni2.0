@@ -8,11 +8,14 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
+import PromoCard from './PromoCard';
+import SectionHeader from './SectionHeader';
 
 interface Props {
   data: any[];
   isGrid?: boolean;
   navigation: any
+  ListHeaderComponent?: React.ReactNode;
 }
 
 const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) => {
@@ -26,6 +29,21 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
       ? [...displayData, { id: 'empty', empty: true }]
       : displayData;
 
+
+
+  const ListHeaderComponent = () => (
+    <>
+      <PromoCard
+        title="The Wellness Essentials"
+        desc="Discover our loved organic selections, cold-pressed to preserve nature’s power."
+        tag="CURATED EXCELLENCE"
+        image={require('../assets/images/cosmetic.png')}
+        showButton={false}
+      />
+      <SectionHeader title="Top  Selling Products" actionText="View all" />
+    </>
+  );
+
   return (
     <FlatList
       key={isGrid ? 'grid' : 'list'}
@@ -33,6 +51,7 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
       keyExtractor={(item, index) => item.id || index.toString()}
       horizontal={!isGrid}
       numColumns={isGrid ? 2 : 1}
+      ListHeaderComponent={isGrid ? <ListHeaderComponent /> : undefined}
       showsHorizontalScrollIndicator={false}
 
       // ✅ 🔥 REMOVE ALL HORIZONTAL PADDING
@@ -86,7 +105,7 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
               </View>
 
               {/* CART BUTTON */}
-              <TouchableOpacity style={styles.cartBtn}>
+              <TouchableOpacity style={styles.cartBtn} onPress={() => navigation.navigate('MyCart')}>
                 <Image
                   source={require('../assets/images/CartFrame.png')}
                   style={styles.cartFrame}
@@ -134,10 +153,10 @@ const styles = StyleSheet.create({
     width: 160,
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
-    marginRight: 14, 
+    marginRight: 14,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    height: 240,
+    // height: 240,
   },
 
   gridCard: {
@@ -173,7 +192,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
   },
 
@@ -181,6 +200,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   priceContainer: {
@@ -188,7 +208,7 @@ const styles = StyleSheet.create({
   },
 
   oldPrice: {
-    fontWeight: '500',
+    fontFamily: Fonts.PoppinsRegular,
     fontSize: 10,
     color: '#64748B',
     textDecorationLine: 'line-through',
@@ -196,7 +216,7 @@ const styles = StyleSheet.create({
 
   price: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#0D614E',
     marginTop: 2,
   },
@@ -216,7 +236,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   cartBtn: {
@@ -255,14 +275,14 @@ const styles = StyleSheet.create({
 
   discoverText: {
     color: '#FFFFFF',
-    fontSize: 14, fontFamily : Fonts.PoppinsMedium,
+    fontSize: 14, fontFamily: Fonts.PoppinsMedium,
   },
 
   countText: {
     marginTop: 8,
     fontSize: 12,
     color: '#94A3B8',
-    fontFamily : Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsRegular,
     marginBottom: 40
   },
 });

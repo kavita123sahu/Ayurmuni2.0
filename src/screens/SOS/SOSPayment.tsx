@@ -15,7 +15,7 @@ import { Images } from "../../common/Images";
 
 type UPIApp = "gpay" | "phonepay" | "paytm";
 
-const SOSPayment: React.FC = () => {
+const SOSPayment: React.FC = (props: any) => {
     const [selectedApp, setSelectedApp] = useState<UPIApp>("phonepay");
     const [netbankingOpen, setNetbankingOpen] = useState(false);
     const [selectedBank, setSelectedBank] = useState("Select Bank");
@@ -44,7 +44,7 @@ const SOSPayment: React.FC = () => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
-            <SOSHeader title="SOS Payment" onBackPress={() => console.log("Back")} />
+            <SOSHeader title="SOS Payment" onBackPress={() => props.navigation.goBack()} />
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -213,7 +213,7 @@ const SOSPayment: React.FC = () => {
             </ScrollView>
 
             {/* BUTTON */}
-            <TouchableOpacity style={styles.checkout}>
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('SOSRequest')}>
                 <View style={{ flexDirection: "row" }}>
                     <Text style={styles.checkoutText}>Secure Pay</Text>
                     <Image source={Images.rightArrow} style={{ height: 24, width: 24, marginLeft: 6 }} />

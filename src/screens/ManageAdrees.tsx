@@ -22,7 +22,7 @@ interface AddressItem {
     icon: any;
 }
 
-const ManageAdrees: React.FC = () => {
+const ManageAdrees: React.FC = (props : any) => {
     const [screen, setScreen] = useState<ScreenType>('LIST');
     const [selectedId, setSelectedId] = useState('current');
 
@@ -249,7 +249,7 @@ const ManageAdrees: React.FC = () => {
                 title="Manage Address"
                 leftIcon={Images.backIcon}
                 onLeftPress={() =>
-                    screen === 'FORM' ? setScreen('LIST') : null
+                    screen === 'FORM' ? setScreen('LIST') : props.navigation.goBack()
                 }
             />
 

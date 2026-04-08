@@ -110,13 +110,13 @@ export default React.memo(TopDoctorsCard);
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal:10,
+    // paddingHorizontal:10,
     paddingBottom: 10,
   },
 
   card: {
     width: CARD_WIDTH,
-  
+
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 15,

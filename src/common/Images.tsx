@@ -1,11 +1,12 @@
 export const Images = {
-    backIcon: require('../assets/images/BackButton.png'),
+    backIcon: require('../assets/images/backButton.png'),
     newlogo: require('../assets/images/MainIcon.png'),
     arrow: require('../assets/images/arrow.png'),
     splashlogo: require('../assets/images/logo.png'),
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
 
+    Profile: require('../assets/images/profile.png'),
 
     wellness: require('../assets/images/wellnessIcon.png'),
     detailimage: require('../assets/images/Detailimage.png'),
@@ -78,6 +79,8 @@ export const Images = {
     setting: require('../assets/images/setting.png'),
 
 
+    History: require('../assets/images/history.png'),
+
 
     ChatSupport: require('../assets/images/chatSupport.png'),
     report: require('../assets/images/report.png'),
@@ -128,6 +131,7 @@ export const Images = {
     doctorImage: require('../assets/images/doctorImage.png'),
 
 
+    TabConsult: require('../assets/images/Tabconsult.png'),
 
     bookDoctor: require('../assets/images/bookDoctor.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),
@@ -136,8 +140,6 @@ export const Images = {
     HelpCenter: require('../assets/images/helpcenter.png'),
     Password: require('../assets/images/password.png'),
     Privacy: require('../assets/images/privacy.png'),
-
-
 
 }
 

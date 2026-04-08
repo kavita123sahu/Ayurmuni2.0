@@ -31,6 +31,7 @@ import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useIsFocused } from '@react-navigation/native';
 import HomeCategory from './HomeCategory';
+import { ScreenWrapper } from '../../components/ScreenWrapper';
 
 
 
@@ -104,74 +105,81 @@ const HomePage: React.FC = (props: any) => {
 
   return (
 
-    <View style={styles.container}>
 
-      <StatusBar backgroundColor={Colors.primaryColor} barStyle="dark-content" />
+    <ScreenWrapper>
+      <View style={styles.container}>
 
-      <HomeHeader   />
+        <StatusBar backgroundColor={Colors.primaryColor} barStyle="dark-content" />
 
-      <View style={{ paddingHorizontal: 10 }}>
+        <HomeHeader />
+
+
         <SearchBar
           placeholder="Search doctors, medicine and products..."
           icon={require('../../assets/images/search.png')}
         />
-      </View>
 
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false}>
 
-        <TouchableOpacity style={{ paddingHorizontal: 10 }} onPress={() => props.navigation.navigate('PatientFAQ')}>
-          <PrakritiCard
-            title={PakritiData?.answered_percentage === 100 ? "Your Prakriti profile is ready" : 'Know Your Prakriti'}
-            status="Profile Complete"
-            progress={Math.round(PakritiData?.answered_percentage ?? 0)}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => props.navigation.navigate('PatientFAQ')}>
+            <PrakritiCard
+              title={PakritiData?.answered_percentage === 100 ? "Your Prakriti profile is ready" : 'Know Your Prakriti'}
+              status="Profile Complete"
+              progress={Math.round(PakritiData?.answered_percentage ?? 0)}
+            />
+          </TouchableOpacity>
 
-        <HomeCategory data={categories} navigation={props.navigation} />
+          <HomeCategory data={categories} navigation={props.navigation} />
 
-        <SectionHeader title="Top Doctors" actionText="View all" />
-
-
-        <TopDoctorsCard data={doctorsData} navigation={props.navigation} />
+          <SectionHeader title="Top Doctors" actionText="View all" />
 
 
-        <View style={{ paddingHorizontal: 10 }}>
+          <TopDoctorsCard data={doctorsData} navigation={props.navigation} />
+
+
+
           <Detailimages
             images={product.images}
             itemWidth={itemWidth}
             itemHeight={180}
-            
+
 
           />
-        </View>
 
-        <SectionHeader title="Top Medicines" actionText="View all" />
 
-        <View style={{ paddingHorizontal: 10 }}>
+          <SectionHeader title="Top Medicines" actionText="View all" />
+
 
           <TopSellingList data={topSelling} navigation={props.navigation} />
 
-        </View>
 
-        <SectionHeader title="Top Products" actionText="View all" />
 
-        <View style={{ paddingHorizontal: 10 }}>
+          <SectionHeader title="Top Products" actionText="View all" />
+
+
           <TopSellingList data={topSelling} navigation={props.navigation} />
-        </View>
 
-      </ScrollView>
 
-    </View>
+        </ScrollView>
+
+      </View>
+    </ScreenWrapper>
+
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    // flex: 1,
+    // // paddingBottom: 50,
+    // backgroundColor: '#FDFDFB',
+    // paddingHorizontal: 10
+
     flex: 1,
-    paddingBottom: 80,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+    // backgroundColor:'#FDFDFB'
   },
   header: {
 

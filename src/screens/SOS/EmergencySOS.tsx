@@ -50,7 +50,7 @@ const EmergencySOS: React.FC = (props: any) => {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
       <SOSHeader
         title="Emergency SOS"
-        onBackPress={() => console.log("Back")}
+        onBackPress={() => props.navigation.goBack()}
       />
 
       <ScrollView
@@ -129,7 +129,7 @@ const EmergencySOS: React.FC = (props: any) => {
 
       <TouchableOpacity
         style={styles.checkout}
-        onPress={() => props.navigation.navigate("Checkout")}
+        onPress={() => props.navigation.navigate("SOSPayment")}
       >
         <Text style={styles.checkoutText}>Send SOS Now</Text>
       </TouchableOpacity>

@@ -185,7 +185,7 @@ const PatientFAQ = (props: any) => {
 
             if (selectedId) {
                 const payload = {
-                    customer: CUSTOMER_ID,
+                    customer_id: CUSTOMER_ID,
                     dominant_dosha: getSingleDosha(selectedId)
                 };
 
@@ -193,10 +193,17 @@ const PatientFAQ = (props: any) => {
                     const response: any = await _ASSESS_SERVICE.AssesmentYesSubmit(payload);
                     console.log("YES API RESPONSE:", response);
 
+                    const JSONDATA = response.json()
+                    console.log("YES API RESPONSE:", response);
+
                     // 👇 IMPORTANT CHECK
                     if (!response?.ok) {
                         isSuccess = false;
                         showSuccessToast("Failed! Data not save  ❌", "error");
+                    }
+
+                    else {
+                        showSuccessToast("Your prakriti done successfully", "success");
                     }
 
                 } catch (e) {

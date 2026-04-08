@@ -27,10 +27,11 @@ export default SectionHeader;
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 4,  //14
+    // marginHorizontal: 4,  //14
     marginTop: 20,
     marginBottom: 14,
     flexDirection: 'row',
+    paddingHorizontal:10,
     justifyContent: 'space-between',
   },
   title: {

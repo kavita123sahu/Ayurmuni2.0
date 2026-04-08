@@ -23,28 +23,44 @@ export type RootStackParamList = {
     EditPatientDetail: undefined;
     ProductDetails: undefined;
     TopCategories: undefined;
-    ReviewPage : undefined;
-    MyCart : undefined;
-    Checkout : undefined;
+    ReviewPage: undefined;
+    MyCart: undefined;
+    Checkout: undefined;
+    
     MedicalRecords: undefined;
-    OrderConfirmation : undefined;
-    MedicineScreen : undefined;
+    OrderConfirmation: undefined;
+    MedicineScreen: undefined;
     ProductsScreen: undefined;
     FAQScreen: undefined;
-    HelpCenterScreen : undefined;
-Settings : undefined;
-PaymentsScreen : undefined;
+    HelpCenterScreen: undefined;
+    Settings: undefined;
+    PaymentsScreen: undefined;
+    EmergencySOS: undefined;
+    SOSConfirmed: undefined;
+    SOSCancel: undefined;
+    SOSPayment: undefined;
+    SOSConfirmed: undefined;
+    SOSRequest: undefined;
+    Notifications: undefined;
+    ManageAdrees: undefined;
+    Prescription: undefined;
+    VerifyPresciption : undefined;
+    SearchScreen: undefined;
+    OrderStatus : undefined;
+    MedicineCheckOut : undefined;
+    consultHome: undefined;
 };
 
 
 export type RootBottomParamList = {
     Home: undefined;
     Shop: undefined;
-    Consultation: undefined;
     Centers: undefined;
-    Consult: undefined;
+    History: undefined;
     Cart: undefined;
     Profile: undefined;
+    Consult : undefined;
+    consultHome: undefined;
 };
 
 export type AllBooksScreenProps = NativeStackScreenProps<RootStackParamList, 'AllBooks'>

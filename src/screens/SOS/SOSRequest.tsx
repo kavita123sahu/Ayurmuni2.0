@@ -11,17 +11,26 @@ import SOSHeader from '../../components/SOSHeader';
 import { Fonts } from '../../common/Fonts';
 import LottieView from 'lottie-react-native';
 
-const SOSRequest = () => {
+const SOSRequest = (props: any) => {
 
-    const [timeLeft, setTimeLeft] = useState(539);
+    const [timeLeft, setTimeLeft] = useState(60);
 
     useEffect(() => {
         const timer = setInterval(() => {
             setTimeLeft((prev) => {
-                if (prev <= 0) return 0;
+
+                if (prev <= 1) {
+                    clearInterval(timer);
+
+                    props.navigation.navigate('SOSConfirmed');
+
+                    return 0;
+                }
+
                 return prev - 1;
             });
         }, 1000);
+
 
         return () => clearInterval(timer);
     }, []);
@@ -37,7 +46,7 @@ const SOSRequest = () => {
 
             <SOSHeader
                 title="Emergency SOS"
-                onBackPress={() => console.log("Back")}
+                onBackPress={() => props.navigation.goBack()}
             />
 
             <ScrollView
@@ -51,8 +60,6 @@ const SOSRequest = () => {
                         autoPlay
                         loop={true}
                         style={{ width: 180, height: 180 }}
-
-                        
                     />
                 </View>
 
@@ -66,7 +73,7 @@ const SOSRequest = () => {
                 <Text style={styles.timer}>{formatTime(timeLeft)}</Text>
                 <Text style={styles.timerLabel}>Waiting Timer</Text>
 
-                <TouchableOpacity style={styles.cancelBtn}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => props.navigation.navigate('SOSCancel')}>
                     <Text style={styles.cancelText}>Cancel SOS</Text>
                 </TouchableOpacity>
 

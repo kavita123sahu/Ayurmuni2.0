@@ -5,9 +5,9 @@ import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
 
-const CheckOut = () => {
+const MedicineCheckOut = (props: any) => {
 
-    const [selectedSpeed, setSelectedSpeed] = useState('standard'); 
+    const [selectedSpeed, setSelectedSpeed] = useState('standard');
 
     const orderData = [
         {
@@ -38,6 +38,7 @@ const CheckOut = () => {
 
             <AppHeader
                 title="Checkout"
+                onLeftPress={()=>props.navigation.goBack()}
                 leftIcon={Images.backIcon}
             />
 
@@ -176,7 +177,7 @@ const CheckOut = () => {
 
             </ScrollView>
 
-            <TouchableOpacity style={styles.checkout}>
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('OrderStatus')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Place Order</Text>
                     <Image source={Images.arrowRight} style={styles.checkoutIcon} />
@@ -187,7 +188,7 @@ const CheckOut = () => {
     )
 }
 
-export default CheckOut;
+export default MedicineCheckOut;
 
 const styles = StyleSheet.create({
     container: {
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
-        marginTop:8
+        marginTop: 8
     },
 
     speedRow: {
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#0D614E',
         fontFamily: Fonts.PoppinsSemiBold,
-        marginTop:8
+        marginTop: 8
     },
 
     paymentCard: {

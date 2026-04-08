@@ -27,7 +27,7 @@ const HomeCategory = ({ data = [], navigation }: any) => {
     const handlePress = useCallback((item: Category) => {
         switch (item.name) {
             case 'Doctors':
-                navigation.navigate('Consult');
+                // navigation.navigate('Consult');
                 break;
 
             case 'Medicine':
@@ -86,12 +86,14 @@ export default React.memo(HomeCategory);
 const styles = StyleSheet.create({
     container: {
         // paddingHorizontal: 8,
-        marginHorizontal: 15
+        marginHorizontal:0,
+        paddingLeft:-20
+        
     },
 
     item: {
         alignItems: 'center',
-        marginHorizontal: 4,
+        marginHorizontal: 6,
     },
 
     circle: {

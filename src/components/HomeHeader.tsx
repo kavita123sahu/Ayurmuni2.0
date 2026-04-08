@@ -88,10 +88,12 @@ const HomeHeader = () => {
                     {/* 📍 Location Section */}
                     <View style={styles.locationMain}>
 
-                        <View style={styles.profileCircle}>
+                        {/* <View style={styles.profileCircle}>
                             <Image source={Images.location} tintColor={Colors.primaryColor} style={{ height: 22, width: 22, }} />
 
-                        </View>
+                        </View> */}
+
+
                         <View style={styles.locationContainer}>
 
                             {/* Header */}
@@ -115,11 +117,11 @@ const HomeHeader = () => {
                 {/* RIGHT SECTION */}
                 <View style={styles.rightIcons}>
 
-                    <TouchableOpacity style={styles.sosButton}>
+                    <TouchableOpacity style={styles.sosButton} onPress={()=>navigation.navigate('EmergencySOS')}>
                         <Text style={styles.sosText}>SOS</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.bellButton}>
+                    <TouchableOpacity style={styles.bellButton} onPress={()=>navigation.navigate('Notifications')}>
                         <Feather name="bell" size={20} color="#000" />
                         <View style={styles.dot} />
                     </TouchableOpacity>
@@ -134,9 +136,10 @@ export default React.memo(HomeHeader);
 
 const styles = StyleSheet.create({
     container: {
-        padding: 15,
-        marginTop: 15,
-        backgroundColor: '#F7F7F7',
+       paddingVertical:15,
+    //    paddingHorizontal:15,
+        marginTop: 20,
+        backgroundColor: '#ffff',
     },
 
     topRow: {
@@ -157,15 +160,15 @@ const styles = StyleSheet.create({
         height: 42,
         width: 42,
         borderRadius: 21,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.primaryColor,
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     profileText: {
         fontSize: 16,
-        fontWeight: '600',
-        color: '#1D2939',
+       fontFamily: Fonts.PoppinsMedium,
+        color: Colors.white,
     },
 
     locationMain: {
@@ -176,6 +179,7 @@ const styles = StyleSheet.create({
 
     locationContainer: {
         flexDirection: 'column',
+        marginLeft:10
     },
 
     locationLabel: {

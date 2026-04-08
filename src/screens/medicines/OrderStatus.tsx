@@ -37,9 +37,10 @@ const orderData: OrderItem[] = [
         price: '149.00',
         image: Images.prItem,
     },
+
 ];
 
-const OrderStatus: React.FC = () => {
+const OrderStatus: React.FC = (props : any) => {
 
     const renderItem: ListRenderItem<OrderItem> = ({ item }) => {
         return (
@@ -62,7 +63,8 @@ const OrderStatus: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <AppHeader title="Order Status" />
+
+            <AppHeader title="Order Status" leftIcon={Images.backIcon} onLeftPress={()=>props.navigation.goBack()} />
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -133,6 +135,7 @@ const OrderStatus: React.FC = () => {
                 <Text style={styles.support}>
                     Need help? <Text style={styles.contact}>Contact Support</Text>
                 </Text>
+
             </ScrollView>
         </SafeAreaView>
     );
@@ -302,11 +305,12 @@ const styles = StyleSheet.create({
     totalText: {
         fontSize: 13,
         color: '#7A7A7A',
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     totalAmount: {
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: Fonts.PoppinsBold,
         color: '#0D614E',
     },
 
@@ -362,7 +366,7 @@ const styles = StyleSheet.create({
     primaryText: {
         color: '#ffff',
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     secondaryBtn: {

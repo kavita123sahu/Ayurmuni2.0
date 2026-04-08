@@ -11,14 +11,14 @@ import SOSHeader from '../../components/SOSHeader';
 import { Fonts } from '../../common/Fonts';
 import LottieView from 'lottie-react-native';
 
-const SOSCancelScreen = () => {
+const SOSCancelScreen = (props : any) => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
 
             <SOSHeader
                 title="Emergency SOS"
-                onBackPress={() => console.log("Back")}
+                onBackPress={() =>props.navigation.goBack()}
             />
 
             <ScrollView contentContainerStyle={styles.container}>

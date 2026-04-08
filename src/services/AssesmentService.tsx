@@ -101,7 +101,7 @@ export const AssesmentYesSubmit = async (data: Object) => {
             let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/profile/submitwithoutform/`, fetchParameter);
             let response = await serverResponse.json();
             console.log("resposeeeewihtoutttttttttt-->", response)
-            resolve(response);
+            resolve(serverResponse);
         }
         catch (error) {
             reject(error);

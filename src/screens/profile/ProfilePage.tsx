@@ -16,6 +16,7 @@ import Header from '../../components/Header';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
+import { ScreenWrapper } from '../../components/ScreenWrapper';
 
 const ProfilePage = ({ navigation }: any) => {
 
@@ -153,7 +154,8 @@ const ProfilePage = ({ navigation }: any) => {
     };
 
     return (
-        <View style={styles.container} >
+        <ScreenWrapper>
+<View style={styles.container} >
 
             {/* HEADER */}
             <Header
@@ -207,6 +209,8 @@ const ProfilePage = ({ navigation }: any) => {
 
             </ScrollView>
         </View>
+        </ScreenWrapper>
+        
     );
 };
 
@@ -217,7 +221,8 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
-        paddingBottom: 100
+        paddingBottom: 100,
+        backgroundColor:'#FDFDFB'
 
     },
 

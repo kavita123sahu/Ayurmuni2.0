@@ -231,7 +231,8 @@ const TopCategories = (props: any) => {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+    <SafeAreaView style={{ flex: 1,  marginBottom: 30,
+            paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
 
       <Header
         title={categoryName}
@@ -246,19 +247,11 @@ const TopCategories = (props: any) => {
         icon={require('../../assets/images/search.png')}
       />
 
-        <ScrollView style={{ flex: 1, }} showsVerticalScrollIndicator={false}>
-        <PromoCard 
-        title="The Wellness Essentials"
-        desc="Discover our loved organic selections, cold-pressed to preserve nature’s power."
-        tag="CURATED EXCELLENCE"
-        image={require('../../assets/images/cosmetic.png')}
-        showButton={false}
-      />
-      <SectionHeader title="Top  Selling Products" actionText="View all" />
-
       <TopSellingList data={topSelling} isGrid={true}  navigation={props.navigation}  />
       
-      </ScrollView>
+  
+
+   
       </View>
     </SafeAreaView>
   );
@@ -270,6 +263,6 @@ export default TopCategories;
 const styles = StyleSheet.create({
   flexContain:{
     flex:1,
-    paddingHorizontal:20
+   
   }
 })

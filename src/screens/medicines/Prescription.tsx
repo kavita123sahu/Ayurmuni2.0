@@ -7,7 +7,7 @@ import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
-const Prescription = () => {
+const Prescription = (props : any) => {
     const recentData = [
         {
             id: '1',
@@ -43,7 +43,8 @@ const Prescription = () => {
             <AppHeader
                 title="Product Details"
                 leftIcon={Images.backIcon}
-                onRightPress={() => console.log("Share clicked")}
+                onLeftPress={()=>props.navigation.goBack()}
+            // onRightPress={() => console.log("Share clicked")}
             />
 
             <ScrollView
@@ -141,7 +142,7 @@ const Prescription = () => {
 
             </ScrollView>
 
-            <TouchableOpacity style={styles.checkout}>
+            <TouchableOpacity style={styles.checkout} onPress={()=> props.navigation.navigate('VerifyPresciption')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Proceed to Details</Text>
                     <Image source={Images.arrowRight} style={styles.checkoutIcon} />

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import { ScreenWrapper } from '../../components/ScreenWrapper';
 
 type CartItem = {
     id: string;
@@ -84,84 +85,89 @@ const MyCart: React.FC = (props: any) => {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
-            <AppHeader
-                title="My Cart"
-                leftIcon={Images.backIcon}
-                onLeftPress={()=>props.navigation.goBack()}
-                rightIcon={Images.deleteitem}
-            />
 
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 30, paddingHorizontal: 20 }}
-            >
+        <ScreenWrapper>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
 
-                {cart.map((item) => (
-                    <View key={item.id} style={styles.card}>
-                        <Image source={item.image} style={styles.image} />
+                <AppHeader
+                    title="My Cart"
+                    leftIcon={Images.backIcon}
+                    onLeftPress={() => props.navigation.goBack()}
+                    rightIcon={Images.deleteitem}
+                />
 
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.title}>{item.name}</Text>
-                            <Text style={styles.weight}>{item.weight}</Text>
-                            <Text style={styles.price}>Rs. {item.price}</Text>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 30, paddingHorizontal: 20 }}
+                >
+
+                    {cart.map((item) => (
+                        <View key={item.id} style={styles.card}>
+                            <Image source={item.image} style={styles.image} />
+
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.title}>{item.name}</Text>
+                                <Text style={styles.weight}>{item.weight}</Text>
+                                <Text style={styles.price}>Rs. {item.price}</Text>
+                            </View>
+
+                            <View style={styles.qtyBox}>
+                                <TouchableOpacity onPress={() => increaseQty(item.id)} style={{ padding: 10, borderRadius: 5, }} >
+                                    <Text style={styles.plus}>+</Text>
+                                </TouchableOpacity>
+
+                                <Text style={styles.qty}>{item.quantity}</Text>
+
+                                <TouchableOpacity onPress={() => decreaseQty(item.id)} style={{ padding: 10, borderRadius: 5 }}>
+                                    <Text style={styles.minus}>−</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ))}
+
+                    <View style={styles.promo}>
+                        <View style={styles.promoLeft}>
+                            <Image source={Images.promoIcon} style={styles.promoIcon} />
+
+                            <TextInput
+                                placeholder="Promo Code"
+                                value={promoCode}
+                                onChangeText={setPromoCode}
+                                placeholderTextColor="#94A3B8"
+                                style={styles.promoInput}
+                            />
                         </View>
 
-                        <View style={styles.qtyBox}>
-                            <TouchableOpacity onPress={() => increaseQty(item.id)} style={{ padding: 10, borderRadius: 5, }} >
-                                <Text style={styles.plus}>+</Text>
-                            </TouchableOpacity>
-
-                            <Text style={styles.qty}>{item.quantity}</Text>
-
-                            <TouchableOpacity onPress={() => decreaseQty(item.id)} style={{ padding: 10, borderRadius: 5 }}>
-                                <Text style={styles.minus}>−</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ))}
-
-                <View style={styles.promo}>
-                    <View style={styles.promoLeft}>
-                        <Image source={Images.promoIcon} style={styles.promoIcon} />
-
-                        <TextInput
-                            placeholder="Promo Code"
-                            value={promoCode}
-                            onChangeText={setPromoCode}
-                            placeholderTextColor="#94A3B8"
-                            style={styles.promoInput}
-                        />
+                        <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
+                            <Text style={styles.applyText}>Apply</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
-                        <Text style={styles.applyText}>Apply</Text>
-                    </TouchableOpacity>
-                </View>
+                    <View style={styles.billBox}>
+                        <Row label="Subtotal" value={`Rs. ${subtotal.toFixed(2)}`} />
+                        <Row label="Delivery Fee" value={`Rs. ${delivery}`} />
+                        <Row label="Discount" value={`Rs. -${discount}`} />
 
-                <View style={styles.billBox}>
-                    <Row label="Subtotal" value={`Rs. ${subtotal.toFixed(2)}`} />
-                    <Row label="Delivery Fee" value={`Rs. ${delivery}`} />
-                    <Row label="Discount" value={`Rs. -${discount}`} />
+                        <View style={styles.divider} />
 
-                    <View style={styles.divider} />
+                        <Row label="Total" value={`Rs. ${total.toFixed(2)}`} isTotal />
 
-                    <Row label="Total" value={`Rs. ${total.toFixed(2)}`} isTotal />
+                        <Text style={styles.tax}>INCLUSIVE OF TAXES</Text>
+                    </View>
 
-                    <Text style={styles.tax}>INCLUSIVE OF TAXES</Text>
-                </View>
+                </ScrollView>
 
-            </ScrollView>
+                <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('Checkout')}>
+                    <View style={styles.checkoutRow}>
+                        <Text style={styles.checkoutText}>Proceed to Checkout</Text>
 
-            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('Checkout')}>
-                <View style={styles.checkoutRow}>
-                    <Text style={styles.checkoutText}>Proceed to Checkout</Text>
+                        <Image source={Images.arrowRight} style={styles.checkoutIcon} />
+                    </View>
+                </TouchableOpacity>
 
-                    <Image source={Images.arrowRight} style={styles.checkoutIcon} />
-                </View>
-            </TouchableOpacity>
+            </SafeAreaView>
+        </ScreenWrapper>
 
-        </SafeAreaView>
     );
 };
 

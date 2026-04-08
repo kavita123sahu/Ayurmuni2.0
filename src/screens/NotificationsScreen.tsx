@@ -24,64 +24,65 @@ interface NotificationItem {
     section: 'upcoming' | 'today' | 'yesterday';
 }
 
-const notifications: NotificationItem[] = [
-    {
-        id: '1',
-        title: 'Doctor Appointment',
-        description:
-            'Your consultation with Dr. Arjun R Nair starts soon. Please be ready.',
-        time: 'In 30 Mins',
-        icon: require('../assets/images/calendarNot.png'),
-        iconBg: '#0D614E',
-        type: 'appointment',
-        section: 'upcoming',
-    },
-    {
-        id: '2',
-        title: 'Order Out for Delivery',
-        description:
-            'Your medicine order #MD-9821 is arriving today by 6:00 PM.',
-        time: '2h ago',
-        icon: require('../assets/images/truckNot.png'),
-        iconBg: '#4A90E2',
-        type: 'normal',
-        section: 'today',
-    },
-    {
-        id: '3',
-        title: 'Health Sale is Live!',
-        description:
-            'Get up to 25% OFF on all skincare products including Elixir Face Cream.',
-        time: '5h ago',
-        icon: require('../assets/images/tagNot.png'),
-        iconBg: '#F5A623',
-        image: require('../assets/images/productNot.png'),
-        type: 'normal',
-        section: 'today',
-    },
-    {
-        id: '4',
-        title: 'Refill Reminder',
-        description:
-            'Your prescription for Vitamin D3 is running low. Tap to refill your order.',
-        time: '8h ago',
-        icon: require('../assets/images/listNot.png'),
-        iconBg: '#FF5A5F',
-        type: 'normal',
-        section: 'today',
-    },
-    {
-        id: '5',
-        title: 'Lab Reports Ready',
-        description:
-            'Your Annual Health Checkup reports are now available to view and download.',
-        time: '1d ago',
-        icon: require('../assets/images/labNot.png'),
-        iconBg: '#4CD7A5',
-        type: 'normal',
-        section: 'yesterday',
-    },
-];
+const notifications: NotificationItem[] =
+    [
+        {
+            id: '1',
+            title: 'Doctor Appointment',
+            description:
+                'Your consultation with Dr. Arjun R Nair starts soon. Please be ready.',
+            time: 'In 30 Mins',
+            icon: require('../assets/images/calendarNot.png'),
+            iconBg: '#0D614E',
+            type: 'appointment',
+            section: 'upcoming',
+        },
+        {
+            id: '2',
+            title: 'Order Out for Delivery',
+            description:
+                'Your medicine order #MD-9821 is arriving today by 6:00 PM.',
+            time: '2h ago',
+            icon: require('../assets/images/truckNot.png'),
+            iconBg: '#4A90E2',
+            type: 'normal',
+            section: 'today',
+        },
+        {
+            id: '3',
+            title: 'Health Sale is Live!',
+            description:
+                'Get up to 25% OFF on all skincare products including Elixir Face Cream.',
+            time: '5h ago',
+            icon: require('../assets/images/tagNot.png'),
+            iconBg: '#F5A623',
+            image: require('../assets/images/productNot.png'),
+            type: 'normal',
+            section: 'today',
+        },
+        {
+            id: '4',
+            title: 'Refill Reminder',
+            description:
+                'Your prescription for Vitamin D3 is running low. Tap to refill your order.',
+            time: '8h ago',
+            icon: require('../assets/images/listNot.png'),
+            iconBg: '#FF5A5F',
+            type: 'normal',
+            section: 'today',
+        },
+        {
+            id: '5',
+            title: 'Lab Reports Ready',
+            description:
+                'Your Annual Health Checkup reports are now available to view and download.',
+            time: '1d ago',
+            icon: require('../assets/images/labNot.png'),
+            iconBg: '#4CD7A5',
+            type: 'normal',
+            section: 'yesterday',
+        },
+    ];
 
 const renderStyledText = (text: string) => {
     if (text.includes('Dr.') && text.includes('starts')) {
@@ -227,7 +228,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
     );
 };
 
-const NotificationsScreen = () => {
+const NotificationsScreen = (props: any) => {
     const renderSection = (section: string, title: string) => {
         const data = notifications.filter(n => n.section === section);
 
@@ -247,7 +248,7 @@ const NotificationsScreen = () => {
         <SafeAreaView style={styles.container}>
             {/* HEADER */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => { }}>
+                <TouchableOpacity onPress={() => { props.navigation.goBack() }}>
                     <Image
                         source={Images.backIcon}
                         style={styles.backIcon}

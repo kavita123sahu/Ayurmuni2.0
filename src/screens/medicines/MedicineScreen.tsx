@@ -50,6 +50,24 @@ const MedicineScreen = () => {
         { id: '8', name: 'Drinks', icon: categoryImage },
     ];
 
+    const dataItems = [
+        {
+            id: '1',
+            title: 'Order With Prescription',
+            subtitle: 'Upload & Get Verified',
+            icon: Images.prescriptionIcon,
+            bgIcon: Images.uploadBgIcon,
+            screen: 'Prescription'
+        },
+        {
+            id: '2',
+            title: 'Search & Buy Online',
+            subtitle: 'Browse 50k+ Products',
+            icon: Images.searchIcon2,
+            bgIcon: Images.searchBgIcon,
+            screen: 'SearchScreen'
+        },
+    ];
 
     const Medicines = [
         {
@@ -100,7 +118,11 @@ const MedicineScreen = () => {
         },
     ];
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+        <SafeAreaView style={{
+            flex: 1,
+            marginBottom: 30,
+            paddingHorizontal: 20, backgroundColor: '#FDFDFB'
+        }}>
 
             <Header
                 title="Medicine Store"
@@ -111,7 +133,7 @@ const MedicineScreen = () => {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
+                contentContainerStyle={{}}
             >
 
                 <SearchBar
@@ -120,29 +142,16 @@ const MedicineScreen = () => {
                 />
 
                 <ActionCards
-                    data={[
-                        {
-                            id: '1',
-                            title: 'Order With Prescription',
-                            subtitle: 'Upload & Get Verified',
-                            icon: Images.prescriptionIcon,
-                            bgIcon: Images.uploadBgIcon,
-                        },
-                        {
-                            id: '2',
-                            title: 'Search & Buy Online',
-                            subtitle: 'Browse 50k+ Products',
-                            icon: Images.searchIcon2,
-                            bgIcon: Images.searchBgIcon,
-                        },
-                    ]}
+                    data={dataItems}
+                    onpress={(item) => navigation.navigate(item.screen)}
                 />
 
                 <SectionHeader title="Recent Orders" actionText="View History" />
+                
                 <RecentProductsList data={recentProducts} />
 
                 <SectionHeader title="Shop by Concern" />
-                <CategoryList data={categories} navigation ={navigation} />
+                <CategoryList data={categories} navigation={navigation} />
 
                 <SectionHeader title="Trusted Brands" />
 

@@ -71,7 +71,7 @@ const Checkout: React.FC = (props : any) => {
                             </Text>
                         </View>
 
-                        <TouchableOpacity style={styles.changeBtn}>
+                        <TouchableOpacity style={styles.changeBtn} onPress={()=>props.navigation.navigate('ManageAdrees')}>
                             <Text style={styles.changeText}>Change</Text>
                         </TouchableOpacity>
                     </View>

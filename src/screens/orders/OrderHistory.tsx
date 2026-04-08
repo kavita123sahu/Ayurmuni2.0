@@ -5,6 +5,7 @@ import OrderCard from '../../components/OrderCard';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
 import { Images } from '../../common/Images';
+import { ScreenWrapper } from '../../components/ScreenWrapper';
 
 
 const DATA = [
@@ -29,11 +30,35 @@ const DATA = [
         date: '05 Sep 2023',
         amount: '850.00',
     },
+     {
+        title: 'Chronic Care Pack',
+        id: '#ORD-45189',
+        status: 'DELIVERED',
+        date: '05 Sep 2023',
+        amount: '850.00',
+    },
+     {
+        title: 'Chronic Care Pack',
+        id: '#ORD-95129',
+        status: 'DELIVERED',
+        date: '05 Sep 2023',
+        amount: '850.00',
+    },
 ];
 
+const formatStatus = (status: string): 'DELIVERED' | 'IN PROGRESS' => {
+  const s = status?.toUpperCase();
+
+  if (s === 'DELIVERED') return 'DELIVERED';
+
+  return 'IN PROGRESS';
+};
+
 const OrderHistory = (props: any) => {
+
     return (
-        <View style={styles.container}>
+       <ScreenWrapper>
+         <View style={styles.container}>
 
             <Header
                 title="Order History"
@@ -50,10 +75,17 @@ const OrderHistory = (props: any) => {
             <FlatList
                 data={DATA}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <OrderCard {...item} />}
+                renderItem={({ item }) =>  <OrderCard
+  title={item.title}
+  id={item.id}
+  status={formatStatus(item.status)} // ✅ FIX
+  date={item.date}
+  amount={item.amount}
+/> }
                 showsVerticalScrollIndicator={false}
             />
         </View>
+       </ScreenWrapper>
     );
 };
 
@@ -66,6 +98,7 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingHorizontal:20,
         backgroundColor: '#F9FAFB',
+        paddingBottom:100
     },
 
     title: {

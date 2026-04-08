@@ -7,6 +7,7 @@ import { Images } from '../common/Images';
 type Props = {
   title: string;
   id: string;
+  
   status: 'DELIVERED' | 'IN PROGRESS';
   date: string;
   amount: string;
@@ -19,6 +20,7 @@ const OrderCard: React.FC<Props> = ({
   date,
   amount,
 }) => {
+  
   const isDelivered = status === 'DELIVERED';
 
   return (

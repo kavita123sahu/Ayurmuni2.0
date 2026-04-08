@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
 
   btnText: {
     color: '#0D614E',
-    fontWeight: '500',
+   fontFamily : Fonts.PoppinsSemiBold,
     fontSize: 14,
   },
 

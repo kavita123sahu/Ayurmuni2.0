@@ -6,7 +6,7 @@ import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
-const VerifyPresciption = () => {
+const VerifyPresciption = (props: any) => {
 
     const [patientName, setPatientName] = useState("Jonathan Doe");
     const [doctorName, setDoctorName] = useState("Dr. Sarah Williams");
@@ -34,6 +34,7 @@ const VerifyPresciption = () => {
 
             <AppHeader
                 title="Verify Prescription"
+                onLeftPress={()=>props.navigation.goBack()}
                 leftIcon={Images.backIcon}
             />
 
@@ -103,7 +104,7 @@ const VerifyPresciption = () => {
 
             </ScrollView>
 
-            <TouchableOpacity style={styles.checkout}>
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('MedicineCheckOut')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Confirm & Continue</Text>
                     <Image source={Images.arrowRight} style={styles.checkoutIcon} />
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
         paddingVertical: 0,
         paddingHorizontal: 0,
         includeFontPadding: false,
-        lineHeight: 20, 
+        lineHeight: 20,
     },
 
     editIcon: {
