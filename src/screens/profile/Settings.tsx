@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Fonts } from "../../common/Fonts";
@@ -89,6 +89,9 @@ const SettingsScreen = (props: any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
+
             <AppHeader
                 title="Settings"
                 leftIcon={Images.backIcon}
@@ -96,7 +99,7 @@ const SettingsScreen = (props: any) => {
                 rightIcon="search"
                 onRightPress={() => console.log('Search clicked')}
             />
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
                 <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
 
                     {settingsData.map((section, index) => (
@@ -107,8 +110,6 @@ const SettingsScreen = (props: any) => {
                                 {section.data.map((item, index) => (
                                     <React.Fragment key={index}>
                                         <SettingItem item={item} />
-
-                                        {/* 👇 divider between ALL items except last */}
                                         {index < section.data.length - 1 && (
                                             <View style={styles.divider} />
                                         )}
@@ -147,7 +148,7 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F8FAFC",
+        backgroundColor: "#FFFFFF",
     },
     sectionTitle: {
         fontSize: 14,

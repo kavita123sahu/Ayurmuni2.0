@@ -8,11 +8,13 @@ import {
     Image,
     TextInput,
     FlatList,
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../components/AppHeader';
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
+import { Colors } from '../common/Colors';
 
 type ScreenType = 'LIST' | 'FORM';
 
@@ -22,7 +24,7 @@ interface AddressItem {
     icon: any;
 }
 
-const ManageAdrees: React.FC = (props : any) => {
+const ManageAdrees: React.FC = (props: any) => {
     const [screen, setScreen] = useState<ScreenType>('LIST');
     const [selectedId, setSelectedId] = useState('current');
 
@@ -245,6 +247,9 @@ const ManageAdrees: React.FC = (props : any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
             <AppHeader
                 title="Manage Address"
                 leftIcon={Images.backIcon}
@@ -367,6 +372,7 @@ const styles = StyleSheet.create({
 
     actionText: {
         fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
         color: '#0D614E',
     },
 
@@ -427,11 +433,12 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         marginBottom: 14,
         fontSize: 13,
-        color: '#0D614E',
+        color: Colors.textColor,
     },
 
     inputActive: {
         borderColor: '#0D614E80',
+        color: Colors.primaryColor
     },
 
     row: { flexDirection: 'row' },

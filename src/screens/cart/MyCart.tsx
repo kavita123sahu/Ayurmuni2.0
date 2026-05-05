@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
     View,
     Text,
@@ -6,14 +6,16 @@ import {
     StyleSheet,
     Image,
     TouchableOpacity,
-    TextInput,
-    Alert
+    Alert,
+    StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
+import PromoScreen from '../../components/PromoScreen';
+import { Colors } from '../../common/Colors';
 
 type CartItem = {
     id: string;
@@ -43,20 +45,41 @@ const initialData: CartItem[] = [
     },
 ];
 
-const MyCart: React.FC = (props: any) => {
-    const [cart, setCart] = useState<CartItem[]>(initialData);
-    const [promoCode, setPromoCode] = useState('');
-    const [discount, setDiscount] = useState(10.00);
+const MyCart = ({ navigation }: any) => {
 
-    const increaseQty = (id: string) => {
+    const [cart, setCart] = useState<CartItem[]>(initialData);
+    const [discount, setDiscount] = useState<number>(10);
+    const [selectedItems, setSelectedItems] = useState<string[]>([]); // ✅ FIX
+
+    // ✅ optimized handlers
+    const increaseQty = useCallback((id: string) => {
         setCart(prev =>
             prev.map(item =>
                 item.id === id ? { ...item, quantity: item.quantity + 1 } : item
             )
         );
-    };
+    }, []);
 
-    const decreaseQty = (id: string) => {
+    const decreaseQty = useCallback((id: string) => {
+        setCart(prev => {
+            const item = prev.find(i => i.id === id);
+
+            if (!item) return prev;
+            // qty = 1 → delete item
+            if (item.quantity === 1) {
+                return prev.filter(i => i.id !== id);
+            }
+            // qty > 1 → normal decrease
+            return prev.map(i =>
+                i.id === id ? { ...i, quantity: i.quantity - 1 } : i
+            );
+        });
+        // selected list se bhi hata de
+        setSelectedItems(prev => prev.filter(i => i !== id));
+
+    }, []);
+
+    {/*  const decreaseQty = useCallback((id: string) => {
         setCart(prev =>
             prev.map(item =>
                 item.id === id && item.quantity > 1
@@ -64,8 +87,24 @@ const MyCart: React.FC = (props: any) => {
                     : item
             )
         );
-    };
+    }, []);*/}
 
+    const toggleSelect = useCallback((id: string) => {
+        setSelectedItems(prev =>
+            prev.includes(id)
+                ? prev.filter(i => i !== id)
+                : [...prev, id]
+        );
+    }, []);
+
+    const deleteSelected = useCallback(() => {
+        if (selectedItems.length === 0) return;
+
+        setCart(prev => prev.filter(item => !selectedItems.includes(item.id)));
+        setSelectedItems([]);
+    }, [selectedItems]);
+
+    // ✅ memo calculations
     const subtotal = useMemo(() => {
         return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     }, [cart]);
@@ -73,75 +112,77 @@ const MyCart: React.FC = (props: any) => {
     const delivery = 129;
     const total = subtotal + delivery - discount;
 
-    const handleApply = () => {
-        if (promoCode.toLowerCase() === 'save20') {
-            setDiscount(20);
-        } else if (promoCode.toLowerCase() === 'save50') {
-            setDiscount(50);
-        } else {
-            setDiscount(10);
-            Alert.alert('Invalid Promo Code');
-        }
-    };
-
     return (
+        // <ScreenWrapper>
+            <SafeAreaView style={{ flex: 1,  backgroundColor: '#FDFDFB' }}>
 
-        <ScreenWrapper>
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+                <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
 
                 <AppHeader
                     title="My Cart"
                     leftIcon={Images.backIcon}
-                    onLeftPress={() => props.navigation.goBack()}
-                    rightIcon={Images.deleteitem}
+                    onLeftPress={() => navigation.goBack()}
+                    rightIcon={selectedItems.length > 0 ? Images.deleteitem : null}
+                    onRightPress={deleteSelected} // ✅ FIX
                 />
 
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 30, paddingHorizontal: 20 }}
+                    contentContainerStyle={{ paddingBottom: 30, paddingTop:20, backgroundColor: '#FDFDFB',  paddingHorizontal: 20 }}
                 >
 
-                    {cart.map((item) => (
-                        <View key={item.id} style={styles.card}>
-                            <Image source={item.image} style={styles.image} />
+                    {cart.map((item) => {
+                        const isSelected = selectedItems.includes(item.id);
 
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.title}>{item.name}</Text>
-                                <Text style={styles.weight}>{item.weight}</Text>
-                                <Text style={styles.price}>Rs. {item.price}</Text>
-                            </View>
+                        return (
+                            <TouchableOpacity
+                                key={item.id}
+                                activeOpacity={0.9}
+                                onLongPress={() => toggleSelect(item.id)}
+                                onPress={() => {
+                                    if (selectedItems.length > 0) toggleSelect(item.id);
+                                }}
+                                style={styles.card}
+                            >
 
-                            <View style={styles.qtyBox}>
-                                <TouchableOpacity onPress={() => increaseQty(item.id)} style={{ padding: 10, borderRadius: 5, }} >
-                                    <Text style={styles.plus}>+</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
 
-                                <Text style={styles.qty}>{item.quantity}</Text>
+                                    <TouchableOpacity
+                                        onPress={() => toggleSelect(item.id)}
+                                        style={[
+                                            styles.checkbox,
+                                            isSelected && styles.checkboxActive
+                                        ]}
+                                    >
+                                        {isSelected && <View style={styles.innerDot} />}
+                                    </TouchableOpacity>
 
-                                <TouchableOpacity onPress={() => decreaseQty(item.id)} style={{ padding: 10, borderRadius: 5 }}>
-                                    <Text style={styles.minus}>−</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ))}
+                                    <Image source={item.image} style={styles.image} />
+                                </View>
 
-                    <View style={styles.promo}>
-                        <View style={styles.promoLeft}>
-                            <Image source={Images.promoIcon} style={styles.promoIcon} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.title}>{item.name}</Text>
+                                    <Text style={styles.weight}>{item.weight}</Text>
+                                    <Text style={styles.price}>Rs. {item.price}.00</Text>
+                                </View>
 
-                            <TextInput
-                                placeholder="Promo Code"
-                                value={promoCode}
-                                onChangeText={setPromoCode}
-                                placeholderTextColor="#94A3B8"
-                                style={styles.promoInput}
-                            />
-                        </View>
+                                <View style={styles.qtyBox}>
+                                    <TouchableOpacity onPress={() => increaseQty(item.id)} style={styles.btn}>
+                                        <Text style={styles.plus}>+</Text>
+                                    </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
-                            <Text style={styles.applyText}>Apply</Text>
-                        </TouchableOpacity>
-                    </View>
+                                    <Text style={styles.qty}>{item.quantity}</Text>
+
+                                    <TouchableOpacity onPress={() => decreaseQty(item.id)} style={styles.btn}>
+                                        <Text style={styles.minus}>−</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                            </TouchableOpacity>
+                        );
+                    })}
+
+                    <PromoScreen />
 
                     <View style={styles.billBox}>
                         <Row label="Subtotal" value={`Rs. ${subtotal.toFixed(2)}`} />
@@ -157,17 +198,15 @@ const MyCart: React.FC = (props: any) => {
 
                 </ScrollView>
 
-                <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('Checkout')}>
+                <TouchableOpacity style={styles.checkout} onPress={() => navigation.navigate('Checkout')}>
                     <View style={styles.checkoutRow}>
                         <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-
                         <Image source={Images.arrowRight} style={styles.checkoutIcon} />
                     </View>
                 </TouchableOpacity>
 
             </SafeAreaView>
-        </ScreenWrapper>
-
+        // </ScreenWrapper>
     );
 };
 
@@ -197,7 +236,6 @@ const Row: React.FC<RowProps> = ({ label, value, isTotal }) => (
 
 export default MyCart;
 
-
 const styles = StyleSheet.create({
 
     card: {
@@ -210,6 +248,28 @@ const styles = StyleSheet.create({
         marginBottom: 10
     },
 
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        marginRight: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    checkboxActive: {
+        borderColor: '#0D614E',
+        backgroundColor: '#0D614E1A',
+    },
+
+    innerDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 3,
+        backgroundColor: '#0D614E',
+    },
     image: {
         width: 100,
         height: 100,
@@ -240,10 +300,11 @@ const styles = StyleSheet.create({
         width: 40,
         height: 108,
         backgroundColor: '#DCE7E5',
-        borderRadius: 12,
+        borderRadius: 11,
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 6,
+        paddingVertical: 2,
+        paddingHorizontal: 3,
     },
 
     plus: {
@@ -258,9 +319,18 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 
+    btn: {
+        width: 36,
+        height: 36,
+        borderRadius: 11,
+        backgroundColor: '#F1F5F4',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
     qty: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold
     },
 
     promo: {

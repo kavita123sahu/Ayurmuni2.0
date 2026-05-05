@@ -51,7 +51,8 @@ const Checkout: React.FC = (props : any) => {
     return (
         <SafeAreaView style={styles.container}>
 
-            <StatusBar   />
+             <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
             <AppHeader title="Checkout" leftIcon={Images.backIcon} onLeftPress={()=>props.navigation.goBack()} />
 
             <ScrollView contentContainerStyle={styles.content}>

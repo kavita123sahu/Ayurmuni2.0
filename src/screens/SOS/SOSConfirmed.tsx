@@ -14,7 +14,7 @@ import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 
-const SOSConfirmed = (props : any) => {
+const SOSConfirmed = (props: any) => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
@@ -38,11 +38,18 @@ const SOSConfirmed = (props : any) => {
                     style={styles.gradientBlur}
                 />
 
+
                 <View style={styles.imageWrapper}>
                     <Image
                         source={Images.doctorImage}
                         style={styles.doctorImage}
                     />
+
+
+                    <View style={styles.verifiedRow}>
+                        <Image source={Images.approved} style={styles.verifiedIcon} />
+                        <Text style={styles.verifiedText}>Verified Specialist</Text>
+                    </View>
                 </View>
 
                 <Text style={styles.title}>
@@ -63,7 +70,7 @@ const SOSConfirmed = (props : any) => {
                     <Text style={styles.primaryText}>Join Video Consultation</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.secondaryBtn} onPress={()=> props.navigation.navigate('SOSCancel')}>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={() => props.navigation.navigate('SOSCancel')}>
                     <Text style={styles.secondaryText}>Cancel SOS</Text>
                 </TouchableOpacity>
 
@@ -97,15 +104,39 @@ const styles = StyleSheet.create({
     },
 
     imageWrapper: {
-        width:224,
+        width: 224,
         height: 224,
-        backgroundColor:Colors.fieldGrayColor,
-        marginBottom:40,
+        backgroundColor: Colors.fieldGrayColor,
+        marginBottom: 40,
         borderRadius: 40,
     },
+   verifiedRow: {
+  position: 'absolute',
+  bottom: 12, // 👈 adjust as per Figma
+  left: 19,
+  flexDirection: 'row',
+  alignItems: 'center',
 
+  backgroundColor: 'rgba(0,0,0,0.5)', // optional for visibility
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 10,
+},
+
+  verifiedIcon: {
+  width: 14,
+  height: 14,
+  tintColor: '#fff',
+  marginRight: 4,
+},
+
+verifiedText: {
+  color: '#fff',
+  fontSize: 11,
+  fontFamily: Fonts.PoppinsMedium,
+},
     doctorImage: {
-        width:224,
+        width: 224,
         height: 224,
         borderRadius: 40,
     },
@@ -116,7 +147,7 @@ const styles = StyleSheet.create({
         color: "#0F172A",
         fontFamily: Fonts.PoppinsSemiBold,
         lineHeight: 38,
-        marginBottom:20
+        marginBottom: 20
 
     },
 
@@ -124,7 +155,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: "#0D614E",
         fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom:30
+        marginBottom: 30
     },
 
     infoCard: {
@@ -136,7 +167,7 @@ const styles = StyleSheet.create({
         shadowColor: "#000",
         shadowOpacity: 0.03,
         shadowRadius: 15,
-        marginBottom:20
+        marginBottom: 20
     },
 
     infoText: {
@@ -168,15 +199,15 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         alignItems: "center",
         marginTop: 12,
-        borderColor:"#F43F5E1A",
-        borderWidth:1,
+        borderColor: "#F43F5E1A",
+        borderWidth: 1,
     },
 
     secondaryText: {
         color: "#F43F5E",
         fontSize: 16,
         fontFamily: Fonts.PoppinsMedium,
-        
+
     },
 
     footer: {

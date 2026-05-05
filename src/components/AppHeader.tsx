@@ -25,29 +25,34 @@ const AppHeader: React.FC<Props> = ({
   rightIcon,
 }) => {
   return (
-    <View style={styles.container}>
 
-      <TouchableOpacity onPress={onLeftPress} style={styles.iconBox}>
-        {leftIcon && (
-          <Image source={leftIcon} style={styles.icon} />
-        )}
-      </TouchableOpacity>
+    <View style={{ backgroundColor: '#FFFFFF' }}>
+      <View style={styles.container}>
 
-
-      <Text style={styles.title}>{title}</Text>
-
-      {rightIcon ? (
-        <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
-          <Image source={rightIcon} style={styles.icon} />
+        <TouchableOpacity onPress={onLeftPress} style={styles.iconBox}>
+          {leftIcon && (
+            <Image source={leftIcon} style={styles.icon} />
+          )}
         </TouchableOpacity>
-      ) : (
-        <View style={styles.iconBox1} />
-      )}
+
+
+        <Text style={styles.title}>{title}</Text>
+
+        {rightIcon ? (
+          <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
+            <Image source={rightIcon} style={styles.icon} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.iconBox1} />
+        )}
+      </View>
+
+      <View style={styles.divider} />
 
     </View>
+
   );
 };
-
 
 //  rightIcon === "skip" ? (
 //         <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
@@ -65,8 +70,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    backgroundColor: '#fff',
-    paddingTop: 25,
+    // backgroundColor: '#F5F8F8CC',
+    backgroundColor: '#FFFFFF',
+    marginTop: 10,
   },
 
   iconBox: {
@@ -76,21 +82,18 @@ const styles = StyleSheet.create({
     // justifyContent: 'center',
     // alignItems: 'center',
 
-    height: 40,
     width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: "#EEEEEE",
-    alignItems: "center",
-    justifyContent: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   iconBox1: {
     height: 40,
     width: 40,
     borderRadius: 12,
-    // backgroundColor: "#EEEEEE",
-    alignItems: "center",
-    justifyContent: "center",
+    resizeMode: 'contain',
   },
   icon: {
     height: 40,
@@ -106,4 +109,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.textColor,
   },
+
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB', // light gray (figma type)
+    marginTop: 8,
+  }
 });

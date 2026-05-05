@@ -9,29 +9,37 @@ import {
 } from 'react-native';
 import React from 'react';
 import { BlurView } from '@react-native-community/blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../common/Colors';
 import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 
-
 const { width } = Dimensions.get("window");
+
+// 🔥 Responsive scaling
+const scale = width / 375;
+
+const TAB_HEIGHT = 72 * scale;
+const INNER_SIZE = 56 * scale;
+const CONSULT_SIZE = 68 * scale;
 
 const CustomeTab = (props: any) => {
     const { state, navigation } = props;
 
+    const insets = useSafeAreaInsets(); // ✅ SAFE AREA FIX
+
     const visibleRoutes = state.routes.filter(
         (route: any) => route.name !== "Consult"
     );
+
     const isConsultActive =
         state.routes[state.index].name === "Consult";
-
-
 
     const getIcon = (name: string) => {
         switch (name) {
             case "Home":
                 return Images.home;
-            case "Cart":
+            case "Mentor":
                 return Images.orders;
             case "History":
                 return Images.History;
@@ -43,22 +51,15 @@ const CustomeTab = (props: any) => {
     };
 
     return (
-        <View style={styles.wrapper}>
-
+        <View style={[styles.wrapper, { bottom: insets.bottom + 10 }]}>
             <View style={styles.container}>
 
-                {/* 
-                <BlurView
-                    style={StyleSheet.absoluteFill}
-                    blurType="light"
-                    blurAmount={18}
-                /> */}
-
+                {/* Blur for iOS */}
                 {Platform.OS === 'ios' ? (
                     <BlurView
                         style={StyleSheet.absoluteFill}
                         blurType="light"
-                        blurAmount={18}
+                        blurAmount={15}
                     />
                 ) : (
                     <View
@@ -69,11 +70,11 @@ const CustomeTab = (props: any) => {
                     />
                 )}
 
-                {visibleRoutes.map((route: any, index: number) => {
-                    // const isFocused = state.index === index;
-
+                {visibleRoutes.map((route: any) => {
                     const isFocused =
-                        state.index === state.routes.findIndex((r: any) => r.name === route.name);
+                        state.index === state.routes.findIndex(
+                            (r: any) => r.name === route.name
+                        );
 
                     return (
                         <TouchableOpacity
@@ -82,29 +83,35 @@ const CustomeTab = (props: any) => {
                             style={styles.tab}
                             activeOpacity={0.7}
                         >
-                            <View style={[
-                                styles.iconWrapper,
-                                isFocused && styles.activeWrapper
-                            ]}>
+                            <View
+                                style={[
+                                    styles.iconWrapper,
+                                    isFocused && styles.activeWrapper
+                                ]}
+                            >
                                 <Image
                                     source={getIcon(route.name)}
                                     style={{
-                                        width: 22,
-                                        height: 22,
+                                        width: 22 * scale,
+                                        height: 22 * scale,
                                         tintColor: isFocused
                                             ? Colors.primaryColor
                                             : '#A0AAB3',
                                     }}
                                 />
 
-                                <Text style={{
-                                    fontSize: 11,
-                                    fontFamily: isFocused ? Fonts.PoppinsSemiBold : Fonts.PoppinsMedium,
-                                    marginTop: 2,
-                                    color: isFocused
-                                        ? Colors.primaryColor
-                                        : '#A0AAB3',
-                                }}>
+                                <Text
+                                    style={{
+                                        fontSize: 11 * scale,
+                                        marginTop: 3,
+                                        fontFamily: isFocused
+                                            ? Fonts.PoppinsSemiBold
+                                            : Fonts.PoppinsMedium,
+                                        color: isFocused
+                                            ? Colors.primaryColor
+                                            : '#A0AAB3',
+                                    }}
+                                >
                                     {route.name}
                                 </Text>
                             </View>
@@ -113,39 +120,27 @@ const CustomeTab = (props: any) => {
                 })}
             </View>
 
+            {/* CONSULT BUTTON */}
             <TouchableOpacity
                 onPress={() => navigation.jumpTo("Consult")}
+                activeOpacity={0.85}
                 style={[
                     styles.consultBtn,
-                    isConsultActive && { backgroundColor: "#0D614E" } // darker active
+                    isConsultActive && { backgroundColor: "#0D614E" }
                 ]}
-                activeOpacity={0.85}
             >
                 <Image source={Images.TabConsult} style={styles.consultIcon} />
                 <Text style={styles.consultLabel}>Consult</Text>
             </TouchableOpacity>
-
         </View>
     );
 };
 
 export default CustomeTab;
 
-const CONSULT_SIZE = 68;
-
 const styles = StyleSheet.create({
-    // wrapper: {
-    //     flexDirection: "row",
-    //     alignItems: "center",
-    //     justifyContent: "space-between",
-    //     paddingHorizontal: 16,
-    //     paddingVertical: Platform.OS === 'ios' ? 24 : 15,
-    //     backgroundColor: "transparent"
-    // },
-
     wrapper: {
-        position: 'absolute', // ✅ ADD THIS
-        bottom: 30,
+        position: 'absolute',
         left: 0,
         right: 0,
 
@@ -153,29 +148,28 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
 
-
         paddingHorizontal: 16,
-        paddingVertical: Platform.OS === 'ios' ? 24 : 20,
-        backgroundColor: "#FFFFFF1A",
     },
 
     container: {
-        flexDirection: "row",
         flex: 1,
-        height: 72,
-        borderRadius: 40,
+        height: TAB_HEIGHT,
+        borderRadius: TAB_HEIGHT / 2, // 🔥 PERFECT PILL
+
+        flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
 
-        paddingHorizontal: 16,
+        paddingHorizontal: 5,
 
         overflow: "hidden",
-        backgroundColor: "rgba(255,255,255,0.25)",
 
-        elevation: 8,
+        backgroundColor: "rgba(255,255,255,0.9)",
+
+        elevation: 10,
         shadowColor: "#000",
         shadowOpacity: 0.08,
-        shadowRadius: 10,
+        shadowRadius: 12,
         shadowOffset: { width: 0, height: 6 },
     },
 
@@ -186,46 +180,47 @@ const styles = StyleSheet.create({
     },
 
     iconWrapper: {
-        minWidth: 60,  // ✅ dynamic width
-        height: 60,
-        borderRadius: 30,
+        width: INNER_SIZE,
+        height: INNER_SIZE,
+        borderRadius: INNER_SIZE / 2,
         alignItems: "center",
+        // marginRight: 15,
         justifyContent: "center",
     },
 
     activeWrapper: {
         backgroundColor: "#0D614E1A",
-        paddingHorizontal: 10,
-        borderRadius: 30,
-
+        borderRadius: INNER_SIZE / 2,
     },
 
     consultBtn: {
         width: CONSULT_SIZE,
         height: CONSULT_SIZE,
         borderRadius: CONSULT_SIZE / 2,
-        marginLeft: 12,
+
+        marginLeft: 10,
+
         backgroundColor: Colors.primaryColor,
         alignItems: "center",
         justifyContent: "center",
-        elevation: 10,
+
+        elevation: 12,
         shadowColor: Colors.primaryColor,
         shadowOpacity: 0.3,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
     },
 
     consultIcon: {
-        width: 26,
-        height: 26,
+        width: 26 * scale,
+        height: 26 * scale,
         tintColor: "#fff",
-        marginBottom: 2,
     },
 
     consultLabel: {
         color: "#fff",
-        fontSize: 11,
+        fontSize: 11 * scale,
+        marginTop: 2,
         fontFamily: Fonts.PoppinsMedium,
-
     },
 });

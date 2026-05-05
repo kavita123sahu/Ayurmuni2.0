@@ -21,7 +21,6 @@ const SOSPayment: React.FC = (props: any) => {
     const [selectedBank, setSelectedBank] = useState("Select Bank");
 
     const [timeLeft, setTimeLeft] = useState(119);
-
     const upiApps: UPIApp[] = ["gpay", "phonepay", "paytm"];
 
     useEffect(() => {
@@ -53,7 +52,7 @@ const SOSPayment: React.FC = (props: any) => {
 
                 <View style={styles.alertBox}>
                     <View style={styles.alertRow}>
-                        <View>
+                        <View  style={styles.leftContent}>
                             <Text style={styles.alertSmall}>LIMITED RESPONSE WINDOW</Text>
                             <Text style={styles.alertTitle}>
                                 Doctor available in{" "}
@@ -95,7 +94,6 @@ const SOSPayment: React.FC = (props: any) => {
                     </View>
                 </View>
 
-                {/* PAYMENT METHODS */}
                 <View style={styles.paymentHeader}>
                     <Text style={styles.sectionTitle}>PAYMENT METHODS</Text>
                     <View style={styles.encryptRow}>
@@ -137,7 +135,6 @@ const SOSPayment: React.FC = (props: any) => {
                     ))}
                 </View>
 
-                {/* CARD */}
                 <View style={styles.cardBox}>
                     <View style={styles.rowBetween}>
                         <Text style={styles.label}>Credit / Debit Card</Text>
@@ -193,7 +190,6 @@ const SOSPayment: React.FC = (props: any) => {
                     </View>
                 )}
 
-                {/* SECURITY */}
                 <View style={styles.securityRow}>
                     <Image source={Images.ssl} style={styles.secIcon} />
                     <Text style={styles.secText}>SSL SECURE</Text>
@@ -202,7 +198,6 @@ const SOSPayment: React.FC = (props: any) => {
                     <Text style={styles.secText}>PCI COMPLIANT</Text>
                 </View>
 
-                {/* REFUND BOX */}
                 <View style={styles.refundBox}>
                     <Text style={styles.refundText}>
                         100% Refund Guarantee: If the emergency consultation doesn't connect
@@ -212,7 +207,6 @@ const SOSPayment: React.FC = (props: any) => {
 
             </ScrollView>
 
-            {/* BUTTON */}
             <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('SOSRequest')}>
                 <View style={{ flexDirection: "row" }}>
                     <Text style={styles.checkoutText}>Secure Pay</Text>
@@ -238,10 +232,14 @@ const styles = StyleSheet.create({
     },
 
     alertRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
+       flexDirection: "row",
+  alignItems: "center",
     },
+
+    leftContent: {
+  flex: 1,
+  marginRight: 10,
+},
 
     alertSmall: {
         fontSize: 12,
@@ -256,7 +254,7 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
-    timerIcon: { width: 24, height: 24 },
+    timerIcon: { width: 22, height: 22, resizeMode: 'contain',},
 
     sectionTitle: {
         fontSize: 14,
@@ -398,6 +396,7 @@ const styles = StyleSheet.create({
         borderColor: "#E5E7EB",
         borderRadius: 10,
         padding: 12,
+         color: '#0F172A',
         marginTop: 10,
     },
 
@@ -493,6 +492,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: "center",
         justifyContent: "center",
+        
     },
 
     upiText: {

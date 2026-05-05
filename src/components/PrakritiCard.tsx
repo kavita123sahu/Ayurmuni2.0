@@ -10,7 +10,7 @@ type Props = {
   title: string;
   status: string;
   progress: number; // 0 - 100
-  
+
 
 };
 
@@ -18,7 +18,7 @@ const PrakritiCard: React.FC<Props> = ({
   title,
   status,
   progress,
-  
+
 }) => {
   console.log("progressss", progress);
   // 🔥 Theme logic
@@ -59,28 +59,20 @@ const PrakritiCard: React.FC<Props> = ({
   return (
     <View style={styles.card}>
       {/* Top Row */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={[styles.status, { color }]}>
-            {progress === 100 ? 'Profile Complete' : status}
-          </Text>
-        </View>
+      <View >
 
-        {/* Icon */}
-        <View style={[styles.iconBox, { backgroundColor: bgColor }]}>
-          {/* <MaterialIcons
-            name={progress === 100 ? 'verified' : 'access-time'}
-            size={20}
-            color={color}
-          /> */}
-          <Image  source={progress === 100 ? Images.approved : Images.clock} style={Styles.IconSize} tintColor={progress===100 ? Colors.green : progress > 30 ? "#FFC107": "#F43F5E"}/>
-        </View>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={[styles.status, { color }]} numberOfLines={1}>
+          {progress === 100 ? 'Profile Complete' : status}
+        </Text>
+
       </View>
 
       {/* Progress Section */}
       <View style={styles.progressContainer}>
-        <Text style={styles.label}>ANALYSIS PROGRESS</Text>
+        <Text style={styles.label}>Analysis Progress</Text>
         <Text style={[styles.percent, { color }]}>
           {progress}%
         </Text>
@@ -108,30 +100,28 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    // padding: 16,
-    paddingHorizontal:20,
-    paddingVertical:20,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E5EAF0',
+    minHeight: 120,
   },
-
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+
+
   },
 
   title: {
     fontSize: 16,
-   fontFamily : Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsMedium,
     color: Colors.textColor,
   },
 
   status: {
-    marginTop: 4,
+    // marginTop: 4,
     fontSize: 12,
-    fontFamily : Fonts.PoppinsMedium
+    fontFamily: Fonts.PoppinsMedium
   },
 
   iconBox: {
@@ -143,28 +133,29 @@ const styles = StyleSheet.create({
   },
 
   progressContainer: {
-    marginTop: 16,
+    marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center', // 🔥 add this
   },
-
   label: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#94A3B8',
-    marginBottom:4,
-   fontFamily : Fonts.PoppinsSemiBold
+    marginBottom: 4,
+    fontFamily: Fonts.PoppinsMedium
+
   },
 
   percent: {
     fontSize: 12,
-    fontFamily : Fonts.PoppinsSemiBold
+    fontFamily: Fonts.PoppinsSemiBold
   },
 
   progressBarBg: {
-    marginTop: 6,
-    height: 9,
+    marginTop: 8,
+    height: 8,
     backgroundColor: '#E5EAF0',
-    borderRadius: 9,
+    borderRadius: 8,
     overflow: 'hidden',
   },
 

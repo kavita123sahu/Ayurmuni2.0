@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Image,
   TouchableOpacity,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import { Fonts } from '../../common/Fonts';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Images } from '../../common/Images';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 /* ================= TYPES ================= */
 type AppointmentDetails = {
@@ -43,7 +44,7 @@ const data: AppointmentDetails = {
   image: 'https://i.pravatar.cc/100?img=3',
 };
 
-/* ================= BUTTON COMPONENT ================= */
+
 const PrimaryButton = ({
   title,
   onPress,
@@ -54,7 +55,7 @@ const PrimaryButton = ({
   onPress?: () => void;
 }) => {
   return (
-    <TouchableOpacity style={[styles.primaryBtn,{backgroundColor: page=='appoint' ?  Colors.primaryColor: Colors.errorColor }]} onPress={onPress}>
+    <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: page == 'appoint' ? Colors.primaryColor : Colors.errorColor }]} onPress={onPress}>
       <View style={styles.content}>
         <Ionicons name="videocam" size={18} color="#fff" />
         <Text style={styles.primaryText}>{title}</Text>
@@ -63,12 +64,15 @@ const PrimaryButton = ({
   );
 };
 
-/* ================= SCREEN ================= */
+
+
 const AppointmentDetailScreen = (props: any) => {
 
   console.log("propsss", props)
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+
+      <StatusBar barStyle={'dark-content'} backgroundColor={"#FFFFFF"} />
 
       <AppHeader
         title="Appointment Details"
@@ -77,31 +81,24 @@ const AppointmentDetailScreen = (props: any) => {
         rightIcon="search"
         onRightPress={() => console.log('Search clicked')}
       />
-      
-      <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Doctor Card */}
+      <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
         <View style={styles.card}>
-
-          {/* Doctor Info */}
           <View style={styles.row}>
             <Image source={{ uri: data.image }} style={styles.avatar} />
 
             <View>
               <Text style={Styles.name}>{data.doctorName}</Text>
-              <Text style={[Styles.specialty,{color:Colors.primaryColor}]}>{data.specialty}</Text>
+              <Text style={[Styles.specialty, { color: Colors.primaryColor }]}>{data.specialty}</Text>
             </View>
           </View>
 
 
-          {/* Date + Time (Single Box Figma Match) */}
           <View style={styles.dateTimeBox}>
 
-
-            {/* DATE */}
             <View style={styles.dtItem}>
               <View style={styles.iconCircle}>
-                  <Image source={Images.calender}  style={Styles.IconSize} />
+                <Image source={Images.calender} style={Styles.IconSize} />
               </View>
 
               <View style={styles.textContainer}>
@@ -112,7 +109,7 @@ const AppointmentDetailScreen = (props: any) => {
             {/* TIME */}
             <View style={styles.dtItem}>
               <View style={styles.iconCircle}>
-                <Image source={Images.clock}  style={Styles.IconSize} />
+                <Image source={Images.clock} style={Styles.IconSize} />
               </View>
 
 
@@ -124,13 +121,12 @@ const AppointmentDetailScreen = (props: any) => {
             </View>
           </View>
 
-          {/* Buttons */}
-          <View style={{paddingHorizontal:10}}>
-            <PrimaryButton title="Join Video Call" page='appoint'  />
+          <View style={{ paddingHorizontal: 10 }}>
+            <PrimaryButton title="Join Video Call" page='appoint' />
 
-          <TouchableOpacity style={styles.secondaryBtn}>
-            <Text style={styles.secondaryText}>Chat with Doctor</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryBtn}>
+              <Text style={styles.secondaryText}>Chat with Doctor</Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.techText}>
@@ -138,9 +134,7 @@ const AppointmentDetailScreen = (props: any) => {
           </Text>
         </View>
 
-        {/* Patient Info Card */}
-        {/* Title OUTSIDE */}
-        <Text style={Styles.sectionTitle}>Patient Information</Text>
+        <Text style={styles.sectionTitle}>Patient Information</Text>
 
         <View style={styles.card}>
 
@@ -161,52 +155,55 @@ const AppointmentDetailScreen = (props: any) => {
 
         </View>
 
-        {/* Reason Card */}
-        <Text style={Styles.sectionTitle}>Reason for Visit</Text>
+        <Text style={styles.sectionTitle}>Reason for Visit</Text>
 
         <View style={styles.card}>
           <Text style={styles.reason}>{data.reason}</Text>
         </View>
 
-        {/* Bottom Actions */}
-       <View style={{paddingHorizontal:10}}>
-         <TouchableOpacity style={styles.outlineBtn}>
-          <Text style={Styles.outlineText}>Reschedule</Text>
-        </TouchableOpacity>
+        <View style={{ paddingHorizontal: 10 }}>
+          <TouchableOpacity style={styles.outlineBtn}>
+            <Text style={Styles.outlineText}>Reschedule</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelBtn}>
-          <Text style={Styles.cancelText}>Cancel Appointment</Text>
-        </TouchableOpacity>
-       </View>
+          <TouchableOpacity style={styles.cancelBtn}>
+            <Text style={Styles.cancelText}>Cancel Appointment</Text>
+          </TouchableOpacity>
+        </View>
 
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default AppointmentDetailScreen;
 
-/* ================= STYLES ================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-paddingBottom:80,
-    backgroundColor: '#F7F8FA',
+    // paddingBottom: 80,
+    backgroundColor: '#FFFFFF',
   },
 
-  /* CARD */
+  sectionTitle: {
+    marginTop: 15,
+    marginHorizontal: 20,
+    marginBottom: 6,
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.black,
+  },
+
   card: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
     borderRadius: 18,
-    borderWidth:1,
+    borderWidth: 1,
     borderColor: Colors.borderColor
 
   },
-
-
 
   row: {
     flexDirection: 'row',
@@ -220,15 +217,8 @@ paddingBottom:80,
     marginRight: 12,
   },
 
-
-
-
-
-  /* DATE TIME */
   dateTimeBox: {
     flex: 1,
-
-    // backgroundColor: '#F8FAFC', // light bg like figma
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -237,9 +227,7 @@ paddingBottom:80,
   dtItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    // padding:10
     paddingVertical: 10
-    // 50-50 layout with small gap
   },
 
   iconCircle: {
@@ -262,31 +250,18 @@ paddingBottom:80,
   },
 
   label: {
-    // fontSize: 11,
-    // color: '#94A3B8', // gray label
-    // fontWeight: '600',
     marginBottom: 2,
-
-        fontSize: 12,
-        
+    fontSize: 12,
     color: '#94A3B8',
-    // color: Colors.subTextColor,
     fontFamily: Fonts.PoppinsMedium,
   },
 
-
-  
-
   value: {
-     fontFamily: Fonts.PoppinsMedium,
-
+    fontFamily: Fonts.PoppinsMedium,
     fontSize: 14,
     color: '#0F172A',
   },
 
-
-
-  /* BUTTONS */
   primaryBtn: {
     backgroundColor: Colors.primaryColor,
     borderRadius: 12,
@@ -304,7 +279,7 @@ paddingBottom:80,
   primaryText: {
     color: '#fff',
     marginLeft: 8,
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: Fonts.PoppinsMedium,
   },
 
@@ -318,7 +293,8 @@ paddingBottom:80,
 
   secondaryText: {
     color: '#0A8F5A',
-    fontFamily: Fonts.PoppinsSemiBold
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   techText: {
@@ -347,7 +323,6 @@ paddingBottom:80,
     fontStyle: 'italic'
   },
 
-  /* BOTTOM BUTTONS */
   outlineBtn: {
     marginHorizontal: 16,
     marginTop: 12,
@@ -358,13 +333,10 @@ paddingBottom:80,
     alignItems: 'center',
   },
 
-
-
   cancelBtn: {
     marginHorizontal: 16,
     marginTop: 15,
     marginBottom: 30,
-    // backgroundColor: '#FEE2E2',
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',

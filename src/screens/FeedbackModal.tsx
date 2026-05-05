@@ -22,7 +22,6 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
 
-  // 🎬 Animation
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -53,34 +52,25 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
 
   return (
     <Modal transparent visible={visible} animationType="none">
-      
-      {/* 🔥 Overlay */}
-      <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
-        
-        {/* Close on outside click */}
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
 
-        {/* 🔥 Center Modal */}
+      <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
         <Animated.View
           style={[
             styles.container,
             { transform: [{ scale: scaleAnim }] },
           ]}
         >
-          {/* 🔥 ICON BOX */}
           <View style={styles.iconBox}>
             <Image source={Images.starIcon} style={styles.icon} />
           </View>
 
-          {/* TITLE */}
           <Text style={styles.title}>How was your experience?</Text>
 
-          {/* SUBTITLE */}
           <Text style={styles.subtitle}>
             Your feedback helps us improve our service for everyone.
           </Text>
 
-          {/* ⭐ STARS (IMAGE BASED) */}
           <View style={styles.stars}>
             {[1, 2, 3, 4, 5].map((i) => (
               <TouchableOpacity key={i} onPress={() => setRating(i)}>
@@ -92,7 +82,6 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
             ))}
           </View>
 
-          {/* INPUT */}
           <TextInput
             placeholder="Tell us more (optional)"
             placeholderTextColor="#6B7280"
@@ -102,12 +91,10 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
             onChangeText={setFeedback}
           />
 
-          {/* SUBMIT */}
           <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
             <Text style={styles.submitText}>Submit</Text>
           </TouchableOpacity>
 
-          {/* LATER */}
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.laterText}>Maybe Later</Text>
           </TouchableOpacity>
@@ -180,20 +167,18 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
 
-  // INPUT
   input: {
     width: '100%',
     height: 90,
+     color: '#0F172A',
     backgroundColor: '#0D614E0D',
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
     fontFamily: Fonts.PoppinsMedium,
 
-    textAlignVertical: 'top', // 🔥 FIX (important)
+    textAlignVertical: 'top', 
   },
-
-  // BUTTON
   submitBtn: {
     width: '100%',
     backgroundColor: '#0D614E',

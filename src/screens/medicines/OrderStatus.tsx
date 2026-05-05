@@ -8,6 +8,7 @@ import {
     Image,
     TouchableOpacity,
     ListRenderItem,
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
@@ -63,6 +64,9 @@ const OrderStatus: React.FC = (props : any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
 
             <AppHeader title="Order Status" leftIcon={Images.backIcon} onLeftPress={()=>props.navigation.goBack()} />
 

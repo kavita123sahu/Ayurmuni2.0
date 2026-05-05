@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     // paddingHorizontal: 16,
-    paddingTop: 25,
+    // paddingTop: 40,
     // backgroundColor:Colors.white,
     paddingBottom: 10,
   },
@@ -62,10 +62,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-
   backIcon: {
-    width: 50,
-    height: 50,
+    width: 40,
+    height: 40,
     resizeMode: 'contain',
   },
 
@@ -74,15 +73,15 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 24,
-    marginBottom:-5,
-    fontFamily : Fonts.PoppinsSemiBold,
+    fontSize: 22,
+    marginBottom: -8,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.textColor,
   },
 
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#0D614E',
-    fontFamily : Fonts.PoppinsMedium
+    fontFamily: Fonts.PoppinsMedium
   },
 });

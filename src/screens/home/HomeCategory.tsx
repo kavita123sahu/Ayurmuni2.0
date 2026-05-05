@@ -22,6 +22,7 @@ interface Category {
     icon: any;
 }
 
+
 const HomeCategory = ({ data = [], navigation }: any) => {
 
     const handlePress = useCallback((item: Category) => {
@@ -86,9 +87,9 @@ export default React.memo(HomeCategory);
 const styles = StyleSheet.create({
     container: {
         // paddingHorizontal: 8,
-        marginHorizontal:0,
-        paddingLeft:-20
-        
+        marginHorizontal: 0,
+        paddingLeft: -20
+
     },
 
     item: {
@@ -113,6 +114,6 @@ const styles = StyleSheet.create({
         marginTop: 6,
         fontSize: 12,
         color: Colors.textColor,
-        fontFamily : Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsMedium
     },
 });

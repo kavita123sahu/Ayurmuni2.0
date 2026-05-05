@@ -6,19 +6,33 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
+import WishlistButton from './WishlistButton';
 
 interface Props {
   data: any[];
   isGrid?: boolean;
+  fav?: boolean;
+  header?: boolean;
   navigation: any
   ListHeaderComponent?: React.ReactNode;
 }
 
-const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) => {
+
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SPACING = 12;
+const NUM_COLUMNS = 2; // 👈 change to 3 if needed
+
+const ITEM_WIDTH =
+  (SCREEN_WIDTH - SPACING * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+
+
+const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, header = false, navigation }) => {
   console.log("navigationnnnnnnnn", navigation)
   const [showAll, setShowAll] = useState(false);
 
@@ -28,6 +42,8 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
     isGrid && displayData.length % 2 !== 0
       ? [...displayData, { id: 'empty', empty: true }]
       : displayData;
+
+
 
 
 
@@ -51,19 +67,24 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
       keyExtractor={(item, index) => item.id || index.toString()}
       horizontal={!isGrid}
       numColumns={isGrid ? 2 : 1}
-      ListHeaderComponent={isGrid ? <ListHeaderComponent /> : undefined}
+      ListHeaderComponent={header ? <ListHeaderComponent /> : undefined}
       showsHorizontalScrollIndicator={false}
 
       // ✅ 🔥 REMOVE ALL HORIZONTAL PADDING
       contentContainerStyle={{
         paddingBottom: 20,
-      }}
+        paddingTop: 10,
+      }}   
 
+      showsVerticalScrollIndicator={false}
+      stickyHeaderHiddenOnScroll={false}
       columnWrapperStyle={
         isGrid
           ? {
             justifyContent: 'space-between',
-            marginBottom: 14,
+            // marginBottom: 14,
+            paddingHorizontal: SPACING,
+            marginBottom: SPACING,
           }
           : undefined
       }
@@ -75,6 +96,11 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
 
         return (
           <TouchableOpacity onPress={() => navigation.navigate('ProductDetails')} style={[styles.card, isGrid && styles.gridCard]}>
+
+
+            {fav && <WishlistButton />}
+
+
             {/* BADGE */}
             {item.tag && (
               <View style={styles.badge}>
@@ -89,12 +115,13 @@ const TopSellingList: React.FC<Props> = ({ data, isGrid = false, navigation }) =
 
             {/* CONTENT */}
             <View style={styles.subContainer}>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={styles.title} numberOfLines={2}>
                 {item.name}
               </Text>
 
               {item.subtitle && (
-                <Text style={styles.subtitle}>{item.subtitle}</Text>
+                <Text numberOfLines={2}
+                  ellipsizeMode="tail" style={styles.subtitle}>{item.subtitle}</Text>
               )}
 
               <View style={styles.priceContainer}>
@@ -150,17 +177,20 @@ export default TopSellingList;
 
 const styles = StyleSheet.create({
   card: {
-    width: 160,
+    width: ITEM_WIDTH / 1.2,
+    position: 'relative',
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
     marginRight: 14,
     borderWidth: 1,
+    overflow: 'hidden',
     borderColor: '#F1F5F9',
     // height: 240,
   },
 
   gridCard: {
     width: '48%',
+
     marginRight: 0,
   },
 
@@ -170,8 +200,9 @@ const styles = StyleSheet.create({
   },
 
   imageContainer: {
-    backgroundColor: '#EEF3F2',
-    height: 135,
+    height: ITEM_WIDTH * 0.8,
+    backgroundColor: '#0D614E1A',
+
     paddingTop: 28,
     paddingBottom: 8,
     alignItems: 'center',
@@ -188,10 +219,12 @@ const styles = StyleSheet.create({
 
   subContainer: {
     margin: 6,
+    minHeight: 70,
   },
 
   title: {
     fontSize: 16,
+    marginBottom: -5,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
   },
@@ -199,7 +232,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
+    // marginTop: 2,
+
     fontFamily: Fonts.PoppinsMedium,
   },
 
@@ -210,6 +244,7 @@ const styles = StyleSheet.create({
   oldPrice: {
     fontFamily: Fonts.PoppinsRegular,
     fontSize: 10,
+    marginBottom: -5,
     color: '#64748B',
     textDecorationLine: 'line-through',
   },
@@ -218,7 +253,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0D614E',
-    marginTop: 2,
+    // marginTop: 2,
   },
 
   badge: {
@@ -242,22 +277,22 @@ const styles = StyleSheet.create({
   cartBtn: {
     position: 'absolute',
     right: 10,
-    bottom: 6,
-    width: 36,
-    height: 36,
+    bottom: 5,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   cartFrame: {
     position: 'absolute',
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
   },
 
   cartIcon: {
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
   },
 
   footerContainer: {

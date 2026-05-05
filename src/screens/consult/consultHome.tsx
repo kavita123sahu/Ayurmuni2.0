@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import TopDoctorsCard from '../home/TopDoctorsCard';
 import { doctorsData } from '../../common/DataInterface';
+import { Colors } from '../../common/Colors';
 
 
 const ConsultScreen = () => {
@@ -95,9 +96,12 @@ const ConsultScreen = () => {
   return (
 
     <SafeAreaView style={{
-      flex: 1, marginBottom: 30,
+      flex: 1, 
       paddingHorizontal: 20, backgroundColor: '#FDFDFB'
     }}>
+
+        <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
+
 
       <Header
         title="Doctors Consultation"
@@ -108,11 +112,11 @@ const ConsultScreen = () => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
 
         <SearchBar
-          placeholder="Search seeds, oils..."
+          placeholder="Search doctors, concerns..."
           icon={require('../../assets/images/search.png')}
         />
 
@@ -120,13 +124,14 @@ const ConsultScreen = () => {
           title="Consult with Specialists"
           desc="Over 50+ Medical Experts"
           tag="SUMMER SALE"
-          image={require('../../assets/images/cosmetic.png')}
+          image={Images.approved}
+          buttontext='Book an appointment online'
           arrowIcon={require('../../assets/images/arrow.png')}
           onPress={() => { }}
           showButton={true}
         />
 
-        <SectionHeader title="Recent Consultations" actionText="View History" />
+        <SectionHeader title="Recent Consultation" actionText="View History" />
 
         <RecentProductsList data={recentProducts} />
 

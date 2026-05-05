@@ -13,7 +13,7 @@ import LottieView from 'lottie-react-native';
 
 const SOSRequest = (props: any) => {
 
-    const [timeLeft, setTimeLeft] = useState(60);
+    const [timeLeft, setTimeLeft] = useState(30);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -41,6 +41,7 @@ const SOSRequest = (props: any) => {
         return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
+    
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
 

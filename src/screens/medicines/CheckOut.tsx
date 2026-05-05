@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image, StatusBar } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
@@ -35,6 +35,9 @@ const MedicineCheckOut = (props: any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
 
             <AppHeader
                 title="Checkout"

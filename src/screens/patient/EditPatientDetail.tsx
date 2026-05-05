@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, StatusBar, Platform, KeyboardAvoidingView } from 'react-native'
 import React, { useState } from 'react'
 import { Fonts } from '../../common/Fonts'
 import AppInputField from '../../components/AppInputField'
@@ -8,6 +8,7 @@ import SectionHeader from '../../components/SectionHeader'
 import { Styles } from '../../common/Styles'
 import PrimaryButton from '../../components/PrimaryButton'
 import { Colors } from '../../common/Colors'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function EditPatientDetail(props: any) {
 
@@ -26,9 +27,9 @@ export default function EditPatientDetail(props: any) {
     const [valid, setValid] = useState('');
 
 
-    const BottomButton = ({onPress, title, backgroundColor,borderColor,textColor }: any)=>{
+    const BottomButton = ({ onPress, title, backgroundColor, borderColor, textColor }: any) => {
         return (
-             <TouchableOpacity
+            <TouchableOpacity
                 onPress={onPress}
                 style={[
                     styles.primaryBtn,
@@ -40,7 +41,8 @@ export default function EditPatientDetail(props: any) {
             >
                 <View style={styles.content}>
 
-                    <Text style={[styles.primaryText, { color: textColor }]}>
+                    <Text numberOfLines={1} // 👈 NO WRAP
+                        adjustsFontSizeToFit style={[styles.primaryText, { color: textColor }]}>
                         {title}
                     </Text>
                 </View>
@@ -49,12 +51,12 @@ export default function EditPatientDetail(props: any) {
     }
 
 
-   
+
     return (
 
+        <SafeAreaView style={{ flex: 1, backgroundColor:'#ffffff' }}>
 
-
-        <View style={{ flex: 1, }}>
+            <StatusBar barStyle={'dark-content'} backgroundColor={'#FFFFFF'} />
 
             <AppHeader
                 title="Patient Details"
@@ -64,22 +66,24 @@ export default function EditPatientDetail(props: any) {
                 onRightPress={() => console.log('Search clicked')}
             />
 
-            <ScrollView style={{ flex: 1, paddingHorizontal: 22, marginBottom: 50 }}>
+            <KeyboardAvoidingView style={{backgroundColor:'#FDFDFB'}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-                <SectionHeader title="Personal Information" />
+                <ScrollView style={{ paddingHorizontal: 22, backgroundColor: '#FDFDFB', marginBottom: 50 }}>
+
+                    <SectionHeader title="Personal Information" />
 
 
-                <AppInputField label="Full Name" placeholder="John Doe" />
+                    <AppInputField label="Full Name" placeholder="John Doe" />
 
-                <AppInputField
-                    label="Date of Birth"
-                    placeholder="DD/MM/YYYY"
-                    value={dob}
-                    onChangeText={setDob}
-                    rightIcon={Images.calender}
-                />
+                    <AppInputField
+                        label="Date of Birth"
+                        placeholder="DD/MM/YYYY"
+                        value={dob}
+                        onChangeText={setDob}
+                        rightIcon={Images.calender}
+                    />
 
-                {/* <AppInputField
+                    {/* <AppInputField
                     label="Gender"
                     placeholder="Select Gender"
                     rightIcon={Images.arrow}
@@ -88,111 +92,109 @@ export default function EditPatientDetail(props: any) {
 
 
 
-                <AppInputField
-                    label="Gender"
-                    value={gender}
-                    placeholder="Select Gender"
-                    rightIcon={Images.arrow}
-                    onChangeText={setGender}
-                />
-
-                <AppInputField label="Blood Group" placeholder="A+" />
-
-                {/* Row Inputs */}
-                <View style={styles.row}>
                     <AppInputField
-                        label="Height (cm)"
-                        placeholder="180"
-                        containerStyle={{ flex: 1, marginRight: 8 }}
+                        label="Gender"
+                        value={gender}
+                        placeholder="Select Gender"
+                        rightIcon={Images.dropdown}
+                        onChangeText={setGender}
                     />
 
-                    <AppInputField
-                        label="Weight (kg)"
-                        placeholder="75"
-                        containerStyle={{ flex: 1, marginLeft: 8 }}
-                    />
-                </View>
+                    <AppInputField label="Blood Group" placeholder="A+" />
 
+                    {/* Row Inputs */}
+                    <View style={styles.row}>
+                        <AppInputField
+                            label="Height (cm)"
+                            placeholder="180"
+                            containerStyle={{ flex: 1, marginRight: 8 }}
+                        />
 
-                <SectionHeader title="Contact Information" />
-
-                <AppInputField
-                    label="Phone Number"
-                    placeholder="00000-00000"
-                    rightIcon={Images.arrow}
-                />
-
-
-                <AppInputField
-                    label="Email Address"
-                    placeholder="john.doe@example.com"
-                    rightIcon={Images.arrow}
-                />
-
-
-
-
-                <View style={styles.EmergencyView}>
-
-                    <View style={styles.container}>
-                        <Image source={Images.logout} style={Styles.IconSize} tintColor={'#F43F5E'} />
-                        <Text style={styles.title}>Emergency Contact</Text>
+                        <AppInputField
+                            label="Weight (kg)"
+                            placeholder="75"
+                            containerStyle={{ flex: 1, marginLeft: 8 }}
+                        />
                     </View>
 
 
-                    <AppInputField label="Contact Name" placeholder="Jane Doe" />
+                    <SectionHeader title="Contact Information" />
 
-
-                    <AppInputField label="Relation" placeholder="Spouse" />
-
-                    <AppInputField label="Emergency Phone" placeholder="99999-99999" />
-
-
-
-                </View>
-
-
-
-
-
-                <SectionHeader title="Insurance Details" />
-
-                <AppInputField label="Insurance Provider" placeholder="Blue Cross Shield" />
-
-
-                <AppInputField label="Policy Number" placeholder="POL-987654321" />
-
-                <AppInputField
-                    label="Valid Thru"
-                    placeholder="MM/YYYY"
-                    rightIcon={Images.calender}
-                />
-                <View style={styles.buttonrow}>
-
-                    <BottomButton
-                        title="Cancel"
-                        icon={Images.shopCart}
-                          onPress={() => props.navigation.navigate('MyCart')}
-                        backgroundColor="#FFFFFF"
-                        borderColor ={Colors.borderColor}
-                        textColor={Colors.subTextColor}
+                    <AppInputField
+                        label="Phone Number"
+                        placeholder="+1 (555) 000-0000"
+                        rightIcon={Images.Phone}
                     />
 
-
-  <BottomButton
-                        title="Save Changes"
-                        icon={Images.shopCart}
-                        borderColor ={Colors.primaryColor}
-                          onPress={() => props.navigation.navigate('MyCart')}
-                        backgroundColor="#0D614E"
-                        textColor="#FFFFFF"
+                    <AppInputField
+                        label="Email Address"
+                        placeholder="john.doe@example.com"
+                        rightIcon={Images.Email}
                     />
-                </View>
+
+                    <View style={styles.EmergencyView}>
+
+                        <View style={styles.container}>
+                            <Image source={Images.logout} style={Styles.IconSize} tintColor={'#F43F5E'} />
+                            <Text style={styles.title}>Emergency Contact</Text>
+                        </View>
+
+
+                        <AppInputField label="Contact Name" placeholder="Jane Doe" />
+
+
+                        <AppInputField label="Relation" placeholder="Spouse" />
+
+                        <AppInputField label="Emergency Phone" placeholder="+1 (555) 999-9999" />
 
 
 
-            </ScrollView>
-        </View>
+                    </View>
+
+
+
+
+
+                    <SectionHeader title="Insurance Details" />
+
+                    <AppInputField value={insurance} onChangeText={setInsurance} label="Insurance Provider" placeholder="Blue Cross Shield" />
+
+
+                    <AppInputField label="Policy Number" placeholder="POL-987654321" />
+
+                    <AppInputField
+                        label="Valid Thru"
+                        placeholder="MM/YY"
+                        rightIcon={Images.calender}
+                    />
+
+                    <View style={styles.buttonrow}>
+
+                        <BottomButton
+                            title="Cancel"
+                            icon={Images.shopCart}
+                            onPress={() => props.navigation.navigate('MyCart')}
+                            backgroundColor="#FFFFFF"
+                            borderColor={Colors.borderColor}
+                            textColor={Colors.subTextColor}
+                        />
+
+
+                        <BottomButton
+                            title="Save Changes"
+                            icon={Images.shopCart}
+                            borderColor={Colors.primaryColor}
+                            onPress={() => props.navigation.navigate('MyCart')}
+                            backgroundColor="#0D614E"
+                            textColor="#FFFFFF"
+                        />
+                    </View>
+
+
+
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     )
 }
 
@@ -234,8 +236,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flex: 1,
         width: '100%',
-        marginTop:20,
-        marginBottom:20,
+        marginTop: 20,
+        marginBottom: 20,
         justifyContent: 'space-between',
         gap: 10, // spacing between buttons
     },
@@ -245,13 +247,14 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 15,
         borderWidth: 1,
-        flex:1,
+        flex: 1,
+        height: 52,
         alignItems: "center",
         justifyContent: "center",
     },
 
     content: {
-        
+
         alignItems: "center",
         justifyContent: "center",
     },

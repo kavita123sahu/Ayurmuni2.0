@@ -29,10 +29,38 @@ const AppointmentScreen = () => {
 
   const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', },];
 
-  const renderItem = ({ item }: { item: Appointment }) => (
-    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AppointmentDetails')}>
 
-      {/* Top Row */}
+  const DateTimeCard = ({ item }: { item: Appointment }) => {
+    return (
+
+      <View style={styles.infoRow}>
+        <View style={styles.infoItem}>
+          <View style={styles.iconCircle}>
+            <Image source={Images.calender} style={Styles.IconSize} />
+          </View>
+
+          <View>
+            <Text style={Styles.label}>DATE</Text>
+            <Text style={Styles.value}>{item.date}</Text>
+          </View>
+        </View>
+
+        <View style={styles.infoItem}>
+          <View style={styles.iconCircle}>
+            <Image source={Images.clock} style={Styles.IconSize} />
+          </View>
+          <View>
+            <Text style={Styles.label}>TIME</Text>
+            <Text style={Styles.value}>{item.time}</Text>
+          </View>
+        </View>
+
+      </View>
+    )
+  }
+  const renderItem = ({ item }: { item: Appointment }) => (
+
+    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AppointmentDetails')}>
       <View style={styles.row}>
         <Image source={{ uri: item.image }} style={styles.avatar} />
 
@@ -50,7 +78,7 @@ const AppointmentScreen = () => {
                 ? styles.pending
                 : item.status === 'CANCELLED'
                   ? styles.cancelled
-                  : {}, // ✅ empty object fallback
+                  : {},
           ]}
         >
           <Text
@@ -64,7 +92,7 @@ const AppointmentScreen = () => {
                       ? '#FF6B6B'
                       : item.status === 'PENDING'
                         ? '#EA580C'
-                        : '#000', // fallback
+                        : '#000',
               },
             ]}
           >
@@ -74,40 +102,8 @@ const AppointmentScreen = () => {
         </View>
       </View>
 
-      {/* Date Time */}
-      <View style={styles.infoRow}>
+      <DateTimeCard item={item} />
 
-        {/* DATE */}
-        <View style={styles.infoItem}>
-          <View style={styles.iconCircle}>
-            <Image source={Images.calender} style={Styles.IconSize} />
-          </View>
-
-
-          {/* <View style={styles.iconCircle}>
-            <Text style={styles.icon}>📅</Text>
-          </View> */}
-
-          <View>
-            <Text style={Styles.label}>DATE</Text>
-            <Text style={Styles.value}>{item.date}</Text>
-          </View>
-        </View>
-
-        {/* TIME */}
-        <View style={styles.infoItem}>
-          <View style={styles.iconCircle}>
-            <Image source={Images.clock} style={Styles.IconSize} />
-          </View>
-          <View>
-            <Text style={Styles.label}>TIME</Text>
-            <Text style={Styles.value}>{item.time}</Text>
-          </View>
-        </View>
-
-      </View>
-
-      {/* Buttons */}
       {item.status === 'CONFIRMED' ? (
         <View style={styles.btnRow}>
           <TouchableOpacity style={styles.outlineBtn}>
@@ -115,28 +111,20 @@ const AppointmentScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.primaryBtn}>
-            <Text style={styles.primaryText}>Join Call</Text>
+            <Text numberOfLines={1} style={styles.primaryText}>Join Call</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <TouchableOpacity style={styles.cancelBtn}>
-          <Text style={Styles.cancelText}>Cancel Appointment</Text>
+          <Text numberOfLines={1} style={Styles.cancelText}>Cancel Appointment</Text>
         </TouchableOpacity>
       )}
     </TouchableOpacity>
   );
 
-  return (
-    <View style={styles.container}>
 
-      <Header
-        title="My Appointment"
-        subtitle="Manage your visits "
-        backIcon={Images.backIcon}
-        onBack={() => {navigation.goBack() }}
-      />
-
-      {/* Tabs */}
+  const TabButton = () => {
+    return (
       <View style={styles.tabWrapper}>
         <TouchableOpacity
           style={styles.tabItem}
@@ -168,8 +156,22 @@ const AppointmentScreen = () => {
           {activeTab === 'past' && <View style={styles.indicator} />}
         </TouchableOpacity>
       </View>
+    )
+  }
 
-      {/* List */}
+
+  return (
+    <View style={styles.container}>
+
+      <Header
+        title="My Appointments"
+        subtitle="Manage your visits "
+        backIcon={Images.backIcon}
+        onBack={() => { navigation.goBack() }}
+      />
+
+      <TabButton />
+
       <FlatList
         data={dummyData}
         renderItem={renderItem}
@@ -177,7 +179,6 @@ const AppointmentScreen = () => {
         contentContainerStyle={{ paddingHorizontal: 1, paddingVertical: 15, paddingBottom: 70 }}
       />
 
-      {/* Bottom Button */}
       <TouchableOpacity style={styles.bookBtn}>
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
@@ -208,33 +209,39 @@ const styles = StyleSheet.create({
   /* Tabs */
   tabWrapper: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    overflow: 'hidden',
   },
 
   tabItem: {
-    flex: 1, // ✅ 50-50
+    flex: 1, // 🔥 equal width dono tabs ka
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    position: 'relative', // 🔥 important for indicator
   },
 
   tabText: {
     fontSize: 14,
+    color: '#999',
     fontFamily: Fonts.PoppinsMedium,
-    color: '#9CA3AF',
   },
 
   activeTabText: {
     color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   indicator: {
-    height: 2,
+    position: 'absolute',
+    bottom: 0, // 🔥 always bottom pe chipka rahega
+    left: 0,
+    right: 0, // 🔥 full width of tab
+    height: 3,
     backgroundColor: Colors.primaryColor,
-    width: '100%',
-    marginTop: 6,
+    borderRadius: 2,
   },
-
   /* Card */
   card: {
     backgroundColor: Colors.white,
@@ -243,12 +250,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: Colors.borderColor,
-    shadowRadius: 6,
+    overflow: 'hidden',
   },
 
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
 
   avatar: {
@@ -264,6 +271,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    marginLeft: 8,
+    alignSelf: 'flex-start', // 👈 fix
+    flexShrink: 0, // 👈 no compression
   },
 
   confirmed: {
@@ -287,14 +297,15 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.bgcolor, // same box bg
+    backgroundColor: Colors.bgcolor,
     padding: 12,
     borderRadius: 12,
+    height: 68,
     marginTop: 12,
   },
 
   infoItem: {
+    // flex:1,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -320,16 +331,18 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     marginTop: 14,
+    gap: 10,
   },
 
   outlineBtn: {
     flex: 1,
+    height: 47,
     borderWidth: 1,
-    borderColor: Colors.primaryColor,
+    borderColor: '#0F5B4D4D',
     borderRadius: 10,
-    paddingVertical: 10,
-    marginRight: 6,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 
   outlineText: {
@@ -342,19 +355,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.primaryColor,
     borderRadius: 10,
-    paddingVertical: 10,
-    marginLeft: 6,
+    height: 47,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 
   primaryText: {
     color: '#fff',
+    textAlign:'center',
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 12,
+    fontSize: 14,
   },
 
   cancelBtn: {
     marginTop: 14,
+    height: 47,
     backgroundColor: '#F43F5E0D',
     paddingVertical: 10,
     borderRadius: 10,
@@ -363,24 +379,26 @@ const styles = StyleSheet.create({
 
   cancelText: {
     color: '#EF4444',
+    textAlign:'center',
+    fontSize:14,
     fontFamily: Fonts.PoppinsMedium,
   },
 
   bookBtn: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+
     backgroundColor: Colors.primaryColor,
+    bottom: 20,
+    left: 20,
+    right: 20,
     paddingVertical: 14,
     borderRadius: 12,
-
     alignItems: 'center',
   },
 
   bookText: {
     color: '#fff',
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 14,
+    fontSize: 16,
   },
 });

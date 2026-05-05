@@ -19,12 +19,14 @@ type Props = {
   itemWidth?: number;
   itemHeight?: number;
   showIndicator?: boolean;
+  DynamicResize?: 'cover' | 'contain';
 };
 
 const Detailimages: React.FC<Props> = ({
   images,
   itemWidth,
   itemHeight,
+  DynamicResize = 'cover',
   showIndicator = true,
 }) => {
 
@@ -89,8 +91,8 @@ const Detailimages: React.FC<Props> = ({
               style={{
                 width: finalWidth,
                 height: finalHeight,
+                resizeMode: DynamicResize,
                 borderRadius: 24,
-                resizeMode: 'contain'
               }}
             />
           </View>

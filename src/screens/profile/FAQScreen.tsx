@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Ionicons } from '../../common/Vector';
@@ -17,7 +18,6 @@ import { Images } from '../../common/Images';
 import { Styles } from '../../common/Styles';
 import { Colors } from '../../common/Colors';
 
-const width = Dimensions.get('screen').width;
 
 const stepsData = [
   "Open My Appointments tab from bottom navigation.",
@@ -30,6 +30,9 @@ const stepsData = [
 const FAQScreen = (props: any) => {
   return (
     <SafeAreaView style={styles.container}>
+
+      <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
+
       <AppHeader
         title="FAQ"
         leftIcon={Images.backIcon}
@@ -37,11 +40,9 @@ const FAQScreen = (props: any) => {
         rightIcon="search"
         onRightPress={() => console.log('Search clicked')}
       />
-
-      <ScrollView showsVerticalScrollIndicator={false}>
+      
+      <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB', paddingHorizontal:20}}>
         <View style={styles.content}>
-
-          {/* TITLE */}
           <Text style={styles.title}>
             How do I reschedule my appointment?
           </Text>
@@ -101,11 +102,11 @@ export default FAQScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
   },
 
   content: {
-    paddingHorizontal: 20,   // ✅ GLOBAL SPACING (important)
+    // paddingHorizontal: 20,
     paddingBottom: 20,
   },
 
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
 
   banner: {
     height: 180,
-    width: "100%",   // ✅ RESPONSIVE FIX
+    width: "100%",
     marginTop: 14,
     borderRadius: 12,
   },

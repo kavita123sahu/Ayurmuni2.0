@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
@@ -10,6 +10,8 @@ import TopSellingList from '../../components/TopSellingList';
 import SectionHeader from '../../components/SectionHeader';
 import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../common/Images';
+import { topSelling } from '../../common/DataInterface';
+import { Colors } from '../../common/Colors';
 
 
 const ProductsScreen = () => {
@@ -46,60 +48,16 @@ const ProductsScreen = () => {
     { id: '8', name: 'Drinks', icon: categoryImage },
   ];
 
-  const topSelling = [
-    {
-      id: '1',
-      name: 'Foxtail millet',
-      subtitle: 'Acne Clear  Cream',
-      subname: 'Acne Clear  Cream',
-      oldPrice: 699.00,
-      price: 649,
-      image: productImage,
-      tag: 'Bestselling',
-    },
-    {
-      id: '2',
-      name: 'Face Cream',
-      subtitle: 'Acne Clear  Cream',
-      price: 399,
-      oldPrice: 699,
-      image: productImage,
-      tag: '15% OFF',
-    },
-    {
-      id: '3',
-      name: 'Organic Rice',
-      subtitle: 'Acne Clear  Cream',
-      oldPrice: 699.00,
-      price: 250,
-      image: productImage,
-      tag: 'Hot',
-    },
-    {
-      id: '4',
-      name: 'Face Cream',
-      subtitle: 'Acne Clear  Cream',
-      price: 399,
-      oldPrice: 699,
-      image: productImage,
-      tag: '15% OFF',
-    },
-    {
-      id: '5',
-      name: 'Organic Rice',
-      subtitle: 'Acne Clear  Cream',
-      oldPrice: 699.00,
-      price: 250,
-      image: productImage,
-      tag: 'Hot',
-    },
-  ];
+  
   return (
 
     <SafeAreaView style={{
       flex: 1, marginBottom: 30,
       paddingHorizontal: 20, backgroundColor: '#FDFDFB'
     }}>
+
+        <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
+
 
       <Header
         title="Products"
@@ -122,6 +80,7 @@ const ProductsScreen = () => {
           title="Up to 40% OFF on\nSupplements"
           desc="Keep your immunity strong this season."
           tag="SUMMER SALE"
+          buttontext='Book an appointment online'
           image={require('../../assets/images/cosmetic.png')}
           arrowIcon={require('../../assets/images/arrow.png')}
           onPress={() => { }}

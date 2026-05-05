@@ -1,17 +1,17 @@
 // screens/PaymentsScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import PaymentMethodCard from '../../components/PaymentCard';
 import TransactionCard from '../../components/TransactionCard';
 import { Images } from '../../common/Images';
-import Header from '../../components/Header';
 import AppHeader from '../../components/AppHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SectionHeader from '../../components/SectionHeader';
 import PrimaryButton from '../../components/PrimaryButton';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import { Ionicons } from '../../common/Vector';
+import Header from '../../components/Header';
+import { AntDesign } from '../../common/Vector';
 
 
 const PaymentsScreen = (props: any) => {
@@ -64,17 +64,19 @@ const PaymentsScreen = (props: any) => {
     return (
         <SafeAreaView style={styles.container}>
 
-            <AppHeader
-                title="Settings"
-                leftIcon={Images.backIcon}
-                onLeftPress={() => props.navigation.goBack()}
-                rightIcon="search"
-                onRightPress={() => console.log('Search clicked')}
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
+
+            <Header
+                title="Payments"
+                subtitle="Manage Your Transaction"
+                backIcon={Images.backIcon}
+                onBack={() => { }}
             />
+
 
             <ScrollView style={styles.scrollview}>
 
-                <SectionHeader title="Popular Questions" actionText='Add New' />
+                <SectionHeader title="Saved Methods" actionText='Add New' />
 
 
                 {paymentMethods.map((item) => (
@@ -103,11 +105,9 @@ const PaymentsScreen = (props: any) => {
                 ))}
 
 
-
-            </ScrollView>
-
-            <View style={{ paddingHorizontal: 20 }}>
-                <PrimaryButton
+   <View style={{ marginTop:30}}>
+             
+ <PrimaryButton
                     title="Pay Now"
                     icon={Images.approved}
                     backgroundColor={Colors.primaryColor}
@@ -115,7 +115,14 @@ const PaymentsScreen = (props: any) => {
                     TextFont={Fonts.PoppinsMedium}
                 />
 
-            </View>
+                <Text  style={{ textAlign: 'center', color: '#94A3B8', marginTop: 12, fontFamily: Fonts.PoppinsRegular }}> ENCRYPTED & SECURE PAYMENTS</Text>
+            </View> 
+  
+
+
+            </ScrollView>
+
+         
         </SafeAreaView>
     );
 };
@@ -125,11 +132,12 @@ export default PaymentsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-
+        paddingHorizontal: 20,
         backgroundColor: '#FFFFFF',
     },
     scrollview: {
-        paddingHorizontal: 20,
+
+        backgroundColor: '#FDFDFB'
     },
     heading: {
         fontSize: 16,

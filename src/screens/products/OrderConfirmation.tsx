@@ -10,7 +10,8 @@ import {
     FlatList,
     ListRenderItem,
     ImageSourcePropType,
-    BackHandler
+    BackHandler,
+    StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
@@ -91,6 +92,8 @@ const OrderConfirmation: React.FC = (props : any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
             <AppHeader
                 title="Order Confirmation"
                 leftIcon={Images.backIcon}
@@ -207,7 +210,7 @@ const styles = StyleSheet.create({
     successCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        padding: 20,
+        
         alignItems: 'center',
         marginBottom: 20,
     },
@@ -216,10 +219,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffff',
         height: 80,
         width: 80,
+        marginTop:30,
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 40,
     },
 
     tick: {
@@ -231,7 +235,8 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
-        marginBottom: 6,
+        marginBottom: 10,
+        textAlign: 'center',
         lineHeight: 30
     },
 
@@ -239,9 +244,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#475569',
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: 40,
         lineHeight: 21,
-        fontFamily: Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsRegular
     },
 
     trackBtn: {

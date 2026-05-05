@@ -15,12 +15,10 @@ const SOSCancelScreen = (props : any) => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#FDFDFB" }}>
-
             <SOSHeader
                 title="Emergency SOS"
                 onBackPress={() =>props.navigation.goBack()}
             />
-
             <ScrollView contentContainerStyle={styles.container}>
 
                 <View style={styles.animationWrapper}>

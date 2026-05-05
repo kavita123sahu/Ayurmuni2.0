@@ -26,12 +26,13 @@ import CategoryList from '../../components/CategoryList';
 import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
 import TopSellingList from '../../components/TopSellingList';
-import { doctorsData, product, topSelling } from '../../common/DataInterface';
+import { doctorsData, product, topSelling, topSelling1, topSelling2, topSelling3 } from '../../common/DataInterface';
 import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useIsFocused } from '@react-navigation/native';
 import HomeCategory from './HomeCategory';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
+import SuggestedCard from '../../components/SuggestedCard';
 
 
 
@@ -65,14 +66,36 @@ const HomePage: React.FC = (props: any) => {
 
   const isFocused = useIsFocused();
   const [PakritiData, setPakritiData] = useState<Prakriti | null>(null);
+  const data = [
+    {
+      title:
 
+        'Prakriti',
+      status: PakritiData?.answered_percentage === 100 ? 'Profile Complete' : 'Profile Pending',
+      screen: 'PatientFAQ',
+      // 🔥 screen 1
+    },
+    {
+      title:
+        // PakritiData?.answered_percentage === 100
+        //   ? 'Your profile is ready'
+        //   :
+        'Medical History',
+      status: PakritiData?.answered_percentage === 100 ? 'Profile Complete' : 'Profile Pending',
+      screen: 'MedicalHistory', // 🔥 screen 2
+      // 🔥 screen 2
+    },
+  ];
 
   const categories = [
-    { id: '1', name: 'Doctors', icon: Images.PlusBag },
-    { id: '2', name: 'Medicine', icon: Images.medicine },
+    { id: '1', name: 'Doctors', icon: Images.Doctors },
+    { id: '2', name: 'Medicine', icon: Images.Medicines },
     { id: '3', name: 'Products', icon: Images.products },
-    { id: '4', name: 'More', icon: Images.moreButton },
+    { id: '4', name: 'Yoga', icon: Images.Yoga },
+    { id: '5', name: 'Diet', icon: Images.Diet },
+    { id: '6', name: 'Panchakarma', icon: Images.Panchakarma },
   ];
+
 
 
   useEffect(() => {
@@ -122,44 +145,73 @@ const HomePage: React.FC = (props: any) => {
 
         <ScrollView showsVerticalScrollIndicator={false}>
 
-          <TouchableOpacity onPress={() => props.navigation.navigate('PatientFAQ')}>
-            <PrakritiCard
-              title={PakritiData?.answered_percentage === 100 ? "Your Prakriti profile is ready" : 'Know Your Prakriti'}
-              status="Profile Complete"
-              progress={Math.round(PakritiData?.answered_percentage ?? 0)}
-            />
-          </TouchableOpacity>
+          <View style={styles.containerprakriti}>
+            {data.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.cardWrapper}
+                onPress={() => props.navigation.navigate(item.screen, {
+                  update: true
+                }
 
+                )} // 🔥 dynamic navigation
+              >
+                <PrakritiCard
+                  title={item.title}
+                  status={item.status}
+                  progress={Math.round(PakritiData?.answered_percentage ?? 0)}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* <CategoryList data={categories} navigation={props.navigation} /> */}
           <HomeCategory data={categories} navigation={props.navigation} />
 
-          <SectionHeader title="Top Doctors" actionText="View all" />
+          <SectionHeader title="Suggested Doctors" actionText="View all" />
 
 
           <TopDoctorsCard data={doctorsData} navigation={props.navigation} />
 
 
-
           <Detailimages
             images={product.images}
-            itemWidth={itemWidth}
-            itemHeight={180}
-
+            itemWidth={width - 80}
+            itemHeight={150}
+            DynamicResize='contain'
 
           />
 
 
-          <SectionHeader title="Top Medicines" actionText="View all" />
+          <SectionHeader title="Suggested Medicines" actionText="View all" />
 
 
           <TopSellingList data={topSelling} navigation={props.navigation} />
 
 
 
-          <SectionHeader title="Top Products" actionText="View all" />
+          <SectionHeader title="Suggested Products" actionText="View all" />
 
 
           <TopSellingList data={topSelling} navigation={props.navigation} />
 
+
+          <SectionHeader title="Yoga’s" actionText="View all" />
+
+
+
+          <SuggestedCard data={topSelling1} navigation={props.navigation} />
+
+
+          <SectionHeader title="Suggested Diet Plan" actionText="View all" />
+
+
+
+          <SuggestedCard data={topSelling2} navigation={props.navigation} />
+
+          <SectionHeader title="Panchakarma" actionText="View all" />
+
+          <SuggestedCard data={topSelling3} navigation={props.navigation} price={true} />
 
         </ScrollView>
 
@@ -180,6 +232,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
     // backgroundColor:'#FDFDFB'
+  },
+  containerprakriti: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    width: '48%',
+    marginBottom: 12,
   },
   header: {
 

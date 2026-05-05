@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     Alert,
     Image,
+    StatusBar,
 } from 'react-native';
 
 import ProfileHeader from '../../components/ProfileHeader';
@@ -17,6 +18,7 @@ import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ProfilePage = ({ navigation }: any) => {
 
@@ -30,22 +32,26 @@ const ProfilePage = ({ navigation }: any) => {
         reports: 5,
     };
 
-    // ✅ MENU (NO SCREEN FIELD)
     const accountMenu = [
         { id: 1, title: 'Patient Details', icon: Images.patient },
-        { id: 2, title: 'My Appointments', icon: Images.calender },
-        { id: 3, title: 'Order History', icon: Images.orders },
-        { id: 4, title: 'Medical Records', icon: Images.medical },
-        { id: 5, title: 'Favourite Doctor', icon: Images.favourite },
+
+        { id: 2, title: 'Saved Address', icon: Images.SaveAddress },
+        { id: 3, title: 'My Appointments', icon: Images.calender },
+
+        { id: 4, title: 'Order History', icon: Images.orders },
+        { id: 5, title: 'Medical Records', icon: Images.medical },
+        { id: 6, title: 'Favourite Doctor', icon: Images.favourite },
+
+        { id: 7, title: 'Wishlist', icon: Images.favourite },
+        { id: 8, title: 'Mentor', icon: Images.medical },
     ];
 
     const preferenceMenu = [
         { id: 6, title: 'Payments', icon: Images.payment },
-         { id: 7, title: 'FAQ', icon: Images.FAQ },
-        { id: 8, title: 'Settings', icon: Images.setting },
+        { id: 7, title: 'Settings', icon: Images.setting },
+        { id: 8, title: 'FAQ', icon: Images.FAQ },
     ];
 
-    // ✅ TITLE BASED NAVIGATION
     const handleNavigation = (item: any) => {
         switch (item.title) {
 
@@ -61,12 +67,24 @@ const ProfilePage = ({ navigation }: any) => {
                 navigation.navigate('OrderHistory');
                 break;
 
+            case 'Saved Address':
+                navigation.navigate('ManageAdrees');
+                break;
+
             case 'Medical Records':
                 navigation.navigate('MedicalRecords');
                 break;
 
             case 'Favourite Doctor':
                 navigation.navigate('HelpCenterScreen');
+                break;
+
+            case 'Wishlist':
+                navigation.navigate('Wishlist');
+                break;
+
+            case 'Mentor':
+                navigation.navigate('Mentor');
                 break;
 
             case 'Payments':
@@ -77,13 +95,13 @@ const ProfilePage = ({ navigation }: any) => {
                 navigation.navigate('Settings');
                 break;
 
-                
+
             case 'FAQ':
                 navigation.navigate('FAQScreen');
                 break;
 
-                
-          
+
+
             default:
                 console.log('No navigation defined for:', item.title);
         }
@@ -106,14 +124,14 @@ const ProfilePage = ({ navigation }: any) => {
     // ✅ MENU ITEM
     const MenuItem = ({ item }: any) => {
         const isDisabled =
-            item.title === 'Settings' || item.title === 'Payments' || item.title ==='FAQ';
+            item.title === 'Settings' || item.title === 'Payments' || item.title === 'FAQ';
 
         return (
             <TouchableOpacity
                 style={styles.card}
                 activeOpacity={0.7}
-                onPress={() => 
-                    
+                onPress={() =>
+
                     handleNavigation(item)}
             >
                 {/* Left Icon Box */}
@@ -154,63 +172,59 @@ const ProfilePage = ({ navigation }: any) => {
     };
 
     return (
-        <ScreenWrapper>
-<View style={styles.container} >
+        // <ScreenWrapper>
+            <SafeAreaView style={styles.container} >
 
-            {/* HEADER */}
-            <Header
-                title="Profile"
-                subtitle="Manage your account"
-                backIcon={Images.backIcon}
-                onBack={() => { }}
-            />
+  <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-
-                {/* PROFILE CARD */}
-
-                <ProfileHeader user={user} />
-
-
-                {/* ACCOUNT */}
-                <Section title="Account">
-                    {accountMenu.map((item) => (
-                        <MenuItem key={item.id} item={item} />
-                    ))}
-                </Section>
-
-                {/* PREFERENCE */}
-                <Section title="Preference">
-                    {preferenceMenu.map((item) => (
-                        <MenuItem key={item.id} item={item} />
-                    ))}
-                </Section>
-
-                {/* LOGOUT BUTTON */}
-                {/* <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-                <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity> */}
-
-                <PrimaryButton
-                    title="Logout"
-                    icon={Images.logout}
-                    backgroundColor="#FEF2F2"
-                    textColor={Colors.errorColor}
-                    borderColor='#FFCECE'
-                    TextFont={Fonts.PoppinsRegular}
-                    onPress={logout}
-
-
-
+                {/* HEADER */}
+                
+                <Header
+                    title="Profile"
+                    subtitle="Manage your account"
+                    backIcon={Images.backIcon}
+                    onBack={() => { }}
                 />
 
+                <ScrollView showsVerticalScrollIndicator={false}>
 
-                <Text style={styles.version}>APP VERSION 1.2</Text>
+                    {/* PROFILE CARD */}
 
-            </ScrollView>
-        </View>
-        </ScreenWrapper>
-        
+                    <ProfileHeader user={user} />
+
+
+                    {/* ACCOUNT */}
+                    <Section title="Account">
+                        {accountMenu.map((item) => (
+                            <MenuItem key={item.id} item={item} />
+                        ))}
+                    </Section>
+
+                    {/* PREFERENCE */}
+                    <Section title="Preference">
+                        {preferenceMenu.map((item) => (
+                            <MenuItem key={item.id} item={item} />
+                        ))}
+                    </Section>
+
+
+                    <PrimaryButton
+                        title="Logout"
+                        icon={Images.logout}
+                        backgroundColor="#FEF2F2"
+                        textColor={Colors.errorColor}
+                        borderColor='#FFCECE'
+                        TextFont={Fonts.PoppinsRegular}
+                        onPress={logout}
+                    />
+
+
+                    <Text style={styles.version}>APP VERSION 1.2</Text>
+
+                </ScrollView>
+            </SafeAreaView>
+        // </ScreenWrapper>
+
     );
 };
 
@@ -222,7 +236,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 20,
         paddingBottom: 100,
-        backgroundColor:'#FDFDFB'
+        backgroundColor: '#FDFDFB'
 
     },
 

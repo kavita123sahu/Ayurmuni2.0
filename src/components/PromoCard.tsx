@@ -14,12 +14,12 @@ interface Props {
   onPress?: () => void;
   image: ImageSourcePropType;
   arrowIcon?: ImageSourcePropType;
-
+  buttontext ?: string;
   title: string;
   desc: string;
   tag?: string;
 
-  showButton?: boolean; 
+  showButton?: boolean;
 }
 
 const PromoCard: React.FC<Props> = ({
@@ -28,8 +28,10 @@ const PromoCard: React.FC<Props> = ({
   arrowIcon,
   title,
   desc,
+  buttontext,
   tag,
-  showButton = true, 
+
+  showButton = true,
 }) => {
   return (
     <View style={styles.card}>
@@ -44,7 +46,6 @@ const PromoCard: React.FC<Props> = ({
               <Text style={styles.tag}>{tag}</Text>
             </View>
           )}
-
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.desc}>{desc}</Text>
 
@@ -59,9 +60,10 @@ const PromoCard: React.FC<Props> = ({
           <View style={styles.divider} />
 
           <TouchableOpacity style={styles.btnRow} onPress={onPress}>
-            <Text style={styles.btnText}>Shop Now</Text>
+            <Text style={styles.btnText}>{buttontext}</Text>
             {arrowIcon && <Image source={arrowIcon} style={styles.arrow} />}
           </TouchableOpacity>
+          
         </>
       )}
 
@@ -77,8 +79,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 18,
     borderRadius: 24,
-    paddingHorizontal:20,
-    paddingVertical:20,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     backgroundColor: '#0D614E0D',
     borderWidth: 1,
     borderColor: '#0D614E33',
@@ -111,23 +113,23 @@ const styles = StyleSheet.create({
 
   tag: {
     fontSize: 10,
-    color: '#0D614E',fontFamily : Fonts.PoppinsSemiBold
+    color: '#0D614E', fontFamily: Fonts.PoppinsSemiBold
   },
 
   title: {
     fontSize: 20,
-    fontFamily : Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
     lineHeight: 24,
-    marginTop:10,
-    marginBottom:8
+    marginTop: 10,
+    marginBottom: 8
   },
 
   desc: {
     fontSize: 12,
     color: '#64748B',
-    
-     fontFamily : Fonts.PoppinsMedium,
+
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   divider: {
@@ -138,13 +140,13 @@ const styles = StyleSheet.create({
 
   btnRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between', 
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
 
   btnText: {
     color: '#0D614E',
-   fontFamily : Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsSemiBold,
     fontSize: 14,
   },
 

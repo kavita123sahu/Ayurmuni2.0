@@ -40,13 +40,13 @@ const ProfileHeader = ({ user }: any) => {
               <Image source={{ uri: user.image }} style={styles.avatar} />
 
               <View style={styles.editIcon}>
-                <Image source={Images.profileEdit} style={Styles.IconSize} />
+                <Image source={Images.profileEdit} style={styles.IconSize} />
               </View>
             </View>
           </ImageBackground>
         </View>
 
-        {/* Name */}
+      
         <Text style={styles.name}>{user.name}</Text>
 
         {/* Info */}
@@ -58,7 +58,7 @@ const ProfileHeader = ({ user }: any) => {
         <View style={styles.statsRow}>
           <DashboardCard
             data={[
-              { value: "02", label: "CONSULT" },
+              { value: "02", label: "CONSULTS" },
               { value: "14", label: "ORDERS" },
               { value: "05", label: "REPORTS" },
             ]}
@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
     left: 10,
     width: 60,
     height: 60,
+    tintColor: Colors.secondaryColor,
     resizeMode: 'contain',
     opacity: 0.5,
   },
@@ -103,26 +104,29 @@ const styles = StyleSheet.create({
     top: 100,
     right: 5,
     width: 60,
+    tintColor: Colors.secondaryColor,
     height: 60,
     resizeMode: 'contain',
     opacity: 0.5,
   },
   avatarBgWrapper: {
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginBottom: 12,
-},
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: -10,
+  },
 
-avatarBg: {
-  padding: 30,
-  height: 150,
-  width: 200, // 👈 IMPORTANT (circle ke liye equal)
-  borderRadius: 100,
-  overflow: 'hidden', // ✅ MUST (main fix)
-
-  alignItems: 'center',
-  justifyContent: 'center',
-},
+  avatarBg: {
+    padding: 30,
+    height: 150,
+    boxShadow: '#0D614E',
+    width: 200, // 👈 IMPORTANT (circle ke liye equal)
+    borderRadius: 100,
+    overflow: 'hidden',
+    shadowOpacity: 4,
+    shadowColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // avatarWrapper: {
   //   width: 110,
   //   height: 110,
@@ -159,8 +163,8 @@ avatarBg: {
   // },
 
   avatarWrapper: {
-    width: 110,
-    height: 110,
+    width: 105,
+    height: 105,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#DDEBE8',
@@ -202,13 +206,23 @@ avatarBg: {
 
   editIcon: {
     position: 'absolute',
-    bottom: 1,
+    bottom: -2,
     right: 1,
     justifyContent: 'center',
     alignItems: 'center',
+
+    // borderRadius: 12,
+    //backgroundColor: '#FFFFFF', // 👈 white background like figma
+    //borderWidth: 1,
+    // borderColor: '#D?DEBE8',
     // 👈 white border like figma
   },
 
+  IconSize: {
+    width: 30,
+    height: 30
+
+  },
   editText: {
     color: '#fff',
     fontSize: 12,

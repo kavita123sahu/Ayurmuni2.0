@@ -10,7 +10,7 @@ import { Fonts } from '../common/Fonts';
 
 interface Props {
   placeholder?: string;
-  icon: ImageSourcePropType; 
+  icon: ImageSourcePropType;
 }
 
 const SearchBar: React.FC<Props> = ({
@@ -24,8 +24,9 @@ const SearchBar: React.FC<Props> = ({
 
       <TextInput
         placeholder={placeholder}
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor="#64748B"
         style={styles.input}
+        
       />
     </View>
   );
@@ -41,16 +42,16 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     paddingHorizontal: 14,
     height: 55,
-
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
 
   icon: {
-    width: 24,
-    height: 24,
+    width: 18,
+    height: 18,
     marginRight: 8,
     resizeMode: 'contain',
   },
@@ -58,7 +59,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    fontFamily : Fonts.PoppinsRegular,
+
+    minWidth: 0,
+    fontFamily: Fonts.PoppinsRegular,
     color: '#0F172A',
+    paddingVertical: 0, // 👈 important
+    includeFontPadding: false,
   },
 });

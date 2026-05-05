@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
@@ -12,6 +12,7 @@ import ActionCards from '../../components/ActionCards';
 import { Images } from '../../common/Images';
 import BrandList from '../../components/BrandList';
 import { useNavigation } from '@react-navigation/native';
+import { Colors } from '../../common/Colors';
 
 
 const MedicineScreen = () => {
@@ -120,9 +121,11 @@ const MedicineScreen = () => {
     return (
         <SafeAreaView style={{
             flex: 1,
-            marginBottom: 30,
-            paddingHorizontal: 20, backgroundColor: '#FDFDFB'
+            paddingHorizontal:20,
+            backgroundColor: '#FDFDFB'
         }}>
+
+            <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
 
             <Header
                 title="Medicine Store"
@@ -134,6 +137,7 @@ const MedicineScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{}}
+                
             >
 
                 <SearchBar
@@ -147,7 +151,7 @@ const MedicineScreen = () => {
                 />
 
                 <SectionHeader title="Recent Orders" actionText="View History" />
-                
+
                 <RecentProductsList data={recentProducts} />
 
                 <SectionHeader title="Shop by Concern" />

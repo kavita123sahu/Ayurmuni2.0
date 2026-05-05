@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, Animated, Easing } from 'react-native'
+import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, Animated, Easing, StatusBar } from 'react-native'
 import React, { useRef, useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
@@ -31,6 +31,9 @@ const VerifyPresciption = (props: any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
 
             <AppHeader
                 title="Verify Prescription"
@@ -83,6 +86,7 @@ const VerifyPresciption = (props: any) => {
                     <View style={styles.inputRow}>
                         <TextInput
                             value={patientName}
+                            placeholderTextColor="#9CA3AF"
                             onChangeText={setPatientName}
                             style={styles.input}
                         />
@@ -94,6 +98,7 @@ const VerifyPresciption = (props: any) => {
                     <Text style={styles.label}>DOCTOR NAME</Text>
                     <View style={styles.inputRow}>
                         <TextInput
+                       placeholderTextColor="#9CA3AF"
                             value={doctorName}
                             onChangeText={setDoctorName}
                             style={styles.input}

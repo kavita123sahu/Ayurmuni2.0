@@ -108,3 +108,51 @@ export const AssesmentYesSubmit = async (data: Object) => {
         }
     })
 }
+
+
+export const GetPatientPersonalization = async () => {
+
+    return new Promise(async (resolve, reject) => {
+        try {
+            let fetchParameter = {
+                method: Method.GET,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            }
+
+            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/health-questions/', fetchParameter);
+            console.log("questionnnnnnnnnnnnnn", serverResponse)
+            let response = await serverResponse.json();
+            resolve(response);
+        }
+        catch (error) {
+            reject(error);
+        }
+    })
+}
+
+
+export const PatientPersonalSubmit = async (data: Object) => {
+
+    return new Promise(async (resolve, reject) => {
+        try {
+
+            let fetchParameter = {
+                method: Method.POST,
+                body: JSON.stringify(data),
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            }
+            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/answers/submit/`, fetchParameter);
+            // let response = await serverResponse.json();
+            resolve(serverResponse);
+        }
+        catch (error) {
+            reject(error);
+        }
+    })
+}

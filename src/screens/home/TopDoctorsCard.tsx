@@ -33,7 +33,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
   const renderItem = useCallback(({ item }: { item: Doctor }) => {
     return (
-      <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={()=>navigation.navigate('AssessmentScreen')}>
 
         {/* AVAILABLE TAG */}
         {item.available && (
@@ -220,10 +220,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   IconSize: {
-    marginBottom: 10,
+    marginBottom: 15,
     borderRadius: 12,
-    height: 40,
-    width: 40,
+    height: 42,
+    width: 42,
     justifyContent: 'center',
     alignItems: 'center',
   }

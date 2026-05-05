@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions, StatusBar } from 'react-native'
 import React from 'react'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
@@ -7,10 +7,18 @@ import Detailimages from '../../components/Detailimages'
 import { Fonts } from '../../common/Fonts'
 import DashboardCard from '../../components/DashboardCard'
 import PrimaryButton from '../../components/PrimaryButton'
+import { reviews } from '../../common/DataInterface'
+import ReviewSection from '../../components/ReviewSecton'
 
+const { width } = Dimensions.get("window");
 const ProductDetails = (props: any) => {
 
     console.log("propssssssssssssssssss", props)
+    const [quantity, setQuantity] = React.useState(1);
+
+
+    ;
+
     const product = {
         id: 1,
         name: "Fresh Apple",
@@ -24,9 +32,23 @@ const ProductDetails = (props: any) => {
         ],
     };
 
+
+    const increaseQty = (newQuantity: number) => {
+        setQuantity(newQuantity);
+    };
+
+    const decreaseQty = (newQuantity: number) => {
+        if (quantity > 1) {
+            setQuantity(newQuantity);
+        }
+
+    };
     return (
 
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
 
             <AppHeader
                 title="Product Details"
@@ -38,6 +60,7 @@ const ProductDetails = (props: any) => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
+
             >
 
                 <View>
@@ -65,16 +88,29 @@ const ProductDetails = (props: any) => {
                     </Text>
 
                     <View style={styles.bottomRow}>
+
                         <View>
                             <Text style={styles.price}>Rs. 649.00</Text>
                             <Text style={styles.oldPrice}>Rs. 799.00</Text>
                         </View>
 
-                        <View style={styles.qtyContainer}>
+
+                        <View style={styles.qtyBox}>
+                            <TouchableOpacity onPress={() => increaseQty(quantity)} style={styles.btn} >
+                                <Text style={styles.plus}>+</Text>
+                            </TouchableOpacity>
+
+                            <Text style={styles.qty}>{quantity}</Text>
+
+                            <TouchableOpacity onPress={() => decreaseQty(quantity)} style={styles.btn}>
+                                <Text style={styles.minus}>−</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {/* <View style={styles.qtyContainer}>
                             <Text style={styles.qtyBtn}>−</Text>
                             <Text style={styles.qtyText}>1</Text>
                             <Text style={styles.qtyBtn}>+</Text>
-                        </View>
+                        </View> */}
                     </View>
                 </View>
 
@@ -117,41 +153,10 @@ const ProductDetails = (props: any) => {
 
                     </View>
 
-                    <TouchableOpacity style={styles.reviewHeader} onPress={() => props.navigation.navigate('ReviewPage')}>
-                        <Text style={styles.sectionTitle}>Customer Reviews</Text>
-
-                        <Text
-                            style={styles.viewAll}
-
-                        >
-                            View All
-                        </Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.reviewCard}>
-
-                        <View style={styles.reviewTop}>
-
-                            <View style={styles.avatar}>
-                                <Text style={styles.avatarText}>RS</Text>
-                            </View>
-
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                                <View style={styles.nameRow}>
-                                    <Text style={styles.name}>Rohan Sharma</Text>
-                                    <Text style={styles.stars}>⭐⭐⭐⭐⭐</Text>
-                                </View>
-                            </View>
-
-                        </View>
-
-                        <Text style={styles.reviewText}>
-                            Excellent quality! The grains are clean and cook perfectly.
-                            I use it for making upma and it tastes amazing. Highly
-                            recommended for fitness enthusiasts.
-                        </Text>
-
-                    </View>
+                    <ReviewSection
+                        navigation={props.navigation}
+                        reviews={reviews}
+                    />
 
                 </View>
 
@@ -177,7 +182,7 @@ const ProductDetails = (props: any) => {
                         onPress={() => props.navigation.navigate('MyCart')}
                         backgroundColor="#0D614E"
                         textColor="#FFFFFF"
-                          TextFont={Fonts.PoppinsRegular}
+                        TextFont={Fonts.PoppinsRegular}
                     />
                 </View>
 
@@ -254,6 +259,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flex: 1,
         marginTop: 10,
     },
     price: {
@@ -267,14 +273,43 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: 400
     },
-    qtyContainer: {
+    qtyBox: {
+        width: 100,
+        // height: 100,
         flexDirection: 'row',
+        backgroundColor: '#DCE7E5',
+        borderRadius: 11,
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        justifyContent: 'space-between',
+        paddingVertical: 2,
+        paddingHorizontal: 3,
+    },
+
+    btn: {
+        width: 36,
         height: 36,
-        borderWidth: 1,
-        borderColor: '#0D614E1A'
+        borderRadius: 11,
+        backgroundColor: '#ffff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    plus: {
+        fontSize: 16,
+        color: '#0D614E',
+        fontWeight: '600',
+    },
+
+    minus: {
+        fontSize: 16,
+        color: '#0D614E',
+        fontWeight: '600',
+    },
+
+    qty: {
+        fontSize: 12,
+
+        fontFamily: Fonts.PoppinsSemiBold
     },
     qtyBtn: {
         width: 32,

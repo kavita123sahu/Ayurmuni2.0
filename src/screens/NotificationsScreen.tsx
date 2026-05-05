@@ -6,11 +6,13 @@ import {
     FlatList,
     TouchableOpacity,
     Image,
-    TextStyle
+    TextStyle,
+    StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
+import AppHeader from '../components/AppHeader';
 
 interface NotificationItem {
     id: string;
@@ -175,10 +177,10 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
 
                     <View style={{ flex: 1 }}>
                         <View style={styles.rowBetween}>
-                            <View>
-                                <Text style={styles.title}>{item.title}</Text>
-                            </View>
-                            <View style={{ paddingVertical: 4, backgroundColor: "#0D614E1A", borderRadius: 6, paddingHorizontal: 12 }}>
+
+                            <Text style={styles.title}>{item.title}</Text>
+
+                            <View style={styles.timeBadge}>
                                 <Text style={styles.timeGreen}>{item.time}</Text>
                             </View>
                         </View>
@@ -189,11 +191,11 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
 
                         <View style={styles.buttonRow}>
                             <TouchableOpacity style={styles.joinBtn}>
-                                <Text style={styles.joinText}>Join Call</Text>
+                                <Text numberOfLines={1} style={styles.joinText}>Join Call</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.detailBtn}>
-                                <Text style={styles.detailText}>Details</Text>
+                                <Text numberOfLines={1} style={styles.detailText}>Details</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -247,7 +249,17 @@ const NotificationsScreen = (props: any) => {
     return (
         <SafeAreaView style={styles.container}>
             {/* HEADER */}
-            <View style={styles.header}>
+   <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
+            <AppHeader
+                title="Notifications"
+                leftIcon={Images.backIcon}
+                onLeftPress={() => props.navigation.goBack()}
+                rightIcon={"Clear All"}
+            // ✅ FIX
+            />
+
+            {/* <View style={styles.header}>
                 <TouchableOpacity onPress={() => { props.navigation.goBack() }}>
                     <Image
                         source={Images.backIcon}
@@ -260,19 +272,21 @@ const NotificationsScreen = (props: any) => {
                 <TouchableOpacity onPress={() => { }}>
                     <Text style={styles.clear}>Clear All</Text>
                 </TouchableOpacity>
+            </View> */}
+            <View style={{ paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
+                <FlatList
+                    data={[]}
+                    renderItem={null}
+                    ListHeaderComponent={
+                        <>
+                            {renderSection('upcoming', 'UPCOMING')}
+                            {renderSection('today', 'TODAY')}
+                            {renderSection('yesterday', 'YESTERDAY')}
+                        </>
+                    }
+                />
             </View>
 
-            <FlatList
-                data={[]}
-                renderItem={null}
-                ListHeaderComponent={
-                    <>
-                        {renderSection('upcoming', 'UPCOMING')}
-                        {renderSection('today', 'TODAY')}
-                        {renderSection('yesterday', 'YESTERDAY')}
-                    </>
-                }
-            />
         </SafeAreaView>
     );
 };
@@ -282,8 +296,9 @@ export default NotificationsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F7FB',
-        paddingHorizontal: 20,
+        marginBottom:50,
+        backgroundColor: '#FDFDFB',
+
     },
 
     header: {
@@ -326,6 +341,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 14,
         padding: 12,
+        shadowColor:'#ffff',
         marginBottom: 12,
     },
 
@@ -340,6 +356,7 @@ const styles = StyleSheet.create({
 
     row: {
         flexDirection: 'row',
+        alignItems: 'flex-start',
     },
 
     rowBetween: {
@@ -364,6 +381,7 @@ const styles = StyleSheet.create({
 
     title: {
         fontSize: 16,
+        marginRight: 6,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
@@ -374,6 +392,14 @@ const styles = StyleSheet.create({
 
     },
 
+    timeBadge: {
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        backgroundColor: "#0D614E1A",
+        borderRadius: 6,
+        marginLeft: 8,
+        flexShrink: 0, // 👈 VERY IMPORTANT
+    },
     timeGreen: {
         fontSize: 10,
         color: '#0D614E',
@@ -412,14 +438,16 @@ const styles = StyleSheet.create({
     buttonRow: {
         flexDirection: 'row',
         marginTop: 10,
+        gap: 10,
     },
 
     joinBtn: {
+        flex: 1, // 👈 equal width
         backgroundColor: '#0D614E',
-        paddingVertical: 6,
-        paddingHorizontal: 36,
+        paddingVertical: 10,
         borderRadius: 10,
-        marginRight: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     joinText: {
@@ -429,12 +457,15 @@ const styles = StyleSheet.create({
     },
 
     detailBtn: {
+
+        flex: 1, // 👈 equal width
         borderWidth: 1,
-        borderColor: '#ccc',
-        paddingVertical: 6,
-        paddingHorizontal: 36,
+        borderColor: '#E2E8F0',
+        paddingVertical: 10,
         borderRadius: 10,
-        backgroundColor: "#fff"
+        backgroundColor: "#fff",
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     detailText: {

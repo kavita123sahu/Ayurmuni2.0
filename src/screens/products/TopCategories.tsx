@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Header from '../../components/Header';
@@ -10,6 +10,7 @@ import TopSellingList from '../../components/TopSellingList';
 import { Images } from '../../common/Images';
 import { Styles } from '../../common/Styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../../common/Colors';
 
 const TopCategories = (props: any) => {
 
@@ -234,6 +235,9 @@ const TopCategories = (props: any) => {
     <SafeAreaView style={{ flex: 1,  marginBottom: 30,
             paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
 
+
+  <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
+
       <Header
         title={categoryName}
         subtitle="Organic product"
@@ -247,7 +251,7 @@ const TopCategories = (props: any) => {
         icon={require('../../assets/images/search.png')}
       />
 
-      <TopSellingList data={topSelling} isGrid={true}  navigation={props.navigation}  />
+      <TopSellingList data={topSelling} header ={true} isGrid={true}  navigation={props.navigation}  />
       
   
 

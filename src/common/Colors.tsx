@@ -5,7 +5,7 @@ export const Colors = {
   secondaryColor: '#466425',
   bgborderColor:'#0D614E33',
   onfillColor:'#0D614E0D',
-  questionGreen:'#0D614E',
+  questionGreen:'#rde',
   tabinactive: '#E8EDE3',
   bottomBg: '#E5E7EB',
   bottomActive: '#A52238',
@@ -28,6 +28,8 @@ export const Colors = {
   cardBackground : "#E5E7EB",
   grey1: '#8183BB',
   transparent: '#0000',
+  background : '#FDFDFB',
+  
   orangeColor: '#2576BC',
   borderColor: "#F1F5F9",
   bgcolor: '#0D614E0D',

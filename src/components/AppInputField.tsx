@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     marginLeft: 8,
-    tintColor: '#9CA3AF',
+    tintColor: '#94A3B8',
   },
 
   // 🔥 MODAL STYLES

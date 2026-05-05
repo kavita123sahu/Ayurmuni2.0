@@ -70,7 +70,7 @@ export default React.memo(CategoryList);
 
 const styles = StyleSheet.create({
   container: {
-    paddingLeft:-10
+    paddingLeft: -10
     // paddingHorizontal: 8,
   },
 
@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
   text: {
     marginTop: 6,
     fontSize: 12,
-    color: '#1E293B', fontFamily : Fonts.PoppinsSemiBold,
+    color: '#1E293B', fontFamily: Fonts.PoppinsSemiBold,
   },
 });

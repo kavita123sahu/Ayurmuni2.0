@@ -17,6 +17,7 @@ import { Fonts } from '../../common/Fonts';
 import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DATA = [
     {
@@ -44,9 +45,6 @@ const MedicalRecords = (props: any) => {
 
     const renderItem = ({ item }: any) => (
         <TouchableOpacity style={styles.card}>
-
-
-
             <View
                 style={[
                     styles.iconContainer,
@@ -62,7 +60,6 @@ const MedicalRecords = (props: any) => {
                 />
             </View>
 
-
             <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.subtitle}>{item.subtitle}</Text>
@@ -72,29 +69,11 @@ const MedicalRecords = (props: any) => {
         </TouchableOpacity>
     );
 
-    return (
-        <View style={styles.container}>
+    const TabButton = () => {
 
-            {/* HEADER */}
-
-
-            <Header
-                title="Medical Records"
-                subtitle="Manage your health documents"
-                backIcon={Images.backIcon}
-                onBack={() => { props.navigation.goBack() }}
-            />
-
-
-            <SearchBar
-                placeholder="Search doctors, medicine and products..."
-                icon={require('../../assets/images/search.png')}
-            />
-
-
-            {/* TABS */}
+        return (
             <View style={styles.tabs}>
-                {['All', 'Prescriptions', 'Lab Reports'].map(tab => (
+                {['All Records', 'Prescriptions', 'Lab Reports'].map(tab => (
                     <TouchableOpacity
                         key={tab}
                         onPress={() => setActiveTab(tab)}
@@ -114,6 +93,24 @@ const MedicalRecords = (props: any) => {
                     </TouchableOpacity>
                 ))}
             </View>
+        )
+    }
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <Header
+                title="Medical Records"
+                subtitle="Manage your health documents"
+                backIcon={Images.backIcon}
+                onBack={() => { props.navigation.goBack() }}
+            />
+
+            <SearchBar
+                placeholder="Search for help topics..."
+                icon={require('../../assets/images/search.png')}
+            />
+
+            <TabButton />
 
             <View style={styles.addBox}>
 
@@ -136,26 +133,18 @@ const MedicalRecords = (props: any) => {
                 contentContainerStyle={{ paddingBottom: 20 }}
             />
 
-            {/* ADD RECORD BOX */}
-
-
-            {/* BUTTON */}
-            {/* <TouchableOpacity style={styles.uploadBtn}>
-                <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-                <Text style={styles.uploadText}>Upload File</Text>
-            </TouchableOpacity> */}
 
             <View style={{ paddingBottom: 40, paddingTop: 10 }}>
                 <PrimaryButton title="Upload File"
                     icon={Images.upload}
                     onPress={() => console.log}
                     backgroundColor="#0D614E"
-                      TextFont={Fonts.PoppinsRegular}
+                    TextFont={Fonts.PoppinsRegular}
                     textColor="#FFFFFF" />
             </View>
 
 
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -165,7 +154,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
-        padding: 16,
+        // padding: 16,
         paddingHorizontal: 20
     },
 

@@ -58,7 +58,6 @@ const EmergencySOS: React.FC = (props: any) => {
         contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
       >
 
-        {/* Immediate Assistance */}
         <View style={styles.alertBox}>
           <View style={styles.alertRow}>
             <View style={styles.iconBox}>
@@ -73,7 +72,6 @@ const EmergencySOS: React.FC = (props: any) => {
           </View>
         </View>
 
-        {/* Medical Specialty */}
         <Text style={styles.label}>Medical Speciality</Text>
 
         <TouchableOpacity
@@ -98,7 +96,6 @@ const EmergencySOS: React.FC = (props: any) => {
             </TouchableOpacity>
           ))}
 
-        {/* Describe Concern */}
         <Text style={styles.label2}>Describe Concern</Text>
 
         <View style={styles.textArea}>
@@ -108,12 +105,12 @@ const EmergencySOS: React.FC = (props: any) => {
             multiline
             value={concern}
             onChangeText={setConcern}
-            style={{ flex: 1, textAlignVertical: "top",fontSize:16,paddingRight:10,lineHeight:24,fontFamily:Fonts.PoppinsRegular}}
+            style={{ flex: 1,  color: '#0F172A', textAlignVertical: "top",fontSize:16,paddingRight:10,lineHeight:24,fontFamily:Fonts.PoppinsRegular}}
           />
           <Text style={styles.minText}>Min. 10 words for better triage</Text>
         </View>
 
-        {/* Doctors */}
+  
         <Text style={styles.label2}>Available Doctors</Text>
 
         <FlatList

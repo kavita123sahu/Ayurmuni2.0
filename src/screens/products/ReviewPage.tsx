@@ -1,10 +1,11 @@
-import { View, Text, ScrollView, StyleSheet, FlatList } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity, Dimensions, StatusBar } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import Detailimages from '../../components/Detailimages'
 import { Fonts } from '../../common/Fonts'
+import { Colors } from '../../common/Colors'
 
 const ReviewPage = (props: any) => {
     
@@ -59,6 +60,8 @@ const ReviewPage = (props: any) => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
 
              <AppHeader
                     title="Foxtail millet (Kangni)"
@@ -115,27 +118,28 @@ const ReviewPage = (props: any) => {
                     showIndicator={false}
                 />
 
-                <View style={styles.filterRow}>
-                    {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
-                        <Text
-                            key={item}
-                            style={[
-                                styles.filterBtn,
-                                activeFilter === item && styles.activeFilterBtn
-                            ]}
-                            onPress={() => setActiveFilter(item)}
-                        >
-                            <Text
-                                style={[
-                                    styles.filterText,
-                                    activeFilter === item && styles.activeFilterText
-                                ]}
-                            >
-                                {item}
-                            </Text>
-                        </Text>
-                    ))}
-                </View>
+             <View style={styles.filterRow}>
+    {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
+        <TouchableOpacity
+            key={item}
+            style={[
+                styles.filterBtn,
+                activeFilter === item && styles.activeFilterBtn
+            ]}
+            onPress={() => setActiveFilter(item)}
+            activeOpacity={0.7}
+        >
+            <Text
+                style={[
+                    styles.filterText,
+                    activeFilter === item && styles.activeFilterText
+                ]}
+            >
+                {item}
+            </Text>
+        </TouchableOpacity>
+    ))}
+</View>
 
 
                 <FlatList
@@ -177,6 +181,8 @@ const ReviewPage = (props: any) => {
 
 export default ReviewPage
 
+const { width } = Dimensions.get("window");
+const scale = width / 375; // base width for scaling (iPhone 11 Pro)
 
 const styles = StyleSheet.create({
 
@@ -188,7 +194,7 @@ const styles = StyleSheet.create({
 
     avgRating: {
         fontSize: 48,
-        fontWeight: '900',
+       fontFamily: Fonts.PoppinsSemiBold,
         color: '#0D614E',
         lineHeight: 60
     },
@@ -241,40 +247,49 @@ const styles = StyleSheet.create({
 
     sectionTitle: {
         marginTop: 20,
-        paddingHorizontal: 24,
+        // paddingHorizontal: ,
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
         marginBottom: 12,
         left: 6
     },
 
-    filterRow: {
+     filterRow: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        paddingHorizontal: 24,
+        // flexWrap: 'wrap', // 🔥 small screen fix
+        justifyContent: 'center', // 🔥 center align
+        alignItems: 'center',
+
+        paddingHorizontal: 30 * scale,
         marginTop: 10,
+        // gap: 8, // clean spacing
     },
 
     filterBtn: {
-        backgroundColor: '#E6F4F1',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
+        paddingVertical: 8 * scale,
+        paddingHorizontal: 10 * scale,
+
         borderRadius: 10,
-        marginRight: 8,
-        marginBottom: 10,
-        marginTop: 12
+
+        backgroundColor: '#0D614E1A',
+
+        margin: 4, // fallback spacing (gap support issue fix)
+    },
+
+    activeFilterBtn: {
+        backgroundColor: Colors.primaryColor,
     },
 
     filterText: {
-        color: '#0D614E',
-        fontSize: 12,
-    },
-    activeFilterBtn: {
-        backgroundColor: '#0D614E',
+        fontSize: 12 * scale,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     activeFilterText: {
-        color: '#FFFFFF',
+        color: Colors.white,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     reviewCard: {
@@ -301,11 +316,12 @@ const styles = StyleSheet.create({
 
     avatarText: {
         color: '#0D614E',
-        fontWeight: '700',
+        fontSize: 16,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     name: {
-        fontWeight: '700',
+        fontFamily: Fonts.PoppinsSemiBold,
         fontSize: 14,
         lineHeight: 20,
         color: '#0F172A'
@@ -323,12 +339,13 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsMedium
     },
-
+    
     reviewText: {
         marginTop: 8,
         color: '#475569',
         fontSize: 14,
-        lineHeight: 18,
+        fontFamily : Fonts.PoppinsMedium,
+        lineHeight: 22,
     },
 
 });

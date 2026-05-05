@@ -8,6 +8,7 @@ export const Styles = {
     fontSize: 16,
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom :-5
   },
 
   specialty: {
@@ -47,12 +48,13 @@ export const Styles = {
 
   outlineText: {
     color: '#0A8F5A',
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   cancelText: {
     color: '#EF4444',
-     fontSize: 16,
+     fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 

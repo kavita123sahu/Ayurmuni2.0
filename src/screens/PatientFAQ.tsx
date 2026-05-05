@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -10,8 +10,6 @@ import {
     Dimensions
 } from 'react-native';
 
-import LottieView from 'lottie-react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import { Ionicons } from '../common/Vector';
@@ -21,8 +19,9 @@ import { Utils } from '../common/Utils';
 import { showSuccessToast } from '../config/Key';
 
 
+// type StepType = 'intro' | 'singl   e';
 
-type StepType = 'intro' | 'single' | 'thankyou';
+type StepType = 'single';
 
 interface StepConfig {
     type: StepType;
@@ -37,40 +36,24 @@ const { width, height } = Dimensions.get('window');
 const scale = (size: number) => (width / 375) * size;
 
 const PatientFAQ = (props: any) => {
-
-    const navigation = useNavigation();
-
-    console.log("propscustomer", props)
-
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState<any>({});
     const [selectedChoices, setSelectedChoices] = useState<Record<string, string>>({});
     const [dynamicSteps, setDynamicSteps] = useState<StepConfig[]>([]);
     const [CUSTOMER_ID, setCUSTOMER_ID] = useState('')
 
-
-
     useEffect(() => {
         myFunc()
-        getQuestionList();
     }, []);
-
-
 
     const myFunc = async () => {
         const customer_id = await Utils.getData('_CUSTOMER_ID');
         const data = await Utils.getData('_USER_INFO');
         const id = customer_id || data?.id;
-
-        console.log("customeridddd", id);
-        setCUSTOMER_ID(id)
+        setCUSTOMER_ID(id);
+         getQuestionList();
 
     };
-
-
-
-
-
 
     const getQuestionList = async () => {
         try {
@@ -79,7 +62,7 @@ const PatientFAQ = (props: any) => {
             const apiSteps: StepConfig[] = response.map((q: any) => ({
                 type: 'single',
                 question: q.text,
-                key: q.id,
+                key: String(q.id),
                 conditional: (a: any) => a.knowPrakriti === 'No',
                 options: q.choices
             }));
@@ -93,7 +76,6 @@ const PatientFAQ = (props: any) => {
     };
 
     const steps: StepConfig[] = [
-        { type: 'intro', question: '' },
 
         {
             type: 'single',
@@ -123,165 +105,125 @@ const PatientFAQ = (props: any) => {
 
         ...dynamicSteps,
 
-        { type: 'thankyou', question: '' }
+        // { type: 'thankyou', question: '' }
     ];
 
-    const visibleSteps = steps.filter(
-        (s) => !s.conditional || s.conditional(answers)
+    const visibleSteps = useMemo(
+        () => steps.filter(s => !s.conditional || s.conditional(answers)),
+        [steps, answers]
     );
 
-    const current = visibleSteps[step];
+    const safeStep = Math.min(step, Math.max(visibleSteps.length - 1, 0));
+    const current = visibleSteps[safeStep];
 
-    const progress = step / (visibleSteps.length - 1);
-
-    useEffect(() => {
-        if (!current?.options?.length) return;
-
-        const alreadyAnswered = answers[current.key!];
-
-        const preSelected = current.options.find(
-            (opt: any) => opt.is_selected
-        );
-
-        if (!alreadyAnswered && preSelected) {
-            setAnswers((prev: any) => ({
-                ...prev,
-                [current.key!]: preSelected.text
-            }));
-
-            setSelectedChoices((prev: any) => ({
-                ...prev,
-                [current.key!]: preSelected.id
-            }));
-        }
-
-    }, [current]);
-
-
-    const getSingleDosha = (value: string) => {
-        return value.toLowerCase().split(/[-\s]+/)[0];
-    };
-
+    const progress =
+        visibleSteps.length > 1
+            ? safeStep / (visibleSteps.length - 1)
+            : 0;
 
     useEffect(() => {
-        if (current?.type === 'thankyou') {
-            const timer = setTimeout(() => {
-                props.navigation.replace('HomeStack', { screen: 'Home' });
-            }, 2000);
+        if (!current?.key || !Array.isArray(current.options)) return;
 
-            return () => clearTimeout(timer);
+        const already = answers[current.key];
+        const pre = current.options.find((o: any) => o?.is_selected);
+
+        if (!already && pre) {
+            setAnswers((prev: any) => ({ ...prev, [current.key!]: pre.text }));
+            setSelectedChoices(prev => ({ ...prev, [current.key!]: pre.id }));
         }
-    }, [current?.type]);
+    }, [current?.key]);
+
+    const getSingleDosha = (v: string) =>
+        v?.toLowerCase()?.split(/[-\s]+/)[0];
 
     const handleNext = async () => {
-        console.log("=======.>", current)
 
-        let isSuccess = true; // 👈 control flag
+        if (!current) return;
 
-        // ✅ YES FLOW API
+        let isSuccess = true;
+
         if (current.key === 'prakritiType') {
+            const id = selectedChoices['prakritiType'];
 
-            const selectedId = selectedChoices['prakritiType'];
-
-            if (selectedId) {
-                const payload = {
-                    customer_id: CUSTOMER_ID,
-                    dominant_dosha: getSingleDosha(selectedId)
-                };
-
+            if (id) {
                 try {
-                    const response: any = await _ASSESS_SERVICE.AssesmentYesSubmit(payload);
-                    console.log("YES API RESPONSE:", response);
+                    const res: any = await _ASSESS_SERVICE.AssesmentYesSubmit({
+                        customer_id: CUSTOMER_ID,
+                        dominant_dosha: getSingleDosha(id)
+                    });
 
-                    const JSONDATA = response.json()
-                    console.log("YES API RESPONSE:", response);
+                    if (!res?.ok) isSuccess = false;
+                    else showSuccessToast("Your prakriti done successfully", "success");
 
-                    // 👇 IMPORTANT CHECK
-                    if (!response?.ok) {
-                        isSuccess = false;
-                        showSuccessToast("Failed! Data not save  ❌", "error");
-                    }
-
-                    else {
-                        showSuccessToast("Your prakriti done successfully", "success");
-                    }
-
-                } catch (e) {
+                } catch {
                     isSuccess = false;
-                    showSuccessToast("Something went wrong ❌", "error");
-                    console.log("YES API ERROR:", e);
                 }
             }
         }
 
-        // ✅ NO FLOW
         if (
+            current.key &&
             current.key !== 'knowPrakriti' &&
-            current.key !== 'prakritiType' &&
-            current.type === 'single'
+            current.key !== 'prakritiType'
         ) {
-            const choice_id = selectedChoices[current.key!];
+            const choice_id = selectedChoices[current.key];
 
             if (choice_id) {
-                const payload = {
-                    customer_id: CUSTOMER_ID,
-                    answers: [
-                        {
-                            question_id: current.key,
-                            choice_id: choice_id,
-                        },
-
-                    ],
-                };
-
                 try {
-                    const response: any = await _ASSESS_SERVICE.AssesmentSubmit(payload);
-                    console.log("API RESPONSE:", response);
+                    const res: any = await _ASSESS_SERVICE.AssesmentSubmit({
+                        customer_id: CUSTOMER_ID,
+                        answers: [{
+                            question_id: current.key,
+                            choice_id
+                        }]
+                    });
 
-                    // 👇 IMPORTANT CHECK
-                    if (!response?.ok) {
-                        isSuccess = false;
-                        showSuccessToast("Failed! Answer not save ❌", 'error');
-                    }
+                    if (!res?.ok) isSuccess = false;
 
-                } catch (error) {
+                } catch {
                     isSuccess = false;
-                    showSuccessToast("API Error ❌", 'error');
-                    console.log("POST ERROR:", error);
                 }
             }
         }
 
-        // ❌ agar fail hua → yahin stop
         if (!isSuccess) {
+            showSuccessToast("Something went wrong ❌", "error");
             return;
         }
 
-        // ✅ THANK YOU SCREEN
-        if (current.type === 'thankyou') {
-            props.navigation.replace('HomeStack', { screen: 'Home' });
+        if (safeStep === visibleSteps.length - 1) {
+            props.navigation.replace('AssessmentType', {
+                form: 'prakriti'
+            });
             return;
         }
 
-        // ✅ NEXT TAB TABHI JAB SUCCESS HO
-        setStep(step + 1);
+        setStep(prev => prev + 1);
     };
+
     const handleBack = () => {
-        if (step > 0) setStep(step - 1);
+        if (step > 0) setStep(prev => prev - 1);
     };
 
-    const handleSkip = () => setStep(step + 1);
+    const handleSkip = () => {
+        if (safeStep === visibleSteps.length - 1) {
+            props.navigation.replace('AssessmentType', { form: 'prakriti' });
+        } else {
+            setStep(prev => prev + 1);
+        }
+    };
 
     const handleSkipHome = () => {
         props.navigation.replace('HomeStack', { screen: 'Home' });
     };
 
     const isDisabled =
-        step === 0
-            ? false
-            : current.type === 'single'
-                ? !answers[current.key!]
-                : false;
+        safeStep !== 0 &&
+        current?.key &&
+        !answers[current.key];
+
+    if (!current) return null;
+
 
     return (
 
@@ -295,7 +237,7 @@ const PatientFAQ = (props: any) => {
             >
                 <View style={styles.content}>
 
-                    {current.type !== 'intro' && (
+
                         <View style={styles.header}>
                             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                                 <Image source={Images.backIcon} style={styles.backIcon} />
@@ -303,18 +245,18 @@ const PatientFAQ = (props: any) => {
 
                             <Text style={styles.headerTitle}>Onboarding</Text>
 
-                            {current.key !== 'knowPrakriti' && step > 0 && (
+                            {safeStep  > 0 && (
                                 <TouchableOpacity style={styles.skipHeaderBtn} onPress={handleSkip}>
                                     <Text style={styles.skipHeaderText}>Skip</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
-                    )}
 
-                    {step > 0 && (
+
+                    {safeStep  > 0 && (
                         <>
                             <Text style={styles.stepText}>
-                                Step {step} of {visibleSteps.length - 1}
+                                Step {safeStep } of {visibleSteps.length - 1}
                             </Text>
 
                             <View style={styles.progressContainer}>
@@ -323,7 +265,7 @@ const PatientFAQ = (props: any) => {
                         </>
                     )}
 
-                    {step === 0 && (
+                    {/* {step === 0 && (
                         <View style={styles.introContainer}>
                             <Image source={Images.QnAMain} style={styles.qnaImage} />
                             <Text style={styles.title}>
@@ -335,7 +277,7 @@ const PatientFAQ = (props: any) => {
                                 to your doorstep
                             </Text>
                         </View>
-                    )}
+                    )} */}
 
                     {current.key === 'knowPrakriti' && (
                         <>
@@ -367,7 +309,7 @@ const PatientFAQ = (props: any) => {
                         </>
                     )}
 
-                    {current.type === 'single' && current.key !== 'knowPrakriti' && (
+                    { current.key !== 'knowPrakriti' && (
                         <>
                             <Text style={styles.questionText}>{current.question}</Text>
 
@@ -411,33 +353,37 @@ const PatientFAQ = (props: any) => {
                     )}
 
                     {/* THANK YOU */}
-                    {current.type === 'thankyou' && (
-                        <View style={styles.thankYouContainer}>
-                            <LottieView
-                                source={require('../assets/animations/thankyou.json')}
-                                autoPlay
-                                loop
-                                style={{ width: 280, height: 280 }}
-                            />
-                            <Text style={styles.thankYouTitle}>Thank You 🙏</Text>
-                        </View>
-                    )}
+                    {/* {current.type === 'thankyou' && (
+                        props.navigation.navigate('AssessmentType', {
+                            form: 'medical'
+                        })
+                        // <View style={styles.thankYouContainer}>
+                        //     <LottieView
+                        //         source={require('../assets/animations/thankyou.json')}
+                        //         autoPlay
+                        //         loop
+                        //         style={{ width: 280, height: 280 }}
+                        //     />
+                        //     <Text style={styles.thankYouTitle}>Thank You 🙏</Text>
+                        // </View>
+                    )} */}
 
                 </View>
             </ScrollView>
 
             {/* FOOTER */}
-            {current.type !== 'thankyou' && (
+
+
                 <View style={styles.footer}>
 
                     <TouchableOpacity
                         style={[styles.proceedButton, isDisabled && styles.proceedButtonDisabled]}
-                        disabled={isDisabled}
+                        // disabled={isDisabled}
                         onPress={handleNext}
                     >
                         <View style={styles.nextRow}>
                             <Text style={styles.proceedButtonText}>
-                                {step === 0 ? 'Continue' : 'Next'}
+                                { visibleSteps.length - 1 ? 'Finish' : 'Next'}
                             </Text>
                             <Image source={Images.NextArrow} style={styles.nextArrow} />
                         </View>
@@ -450,7 +396,8 @@ const PatientFAQ = (props: any) => {
                     )}
 
                 </View>
-            )}
+
+
 
         </View>
     );
@@ -524,8 +471,8 @@ const styles = StyleSheet.create({
     },
 
     backIcon: {
-        width: width * 0.12,
-        height: width * 0.12,
+        width: 40,
+        height:40,
         resizeMode: 'contain',
     },
 
@@ -607,6 +554,7 @@ const styles = StyleSheet.create({
         paddingVertical: height * 0.02,
         borderWidth: 1,
         borderRadius: 16,
+        backgroundColor: '#fff',
         alignItems: 'center',
         borderColor: '#D1D5DB',
     },
@@ -722,3 +670,593 @@ const styles = StyleSheet.create({
         backgroundColor: '#F1F5F9',
     },
 });
+
+
+
+// import React, { useEffect, useMemo, useState } from 'react';
+// import {
+//     View,
+//     Text,
+//     TouchableOpacity,
+//     StyleSheet,
+//     ScrollView,
+//     StatusBar,
+//     Image,
+//     Dimensions
+// } from 'react-native';
+
+// import { Colors } from '../common/Colors';
+// import { Fonts } from '../common/Fonts';
+// import { Ionicons } from '../common/Vector';
+// import * as _ASSESS_SERVICE from '../services/AssesmentService';
+// import { Images } from '../common/Images';
+// import { Utils } from '../common/Utils';
+// import { showSuccessToast } from '../config/Key';
+
+// type StepType = 'single';
+
+// interface StepConfig {
+//     type: StepType;
+//     question: string;
+//     key: string;
+//     options?: any[];
+//     conditional?: (answers: any) => boolean;
+// }
+
+// const { width, height } = Dimensions.get('window');
+// const scale = (size: number) => (width / 375) * size;
+
+// const PatientFAQ = (props: any) => {
+
+//     const isUpdateMode = props?.route?.params.update === true; // 🔥 NEW
+
+
+//     console.log('PatientFAQ props:', props, 'isUpdateMode:', isUpdateMode);
+//     const [step, setStep] = useState(0);
+//     const [answers, setAnswers] = useState<any>({});
+//     const [selectedChoices, setSelectedChoices] = useState<Record<string, string>>({});
+//     const [dynamicSteps, setDynamicSteps] = useState<StepConfig[]>([]);
+//     const [CUSTOMER_ID, setCUSTOMER_ID] = useState('');
+
+//     useEffect(() => {
+//         init();
+//     }, []);
+
+//     const init = async () => {
+//         const customer_id = await Utils.getData('_CUSTOMER_ID');
+//         const data = await Utils.getData('_USER_INFO');
+//         setCUSTOMER_ID(customer_id || data?.id);
+
+//         getQuestionList();
+//     };
+
+//     const getQuestionList = async () => {
+//         try {
+//             const response: any = await _ASSESS_SERVICE.GetQuestionOptions();
+
+//             const apiSteps: StepConfig[] = response.map((q: any) => ({
+//                 type: 'single',
+//                 question: q.text,
+//                 key: String(q.id),
+//                 options: q.choices
+//             }));
+
+//             setDynamicSteps(apiSteps);
+//         } catch (e) {
+//             console.log(e);
+//         }
+//     };
+
+//     // 🔥 BASE STEPS
+//     const baseSteps: StepConfig[] = [
+//         {
+//             type: 'single',
+//             question: 'Do you know your Prakriti?',
+//             key: 'knowPrakriti',
+//             options: ['Yes', 'No']
+//         },
+//         {
+//             type: 'single',
+//             question: 'Select your Prakriti',
+//             key: 'prakritiType',
+//             conditional: (a: any) => a.knowPrakriti === 'Yes',
+//             options: [
+//                 { id: 'Vata', text: 'Vata' },
+//                 { id: 'Pitta', text: 'Pitta' },
+//                 { id: 'Kapha', text: 'Kapha' },
+//                 { id: 'Tri-Dosha', text: 'Tri-Dosha' },
+//             ]
+//         }
+//     ];
+
+//     // 🔥 FINAL STEPS (UPDATE MODE SUPPORT)
+//     const steps: StepConfig[] = isUpdateMode
+//         ? [...dynamicSteps] // 👈 skip first 2 steps
+//         : [...baseSteps, ...dynamicSteps];
+
+//     const visibleSteps = useMemo(
+//         () => steps.filter(s => !s.conditional || s.conditional(answers)),
+//         [steps, answers]
+//     );
+
+//     const safeStep = Math.min(step, Math.max(visibleSteps.length - 1, 0));
+//     const current = visibleSteps[safeStep];
+
+//     const progress =
+//         visibleSteps.length > 1
+//             ? safeStep / (visibleSteps.length - 1)
+//             : 0;
+
+//     // ✅ PRESELECT FIX
+//     useEffect(() => {
+//         if (!current?.key || !Array.isArray(current.options)) return;
+
+//         const already = answers[current.key];
+//         const pre = current.options.find((o: any) => o?.is_selected);
+
+//         if (!already && pre) {
+//             setAnswers((prev: any) => ({ ...prev, [current.key]: pre.text }));
+//             setSelectedChoices(prev => ({ ...prev, [current.key]: pre.id }));
+//         }
+//     }, [current?.key]);
+
+//     const getSingleDosha = (v: string) =>
+//         v?.toLowerCase()?.split(/[-\s]+/)[0];
+
+//     const handleNext = async () => {
+
+//         if (!current) return;
+
+//         let isSuccess = true;
+
+//         // ✅ PRAKRITI API (ONLY NORMAL MODE)
+//         if (!isUpdateMode && current.key === 'prakritiType') {
+//             const id = selectedChoices['prakritiType'];
+
+//             if (id) {
+//                 try {
+//                     const res: any = await _ASSESS_SERVICE.AssesmentYesSubmit({
+//                         customer_id: CUSTOMER_ID,
+//                         dominant_dosha: getSingleDosha(id)
+//                     });
+
+//                     if (!res?.ok) isSuccess = false;
+//                 } catch {
+//                     isSuccess = false;
+//                 }
+//             }
+//         }
+
+//         // ✅ COMMON QUESTIONS API
+//         if (
+//             current.key &&
+//             current.key !== 'knowPrakriti' &&
+//             current.key !== 'prakritiType'
+//         ) {
+//             const choice_id = selectedChoices[current.key];
+
+//             if (choice_id) {
+//                 try {
+//                     const res: any = await _ASSESS_SERVICE.AssesmentSubmit({
+//                         customer_id: CUSTOMER_ID,
+//                         answers: [{
+//                             question_id: current.key,
+//                             choice_id
+//                         }]
+//                     });
+
+//                     if (!res?.ok) isSuccess = false;
+
+//                 } catch {
+//                     isSuccess = false;
+//                 }
+//             }
+//         }
+
+//         if (!isSuccess) {
+//             showSuccessToast("Something went wrong ❌", "error");
+//             return;
+//         }
+
+//         if (safeStep === visibleSteps.length - 1) {
+//             props.navigation.replace('AssessmentType', { form: 'prakriti' });
+//             return;
+//         }
+
+//         setStep(prev => prev + 1);
+//     };
+
+//     const handleBack = () => {
+//         if (step > 0) setStep(prev => prev - 1);
+//     };
+
+//     const handleSkip = () => {
+//         if (safeStep === visibleSteps.length - 1) {
+//             props.navigation.replace('AssessmentType', { form: 'prakriti' });
+//         } else {
+//             setStep(prev => prev + 1);
+//         }
+//     };
+
+//     const handleSkipHome = () => {
+//         props.navigation.replace('HomeStack', { screen: 'Home' });
+//     };
+
+//     const isDisabled =
+//         safeStep !== 0 &&
+//         current?.key &&
+//         !answers[current.key];
+
+//     if (!current) return null;
+
+//     return (
+//         <View style={styles.container}>
+
+//             <StatusBar barStyle="dark-content" />
+
+//             <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+//                 <View style={styles.content}>
+
+//                     {/* HEADER */}
+//                     <View style={styles.header}>
+//                         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+//                             <Image source={Images.backIcon} style={styles.backIcon} />
+//                         </TouchableOpacity>
+
+//                         <Text style={styles.headerTitle}>Onboarding</Text>
+
+//                         {safeStep > 0 && (
+//                             <TouchableOpacity style={styles.skipHeaderBtn} onPress={handleSkip}>
+//                                 <Text style={styles.skipHeaderText}>Skip</Text>
+//                             </TouchableOpacity>
+//                         )}
+//                     </View>
+
+//                     {/* PROGRESS */}
+//                     {safeStep > 0 && (
+//                         <>
+//                             <Text style={styles.stepText}>
+//                                 Step {safeStep} of {visibleSteps.length - 1}
+//                             </Text>
+
+//                             <View style={styles.progressContainer}>
+//                                 <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+//                             </View>
+//                         </>
+//                     )}
+
+//                     {/* QUESTION */}
+//                     <Text style={styles.questionText}>{current.question}</Text>
+
+//                     {/* OPTIONS */}
+//                     {current.options?.map((item: any, index: number) => {
+
+//                         const text = item.text || item;
+//                         const active = answers[current.key] === text;
+
+//                         return (
+//                             <TouchableOpacity
+//                                 key={index}
+//                                 style={[styles.card, active && styles.activeCard]}
+//                                 onPress={() => {
+//                                     setAnswers((prev: any) => ({ ...prev, [current.key]: text }));
+
+//                                     if (item.id) {
+//                                         setSelectedChoices(prev => ({
+//                                             ...prev,
+//                                             [current.key]: item.id
+//                                         }));
+//                                     }
+//                                 }}
+//                             >
+//                                 <Text style={[styles.text, active && styles.activeText]}>
+//                                     {text}
+//                                 </Text>
+
+//                                 {active && (
+//                                     <View style={styles.iconContainer}>
+//                                         <View style={styles.tickCircle}>
+//                                             <Ionicons name="checkmark" size={13} color={Colors.questionGreen} />
+//                                         </View>
+//                                     </View>
+//                                 )}
+//                             </TouchableOpacity>
+//                         );
+//                     })}
+
+//                 </View>
+//             </ScrollView>
+
+//             {/* FOOTER */}
+//             <View style={styles.footer}>
+//                 <TouchableOpacity
+//                     style={[styles.proceedButton, isDisabled && styles.proceedButtonDisabled]}
+//                     // disabled={isDisabled}
+//                     onPress={handleNext}
+//                 >
+//                     <View style={styles.nextRow}>
+//                         <Text style={styles.proceedButtonText}>
+//                             {safeStep === visibleSteps.length - 1 ? 'Finish' : 'Next'}
+//                         </Text>
+//                         <Image source={Images.NextArrow} style={styles.nextArrow} />
+//                     </View>
+//                 </TouchableOpacity>
+
+//                 {!isUpdateMode && current.key === 'knowPrakriti' && (
+//                     <TouchableOpacity style={styles.bottomSkipBtn} onPress={handleSkipHome}>
+//                         <Text style={styles.bottomSkipText}>Skip</Text>
+//                     </TouchableOpacity>
+//                 )}
+//             </View>
+
+//         </View>
+//     );
+// };
+
+// export default PatientFAQ;
+
+// const styles = StyleSheet.create({
+//     container: {
+//         flex: 1,
+//         backgroundColor: '#fff',
+//         marginBottom: 20,
+//         marginTop: 30
+//     },
+
+//     content: {
+//         flex: 1,
+//         paddingHorizontal: width * 0.06,
+//     },
+
+//     introContainer: {
+//         flex: 1,
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//         marginTop: height * 0.05,
+//     },
+
+//     qnaImage: {
+//         width: width * 0.5,
+//         height: width * 0.5,
+//         resizeMode: 'contain',
+//         marginBottom: height * 0.05,
+//     },
+
+//     title: {
+//         fontSize: scale(28),
+//         color: '#0F172A',
+//         fontFamily: Fonts.PoppinsSemiBold,
+//         textAlign: 'center',
+//     },
+
+//     greenText: {
+//         color: Colors.questionGreen,
+//     },
+
+//     subtitle: {
+//         fontSize: scale(15),
+//         color: '#6B7280',
+//         textAlign: 'center',
+//         marginTop: 10,
+//         fontFamily: Fonts.PoppinsMedium,
+//         paddingHorizontal: width * 0.08,
+//         lineHeight: scale(22),
+//     },
+
+//     questionText: {
+//         fontSize: scale(26),
+//         marginVertical: height * 0.02,
+//         fontFamily: Fonts.PoppinsSemiBold,
+//     },
+
+//     header: {
+//         height: height * 0.09,
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//     },
+
+//     backButton: {
+//         position: 'absolute',
+//         left: 0,
+//     },
+
+//     backIcon: {
+//         width: width * 0.12,
+//         height: width * 0.12,
+//         resizeMode: 'contain',
+//     },
+
+//     headerTitle: {
+//         fontSize: scale(18),
+//         fontFamily: Fonts.PoppinsSemiBold,
+//         color: '#1A1A1A',
+//     },
+
+//     skipHeaderBtn: {
+//         position: 'absolute',
+//         right: 0,
+//     },
+
+//     skipHeaderText: {
+//         fontSize: scale(15),
+//         color: Colors.questionGreen,
+//         fontFamily: Fonts.PoppinsMedium
+//     },
+
+//     stepText: {
+//         marginTop: 10,
+//         fontSize: scale(14),
+//         color: '#6B7280',
+//         fontFamily: Fonts.PoppinsMedium,
+//     },
+
+//     progressContainer: {
+//         height: 6,
+//         marginVertical: 10,
+//         borderRadius: 50,
+//         overflow: 'hidden',
+//         backgroundColor: '#E5E7EB',
+//     },
+
+//     progressBar: {
+//         height: '100%',
+//         borderRadius: 50,
+//         backgroundColor: Colors.questionGreen,
+//     },
+
+//     footer: {
+//         paddingHorizontal: width * 0.06,
+//         paddingBottom: height * 0.03,
+//         paddingTop: height * 0.02,
+//     },
+
+//     proceedButton: {
+//         paddingVertical: height * 0.02,
+//         borderRadius: 16,
+//         marginBottom: 10,
+//         backgroundColor: Colors.questionGreen,
+//     },
+
+//     proceedButtonDisabled: {
+//         backgroundColor: '#D1D5DB',
+//     },
+
+//     proceedButtonText: {
+//         color: '#fff',
+//         fontSize: scale(16),
+//         fontFamily: Fonts.PoppinsMedium,
+//     },
+
+//     nextRow: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//     },
+
+//     nextArrow: {
+//         width: scale(16),
+//         height: scale(16),
+//         marginLeft: 5,
+//     },
+
+//     bottomSkipBtn: {
+//         marginTop: 10,
+//         paddingVertical: height * 0.02,
+//         borderWidth: 1,
+//         borderRadius: 16,
+//         backgroundColor: '#fff',
+//         alignItems: 'center',
+//         borderColor: '#D1D5DB',
+//     },
+
+//     bottomSkipText: {
+//         color: Colors.questionGreen,
+//         fontSize: scale(15),
+//         fontFamily: Fonts.PoppinsMedium,
+//     },
+
+//     prakritiDesc: {
+//         fontSize: scale(14),
+//         marginBottom: 20,
+//         color: '#64748B',
+//         fontFamily: Fonts.PoppinsMedium,
+//         lineHeight: scale(20),
+//     },
+
+//     prakritiRow: {
+//         flexDirection: 'row',
+//         justifyContent: 'space-between',
+//         marginBottom: 20,
+//     },
+
+//     prakritiBtn: {
+//         flex: 1,
+//         marginHorizontal: 5,
+//         paddingVertical: height * 0.018,
+//         borderWidth: 1,
+//         borderRadius: 12,
+//         alignItems: 'center',
+//         borderColor: '#E5E7EB',
+//     },
+
+//     prakritiBtnActive: {
+//         backgroundColor: Colors.questionGreen,
+//     },
+
+//     prakritiText: {
+//         fontSize: scale(14),
+//         color: '#111827',
+//     },
+
+//     prakritiTextActive: {
+//         color: '#fff',
+//     },
+
+//     prakritiImage: {
+//         width: width * 0.3,
+//         height: width * 0.3,
+//         marginTop: height * 0.06,
+//         opacity: 0.2,
+//         alignSelf: 'center',
+//     },
+
+//     thankYouContainer: {
+//         flex: 1,
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//     },
+
+//     thankYouTitle: {
+//         fontSize: scale(24),
+//         fontFamily: Fonts.PoppinsSemiBold,
+//     },
+
+//     card: {
+//         minHeight: height * 0.08,
+//         marginBottom: 12,
+//         borderWidth: 1,
+//         borderRadius: 14,
+//         paddingVertical: height * 0.02,
+//         paddingHorizontal: width * 0.05,
+//         paddingRight: 48,
+//         backgroundColor: '#fff',
+//         borderColor: '#E5E7EB',
+//     },
+
+//     activeCard: {
+//         backgroundColor: Colors.questionGreen,
+//         borderColor: Colors.questionGreen,
+//     },
+
+//     text: {
+//         fontSize: scale(14),
+//         lineHeight: scale(20),
+//         color: '#111827',
+
+//         fontFamily: Fonts.PoppinsMedium,
+//     },
+
+//     activeText: {
+//         color: '#fff',
+
+//         fontFamily: Fonts.PoppinsMedium,
+//     },
+
+//     iconContainer: {
+//         position: 'absolute',
+//         right: 16,
+//         top: 0,
+//         bottom: 0,
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//     },
+
+//     tickCircle: {
+//         width: scale(20),
+//         height: scale(20),
+//         borderRadius: 20,
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//         backgroundColor: '#F1F5F9',
+//     },
+// });

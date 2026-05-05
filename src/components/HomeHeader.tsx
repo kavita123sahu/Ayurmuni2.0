@@ -118,7 +118,8 @@ const HomeHeader = () => {
                 <View style={styles.rightIcons}>
 
                     <TouchableOpacity style={styles.sosButton} onPress={()=>navigation.navigate('EmergencySOS')}>
-                        <Text style={styles.sosText}>SOS</Text>
+                        {/* <Text style={styles.sosText}>SOS</Text> */}
+                        <Image source={Images.SOS} style={{height:40, width:40}} />
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.bellButton} onPress={()=>navigation.navigate('Notifications')}>
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
     container: {
        paddingVertical:15,
     //    paddingHorizontal:15,
-        marginTop: 20,
+        marginTop: 40,
         backgroundColor: '#ffff',
     },
 
@@ -153,8 +154,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-
-
 
     profileCircle: {
         height: 42,
@@ -179,7 +178,7 @@ const styles = StyleSheet.create({
 
     locationContainer: {
         flexDirection: 'column',
-        marginLeft:10
+        marginLeft:16
     },
 
     locationLabel: {
@@ -202,28 +201,31 @@ const styles = StyleSheet.create({
     rightIcons: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap:15,
     },
 
     sosButton: {
-        borderWidth: 1,
-        borderColor: '#F04438',
-        borderRadius: 14,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        marginRight: 10,
-        backgroundColor: '#FFF1F0',
+        // borderWidth: 1,
+        // borderColor: '#F43F5E1A',
+        // borderRadius: 14,
+        // paddingHorizontal: 14,
+        // paddingVertical: 6,
+        // marginRight: 10,
+        // backgroundColor: '#F43F5E0D',
     },
 
     sosText: {
-        color: '#F04438',
-        fontWeight: '600',
+        color: '#F43F5E',
+        fontFamily : Fonts.PoppinsBold
     },
 
     bellButton: {
         height: 40,
         width: 40,
         borderRadius: 12,
-        backgroundColor: '#F2F4F7',
+        borderWidth:1,
+        borderColor: Colors.borderColor,
+        backgroundColor: '#ffff',
         justifyContent: 'center',
         alignItems: 'center',
     },

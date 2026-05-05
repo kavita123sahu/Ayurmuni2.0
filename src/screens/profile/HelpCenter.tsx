@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { Images } from "../../common/Images";
@@ -48,16 +48,15 @@ const HelpCenterScreen = (props: any) => {
             title: "Orders",
             icon: Images.orders,
         },
-
         {
             id: "3",
-            title: "Payments",
-            icon: Images.payment,
-        },
-        {
-            id: "4",
-            title: "Reports",
+            title: "Records",
             icon: Images.report,
+        },
+         {
+            id: "4",
+            title: "Payments",
+            icon: Images.card,
         },
 
     ];
@@ -65,7 +64,9 @@ const HelpCenterScreen = (props: any) => {
     const CategoryCard = ({ title, icon }: any) => {
         return (
             <View style={styles.card}>
-                <Image source={icon} style={styles.icon} tintColor={Colors.primaryColor} />
+                <View style={{backgroundColor: '#0D614E0D', padding:10, justifyContent:'center',alignItems:'center', borderRadius:10}}>
+                    <Image source={icon} style={styles.icon} tintColor={Colors.primaryColor} />
+                </View>
                 <Text style={styles.text}>{title}</Text>
             </View>
         );
@@ -99,6 +100,8 @@ const HelpCenterScreen = (props: any) => {
     return (
         <SafeAreaView style={styles.container}>
 
+            <StatusBar backgroundColor={'#FFFFFF'} barStyle={'dark-content'} />
+
             <AppHeader
                 title="Help Center"
                 leftIcon={Images.backIcon}
@@ -106,7 +109,8 @@ const HelpCenterScreen = (props: any) => {
                 rightIcon="search"
                 onRightPress={() => console.log('Search clicked')}
             />
-            <ScrollView showsVerticalScrollIndicator={false}>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
                 <View style={styles.content}>
 
                     <SearchBar
@@ -139,8 +143,6 @@ const HelpCenterScreen = (props: any) => {
                         />
                     ))}
 
-
-
                     <HelpSection />
 
                 </View>
@@ -154,7 +156,7 @@ export default HelpCenterScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FDFDFB",
+        backgroundColor: "#FFFFFF",
     },
     content: {
         padding: 20,
@@ -190,6 +192,7 @@ const styles = StyleSheet.create({
     },
     callBtn: {
         flex: 1,
+        height: 52,
         flexDirection: "row",
         backgroundColor: "#065F46",
         padding: 10,
@@ -208,6 +211,7 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: "row",
         borderWidth: 1,
+        height: 52,
         borderColor: "#065F46",
         padding: 10,
         borderRadius: 10,
@@ -229,18 +233,22 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         paddingVertical: 16,
         borderWidth: 1,
+        height:120,
         borderColor: Colors.borderColor,
-        alignItems: "center",
+        alignItems: 'center',
         justifyContent: "center",
     },
     icon: {
         height: 24,
         width: 24,
-        marginBottom: 8,
+       
+       
+        // marginBottom: 8,
     },
     text: {
         fontSize: 13,
         color: "#111827",
-        fontFamily: Fonts.PoppinsMedium
+        marginTop:10,
+        fontFamily: Fonts.PoppinsSemiBold
     },
 });

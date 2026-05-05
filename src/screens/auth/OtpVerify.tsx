@@ -253,8 +253,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                     showsVerticalScrollIndicator={false}>
 
                     <View style={styles.container}>
-
-
+                        
                         <TouchableOpacity
                             style={styles.backBtn}
                             onPress={changeMobileNumber}>
@@ -278,6 +277,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                         <View style={styles.otpContainer}>
                             {otp.map((digit, index) => (
                                 <TextInput
+                                placeholderTextColor="#9CA3AF"
                                     key={index}
                                     ref={(ref) => {
                                         otpInputRefs.current[index] = ref;

@@ -57,6 +57,20 @@ import Prescription from "../screens/medicines/Prescription";
 import VerifyPresciption from "../screens/medicines/VerifyPresciption";
 import MedicineCheckOut from "../screens/medicines/CheckOut";
 import OrderStatus from "../screens/medicines/OrderStatus";
+import Wishlist from "../screens/profile/Wishlist";
+import MedicalHistory from "../screens/MedicalHistory";
+import AssessmentType from "../screens/AssesmentType";
+import MentorProfile from "../screens/mentor/MentorProfile";
+import YogaScreen from "../screens/mentor/YogaScreen";
+import YogaSession from "../screens/mentor/YogaSession";
+import DietScreen from "../screens/mentor/DietScreen";
+import MealDetails from "../screens/mentor/MealDetails";
+import WeeklyMeal from "../screens/mentor/WeeklyMeal";
+import ConsultMentor from "../screens/mentor/ConsultMentor";
+import MentorCheckout from "../screens/mentor/MentorCheckout";
+import MentorOrder from "../screens/mentor/MentorOrder";
+import WelcomeScreen from "../screens/auth/WelcomeScree";
+import AssessmentScreen from "../screens/auth/AssessmentScreen";
 
 enableScreens();
 
@@ -64,7 +78,6 @@ enableScreens();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
 const hideHeader = { headerShown: false };
-
 
 
 const TabStack = () => {
@@ -104,17 +117,16 @@ const TabStack = () => {
         headerShown: false,
       }}
     >
-
       <Tab.Screen name="Home" component={HomePage} />
-      <Tab.Screen name="Cart" component={MyCart} />
+      <Tab.Screen name="Mentor" component={MentorProfile} />
 
       <Tab.Screen name="History" component={OrderHistory} />
       <Tab.Screen name="Profile" component={ProfilePage} />
-       <Tab.Screen
-    name="Consult"
-    component={consultHome}
-    options={{ tabBarButton: () => null }} // 👈 hide from default tab
-  />
+      <Tab.Screen
+        name="Consult"
+        component={consultHome}
+        options={{ tabBarButton: () => null }} // 👈 hide from default tab
+      />
     </Tab.Navigator>
   );
 };
@@ -157,6 +169,21 @@ const HomeStack = () => {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="MedicineCheckOut" component={MedicineCheckOut} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="OrderStatus" component={OrderStatus} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Wishlist" component={Wishlist} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MedicalHistory" component={MedicalHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AssessmentType" component={AssessmentType} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Mentor" component={MentorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="YogaScreen" component={YogaScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="DietScreen" component={DietScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MealDetails" component={MealDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="WeeklyMeal" component={WeeklyMeal} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="YogaSession" component={YogaSession} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MentorCheckout" component={MentorCheckout} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ConsultMentor" component={ConsultMentor} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MentorOrder" component={MentorOrder} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="History" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AssessmentScreen" component={AssessmentScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
@@ -195,7 +222,7 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
+    <Stack.Navigator initialRouteName="HomeStack" screenOptions={hideHeader}>
       <Stack.Screen name="SplashStack" component={SplashStack} />
       <Stack.Screen name="AuthStack" component={AuthStack} />
       <Stack.Screen name="HomeStack" component={HomeStack} />

@@ -4,11 +4,11 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Image,
   TouchableOpacity,
   FlatList,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import PatientCard, { Patient } from './PatientCard';
 import { Styles } from '../../common/Styles';
@@ -17,6 +17,7 @@ import { Fonts } from '../../common/Fonts';
 import SelectedPatientCard from './SelectedPatient';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const dummyPatients: Patient[] = [
   {
@@ -40,7 +41,7 @@ const dummyPatients: Patient[] = [
   },
 ];
 
-const PatientDetails: React.FC = (props : any) => {
+const PatientDetails: React.FC = (props: any) => {
   const [patients, setPatients] = useState<Patient[]>(dummyPatients);
 
   const handleSelect = (id: string) => {
@@ -52,22 +53,22 @@ const PatientDetails: React.FC = (props : any) => {
   const selectedPatient = patients.find(p => p.selected);
 
   return (
-    <View style={styles.safeArea}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── HEADER ── */}
-        <View style={{ paddingHorizontal: 10 }}>
-          <Header
-            title="Patient Details"
-            subtitle="Manage family profiles"
-            backIcon={Images.backIcon}
-            onBack={() => {props.navigation.goBack()}}
-          />
+    <SafeAreaView style={styles.safeArea}>
 
-          {/* ── CURRENTLY SELECTED CARD ── */}
+        <StatusBar barStyle={'dark-content'} backgroundColor={'#ffffff'} />
+
+        <Header
+          title="Patient Details"
+          subtitle="Manage family profiles"
+          backIcon={Images.backIcon}
+          onBack={() => { props.navigation.goBack() }}
+        />
+ 
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
 
           <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
 
@@ -79,8 +80,7 @@ const PatientDetails: React.FC = (props : any) => {
           // onViewRecords={() => navigation.navigate('Records')}
           />
 
-          {/* ── PATIENT LIST CARD ── */}
-
+       
           <View style={styles.rowBetween}>
             <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
 
@@ -94,7 +94,7 @@ const PatientDetails: React.FC = (props : any) => {
             <FlatList
               data={patients}
               renderItem={({ item }) => (
-                <PatientCard patient={item} onSelect={handleSelect}  navigation ={props.navigation}/>
+                <PatientCard patient={item} onSelect={handleSelect} navigation={props.navigation} />
               )}
               keyExtractor={item => item.id}
               scrollEnabled={false}
@@ -118,9 +118,9 @@ const PatientDetails: React.FC = (props : any) => {
 
           {/* ── VERSION ── */}
           <Text style={styles.version}>APP VERSION 1.2</Text>
-        </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </SafeAreaView>
+
   );
 };
 
@@ -129,14 +129,18 @@ export default PatientDetails;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal:20,
+    
     // paddingBottom:80,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#ffffff',
   },
   scroll: {
     flex: 1,
+    backgroundColor : "#FDFDFB"
   },
   container: {
-    padding: 18,
+    // padding: 18,
+    // paddingHorizontal:20,
     paddingBottom: 32,
   },
 

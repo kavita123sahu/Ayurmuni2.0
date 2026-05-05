@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image, StatusBar } from 'react-native'
 import React from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Header } from '@react-navigation/elements'
@@ -7,7 +7,7 @@ import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
-const Prescription = (props : any) => {
+const Prescription = (props: any) => {
     const recentData = [
         {
             id: '1',
@@ -40,10 +40,13 @@ const Prescription = (props : any) => {
 
     return (
         <SafeAreaView style={styles.container}>
+            
+               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+
             <AppHeader
                 title="Product Details"
                 leftIcon={Images.backIcon}
-                onLeftPress={()=>props.navigation.goBack()}
+                onLeftPress={() => props.navigation.goBack()}
             // onRightPress={() => console.log("Share clicked")}
             />
 
@@ -79,7 +82,7 @@ const Prescription = (props : any) => {
                             <Image source={Images.camera} style={styles.btnIcon} />
                             <Text style={styles.btnText}>CAMERA</Text>
                         </TouchableOpacity>
-
+                        
                         <TouchableOpacity style={styles.btn} onPress={openGallery}>
                             <Image source={Images.galary} style={styles.btnIcon} />
                             <Text style={styles.btnText}>GALLERY</Text>
@@ -142,7 +145,7 @@ const Prescription = (props : any) => {
 
             </ScrollView>
 
-            <TouchableOpacity style={styles.checkout} onPress={()=> props.navigation.navigate('VerifyPresciption')}>
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('VerifyPresciption')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Proceed to Details</Text>
                     <Image source={Images.arrowRight} style={styles.checkoutIcon} />

@@ -6,7 +6,12 @@ export const Images = {
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
 
+    
+    Bell: require('../assets/images/bell.png'),
+    VideoPlayer: require('../assets/images/VideoPlayer.png'),
+
     Profile: require('../assets/images/profile.png'),
+    Breakfastbowl: require('../assets/images/Breakfastbowl.png'),
 
     wellness: require('../assets/images/wellnessIcon.png'),
     detailimage: require('../assets/images/Detailimage.png'),
@@ -17,12 +22,18 @@ export const Images = {
     takechnageIcons: require('../assets/images/TakechangeIcon.png'),
 
 
+    BreakDown: require('../assets/images/BreakDown.png'),
+    Notes: require('../assets/images/Notes.png'),
+
     ellipsebackground: require('../assets/images/ellipsebackground.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),
     user: require('../assets/images/user.png'),
     DebitCard: require('../assets/images/debitcard.png'),
     UPIMethod: require('../assets/images/UPIMethod.png'),
 
+
+    
+    camera: require('../assets/images/camera.png'),
     shop: require('../assets/images/shop.png'),
     home: require('../assets/images/home.png'),
     loginbanner: require('../assets/images/loginbanner.png'),
@@ -37,6 +48,8 @@ export const Images = {
     nutritionIcon: require('../assets/images/nutritionIcon.png'),
     deleteitem: require('../assets/images/DeleteItem.png'),
 
+
+    Phone: require('../assets/images/Phone.png'),
 
 
     HomeBanner: require('../assets/images/banner.png'),
@@ -59,6 +72,7 @@ export const Images = {
     edit: require('../assets/images/edit.png'),
     Instruction: require('../assets/images/instruction.png'),
 
+    BackBorder: require('../assets/images/BackBorder.png'),
 
     prItem: require('../assets/images/prItem.png'),
     office: require('../assets/images/office.png'),
@@ -75,11 +89,22 @@ export const Images = {
     leaf1: require('../assets/images/leaf1.png'),
     leaf2: require('../assets/images/leaf2.png'),
     favourite: require('../assets/images/Favourite.png'),
+    
+    Spoon: require('../assets/images/Spoon.png'),
+    SaveAddress: require('../assets/images/SaveAddress.png'),
     logout: require('../assets/images/logout.png'),
     setting: require('../assets/images/setting.png'),
 
 
     History: require('../assets/images/history.png'),
+    Breakfast: require('../assets/images/Breakfast.png'),
+
+    
+    Ingredient: require('../assets/images/Ingredient.png'),
+    
+    Refund: require('../assets/images/refund.png'),
+    exchange: require('../assets/images/exchange.png'),
+    
 
 
     ChatSupport: require('../assets/images/chatSupport.png'),
@@ -110,13 +135,19 @@ export const Images = {
 
     currentLocation: require('../assets/images/currentLocation.png'),
     sosIcon: require('../assets/images/sosIcon.png'),
+    SOS: require('../assets/images/SOS.png'),
     doctorSOS: require('../assets/images/doctorSOS.png'),
     downArrow: require('../assets/images/downArrow.png'),
     medicine: require('../assets/images/medicine.png'),
+    
+    Doctors: require('../assets/images/Doctors.png'),
+    Medicines: require('../assets/images/Medicines.png'),
     products: require('../assets/images/products.png'),
     moreButton: require('../assets/images/moreButton.png'),
     flashred: require('../assets/images/flashred.png'),
     gpay: require('../assets/images/gpay.png'),
+    
+    dropdown: require('../assets/images/dropdown.png'),
     lock: require('../assets/images/lock.png'),
     net: require('../assets/images/net.png'),
     paytm: require('../assets/images/paytm.png'),
@@ -132,6 +163,7 @@ export const Images = {
 
 
     TabConsult: require('../assets/images/Tabconsult.png'),
+    LogButton: require('../assets/images/LogButton.png'),
 
     bookDoctor: require('../assets/images/bookDoctor.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),
@@ -140,6 +172,14 @@ export const Images = {
     HelpCenter: require('../assets/images/helpcenter.png'),
     Password: require('../assets/images/password.png'),
     Privacy: require('../assets/images/privacy.png'),
+
+    
+    Yoga: require('../assets/images/Yoga.png'),
+    Diet: require('../assets/images/Diet.png'),
+    Panchakarma: require('../assets/images/panchkarma.png'),
+                              
+    
+    MentorImage: require('../assets/images/MentorProfile.png'),
 
 }
 
