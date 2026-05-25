@@ -22,6 +22,7 @@ import { Utils } from '../../common/Utils';
 import { formatIndianPhoneNumber } from '../../common/Validator';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
+import { utils } from 'xlsx';
 
 interface OTPVerificationProps {
     navigation?: any;
@@ -35,9 +36,9 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
     const [resendTimer, setResendTimer] = useState<number>(60);
     const otpInputRefs = useRef<(TextInput | null)[]>([]);
     const phoneNumber = props.route?.params?.phone;
-    const IS_NEW_CUSTOMER = props.route?.params?.newCustomer;
+    const NEW_CUSTOMER = props.route?.params?.customer;
 
-    console.log("is-new_user", IS_NEW_CUSTOMER);
+    console.log("is-new_customerrr", NEW_CUSTOMER);
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -61,8 +62,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
     const handleVerifyOTP = async () => {
         Keyboard.dismiss();
-
-
         const otpCode = otp.join('');
         if (otpCode.length !== 4) {
             showSuccessToast('Please enter valid OTP', 'error');
@@ -72,25 +71,30 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
         try {
             const send_data = {
-                phone_number: phoneNumber,
+                phone_number: `+91${phoneNumber}`,
                 otp: otpCode,
-                role: 'customer'
             };
 
+            console.log("sverifyyyy---otpppppp", send_data);
             const response: any = await _AUTH_SERVICE.verify_otp(send_data);
             const { status, data, message } = response;
             console.log("newwwwwwuser", response);
+            const JSONData = await response.json();
+            console.log("verify_otp_response--->", JSONData);
 
             console.log(response);
 
-            const JSONData = await response.json();
+            // const JSONData = await response.json();
 
             console.log("verify_otp_response--->", JSONData);
 
+
             if (status === 200) {
-                console.log(JSONData?.is_new_user,)
-                Utils.storeData('_USER_ID', JSONData?.user_id);
-                // showSuccessToast(JSONData.message || 'OTP verified successfully', 'success');
+
+                Utils.storeData('_USER_ID', JSONData?.data?.user_id);
+                Utils.storeData('_TOKEN', JSONData?.data?.access);
+                Utils.storeData('_REFRESH_TOKEN', JSONData?.data?.refresh);
+                showSuccessToast(JSONData.message || 'OTP verified successfully', 'success');
                 props.navigation.replace('HomeStack', {
                     screen: 'TermsCondition',
                     params: {
@@ -100,7 +104,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             }
 
             else {
-                showSuccessToast(data?.error || 'Failed to verify OTP', 'error');
+                showSuccessToast(JSONData?.message || 'Failed to verify OTP', 'error');
             }
 
         } catch (error) {
@@ -124,37 +128,31 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
         setIsLoading(true);
 
         try {
+
             const send_data = {
                 phone_number: `+91${phoneNumber}`,
-                OTP: otpCode,
+                otp: otpCode,
             };
 
+            console.log("sverifyyyy---otpppppp", send_data);
             const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
 
-            const { data, message = "", status } = response;
             const datauser = await response.json()
+
             console.log("verify_otp_login_response", datauser);
 
             if (response?.status === 200) {
-                const roles = datauser?.roles || [];
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
-                Utils.storeData('_USER_ID', datauser?.user_id);
-                Utils.storeData('_TOKEN', datauser?.access);
-                const customer = roles.find((r: any) => r.role === 'customer');
-                console.log("customer_role", customer?.details?.id);
-                Utils.storeData('_CUSTOMER_ID', customer?.details?.id || '');
+                Utils.storeData('_USER_ID', datauser?.data?.user_id);
+                Utils.storeData('_TOKEN', datauser?.data?.access);
+                Utils.storeData('_REFRESH_TOKEN', datauser?.data?.refresh);
 
-                if (!datauser?.is_new_customer) {
-                    props.navigation.replace('HomeStack', { screen: 'Home' });
-                }
-                else {
-                    props.navigation.replace('HomeStack', { screen: 'TermsConditions' });
+                props.navigation.replace('HomeStack', { screen: 'Home' });
 
-                }
             }
 
             else {
-                showSuccessToast(datauser?.error || 'Failed to verify OTP', 'error');
+                showSuccessToast(datauser?.message || 'Failed to verify OTP', 'error');
             }
 
         } catch (error) {
@@ -253,7 +251,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                     showsVerticalScrollIndicator={false}>
 
                     <View style={styles.container}>
-                        
+
                         <TouchableOpacity
                             style={styles.backBtn}
                             onPress={changeMobileNumber}>
@@ -277,7 +275,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                         <View style={styles.otpContainer}>
                             {otp.map((digit, index) => (
                                 <TextInput
-                                placeholderTextColor="#9CA3AF"
+                                    placeholderTextColor="#9CA3AF"
                                     key={index}
                                     ref={(ref) => {
                                         otpInputRefs.current[index] = ref;
@@ -320,7 +318,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                         {
                             otp.join('').length === 4 && !isLoading ? (
                                 <TouchableOpacity
-                                    onPress={IS_NEW_CUSTOMER ? LoginVerfiyOTP : handleVerifyOTP}
+                                    onPress={NEW_CUSTOMER ? LoginVerfiyOTP : handleVerifyOTP}
                                     style={styles.activeBtn}>
                                     <Text style={styles.activeBtnText}>Verify</Text>
                                 </TouchableOpacity>

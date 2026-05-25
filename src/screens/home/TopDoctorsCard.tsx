@@ -17,26 +17,33 @@ import { Fonts } from '../../common/Fonts';
 const { width } = Dimensions.get('window');
 
 // 🔥 Dynamic card width
-const CARD_WIDTH = width * 0.65;
+const CARD_WIDTH = width * 0.50;
 
 interface Doctor {
   id: string;
   name: string;
-  specialization: string;
+  specialized_therapies: [];
   experience: string;
-  rating: string;
-  image: any;
-  available?: boolean;
+  total_reviews: string;
+  ranking_score: string;
+  experience_years: string;
+  profile_image: any;
+  has_availability?: boolean;
 }
 
 const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
   const renderItem = useCallback(({ item }: { item: Doctor }) => {
+    const therapies = Array.isArray(
+      item?.specialized_therapies
+    )
+      ? item.specialized_therapies
+      : [];
     return (
-      <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={()=>navigation.navigate('AssessmentScreen')}>
+      <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() => navigation.navigate('DoctorProfile')}>
 
         {/* AVAILABLE TAG */}
-        {item.available && (
+        {item.has_availability && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>Available Now</Text>
           </View>
@@ -50,21 +57,44 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
             borderRadius: 10,
             justifyContent: 'center',   // vertical center
             alignItems: 'center',
+            marginBottom: 10,
             marginRight: 10, backgroundColor: Colors.bgcolor
           }}>
-            <Image source={item.image} style={styles.avatar} />
+
+            <Image
+              source={
+                item?.profile_image
+                  ? { uri: item.profile_image }
+                  : Images.doctorImage
+              }
+              style={styles.avatar}
+            />
+
+            {/* <Image source={item.image} style={styles.avatar} /> */}
+
           </View>
           <View style={styles.info}>
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.specialization}>
-              {item.specialization}
-            </Text>
+            {/* <Text style={styles.specialization}> */}
+            {
+              therapies.map(
+                (therapy: string, index: number) => (
+                  <Text key={index}>
+                    <Text>
+                      {therapies.join(', ')}
+                    </Text>
+                  </Text>
+                )
+              )
+            }
+            {/* {item?.specialized_therapies?.join(' • ')} */}
+            {/* </Text> */}
           </View>
         </View>
 
         <View style={styles.row}>
           <Image source={Images.clock} style={styles.icon} />
-          <Text style={styles.exp}>{item.experience}</Text>
+          <Text style={styles.exp}>{item?.experience_years} Yrs. Exp</Text>
         </View>
 
         {/* RATING + CALL */}
@@ -72,7 +102,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
           <View style={styles.ratingRow}>
             <Image source={Images.star} style={styles.icon} />
-            <Text style={styles.rating}>{item.rating} <Text style={{ color: Colors.subTextColor, fontSize: 9, fontFamily: Fonts.PoppinsRegular }}>{'(839)'} </Text>  </Text>
+            <Text style={styles.rating}>{item.ranking_score} <Text style={{ color: Colors.subTextColor, fontSize: 9, fontFamily: Fonts.PoppinsRegular }}>{`(${item.total_reviews})`} </Text>  </Text>
           </View>
 
           {/* <TouchableOpacity style={styles.callBtn}> */}
@@ -149,8 +179,8 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 50,
-    height: 50,
+    width: 55,
+    height: 55,
     borderRadius: 10,
     marginRight: 10,
     resizeMode: 'contain'

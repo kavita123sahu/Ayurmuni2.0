@@ -167,8 +167,7 @@ const MentorProfile = (props: any) => {
                 onBack={() => { props.navigation.goBack() }}
             />
 
-            <SafeAreaView style={{ flex: 1, backgroundColor : '' }}>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ paddingBottom: 40 }}>
+                <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor: Colors.background}}> 
                     <View style={styles.imageWrapper}>
                         <Image
                             source={Images.MentorImage}
@@ -190,7 +189,7 @@ const MentorProfile = (props: any) => {
                     <ReviewSection navigation={props.navigation} reviews={reviews} />
 
                 </ScrollView>
-            </SafeAreaView>
+        
         </SafeAreaView>
     );
 };
@@ -201,8 +200,8 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: 24,
         backgroundColor: "#FDFDFB",
-        overflow: "hidden",
-        paddingBottom: 90,
+        // overflow: "hidden",
+        // paddingBottom: 90,
         flex: 1,
         paddingHorizontal: 20,
     },

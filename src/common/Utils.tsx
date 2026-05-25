@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import EventEmitter from "react-native/Libraries/vendor/emitter/EventEmitter";
 
 
 
@@ -55,3 +56,10 @@ export const Utils = {
         return (val !== null && val !== undefined && val !== "NULL" && val !== "null" && val !== "undefined" && val !== "UNDEFINED" && (val + "").trim() !== "")
     }
 }
+
+
+
+export const AddressEvents = new EventEmitter();
+
+export const ADDRESS_UPDATED =
+    'ADDRESS_UPDATED';

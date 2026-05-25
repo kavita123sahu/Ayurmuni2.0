@@ -1,32 +1,38 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StatusBar,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Image,
-  Animated
+  Animated,
+  Dimensions,
 } from 'react-native';
 
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import { showSuccessToast } from '../config/Key';
 import { Images } from '../common/Images';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { height } = Dimensions.get('window');
 
 const TermsCondition = (props: any) => {
   const { agreed } = props?.route?.params;
-  const scrollY = new Animated.Value(0);
+
+  // ✅ FIX: stable animation value
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   const fadeAnim = scrollY.interpolate({
-    inputRange: [0, 100],
+    inputRange: [0, 120],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
 
   const handleAgree = () => {
-    showSuccessToast('Accepted Terms and Condition! Welcome aboard.', 'success');
+    showSuccessToast('Accepted Terms & Conditions', 'success');
     props.navigation.replace('HomeStack', { screen: 'Onboarding' });
   };
 
@@ -34,103 +40,82 @@ const TermsCondition = (props: any) => {
     showSuccessToast('You need to accept terms to continue', 'error');
   };
 
-  const handleBack = () => {
-    props.navigation.goBack();
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+        {/* <TouchableOpacity onPress={() => props.navigation.goBack()}>
           <Image source={Images.backIcon} style={styles.backIcon} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
-      <View style={styles.notificationBanner}>
-        <View style={styles.notificationContent}>
-          <Text style={styles.notificationTitle}>Hello,</Text>
-          <Text style={styles.notificationText}>
-            {!agreed
-              ? 'Before you create an account, please read and accept our '
-              : 'Congratulations, You have Successfully Accepted! '}
-            <Text style={styles.linkText}>Terms and Conditions</Text>
+      {/* BANNER */}
+      <View style={styles.banner}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bannerTitle}>Hello,</Text>
+          <Text style={styles.bannerText}>
+            {agreed
+              ? 'Successfully accepted Terms & Conditions'
+              : 'Please read and accept Terms & Conditions'}
           </Text>
         </View>
 
-        <Image
-          source={require('../assets/images/HelloIcon.png')}
-          style={styles.bannerIcon}
-        />
+        <Image source={require('../assets/images/HelloIcon.png')} style={styles.bannerIcon} />
       </View>
 
+      {/* SCROLL */}
       <Animated.ScrollView
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
-        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>Terms and Conditions</Text>
-          <Text style={styles.lastUpdated}>
-            Last Updated: <Text style={styles.updateDate}>Yesterday</Text>
-          </Text>
-        </View>
+        <Text style={styles.title}>Terms & Conditions</Text>
 
-        <Text style={styles.termsText}>
+        <Text style={styles.text}>
           Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio...
         </Text>
       </Animated.ScrollView>
 
+      {/* BUTTONS (SAFE FIX) */}
       {!agreed && (
-        <View style={styles.buttonContainer}>
-
+        <View style={styles.bottomContainer}>
           <TouchableOpacity
             onPress={handleAgree}
             activeOpacity={0.8}
-            style={styles.agreeButton}
+            style={styles.agreeBtn}
           >
-            <Text style={styles.agreeButtonText}>Agree</Text>
+            <Text style={styles.agreeText}>Agree</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.disagreeButton}
             onPress={handleDisagree}
+            style={styles.disagreeBtn}
           >
-            <Text style={styles.disagreeButtonText}>Disagree</Text>
+            <Text style={styles.disagreeText}>Disagree</Text>
           </TouchableOpacity>
-
         </View>
       )}
     </SafeAreaView>
   );
 };
 
+export default TermsCondition;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
-    paddingBottom: 35,
   },
 
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
 
   backIcon: {
@@ -139,92 +124,63 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
 
-  notificationBanner: {
-    marginHorizontal: 15,
-    marginBottom: 15,
-    borderRadius: 10,
-    padding: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  banner: {
+    margin: 16,
+    padding: 14,
+    borderRadius: 12,
     backgroundColor: Colors.primaryColor,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
-  notificationContent: {
-    flex: 1,
-    paddingRight: 10,
-  },
-
-  notificationTitle: {
+  bannerTitle: {
     color: '#fff',
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 4,
   },
 
-  notificationText: {
+  bannerText: {
     color: '#fff',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    marginTop: 4,
     fontFamily: Fonts.PoppinsRegular,
   },
 
-  linkText: {
-    fontFamily: Fonts.PoppinsMedium,
-    textDecorationLine: 'underline',
-  },
-
   bannerIcon: {
-    height: 20,
-    width: 20,
-  },
-
-  scrollView: {
-    flex: 1,
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
   },
 
   scrollContent: {
     padding: 16,
-    paddingBottom: 120,
-  },
-
-  titleSection: {
-    marginBottom: 20,
+    paddingBottom: 100, // ✅ safe for all devices
   },
 
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: Fonts.PoppinsMedium,
-    color: Colors.textColor,
-    marginBottom: 8,
+    marginBottom: 10,
   },
 
-  lastUpdated: {
+  text: {
     fontSize: 14,
-    fontFamily: Fonts.PoppinsRegular,
-    color: Colors.subTextColor,
-  },
-
-  updateDate: {
-    fontFamily: Fonts.PoppinsMedium,
-    color: Colors.textColor,
-  },
-
-  termsText: {
-    fontSize: 14,
-    fontFamily: Fonts.PoppinsRegular,
-    color: Colors.black,
     lineHeight: 20,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#333',
     textAlign: 'justify',
   },
 
-  buttonContainer: {
+  bottomContainer: {
     flexDirection: 'row',
-    gap: 15,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    padding: 16,
+    gap: 12,
+
+    // ✅ IMPORTANT FIX
+    paddingBottom: 20,
   },
 
-  agreeButton: {
+  agreeBtn: {
     flex: 1,
     backgroundColor: Colors.primaryColor,
     paddingVertical: 14,
@@ -232,26 +188,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  agreeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  disagreeButton: {
+  disagreeBtn: {
     flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.primaryColor,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primaryColor,
   },
 
-  disagreeButtonText: {
+  agreeText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+  disagreeText: {
     color: Colors.primaryColor,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: Fonts.PoppinsMedium,
   },
 });
-
-export default TermsCondition;

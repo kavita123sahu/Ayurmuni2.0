@@ -14,7 +14,7 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const MentorOrder = ({ props }: any) => {
+const MentorOrder = ( props : any) => {
 
     // 👉 API se aane wala data (abhi dummy)
     const orderData = {
@@ -131,7 +131,7 @@ const MentorOrder = ({ props }: any) => {
                     ))}
                 </View>
 
-                <TouchableOpacity style={styles.outlineBtn}>
+                <TouchableOpacity style={styles.outlineBtn} onPress={()=>props.navigation.navigate('RefundScreen')}>
                     <Image source={Images.Refund} style={{ height: 9, width: 13 }} />
                     <Text style={styles.outlineText}>Return & Refund</Text>
                 </TouchableOpacity>

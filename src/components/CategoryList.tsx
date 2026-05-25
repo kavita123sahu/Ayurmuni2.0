@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images';
 
 const { width } = Dimensions.get('window');
 
@@ -18,15 +19,22 @@ const ITEM_SIZE = width / 5;
 interface Category {
   id: string;
   name: string;
-  icon: any;
+  image_url: any;
 }
 
-const CategoryList = ({ data = [], navigation }: any) => {
+const CategoryList = ({ data = [], navigation, doctor }: any) => {
 
   const handlePress = useCallback((item: Category) => {
+    if (doctor) {
+      navigation.navigate('CategoryDoctor', {
+        categoryName: item.name,
+      });
+      return;
+    }
     navigation.navigate('TopCategories', {
       categoryName: item.name,
     });
+    console.log('Pressed:', item.name);
   }, [navigation]);
 
 
@@ -37,10 +45,17 @@ const CategoryList = ({ data = [], navigation }: any) => {
       activeOpacity={0.7}
     >
       <View style={[styles.circle, { width: ITEM_SIZE - 10, height: ITEM_SIZE - 10 }]}>
-        <Image source={item.icon} style={styles.icon} />
+        <Image
+          source={
+            item?.image_url
+              ? { uri: item.image_url }
+              : Images.cardiology
+          }
+          style={styles.icon}
+        />
       </View>
 
-      <Text numberOfLines={1} style={styles.text}>
+      <Text style={styles.text}>
         {item.name}
       </Text>
     </TouchableOpacity>
@@ -80,7 +95,7 @@ const styles = StyleSheet.create({
   },
 
   circle: {
-    borderRadius: 20,
+    borderRadius: 24,
     backgroundColor: '#0D614E1A',
     justifyContent: 'center',
     alignItems: 'center',
@@ -91,10 +106,17 @@ const styles = StyleSheet.create({
     height: 28,
     resizeMode: 'contain',
   },
-
   text: {
     marginTop: 6,
+
     fontSize: 12,
-    color: '#1E293B', fontFamily: Fonts.PoppinsSemiBold,
+
+    color: '#1E293B',
+
+    fontFamily: Fonts.PoppinsSemiBold,
+
+    textAlign: 'center',
+
+    width: ITEM_SIZE - 8,
   },
 });

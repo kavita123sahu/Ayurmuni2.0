@@ -74,7 +74,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
       contentContainerStyle={{
         paddingBottom: 20,
         paddingTop: 10,
-      }}   
+      }}
 
       showsVerticalScrollIndicator={false}
       stickyHeaderHiddenOnScroll={false}

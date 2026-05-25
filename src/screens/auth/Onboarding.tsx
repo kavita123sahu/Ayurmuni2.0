@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     StatusBar,
     StyleSheet,
-    SafeAreaView,
     Alert,
     Image,
     Platform,
@@ -29,12 +28,16 @@ import { RouteProp, useIsFocused, useRoute } from '@react-navigation/native';
 import { genderOptions } from '../../common/DataInterface';
 import CommonButton from '../../components/CommonButton';
 import { Images } from '../../common/Images';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as _PROFILE_SERVICE from '../../services/ProfileServices';
 
 
 interface FormData {
     firstName: string;
     lastName: string;
     email: string;
+    profileImageUrl: string;
+
     gender: string;
     profileImage: Asset | null;
     user: string;
@@ -45,29 +48,37 @@ interface FormErrors {
     lastName: string;
     email: string;
     gender: string;
-    profileImage: string;
+    dob: string;
+    // profileImage: string;
 }
 
 
 const Onboarding = (props: any) => {
 
     const [isLoading, setIsLoading] = useState(false);
-    const [Isloading, setUSERID] = useState('')
+    const [Isloading, setUSERID] = useState('');
+    const dayRef = useRef<TextInput>(null);
+    const monthRef = useRef<TextInput>(null);
+    const yearRef = useRef<TextInput>(null);
+
     const [formData, setFormData] = useState<FormData>({
         firstName: '',
         lastName: '',
         email: '',
         gender: '',
+        profileImageUrl: '',
         profileImage: null,
         user: ''
     });
+
 
     const [errors, setErrors] = useState<FormErrors>({
         firstName: '',
         lastName: '',
         email: '',
         gender: '',
-        profileImage: ''
+        dob: '',
+        // profileImage: ''
     });
 
     const isFocused = useIsFocused();
@@ -113,7 +124,120 @@ const Onboarding = (props: any) => {
         );
     };
 
+    const uploadProfileImage = async (
+        image: Asset
+    ) => {
+
+        try {
+
+            const formDataImage =
+                new FormData();
+
+            formDataImage.append(
+                'image',
+                {
+                    uri: image?.uri,
+                    type:
+                        image?.type ||
+                        'image/jpeg',
+                    name:
+                        image?.fileName ||
+                        `profile_${Date.now()}.jpg`,
+                } as any
+            );
+            formDataImage.append('dir', 'customer_avatar')
+
+            const hasExistingImage =
+                !!formData?.profileImageUrl;
+
+            const res: any =
+                await _PROFILE_SERVICE.UploadProfilePhoto(
+                    formDataImage,
+                    // hasExistingImage
+                    //     ? 'PUT'
+                    //     : 'POST'
+                );
+
+            console.log(
+                'PROFILE IMAGE RESPONSE ===>',
+                res
+            );
+
+            /*
+            ===================================
+            SUCCESS
+            ===================================
+            */
+
+            if (res?.success) {
+
+                /*
+                API IMAGE URL
+                */
+
+                const uploadedImageUrl =
+                    res?.data?.profile_picture ||
+                    res?.data?.image ||
+                    res?.data?.url ||
+                    '';
+
+                setFormData(prev => ({
+                    ...prev,
+
+                    // LOCAL IMAGE
+                    profileImage: image,
+
+                    // SERVER IMAGE URL
+                    profileImageUrl:
+                        uploadedImageUrl,
+                }));
+
+                console.log(
+                    'UPLOADED IMAGE URL ===>',
+                    uploadedImageUrl
+                );
+
+                showSuccessToast(
+                    res?.message ||
+                    'Profile image uploaded',
+                    'success'
+                );
+
+                return;
+            }
+
+            /*
+            ERROR
+            */
+
+            showSuccessToast(
+                res?.message ||
+                'Upload failed',
+                'error'
+            );
+
+        } catch (error) {
+
+            console.log(
+                'PROFILE IMAGE ERROR ===>',
+                error
+            );
+
+            showSuccessToast(
+                'Something went wrong',
+                'error'
+            );
+        }
+    };
+
+
+    // ================================
+    // 3. openCamera UPDATE KARO
+    // pura replace kar do
+    // ================================
+
     const openCamera = () => {
+
         const options: CameraOptions = {
             mediaType: 'photo',
             includeBase64: false,
@@ -122,27 +246,53 @@ const Onboarding = (props: any) => {
             quality: 0.8,
         };
 
-        launchCamera(options, (response: ImagePickerResponse) => {
-            if (response.didCancel || response.errorMessage) {
-                showSuccessToast('Camera cancelled or error', 'error');
-                return;
-            }
+        launchCamera(
+            options,
+            async (response: ImagePickerResponse) => {
 
-            if (response.assets && response.assets[0]) {
-                const asset = response.assets[0];
-                console.log(asset, 'data');
-                setFormData(prev => ({ ...prev, profileImage: asset }));
-                showSuccessToast('Photo Captured Successfully', 'success');
+                if (
+                    response.didCancel ||
+                    response.errorMessage
+                ) {
 
-                // Clear profile image error if any
-                if (errors.profileImage) {
-                    setErrors(prev => ({ ...prev, profileImage: '' }));
+                    showSuccessToast(
+                        'Camera cancelled or error',
+                        'error'
+                    );
+
+                    return;
+                }
+
+                if (
+                    response.assets &&
+                    response.assets[0]
+                ) {
+
+                    const asset =
+                        response.assets[0];
+
+                    console.log(
+                        'CAMERA IMAGE ===>',
+                        asset
+                    );
+
+                    // ✅ IMAGE UPLOAD
+                    await uploadProfileImage(
+                        asset
+                    );
                 }
             }
-        });
+        );
     };
 
+
+    // ================================
+    // 4. openGallery UPDATE KARO
+    // pura replace kar do
+    // ================================
+
     const openGallery = () => {
+
         const options: ImageLibraryOptions = {
             mediaType: 'photo',
             includeBase64: false,
@@ -151,25 +301,45 @@ const Onboarding = (props: any) => {
             quality: 0.8,
         };
 
-        launchImageLibrary(options, (response: ImagePickerResponse) => {
-            if (response.didCancel || response.errorMessage) {
-                showSuccessToast('Gallery cancelled or error', 'error');
-                return;
-            }
+        launchImageLibrary(
+            options,
+            async (response: ImagePickerResponse) => {
 
-            if (response.assets && response.assets[0]) {
-                const asset = response.assets[0];
+                if (
+                    response.didCancel ||
+                    response.errorMessage
+                ) {
 
-                setFormData(prev => ({ ...prev, profileImage: asset }));
-                showSuccessToast('Photo Selected Successfully', 'success');
+                    showSuccessToast(
+                        'Gallery cancelled or error',
+                        'error'
+                    );
 
-                // Clear profile image error if any
-                if (errors.profileImage) {
-                    setErrors(prev => ({ ...prev, profileImage: '' }));
+                    return;
+                }
+
+                if (
+                    response.assets &&
+                    response.assets[0]
+                ) {
+
+                    const asset =
+                        response.assets[0];
+
+                    console.log(
+                        'GALLERY IMAGE ===>',
+                        asset
+                    );
+
+                    // ✅ IMAGE UPLOAD
+                    await uploadProfileImage(
+                        asset
+                    );
                 }
             }
-        });
+        );
     };
+
 
 
     const handleFieldChange = (field: keyof FormData, value: any) => {
@@ -180,116 +350,214 @@ const Onboarding = (props: any) => {
         }
     };
 
+
     const validateForm = () => {
+
         let isValid = true;
+
         const newErrors: FormErrors = {
             firstName: '',
             lastName: '',
             email: '',
             gender: '',
-            profileImage: ''
+            dob: '',
         };
 
+        // FIRST NAME
         if (!formData.firstName.trim()) {
             newErrors.firstName = 'First name is required';
             isValid = false;
         }
 
+        // LAST NAME
         if (!formData.lastName.trim()) {
             newErrors.lastName = 'Last name is required';
             isValid = false;
         }
 
-        if (formData.email.trim() && !EmailValidator(formData.email.trim())) {
+        // EMAIL
+        if (!formData.email.trim()) {
+
+            newErrors.email = 'Email is required';
+            isValid = false;
+
+        } else if (!EmailValidator(formData.email.trim())) {
+
             newErrors.email = 'Please enter a valid email address';
             isValid = false;
         }
 
+        // GENDER
         if (!formData.gender) {
             newErrors.gender = 'Gender is required';
             isValid = false;
         }
 
+        // DOB VALIDATION
+        const day = Number(dob.day);
+        const month = Number(dob.month);
+        const year = Number(dob.year);
 
+        // EMPTY CHECK
+        if (!day || !month || !year) {
+
+            newErrors.dob = 'Date of birth is required';
+            isValid = false;
+
+        } else {
+
+            // CREATE DATE
+            const enteredDate = new Date(year, month - 1, day);
+            const today = new Date();
+
+            // VALID DATE CHECK
+            const isRealDate =
+                enteredDate.getFullYear() === year &&
+                enteredDate.getMonth() === month - 1 &&
+                enteredDate.getDate() === day;
+
+            if (!isRealDate) {
+
+                newErrors.dob = 'Please enter a valid date';
+                isValid = false;
+
+            } else if (enteredDate > today) {
+
+                // FUTURE DATE BLOCK
+                newErrors.dob = 'Future date is not allowed';
+                isValid = false;
+
+            } else {
+
+                // AGE CHECK
+                let age = today.getFullYear() - year;
+
+                const monthDiff = today.getMonth() - (month - 1);
+
+                if (
+                    monthDiff < 0 ||
+                    (monthDiff === 0 && today.getDate() < day)
+                ) {
+                    age--;
+                }
+
+                if (age < 1) {
+
+                    newErrors.dob = 'Please enter a valid age';
+                    isValid = false;
+                }
+            }
+        }
 
         setErrors(newErrors);
+
         return isValid;
     };
 
-
-
     const handleProcees = async () => {
 
-        if (!validateForm()) return;
-
-        setIsLoading(true);
-        const send_data = new FormData();
-        send_data.append('user', formData.user);
-        send_data.append('first_name', formData.firstName);
-        send_data.append('last_name', formData.lastName);
-        send_data.append('email', formData.email);
-        send_data.append('gender', formData.gender);
-
-
-        if (formData.profileImage && formData.profileImage.uri) {
-            const imageFile = {
-                uri: formData.profileImage.uri,
-                type: formData.profileImage.type || 'image/jpeg',
-                name: formData.profileImage.fileName || `profile_${Date.now()}.jpg`,
-            };
-            send_data.append('profile_picture', imageFile as any);
+        // ✅ VALIDATION
+        if (!validateForm()) {
+            return;
         }
 
-        console.log("OnboardingData:", send_data);
         try {
 
-            const response: any = await _AUTH_SERVICES.onBoarding(send_data);
-            console.log("Onboarding Response:", response);
-            if (!response.ok) {
+            setIsLoading(true);
+
+            const send_data = {
+                first_name: formData.firstName.trim(),
+                last_name: formData.lastName.trim(),
+                email: formData.email.trim(),
+                profile_picture:
+                    formData.profileImageUrl,
+                gender: formData.gender,
+                date_of_birth: `${dob.year}-${dob.month}-${dob.day}`,
+            };
+
+            console.log(
+                'IMAGE URL ===>',
+                formData.profileImageUrl
+            );
+
+            console.log('OnboardingData:', send_data);
+
+            // ✅ API CALL
+            const response: any =
+                await _AUTH_SERVICES.onBoarding(send_data);
+
+            console.log('Onboarding Response:', response);
+
+            // ✅ JSON RESPONSE
+            const jsonResponse = await response.json();
+
+            console.log(
+                'Onboarding Response Message:',
+                jsonResponse
+            );
+
+            // ===================================================
+            // ✅ SUCCESS
+            // ===================================================
+
+            if (response?.ok && jsonResponse?.success === true) {
+
+                // STORE USER
+                await Utils.storeData(
+                    '_USER_INFO',
+                    jsonResponse?.data
+                );
+
+                showSuccessToast(
+                    jsonResponse?.message || 'Welcome to Ayurmuni',
+                    'success'
+                );
+
+                props.navigation.navigate('AssessmentType', {
+                    form: 'all',
+                });
                 setIsLoading(false);
-                const errorText = await response.json();
-                console.log("Error response:", errorText);
-                showSuccessToast(errorText.message, 'error');
-                // showSuccessToast(errorText.message, 'error');
                 return;
             }
 
-            const jsonResponse = await response.json();
-            console.log("Response JSON:", jsonResponse);
-            const { data, message = "", status } = jsonResponse;
-            console.log("ResponseData:", jsonResponse.data, "Message:", message, "Status:", status);
+            // ===================================================
+            // ✅ API ERROR
+            // ===================================================
 
-            if (status === 'success' || response.status === 201) {
-                setIsLoading(false);
-                Utils.storeData('_TOKEN', jsonResponse?.access);
-                Utils.storeData('_USER_INFO', jsonResponse.data);
-                // Utils.storeData('_USER_ID', jsonResponse?.data?.user);
-                showSuccessToast('Welcome to Ayurmuni', 'success');
-                props.navigation.navigate('AssessmentType');
-            } else {
-                setIsLoading(false);
-                showSuccessToast(message || 'Login failed', 'error');
-            }
-        } catch (error) {
+            showSuccessToast(
+                jsonResponse?.message ||
+                'Something went wrong',
+                'error'
+            );
+
+        } catch (error: any) {
             setIsLoading(false);
-            console.log("Network Error:", error);
-            showSuccessToast('Something went wrong', 'error');
+            console.log('Network Error:', error);
+
+            showSuccessToast(
+                'Network error, please try again',
+                'error'
+            );
+
+        } finally {
+
+            setIsLoading(false);
         }
     };
-
-
 
 
     const [dob, setDob] = useState({ day: '', month: '', year: '' });
 
     return (
-        <View style={styles.container}>
+
+        <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
+
                 <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                     <Image
                         source={Images.backIcon}
@@ -298,13 +566,13 @@ const Onboarding = (props: any) => {
                 </TouchableOpacity>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
+                        keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 30 }}
+                        contentContainerStyle={styles.scrollContent}
                     >
                         <View style={styles.content}>
 
                             {/* HEADER */}
-
 
                             <Text style={styles.title}>Create Account</Text>
                             <Text style={styles.subtitle}>
@@ -319,17 +587,31 @@ const Onboarding = (props: any) => {
 
                                         {/* BIG LIGHT CIRCLE */}
                                         <View style={styles.bigCircle}>
-                                            {formData.profileImage ? (
+
+                                            {formData.profileImage?.uri ? (
+
                                                 <Image
-                                                    source={{ uri: formData.profileImage.uri }}
+                                                    source={{
+                                                        uri: formData.profileImage.uri
+                                                    }}
                                                     style={styles.profileImage}
                                                 />
+
                                             ) : (
-                                                <Image
-                                                    source={Images.ImageContain}
-                                                    style={styles.profileImage}
-                                                />
+                                                <View style={styles.placeholderContainer}>
+                                                    <Text style={styles.placeholderText}>
+
+                                                        {formData.firstName
+                                                            ? formData.firstName
+                                                                .charAt(0)
+                                                                .toUpperCase()
+                                                            : 'A'}
+
+                                                    </Text>
+
+                                                </View>
                                             )}
+
                                         </View>
 
                                         {/* SMALL GREEN CIRCLE */}
@@ -361,6 +643,9 @@ const Onboarding = (props: any) => {
                                             formData.firstName && styles.inputFilled
                                         ]}
                                     />
+
+                                    <Text style={styles.errorText}>{errors.firstName}</Text>
+
                                 </View>
 
                                 {/* LAST NAME */}
@@ -376,6 +661,8 @@ const Onboarding = (props: any) => {
                                             formData.lastName && styles.inputFilled
                                         ]}
                                     />
+                                    <Text style={styles.errorText}>{errors.lastName}</Text>
+
                                 </View>
 
                             </View>
@@ -403,51 +690,130 @@ const Onboarding = (props: any) => {
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
+
                             </View>
 
-
                             {/* DOB */}
-                            <Text style={styles.label}>D.O.B</Text>
-                            <View style={styles.row}>
+                            <Text style={styles.label}>Date of Birth</Text>
+
+                            <View style={styles.dobContainer}>
+
+                                {/* DAY */}
+
                                 <TextInput
+                                    ref={dayRef}
                                     placeholder="DD"
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.day}
-                                    onChangeText={(t) => setDob({ ...dob, day: t })}
-                                    style={[
-                                        styles.inputThird,
-                                        dob.day && styles.inputFilled
-                                    ]}
                                     keyboardType="number-pad"
                                     maxLength={2}
+                                    style={[
+                                        styles.dobInput,
+                                        dob.day && styles.inputFilled,
+                                    ]}
+                                    onChangeText={(t) => {
+
+                                        const value = t.replace(/[^0-9]/g, '');
+
+                                        setDob({
+                                            ...dob,
+                                            day: value,
+                                        });
+
+                                        // AUTO NEXT
+                                        if (value.length === 2) {
+                                            monthRef.current?.focus();
+                                        }
+                                    }}
+                                    onKeyPress={({ nativeEvent }) => {
+
+                                        // BACK TO PREVIOUS
+                                        if (
+                                            nativeEvent.key === 'Backspace' &&
+                                            dob.day.length === 0
+                                        ) {
+                                            dayRef.current?.blur();
+                                        }
+                                    }}
                                 />
 
+                                {/* MONTH */}
+
                                 <TextInput
+                                    ref={monthRef}
                                     placeholder="MM"
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.month}
-                                    onChangeText={(t) => setDob({ ...dob, month: t })}
-                                    style={[
-                                        styles.inputThird,
-                                        dob.month && styles.inputFilled
-                                    ]}
                                     keyboardType="number-pad"
                                     maxLength={2}
+                                    style={[
+                                        styles.dobInput,
+                                        dob.month && styles.inputFilled,
+                                    ]}
+                                    onChangeText={(t) => {
+
+                                        const value = t.replace(/[^0-9]/g, '');
+
+                                        setDob({
+                                            ...dob,
+                                            month: value,
+                                        });
+
+                                        // AUTO NEXT
+                                        if (value.length === 2) {
+                                            yearRef.current?.focus();
+                                        }
+                                    }}
+                                    onKeyPress={({ nativeEvent }) => {
+
+                                        // BACK TO DAY
+                                        if (
+                                            nativeEvent.key === 'Backspace' &&
+                                            dob.month.length === 0
+                                        ) {
+                                            dayRef.current?.focus();
+                                        }
+                                    }}
                                 />
 
+                                {/* YEAR */}
+
                                 <TextInput
+                                    ref={yearRef}
                                     placeholder="YYYY"
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.year}
-                                    onChangeText={(t) => setDob({ ...dob, year: t })}
-                                    style={[
-                                        styles.inputThird,
-                                        dob.year && styles.inputFilled
-                                    ]}
                                     keyboardType="number-pad"
                                     maxLength={4}
+                                    style={[
+                                        styles.dobInput,
+                                        styles.dobYearInput,
+                                        dob.year && styles.inputFilled,
+                                    ]}
+                                    onChangeText={(t) => {
+
+                                        const value = t.replace(/[^0-9]/g, '');
+
+                                        setDob({
+                                            ...dob,
+                                            year: value,
+                                        });
+                                    }}
+                                    onKeyPress={({ nativeEvent }) => {
+
+                                        // BACK TO MONTH
+                                        if (
+                                            nativeEvent.key === 'Backspace' &&
+                                            dob.year.length === 0
+                                        ) {
+                                            monthRef.current?.focus();
+                                        }
+                                    }}
                                 />
+
                             </View>
+
+                            <Text style={[styles.errorText, { top: -15 }]}>{errors.dob}</Text>
 
                             {/* EMAIL */}
                             <Text style={styles.label}>Email Address</Text>
@@ -461,7 +827,7 @@ const Onboarding = (props: any) => {
                                     formData.email && styles.inputFilled
                                 ]}
                             />
-
+                            <Text style={styles.errorText}>{errors.email}</Text>
                         </View>
 
 
@@ -477,7 +843,7 @@ const Onboarding = (props: any) => {
                     </ScrollView>
                 </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -487,260 +853,328 @@ export default Onboarding;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
-        marginBottom: 20,
+        paddingHorizontal: 20,
+        backgroundColor: '#F8FAFC',
+    },
+
+    keyboardContainer: {
+        flex: 1,
+    },
+
+    scrollContent: {
+        flexGrow: 1,
+        // paddingBottom: 40,
     },
 
     content: {
-        paddingHorizontal: 20,
+        // paddingHorizontal: 20,
+        // paddingTop: Platform.OS === 'android' ? 10 : 0,
+    },
 
-    },
-    cameraFullIcon: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 40,
-        height: 40,
-        resizeMode: 'contain',
-    },
+    /* ---------------- HEADER ---------------- */
 
     backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
+        width: 46,
+        height: 46,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 40,
-        marginBottom: 10,
-        paddingHorizontal: 20,
-        marginLeft: 20
+        marginTop: Platform.OS === 'android' ? 18 : 10,
+        marginBottom: 18,
+        backgroundColor: '#FFFFFF',
+        alignSelf: 'flex-start',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+    },
 
+    backIcon: {
+        width: 46,
+        height: 46,
+        resizeMode: 'contain',
     },
 
     title: {
         fontSize: 30,
+        color: '#111827',
         fontFamily: Fonts.PoppinsSemiBold,
-        color: '#18181B',
-        fontWeight: 700,
-
-    },
-    profileImageFull: {
-        width: 128,
-        height: 128,
-        borderRadius: 64,
-        resizeMode: 'cover',
+        lineHeight: 40,
     },
 
     subtitle: {
         fontSize: 14,
-        color: '#71717A',
-        marginTop: 6,
-        marginBottom: 25,
+        color: '#6B7280',
+        marginTop: 8,
+        lineHeight: 22,
         fontFamily: Fonts.PoppinsRegular,
-        lineHeight: 20,
-        fontWeight: 400
+        marginBottom: 30,
+        paddingRight: 10,
     },
+
+    /* ---------------- PROFILE IMAGE ---------------- */
 
     imageWrapper: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 25,
+        marginBottom: 28,
     },
 
-    imageCircle: {
-        width: 138,
-        height: 138,
-        borderRadius: 64,
-        overflow: 'hidden',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     profileContainer: {
-        width: 140,
-        height: 140,
+        width: 150,
+        height: 150,
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     bigCircle: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        backgroundColor: '#0D614E1A',
+        width: 145,
+        height: 145,
+        borderRadius: 999,
+        backgroundColor: '#0D614E12',
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#0D614E15',
     },
 
     profileImage: {
-        width: 140,
-        height: 140,
-        resizeMode: 'contain',
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+
+    placeholderContainer: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0D614E15',
+    },
+
+    placeholderText: {
+        fontSize: 42,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     smallCircle: {
         position: 'absolute',
-        bottom: 5,
-        right: 5,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        bottom: 8,
+        right: 8,
+        width: 42,
+        height: 42,
+        borderRadius: 999,
         backgroundColor: Colors.primaryColor,
         justifyContent: 'center',
         alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
     },
 
     cameraImage: {
         width: 18,
         height: 18,
-        tintColor: '#fff',
-    },
-
-
-    backIcon: {
-        width: 44,
-        height: 44,
-
-    },
-
-    cameraIcon: {
-        position: 'absolute',
-        bottom: 5,
-        right: 5,
-        backgroundColor: Colors.primaryColor,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 3,
-    },
-
-    inputWrapper: {
-        width: '48%',
+        resizeMode: 'contain',
+        tintColor: '#FFFFFF',
     },
 
     uploadText: {
-        marginTop: 10,
-        fontSize: 14,
-        color: '#0D614E',
+        marginTop: 14,
+        fontSize: 15,
+        color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsMedium,
     },
+
+    /* ---------------- FORM ---------------- */
 
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 15,
-        alignItems: 'flex-start',
+        gap: 12,
+        marginBottom: 18,
     },
 
-    inputHalf: {
-        width: '100%',
-        height: 50,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        backgroundColor: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#111827',
-    },
-
-    inputThird: {
-        width: '30%',
-        height: 50,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 12,
-        textAlign: 'center',
-        backgroundColor: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#111827',
-        padding: 0,
-    },
-
-    inputFull: {
-        height: 50,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        backgroundColor: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#111827',
-    },
-
-    inputFilled: {
-        backgroundColor: '#0D614E0D',
-        borderColor: '#0D614E33',
-        color: '#0D614E',
+    inputWrapper: {
+        flex: 1,
     },
 
     label: {
         fontSize: 14,
-        marginBottom: 6,
         color: '#111827',
+        marginBottom: 8,
         fontFamily: Fonts.PoppinsMedium,
     },
 
+    inputHalf: {
+        height: 54,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        backgroundColor: '#FFFFFF',
+        color: '#111827',
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    inputFull: {
+        width: '100%',
+        height: 54,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        backgroundColor: '#FFFFFF',
+        color: '#111827',
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    inputFilled: {
+        backgroundColor: '#0D614E08',
+        borderColor: '#0D614E55',
+        color: '#0D614E',
+    },
+
+    /* ---------------- GENDER ---------------- */
+
     genderRow: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         gap: 10,
-        marginBottom: 15,
+        marginBottom: 20,
     },
 
     genderBtn: {
         flex: 1,
-        height: 45,
+        minHeight: 50,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        paddingHorizontal: 10,
+        paddingVertical: 12,
     },
 
     genderActive: {
-        backgroundColor: '#0D614E0D',
-        borderColor: '#0D614E33',
+        backgroundColor: '#0D614E10',
+        borderColor: '#0D614E',
     },
 
     genderText: {
-        color: '#9CA3AF',
+        fontSize: 14,
+        color: '#6B7280',
         fontFamily: Fonts.PoppinsMedium,
+        textAlign: 'center',
     },
 
     genderTextActive: {
         color: '#0D614E',
     },
 
+    /* ---------------- DOB ---------------- */
+
+    dobContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+        marginBottom: 18,
+    },
+
+    dobInput: {
+        // flex: 1,
+        // height: 54,
+        // borderWidth: 1,
+        // borderColor: '#E5E7EB',
+        // borderRadius: 16,
+        // backgroundColor: '#FFFFFF',
+        // textAlign: 'center',
+        // color: '#111827',
+        // fontSize: 14,
+        // fontFamily: Fonts.PoppinsSemiBold,
+        // paddingHorizontal: 10,
+
+
+        width: '30%',
+        height: 50,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        backgroundColor: '#fff',
+
+        // ✅ MAIN FIX
+        textAlign: 'center',
+        textAlignVertical: 'center', // Android fix
+
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#111827',
+
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+
+    },
+
+    dobYearInput: {
+        flex: 1.3,
+        width: '34%',
+    },
+
+    /* ---------------- ERROR ---------------- */
+
+    errorText: {
+        color: '#EF4444',
+        fontSize: 12,
+        marginTop: 6,
+        marginLeft: 2,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    /* ---------------- BUTTON ---------------- */
+
     bottom: {
-        paddingHorizontal: 20,
-        marginTop: 20,
+        // paddingHorizontal: 20,
+        marginTop: 26,
     },
 
     button: {
-        backgroundColor: '#0D614E',
-        height: 52,
-        borderRadius: 12,
+        height: 56,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
+    },
+
+    gradientBtn: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 16,
     },
 
     buttonText: {
-        color: '#fff',
+        color: '#FFFFFF',
         fontSize: 16,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
-    loginText: {
-        textAlign: 'center',
-        marginTop: 15,
-        color: '#6B7280',
-    },
+    /* ---------------- EXTRA ---------------- */
 
-    login: {
-        color: '#0D614E',
-        fontFamily: Fonts.PoppinsSemiBold,
+    loader: {
+        marginTop: 5,
     },
 });

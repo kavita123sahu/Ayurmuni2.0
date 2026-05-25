@@ -90,7 +90,7 @@ const SettingsScreen = (props: any) => {
     return (
         <SafeAreaView style={styles.container}>
 
-               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
 
             <AppHeader
                 title="Settings"
@@ -99,7 +99,7 @@ const SettingsScreen = (props: any) => {
                 rightIcon="search"
                 onRightPress={() => console.log('Search clicked')}
             />
-            <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: '#FDFDFB' }}>
                 <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
 
                     {settingsData.map((section, index) => (

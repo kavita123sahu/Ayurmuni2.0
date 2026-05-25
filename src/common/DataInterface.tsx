@@ -289,6 +289,15 @@ export const doctorsData = [
     image: require('../assets/images/doctor.png'),
     available: false,
   },
+  {
+    id: '3',
+    name: 'Dr. Neha Sharma',
+    specialization: 'Cardiologist',
+    experience: '8 Yrs. Exp',
+    rating: '4.7',
+    image: require('../assets/images/doctor.png'),
+    available: false,
+  },
 ];
 
 

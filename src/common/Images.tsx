@@ -6,6 +6,7 @@ export const Images = {
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
 
+    pdfIcon: require('../assets/images/pdfIcon.png'),
     
     Bell: require('../assets/images/bell.png'),
     VideoPlayer: require('../assets/images/VideoPlayer.png'),
@@ -122,6 +123,7 @@ export const Images = {
     PlusBag: require('../assets/images/PlusBag.png'),
     shopCart: require('../assets/images/shopcart.png'),
     wishlist: require('../assets/images/wishlist.png'),
+    cardiology: require('../assets/images/cardiology.png'),
     glutenFree: require('../assets/images/glutenFree.png'),
     highFiber: require('../assets/images/highFiber.png'),
     location: require('../assets/images/location.png'),
@@ -165,6 +167,7 @@ export const Images = {
     TabConsult: require('../assets/images/Tabconsult.png'),
     LogButton: require('../assets/images/LogButton.png'),
 
+    consult: require('../assets/images/consult.png'),
     bookDoctor: require('../assets/images/bookDoctor.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),
     Email: require('../assets/images/email.png'),
@@ -179,6 +182,11 @@ export const Images = {
     Panchakarma: require('../assets/images/panchkarma.png'),
                               
     
+    HairImage: require('../assets/images/HairImage.png'),
+    
+    yesHuman: require('../assets/images/Yes.png'),
+    
+    noHuman: require('../assets/images/No.png'),
     MentorImage: require('../assets/images/MentorProfile.png'),
 
 }
@@ -201,4 +209,6 @@ export const QUESTION_IMAGES = {
     learning: require('../assets/images/Potential.png'),
     temperament: require('../assets/images/Temp.png'),
     personality: require('../assets/images/persnal2.png'),
+
+    
 };

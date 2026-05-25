@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     FlatList,
     Image,
+    ScrollView,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import HomeHeader from '../../components/HomeHeader';
@@ -18,32 +19,51 @@ import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import OrderCard from '../../components/OrderCard';
 
-const DATA = [
+// ✅ Tab-wise alag DATA
+const ALL_DATA = [
     {
         id: '1',
         title: 'General Prescription',
         subtitle: 'Dr. Emily Stone • 12 Oct 2023',
         icon: Images.medical,
+        type: 'Prescriptions',
     },
     {
         id: '2',
         title: 'Blood Test Report',
         subtitle: 'City Lab Center • 05 Oct 2023',
         icon: Images.medical,
+        type: 'Lab Reports',
     },
     {
         id: '3',
         title: 'Covid Vaccination',
         subtitle: 'Apollo Hospital • 20 Sep 2023',
         icon: Images.medical,
+        type: 'Prescriptions',
     },
 ];
 
 const MedicalRecords = (props: any) => {
-    const [activeTab, setActiveTab] = useState('All');
+    const [activeTab, setActiveTab] = useState('All Records');
 
-    const renderItem = ({ item }: any) => (
+
+    const formatStatus = (status: string): 'DELIVERED' | 'IN PROGRESS' => {
+        const s = status?.toUpperCase();
+
+        if (s === 'DELIVERED') return 'DELIVERED';
+
+        return 'IN PROGRESS';
+    };
+
+
+    const filteredData = activeTab === 'All Records'
+        ? ALL_DATA
+        : ALL_DATA.filter(item => item.type === activeTab);
+
+    const renderAllItem = ({ item }: any) => (
         <TouchableOpacity style={styles.card}>
             <View
                 style={[
@@ -68,6 +88,50 @@ const MedicalRecords = (props: any) => {
             <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
         </TouchableOpacity>
     );
+
+    const renderPrescriptionItem = ({ item }: any) => (
+        // <TouchableOpacity style={styles.card}>
+        //     <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
+        //         <Image source={item.icon} style={[styles.icon, { tintColor: '#1B5E54' }]} />
+        //     </View>
+        //     <View style={{ flex: 1 }}>
+        //         <Text style={styles.title}>{item.title}</Text>
+        //         <Text style={styles.subtitle}>{item.subtitle}</Text>
+        //     </View>
+        //     {/* ✅ Prescription badge */}
+        //     <View style={styles.prescriptionBadge}>
+        //         <Text style={styles.prescriptionBadgeText}>Rx</Text>
+        //     </View>
+        //     <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
+        // </TouchableOpacity>
+
+
+        <OrderCard title={item.title}
+            id={item.id}
+            status={formatStatus(item.status)} // ✅ FIX
+            date={'20 Oct 2023'}
+            amount={"2,999.00"} />
+    );
+
+
+    // ✅ Lab Reports ka alag card
+    const renderLabItem = ({ item }: any) => (
+        <TouchableOpacity style={[styles.card, { borderLeftWidth: 4, borderLeftColor: '#0D9488' }]}>
+            <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
+                <Image source={item.icon} style={[styles.icon, { tintColor: '#D97706' }]} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.subtitle}>{item.subtitle}</Text>
+            </View>
+            {/* ✅ Lab badge */}
+            <View style={styles.labBadge}>
+                <Text style={styles.labBadgeText}>Lab</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
+        </TouchableOpacity>
+    );
+
 
     const TabButton = () => {
 
@@ -96,6 +160,16 @@ const MedicalRecords = (props: any) => {
         )
     }
 
+
+
+
+
+    const getRenderItem = () => {
+        if (activeTab === 'Prescriptions') return renderPrescriptionItem;
+        if (activeTab === 'Lab Reports') return renderLabItem;
+        return renderAllItem;
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <Header
@@ -112,36 +186,54 @@ const MedicalRecords = (props: any) => {
 
             <TabButton />
 
-            <View style={styles.addBox}>
+            <ScrollView>
+                <View style={styles.addBox}>
 
-                <View style={styles.iconWrapper}>
-                    <Ionicons name="cloud-upload-outline" size={22} color="#065F46" />
+                    <View style={styles.iconWrapper}>
+                        <Ionicons name="cloud-upload-outline" size={22} color="#065F46" />
+                    </View>
+
+                    <Text style={styles.addTitle}>Add New Record</Text>
+                    <Text style={styles.addSub}>Upload PDF or Take a photo</Text>
+
                 </View>
 
-                <Text style={styles.addTitle}>Add New Record</Text>
-                <Text style={styles.addSub}>Upload PDF or Take a photo</Text>
+                <SectionHeader title="Recent Documents" />
 
-            </View>
-
-            <SectionHeader title="Recent Documents" />
-
-
-            <FlatList
-                data={DATA}
-                renderItem={renderItem}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 20 }}
-            />
+                {/* 
+                <FlatList
+                    data={DATA}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                /> */}
 
 
-            <View style={{ paddingBottom: 40, paddingTop: 10 }}>
-                <PrimaryButton title="Upload File"
-                    icon={Images.upload}
-                    onPress={() => console.log}
-                    backgroundColor="#0D614E"
-                    TextFont={Fonts.PoppinsRegular}
-                    textColor="#FFFFFF" />
-            </View>
+
+                <FlatList
+                    data={filteredData}
+                    renderItem={getRenderItem()}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No records found</Text>
+                        </View>
+                    }
+                />
+
+                <View style={{ paddingBottom: 40, paddingTop: 10 }}>
+                    <PrimaryButton title="Upload File"
+                        icon={Images.upload}
+                        onPress={() => console.log}
+                        backgroundColor="#0D614E"
+                        TextFont={Fonts.PoppinsRegular}
+                        textColor="#FFFFFF" />
+                </View>
+
+
+            </ScrollView>
+
 
 
         </SafeAreaView>
@@ -304,6 +396,40 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: Fonts.PoppinsMedium,
         color: Colors.subTextColor,
+    },
+
+    emptyContainer: {
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: Colors.subTextColor,
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    prescriptionBadge: {
+        backgroundColor: '#DCFCE7',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        marginRight: 8,
+    },
+    prescriptionBadgeText: {
+        fontSize: 11,
+        color: '#065F46',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    labBadge: {
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        marginRight: 8,
+    },
+    labBadgeText: {
+        fontSize: 11,
+        color: '#D97706',
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     uploadBtn: {

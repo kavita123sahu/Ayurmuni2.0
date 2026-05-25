@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   Image,
@@ -16,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // p
 import { RootStackParamList } from '../../../type';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,9 +25,20 @@ const AppointmentScreen = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
 
 
+
   type Appointment = { id: string; doctorName: string; specialty: string; date: string; time: string; status: 'CONFIRMED' | 'PENDING' | 'CANCELLED'; image: string; };
 
-  const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', },];
+  const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=2', },];
+
+
+  const pastData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=2', },];
+
+
+  const appointmentData = useMemo(() => {
+    return activeTab === 'upcoming'
+      ? dummyData
+      : pastData;
+  }, [activeTab]);
 
 
   const DateTimeCard = ({ item }: { item: Appointment }) => {
@@ -104,11 +115,52 @@ const AppointmentScreen = () => {
 
       <DateTimeCard item={item} />
 
-      {item.status === 'CONFIRMED' ? (
+
+      {activeTab === 'upcoming' ? (
+        (item.status === 'CONFIRMED') ? (
+          <View style={styles.btnRow}>
+            <TouchableOpacity style={styles.outlineBtn} onPress={() => navigation.navigate('DoctorSlot')}>
+              <Text style={Styles.outlineText}>
+                Reschedule
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('')}>
+              <Text
+                numberOfLines={1}
+                style={styles.primaryText}
+              >
+                Join Call
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.cancelBtn}>
+            <Text
+              numberOfLines={1}
+              style={Styles.cancelText}
+            >
+              Cancel Appointment
+            </Text>
+          </TouchableOpacity>
+        )
+      ) : (
+        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('DoctorSlipScreen')}>
+          <Text
+            numberOfLines={1}
+            style={styles.primaryText}
+          >
+            View Details
+          </Text>
+        </TouchableOpacity>
+      )}
+
+
+      {/* {(item.status === 'CONFIRMED' || item.status === 'CANCELLED' && activeTab === 'upcoming') ? (
         <View style={styles.btnRow}>
           <TouchableOpacity style={styles.outlineBtn}>
             <Text style={Styles.outlineText}>Reschedule</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> 
 
           <TouchableOpacity style={styles.primaryBtn}>
             <Text numberOfLines={1} style={styles.primaryText}>Join Call</Text>
@@ -118,7 +170,7 @@ const AppointmentScreen = () => {
         <TouchableOpacity style={styles.cancelBtn}>
           <Text numberOfLines={1} style={Styles.cancelText}>Cancel Appointment</Text>
         </TouchableOpacity>
-      )}
+      )} */}
     </TouchableOpacity>
   );
 
@@ -161,7 +213,7 @@ const AppointmentScreen = () => {
 
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
 
       <Header
         title="My Appointments"
@@ -173,7 +225,7 @@ const AppointmentScreen = () => {
       <TabButton />
 
       <FlatList
-        data={dummyData}
+        data={appointmentData}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 1, paddingVertical: 15, paddingBottom: 70 }}
@@ -183,7 +235,7 @@ const AppointmentScreen = () => {
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
 
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -363,7 +415,7 @@ const styles = StyleSheet.create({
 
   primaryText: {
     color: '#fff',
-    textAlign:'center',
+    textAlign: 'center',
     fontFamily: Fonts.PoppinsSemiBold,
     fontSize: 14,
   },
@@ -379,8 +431,8 @@ const styles = StyleSheet.create({
 
   cancelText: {
     color: '#EF4444',
-    textAlign:'center',
-    fontSize:14,
+    textAlign: 'center',
+    fontSize: 14,
     fontFamily: Fonts.PoppinsMedium,
   },
 

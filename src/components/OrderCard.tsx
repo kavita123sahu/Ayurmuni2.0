@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Images } from '../common/Images';
+import { useNavigation } from '@react-navigation/native';
 
 type Props = {
   title: string;
   id: string;
-  
+
   status: 'DELIVERED' | 'IN PROGRESS';
   date: string;
   amount: string;
@@ -20,11 +21,13 @@ const OrderCard: React.FC<Props> = ({
   date,
   amount,
 }) => {
-  
+
+  const navigation = useNavigation();
   const isDelivered = status === 'DELIVERED';
+  
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PrescriptionDetail')}>
       {/* Top Row */}
       <View style={styles.topRow}>
         <View style={styles.iconBox}>
@@ -35,14 +38,14 @@ const OrderCard: React.FC<Props> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.id}>ID: {id}</Text>
         </View>
-
+        
         <View
           style={[
             styles.statusBadge,
             {
               backgroundColor: isDelivered ? '#E6F4EA' : '#E8F0FE',
             },
-          ]}
+          ]} 
         >
           <Text
             style={[
@@ -72,7 +75,7 @@ const OrderCard: React.FC<Props> = ({
           <Text style={styles.amount}>Rs. {amount}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -83,9 +86,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 14,
-borderWidth:1,
-borderColor: Colors.borderColor
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.borderColor
   },
 
   topRow: {
@@ -117,7 +120,7 @@ borderColor: Colors.borderColor
 
   id: {
     fontSize: 12,
-    fontFamily : Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsRegular,
     color: Colors.subTextColor,
     marginTop: 2,
   },
@@ -125,7 +128,8 @@ borderColor: Colors.borderColor
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 10,
+    position: 'absolute',
+    top: 0, right: 10, borderRadius: 10,
   },
 
   statusText: {
@@ -135,10 +139,10 @@ borderColor: Colors.borderColor
 
   divider: {
     borderBottomWidth: 1,
-  borderColor: '#D1D5DB',
-  borderStyle: 'dashed',
-  marginVertical: 12,
-  opacity: 0.8,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    marginVertical: 12,
+    opacity: 0.8,
   },
 
   bottomRow: {
@@ -148,7 +152,7 @@ borderColor: Colors.borderColor
 
   label: {
     fontSize: 12,
-    fontFamily : Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsRegular,
     color: '#9CA3AF',
   },
 

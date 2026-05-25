@@ -65,25 +65,9 @@ const PrimaryButton = ({
 };
 
 
-
-const AppointmentDetailScreen = (props: any) => {
-
-  console.log("propsss", props)
+const DoctorDetail =()=>{
   return (
-    <SafeAreaView style={styles.container}>
-
-      <StatusBar barStyle={'dark-content'} backgroundColor={"#FFFFFF"} />
-
-      <AppHeader
-        title="Appointment Details"
-        leftIcon={Images.backIcon}
-        onLeftPress={() => props.navigation.goBack()}
-        rightIcon="search"
-        onRightPress={() => console.log('Search clicked')}
-      />
-
-      <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
-        <View style={styles.card}>
+     <View style={styles.card}>
           <View style={styles.row}>
             <Image source={{ uri: data.image }} style={styles.avatar} />
 
@@ -133,6 +117,27 @@ const AppointmentDetailScreen = (props: any) => {
             Technical Check: Test Audio & Video
           </Text>
         </View>
+  )
+}
+
+const AppointmentDetailScreen = (props: any) => {
+
+  console.log("propsss", props)
+  return (
+    <SafeAreaView style={styles.container}>
+
+      <StatusBar barStyle={'dark-content'} backgroundColor={"#FFFFFF"} />
+
+      <AppHeader
+        title="Appointment Details"
+        leftIcon={Images.backIcon}
+        onLeftPress={() => props.navigation.goBack()}
+        rightIcon="search"
+        onRightPress={() => console.log('Search clicked')}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
+       <DoctorDetail/>
 
         <Text style={styles.sectionTitle}>Patient Information</Text>
 

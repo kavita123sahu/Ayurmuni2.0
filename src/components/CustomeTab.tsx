@@ -17,10 +17,11 @@ import { Fonts } from '../common/Fonts';
 const { width } = Dimensions.get("window");
 
 // 🔥 Responsive scaling
-const scale = width / 375;
+const scale = width / 350;
 
 const TAB_HEIGHT = 72 * scale;
-const INNER_SIZE = 56 * scale;
+// const INNER_SIZE = 60 * scale;
+const INNER_SIZE = TAB_HEIGHT - 14;
 const CONSULT_SIZE = 68 * scale;
 
 const CustomeTab = (props: any) => {
@@ -39,8 +40,8 @@ const CustomeTab = (props: any) => {
         switch (name) {
             case "Home":
                 return Images.home;
-            case "Mentor":
-                return Images.orders;
+            case "Products":
+                return Images.medicine;
             case "History":
                 return Images.History;
             case "Profile":
@@ -148,51 +149,64 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
 
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
     },
 
     container: {
         flex: 1,
+
         height: TAB_HEIGHT,
-        borderRadius: TAB_HEIGHT / 2, // 🔥 PERFECT PILL
 
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
+        borderRadius: 999,
 
-        paddingHorizontal: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
 
-        overflow: "hidden",
+        paddingHorizontal: 10,
 
-        backgroundColor: "rgba(255,255,255,0.9)",
+        overflow: 'hidden',
+
+        backgroundColor: 'rgba(255,255,255,0.92)',
 
         elevation: 10,
-        shadowColor: "#000",
+
+        shadowColor: '#000',
         shadowOpacity: 0.08,
         shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
     },
 
     tab: {
         flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     iconWrapper: {
         width: INNER_SIZE,
         height: INNER_SIZE,
+
         borderRadius: INNER_SIZE / 2,
-        alignItems: "center",
-        // marginRight: 15,
-        justifyContent: "center",
+
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     activeWrapper: {
-        backgroundColor: "#0D614E1A",
-        borderRadius: INNER_SIZE / 2,
-    },
+        width: INNER_SIZE,
+        height: INNER_SIZE,
 
+        borderRadius: INNER_SIZE / 2,
+
+        backgroundColor: '#E7F1EE',
+
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     consultBtn: {
         width: CONSULT_SIZE,
         height: CONSULT_SIZE,

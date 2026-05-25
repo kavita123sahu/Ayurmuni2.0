@@ -1,60 +1,122 @@
 import { use } from "react";
 import { Utils } from "../common/Utils";
 import { BaseUrl, Method } from "../config/Key";
+import { apiClient } from "./APIconfig";
 
-export const GetQuestionOptions = async () => {
+export const GetQuestionOptions = async (data: any) => {
 
-    return new Promise(async (resolve, reject) => {
+    // return new Promise(async (resolve, reject) => {
 
-        const customer_id = await Utils.getData('_CUSTOMER_ID');
-        const user = await Utils.getData('_USER_INFO');
-        const id = customer_id || user?.id;
-        console.log("userprofile---->>>", user, customer_id, "id===>", id);
+    //     const customer_id = await Utils.getData('_CUSTOMER_ID');
+    //     const user = await Utils.getData('_USER_INFO');
+    //     const id = customer_id || user?.id;
+    //     console.log("userprofile---->>>", user, customer_id, "id===>", id);
 
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log("urllassessmenttttttt", BaseUrl.base_url + `healthcare/ayurveda/questions/?customer_id=${id}`)
-            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/questions/?customer_id=${id}`, fetchParameter);
-            console.log("questionnnnnnnnnnnnnn", serverResponse)
-            let response = await serverResponse.json();
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
+    //     try {
+    //         let fetchParameter = {
+    //             method: Method.GET,
+    //             headers: {
+    //                 'Accept': 'application/json',
+    //                 'Content-Type': 'application/json',
+    //             },
+    //         }
+    //         console.log("urllassessmenttttttt", BaseUrl.base_url + `healthcare/ayurveda/questions/?customer_id=${id}`)
+    //         let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/questions/?customer_id=${id}`, fetchParameter);
+    //         console.log("questionnnnnnnnnnnnnn", serverResponse)
+    //         let response = await serverResponse.json();
+    //         resolve(response);
+    //     }
+    //     catch (error) {
+    //         reject(error);
+    //     }
+    // })
+
+    try {
+        const response = await apiClient('customers/questionnaires/questions/list/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
 }
 
 
-export const AssesmentSubmit = async (data: Object) => {
 
-    return new Promise(async (resolve, reject) => {
-        try {
 
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter)
-            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter);
-            // let response = await serverResponse.json();
-            // console.log("resposeeesubmitttt-->", response)
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
+export const KnowPrakritiSubmit = async (data: Object) => {
+
+    // return new Promise(async (resolve, reject) => {
+    //     try {
+
+    //         let fetchParameter = {
+    //             method: Method.POST,
+    //             body: JSON.stringify(data),
+    //             headers: {
+    //                 'Accept': 'application/json',
+    //                 'Content-Type': 'application/json',
+    //             },
+    //         }
+    //         console.log(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter)
+    //         let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter);
+    //         // let response = await serverResponse.json();
+    //         // console.log("resposeeesubmitttt-->", response)
+    //         resolve(serverResponse);
+    //     }
+    //     catch (error) {
+    //         reject(error);
+    //     }
+    // })
+
+    try {
+        const response = await apiClient('customers/initiate_onboarding/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+export const QuestionnaireSubmit = async (data: Object) => {
+
+    // return new Promise(async (resolve, reject) => {
+    //     try {
+
+    //         let fetchParameter = {
+    //             method: Method.POST,
+    //             body: JSON.stringify(data),
+    //             headers: {
+    //                 'Accept': 'application/json',
+    //                 'Content-Type': 'application/json',
+    //             },
+    //         }
+    //         console.log(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter)
+    //         let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/answers/submit/`, fetchParameter);
+    //         // let response = await serverResponse.json();
+    //         // console.log("resposeeesubmitttt-->", response)
+    //         resolve(serverResponse);
+    //     }
+    //     catch (error) {
+    //         reject(error);
+    //     }
+    // })
+
+    try {
+        const response = await apiClient('customers/questionnaires/responses/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
 }
 
 export const GetAssessmentPercentage = async () => {
@@ -80,33 +142,47 @@ export const GetAssessmentPercentage = async () => {
             resolve(serverResponse);
         }
         catch (error) {
+
+
             reject(error);
         }
     })
 }
 
-export const AssesmentYesSubmit = async (data: Object) => {
-    return new Promise(async (resolve, reject) => {
-        try {
 
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log(BaseUrl.base_url + `healthcare/ayurveda/profile/submitwithoutform/`, fetchParameter)
-            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/ayurveda/profile/submitwithoutform/`, fetchParameter);
-            let response = await serverResponse.json();
-            console.log("resposeeeewihtoutttttttttt-->", response)
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
+export const AssesmentYesSubmit = async (data: Object) => {
+    // return new Promise(async (resolve, reject) => {
+    //     try {
+
+    //         let fetchParameter = {
+    //             method: Method.POST,
+    //             body: JSON.stringify(data),
+    //             headers: {
+    //                 'Accept': 'application/json',
+    //                 'Content-Type': 'application/json',
+    //             },
+    //         }
+
+    //         let serverResponse = await fetch(BaseUrl.base_url + `customers/answer_prakriti/`, fetchParameter);
+    //         let response = await serverResponse.json();
+    //         console.log("resposeeeewihtoutttttttttt-->", response)
+    //         resolve(serverResponse);
+    //     }
+    //     catch (error) {
+    //         reject(error);
+    //     }
+    // })
+
+
+    try {
+        const response = await apiClient('customers/answer_prakriti/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
 }
 
 
@@ -156,3 +232,7 @@ export const PatientPersonalSubmit = async (data: Object) => {
         }
     })
 }
+
+
+
+

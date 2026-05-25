@@ -1,151 +1,283 @@
-import React from 'react';
-import { ScrollView, StatusBar } from 'react-native';
+import React, {
+  memo,
+  useCallback,
+} from 'react';
+
+import {
+  View,
+  StatusBar,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useNavigation } from '@react-navigation/native';
+
+import { NativeStackNavigationProp }
+  from '@react-navigation/native-stack';
+
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
-import PromoCard from '../../components/PromoCard';
-import RecentProductsList from '../../components/RecentProductsList';
-import CategoryList from '../../components/CategoryList';
-import TopSellingList from '../../components/TopSellingList';
 import SectionHeader from '../../components/SectionHeader';
-import { useNavigation } from '@react-navigation/native';
-import { Images } from '../../common/Images';
+import RecentDoctors from '../../components/RecentDoctors';
+import CategoryList from '../../components/CategoryList';
 import TopDoctorsCard from '../home/TopDoctorsCard';
-import { doctorsData } from '../../common/DataInterface';
+
+import { RootStackParamList }
+  from '../../../type';
+
+import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 
+import { useConsultData }
+  from '../../hooks/useConsultData';
+import PromoCard from '../../components/PromoCard';
+
+type NavigationProp =
+  NativeStackNavigationProp<
+    RootStackParamList
+  >;
 
 const ConsultScreen = () => {
 
-  const navigation = useNavigation();
-  const productImage = require('../../assets/images/RecentsImage.png');
-  const categoryImage = require('../../assets/images/CategiryImage.png');
+  const navigation =
+    useNavigation<NavigationProp>();
 
-  const recentProducts = [
-    {
-      id: '1',
-      name: 'Foxtail millet (Kangni)',
-      price: 649,
-      image: productImage,
-      lastOrdered: '17 February',
-    },
-    {
-      id: '2',
-      name: 'Groundnut oil',
-      price: 499,
-      image: productImage,
-      lastOrdered: '17 February',
-    },
-  ];
+  const {
+    loading,
+    refreshing,
+    categories,
+    topDoctors,
+    recentDoctors,
+    onRefresh,
+  } = useConsultData();
 
-  const categories = [
-    { id: '1', name: 'General', icon: categoryImage },
-    { id: '2', name: 'Cardiology', icon: categoryImage },
-    { id: '3', name: 'Dentistry', icon: categoryImage },
-    { id: '4', name: 'Neurology', icon: categoryImage }
-  ];
+  /*
+    ====================================
+    RECENT ITEM
+    ====================================
+  */
 
-  const topSelling = [
-    {
-      id: '1',
-      name: 'Foxtail millet',
-      subtitle: 'Acne Clear  Cream',
-      subname: 'Acne Clear  Cream',
-      oldPrice: 699.00,
-      price: 649,
-      image: productImage,
-      tag: 'Bestselling',
-    },
-    {
-      id: '2',
-      name: 'Face Cream',
-      subtitle: 'Acne Clear  Cream',
-      price: 399,
-      oldPrice: 699,
-      image: productImage,
-      tag: '15% OFF',
-    },
-    {
-      id: '3',
-      name: 'Organic Rice',
-      subtitle: 'Acne Clear  Cream',
-      oldPrice: 699.00,
-      price: 250,
-      image: productImage,
-      tag: 'Hot',
-    },
-    {
-      id: '4',
-      name: 'Face Cream',
-      subtitle: 'Acne Clear  Cream',
-      price: 399,
-      oldPrice: 699,
-      image: productImage,
-      tag: '15% OFF',
-    },
-    {
-      id: '5',
-      name: 'Organic Rice',
-      subtitle: 'Acne Clear  Cream',
-      oldPrice: 699.00,
-      price: 250,
-      image: productImage,
-      tag: 'Hot',
-    },
-  ];
+  console.log("topDoctorstopDoctors", topDoctors);
+  const renderRecentDoctor =
+    useCallback(
+      ({ item }: any) => {
+
+        return (
+          <RecentDoctors
+            // image={{
+            //   uri: item?.image,
+            // }}
+            image={item?.image}
+            name={item?.name}
+            speciality={
+              item?.speciality
+            }
+            date={item?.date}
+            onPressReceipt={() =>
+              navigation.navigate(
+                'MedicalReceipt',
+              )
+            }
+            onPressReschedule={() =>
+              navigation.navigate(
+                'DoctorSlot',
+              )
+            }
+          />
+        );
+      },
+      [navigation],
+    );
+
+  /*
+    ====================================
+    LOADER
+    ====================================
+  */
+
+  if (loading) {
+
+    return (
+      <SafeAreaView
+        style={styles.loaderContainer}
+      >
+        <ActivityIndicator
+          size="large"
+          color={Colors.primaryColor}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  /*
+    ====================================
+    MAIN
+    ====================================
+  */
+
   return (
+    <SafeAreaView
+      style={styles.container}
+    >
 
-    <SafeAreaView style={{
-      flex: 1, 
-      paddingHorizontal: 20, backgroundColor: '#FDFDFB'
-    }}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={
+          Colors.background
+        }
+      />
 
-        <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
-
+      {/* HEADER */}
 
       <Header
         title="Doctors Consultation"
         subtitle="Find best doctor"
         backIcon={Images.backIcon}
-        onBack={() => { navigation.goBack() }}
+        onBack={() =>
+          navigation.goBack()
+        }
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
+      <FlatList
+        data={recentDoctors}
+        keyExtractor={(item) =>
+          String(item?.id)
+        }
 
-        <SearchBar
-          placeholder="Search doctors, concerns..."
-          icon={require('../../assets/images/search.png')}
-        />
+        showsVerticalScrollIndicator={
+          false
+        }
 
-        <PromoCard
-          title="Consult with Specialists"
-          desc="Over 50+ Medical Experts"
-          tag="SUMMER SALE"
-          image={Images.approved}
-          buttontext='Book an appointment online'
-          arrowIcon={require('../../assets/images/arrow.png')}
-          onPress={() => { }}
-          showButton={true}
-        />
+        renderItem={
+          renderRecentDoctor
+        }
 
-        <SectionHeader title="Recent Consultation" actionText="View History" />
+        ItemSeparatorComponent={() => (
+          <View
+            style={{ height: 12 }}
+          />
+        )}
 
-        <RecentProductsList data={recentProducts} />
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[
+              Colors.primaryColor,
+            ]}
+          />
+        }
 
-        <SectionHeader title="Consult by Concern" />
+        ListHeaderComponent={
+          <>
 
-        <CategoryList data={categories} navigation={navigation} />
+            {/* SEARCH */}
 
-        <SectionHeader title="Top Doctors" actionText="View all" />
+            <SearchBar
+              placeholder="Search doctors, concerns..."
+              icon={require('../../assets/images/search.png')}
+            />
 
-        <TopDoctorsCard data={doctorsData} navigation={navigation} />
+            <PromoCard title="Consult with Specialists" desc="Over 50+ Medical Experts" imageLeft={Images.PlusBag} image={require('../../assets/images/doctorbanner.png')} buttontext='Book an appointment online' approved={true} arrowIcon={require('../../assets/images/arrow.png')} onPress={() => { navigation.navigate('AllDoctors') }} showButton={true} />
 
-      </ScrollView>
+
+            {/* RECENT */}
+
+            <SectionHeader
+              title="Recent Consultation"
+              actionText="View History"
+              onPress={() =>
+                navigation.navigate(
+                  'ConsultHistory',
+                )
+              }
+            />
+
+
+          </>
+        }
+
+        ListFooterComponent={
+          <>
+
+            {/* CATEGORY */}
+
+            <SectionHeader
+              title="Consult by Concern"
+            />
+
+            <CategoryList
+              data={categories}
+              navigation={
+                navigation
+              }
+              doctor
+            />
+
+            {/* TOP DOCTORS */}
+
+            <SectionHeader
+              title="Top Doctors"
+              actionText="View all"
+              onPress={() =>
+                navigation.navigate(
+                  'AllDoctors',
+                )
+              }
+            />
+
+            <TopDoctorsCard
+              data={topDoctors}
+              navigation={
+                navigation
+              }
+            />
+
+            <View
+              style={{
+                height: 120,
+              }}
+            />
+
+          </>
+        }
+
+        contentContainerStyle={
+          styles.content
+        }
+      />
+
     </SafeAreaView>
   );
 };
 
-export default ConsultScreen;
+export default memo(
+  ConsultScreen,
+);
+
+const styles = StyleSheet.create({
+
+  container: {
+    flex: 1,
+    backgroundColor:
+      '#FDFDFB',
+    paddingHorizontal: 20,
+  },
+
+  content: {
+    paddingBottom: 40,
+  },
+
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor:
+      '#FDFDFB',
+  },
+
+});

@@ -9,16 +9,19 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images';
+import { Colors } from '../common/Colors';
 
 interface Props {
   onPress?: () => void;
   image: ImageSourcePropType;
   arrowIcon?: ImageSourcePropType;
-  buttontext ?: string;
+  buttontext?: string;
   title: string;
   desc: string;
   tag?: string;
-
+  approved?: boolean;
+  imageLeft?: ImageSourcePropType;
   showButton?: boolean;
 }
 
@@ -28,9 +31,10 @@ const PromoCard: React.FC<Props> = ({
   arrowIcon,
   title,
   desc,
+  imageLeft,
   buttontext,
   tag,
-
+  approved = false,
   showButton = true,
 }) => {
   return (
@@ -39,15 +43,28 @@ const PromoCard: React.FC<Props> = ({
       {/* ROW */}
       <View style={styles.row}>
 
+        {imageLeft && (
+          <View style={styles.imageWrapper}>
+            <Image source={imageLeft} style={styles.imageleft} />
+          </View>
+        )}
+
         <View style={styles.content}>
 
           {tag && (
             <View style={styles.tagContainer}>
               <Text style={styles.tag}>{tag}</Text>
             </View>
+
           )}
+
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.desc}>{desc}</Text>
+          <View style={{ flexDirection: 'row', gap: 5 }}>
+            {approved && <Image source={Images.approved} style={{ tintColor: '#64748B', height: 15, width: 15, }} />}
+
+            <Text style={styles.desc}>{desc}</Text>
+
+          </View>
 
         </View>
 
@@ -63,7 +80,7 @@ const PromoCard: React.FC<Props> = ({
             <Text style={styles.btnText}>{buttontext}</Text>
             {arrowIcon && <Image source={arrowIcon} style={styles.arrow} />}
           </TouchableOpacity>
-          
+
         </>
       )}
 
@@ -93,7 +110,23 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-    paddingRight: 10,
+    paddingLeft: 20,
+    // paddingRight: 20,
+  },
+
+  imageWrapper: {
+    backgroundColor: '#0D614E0D',
+    borderRadius: 12,
+    padding: 20, // 👈 /thoda spacing for design
+    alignSelf: 'flex-start', // 👈 important (shrink to content)
+  },
+
+  imageleft: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#0D614E0D',
+    resizeMode: 'contain',
+    // marginBottom: 10
   },
 
   image: {
@@ -121,8 +154,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
     lineHeight: 24,
-    marginTop: 10,
-    marginBottom: 8
+    // marginTop: 20,
+    marginBottom: 10
   },
 
   desc: {
@@ -134,7 +167,7 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
     marginVertical: 12,
   },
 
@@ -142,6 +175,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
   },
 
   btnText: {

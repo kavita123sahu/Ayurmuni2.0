@@ -255,7 +255,7 @@ const TopCategories = (props: any) => {
       
   
 
-   
+
       </View>
     </SafeAreaView>
   );

@@ -12,31 +12,26 @@ import {
   TouchableWithoutFeedback,
   Platform,
   TouchableOpacity,
+  SafeAreaView,
 } from 'react-native';
 
 import { Images } from '../../common/Images';
-import *as _AUTH_SERVICE from '../../services/AuthService'
+import * as _AUTH_SERVICE from '../../services/AuthService';
 import { showSuccessToast } from '../../config/Key';
-import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import GradientButton from '../../components/GradientButton';
-
-
 
 const Login: React.FC = (props: any) => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [tendername, setenderName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-
   const onLogin = async () => {
-    console.log("phoneNumber===>", phoneNumber);
-
     Keyboard.dismiss();
 
     if (phoneNumber.length !== 10) {
-      setIsLoading(false);
-      showSuccessToast('Please enter a valid 10-digit mobile number', 'error')
+      showSuccessToast(
+        'Please enter a valid 10-digit mobile number',
+        'error',
+      );
       return;
     }
 
@@ -47,47 +42,42 @@ const Login: React.FC = (props: any) => {
         phone_number: `+91${phoneNumber}`,
       };
 
-      const response: any = await _AUTH_SERVICE.send_otp(send_data);
-
-      const { data, message = "", status } = response;
-
-      console.log("response-otp", response);
+      const response: any =
+        await _AUTH_SERVICE.send_otp(send_data);
 
       const JSONReponse = await response.json();
+      console.log('OTP Response:', JSONReponse);
+      
+      const isCustomer =
+        JSONReponse?.data?.user_roles.some(
+          (role: string) =>
+            role?.toLowerCase() === 'customer',
+        );
 
-      console.log("reponse-userr", JSONReponse);
+      if (response?.status === 200) {
+        showSuccessToast(
+          response.message || 'OTP sent successfully',
+          'success',
+        );
 
-      if (status === 200) {
-        setIsLoading(false);
-        showSuccessToast(response.message || 'OTP send successfully', 'success');
-
-        if (!JSONReponse.is_new_user && JSONReponse.is_customer) {
-          props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });    // chnage krwana h backned s is_customer wrong aa rh h
-        }
-
-        else if (JSONReponse.is_new_user && !JSONReponse.is_customer) {
-          props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });
-        }
-
-        else if (!JSONReponse.is_new_user && !JSONReponse.is_customer) {
-          props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });
-        }
-
-        else {
-          props.navigation.navigate('OtpVerify', { phone: phoneNumber, newCustomer: JSONReponse.is_customer });
-
-        }
-
-      }
-
-      else {
-        setIsLoading(false);
-        showSuccessToast(JSONReponse?.phone_number || "Please Enter Valid Mobile Number", 'error');
+        props.navigation.navigate('OtpVerify', {
+          phone: phoneNumber,
+          customer: isCustomer,
+        });
+      } else {
+        showSuccessToast(
+          response?.message ||
+          'Please Enter Valid Mobile Number',
+          'error',
+        );
       }
     } catch (error) {
-      setIsLoading(false);
       console.error('Send OTP Error:', error);
-      showSuccessToast('Something went wrong. Please try again.', 'error');
+
+      showSuccessToast(
+        'Something went wrong. Please try again.',
+        'error',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -95,289 +85,335 @@ const Login: React.FC = (props: any) => {
 
   const isValid = phoneNumber.length === 10;
 
-
   return (
-
+    // <SafeAreaView style={styles.safeArea}>
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.flex}
+      behavior={
+        Platform.OS === 'ios'
+          ? 'padding'
+          : undefined
+      }
+      keyboardVerticalOffset={20}
     >
-
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback
+        onPress={Keyboard.dismiss}
+      >
         <ScrollView
-          style={styles.container}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          contentContainerStyle={
+            styles.scrollContainer
+          }
+        >
+          {/* ===== TOP GREEN SECTION ===== */}
 
-          <View style={styles.logoContainer}>
-            <Image
-              source={Images.FinalLogo}
-              style={styles.logo}
-              resizeMode='contain'
-            />
+          <View style={styles.topContainer}>
+            <View style={styles.logoWrapper}>
+              <Image
+                source={Images.FinalLogo}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+
+              <Text style={styles.brandName}>
+                AYURMUNI
+              </Text>
+
+              <Text style={styles.tagLine}>
+                ANCIENT WISDOM FOR YOUR MODERN
+                LIFESTYLE.
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeTitle}>Welcome to Ayurmuni</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Elevate your healthy lifestyle experience{'\n'}
-              with our trusted, seamless and{'\n'}
-              efficient services.
+          {/* ===== BOTTOM SECTION ===== */}
+
+          <View style={styles.bottomContainer}>
+            <Text style={styles.heading}>
+              Login with mobile number
             </Text>
 
-          </View>
+            <Text style={styles.subHeading}>
+              Continue your Ayurvedic wellness
+              journey with personalized insights
+              crafted for your lifestyle.
+            </Text>
 
-          <View style={styles.formContainer1}>
-            <Image source={Images.loginbanner} style={{ height: 21, width: 300 }} />
-          </View>
+            {/* ===== INPUT ===== */}
 
-          <View style={styles.formContainer}>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.countryCode}>
+                +91
+              </Text>
 
-            <Text style={styles.inputLabel}>Mobile Number</Text>
-
-            <View
-              style={[
-                styles.phoneInputContainer,
-                isValid && styles.phoneInputContainerActive,
-              ]}
-            >
-              <View style={styles.countryCodeContainer}>
-                <Text
-                  style={[
-                    styles.countryCode,
-                    isValid && styles.countryCodeActive,
-                  ]}
-                >
-                  +91
-                </Text>
-              </View>
+              <View style={styles.divider} />
 
               <TextInput
-                style={[
-                  styles.phoneInput,
-                  isValid && styles.phoneInputActive,
-                ]}
-                placeholder="XXX-XXX-XXXX"
-                placeholderTextColor="#9CA3AF"
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
-                keyboardType="numeric"
+                placeholder="Enter mobile number"
+                placeholderTextColor="#A0A7B5"
+                keyboardType="number-pad"
                 maxLength={10}
+                style={styles.input}
               />
             </View>
 
+            {/* ===== TERMS ===== */}
+
+            <View style={styles.termsWrapper}>
+              <View style={styles.checkCircle}>
+                <Text style={styles.checkText}>
+                  ✓
+                </Text>
+              </View>
+
+              <View style={styles.termsContent}>
+                <Text style={styles.termsText}>
+                  By continuing, you agree to our{' '}
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    props.navigation.navigate(
+                      'TermsCondition',
+                    )
+                  }>
+                  <Text style={styles.linkText}>
+                    Terms
+                  </Text>
+                </TouchableOpacity>
+
+                <Text style={styles.termsText}>
+                  {' '}and{' '}
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    props.navigation.navigate(
+                      'PrivacyPolicy',
+                    )
+                  }
+                >
+                  <Text style={styles.linkText}>
+                    Privacy Policy
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* ===== BUTTON ===== */}
 
             <TouchableOpacity
+              activeOpacity={0.8}
               onPress={onLogin}
-              disabled={phoneNumber.length !== 10 || isLoading}
+              disabled={!isValid || isLoading}
               style={[
                 styles.button,
-                phoneNumber.length === 10
-                  ? styles.buttonActive
-                  : styles.buttonDisabled,
+                !isValid &&
+                styles.buttonDisabled,
               ]}
             >
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text
-                  style={[
-                    styles.buttonText,
-                    phoneNumber.length === 10
-                      ? styles.textActive
-                      : styles.textDisabled,
-                  ]}
-                >
-                  Send OTP
+                <Text style={styles.buttonText}>
+                  GET OTP
                 </Text>
               )}
             </TouchableOpacity>
-
-            <View style={styles.termsContainer}>
-              <Text style={styles.termsText}>
-                By signing in you agreed to allforcure's{'\n'}
-                <Text style={styles.linkText}>Terms and Conditions</Text> Guidelines and our{' '}
-                <Text style={styles.linkText}>Privacy Policy</Text>
-              </Text>
-            </View>
           </View>
-
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
-
+    // </SafeAreaView>
   );
 };
 
+export default Login;
+
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
-    backgroundColor: Colors.white,
+  },
+
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0D6B57',
+  },
+
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: '#F8F8F8',
+    paddingBottom: 40,
+  },
+
+  // ===== TOP SECTION =====
+
+  topContainer: {
+    height: 350,
+    backgroundColor: '#0D6B57',
+    borderBottomLeftRadius: 38,
+    borderBottomRightRadius: 38,
     paddingHorizontal: 24,
   },
+
+  logoWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 30,
+  },
+
   logo: {
-    width: 76,
-    height: 76,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginTop: 120,
-    marginBottom: 30,
+    width: 95,
+    height: 95,
+    tintColor: '#FFFFFF',
+    marginBottom: 22,
   },
 
-  welcomeContainer: {
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 5
+  brandName: {
+    fontSize: 50,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsBold,
+    letterSpacing: 1,
+    marginBottom: -8,
   },
-  welcomeTitle: {
-    fontSize: 26,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 6,
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: Colors.subTextColor,
-    fontFamily: Fonts.PoppinsMedium,
+
+  tagLine: {
+    color: '#C8DDD7',
+    fontSize: 13,
     textAlign: 'center',
-    lineHeight: 24,
+    fontFamily: Fonts.PoppinsMedium,
+    letterSpacing: 0.8,
   },
-  formContainer: {
-    flex: 1, marginTop: 10,
 
+  // ===== BOTTOM SECTION =====
+
+  bottomContainer: {
+    flex: 1,
+    backgroundColor: '#F8F8F8',
+    paddingHorizontal: 28,
+    paddingTop: 36,
+    paddingBottom: 30,
   },
-  formContainer1: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 50
+
+  heading: {
+    fontSize: 28,
+    color: '#1F2937',
+    fontFamily: Fonts.PoppinsBold,
+    lineHeight: 42,
   },
-  phoneInputContainer: {
+
+  subHeading: {
+    marginTop: 12,
+    color: '#6B7280',
+    fontSize: 15,
+    lineHeight: 25,
+    fontFamily: Fonts.PoppinsRegular,
+    marginBottom: 36,
+  },
+
+  // ===== INPUT =====
+
+  inputWrapper: {
     flexDirection: 'row',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    overflow: 'hidden',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#D9DEE5',
+    paddingBottom: 14,
   },
-  phoneInputContainerActive: {
-  borderColor: Colors.bgborderColor, 
-  backgroundColor: Colors.onfillColor, 
-},
-phoneInputActive: {
-  color: Colors.primaryColor, 
-},
-countryCodeActive: {
-  color: Colors.primaryColor,
-},
-  countryCodeContainer: {
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-  },
+
   countryCode: {
-    fontSize: 16,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 20,
+    color: '#374151',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
-  phoneInput: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: Colors.textColor,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-  },
-  dividerText: {
+
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#D1D5DB',
     marginHorizontal: 16,
-    fontSize: 14,
-    color: Colors.textColor,
+  },
+
+  input: {
+    flex: 1,
+    fontSize: 20,
+    color: '#1F2937',
+    fontFamily: Fonts.PoppinsSemiBold,
+    paddingVertical: 0,
+  },
+
+  // ===== TERMS =====
+
+  termsWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 28,
+  },
+
+  checkCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+
+  checkText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsBold,
+  },
+
+  termsContent: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+
+  termsText: {
+    color: '#8A94A6',
+    fontSize: 13,
+    lineHeight: 22,
     fontFamily: Fonts.PoppinsMedium,
   },
 
-  termsContainer: {
-    paddingHorizontal: 20,
-    marginTop: 10,
-  },
-  termsText: {
-    fontSize: 14,
-    color: Colors.subTextColor,
-    fontFamily: Fonts.PoppinsMedium,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   linkText: {
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
-    fontSize: 14
-  },
-  loadingText: {
-    marginLeft: 8,
-    color: Colors.primaryColor,
-  },
-  verifyButtonLoading: {
-    backgroundColor: '#f0f0f0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verifyButton: {
-    height: 50,
-    backgroundColor: '#E8EDE3',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  verifyButtonText: {
-    color: Colors.questionGreen,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: Colors.black,
+    color: '#6A9E90',
+    fontSize: 13,
+    textDecorationLine: 'underline',
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 8,
-    marginLeft: 4,
   },
+
+  // ===== BUTTON =====
+
   button: {
-    height: 50,
-    borderRadius: 12,
+    height: 58,
+    backgroundColor: '#0D6B57',
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 55,
     marginBottom: 20,
   },
-  buttonActive: {
-    backgroundColor: Colors.primaryColor,
-  },
+
   buttonDisabled: {
-    backgroundColor: Colors.bottomBg,
+    opacity: 0.5,
   },
+
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  textActive: {
-    color: Colors.white,
-  },
-  textDisabled: {
-    color: '#64748B',
+    color: '#FFFFFF',
+    fontSize: 17,
+    letterSpacing: 0.5,
+    fontFamily: Fonts.PoppinsBold,
   },
 });
-
-export default Login;

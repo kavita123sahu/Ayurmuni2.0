@@ -19,7 +19,7 @@ import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
 
 import HomePage from "../screens/home/HomePage";
-import consultHome from "../screens/consult/consultHome";
+import ConsultHome from "../screens/consult/ConsultHome";
 import ProfilePage from "../screens/profile/ProfilePage";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import CustomeTab from "../components/CustomeTab";
@@ -70,10 +70,25 @@ import ConsultMentor from "../screens/mentor/ConsultMentor";
 import MentorCheckout from "../screens/mentor/MentorCheckout";
 import MentorOrder from "../screens/mentor/MentorOrder";
 import WelcomeScreen from "../screens/auth/WelcomeScree";
-import AssessmentScreen from "../screens/auth/AssessmentScreen";
+import RefundScreen from "../screens/mentor/RefundScreen";
+import ExchangeScreen from "../screens/mentor/ExchangeScreen";
+import MedicalReceipt from "../screens/consult/MedicalReceipt";
+import ConsultHistory from "../screens/consult/ConsultHistory";
+import AllDoctors from "../screens/consult/AllDoctors";
+import DoctorSlot from "../screens/consult/DoctorSlot";
+import DoctorProfile from "../screens/consult/DoctorProfile";
+import BookingConfrimScreen from "../screens/consult/BookingConfirmScreen";
+import AddCalendar from "../screens/consult/AddCalendar";
+import CategoryDoctor from "../screens/consult/CategoryDoctor";
+import DoctorSlipScreen from "../screens/consult/DoctorSlip";
+import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
+import NetworkError from "../screens/NetworkError";
+import AddEditAddress from "../components/AddEditAddress";
+import PrakritiProfile from "../screens/auth/PrakritiProfile";
+import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
+import EditProfile from "../screens/profile/EditProfile";
 
 enableScreens();
-
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
@@ -118,13 +133,13 @@ const TabStack = () => {
       }}
     >
       <Tab.Screen name="Home" component={HomePage} />
-      <Tab.Screen name="Mentor" component={MentorProfile} />
+      <Tab.Screen name="Products" component={ProductsScreen} />
 
-      <Tab.Screen name="History" component={OrderHistory} />
+      {/* <Tab.Screen name="History" component={OrderHistory} /> */}
       <Tab.Screen name="Profile" component={ProfilePage} />
       <Tab.Screen
         name="Consult"
-        component={consultHome}
+        component={ConsultHome}
         options={{ tabBarButton: () => null }} // 👈 hide from default tab
       />
     </Tab.Navigator>
@@ -183,7 +198,22 @@ const HomeStack = () => {
       <Stack.Screen name="MentorOrder" component={MentorOrder} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="History" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AssessmentScreen" component={AssessmentScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PrakritiProfile" component={PrakritiProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="RefundScreen" component={RefundScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ExchangeScreen" component={ExchangeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MedicalReceipt" component={MedicalReceipt} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ConsultHistory" component={ConsultHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AllDoctors" component={AllDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="DoctorSlot" component={DoctorSlot} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="DoctorProfile" component={DoctorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="BookingConfrimScreen" component={BookingConfrimScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AddCalendar" component={AddCalendar} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };
@@ -222,7 +252,7 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="HomeStack" screenOptions={hideHeader}>
+    <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
       <Stack.Screen name="SplashStack" component={SplashStack} />
       <Stack.Screen name="AuthStack" component={AuthStack} />
       <Stack.Screen name="HomeStack" component={HomeStack} />
@@ -239,9 +269,9 @@ const Navigator = () => {
 
     <NavigationContainer >
 
-      {/* {isConnected ?  */}
-      <MainNavigator />
-      {/* : <NetworkError />} */}
+      {isConnected ?
+        <MainNavigator />
+        : <NetworkError />}
 
     </NavigationContainer>
 

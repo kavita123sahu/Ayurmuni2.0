@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, StatusBar, ScrollView } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import OrderCard from '../../components/OrderCard';
 import Header from '../../components/Header';
@@ -7,6 +7,7 @@ import SearchBar from '../../components/SearchBar';
 import { Images } from '../../common/Images';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { Colors } from '../../common/Colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 const DATA = [
@@ -58,37 +59,41 @@ const formatStatus = (status: string): 'DELIVERED' | 'IN PROGRESS' => {
 const OrderHistory = (props: any) => {
 
     return (
-        // <ScreenWrapper>
-            <View style={styles.container}>
 
-                <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
+        <SafeAreaView style={styles.container}>
 
-                <Header
-                    title="Order History"
-                    subtitle="Track your medicines & labs"
-                    backIcon={Images.backIcon}
-                    onBack={() => { props.navigation.goBack() }}
-                />
+            <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
 
-                <SearchBar
-                    placeholder="Search order id..."
-                    icon={require('../../assets/images/search.png')}
-                />
-                
-                <FlatList
-                    data={DATA}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <OrderCard
-                        title={item.title}
-                        id={item.id}
-                        status={formatStatus(item.status)} // ✅ FIX
-                        date={item.date}
-                        amount={item.amount}
-                    />}
-                    showsVerticalScrollIndicator={false}
-                />
-            </View>
-        // </ScreenWrapper>
+            <Header
+                title="Order History"
+                subtitle="Track your medicines & labs"
+                backIcon={Images.backIcon}
+                onBack={() => { props.navigation.goBack() }}
+            />
+
+            <SearchBar
+                placeholder="Search order id..."
+                icon={require('../../assets/images/search.png')}
+            />
+
+
+            <FlatList
+                data={DATA}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <OrderCard
+                    title={item.title}
+                    id={item.id}
+                    status={formatStatus(item.status)} // ✅ FIX
+                    date={item.date}
+                    amount={item.amount}
+                />}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{
+                    paddingBottom: 100,
+                }}
+            />
+
+        </SafeAreaView>
     );
 };
 
@@ -98,10 +103,8 @@ export default OrderHistory;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // padding: 16,
         paddingHorizontal: 20,
-        backgroundColor: '#F9FAFB',
-        paddingBottom: 30
+        backgroundColor: Colors.background,
     },
 
     title: {

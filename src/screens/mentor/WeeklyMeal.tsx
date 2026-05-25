@@ -126,7 +126,7 @@ const WeeklyMeal = (props: any) => {
     return (
         <SafeAreaView style={styles.container} >
 
-               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
 
             <AppHeader
                 title="Meal Details"
@@ -188,8 +188,8 @@ const WeeklyMeal = (props: any) => {
             </ScrollView>
 
 
-            <TouchableOpacity style={styles.button} onPress={()=>props.navigation.navigate('YogaSession')}>
-                <Image source={Images.Spoon} style={{ height: 16, width: 16, tintColor: '#ffff', marginRight:10 }} />
+            <TouchableOpacity style={styles.button} onPress={() => props.navigation.navigate('YogaSession')}>
+                <Image source={Images.Spoon} style={{ height: 16, width: 16, tintColor: '#ffff', marginRight: 10 }} />
                 <Text style={styles.buttonText}>Smart Auto-Fill Week</Text>
             </TouchableOpacity>
 
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.borderColor,
         marginBottom: 15
     },
-    
+
     topRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',

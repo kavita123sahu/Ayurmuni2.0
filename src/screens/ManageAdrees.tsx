@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -6,462 +6,688 @@ import {
     StyleSheet,
     TouchableOpacity,
     Image,
-    TextInput,
     FlatList,
     StatusBar,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import AppHeader from '../components/AppHeader';
+
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
-
-type ScreenType = 'LIST' | 'FORM';
+import *as _PROFILE_SERVICES from '../services/ProfileServices';
+import { useFocusEffect } from '@react-navigation/native';
+import { showSuccessToast } from '../config/Key';
+import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 
 interface AddressItem {
     id: string;
     title: string;
+    address: string;
+    city: string;
+    address_line_1: string;
+    address_line_2: string;
+    address_type: string;
     icon: any;
 }
 
-const ManageAdrees: React.FC = (props: any) => {
-    const [screen, setScreen] = useState<ScreenType>('LIST');
+const ManageAddress: React.FC<any> = ({ navigation }) => {
+
     const [selectedId, setSelectedId] = useState('current');
 
-    const [address1, setAddress1] = useState('');
-    const [address2, setAddress2] = useState('');
-    const [city, setCity] = useState('');
-    const [zip, setZip] = useState('');
-    const [stateValue, setStateValue] = useState('');
+    const [addressData, setAddressData] = useState<AddressItem[]>([]);
 
-    const [focusedInput, setFocusedInput] = useState<string | null>(null);
+    const fetchAddresses = async () => {
 
-    const isFormValid =
-        address1.trim() !== '' &&
-        city.trim() !== '' &&
-        zip.trim() !== '' &&
-        stateValue.trim() !== '';
+        try {
 
-    const addressData: AddressItem[] = [
-        { id: '1', title: 'Home', icon: Images.home },
-        { id: '2', title: 'Office', icon: Images.office },
-    ];
+            const res: any = await _PROFILE_SERVICES.getAddresses();
 
-    const renderItem = ({ item }: { item: AddressItem }) => {
-        const isSelected = selectedId === item.id;
+            const json = await res.json();
+
+            console.log('ADDRESS_RESPONSE', json);
+
+            if (json?.success) {
+
+                console.log(
+                    'ADDRESS_DATA',
+                    json?.data?.results
+                );
+
+
+
+
+                setAddressData(
+                    json?.data?.results || []
+                );
+            }
+
+        } catch (error) {
+
+            console.log(
+                'Address Error:',
+                error
+            );
+        }
+    };
+
+
+    const DeleteAddresses = async (addressId: string) => {
+
+        console.log('Delete Address ID:', addressId);
+
+        try {
+            const res: any = await _PROFILE_SERVICES.DeleteAddresses(addressId);
+
+            const json = await res.json();
+
+            console.log('ADDRESS_DELETE_RESPONSE', json);
+
+            if (json?.success) {
+
+                 AddressEvents.emit(
+        ADDRESS_UPDATED,
+    );
+                showSuccessToast('Address deleted successfully', 'success');
+                fetchAddresses();
+
+            }
+
+        } catch (error) {
+
+            console.log(
+                'Address Delete Error:',
+                error
+            );
+        }
+
+    };
+
+    const UpdateDefaultAddress = async (item: AddressItem) => {
+
+        try {
+
+            // UI instant update
+            setSelectedId(item.id);
+
+            const payload = {
+                is_default: true,
+            };
+
+            console.log(
+                'DEFAULT_ADDRESS_PAYLOAD',
+                payload,
+            );
+
+            const res: any =
+                await _PROFILE_SERVICES.UpdateAddresses(
+                    item.id,
+                    payload,
+                );
+
+            const json = await res.json();
+
+            console.log(
+                'DEFAULT_ADDRESS_RESPONSE',
+                json,
+            );
+
+            if (json?.success) {
+
+
+                AddressEvents.emit(
+        ADDRESS_UPDATED,
+        json?.data,
+    );
+                showSuccessToast(
+                    'Default address updated',
+                    'success',
+                );
+
+                fetchAddresses();
+            }
+
+        } catch (error) {
+
+            console.log(
+                'DEFAULT_ADDRESS_ERROR',
+                error,
+            );
+        }
+    };
+
+
+    const formatTitle = (text: string) => {
+        if (!text) return '';
+        return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    };
+
+useEffect(() => {
+
+    // INITIAL API HIT
+    fetchAddresses();
+
+    const refreshAddress = () => {
+
+        console.log(
+            'ADDRESS_UPDATED_EVENT'
+        );
+
+        fetchAddresses();
+    };
+
+    // LISTENER
+    const subscription =
+        AddressEvents.addListener(
+            ADDRESS_UPDATED,
+            refreshAddress,
+        );
+
+    // CLEANUP
+    return () => {
+
+        subscription.remove();
+    };
+
+}, []);
+
+    const renderAddressItem = ({
+        item,
+    }: {
+        item: AddressItem;
+    }) => {
+
+        const isSelected =
+            selectedId === item.id;
 
         return (
+
             <TouchableOpacity
+                activeOpacity={0.8}
                 style={[
                     styles.addressCard,
-                    isSelected && styles.selectedCard,
+                    isSelected &&
+                    styles.selectedCard,
                 ]}
-                onPress={() => setSelectedId(item.id)}
+                onPress={() =>
+                    UpdateDefaultAddress(item)
+                }
             >
+
+                {/* LEFT */}
+
                 <View style={styles.iconContainer}>
-                    <Image source={item.icon} style={styles.iconInner} />
+
+                    <Image
+                        source={Images.home}
+                        style={styles.icon}
+                    />
+
                 </View>
 
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.addressText}>
-                        123 Organic Lane, Green 902
+                {/* CENTER */}
+
+                <View style={styles.cardContent}>
+
+                    <Text style={styles.cardTitle}>
+                        {formatTitle(item.address_type)}
                     </Text>
-                    <Text style={styles.addressSub}>
-                        Gurgaon, HR 122001
+
+                    <Text
+                        style={styles.addressText}
+                        numberOfLines={2}
+                    >
+                        {item.address_line_1}, {item.address_line_2}
+                    </Text>
+
+                    <Text style={styles.cityText}>
+                        {item.city}
                     </Text>
 
                     <View style={styles.actionRow}>
-                        <Text
-                            style={styles.actionText}
-                            onPress={() => setScreen('FORM')}
+
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            style={{ backgroundColor: '#e9ebf3', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
+                            onPress={() =>
+                                navigation.navigate(
+                                    'AddEditAddress',
+                                    {
+                                        type: 'EDIT',
+                                        data: item,
+                                    }
+                                )
+                            }
                         >
-                            Edit
-                        </Text>
-                        <Text style={styles.actionText}>Delete</Text>
-                    </View>
-                </View>
 
-                {isSelected && (
-                    <Image source={Images.tickIcon} style={styles.tickIcon} />
-                )}
-            </TouchableOpacity>
-        );
-    };
-
-    const renderList = () => {
-        const isSelected = selectedId === 'current';
-
-        return (
-            <>
-                <TouchableOpacity
-                    style={[
-                        styles.currentBox,
-                        isSelected && styles.selectedCard,
-                    ]}
-                    onPress={() => setSelectedId('current')}
-                >
-                    <View style={styles.iconContainer}>
-                        <Image source={Images.currentLocation} style={styles.locationInnerIcon} />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.currentTitle}>Current Location</Text>
-                        <Text style={styles.addressText}>
-                            123 Organic Lane, Green 902
-                        </Text>
-                        <Text style={styles.addressSub}>
-                            Gurgaon, HR 122001
-                        </Text>
-
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                            <Image source={Images.gps} style={{ height: 14, width: 14, marginTop: 7.5 }} />
-                            <Text style={styles.useLocation}>
-                                Use precise location
+                            <Text style={styles.editText}>
+                                Edit
                             </Text>
-                        </View>
+
+
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{ marginLeft: 10, backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
+                            onPress={() => DeleteAddresses(item.id)}
+                            activeOpacity={0.7}
+                        >
+
+                            <Text style={styles.deleteText}>
+                                Delete
+                            </Text>
+
+                        </TouchableOpacity>
+
                     </View>
 
-                    {isSelected && (
-                        <Image source={Images.tickIcon} style={styles.tickIcon} />
-                    )}
-                </TouchableOpacity>
+                </View>
 
-                <Text style={styles.sectionTitle}>Saved Address</Text>
+                {/* RIGHT */}
 
-                <FlatList
-                    data={addressData}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderItem}
-                    scrollEnabled={false}
-                />
-            </>
+                {
+                    isSelected && (
+                        <Image
+                            source={Images.tickIcon}
+                            style={styles.tickIcon}
+                        />
+                    )
+                }
+
+            </TouchableOpacity>
         );
     };
-
-    const renderForm = () => (
-        <>
-            <View style={styles.currentBadge}>
-                <Image source={Images.currentLocation} style={styles.smallIcon} />
-                <Text style={styles.currentBadgeText}>Current Location</Text>
-            </View>
-
-            <Text style={styles.inputLabel}>Address Line 1</Text>
-            <TextInput
-                value={address1}
-                onChangeText={setAddress1}
-                style={[
-                    styles.input,
-                    focusedInput === 'address1' && styles.inputActive,
-                ]}
-                placeholder="123 Organic Lane, Green 902"
-                placeholderTextColor="#98A2B3"
-                onFocus={() => setFocusedInput('address1')}
-                onBlur={() => setFocusedInput(null)}
-            />
-
-            <Text style={styles.inputLabel}>
-                Address Line 2 <Text style={{ color: '#98A2B3' }}>(optional)</Text>
-            </Text>
-            <TextInput
-                value={address2}
-                onChangeText={setAddress2}
-                style={[
-                    styles.input,
-                    focusedInput === 'address2' && styles.inputActive,
-                ]}
-                placeholder="123 Organic Lane, Green 902"
-                placeholderTextColor="#98A2B3"
-                onFocus={() => setFocusedInput('address2')}
-                onBlur={() => setFocusedInput(null)}
-            />
-
-            <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>City</Text>
-                    <TextInput
-                        value={city}
-                        onChangeText={setCity}
-                        style={[
-                            styles.input,
-                            focusedInput === 'city' && styles.inputActive,
-                        ]}
-                        placeholder="Gurgaon"
-                        placeholderTextColor="#98A2B3"
-                        onFocus={() => setFocusedInput('city')}
-                        onBlur={() => setFocusedInput(null)}
-                    />
-                </View>
-
-                <View style={{ width: 10 }} />
-
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Zip Code</Text>
-                    <TextInput
-                        value={zip}
-                        onChangeText={setZip}
-                        style={[
-                            styles.input,
-                            focusedInput === 'zip' && styles.inputActive,
-                        ]}
-                        placeholder="122001"
-                        placeholderTextColor="#98A2B3"
-                        onFocus={() => setFocusedInput('zip')}
-                        onBlur={() => setFocusedInput(null)}
-                    />
-                </View>
-            </View>
-
-            <Text style={styles.inputLabel}>State</Text>
-            <TextInput
-                value={stateValue}
-                onChangeText={setStateValue}
-                style={[
-                    styles.input,
-                    focusedInput === 'state' && styles.inputActive,
-                ]}
-                placeholder="Haryana"
-                placeholderTextColor="#98A2B3"
-                onFocus={() => setFocusedInput('state')}
-                onBlur={() => setFocusedInput(null)}
-            />
-
-            <TouchableOpacity
-                style={[
-                    styles.saveBtn,
-                    !isFormValid && styles.disabledBtn,
-                ]}
-                disabled={!isFormValid}
-            >
-                <Text
-                    style={[
-                        styles.saveText,
-                        !isFormValid && styles.disabledText,
-                    ]}
-                >
-                    Save & Continue
-                </Text>
-            </TouchableOpacity>
-        </>
-    );
 
     return (
+
         <SafeAreaView style={styles.container}>
 
-            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+            <StatusBar
+                barStyle="dark-content"
+                backgroundColor="#FFFFFF"
+            />
 
             <AppHeader
                 title="Manage Address"
                 leftIcon={Images.backIcon}
                 onLeftPress={() =>
-                    screen === 'FORM' ? setScreen('LIST') : props.navigation.goBack()
+                    navigation.goBack()
                 }
             />
 
-            <ScrollView contentContainerStyle={styles.scroll}>
-                {screen === 'LIST' ? renderList() : renderForm()}
+            <ScrollView
+                contentContainerStyle={
+                    styles.scroll
+                }
+                showsVerticalScrollIndicator={
+                    false
+                }
+            >
+
+                {/* CURRENT LOCATION */}
+
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[
+                        styles.currentCard,
+                        selectedId === 'current' &&
+                        styles.selectedCard,
+                    ]}
+                    onPress={() =>
+                        setSelectedId('current')
+                    }
+                >
+
+                    <View
+                        style={styles.locationBox}
+                    >
+
+                        <Image
+                            source={
+                                Images.currentLocation
+                            }
+                            style={
+                                styles.locationIcon
+                            }
+                        />
+
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+
+                        <Text
+                            style={styles.currentTitle}
+                        >
+                            Current Location
+                        </Text>
+
+                        <Text
+                            style={styles.addressText}
+                        >
+                            Sector 22 Gurgaon Haryana
+                        </Text>
+
+                        <Text style={styles.cityText}>
+                            Gurgaon, HR 122001
+                        </Text>
+
+                        <TouchableOpacity>
+
+                            <Text
+                                style={
+                                    styles.useLocation
+                                }
+                            >
+                                Use precise location
+                            </Text>
+
+                        </TouchableOpacity>
+
+                    </View>
+
+                    {
+                        selectedId ===
+                        'current' && (
+                            <Image
+                                source={
+                                    Images.tickIcon
+                                }
+                                style={
+                                    styles.tickIcon
+                                }
+                            />
+                        )
+                    }
+
+                </TouchableOpacity>
+
+                {/* SECTION */}
+
+                <Text style={styles.heading}>
+                    Saved Address
+                </Text>
+
+                <FlatList
+                    data={addressData}
+                    keyExtractor={(item) =>
+                        item.id
+                    }
+                    renderItem={
+                        renderAddressItem
+                    }
+                    scrollEnabled={false}
+                />
+
             </ScrollView>
 
-            {screen === 'LIST' && (
+            {/* FOOTER */}
+
+            <View style={styles.footer}>
+
                 <TouchableOpacity
-                    style={styles.checkout}
-                    onPress={() => setScreen('FORM')}
+                    activeOpacity={0.8}
+                    style={styles.addButton}
+                    onPress={() =>
+                        navigation.navigate(
+                            'AddEditAddress',
+                            {
+                                type: 'ADD',
+                            }
+                        )
+                    }
                 >
-                    <Text style={styles.checkoutText}>
-                        Add new address
+
+                    <Text
+                        style={
+                            styles.addButtonText
+                        }
+                    >
+                        Add New Address
                     </Text>
+
                 </TouchableOpacity>
-            )}
+
+            </View>
+
         </SafeAreaView>
     );
 };
 
-export default ManageAdrees;
+export default ManageAddress;
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FDFDFB' },
-    scroll: { padding: 20, paddingBottom: 40 },
 
-    currentBox: {
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+    },
+
+    scroll: {
+        padding: 20,
+        paddingBottom: 120,
+    },
+
+    currentCard: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
-        padding: 14,
-        borderRadius: 12,
-        marginBottom: 16,
+
+        backgroundColor: '#FFFFFF',
+
+        borderRadius: 22,
+
+        padding: 16,
+
+        marginBottom: 24,
+
         borderWidth: 1,
-        borderColor: '#0D614E1A',
+        borderColor: '#EEF2F6',
     },
 
     selectedCard: {
-        borderColor: '#0D614E',
+        borderColor:
+            Colors.primaryColor,
+
         backgroundColor: '#F0FDF9',
     },
 
-    currentTitle: {
-        fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 14,
-        color: '#0F172A',
+    locationBox: {
+        height: 48,
+        width: 48,
+
+        borderRadius: 16,
+
+        backgroundColor: '#ECFDF3',
+
+        justifyContent: 'center',
+        alignItems: 'center',
+
+        marginRight: 14,
     },
 
-    locationInnerIcon: {
-        height: 18,
-        width: 18,
+    locationIcon: {
+        height: 22,
+        width: 22,
         resizeMode: 'contain',
     },
 
-    addressText: {
-        fontSize: 12,
-        color: '#191C1E',
-        fontFamily: Fonts.PoppinsMedium,
+    currentTitle: {
+        fontSize: 15,
+
+        color: '#111827',
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
     },
 
-    addressSub: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
+    heading: {
+        fontSize: 20,
 
-    useLocation: {
-        color: '#0D614E',
-        fontSize: 12,
-        marginTop: 6,
-        fontFamily: Fonts.PoppinsMedium,
-    },
+        marginBottom: 16,
 
-    sectionTitle: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsMedium,
-        marginBottom: 10,
+        color: '#111827',
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
     },
 
     addressCard: {
         flexDirection: 'row',
-        padding: 14,
-        borderRadius: 12,
+
+        backgroundColor: '#FFFFFF',
+
+        borderRadius: 22,
+
+        padding: 16,
+
+        marginBottom: 14,
+
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        marginBottom: 12,
+        borderColor: '#EEF2F6',
     },
 
     iconContainer: {
-        height: 32,
-        width: 32,
-        borderRadius: 8,
-        backgroundColor: '#0D614E0D',
+        height: 46,
+        width: 46,
+
+        borderRadius: 14,
+
+        backgroundColor: '#F5F7FA',
+
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 10,
+
+        marginRight: 14,
     },
 
-    iconInner: {
+    icon: {
         height: 20,
         width: 20,
         resizeMode: 'contain',
     },
 
+    cardContent: {
+        flex: 1,
+    },
+
     cardTitle: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 15,
+
+        color: '#111827',
+
+        marginBottom: 2,
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
+    },
+
+    addressText: {
+        fontSize: 13,
+
+        lineHeight: 20,
+
+        color: '#667085',
+
+        fontFamily:
+            Fonts.PoppinsMedium,
+    },
+
+    cityText: {
+        fontSize: 12,
+
+        marginTop: 2,
+
+        color: '#98A2B3',
+
+        fontFamily:
+            Fonts.PoppinsMedium,
+    },
+
+    useLocation: {
+        marginTop: 8,
+
+        fontSize: 13,
+
+        color:
+            Colors.primaryColor,
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
     },
 
     actionRow: {
         flexDirection: 'row',
-        gap: 12,
-        marginTop: 6,
+
+        marginTop: 10,
+
+        gap: 16,
     },
 
-    actionText: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#0D614E',
+    editText: {
+        fontSize: 13,
+
+        color:
+            Colors.primaryColor,
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
+    },
+
+    deleteText: {
+        fontSize: 13,
+
+        color: '#EF4444',
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
     },
 
     tickIcon: {
-        width: 18,
-        height: 18,
+        height: 20,
+        width: 20,
+
+        tintColor:
+            Colors.primaryColor,
     },
 
-    checkout: {
-        backgroundColor: '#0D614E',
-        margin: 20,
-        paddingVertical: 18,
-        borderRadius: 14,
+
+    footer: {
+        backgroundColor: '#FFFFFF',
+
+        paddingHorizontal: 20,
+
+        paddingTop: 12,
+        paddingBottom: 20,
+
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+
+
+    addButton: {
+        minHeight: 56,
+
+        borderRadius: 18,
+
+        backgroundColor:
+            Colors.primaryColor,
+
+        justifyContent: 'center',
         alignItems: 'center',
-    },
 
-    checkoutText: {
-        color: '#fff',
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    currentBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#0D614E1A',
+        paddingVertical: 14,
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 10,
-        alignSelf: 'flex-start',
-        marginBottom: 16,
     },
 
-    currentBadgeText: {
-        marginLeft: 6,
-        fontSize: 14,
-        color: '#0D614E',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+    addButtonText: {
+        color: '#FFFFFF',
 
-    smallIcon: {
-        width: 22,
-        height: 22,
-    },
-
-    inputLabel: {
-        fontSize: 14,
-        marginBottom: 6,
-        color: '#1E293B',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    input: {
-        borderWidth: 1,
-        borderColor: '#0D614E33',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        marginBottom: 14,
-        fontSize: 13,
-        color: Colors.textColor,
-    },
-
-    inputActive: {
-        borderColor: '#0D614E80',
-        color: Colors.primaryColor
-    },
-
-    row: { flexDirection: 'row' },
-
-    saveBtn: {
-        backgroundColor: '#0D614E',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 40,
-    },
-
-    disabledBtn: {
-        backgroundColor: '#E5E7EB',
-    },
-
-    saveText: {
-        color: '#fff',
         fontSize: 16,
-        fontFamily: Fonts.PoppinsMedium,
+
+        textAlign: 'center',
+
+        fontFamily:
+            Fonts.PoppinsSemiBold,
     },
 
-    disabledText: {
-        color: '#64748B',
-    },
 });

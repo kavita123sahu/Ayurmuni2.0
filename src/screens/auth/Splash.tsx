@@ -128,12 +128,115 @@ import { Utils } from '../../common/Utils';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
 import { useDispatch } from 'react-redux';
+import *as _AUTH_SERVICES from '../../services/AuthService';
 import { setUserInfo } from '../../reduxfile/action/UserInfoAction';
 
 
 const Splash = (props: any) => {
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
+
+
+  const navigateToLogin = async () => {
+    await Utils.removeData('_TOKEN');
+    await Utils.removeData('_REFRESH_TOKEN');
+    await Utils.removeData('_USER_INFO');
+
+    props.navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'AuthStack',
+          params: {
+            screen: 'Login',
+          },
+        },
+      ],
+    });
+  };
+
+
+  const navigateToHome = () => {
+    props.navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'HomeStack',
+          params: {
+            screen: 'Home',
+          },
+        },
+      ],
+    });
+  };
+
+
+  const navigateToOnboarding = () => {
+    props.navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'HomeStack',
+          params: {
+            screen: 'Onboarding',
+          },
+        },
+      ],
+    });
+  };
+
+
+  const refreshAccessToken = async () => {
+    try {
+      const refreshToken =
+        await Utils.getData('_REFRESH_TOKEN');
+
+      if (!refreshToken) {
+        return null;
+      }
+
+      const response: any =
+        await _AUTH_SERVICES.refresh_token({
+          refresh_token: refreshToken,
+        });
+
+      if (response?.status !== 200) {
+        return null;
+      }
+
+      const json = await response.json();
+
+      const newAccessToken =
+        json?.data?.access_token;
+
+      const newRefreshToken =
+        json?.data?.refresh_token;
+
+      if (newAccessToken) {
+        await Utils.storeData(
+          '_TOKEN',
+          newAccessToken,
+        );
+      }
+
+      if (newRefreshToken) {
+        await Utils.storeData(
+          '_REFRESH_TOKEN',
+          newRefreshToken,
+        );
+      }
+
+      return newAccessToken;
+
+    } catch (error) {
+      console.log(
+        'REFRESH TOKEN ERROR =>',
+        error,
+      );
+
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (isFocused) {
@@ -143,53 +246,333 @@ const Splash = (props: any) => {
 
 
 
+  //   const getUser = async (
+  //   isRetry = false,
+  // ) => {
+
+  //   try {
+
+  //     // ACCESS TOKEN
+
+  //     const token =
+  //       await Utils.getData('_TOKEN');
+
+  //     console.log(
+  //       'ACCESS TOKEN =>',
+  //       token,
+  //     );
+
+  //     // NO TOKEN
+
+  //     if (!token) {
+
+  //       await navigateToLogin();
+  //       return;
+  //     }
+
+  //     // PROFILE API
+
+  //     const result: any =
+  //       await _PROFILE_SERVICES.user_profile();
+
+  //     console.log(
+  //       'PROFILE API STATUS =>',
+  //       result?.status,
+  //     );
+
+  //     // SUCCESS
+
+  //     if (result?.status === 200) {
+
+  //       const JSONUser =
+  //         await result.json();
+
+  //       console.log(
+  //         'PROFILE DATA =>',
+  //         JSONUser,
+  //       );
+
+  //       const userData =
+  //         JSONUser?.data || {};
+
+  //       // STORE USER
+
+  //       await Utils.storeData(
+  //         '_USER_INFO',
+  //         JSON.stringify(userData),
+  //       );
+
+  //       // HOME
+
+  //       navigateToHome();
+
+  //       return;
+  //     }
+
+  //     // PROFILE NOT FOUND
+  //     // => ONBOARDING
+
+  //     if (result?.status === 404) {
+
+  //       console.log(
+  //         'PROFILE NOT FOUND',
+  //       );
+
+  //       navigateToOnboarding();
+
+  //       return;
+  //     }
+
+  //     // TOKEN EXPIRED
+  //     // => REFRESH TOKEN
+
+  //     if (result?.status === 401) {
+
+  //       console.log(
+  //         'TOKEN EXPIRED',
+  //       );
+
+  //       // PREVENT INFINITE LOOP
+
+  //       if (isRetry) {
+
+  //         console.log(
+  //           'REFRESH TOKEN FAILED',
+  //         );
+
+  //         showSuccessToast(
+  //           'Session expired',
+  //           'error',
+  //         );
+
+  //         await navigateToLogin();
+
+  //         return;
+  //       }
+
+  //       // GENERATE NEW TOKEN
+
+  //       const newToken =
+  //         await refreshAccessToken();
+
+  //       // REFRESH FAILED
+
+  //       if (!newToken) {
+
+  //         showSuccessToast(
+  //           'Session expired',
+  //           'error',
+  //         );
+
+  //         await navigateToLogin();
+
+  //         return;
+  //       }
+
+  //       // RETRY API
+
+  //       return getUser(true);
+  //     }
+
+  //     // SERVER ERROR
+
+  //     if (result?.status >= 500) {
+
+  //       showSuccessToast(
+  //         'Server error. Please try again later.',
+  //         'error',
+  //       );
+
+  //       return;
+  //     }
+
+  //     // INTERNET / UNKNOWN
+
+  //     showSuccessToast(
+  //       'Something went wrong',
+  //       'error',
+  //     );
+
+  //   } catch (error: any) {
+
+  //     console.log(
+  //       'GET USER ERROR =>',
+  //       error,
+  //     );
+
+  //     // NETWORK ERROR
+
+  //     if (
+  //       error?.message?.includes('Network')
+  //     ) {
+
+  //       showSuccessToast(
+  //         'No internet connection',
+  //         'error',
+  //       );
+
+  //       return;
+  //     }
+
+  //     // TIMEOUT
+
+  //     if (
+  //       error?.message?.includes('timeout')
+  //     ) {
+
+  //       showSuccessToast(
+  //         'Request timeout',
+  //         'error',
+  //       );
+
+  //       return;
+  //     }
+
+  //     // UNKNOWN ERROR
+
+  //     showSuccessToast(
+  //       'Unexpected error occurred',
+  //       'error',
+  //     );
+  //   }
+  // };
+
+
   const getUser = async () => {
     try {
-      const token = await Utils.getData('_TOKEN');
-      console.log('tokenn---->>>', token);
-      if (token) {
-        const result: any = await _PROFILE_SERVICES.user_profile();
-        const JSONUser = await result.json();
-        console.log("UserProfileData:", JSONUser);
-        if (result.status === 200) {
-          Utils.storeData('_USER_INFO', JSONUser);
-          dispatch(setUserInfo(JSONUser));
-          
-          setTimeout(() => {
-            props.navigation.replace('HomeStack', { screeen: 'Home' })
-          }, 1000);
-          // props.navigation.replace('HomeStack', { screeen: 'Home' })
-        }
 
-        else {
-          showSuccessToast("Please Fill the Onboarding Form to Access the Application", 'error')
-          props.navigation.replace('AuthStack', { screeen: 'Login' })
-        }
+      // TOKEN
+
+      const token =
+        await Utils.getData('_TOKEN');
+
+      console.log('TOKEN =>', token);
+
+      // NO TOKEN
+
+      if (!token) {
+
+        props.navigation.replace(
+          'AuthStack',
+          {
+            screen: 'Login',
+          },
+        );
+
+        return;
       }
 
-      else {
-        setTimeout(() => {
-          props.navigation.replace('AuthStack', { screeen: 'Login' })
-        }, 2000);
-        // props.navigation.replace('AuthStack', { screeen: 'Login' })
+      // PROFILE API
 
+      const result: any =
+        await _PROFILE_SERVICES.user_profile();
+
+      console.log(
+        'PROFILE STATUS =>',
+        result?.status,
+      );
+
+      // 404 = CUSTOMER PROFILE NOT FOUND
+      // => ONBOARDING
+
+      if (result?.status === 404) {
+
+        console.log(
+          'CUSTOMER PROFILE NOT FOUND',
+        );
+
+        props.navigation.replace(
+          'HomeStack',
+          {
+            screen: 'Onboarding',
+          },
+        );
+
+        return;
       }
+
+      if (result?.status === 401) {
+
+        console.log(
+          'TOKEN EXPIRED',
+        );
+
+        props.navigation.replace(
+          'AuthStack',
+          {
+            screen: 'Login',
+          },
+        );
+
+        return;
+      }
+      
+      // OTHER API FAILURE
+
+      if (result?.status !== 200) {
+
+        console.log(
+          'PROFILE API FAILED',
+        );
+
+        showSuccessToast(
+          'Something went wrong',
+          'error',
+        );
+
+        return;
+      }
+
+      // SUCCESS RESPONSE
+
+      const JSONUser =
+        await result.json();
+
+      console.log(
+        'PROFILE DATA =>',
+        JSONUser,
+      );
+
+      // STORE USER
+
+      await Utils.storeData(
+        '_USER_INFO', JSON.stringify(JSONUser?.data));
+
+      // HOME
+
+      props.navigation.replace(
+        'HomeStack',
+        {
+          screen: 'Home',
+        },
+      );
+
     } catch (error) {
-      console.log(error);
+
+      console.log(
+        'GET USER ERROR =>',
+        error,
+      );
+
+      showSuccessToast(
+        'Network Error',
+        'error',
+      );
     }
-  }
+  };
+
 
 
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={'#466425'} barStyle={'light-content'} />
-      
+
       <Animatable.View
         animation="slideInDown"
         duration={1500}
         useNativeDriver
-        style={styles.logoContainer}
-      >
+        style={styles.logoContainer}>
+
         <Image
           source={Images.FinalLogo}
           style={styles.logo}

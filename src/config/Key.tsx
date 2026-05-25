@@ -6,7 +6,7 @@ export const BaseUrl = {
     url: 'https://clikshop.co.in/api/v1/',
     urlV3: 'https://clikshop.co.in/api/v3/',
     base: 'https://clikshop.co.in/',
-    base_url: 'https://jb56c8mh-8002.inc1.devtunnels.ms/',
+    base_url: 'https://06e4-203-110-81-106.ngrok-free.app/',
 };
 
 export const Method = {
@@ -30,24 +30,30 @@ export interface ApiResponse {
     user_id?: string
 }
 
-export const showSuccessToast = (message: string, type: string) => {
+export const showSuccessToast = (
+    message: string,
+    type: 'success' | 'error',
+) => {
+
     Toast.show({
-        type: type,
+        type,
         text2: message,
         position: 'top',
         visibilityTime: 3000,
         autoHide: true,
-        topOffset: Platform.OS === 'ios' ? 40 : 100,
+        topOffset: Platform.OS === 'ios' ? 50 : 60,
 
         text2Style: {
             textAlign: 'center',
             fontFamily: Fonts.PoppinsMedium,
-            fontSize: 18,
-            color: type === 'success' ? '#0D614E' : '#F43F5E'
+            fontSize: 16,
+            color:
+                type === 'success'
+                    ? '#0D614E'
+                    : '#F43F5E',
         },
     });
-}
-
+};
 
 export const getExpectedDeliveryDate = (rangeStr: string) => {
     const [day, month] = rangeStr.split("–")[0].trim().split(" ");

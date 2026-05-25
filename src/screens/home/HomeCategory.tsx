@@ -28,7 +28,7 @@ const HomeCategory = ({ data = [], navigation }: any) => {
     const handlePress = useCallback((item: Category) => {
         switch (item.name) {
             case 'Doctors':
-                // navigation.navigate('Consult');
+                navigation.navigate('Consult');
                 break;
 
             case 'Medicine':
@@ -37,6 +37,15 @@ const HomeCategory = ({ data = [], navigation }: any) => {
 
             case 'Products':
                 navigation.navigate('ProductsScreen');
+                break;
+
+            case 'Yoga':
+                navigation.navigate('YogaScreen');
+                break;
+                
+            case 'Diet':
+
+                navigation.navigate('DietScreen');
                 break;
 
             default:

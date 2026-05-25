@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,8 @@ import {
     Alert,
     Image,
     StatusBar,
+    Modal,
+    Pressable,
 } from 'react-native';
 
 import ProfileHeader from '../../components/ProfileHeader';
@@ -19,18 +21,41 @@ import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ProfileServices from '../../services/ProfileServices';
+import { useFocusEffect } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
 
 const ProfilePage = ({ navigation }: any) => {
 
-    const user = {
-        name: 'Arjun Sharma',
-        phone: '+919691457891',
-        email: 'arjun@gmail.com',
-        image: 'https://i.pravatar.cc/150?img=3',
-        consults: 2,
-        orders: 14,
-        reports: 5,
+
+    const [logoutVisible, setLogoutVisible] = useState(false);
+    const [user, setUser] = useState(null);
+
+    const fetchUserData = async () => {
+        try {
+            const token = await Utils.getData('_TOKEN');
+
+            if (!token) return;
+            const res: any = await ProfileServices.user_profile();
+            const json = await res.json();
+            console.log("profile_response", json);
+            const userData: any = json?.data;
+            setUser(userData || null);
+        } catch (error) {
+            console.log('Profile Error:', error);
+        }
     };
+
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchUserData();
+        }, [])
+    );
+
+    const logout = () => {
+        setLogoutVisible(true);
+    };
+
 
     const accountMenu = [
         { id: 1, title: 'Patient Details', icon: Images.patient },
@@ -44,6 +69,10 @@ const ProfilePage = ({ navigation }: any) => {
 
         { id: 7, title: 'Wishlist', icon: Images.favourite },
         { id: 8, title: 'Mentor', icon: Images.medical },
+
+
+        { id: 9, title: 'MyCart', icon: Images.shopCart },
+        { id: 10, title: 'Analysis', icon: Images.ImageContain }
     ];
 
     const preferenceMenu = [
@@ -76,7 +105,7 @@ const ProfilePage = ({ navigation }: any) => {
                 break;
 
             case 'Favourite Doctor':
-                navigation.navigate('HelpCenterScreen');
+                navigation.navigate('AllDoctors');
                 break;
 
             case 'Wishlist':
@@ -85,6 +114,10 @@ const ProfilePage = ({ navigation }: any) => {
 
             case 'Mentor':
                 navigation.navigate('Mentor');
+                break;
+
+            case 'MyCart':
+                navigation.navigate('MyCart');
                 break;
 
             case 'Payments':
@@ -100,6 +133,10 @@ const ProfilePage = ({ navigation }: any) => {
                 navigation.navigate('FAQScreen');
                 break;
 
+            case 'Analysis':
+                navigation.navigate('PrakritiProfile');
+                break;
+
 
 
             default:
@@ -107,21 +144,16 @@ const ProfilePage = ({ navigation }: any) => {
         }
     };
 
-    // ✅ LOGOUT
-    const logout = async () => {
-        Alert.alert('Logout', 'Are you sure you want to logout?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Logout',
-                onPress: async () => {
-                    await Utils.clearAllData();
-                    navigation.replace('AuthStack', { screen: 'Login' });
-                },
-            },
-        ]);
+    const handleLogout = async () => {
+        setLogoutVisible(false);
+
+        await Utils.clearAllData();
+
+        navigation.replace('AuthStack', {
+            screen: 'Login',
+        });
     };
 
-    // ✅ MENU ITEM
     const MenuItem = ({ item }: any) => {
         const isDisabled =
             item.title === 'Settings' || item.title === 'Payments' || item.title === 'FAQ';
@@ -159,7 +191,6 @@ const ProfilePage = ({ navigation }: any) => {
         );
     };
 
-    // ✅ SECTION
     const Section = ({ title, children }: any) => {
         return (
             <View style={styles.wrapper}>
@@ -172,58 +203,122 @@ const ProfilePage = ({ navigation }: any) => {
     };
 
     return (
-        // <ScreenWrapper>
-            <SafeAreaView style={styles.container} >
 
-  <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
+        <SafeAreaView style={styles.container} >
 
-                {/* HEADER */}
-                
-                <Header
-                    title="Profile"
-                    subtitle="Manage your account"
-                    backIcon={Images.backIcon}
-                    onBack={() => { }}
+            <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
+
+            <Header
+                title="Profile"
+                subtitle="Manage your account"
+                backIcon={Images.backIcon}
+
+                onBack={() => { navigation.goBack() }}
+            />
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }} >
+
+                {/* PROFILE CARD */}
+
+                <ProfileHeader user={user} />
+
+                {/* ACCOUNT */}
+                <Section title="Account">
+                    {accountMenu.map((item) => (
+                        <MenuItem key={item.id} item={item} />
+                    ))}
+                </Section>
+
+                {/* PREFERENCE */}
+                <Section title="Preference">
+                    {preferenceMenu.map((item) => (
+                        <MenuItem key={item.id} item={item} />
+                    ))}
+                </Section>
+
+                <PrimaryButton
+                    title="Logout"
+                    icon={Images.logout}
+                    backgroundColor="#FEF2F2"
+                    textColor={Colors.errorColor}
+                    borderColor='#FFCECE'
+                    TextFont={Fonts.PoppinsRegular}
+                    onPress={logout}
                 />
 
-                <ScrollView showsVerticalScrollIndicator={false}>
 
-                    {/* PROFILE CARD */}
+                <Text style={styles.version}>APP VERSION 1.2</Text>
 
-                    <ProfileHeader user={user} />
-
-
-                    {/* ACCOUNT */}
-                    <Section title="Account">
-                        {accountMenu.map((item) => (
-                            <MenuItem key={item.id} item={item} />
-                        ))}
-                    </Section>
-
-                    {/* PREFERENCE */}
-                    <Section title="Preference">
-                        {preferenceMenu.map((item) => (
-                            <MenuItem key={item.id} item={item} />
-                        ))}
-                    </Section>
+            </ScrollView>
 
 
-                    <PrimaryButton
-                        title="Logout"
-                        icon={Images.logout}
-                        backgroundColor="#FEF2F2"
-                        textColor={Colors.errorColor}
-                        borderColor='#FFCECE'
-                        TextFont={Fonts.PoppinsRegular}
-                        onPress={logout}
-                    />
+            {/* ================= LOGOUT MODAL ================= */}
 
+            <Modal
+                transparent
+                visible={logoutVisible}
+                animationType="fade"
+                statusBarTranslucent
+            >
+                <Pressable
+                    style={styles.overlay}
+                    onPress={() => setLogoutVisible(false)}
+                >
+                    <Pressable style={styles.modalContainer}>
 
-                    <Text style={styles.version}>APP VERSION 1.2</Text>
+                        {/* ICON */}
+                        <View style={styles.iconWrapper}>
+                            <Text style={styles.logoutEmoji}>👋</Text>
+                        </View>
 
-                </ScrollView>
-            </SafeAreaView>
-        // </ScreenWrapper>
+                        {/* TITLE */}
+                        <Text style={styles.modalTitle}>
+                            Logout
+                        </Text>
+
+                        {/* SUBTITLE */}
+                        <Text style={styles.modalSubtitle}>
+                            Are you sure you want to logout from Ayurmuni?
+                        </Text>
+
+                        {/* BUTTONS */}
+                        <View style={styles.buttonRow}>
+
+                            {/* CANCEL */}
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                style={styles.cancelBtn}
+                                onPress={() => setLogoutVisible(false)}
+                            >
+                                <Text style={styles.cancelText}>
+                                    No
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* LOGOUT */}
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                style={styles.logoutBtnWrapper}
+                                onPress={handleLogout}
+                            >
+                                <LinearGradient
+                                    colors={['#0D614E', '#159B7E']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.logoutBtn}
+                                >
+                                    <Text style={styles.logoutText}>
+                                        Yes, Logout
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+
+                        </View>
+
+                    </Pressable>
+                </Pressable>
+            </Modal>
+        </SafeAreaView>
 
     );
 };
@@ -235,7 +330,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
-        paddingBottom: 100,
         backgroundColor: '#FDFDFB'
 
     },
@@ -302,19 +396,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: "#A0A0A0",
     },
-    logoutBtn: {
-        marginTop: 20,
-        borderWidth: 1,
-        borderColor: '#FF4D4F',
-        padding: 14,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-
-    logoutText: {
-        color: '#FF4D4F',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
 
     version: {
         textAlign: 'center',
@@ -323,5 +404,103 @@ const styles = StyleSheet.create({
         marginTop: 10,
         paddingVertical: 10,
         color: "#A1A1AA",
+    },
+
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+
+    modalContainer: {
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 28,
+        paddingHorizontal: 22,
+        paddingVertical: 28,
+        alignItems: 'center',
+
+        shadowColor: '#000',
+        shadowOpacity: 0.18,
+        shadowRadius: 18,
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
+
+        elevation: 10,
+    },
+
+    iconWrapper: {
+        width: 82,
+        height: 82,
+        borderRadius: 100,
+        backgroundColor: '#0D614E12',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 18,
+    },
+
+    logoutEmoji: {
+        fontSize: 34,
+    },
+
+    modalTitle: {
+        fontSize: 24,
+        color: '#111827',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 8,
+    },
+
+    modalSubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 22,
+        fontFamily: Fonts.PoppinsRegular,
+        paddingHorizontal: 8,
+    },
+
+    buttonRow: {
+        flexDirection: 'row',
+        marginTop: 28,
+        width: '100%',
+        gap: 12,
+    },
+
+    cancelBtn: {
+        flex: 1,
+        height: 54,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+    },
+
+    cancelText: {
+        color: '#374151',
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    logoutBtnWrapper: {
+        flex: 1,
+    },
+
+    logoutBtn: {
+        height: 54,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    logoutText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 });

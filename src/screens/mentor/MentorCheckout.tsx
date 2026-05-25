@@ -133,7 +133,7 @@ export default function CheckoutScreen(props: any) {
 
   };
 
-
+  
   return (
     <SafeAreaView style={styles.container}>
 
@@ -214,7 +214,7 @@ export default function CheckoutScreen(props: any) {
             },
           ]}
         >
-          <PaymentPlan onClose={closeEMI}  navigation ={props.navigation}/>
+          <PaymentPlan onClose={closeEMI} navigation={props.navigation} />
         </Animated.View>
       )}
     </SafeAreaView>

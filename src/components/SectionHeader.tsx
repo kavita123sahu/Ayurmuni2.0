@@ -10,6 +10,7 @@ interface Props {
 }
 
 const SectionHeader: React.FC<Props> = ({ title, actionText, onPress }) => {
+  console.log("navigationnn--------", onPress);
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>

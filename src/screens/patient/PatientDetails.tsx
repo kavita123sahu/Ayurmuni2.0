@@ -18,6 +18,9 @@ import SelectedPatientCard from './SelectedPatient';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { Utils } from '../../common/Utils';
+import * as  _PROFILE_SERVICES from '../../services/ProfileServices';
 
 const dummyPatients: Patient[] = [
   {
@@ -41,6 +44,18 @@ const dummyPatients: Patient[] = [
   },
 ];
 
+
+interface  UserInterface {
+  first_name :  string ;
+  last_name : string ;
+  profile_picture : string;
+  phone_number : string;
+
+}
+
+
+
+
 const PatientDetails: React.FC = (props: any) => {
   const [patients, setPatients] = useState<Patient[]>(dummyPatients);
 
@@ -50,76 +65,105 @@ const PatientDetails: React.FC = (props: any) => {
     );
   };
 
-  const selectedPatient = patients.find(p => p.selected);
+
+ const [user, setUser] = useState<UserInterface | null>(null);
+
+  const fetchUserData = async () => {
+    try {
+      const token = await Utils.getData('_TOKEN');
+
+      if (!token) return;
+      const res: any = await _PROFILE_SERVICES.user_profile();
+      const json = await res.json();
+      console.log("profile_response", json);
+      const userData: any = json?.data;
+      setUser(userData || null);
+    } catch (error) {
+      console.log('Profile Error:', error);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserData();
+    }, [])
+  );
+
+
+
+  const fullName = user?.first_name + ' ' + user?.last_name;
+  const phoneNumber = user?.phone_number;
+  const profileImage = user?.profile_picture;
 
   return (
     <SafeAreaView style={styles.safeArea}>
 
-        <StatusBar barStyle={'dark-content'} backgroundColor={'#ffffff'} />
+      <StatusBar barStyle={'dark-content'} backgroundColor={'#ffffff'} />
 
-        <Header
-          title="Patient Details"
-          subtitle="Manage family profiles"
-          backIcon={Images.backIcon}
-          onBack={() => { props.navigation.goBack() }}
+      <Header
+        title="Patient Details"
+        subtitle="Manage family profiles"
+        backIcon={Images.backIcon}
+        onBack={() => { props.navigation.goBack() }}
+      />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+
+        <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
+
+        <SelectedPatientCard
+          name={fullName || ""}
+          phone={phoneNumber || ""}
+          relation="Self"
+          image={profileImage || ""}
+          navigation={props.navigation}
+        // onViewRecords={() => navigation.navigate('Records')}
         />
- 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-        >
 
-          <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
 
-          <SelectedPatientCard
-            name="Arjun Sharma"
-            phone="+91 9876543210"
-            relation="Self"
-            image="https://i.pravatar.cc/100?img=3"
-          // onViewRecords={() => navigation.navigate('Records')}
+        <View style={styles.rowBetween}>
+          <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
+
+          <TouchableOpacity >
+            <Text style={Styles.addBtn}>+  Add Patient</Text>
+          </TouchableOpacity>
+        </View>
+
+
+        <View style={{ marginBottom: 10 }}>
+          <FlatList
+            data={patients}
+            renderItem={({ item }) => (
+              <PatientCard patient={item} onSelect={handleSelect} navigation={props.navigation} />
+            )}
+            keyExtractor={item => item.id}
+            scrollEnabled={false}
           />
+        </View>
 
-       
-          <View style={styles.rowBetween}>
-            <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
-
-            <TouchableOpacity >
-              <Text style={Styles.addBtn}>+  Add Patient</Text>
-            </TouchableOpacity>
+        {/* ── INFO BOX ── */}
+        <View style={styles.infoBox}>
+          <View style={styles.iconCircle}>
+            <Image source={Images.notification} style={styles.IconSize} />
           </View>
 
-
-          <View style={{ marginBottom: 10 }}>
-            <FlatList
-              data={patients}
-              renderItem={({ item }) => (
-                <PatientCard patient={item} onSelect={handleSelect} navigation={props.navigation} />
-              )}
-              keyExtractor={item => item.id}
-              scrollEnabled={false}
-            />
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>Switching Patients</Text>
+            <Text style={styles.infoText}>
+              Selecting a different family member will update your dashboard and
+              appointments for that profile.
+            </Text>
           </View>
+        </View>
 
-          {/* ── INFO BOX ── */}
-          <View style={styles.infoBox}>
-            <View style={styles.iconCircle}>
-              <Image source={Images.notification} style={styles.IconSize} />
-            </View>
-
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Switching Patients</Text>
-              <Text style={styles.infoText}>
-                Selecting a different family member will update your dashboard and
-                appointments for that profile.
-              </Text>
-            </View>
-          </View>
-
-          {/* ── VERSION ── */}
-          <Text style={styles.version}>APP VERSION 1.2</Text>
-        </ScrollView>
-      </SafeAreaView>
+        {/* ── VERSION ── */}
+        <Text style={styles.version}>APP VERSION 1.2</Text>
+      </ScrollView>
+    </SafeAreaView>
 
   );
 };
@@ -129,14 +173,14 @@ export default PatientDetails;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    paddingHorizontal:20,
-    
+    paddingHorizontal: 20,
+
     // paddingBottom:80,
     backgroundColor: '#ffffff',
   },
   scroll: {
     flex: 1,
-    backgroundColor : "#FDFDFB"
+    backgroundColor: "#FDFDFB"
   },
   container: {
     // padding: 18,

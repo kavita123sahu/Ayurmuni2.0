@@ -70,7 +70,7 @@ const PaymentsScreen = (props: any) => {
                 title="Payments"
                 subtitle="Manage Your Transaction"
                 backIcon={Images.backIcon}
-                onBack={() => { }}
+                onBack={() => { props.navigation.goBack() }}
             />
 
 
@@ -103,26 +103,25 @@ const PaymentsScreen = (props: any) => {
                         status={item.status}
                     />
                 ))}
+                
+                <View style={{ marginTop: 30 }}>
 
+                    <PrimaryButton
+                        title="Pay Now"
+                        icon={Images.approved}
+                        backgroundColor={Colors.primaryColor}
+                        textColor={Colors.white}
+                        TextFont={Fonts.PoppinsMedium}
+                    />
 
-   <View style={{ marginTop:30}}>
-             
- <PrimaryButton
-                    title="Pay Now"
-                    icon={Images.approved}
-                    backgroundColor={Colors.primaryColor}
-                    textColor={Colors.white}
-                    TextFont={Fonts.PoppinsMedium}
-                />
+                    <Text style={{ textAlign: 'center', color: '#94A3B8', marginTop: 12, fontFamily: Fonts.PoppinsRegular }}> ENCRYPTED & SECURE PAYMENTS</Text>
+                </View>
 
-                <Text  style={{ textAlign: 'center', color: '#94A3B8', marginTop: 12, fontFamily: Fonts.PoppinsRegular }}> ENCRYPTED & SECURE PAYMENTS</Text>
-            </View> 
-  
 
 
             </ScrollView>
 
-         
+
         </SafeAreaView>
     );
 };

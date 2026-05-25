@@ -1,5 +1,6 @@
 import { Utils } from "../common/Utils";
 import { ApiResponse, BaseUrl, Method } from "../config/Key";
+import { apiClient } from "./APIconfig";
 
 
 export const send_otp = async (data: Object) => {
@@ -9,10 +10,12 @@ export const send_otp = async (data: Object) => {
                 method: Method.POST,
                 body: JSON.stringify(data),
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
                 },
             }
+
             console.log('urllsendotp', BaseUrl.base_url + 'user/send-otp/', fetchParameter);
             let serverResponse = await fetch(BaseUrl.base_url + 'user/send-otp/', fetchParameter);
             resolve(serverResponse);
@@ -22,6 +25,33 @@ export const send_otp = async (data: Object) => {
         }
     })
 }
+
+// export const send_otp = async (data: object) => {
+//     try {
+//         const response = await apiClient('user/send-otp/', {
+//             method: 'POST',
+//             body: JSON.stringify(data),
+//         });
+//         return response;
+//     } catch (error) {
+//         throw error;
+//     }
+
+// };
+
+
+export const refresh_token = async (data: object) => {
+    try {
+        const response = await apiClient('user/send-otp/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+
+};
 
 
 export const verify_otp_login = async (data: Object) => {
@@ -33,10 +63,10 @@ export const verify_otp_login = async (data: Object) => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
                 },
             }
-            console.log('urllsendotp', BaseUrl.base_url + 'user/unified-login/', fetchParameter);
-            let serverResponse = await fetch(BaseUrl.base_url + 'user/unified-login/v2/', fetchParameter);
+            let serverResponse = await fetch(BaseUrl.base_url + 'user/customer/login/', fetchParameter);
             console.log('LoginResponse:', serverResponse);
             resolve(serverResponse);
         }
@@ -46,6 +76,18 @@ export const verify_otp_login = async (data: Object) => {
     })
 }
 
+// export const verify_otp_login = async (data: Object) => {
+//     try {
+//         const response = await apiClient('user/customer/login/', {
+//             method: 'POST',
+//             body: JSON.stringify(data),
+//         });
+
+//         return response;
+//     } catch (error) {
+//         throw error;
+//     }
+// };
 export const customer_login = async (data: Object) => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -70,48 +112,77 @@ export const customer_login = async (data: Object) => {
 
 
 export const onBoarding = async (data: any) => {
-    return new Promise(async (resolve, reject) => {
-        try {
+    // return new Promise(async (resolve, reject) => {
 
-            let fetchParameter = {
-                method: Method.POST,
-                body: data,
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                    // "Authorization": `Bearer ${token}`,
-                },
-            };
+    //     const token = await Utils.getData('_TOKEN');
+    //     console.log("tokennnnnnnnnnnn", token)
+    //     try {
 
-            let serverResponse = await fetch(BaseUrl.base_url + 'customers/customer/', fetchParameter);
-            console.log('OnboardingResponse:', serverResponse);
-            resolve(serverResponse);
-        } catch (error) {
-            console.log('Fetch error', error);
-            reject(error);
-        }
-    });
+    //         let fetchParameter = {
+    //             method: Method.POST,
+    //             body: data,
+    //             headers: {
+    //                 "Content-Type": "multipart/form-data",
+    //                 "Authorization": `Bearer ${token}`,
+    //             },
+    //         };
+    //         let serverResponse = await fetch(BaseUrl.base_url + 'customers/profile/', fetchParameter);
+    //         console.log('OnboardingResponse:', serverResponse);
+    //         resolve(serverResponse);
+    //     } catch (error) {
+    //         console.log('Fetch error', error);
+    //         reject(error);
+    //     }
+    // });
+
+    try {
+        const response = await apiClient('customers/profile/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+
+
+
 };
 
 export const verify_otp = async (data: Object) => {
     return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log('urllsendotp', BaseUrl.base_url + 'user/register/');
-            let serverResponse = await fetch(BaseUrl.base_url + 'user/register/', fetchParameter);
-            resolve(serverResponse);
+    try {
+        let fetchParameter = {
+            method: Method.POST,
+            body: JSON.stringify(data),
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true',
+            },
         }
-        catch (error) {
-            reject(error);
-        }
+        let serverResponse = await fetch(BaseUrl.base_url + 'user/customer/register/', fetchParameter);
+        resolve(serverResponse);
+    }
+    catch (error) {
+        reject(error);
+    }
+    // try {
+    //     const response = await apiClient('user/customer/register/', {
+    //         method: 'POST',
+    //         body: JSON.stringify(data),
+    //     });
+
+    //     return response;
+    // } catch (error) {
+    //     throw error;
+    // }
     })
 }
+
+
+
 
 
 

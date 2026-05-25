@@ -80,7 +80,7 @@ const ProductsScreen = () => {
           title="Up to 40% OFF on\nSupplements"
           desc="Keep your immunity strong this season."
           tag="SUMMER SALE"
-          buttontext='Book an appointment online'
+          buttontext='Shop Now'
           image={require('../../assets/images/cosmetic.png')}
           arrowIcon={require('../../assets/images/arrow.png')}
           onPress={() => { }}

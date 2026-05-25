@@ -5,9 +5,10 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Pressable,
 } from 'react-native';
 import { Styles } from '../../common/Styles';
-import { FontAwesome5, Ionicons } from '../../common/Vector';
+import { Feather, FontAwesome5, Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 
@@ -16,6 +17,7 @@ interface Props {
   phone: string;
   image: string;
   relation: string;
+  navigation: any;
   avatarGroup?: { initials: string; color: string }[];
   onViewRecords?: () => void;
 }
@@ -24,6 +26,7 @@ const SelectedPatientCard: React.FC<Props> = ({
   name,
   phone,
   image,
+  navigation,
   relation,
   avatarGroup = [
     { initials: 'AS', color: '#CBD5E1' },
@@ -48,8 +51,12 @@ const SelectedPatientCard: React.FC<Props> = ({
             <Text style={styles.selfBadgeText}>SELF</Text>
           </View>
           <Text style={Styles.name}>{name}</Text>
-          <Text style={[Styles.value, {color:'#64748B', fontFamily : Fonts.PoppinsRegular}]}>{phone}</Text>
+          <Text style={[Styles.value, { color: '#64748B', fontFamily: Fonts.PoppinsRegular }]}>{phone}</Text>
         </View>
+
+        <Pressable onPress={() => navigation.navigate('EditProfile')} style={styles.BadgeEdit}>
+          <Feather name='edit' size={20} />
+        </Pressable>
       </View>
 
       {/* Divider */}
@@ -89,8 +96,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 20,
-    borderWidth:1,
-    borderColor:Colors.borderColor
+    borderWidth: 1,
+    borderColor: Colors.borderColor
   },
 
   // ── Top Row ──
@@ -105,8 +112,8 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   avatar: {
-    width: 70,
-    height: 70,
+    width: 80,
+    height: 80,
     borderRadius: 12,
   },
   selfBadge: {
@@ -114,10 +121,23 @@ const styles = StyleSheet.create({
     // left: 16,
     backgroundColor: '#E8F3F1',
     borderRadius: 14,
-    padding:5,
-    marginBottom:5,
+    padding: 5,
+    marginBottom: 5,
     paddingHorizontal: 10,
     paddingVertical: 5,
+  },
+
+  BadgeEdit: {
+    alignSelf: "flex-start",
+    // left: 16,
+    top: 2,
+    right: 10,
+    position: 'absolute',
+    padding: 5,
+    marginBottom: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+
   },
   selfBadgeText: {
     color: Colors.primaryColor,

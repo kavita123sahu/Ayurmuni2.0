@@ -1,624 +1,874 @@
-import React, { useEffect, useState } from 'react';
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
+
 import {
     View,
     Text,
-    TouchableOpacity,
-    StyleSheet,
+    FlatList,
     ScrollView,
-    StatusBar,
-    Dimensions,
+    ActivityIndicator,
     TextInput,
+    StatusBar,
     Image,
 } from 'react-native';
 
-import { Colors } from '../common/Colors';
-import { Fonts } from '../common/Fonts';
-import { Ionicons } from '../common/Vector';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import * as _ASSESS_SERVICE from '../services/AssesmentService';
-import LottieView from 'lottie-react-native';
-import { Images } from '../common/Images';
+import { showSuccessToast } from '../config/Key';
 
-const { width, height } = Dimensions.get('window');
-const scale = (size: number) => (width / 375) * size;
+import ProgressBar from '../components/MedicalHistory/ProgressBar';
+import OptionCard from '../components/MedicalHistory/OptionCard';
+import BasicInfoForm from '../components/MedicalHistory/BasicInfoForm';
+import BottomButton from '../components/MedicalHistory/BottomButton';
 
+import {
+    styles,
+    COLORS,
+} from '../components/MedicalHistory/styles/MedicalHistor';
+import Header from '../components/MedicalHistory/MedicalHeader';
 
-const MedicalHistory = (props: any) => {
-    const [step, setStep] = useState(0);
+const MedicalHistory = ({ navigation }: any) => {
+
     const [questions, setQuestions] = useState<any[]>([]);
-    const [answers, setAnswers] = useState<any>({});
-    const [selectedChoices, setSelectedChoices] = useState<any>({});
-    const [showThankYou, setShowThankYou] = useState(false);
-    const [showIntro, setShowIntro] = useState(true);
+
+    const [step, setStep] = useState(0);
+
+    const [loading, setLoading] = useState(false);
+
+    const [btnLoading, setBtnLoading] =
+        useState(false);
+
+    const [selectedAnswers, setSelectedAnswers] =
+        useState<any>({});
 
 
-    useEffect(() => {
-        if (showThankYou) {
-            const timer = setTimeout(() => {
-                props.navigation.replace('HomeStack', { screen: 'Home' });
-            }, 1000);
+    const handleBasicInfoChange =
+        useCallback(
+            (key: string, value: any) => {
 
-            return () => clearTimeout(timer); // cleanup
-        }
-    }, [showThankYou]);
+                setSelectedAnswers(
+                    (prev: any) => ({
+                        ...prev,
+                        [key]: value,
+                    }),
+                );
+            },
+            [],
+        );
+
+    /* =========================================================
+       GET QUESTIONS
+    ========================================================= */
 
     useEffect(() => {
         getQuestions();
-    }, [showIntro]);
+    }, []);
 
     const getQuestions = async () => {
+
         try {
-            const res: any = await _ASSESS_SERVICE.GetPatientPersonalization();
-            setQuestions(res || []);
-            console.log('QUESTIONS', res);
-        } catch (e) {
-            console.log('API ERROR', e);
-        }
-    };
 
+            setLoading(true);
 
+            const response: any =
+                await _ASSESS_SERVICE.GetQuestionOptions({
+                    experience_type:
+                        'medical_history',
+                });
 
-    const current = questions[step];
+            const JSONDATA =
+                await response.json();
 
+            const fetchedQuestions =
+                JSONDATA?.data?.questions || [];
 
-    const progress = step / (questions.length - 1);
+            setQuestions(fetchedQuestions);
 
-    // ✅ AUTO SELECT
-    useEffect(() => {
-        if (!current) return;
+            const formattedAnswers: any = {};
 
-        const selected = current.choices?.filter((c: any) => c.is_selected);
+            fetchedQuestions.forEach((question: any) => {
 
-        if (selected?.length) {
-            if (current.question_type === 'single') {
-                setAnswers((p: any) => ({
-                    ...p,
-                    [current.id]: selected[0].text,
-                }));
+                if (
+                    question?.answer_type === 'text'
+                ) {
 
-                setSelectedChoices((p: any) => ({
-                    ...p,
-                    [current.id]: [selected[0].id],
-                }));
-            }
+                    formattedAnswers[
+                        question?.id
+                    ] = question?.answer || '';
+                }
 
-            if (current.question_type === 'multi') {
-                setSelectedChoices((p: any) => ({
-                    ...p,
-                    [current.id]: selected.map((i: any) => i.id),
-                }));
-            }
-        }
-    }, [current]);
+                if (
+                    question?.answer_type === 'choice'
+                ) {
 
-    // ✅ SELECT HANDLER
-    const handleSelect = (item: any) => {
-        const type = current.question_type;
-
-        if (type === 'single' || type === 'boolean') {
-            setAnswers({ ...answers, [current.id]: item.text });
-
-            setSelectedChoices({
-                ...selectedChoices,
-                [current.id]: [item.id],
-            });
-        }
-
-        if (type === 'multi') {
-            const prev = selectedChoices[current.id] || [];
-
-            const updated = prev.includes(item.id)
-                ? prev.filter((id: any) => id !== item.id)
-                : [...prev, item.id];
-
-            setSelectedChoices({
-                ...selectedChoices,
-                [current.id]: updated,
-            });
-        }
-    };
-
-    // ✅ API CALL
-    const submitAnswer = async () => {
-        try {
-            const payload = {
-                answers: [
-                    {
-                        question_id: current.id,
-                        choice_id: selectedChoices[current.id]?.[0] || null,
-                        text_answer: answers[current.id] || null,
-                    },
-                ],
-            };
-
-            await _ASSESS_SERVICE.PatientPersonalSubmit(payload);
-        } catch (e) {
-            console.log('SUBMIT ERROR', e);
-        }
-    };
-
-    // ✅ NEXT
-    const handleNext = async () => {
-        await submitAnswer();
-
-        if (step === questions.length - 1) {
-            console.log('All steps completed');
-            // setShowThankYou(true);
-            props.navigation.replace('AssessmentType', { form: 'medical' });
-            return;
-        }
-        console.log('Next Step');
-
-        setStep(step + 1);
-    };
-
-    const handleSkip = () => {
-
-        if (step === questions.length - 1) {
-            console.log('All steps complete11111111111d');
-            // setShowThankYou(true);
-            props.navigation.replace('AssessmentType', { form: 'medical' });
-
-            return;
-        }
-
-        console.log('SkipppppppppppppppppppppStep');
-        setStep(step + 1);
-    }
-
-
-    const handleBack = () => {
-        if (step > 0) setStep(step - 1);
-    };
-
-    // ✅ OPTIONS UI
-    const renderOptions = () => {
-        if (!current) return null;
-
-        let options = current.choices;
-
-        // ✅ BOOLEAN UI
-        if (current.question_type === 'boolean') {
-            return (
-                <View style={styles.booleanRow}>
-                    {['Yes', 'No'].map((item) => {
-                        const active = answers[current.id] === item;
-
-                        return (
-                            <TouchableOpacity
-                                key={item}
-                                style={[styles.booleanBtn, active && styles.activeBoolean]}
-                                onPress={() =>
-                                    handleSelect({ id: item.toLowerCase(), text: item })
-                                }
-                            >
-                                <Text style={[styles.booleanText, active && { color: '#fff' }]}>
-                                    {item}
-                                </Text>
-                            </TouchableOpacity>
+                    const selectedChoice =
+                        question?.choices?.find(
+                            (choice: any) =>
+                                choice?.is_selected,
                         );
-                    })}
-                </View>
+
+                    if (selectedChoice) {
+
+                        formattedAnswers[
+                            question?.id
+                        ] =
+                            selectedChoice?.index;
+                    }
+                }
+
+                if (
+                    question?.answer_type ===
+                    'multi_choice'
+                ) {
+
+                    formattedAnswers[
+                        question?.id
+                    ] =
+                        question?.choices
+                            ?.filter(
+                                (choice: any) =>
+                                    choice?.is_selected,
+                            )
+                            ?.map(
+                                (choice: any) =>
+                                    choice?.index,
+                            ) || [];
+                }
+
+                /*
+                HEIGHT WEIGHT
+                */
+
+                if (
+                    question?.question
+                        ?.toLowerCase()
+                        ?.includes('height')
+                ) {
+
+                    const value =
+                        question?.answer || '';
+
+                    const split =
+                        value.split(',');
+
+                    formattedAnswers[
+                        `${question?.id}_height`
+                    ] =
+                        split?.[0]
+                            ?.replace('cm', '')
+                            ?.trim();
+
+                    formattedAnswers[
+                        `${question?.id}_weight`
+                    ] =
+                        split?.[1]
+                            ?.replace('kg', '')
+                            ?.trim();
+                }
+            });
+
+            setSelectedAnswers(
+                formattedAnswers,
             );
+
+        } catch (error) {
+
+            console.log(error);
+
+        } finally {
+
+            setLoading(false);
+        }
+    };
+
+    /* =========================================================
+       FILTER BASIC INFO QUESTIONS
+    ========================================================= */
+
+    const filteredQuestions = useMemo(() => {
+
+        const used = new Set();
+
+        return questions.filter((item: any) => {
+
+            const question =
+                item?.question
+                    ?.toLowerCase()
+                    ?.trim();
+
+            const isBasicInfo =
+                question?.includes('age') ||
+                question?.includes('gender') ||
+                question?.includes('height');
+
+            if (!isBasicInfo) {
+                return true;
+            }
+
+            if (used.has('basic_info')) {
+                return false;
+            }
+
+            used.add('basic_info');
+
+            return true;
+        });
+
+    }, [questions]);
+
+    /* =========================================================
+       CURRENT QUESTION
+    ========================================================= */
+
+    const currentQuestion =
+        filteredQuestions?.[step];
+
+    /* =========================================================
+       BASIC INFO STEP
+    ========================================================= */
+
+    const isBasicInfoStep = useMemo(() => {
+
+        const question =
+            currentQuestion?.question
+                ?.toLowerCase()
+                ?.trim();
+
+        return (
+            question?.includes('age') ||
+            question?.includes('gender') ||
+            question?.includes('height')
+        );
+
+    }, [currentQuestion]);
+
+    /* =========================================================
+       BASIC QUESTIONS
+    ========================================================= */
+
+    const ageQuestion = questions.find(
+        (item: any) =>
+            item?.question
+                ?.toLowerCase()
+                ?.includes('age'),
+    );
+
+    const genderQuestion = questions.find(
+        (item: any) =>
+            item?.question
+                ?.toLowerCase()
+                ?.includes('gender'),
+    );
+
+    const heightQuestion = questions.find(
+        (item: any) =>
+            item?.question
+                ?.toLowerCase()
+                ?.includes('height'),
+    );
+
+    /* =========================================================
+       PROGRESS
+    ========================================================= */
+
+    const progress = useMemo(() => {
+
+        if (!filteredQuestions?.length) {
+            return 0;
         }
 
-        // ✅ TEXT INPUT
-        if (current.question_type === 'text') {
+        return (
+            ((step + 1) /
+                filteredQuestions.length) *
+            100
+        );
+
+    }, [step, filteredQuestions]);
+
+    /* =========================================================
+       SELECT ANSWER
+    ========================================================= */
+
+    const handleSelect = useCallback(
+        (choice: any) => {
+
+            /*
+            SINGLE CHOICE
+            */
+
+            if (
+                currentQuestion?.answer_type ===
+                'choice'
+            ) {
+
+                setSelectedAnswers((prev: any) => ({
+                    ...prev,
+                    [currentQuestion?.id]:
+                        choice?.index,
+                }));
+
+                return;
+            }
+
+            /*
+            MULTI CHOICE
+            */
+
+            if (
+                currentQuestion?.answer_type ===
+                'multi_choice'
+            ) {
+
+                setSelectedAnswers((prev: any) => {
+
+                    const oldValues =
+                        prev?.[
+                        currentQuestion?.id
+                        ] || [];
+
+                    const exists =
+                        oldValues.includes(
+                            choice?.index,
+                        );
+
+                    return {
+                        ...prev,
+                        [currentQuestion?.id]:
+                            exists
+                                ? oldValues.filter(
+                                    (item: number) =>
+                                        item !==
+                                        choice?.index,
+                                )
+                                : [
+                                    ...oldValues,
+                                    choice?.index,
+                                ],
+                    };
+                });
+            }
+        },
+        [currentQuestion],
+    );
+
+    /* =========================================================
+       RENDER ITEM
+    ========================================================= */
+
+    const renderItem = useCallback(
+        ({ item }: any) => {
+
+            const selected =
+                selectedAnswers?.[
+                currentQuestion?.id
+                ];
+
+            const active =
+                currentQuestion?.answer_type ===
+                    'multi_choice'
+                    ? selected?.includes?.(
+                        item?.index,
+                    )
+                    : selected === item?.index;
+
             return (
-                <TextInput
-                    placeholder="Type your answer..."
-                    style={styles.input}
-                    value={answers[current.id]}
-                    placeholderTextColor={Colors.placeholderColor}
-                    onChangeText={(text) =>
-                        setAnswers({ ...answers, [current.id]: text })
+                <OptionCard
+                    item={item}
+                     medical={true}
+                    active={active}
+                    type={
+                        currentQuestion?.answer_type
+                    }
+                    onPress={() =>
+                        handleSelect(item)
                     }
                 />
             );
+        },
+        [
+            currentQuestion,
+            selectedAnswers,
+        ],
+    );
+
+    /* =========================================================
+       BUTTON DISABLED
+    ========================================================= */
+
+    const currentSelectedAnswer =
+        selectedAnswers?.[
+        currentQuestion?.id
+        ];
+
+    const isButtonDisabled = useMemo(() => {
+
+        /*
+        BASIC INFO VALIDATION
+        */
+
+        if (isBasicInfoStep) {
+
+            return (
+                !selectedAnswers?.[
+                ageQuestion?.id
+                ] ||
+
+                selectedAnswers?.[
+                genderQuestion?.id
+                ] === undefined ||
+
+                !selectedAnswers?.[
+                `${heightQuestion?.id}_height`
+                ] ||
+
+                !selectedAnswers?.[
+                `${heightQuestion?.id}_weight`
+                ]
+            );
         }
 
-        // ✅ SINGLE + MULTI
+        /*
+        TEXT VALIDATION
+        */
+
+        if (
+            currentQuestion?.answer_type ===
+            'text'
+        ) {
+
+            return !currentSelectedAnswer
+                ?.trim?.();
+        }
+
+        /*
+        MULTI CHOICE VALIDATION
+        */
+
+        if (
+            currentQuestion?.answer_type ===
+            'multi_choice'
+        ) {
+
+            return (
+                !Array.isArray(
+                    currentSelectedAnswer,
+                ) ||
+
+                currentSelectedAnswer
+                    .length === 0
+            );
+        }
+
+        /*
+        SINGLE CHOICE VALIDATION
+        */
+
         return (
-            <>
-                {current.question_type === 'multi' && (
-                    <Text style={styles.multiHint}>
-                        You can select multiple options
-                    </Text>
-                )}
-
-                {options?.map((item: any, index: number) => {
-                    const isActive =
-                        current.question_type === 'single'
-                            ? answers[current.id] === item.text
-                            : selectedChoices[current.id]?.includes(item.id);
-
-                    return (
-                        <TouchableOpacity
-                            key={index}
-                            style={[styles.card, isActive && styles.activeCard]}
-                            onPress={() => handleSelect(item)}
-                        >
-                            <Text
-                                style={[styles.text, isActive && styles.activeText]}
-                            >
-                                {item.text}
-                            </Text>
-
-                            {isActive && (
-                                <View style={styles.iconContainer}>
-                                    <View style={styles.tickCircle}>
-                                        <Ionicons
-                                            name="checkmark"
-                                            size={12}
-                                            color={Colors.primaryColor}
-                                        />
-                                    </View>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
-            </>
+            currentSelectedAnswer ===
+            undefined
         );
+
+    }, [
+        selectedAnswers,
+        currentQuestion,
+        isBasicInfoStep,
+    ]);
+
+    /* =========================================================
+       SUBMIT ANSWERS
+    ========================================================= */
+
+    const getFormattedAnswers = () => {
+
+        const formattedAnswers: any = {
+            ...selectedAnswers,
+        };
+
+        /*
+        HEIGHT + WEIGHT FORMAT
+        */
+
+        if (heightQuestion?.id) {
+
+            const height =
+                selectedAnswers?.[
+                `${heightQuestion?.id}_height`
+                ];
+
+            const weight =
+                selectedAnswers?.[
+                `${heightQuestion?.id}_weight`
+                ];
+
+            if (height || weight) {
+
+                formattedAnswers[
+                    heightQuestion?.id
+                ] =
+                    `${height || ''} cm, ${weight || ''
+                    } kg`;
+
+                delete formattedAnswers[
+                    `${heightQuestion?.id}_height`
+                ];
+
+                delete formattedAnswers[
+                    `${heightQuestion?.id}_weight`
+                ];
+            }
+        }
+
+        return formattedAnswers;
     };
 
+    const submitAnswer = async () => {
 
+        try {
 
-    if (showIntro) {
+            const payload = {
+                experience_type:
+                    'medical_history',
+
+                answers:
+                    getFormattedAnswers(),
+            };
+
+            console.log(
+                'FINAL PAYLOAD =====>',
+                JSON.stringify(
+                    payload,
+                    null,
+                    2,
+                ),
+            );
+
+            const response: any =
+                await _ASSESS_SERVICE.QuestionnaireSubmit(
+                    payload,
+                );
+
+            const JSONDATA =
+                await response.json();
+
+            console.log(
+                'SUBMIT RESPONSE =====>',
+                JSONDATA,
+            );
+
+            return JSONDATA?.success;
+
+        } catch (error) {
+
+            console.log(
+                'SUBMIT ERROR',
+                error,
+            );
+
+            return false;
+        }
+    };
+
+    /* =========================================================
+       NEXT
+    ========================================================= */
+
+    const handleNext = async () => {
+
+        /*
+        VALIDATION FIRST
+        */
+
+        if (isButtonDisabled) {
+
+            showSuccessToast(
+                'Please complete this step',
+                'error',
+            );
+
+            return;
+        }
+
+        try {
+
+            setBtnLoading(true);
+
+            /*
+            API CALL
+            */
+
+            const success =
+                await submitAnswer();
+
+            /*
+            FAIL
+            */
+
+            if (!success) {
+
+                showSuccessToast(
+                    'Submission Failed',
+                    'error',
+                );
+
+                return;
+            }
+
+            /*
+            LAST STEP
+            */
+
+            const isLast =
+                step ===
+                filteredQuestions.length - 1;
+
+            if (isLast) {
+
+                navigation.replace(
+                    'AssessmentType',
+                    {
+                        form: 'medical',
+                    },
+                );
+
+                return;
+            }
+
+            /*
+            SUCCESS => NEXT STEP
+            */
+
+            setStep(prev => prev + 1);
+
+        } catch (error) {
+
+            console.log(
+                'NEXT ERROR',
+                error,
+            );
+
+        } finally {
+
+            setBtnLoading(false);
+        }
+    };
+
+    /* =========================================================
+       BACK
+    ========================================================= */
+
+    const handleBack = () => {
+
+        if (step === 0) {
+
+            navigation.goBack();
+
+            return;
+        }
+
+        setStep(prev => prev - 1);
+    };
+
+    /* =========================================================
+       LOADING
+    ========================================================= */
+
+    if (loading) {
+
         return (
-            <View style={styles.introContainer}>
-                <Image source={Images.QnAMain} style={styles.introImage} />
+            <View style={styles.loader}>
 
-                <Text style={styles.introTitle}>
-                    Personalize Your Experience
-                </Text>
-
-                <Text style={styles.introSub}>
-                    Answer a few questions to help us understand you better
-                </Text>
-
-                <TouchableOpacity
-                    style={styles.startBtn}
-                    onPress={() => setShowIntro(false)}
-                >
-                    <Text style={styles.startText}>Start</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-
-    if (showThankYou) {
-        return (
-            <View style={styles.thankYouContainer}>
-                <LottieView
-                    source={require('../assets/animations/thankyou.json')}
-                    autoPlay
-                    loop
-                    style={{ width: 280, height: 280 }}
+                <ActivityIndicator
+                    size="large"
+                    color={COLORS.primary}
                 />
-                <Text style={styles.thankYouTitle}>Thank You 🙏</Text>
+
             </View>
         );
     }
 
-    if (!current) return null;
+    if (!currentQuestion) {
+        return null;
+    }
 
-    const isDisabled =
-        current.question_type === 'multi'
-            ? !(selectedChoices[current.id]?.length > 0)
-            : !answers[current.id];
+    /* =========================================================
+       UI
+    ========================================================= */
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+        <SafeAreaView style={styles.safeArea}>
 
+            <StatusBar
+                backgroundColor={COLORS.screen}
+                barStyle="dark-content"
+            />
 
-            <View style={styles.content}>
+            <View style={styles.container}>
 
                 {/* HEADER */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                        <Image source={Images.backIcon} style={styles.backIcon} />
-                    </TouchableOpacity>
 
-                    <Text style={styles.headerTitle}>Health Questionnaire </Text>
+                <Header
+                    step={step}
+                    total={
+                        filteredQuestions.length
+                    }
+                    onBack={handleBack}
+                />
 
-                    <TouchableOpacity style={styles.skipHeaderBtn} onPress={handleSkip}>
-                        <Text style={styles.skipHeaderText}>Skip</Text>
-                    </TouchableOpacity>
-                </View>
+                {/* PROGRESS */}
 
-                <>
-                    <Text style={styles.stepText}>
-                        Step {step + 1} of {questions.length}
+                <ProgressBar
+                    progress={progress}
+                />
+
+                {/* BODY */}
+
+
+
+                <ScrollView
+                    keyboardShouldPersistTaps="always"
+                    keyboardDismissMode="none"
+                    showsVerticalScrollIndicator={
+                        false
+                    }
+                    contentContainerStyle={{
+                        paddingBottom: 140,
+                    }}
+                >
+
+                    {/* TITLE */}
+
+                    <Text style={styles.title}>
+
+                        {
+                            isBasicInfoStep
+                                ? 'Please share your basic information'
+                                : currentQuestion?.question
+                        }
+
                     </Text>
 
-                    <View style={styles.progressContainer}>
-                        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
-                    </View>
-                </>
+                    {/* BASIC INFO */}
 
-                {/* CONTENT */}
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    <Text style={styles.questionText}>{current.text}</Text>
-                    {renderOptions()}
+                    {
+                        isBasicInfoStep ? (
+
+                            <BasicInfoForm
+                                questions={questions}
+                                selectedAnswers={selectedAnswers}
+                                onChange={handleBasicInfoChange}
+                            />
+
+                        ) : (
+                            <>
+                                {/* OPTIONS */}
+
+                                {
+                                    currentQuestion?.answer_type !==
+                                    'text' && (
+
+                                        <FlatList
+                                            scrollEnabled={
+                                                false
+                                            }
+                                            data={
+                                                currentQuestion?.choices ||
+                                                []
+                                            }
+                                            renderItem={
+                                                renderItem
+                                            }
+                                            keyExtractor={(
+                                                item,
+                                            ) =>
+                                                item?.index?.toString()
+                                            }
+                                            contentContainerStyle={{
+                                                paddingTop: 24,
+                                            }}
+                                        />
+                                    )
+                                }
+
+                                {/* TEXT INPUT */}
+
+                                {
+                                    currentQuestion?.answer_type ===
+                                    'text' && (
+
+                                        <TextInput
+                                            multiline
+                                            placeholder="Write your answer..."
+                                            placeholderTextColor="#94A3B8"
+                                            value={
+                                                selectedAnswers?.[
+                                                currentQuestion?.id
+                                                ] || ''
+                                            }
+                                            onChangeText={(
+                                                text,
+                                            ) => {
+
+                                                setSelectedAnswers(
+                                                    (
+                                                        prev: any,
+                                                    ) => ({
+                                                        ...prev,
+                                                        [currentQuestion?.id]:
+                                                            text,
+                                                    }),
+                                                );
+                                            }}
+                                            style={
+                                                styles.input
+                                            }
+                                        />
+                                    )
+                                }
+                            </>
+                        )
+                    }
+
+
+                    <View style={styles.infoCard}>
+
+                        <View style={styles.infoLeft}>
+
+                            <Image source={require('../assets/images/ayurveda.png')} style={{ height: 50, width: 50, }} />
+
+
+                        </View>
+
+                        <Text style={styles.infoText}>
+                           Your information is Confidential and will help
+                           us tailor the best wellness plan for you
+                        </Text>
+
+                        <Image source={require('../assets/images/ayurvedaLeaf.png')} style={{ height: 30, width: 30, resizeMode: 'contain' }} />
+
+
+                    </View>
                 </ScrollView>
 
-            </View>
-            {/* FOOTER */}
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    disabled={isDisabled}
-                    style={[styles.button, isDisabled && styles.disabledBtn]}
+
+
+                {/* BUTTON */}
+
+
+                <BottomButton
+                    loading={btnLoading}
+                    disabled={isButtonDisabled}
                     onPress={handleNext}
-                >
-                    <Text style={styles.buttonText}>Next</Text>
-                </TouchableOpacity>
+                />
+
+
             </View>
-        </View>
+        </SafeAreaView>
     );
 };
 
 export default MedicalHistory;
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        marginBottom: 20,
-        marginTop: 30
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: width * 0.06,
-    },
-    header: {
-        height: height * 0.09,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-
-
-    stepText: {
-        marginTop: 10,
-        fontSize: scale(14),
-        color: '#6B7280',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    progressContainer: {
-        height: 6,
-        marginVertical: 10,
-        borderRadius: 50,
-        overflow: 'hidden',
-        backgroundColor: '#E5E7EB',
-    },
-
-    progressBar: {
-        height: '100%',
-        borderRadius: 50,
-        backgroundColor: Colors.questionGreen,
-    },
-
-    questionText: {
-        fontSize: 20,
-        marginVertical: 10,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    // ✅ CARD UI (FINAL)
-    card: {
-        minHeight: height * 0.08,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderRadius: 14,
-        // alignItems: 'center',
-        // alignContent: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: width * 0.05,
-        paddingRight: 48,
-        backgroundColor: '#fff',
-        borderColor: '#E5E7EB',
-    },
-
-    activeCard: {
-        backgroundColor: Colors.questionGreen,
-        borderColor: Colors.questionGreen,
-    },
-
-    text: {
-        fontSize: scale(14),
-        lineHeight: scale(20),
-        color: '#111827',
-
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    activeText: {
-        color: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    iconContainer: {
-        position: 'absolute',
-        right: 16,
-        top: 0,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    tickCircle: {
-        width: scale(20),
-        height: scale(20),
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F1F5F9',
-    },
-    introContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 30,
-    },
-
-    introImage: {
-        width: 180,
-        height: 180,
-        resizeMode: 'contain',
-        marginBottom: 20,
-    },
-
-    introTitle: {
-        fontSize: scale(22),
-        fontFamily: Fonts.PoppinsSemiBold,
-        textAlign: 'center',
-        color: '#111827',
-    },
-
-    introSub: {
-        marginTop: 10,
-        fontSize: scale(14),
-        color: '#6B7280',
-        textAlign: 'center',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    startBtn: {
-        marginTop: 30,
-        backgroundColor: Colors.questionGreen,
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-
-        borderRadius: 12,
-    },
-
-    startText: {
-        color: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    thankYouSub: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginTop: 8,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    thankYouContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    thankYouTitle: {
-        fontSize: scale(24),
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    booleanRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-
-    booleanBtn: {
-        flex: 1,
-        padding: 14,
-        borderWidth: 1,
-        borderRadius: 12,
-        marginHorizontal: 5,
-        alignItems: 'center',
-        borderColor: '#E5E7EB',
-    },
-
-
-    backButton: {
-        position: 'absolute',
-        left: 0,
-    },
-
-    backIcon: {
-        width: 40,
-        height: 40,
-        resizeMode: 'contain',
-    },
-
-    headerTitle: {
-        fontSize: scale(18),
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#1A1A1A',
-    },
-
-    skipHeaderBtn: {
-        position: 'absolute',
-        right: 0,
-    },
-
-    skipHeaderText: {
-        fontSize: scale(15),
-        color: Colors.questionGreen,
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-
-
-    activeBoolean: {
-        backgroundColor: Colors.questionGreen,
-    },
-
-    booleanText: {
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    input: {
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        padding: 15,
-        borderRadius: 12,
-        color: '#111827',
-        fontFamily: Fonts.PoppinsMedium,
-        marginTop: 10,
-
-    },
-
-    multiHint: {
-        marginBottom: 10,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    footer: {
-        paddingHorizontal: width * 0.04,
-        paddingBottom: height * 0.03,
-        paddingTop: height * 0.02,
-    },
-
-    button: {
-        backgroundColor: Colors.questionGreen,
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-
-    disabledBtn: {
-        backgroundColor: '#ccc',
-    },
-
-    buttonText: {
-        color: '#fff',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    thankYou: {
-        fontSize: 22,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-});

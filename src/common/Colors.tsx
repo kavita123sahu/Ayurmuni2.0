@@ -1,11 +1,11 @@
 export const Colors = {
   white: '#ffff',
-  black: '#000000',   
-  primaryColor: '#0D614E',    
+  black: '#000000',
+  primaryColor: '#0D614E',
   secondaryColor: '#466425',
-  bgborderColor:'#0D614E33',
-  onfillColor:'#0D614E0D',
-  questionGreen:'#rde',
+  bgborderColor: '#0D614E33',
+  onfillColor: '#0D614E0D',
+  questionGreen: '#rde',
   tabinactive: '#E8EDE3',
   bottomBg: '#E5E7EB',
   bottomActive: '#A52238',
@@ -15,8 +15,8 @@ export const Colors = {
   fieldGrayColor: 'rgba(166, 168, 214, 0.25)',
   toggleColor: '#9C2B5F',
   greyBorder: '#9093D8',
-  textColor: '#1E293B',  
-  headercolor:'#64748B',
+  textColor: '#1E293B',
+  headercolor: '#64748B',
   subTextColor: '#475569',
   errorColor: '#EF4444',
   blackColor50: 'rgba(0, 0, 0, 0.5)',
@@ -25,15 +25,15 @@ export const Colors = {
   fieldTextColor: 'rgba(144, 147, 216, 1)',
   green: '#10B981',
   bgDate: '#bbbce0',
-  cardBackground : "#E5E7EB",
+  cardBackground: "#E5E7EB",
   grey1: '#8183BB',
   transparent: '#0000',
-  background : '#FDFDFB',
-  
+  background: '#FDFDFB',
+
   orangeColor: '#2576BC',
   borderColor: "#F1F5F9",
   bgcolor: '#0D614E0D',
-  BGIcon : "#0D6E5D1A",
+  BGIcon: "#0D6E5D1A",
   purpleColor:
     'linear-gradient(106.5deg, rgba(255, 215, 185, 0.91) 23%, rgba(223, 159, 247, 0.8) 93%)',
   orangeColorWithOpa:
@@ -43,3 +43,25 @@ export const Colors = {
 
 };
 
+
+
+import { Dimensions, PixelRatio } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+export const COLORS = {
+  primary: '#2E7DFF',
+  secondary: '#F5F7FB',
+  background: '#FFFFFF',
+  textPrimary: '#1C1C1E',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  success: '#22C55E',
+  danger: '#EF4444',
+  white: '#FFFFFF',
+  black: '#000000',
+};
+
+const guidelineBaseWidth = 375;
+
+export const scale = (size : any) => PixelRatio.roundToNearestPixel((width / guidelineBaseWidth) * size);
