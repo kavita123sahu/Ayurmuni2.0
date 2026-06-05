@@ -7,7 +7,6 @@ import {
     StyleSheet,
     ViewStyle,
 } from 'react-native';
-
 import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -15,11 +14,10 @@ import { Colors } from '../common/Colors';
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
 /* -------------------------------------------------------------------------- */
-
 export type AppointmentStatus =
-    | 'COMPLETED'
-    | 'CANCELLED'
-    | 'UPCOMING';
+    | 'confirmed'
+    | 'cancelled'
+    | 'upcoming';
 
 export type ActionKey =
     | 'view_receipt'
@@ -27,16 +25,23 @@ export type ActionKey =
     | 'view_details'
     | 'reschedule';
 
-export interface Appointment {
-    id: string;
-    doctor: string;
-    specialty: string;
-    date: string;
-    status: AppointmentStatus;
 
-    // ✅ no undefined issue now
-    avatarUrl: string | null;
+export interface Appointment {
+    consultation_id: string;
+    appointment_status:
+    AppointmentStatus;
+    date: string;
+    doctor: {
+        doctor_id: string;
+        doctor_name: string;
+        doctor_specialization:
+        string | null;
+        doctor_image:
+        string | null;
+    };
 }
+
+
 
 interface AppointmentCardProps {
     item: Appointment;
@@ -44,7 +49,6 @@ interface AppointmentCardProps {
         actionKey: ActionKey,
         item: Appointment,
     ) => void;
-
     style?: ViewStyle;
 }
 
@@ -52,23 +56,23 @@ interface AppointmentCardProps {
 /*                               BADGE CONFIG                                 */
 /* -------------------------------------------------------------------------- */
 
-const BADGE_CONFIG = {
-    COMPLETED: {
+const BADGE_CONFIG: any = {
+
+    confirmed: {
         bg: '#DCFCE7',
         color: '#16A34A',
     },
 
-    CANCELLED: {
+    cancelled: {
         bg: '#FEE2E2',
         color: '#DC2626',
     },
 
-    UPCOMING: {
+    upcoming: {
         bg: '#FEF3C7',
         color: '#D97706',
     },
 };
-
 /* -------------------------------------------------------------------------- */
 /*                                   BADGE                                    */
 /* -------------------------------------------------------------------------- */
@@ -76,33 +80,48 @@ const BADGE_CONFIG = {
 const Badge = ({
     status,
 }: {
-    status: AppointmentStatus;
+    status: string;
 }) => {
-    const config = BADGE_CONFIG[status];
+
+    const normalizedStatus =
+        status?.toLowerCase?.();
+
+    const config =
+        BADGE_CONFIG[
+        normalizedStatus
+        ];
+
+    if (!config) {
+        return null;
+    }
 
     return (
+
         <View
             style={[
                 styles.badge,
                 {
-                    backgroundColor: config.bg,
+                    backgroundColor:
+                        config.bg,
                 },
             ]}
         >
+
             <Text
                 style={[
                     styles.badgeText,
                     {
-                        color: config.color,
+                        color:
+                            config.color,
                     },
                 ]}
             >
                 {status}
             </Text>
+
         </View>
     );
 };
-
 /* -------------------------------------------------------------------------- */
 /*                              APPOINTMENT CARD                              */
 /* -------------------------------------------------------------------------- */
@@ -112,22 +131,37 @@ const AppointmentCard = ({
     onAction,
     style,
 }: AppointmentCardProps) => {
+
     const {
         doctor,
-        specialty,
         date,
-        status,
-        avatarUrl,
+        appointment_status,
     } = item;
 
+
+    const doctorName =
+        doctor?.doctor_name;
+
+    const specialty =
+        doctor?.doctor_specialization ||
+        'General Physician';
+
+    const avatarUrl =
+        doctor?.doctor_image;
+
     const isCompleted =
-        status === 'COMPLETED';
+        appointment_status ===
+        'confirmed';
 
     const isCancelled =
-        status === 'CANCELLED';
+        appointment_status ===
+        'cancelled';
 
     const isUpcoming =
-        status === 'UPCOMING';
+        appointment_status ===
+        'upcoming';
+
+
 
     const handleAction = (
         action: ActionKey,
@@ -159,10 +193,9 @@ const AppointmentCard = ({
                 <View style={styles.info}>
                     <Text
                         numberOfLines={2}
-                        ellipsizeMode="tail"
                         style={styles.doctorName}
                     >
-                        {doctor}
+                        {doctorName}
                     </Text>
 
                     <Text style={styles.meta}>
@@ -170,7 +203,11 @@ const AppointmentCard = ({
                     </Text>
                 </View>
 
-                <Badge status={status} />
+                <Badge
+                    status={
+                        appointment_status.toUpperCase() as AppointmentStatus
+                    }
+                />
             </View>
 
             {/* ACTIONS */}
@@ -195,6 +232,7 @@ const AppointmentCard = ({
                                 View Receipt
                             </Text>
                         </TouchableOpacity>
+
 
                         <TouchableOpacity
                             activeOpacity={0.8}
@@ -279,13 +317,10 @@ const styles = StyleSheet.create({
 
     card: {
         backgroundColor: '#FFFFFF',
-
         borderRadius: 24,
         padding: 18,
         borderWidth: 1,
         borderColor: '#F1F5F9',
-
-
     },
 
     cancelledCard: {
@@ -323,7 +358,7 @@ const styles = StyleSheet.create({
         fontFamily:
             Fonts.PoppinsSemiBold,
 
-        minHeight: 44,
+        minHeight: 30,
 
         flexShrink: 1,
     },

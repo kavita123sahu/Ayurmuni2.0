@@ -19,6 +19,14 @@ import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 
 const { width } = Dimensions.get('window');
 
+interface GuidelineCardProps {
+  title: string;
+  color: string;
+  icon: any;
+  image: any;
+  data: any[];
+}
+
 const PrakritiProfile = (props: any) => {
 
   const [analysisData, setAnalysisData] = React.useState<any>({
@@ -46,15 +54,13 @@ const PrakritiProfile = (props: any) => {
       const response: any =
         await _PROFILE_SERVICES.get_prakriti_info();
 
-      const json = await response.json();
-
       console.log(
         'prakriti-response',
-        json,
+        response,
       );
 
-      if (json?.success) {
-        const apiData = json?.data;
+      if (response?.success) {
+        const apiData = response?.data;
 
         // ===== RESULT =====
 
@@ -291,8 +297,8 @@ const GuidelineCard = ({
   color,
   icon,
   image,
-  data }
-) => {
+  data,
+}: GuidelineCardProps) => {
   return (
     <View
       style={[
@@ -311,6 +317,7 @@ const GuidelineCard = ({
             },
           ]}
         >
+          
           <Image source={icon} style={{ height: 18, width: 18, tintColor: color }} />
         </View>
 

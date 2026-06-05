@@ -30,7 +30,6 @@ import PatientDetails from "../screens/patient/PatientDetails";
 import TermsCondition from "../screens/TermsCondition";
 import Onboarding from "../screens/auth/Onboarding";
 import PatientFAQ from "../screens/PatientFAQ";
-import EditPatientDetail from "../screens/patient/EditPatientDetail";
 import OrderHistory from "../screens/orders/OrderHistory";
 import ProductsScreen from "../screens/products/ProductsScreen";
 import TopCategories from "../screens/products/TopCategories";
@@ -84,9 +83,12 @@ import DoctorSlipScreen from "../screens/consult/DoctorSlip";
 import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
 import NetworkError from "../screens/NetworkError";
 import AddEditAddress from "../components/AddEditAddress";
+import LocationPickerScreen from "../screens/LocationPickerScreen";
 import PrakritiProfile from "../screens/auth/PrakritiProfile";
 import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
+import RazorpayScreen from "../screens/payment/RazorpayScreen";
+import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 
 enableScreens();
 
@@ -134,8 +136,7 @@ const TabStack = () => {
     >
       <Tab.Screen name="Home" component={HomePage} />
       <Tab.Screen name="Products" component={ProductsScreen} />
-
-      {/* <Tab.Screen name="History" component={OrderHistory} /> */}
+      <Tab.Screen name="Medicine" component={MedicineScreen} />
       <Tab.Screen name="Profile" component={ProfilePage} />
       <Tab.Screen
         name="Consult"
@@ -158,7 +159,7 @@ const HomeStack = () => {
       <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="TermsCondition" component={TermsCondition} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="TopCategories" component={TopCategories} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="EditPatientDetail" component={EditPatientDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewPage" component={ReviewPage} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -211,9 +212,11 @@ const HomeStack = () => {
       <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

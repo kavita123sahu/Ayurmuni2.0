@@ -34,6 +34,7 @@ import HomeCategory from './HomeCategory';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import SuggestedCard from '../../components/SuggestedCard';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHomeData } from '../../hooks/UseHomeData';
 
 
 
@@ -52,22 +53,22 @@ type Prakriti = {
   prakriti_progress: number;
 };
 
-const horizontalPadding = 10;
-
 const { width } = Dimensions.get('window');
-const itemWidth = width - horizontalPadding * 4;
-
-
-
-const categoryImage = require('../../assets/images/CategiryImage.png');
-
 
 const HomePage: React.FC = (props: any) => {
 
+  const {
+    loading,
+    refreshing,
+    categories,
+    SuggestDoctor,
+    onRefresh,
+  } = useHomeData();
+
+  console.log('SuggestDoctor', SuggestDoctor);
 
 
   const isFocused = useIsFocused();
-  const [profileData, setProfileData] = useState<any>(null);
   const [PakritiData, setPakritiData] = useState<Prakriti | null>(null);
   const data = [
     {
@@ -89,16 +90,7 @@ const HomePage: React.FC = (props: any) => {
       // 🔥 screen 2
     },
   ];
-  
 
-  const categories = [
-    { id: '1', name: 'Doctors', icon: Images.Doctors },
-    { id: '2', name: 'Medicine', icon: Images.Medicines },
-    { id: '3', name: 'Products', icon: Images.products },
-    { id: '4', name: 'Yoga', icon: Images.Yoga },
-    { id: '5', name: 'Diet', icon: Images.Diet },
-    { id: '6', name: 'Panchakarma', icon: Images.Panchakarma },
-  ];
 
 
   useEffect(() => {
@@ -112,14 +104,13 @@ const HomePage: React.FC = (props: any) => {
 
       const result: any = await _PROFILE_SERVICES.user_profile();
 
-      const JSONDATA = await result.json();
-      console.log("ProfileuuuuData ===>", JSONDATA)
+      console.log("ProfileuuuuData ===>", result)
       if (result.status === 200) {
-        setPakritiData(JSONDATA?.data);
+        setPakritiData(result?.data);
       }
 
       else {
-        console.log("Error in fetching profile data", JSONDATA);
+        console.log("Error in fetching profile data", result);
       }
 
     } catch (error) {
@@ -152,7 +143,7 @@ const HomePage: React.FC = (props: any) => {
               onPress={() => props.navigation.navigate(item.screen, {
                 update: true
               }
-              )} 
+              )}
             >
               <PrakritiCard
                 title={item.title}
@@ -166,9 +157,11 @@ const HomePage: React.FC = (props: any) => {
         {/* <CategoryList data={categories} navigation={props.navigation} /> */}
         <HomeCategory data={categories} navigation={props.navigation} />
 
-        <SectionHeader title="Suggested Doctors" actionText="View all" />
+        <SectionHeader title="Suggested Doctors" actionText="View all" onPress={() => props.navigation.navigate('AllDoctors', {
+          all: true
+        })} />
 
-        <TopDoctorsCard data={doctorsData} navigation={props.navigation} />
+        <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
 
 
         <Detailimages
@@ -178,13 +171,10 @@ const HomePage: React.FC = (props: any) => {
           DynamicResize='contain'
 
         />
-
-
         <SectionHeader title="Suggested Medicines" actionText="View all" />
 
 
         <TopSellingList data={topSelling} navigation={props.navigation} />
-
 
 
         <SectionHeader title="Suggested Products" actionText="View all" />
@@ -200,7 +190,6 @@ const HomePage: React.FC = (props: any) => {
 
 
         <SectionHeader title="Suggested Diet Plan" actionText="View all" />
-
 
 
         <SuggestedCard data={topSelling2} navigation={props.navigation} />

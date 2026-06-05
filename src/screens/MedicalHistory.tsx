@@ -81,11 +81,13 @@ const MedicalHistory = ({ navigation }: any) => {
                         'medical_history',
                 });
 
-            const JSONDATA =
-                await response.json();
+            // const JSONDATA =
+            //     await response.json();
 
             const fetchedQuestions =
-                JSONDATA?.data?.questions || [];
+                response?.data?.questions || [];
+
+            console.log("fetchedQuestionsfetchedQuestions", fetchedQuestions);
 
             setQuestions(fetchedQuestions);
 
@@ -379,7 +381,7 @@ const MedicalHistory = ({ navigation }: any) => {
             return (
                 <OptionCard
                     item={item}
-                     medical={true}
+                    medical={true}
                     active={active}
                     type={
                         currentQuestion?.answer_type
@@ -552,15 +554,15 @@ const MedicalHistory = ({ navigation }: any) => {
                     payload,
                 );
 
-            const JSONDATA =
-                await response.json();
+            // const JSONDATA =
+            //     await response.json();
 
             console.log(
                 'SUBMIT RESPONSE =====>',
-                JSONDATA,
+                response,
             );
 
-            return JSONDATA?.success;
+            return response?.success;
 
         } catch (error) {
 
@@ -844,8 +846,8 @@ const MedicalHistory = ({ navigation }: any) => {
                         </View>
 
                         <Text style={styles.infoText}>
-                           Your information is Confidential and will help
-                           us tailor the best wellness plan for you
+                            Your information is Confidential and will help
+                            us tailor the best wellness plan for you
                         </Text>
 
                         <Image source={require('../assets/images/ayurvedaLeaf.png')} style={{ height: 30, width: 30, resizeMode: 'contain' }} />

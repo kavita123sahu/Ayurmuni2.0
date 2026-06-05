@@ -44,17 +44,16 @@ const Login: React.FC = (props: any) => {
 
       const response: any =
         await _AUTH_SERVICE.send_otp(send_data);
+        
+      console.log('OTP Response:', response);
 
-      const JSONReponse = await response.json();
-      console.log('OTP Response:', JSONReponse);
-      
       const isCustomer =
-        JSONReponse?.data?.user_roles.some(
+        response?.data?.user_roles?.some(
           (role: string) =>
             role?.toLowerCase() === 'customer',
         );
 
-      if (response?.status === 200) {
+      if (response?.success) {
         showSuccessToast(
           response.message || 'OTP sent successfully',
           'success',

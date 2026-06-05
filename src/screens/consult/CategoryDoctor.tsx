@@ -22,7 +22,7 @@ const CategoryDoctor = (props: any) => {
 
     const navigation = useNavigation<any>();
     const [showAll, setShowAll] = useState(false);
-    const [loading, setLoading] = useState(false);
+    // const [loading, setLoading] = useState(false);
 
     // const { categoryName } = route.params;
 
@@ -32,6 +32,7 @@ const CategoryDoctor = (props: any) => {
         topDoctors,
         recentDoctors,
         onRefresh,
+        loading
     } = useConsultData();
 
     const {
@@ -45,6 +46,7 @@ const CategoryDoctor = (props: any) => {
 
 
     console.log('topDoctorstopDoctors------->', topDoctors);
+
 
     if (loading) {
         return (
@@ -113,6 +115,10 @@ const CategoryDoctor = (props: any) => {
                     ListHeaderComponent={
                         <>
                             <SearchBar
+                                // value={search}
+                                // onChangeText={
+                                //     setSearch
+                                // }
                                 placeholder="Search doctor name or experience..."
                                 icon={require('../../assets/images/search.png')}
                             />
@@ -139,10 +145,11 @@ const CategoryDoctor = (props: any) => {
                         }
 
                         return (
-                            
+
                             <AllDoctorCard
                                 item={item}
-                                onPress={(doc: any) => props.navigation.navigate('DoctorProfile')}
+                                onPress={(doc: any) => props.navigation.navigate('DoctorProfile', { doctorId: doc?.id })}
+                            // onPress={(doc: any) => props.navigation.navigate('DoctorProfile')}
                             />
                         );
                     }}

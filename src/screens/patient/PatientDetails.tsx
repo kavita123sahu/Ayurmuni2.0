@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -21,77 +21,174 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Utils } from '../../common/Utils';
 import * as  _PROFILE_SERVICES from '../../services/ProfileServices';
-
-const dummyPatients: Patient[] = [
-  {
-    id: '1',
-    name: 'Arjun Sharma',
-    relation: 'Self',
-    image: 'https://i.pravatar.cc/100?img=3',
-    selected: true,
-  },
-  {
-    id: '2',
-    name: 'Priya Sharma',
-    relation: 'Spouse',
-    image: 'https://i.pravatar.cc/100?img=5',
-  },
-  {
-    id: '3',
-    name: 'Aarav Sharma',
-    relation: 'Child',
-    image: 'https://i.pravatar.cc/100?img=6',
-  },
-];
+import { usePatientData } from '../../hooks/usePatientData';
+import EmptyState from '../../components/EmptyState';
+import CommonButton from '../../components/CommonButton';
+import CommonModal from '../../components/LogoutModal';
+import { showSuccessToast } from '../../config/Key';
 
 
-interface  UserInterface {
-  first_name :  string ;
-  last_name : string ;
-  profile_picture : string;
-  phone_number : string;
 
+interface UserInterface {
+  first_name: string;
+  last_name: string;
+  profile_picture: string;
+  phone_number: string;
 }
 
-
-
-
 const PatientDetails: React.FC = (props: any) => {
-  const [patients, setPatients] = useState<Patient[]>(dummyPatients);
 
-  const handleSelect = (id: string) => {
-    setPatients(prev =>
-      prev.map(p => ({ ...p, selected: p.id === id }))
-    );
-  };
+  const {
+    patients,
+    loading,
+    fetchPatients,
+    switchPatient,
+  } = usePatientData();
+
+  const [user, setUser] =
+    useState<UserInterface | null>(null);
 
 
- const [user, setUser] = useState<UserInterface | null>(null);
+  const [deleteLoading, setDeleteLoading] =
+    useState(false);
+  const [deleteVisible, setDeleteVisible] = useState(false);
 
-  const fetchUserData = async () => {
-    try {
-      const token = await Utils.getData('_TOKEN');
+  const fetchUserData =
+    useCallback(async () => {
 
-      if (!token) return;
-      const res: any = await _PROFILE_SERVICES.user_profile();
-      const json = await res.json();
-      console.log("profile_response", json);
-      const userData: any = json?.data;
-      setUser(userData || null);
-    } catch (error) {
-      console.log('Profile Error:', error);
-    }
-  };
+      try {
+
+        const res: any =
+          await _PROFILE_SERVICES.user_profile();
+        console.log('user_profile_json', res?.data);
+        setUser(
+          res?.data || null,
+        );
+
+      } catch (error) {
+
+        console.log(
+          'Profile Error:',
+          error,
+        );
+
+      }
+
+    }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
-      fetchUserData();
-    }, [])
+    useCallback(() => {
+      const loadData = async () => {
+        await Promise.all([
+          fetchPatients(),
+          fetchUserData(),
+        ]);
+      };
+
+      loadData();
+    }, [
+      fetchPatients,
+      fetchUserData,
+    ]),
   );
 
+  const handleSelect = useCallback(
+    async (id: string) => {
+      try {
+        await switchPatient(id);
+
+        await Promise.all([
+          fetchPatients(),
+          fetchUserData(),
+        ]);
+      } catch (error) {
+        console.log(
+          'SWITCH PATIENT ERROR =>',
+          error,
+        );
+      }
+    },
+    [
+      switchPatient,
+      fetchPatients,
+      fetchUserData,
+    ],
+  );
+
+  const openDeleteModal =
+    useCallback(() => {
+      setDeleteVisible(true);
+    }, []);
+
+  const closeDeleteModal =
+    useCallback(() => {
+      setDeleteVisible(false);
+    }, []);
+
+  const handleDeleteAccount =
+    useCallback(async () => {
+      try {
+        setDeleteLoading(true);
+
+        const response: any =
+          await _PROFILE_SERVICES.deleteAccount();
+
+        console.log(
+          'DELETE ACCOUNT RESPONSE =>',
+          response,
+        );
+
+        if (!response?.success) {
+          showSuccessToast(
+            response?.message ||
+            'Failed to delete account',
+            'error',
+          );
+          return;
+        }
+
+        await Promise.all([
+          Utils.removeData('_TOKEN'),
+          Utils.removeData('_REFRESH_TOKEN'),
+          Utils.removeData('_USER_INFO'),
+        ]);
+
+        showSuccessToast(
+          response?.message ||
+          'Account deleted successfully',
+          'success',
+        );
+
+        setDeleteVisible(false);
+
+        props.navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'AuthStack',
+            },
+          ],
+        });
+      } catch (error) {
+        console.log(
+          'DELETE ACCOUNT ERROR =>',
+          error,
+        );
+
+        showSuccessToast(
+          'Something went wrong',
+          'error',
+        );
+      } finally {
+        setDeleteLoading(false);
+      }
+    }, [props.navigation]);
 
 
-  const fullName = user?.first_name + ' ' + user?.last_name;
+
+  const fullName =
+    `${user?.first_name ?? ''} ${user?.last_name ?? ''
+      }`.trim();
   const phoneNumber = user?.phone_number;
   const profileImage = user?.profile_picture;
 
@@ -128,20 +225,52 @@ const PatientDetails: React.FC = (props: any) => {
         <View style={styles.rowBetween}>
           <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
 
-          <TouchableOpacity >
+          <TouchableOpacity onPress={() => props.navigation.navigate(
+            'AddEditPatientDetail',
+            {
+              mode: 'add',
+              // patient: item,
+            },
+          )}>
             <Text style={Styles.addBtn}>+  Add Patient</Text>
           </TouchableOpacity>
         </View>
 
 
         <View style={{ marginBottom: 10 }}>
+
           <FlatList
             data={patients}
+            keyExtractor={item =>
+              item.id
+            }
             renderItem={({ item }) => (
-              <PatientCard patient={item} onSelect={handleSelect} navigation={props.navigation} />
+              <PatientCard
+                patient={{
+                  ...item,
+                  selected:
+                    item?.is_active_profile,
+                }}
+                onSelect={() =>
+                  handleSelect(
+                    item.id,
+                  )
+                }
+                navigation={
+                  props.navigation
+                }
+              />
             )}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
+
+            ListEmptyComponent={<EmptyState
+              image={Images.patient}
+              title="No Patients Added"
+              subtitle="Add your first patient to get started."
+            />}
+            removeClippedSubviews
+            initialNumToRender={5}
+            maxToRenderPerBatch={5}
+            windowSize={5}
           />
         </View>
 
@@ -160,9 +289,25 @@ const PatientDetails: React.FC = (props: any) => {
           </View>
         </View>
 
+        <View style={{ position: "relative", bottom: 10, top: 20 }}>
+          <CommonButton title='Delete Account' loading={loading} onPress={openDeleteModal} />
+
+        </View>
         {/* ── VERSION ── */}
         <Text style={styles.version}>APP VERSION 1.2</Text>
       </ScrollView>
+
+      <CommonModal
+        visible={deleteVisible}
+        icon="🗑️"
+        title="Delete Account"
+        subtitle="This action cannot be undone. Are you sure you want to delete your account?"
+        cancelText="Cancel"
+        confirmText="Delete"
+        loading={deleteLoading}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteAccount}
+      />
     </SafeAreaView>
 
   );
@@ -315,15 +460,16 @@ const styles = StyleSheet.create({
 
   // ── Info Box ──
   infoBox: {
+
     paddingHorizontal: 25,
     paddingVertical: 35,
     backgroundColor: Colors.bgcolor,
-    padding: 16,
+    // padding: 16,
     borderWidth: 1.5,
     borderColor: Colors.BGIcon,
     borderRadius: 16,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    // alignItems: 'flex-start',
     gap: 16,
 
   },

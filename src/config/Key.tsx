@@ -6,7 +6,10 @@ export const BaseUrl = {
     url: 'https://clikshop.co.in/api/v1/',
     urlV3: 'https://clikshop.co.in/api/v3/',
     base: 'https://clikshop.co.in/',
-    base_url: 'https://06e4-203-110-81-106.ngrok-free.app/',
+    base_url: 'https://ayurmuni.aimantra.info/'
+    // https://aghast-cognition-earflap.ngrok-free.dev/
+    // https://6057-203-110-81-106.ngrok-free.app/
+    // 'https://ayurmuni.aimantra.info/',
 };
 
 export const Method = {
@@ -21,6 +24,8 @@ export const ZUGOKey = {
     ZEGO_APP_ID: '712416091',
     ZEGO_APP_SIGN: 'c6de6e9ebf00826ca6a1834aaf6db203e722d67f5976cb9ede3f023db73232e8'
 }
+
+export const APP_ID = 'YOUR_AGORA_APP_ID';
 
 export interface ApiResponse {
     status_code: number;
@@ -55,20 +60,20 @@ export const showSuccessToast = (
     });
 };
 
-export const getExpectedDeliveryDate = (rangeStr: string) => {
-    const [day, month] = rangeStr.split("–")[0].trim().split(" ");
-    const year = new Date().getFullYear();
 
-    const months: any = {
-        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-    };
+const formatDate = (
+    dateString: string,
+) => {
 
-    const date = new Date(year, months[month], parseInt(day));
-
-    return date.toLocaleDateString("en-GB", {
-        weekday: "long",
-        day: "numeric",
-        month: "short"
-    });
-}
+    return new Date(
+        dateString,
+    ).toLocaleDateString(
+        'en-US',
+        {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        },
+    );
+};  

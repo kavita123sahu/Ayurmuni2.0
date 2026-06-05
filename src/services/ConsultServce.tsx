@@ -1,9 +1,22 @@
 import { utils } from "xlsx";
 import { BaseUrl, Method } from "../config/Key";
 import { Utils } from "../common/Utils";
-import { apiClient1 } from "./APIconfig";
+import { apiClient } from "./APIconfig";
 
+export const filteredParams = (
+    params?: Record<string, any>,
+) => {
 
+    return Object.fromEntries(
+        Object.entries(params || {})
+            .filter(
+                ([_, value]) =>
+                    value !== undefined &&
+                    value !== null &&
+                    value !== '',
+            ),
+    );
+};
 export const getHomePage = async () => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -19,28 +32,7 @@ export const getHomePage = async () => {
             resolve(serverResponse);
 
 
-            
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
 
-export const getSlotAvailable = async (doctor_id: any) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log("urlllllllllllllll", BaseUrl.base_url + `healthcare/appointments/slots/available/?doctor_id=${doctor_id}`)
-            let serverResponse = await fetch(BaseUrl.base_url + `healthcare/appointments/slots/available/?doctor_id=${doctor_id}`, fetchParameter);
-            resolve(serverResponse);
         }
         catch (error) {
             reject(error);
@@ -49,30 +41,50 @@ export const getSlotAvailable = async (doctor_id: any) => {
 }
 
 
-export const getConsult = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
+export const getAllDoctor = async (payload: object) => {
+    try {
+
+        const cleanPayload =
+            Object.fromEntries(
+                Object.entries(payload)
+                    .filter(
+                        ([_, value]) =>
+                            value !== undefined &&
+                            value !== null &&
+                            value !== '',
+                    ),
+            );
+
+        const query =
+            new URLSearchParams(
+                cleanPayload as any,
+            ).toString();
+
+        console.log(
+            'Final Query Paramsurllll:',
+            query,
+        );
+
+        const response =
+            await apiClient(
+                `customers/doctors/?${query}`,
+                {
+                    method: 'GET',
                 },
-            }
-            let serverResponse = await fetch(BaseUrl.base_url + 'ecom/consultations/', fetchParameter);
-            let response = await serverResponse.json();
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
+            );
+
+        return response;
+
+    } catch (error) {
+
+        throw error;
+    }
 }
 
 
 export const getTopDoctor = async () => {
     try {
-        const response = await apiClient1('customers/topdoctors/', {
+        const response = await apiClient('customers/topdoctors/', {
             method: 'GET'
         });
 
@@ -83,6 +95,118 @@ export const getTopDoctor = async () => {
 }
 
 
+
+export const getDoctorSpecialities = async () => {
+    try {
+        const response = await apiClient('customers/topdoctors/', {
+            method: 'GET'
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+export const getMedicalReceipt = async (appointmentId: string) => {
+    try {
+        const response = await apiClient(`customers/doctors/consultation-receipt/?consultation_id=${appointmentId}`, {
+            method: 'GET'
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+export const getConsultHistory = async (
+    payload: object,
+) => {
+
+    try {
+
+        const cleanPayload =
+            Object.fromEntries(
+                Object.entries(payload)
+                    .filter(
+                        ([_, value]) =>
+                            value !== undefined &&
+                            value !== null &&
+                            value !== '',
+                    ),
+            );
+
+        const query =
+            new URLSearchParams(
+                cleanPayload as any,
+            ).toString();
+
+        console.log(
+            'Final Query Paramsurllll:',
+            query,
+        );
+
+        const response =
+            await apiClient(
+                `customers/doctors/consultation-history/?${query}`,
+                {
+                    method: 'GET',
+                },
+            );
+
+        return response;
+
+    } catch (error) {
+
+        throw error;
+    }
+};
+
+
+
+export const getDoctorSlots = async (
+    payload: object,
+) => {
+
+    try {
+
+        const cleanPayload =
+            Object.fromEntries(
+                Object.entries(payload)
+                    .filter(
+                        ([_, value]) =>
+                            value !== undefined &&
+                            value !== null &&
+                            value !== '',
+                    ),
+            );
+
+        const query =
+            new URLSearchParams(
+                cleanPayload as any,
+            ).toString();
+
+        console.log(
+            'Final Query Paramsurllll:',
+            query,
+        );
+
+        const response =
+            await apiClient(
+                `customers/doctors/?${query}`,
+                {
+                    method: 'GET',
+                },
+            );
+
+        return response;
+
+    } catch (error) {
+
+        throw error;
+    }
+};
 
 export const getFilterTopDoctor = async (
     payload: object,
@@ -106,13 +230,13 @@ export const getFilterTopDoctor = async (
                 cleanPayload as any,
             ).toString();
 
-            console.log(
-                'Final Query Params:',
-                query,
-            );
+        console.log(
+            'Final Query Params:',
+            query,
+        );
 
         const response =
-            await apiClient1(
+            await apiClient(
                 `customers/doctors/?${query}`,
                 {
                     method: 'GET',
@@ -126,27 +250,6 @@ export const getFilterTopDoctor = async (
         throw error;
     }
 };
-
-export const getDoctorBySpeciality = async (data: Object) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/doctors_speciality/', fetchParameter);
-            resolve(serverResponse);
-        }
-
-        catch (error) {
-            reject(error);
-        }
-    })
-}
 
 
 export const getConsultCategory = async () => {
@@ -195,8 +298,6 @@ export const getPatient = async () => {
     })
 }
 
-
-
 export const getBookingOrder = async () => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -219,6 +320,7 @@ export const getBookingOrder = async () => {
         }
     })
 }
+
 export const addPatient = async (data: Object) => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -243,114 +345,34 @@ export const addPatient = async (data: Object) => {
 }
 
 
-export const BookConsultation = async (data: object) => {
+export const createConsultationPayment = async (data: object) => {
+    try {
+        const response = await apiClient('doctors/consultation/payment/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
 
-    return new Promise(async (resolve, reject) => {
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
 
-        // const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcyMDAzODM0LCJpYXQiOjE3NzE5MTc0MzQsImp0aSI6ImYyNzQyOWFhZDllNDRhNmE5YWNjMDcyNTU5MDBiZmUxIiwidXNlcl9pZCI6IjljNWRkY2I2LTUzYTYtNDU3OS05MzAxLTkwMTVjOGEyODBkMyJ9.gFEzpw4zNmNnpQXHOb6MqHk53dFzjskzVgwMxY6nTrs"
-        try {
 
-            const TOKEN = await Utils.getData('_TOKEN');
-            console.log("tokennn___>", TOKEN);
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + TOKEN
-                },
-            }
+export const verifyConsultationPayment = async (data: object) => {
+    try {
+        const response = await apiClient('doctors/consultation/payment/verify/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
 
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/appointments/book/', fetchParameter);
-            resolve(serverResponse);
-        }
-
-        catch (error) {
-            reject(error);
-        }
-    })
+        return response;
+    } catch (error) {
+        throw error;
+    }
 }
 
 
 
-export const BookSlot = async (data: Object) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/slots/', fetchParameter);
-            resolve(serverResponse);
-        }
 
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-
-export const getSpecialty = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/speciality/', fetchParameter);
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-export const getTreatment = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/treatmenttypes/', fetchParameter);
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-export const create_razorpay_order_ID = async (data: Object) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            let serverResponse = await fetch(BaseUrl.base_url + 'payments/create-razorpay-order/', fetchParameter);
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
 

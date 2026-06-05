@@ -29,6 +29,3 @@ AppRegistry.registerComponent(appName, () => App);
 
 
 
-
-
-

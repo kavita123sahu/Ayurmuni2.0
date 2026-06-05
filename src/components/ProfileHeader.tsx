@@ -28,11 +28,10 @@ import { Feather } from '../common/Vector';
 import * as _PROFILE_SERVICE from '../services/ProfileServices';
 
 import { showSuccessToast } from '../config/Key';
-import { apiClient1 } from '../services/APIconfig';
 
 const ProfileHeader = ({ user }: any) => {
 
-  console.log('User in ProfileHeader:', user?.profile_picture);
+  console.log('UserinProfileHeader:', user);
 
   const [loading, setLoading] =
     useState(false);
@@ -57,230 +56,6 @@ const ProfileHeader = ({ user }: any) => {
       IMAGE PICKER
   =====================================================
   */
-
-  const handleAddImage = () => {
-
-    import('react-native').then(
-      ({ Alert }) => {
-
-        Alert.alert(
-          'Select Image',
-          'Choose an option',
-          [
-            {
-              text: 'Camera',
-              onPress: openCamera,
-            },
-            {
-              text: 'Gallery',
-              onPress: openGallery,
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ],
-        );
-      },
-    );
-  };
-
-  /*
-  =====================================================
-      CAMERA
-  =====================================================
-  */
-
-  const openCamera = () => {
-
-    const options: CameraOptions = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1200,
-      maxHeight: 1200,
-    };
-
-    launchCamera(
-      options,
-      async (
-        response: ImagePickerResponse,
-      ) => {
-
-        if (
-          response.didCancel ||
-          response.errorMessage
-        ) {
-          return;
-        }
-
-        if (
-          response.assets &&
-          response.assets[0]
-        ) {
-
-          const image =
-            response.assets[0];
-
-          console.log('Camera Image:', image);
-          uploadProfileImage(image);
-        }
-      },
-    );
-  };
-
-  /*
-  =====================================================
-      GALLERY
-  =====================================================
-  */
-
-  const openGallery = () => {
-
-    const options: ImageLibraryOptions =
-    {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1200,
-      maxHeight: 1200,
-    };
-
-    launchImageLibrary(
-      options,
-      async (
-        response: ImagePickerResponse,
-      ) => {
-
-        if (
-          response.didCancel ||
-          response.errorMessage
-        ) {
-          return;
-        }
-
-        if (
-          response.assets &&
-          response.assets[0]
-        ) {
-
-          const image =
-            response.assets[0];
-
-          uploadProfileImage(image);
-        }
-      },
-    );
-  };
-
-  /*
-  =====================================================
-      UPLOAD IMAGE
-  =====================================================
-  */
-
-  const uploadProfileImage =
-    async (image: any) => {
-
-      try {
-
-        setLoading(true);
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          'image',
-          image?.uri
-            ? {
-              uri: image.uri,
-              type:
-                image.type ||
-                'image/jpeg',
-              name:
-                image.fileName ||
-                `profile_${Date.now()}.jpg`,
-            } as any
-            : null
-        );
-        formData.append('dir', 'customer_avatar')
-
-
-        console.log(
-          'FormData:',
-          formData
-        );
-
-        // =========================
-        // ✅ EXISTING IMAGE CHECK
-        // =========================
-
-        const hasExistingImage =
-          !!profileImage;
-
-        console.log(
-          'HAS EXISTING IMAGE ===>',
-          hasExistingImage
-        );
-
-        // =========================
-        // ✅ API CALL
-        // =========================
-
-        const res: any =
-          await _PROFILE_SERVICE.UploadProfilePhoto(
-            formData,
-            // hasExistingImage
-            //   ? 'PUT'
-            //   : 'POST'
-          );
-
-        console.log(
-          'UPLOAD RESPONSE ===>',
-          res,
-        );
-
-        // =========================
-        // ✅ SUCCESS
-        // =========================
-
-        if (res?.success) {
-
-          setProfileImage(
-            image.uri,
-          );
-
-          showSuccessToast(
-            res?.message ||
-            'Profile image updated',
-            'success',
-          );
-
-          return;
-        }
-
-        // =========================
-        // ❌ ERROR
-        // =========================
-
-        showSuccessToast(
-          res?.message ||
-          'Upload failed',
-          'error',
-        );
-
-      } catch (error) {
-
-        console.log(error);
-
-        showSuccessToast(
-          'Something went wrong',
-          'error',
-        );
-
-      } finally {
-
-        setLoading(false);
-      }
-    };
 
   /*
   =====================================================
@@ -370,7 +145,7 @@ const ProfileHeader = ({ user }: any) => {
 
               {/* EDIT */}
 
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 activeOpacity={0.8}
                 style={styles.editIcon}
                 onPress={
@@ -387,7 +162,7 @@ const ProfileHeader = ({ user }: any) => {
                   }
                 />
 
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
             </View>
 

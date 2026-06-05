@@ -2,6 +2,7 @@ import React, {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
 
@@ -11,13 +12,16 @@ import {
     StyleSheet,
     TouchableOpacity,
     FlatList,
+    ScrollView,
     StatusBar,
     ActivityIndicator,
+    Modal,
 } from 'react-native';
 
-import { Ionicons } from '../../common/Vector';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-import SearchBar from '../../components/SearchBar';
+import { Ionicons } from '../../common/Vector';
+import dayjs from 'dayjs';
 import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
@@ -28,6 +32,10 @@ import { Images } from '../../common/Images';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
+import SearchBar from '../../components/SearchBar';
+import { generateDates, formatDate } from '../../common/DataInterface';
+import { useConsultData } from '../../hooks/useConsultData';
+import EmptyState from '../../components/EmptyState';
 
 const TABS = [
     {
@@ -44,36 +52,77 @@ const TABS = [
     },
 ];
 
-const FILTER_OPTIONS: any = {
+const EXPERIENCE_OPTIONS = [
+    {
+        label: '1+ Years',
+        value: '1',
+    },
+    {
+        label: '5+ Years',
+        value: '5',
+    },
+    {
+        label: '10+ Years',
+        value: '10',
+    },
+    {
+        label: '15+ Years',
+        value: '15',
+    },
+    {
+        label: '20+ Years',
+        value: '20',
+    },
+];
+const AVAILABILITY_OPTIONS = [
+    {
+        label: 'Today',
+        value: 'today',
+    },
+    {
+        label: 'Tomorrow',
+        value: 'tomorrow',
+    },
+    {
+        label: 'This Week',
+        value: 'this_week',
+    },
+    {
+        label: 'Next Week',
+        value: 'next_week',
+    },
+    {
+        label: 'This Month',
+        value: 'this_month',
+    },
+    {
+        label: 'Next Month',
+        value: 'next_month',
+    },
+    {
+        label: 'Select Date',
+        value: 'custom_date',
+    },
+];
 
-    speciality: [
-        'Cardiologist',
-        'Dentist',
-        'Neurologist',
-        'Dermatologist',
-    ],
 
-    availability: [
-        'Available',
-        'Unavailable',
-    ],
 
-    experience: [
-        '1',
-        '5',
-        '10',
-    ],
-};
+
 
 const AllDoctors = (props: any) => {
+    const all =
+        props?.route?.params?.all ??
+        false;
 
-
+    console.log("allllllllllll", all);
 
     const [loading, setLoading] =
         useState(true);
 
     const [filterLoading, setFilterLoading] =
         useState(false);
+
+
     const [doctorData, setDoctorData] =
         useState<any[]>([]);
 
@@ -83,14 +132,70 @@ const AllDoctors = (props: any) => {
     const [activeTab, setActiveTab] =
         useState<string | null>(null);
 
-    const [selectedFilters, setSelectedFilters] =
-        useState<any>({});
+    const [specialities, setSpecialities] =
+        useState<any[]>([]);
+    const [showDatePicker, setShowDatePicker] =
+        useState(false);
+    const [showCustomDateOptions, setShowCustomDateOptions] =
+        useState(false);
+    const [datePickerTarget, setDatePickerTarget] =
+        useState<'from' | 'to' | null>(null);
 
-    /*
-    ====================================
-    API CALL
-    ====================================
-    */
+    const [selectedDateLabel, setSelectedDateLabel] =
+        useState('');
+
+    const [selectedFilters, setSelectedFilters] = useState({
+        speciality: null as any,
+        availabilityValue: '',
+        availabilityFrom: '',
+        availabilityTo: '',
+        experience: '',
+    });
+
+
+    const isFirstRender = useRef(true);
+
+    const { categories } = useConsultData();
+
+
+    useEffect(() => {
+        setSpecialities(categories || []);
+    }, [categories]);
+
+
+    const FILTER_OPTIONS =
+        useMemo(
+            () => ({
+                speciality:
+                    specialities,
+
+                availability:
+                    AVAILABILITY_OPTIONS,
+
+                experience:
+                    EXPERIENCE_OPTIONS,
+            }),
+            [specialities],
+        );
+
+    const dropdownOptions =
+        useMemo(() => {
+            if (!activeTab) {
+                return [];
+            }
+
+            if (
+                activeTab === 'availability' &&
+                showCustomDateOptions
+            ) {
+                return [];
+            }
+
+            const key = activeTab as keyof typeof FILTER_OPTIONS;
+            return FILTER_OPTIONS[key] || [];
+        }, [activeTab, showCustomDateOptions, FILTER_OPTIONS]);
+
+
 
     const getAllDoctors =
         useCallback(
@@ -111,31 +216,42 @@ const AllDoctors = (props: any) => {
                     }
 
                     const payload = {
+                        specialization:
+                            selectedFilters?.speciality?.id || '',
 
-                        speciality:
-                            selectedFilters?.speciality || '',
+                        from_date:
+                            selectedFilters?.availabilityFrom || '',
+                        to_date:
+                            selectedFilters?.availabilityTo || '',
 
-                        has_availability:
-                            selectedFilters?.availability === 'Available'
-                                ? true
-                                : selectedFilters?.availability === 'Unavailable'
-                                    ? false
-                                    : '',
-
-                        min_experience:
+                        experience:
                             selectedFilters?.experience || '',
 
-                        search,
+                        // search,
                     };
+
+                    console.log("FILTER PAYLOAD ===>", payload);
 
                     const response =
                         await _CONSULT_SERVICES.getFilterTopDoctor(
                             payload,
                         );
 
-                    setDoctorData(
-                        response?.data?.results || [],
+                    if (!response) {
+                        console.warn('No response from API');
+                        setDoctorData([]);
+                        return;
+                    }
+
+                    console.log(
+                        'FILTER DOCTOR RESPONSE ===>',
+                        response?.data,
                     );
+
+                    const apiDoctors =
+                        response?.data?.results || [];
+
+                    setDoctorData(apiDoctors || []);
 
                 } catch (error) {
 
@@ -153,7 +269,7 @@ const AllDoctors = (props: any) => {
             },
             [
                 selectedFilters,
-                search,
+                // search,
             ],
         );
     /*
@@ -162,30 +278,19 @@ const AllDoctors = (props: any) => {
     ====================================
     */
 
-
     useEffect(() => {
+        if (isFirstRender.current) {
+            getAllDoctors();
+            isFirstRender.current = false;
+            return;
+        }
 
-        const timer =
-            setTimeout(() => {
+        const timer = setTimeout(() => {
+            getAllDoctors(true);
+        }, 500);
 
-                getAllDoctors(true);
-
-            }, 500);
-
-        return () =>
-            clearTimeout(timer);
-
-    }, [search]);
-
-
-    useEffect(() => {
-
-        getAllDoctors(true);
-
-    }, [
-        selectedFilters,
-        search,
-    ]);
+        return () => clearTimeout(timer);
+    }, [selectedFilters, getAllDoctors]);  //search, 
 
     /*
     ====================================
@@ -193,26 +298,108 @@ const AllDoctors = (props: any) => {
     ====================================
     */
 
-    const onSelectFilter =
-        useCallback(
-            (
-                key: string,
-                value: string,
-            ) => {
+    const getAvailabilityRange = (value: string) => {
+        const today = dayjs().startOf('day');
 
-                setSelectedFilters(
-                    (prev: any) => ({
-                        ...prev,
-                        [key]: value,
-                    }),
-                );
+        switch (value) {
+            case 'today':
+                return {
+                    from: today.format('YYYY-MM-DD'),
+                    to: today.format('YYYY-MM-DD'),
+                };
+            case 'tomorrow':
+                return {
+                    from: today.add(1, 'day').format('YYYY-MM-DD'),
+                    to: today.add(1, 'day').format('YYYY-MM-DD'),
+                };
+            case 'this_week': {
+                const endOfWeek = today.endOf('week');
+                return {
+                    from: today.format('YYYY-MM-DD'),
+                    to: endOfWeek.format('YYYY-MM-DD'),
+                };
+            }
+            case 'next_week': {
+                const startOfNextWeek = today.add(1, 'week').startOf('week');
+                const endOfNextWeek = startOfNextWeek.endOf('week');
+                return {
+                    from: startOfNextWeek.format('YYYY-MM-DD'),
+                    to: endOfNextWeek.format('YYYY-MM-DD'),
+                };
+            }
+            case 'this_month': {
+                const endOfMonth = today.endOf('month');
+                return {
+                    from: today.format('YYYY-MM-DD'),
+                    to: endOfMonth.format('YYYY-MM-DD'),
+                };
+            }
+            case 'next_month': {
+                const startOfNextMonth = today.add(1, 'month').startOf('month');
+                const endOfNextMonth = startOfNextMonth.endOf('month');
+                return {
+                    from: startOfNextMonth.format('YYYY-MM-DD'),
+                    to: endOfNextMonth.format('YYYY-MM-DD'),
+                };
+            }
+            default:
+                return {
+                    from: '',
+                    to: '',
+                };
+        }
+    };
 
-                setActiveTab(null);
+    const onSelectFilter = (
+        key: string,
+        item: any,
+    ) => {
+        if (
+            key === 'availability' &&
+            item?.value === 'custom_date'
+        ) {
+            setShowCustomDateOptions(true);
+            setShowDatePicker(false);
+            setActiveTab('availability');
+            return;
+        }
 
-            },
-            [],
+        if (key === 'speciality') {
+            setSelectedFilters(
+                prev => ({
+                    ...prev,
+                    speciality: item,
+                }),
+            );
+            setActiveTab(null);
+            return;
+        }
+
+        if (key === 'availability') {
+            const range = getAvailabilityRange(item?.value);
+            setSelectedFilters(prev => ({
+                ...prev,
+                availabilityValue: item?.value || '',
+                availabilityFrom: range.from,
+                availabilityTo: range.to,
+            }));
+            setSelectedDateLabel(item?.label || 'Availability');
+            setShowCustomDateOptions(false);
+            setActiveTab(null);
+            return;
+        }
+
+        setSelectedFilters(
+            prev => ({
+                ...prev,
+                [key]:
+                    item?.value ||
+                    item,
+            }),
         );
 
+        setActiveTab(null);
+    };
     /*
     ====================================
     CLEAR FILTER
@@ -222,23 +409,120 @@ const AllDoctors = (props: any) => {
     const clearFilter =
         useCallback(
             (key: string) => {
-
                 setSelectedFilters(
-                    (prev: any) => {
-
-                        const updated = {
-                            ...prev,
-                        };
-
-                        delete updated[key];
-
-                        return updated;
-                    },
+                    (prev: any) => ({
+                        ...prev,
+                        speciality:
+                            key === 'speciality'
+                                ? null
+                                : prev.speciality,
+                        availabilityValue:
+                            key === 'availability'
+                                ? ''
+                                : prev.availabilityValue,
+                        availabilityFrom:
+                            key === 'availability'
+                                ? ''
+                                : prev.availabilityFrom,
+                        availabilityTo:
+                            key === 'availability'
+                                ? ''
+                                : prev.availabilityTo,
+                        experience:
+                            key === 'experience'
+                                ? ''
+                                : prev.experience,
+                    }),
                 );
 
+                if (key === 'availability') {
+                    setSelectedDateLabel('');
+                    setShowCustomDateOptions(false);
+                }
             },
             [],
         );
+
+    const getAvailabilityLabel = () => {
+        if (selectedDateLabel) {
+            return selectedDateLabel;
+        }
+
+        const selectedOption =
+            AVAILABILITY_OPTIONS.find(
+                item =>
+                    item.value ===
+                    selectedFilters?.availabilityValue,
+            );
+
+        return (
+            selectedOption?.label ||
+            'Availability'
+        );
+    };
+
+    const [customDateRange, setCustomDateRange] =
+        useState({
+            from: '',
+            to: '',
+        });
+
+    const onDateChange = (
+        event: any,
+        date?: Date,
+    ) => {
+        if (event.type === 'dismissed') {
+            setShowDatePicker(false);
+            setDatePickerTarget(null);
+            return;
+        }
+
+        if (!date || !datePickerTarget) {
+            setShowDatePicker(false);
+            setDatePickerTarget(null);
+            return;
+        }
+
+        const formattedDate =
+            dayjs(date).format('YYYY-MM-DD');
+
+        setCustomDateRange(prev => ({
+            ...prev,
+            [datePickerTarget]: formattedDate,
+        }));
+
+        setShowDatePicker(false);
+        setDatePickerTarget(null);
+    };
+
+    const applyCustomDateRange = () => {
+        if (!customDateRange.from && !customDateRange.to) {
+            return;
+        }
+
+        const fromDate =
+            customDateRange.from ||
+            customDateRange.to;
+        const toDate =
+            customDateRange.to ||
+            customDateRange.from;
+
+        setSelectedFilters(prev => ({
+            ...prev,
+            availabilityValue: 'custom_date',
+            availabilityFrom: fromDate,
+            availabilityTo: toDate,
+        }));
+
+        setSelectedDateLabel(
+            fromDate === toDate
+                ? dayjs(fromDate).format('DD MMM YYYY')
+                : `${dayjs(fromDate).format('DD MMM YYYY')} - ${dayjs(toDate).format('DD MMM YYYY')}`,
+        );
+
+        setActiveTab(null);
+        setShowCustomDateOptions(false);
+    };
 
     /*
     ====================================
@@ -247,18 +531,17 @@ const AllDoctors = (props: any) => {
     */
 
     const TabButton = () => {
-
         return (
-
             <View style={styles.tabs}>
-
                 {TABS.map(tab => {
-
                     const selectedValue =
-                        selectedFilters?.[tab.key];
+                        tab.key === 'availability'
+                            ? selectedFilters.availabilityValue
+                            : tab.key === 'speciality'
+                                ? selectedFilters.speciality
+                                : selectedFilters[tab.key as keyof typeof selectedFilters];
 
                     return (
-
                         <TouchableOpacity
                             key={tab.key}
                             activeOpacity={0.8}
@@ -271,61 +554,56 @@ const AllDoctors = (props: any) => {
                             }
                             style={[
                                 styles.tabBtn,
-
                                 selectedValue &&
                                 styles.activeTab,
                             ]}
                         >
-
                             <Text
-                                numberOfLines={1}
                                 style={[
                                     styles.tabText,
-
                                     selectedValue &&
                                     styles.activeTabText,
                                 ]}
+                                numberOfLines={1}
                             >
-
                                 {
-                                    selectedValue ||
-                                    tab.label
-                                }
+                                    tab.key === 'speciality'
+                                        ? selectedFilters?.speciality?.name ||
+                                        tab.label
 
+                                        : tab.key === 'availability'
+                                            ? getAvailabilityLabel()
+
+                                            : selectedValue ||
+                                            tab.label
+                                }
                             </Text>
 
-                            {
-                                selectedValue ? (
-
-                                    <TouchableOpacity
-                                        onPress={() =>
-                                            clearFilter(
-                                                tab.key,
-                                            )
-                                        }
-                                    >
-                                        <Ionicons
-                                            name="close"
-                                            size={16}
-                                            color="#fff"
-                                        />
-                                    </TouchableOpacity>
-
-                                ) : (
-
+                            {selectedValue ? (
+                                <TouchableOpacity
+                                    onPress={() =>
+                                        clearFilter(
+                                            tab.key,
+                                        )
+                                    }
+                                >
                                     <Ionicons
-                                        name={
-                                            activeTab === tab.key
-                                                ? 'chevron-up'
-                                                : 'chevron-down'
-                                        }
-                                        size={18}
-                                        color="#0F172A"
+                                        name="close"
+                                        size={16}
+                                        color="#fff"
                                     />
-
-                                )
-                            }
-
+                                </TouchableOpacity>
+                            ) : (
+                                <Ionicons
+                                    name={
+                                        activeTab === tab.key
+                                            ? 'chevron-up'
+                                            : 'chevron-down'
+                                    }
+                                    size={18}
+                                    color="#0F172A"
+                                />
+                            )}
                         </TouchableOpacity>
                     );
                 })}
@@ -342,7 +620,7 @@ const AllDoctors = (props: any) => {
                     onPress={() =>
                         props.navigation.navigate(
                             'DoctorProfile',
-                            { doctor: item },
+                            { doctorId: item?.id },
                         )
                     }
                 />
@@ -356,22 +634,22 @@ const AllDoctors = (props: any) => {
     ====================================
     */
 
-    if (loading) {
+    // if (loading) {
 
-        return (
+    //     return (
 
-            <SafeAreaView
-                style={styles.loaderContainer}
-            >
+    //         <SafeAreaView
+    //             style={styles.loaderContainer}
+    //         >
 
-                <ActivityIndicator
-                    size="large"
-                    color={Colors.primaryColor}
-                />
+    //             <ActivityIndicator
+    //                 size="large"
+    //                 color={Colors.primaryColor}
+    //             />
 
-            </SafeAreaView>
-        );
-    }
+    //         </SafeAreaView>
+    //     );
+    // }
 
     return (
 
@@ -394,6 +672,7 @@ const AllDoctors = (props: any) => {
                 }
                 rightIcon={Images.Bell}
             />
+
 
 
             {
@@ -427,6 +706,8 @@ const AllDoctors = (props: any) => {
                             styles.listContent
                         }
 
+
+
                         ListHeaderComponent={
                             <>
 
@@ -447,53 +728,108 @@ const AllDoctors = (props: any) => {
 
                                 <TabButton />
 
-                                {/* DROPDOWN */}
-
                                 {
                                     activeTab && (
 
-                                        <View
-                                            style={
-                                                styles.dropdown
-                                            }
-                                        >
+                                        <View style={styles.dropdown}>
 
                                             {
-                                                FILTER_OPTIONS[
-                                                    activeTab
-                                                ]?.map(
-                                                    (
-                                                        item: string,
-                                                        index: number,
-                                                    ) => (
-
-                                                        <TouchableOpacity
-                                                            key={
-                                                                index
-                                                            }
-                                                            style={
-                                                                styles.option
-                                                            }
-                                                            onPress={() =>
-                                                                onSelectFilter(
-                                                                    activeTab,
-                                                                    item,
-                                                                )
-                                                            }
-                                                        >
-
-                                                            <Text
-                                                                style={
-                                                                    styles.optionText
-                                                                }
+                                                activeTab === 'availability' &&
+                                                    showCustomDateOptions ? (
+                                                    <>
+                                                        <View style={styles.customDatePanel}>
+                                                            <TouchableOpacity
+                                                                style={styles.dateButton}
+                                                                onPress={() => {
+                                                                    setDatePickerTarget('from');
+                                                                    setShowDatePicker(true);
+                                                                }}
                                                             >
+                                                                <Text style={styles.dateButtonText}>
+                                                                    From: {customDateRange.from ? dayjs(customDateRange.from).format('DD MMM YYYY') : 'Select start date'}
+                                                                </Text>
+                                                            </TouchableOpacity>
 
-                                                                {item}
+                                                            <TouchableOpacity
+                                                                style={styles.dateButton}
+                                                                onPress={() => {
+                                                                    setDatePickerTarget('to');
+                                                                    setShowDatePicker(true);
+                                                                }}
+                                                            >
+                                                                <Text style={styles.dateButtonText}>
+                                                                    To: {customDateRange.to ? dayjs(customDateRange.to).format('DD MMM YYYY') : 'Select end date'}
+                                                                </Text>
+                                                            </TouchableOpacity>
 
-                                                            </Text>
+                                                            <TouchableOpacity
+                                                                style={styles.applyButton}
+                                                                activeOpacity={0.8}
+                                                                onPress={applyCustomDateRange}
+                                                            >
+                                                                <Text style={styles.applyButtonText}>
+                                                                    Apply Date Range
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        </View>
 
-                                                        </TouchableOpacity>
-                                                    ),
+                                                        {showDatePicker && (
+                                                            <DateTimePicker
+                                                                value={
+                                                                    datePickerTarget && customDateRange[datePickerTarget]
+                                                                        ? new Date(customDateRange[datePickerTarget])
+                                                                        : new Date()
+                                                                }
+                                                                mode="date"
+                                                                display="calendar"
+                                                                minimumDate={new Date()}
+                                                                onChange={onDateChange}
+                                                            />
+                                                        )}
+                                                    </>
+                                                ) : (
+
+                                                    <ScrollView
+                                                        nestedScrollEnabled
+                                                        showsVerticalScrollIndicator
+                                                    >
+
+                                                        {
+                                                            dropdownOptions.map(
+                                                                (
+                                                                    item: any,
+                                                                    index,
+                                                                ) => (
+
+                                                                    <TouchableOpacity
+                                                                        key={index}
+                                                                        style={styles.option}
+                                                                        onPress={() =>
+                                                                            onSelectFilter(
+                                                                                activeTab,
+                                                                                item,
+                                                                            )
+                                                                        }
+                                                                    >
+
+                                                                        <Text
+                                                                            style={
+                                                                                styles.optionText
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                item?.name ||
+                                                                                item?.label
+                                                                            }
+                                                                        </Text>
+
+                                                                    </TouchableOpacity>
+                                                                ),
+                                                            )
+                                                        }
+
+                                                    </ScrollView>
+
                                                 )
                                             }
 
@@ -520,21 +856,7 @@ const AllDoctors = (props: any) => {
 
                         ListEmptyComponent={() => (
 
-                            <View
-                                style={
-                                    styles.emptyContainer
-                                }
-                            >
-
-                                <Text
-                                    style={
-                                        styles.emptyText
-                                    }
-                                >
-                                    No Doctors Found
-                                </Text>
-
-                            </View>
+                            <EmptyState image={Images.doctorImage} title='No doctor found' />
                         )}
                     />)}
         </SafeAreaView>
@@ -571,22 +893,28 @@ const styles = StyleSheet.create({
 
     tabBtn: {
         flex: 1,
+
         marginHorizontal: 4,
-        minWidth: 0,
 
         flexDirection: 'row',
+
         alignItems: 'center',
+
         justifyContent: 'space-between',
 
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
+
         paddingVertical: 12,
 
-        backgroundColor: '#FFFFFF',
+        minHeight: 50,
 
         borderRadius: 14,
 
         borderWidth: 1,
+
         borderColor: '#E2E8F0',
+
+        backgroundColor: '#FFF',
     },
 
     activeTab: {
@@ -598,8 +926,10 @@ const styles = StyleSheet.create({
     },
 
     tabText: {
-        flex: 1,
+        flexShrink: 1,
+
         fontSize: 13,
+
         fontFamily:
             Fonts.PoppinsMedium,
 
@@ -613,23 +943,29 @@ const styles = StyleSheet.create({
     },
 
     dropdown: {
-        marginTop: 6,
-
-        backgroundColor: '#FFFFFF',
-
+        marginTop: 8,
+        backgroundColor: '#FFF',
         borderRadius: 16,
 
-        paddingVertical: 6,
+        maxHeight: 250,
 
-        elevation: 4,
+        elevation: 5,
 
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: 2,
         },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+    },
+
+    dropdownScroll: {
+        maxHeight: 260,
+    },
+
+    dropdownContent: {
+        paddingVertical: 6,
     },
 
     option: {
@@ -643,6 +979,41 @@ const styles = StyleSheet.create({
             Fonts.PoppinsMedium,
 
         color: '#1E293B',
+    },
+
+    customDatePanel: {
+        padding: 16,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+    },
+
+    dateButton: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 12,
+    },
+
+    dateButtonText: {
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#0F172A',
+    },
+
+    applyButton: {
+        backgroundColor: Colors.primaryColor,
+        paddingVertical: 14,
+        borderRadius: 14,
+        alignItems: 'center',
+    },
+
+    applyButtonText: {
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#FFFFFF',
     },
 
     emptyContainer: {

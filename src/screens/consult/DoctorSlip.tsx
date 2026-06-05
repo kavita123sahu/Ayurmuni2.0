@@ -509,7 +509,7 @@ const DoctorSlipScreen = ({ navigation }: any) => {
 
                 <FooterButton
                     title="Buy Now"
-                    onPress={()=>navigation.navigate('MultipleDoctorSlip')}
+                    onPress={() => navigation.navigate('MultipleDoctorSlip')}
                     isPrimary
                 />
             </View>

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -16,6 +16,7 @@ import { Ionicons } from '../../common/Vector';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
+import { getDoctorSlots } from '../../services/ConsultServce';
 
 /* -------------------------------------------------------------------------- */
 /*                                   DATA                                     */
@@ -23,12 +24,7 @@ import { Fonts } from '../../common/Fonts';
 
 const { width } = Dimensions.get('window');
 
-const SPECIALIZATIONS = [
-    'Cardiovascular Disease',
-    'Echocardiography',
-    'Heart Failure',
-    'Hypertension',
-];
+
 
 const REVIEWS = [
     {
@@ -41,46 +37,22 @@ const REVIEWS = [
     },
 ];
 
-const STATS = [
-    {
-        id: '1',
-        value: '1,200+',
-        label: 'PATIENTS',
-    },
-    {
-        id: '2',
-        value: '978',
-        label: 'REVIEWS',
-    },
-    {
-        id: '3',
-        value: '12+',
-        label: 'EXPERIENCE',
-    },
-];
+
 
 /* -------------------------------------------------------------------------- */
 /*                              REUSABLE COMPONENTS                           */
 /* -------------------------------------------------------------------------- */
 
-const StatBar = memo(() => {
+const StatBar = memo(({ stats }: { stats: { id: string; value: any; label: string }[] }) => {
     return (
         <View style={styles.statsContainer}>
-            {STATS.map((item, index) => (
+            {stats.map((item, index) => (
                 <React.Fragment key={item.id}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statValue}>
-                            {item.value}
-                        </Text>
-
-                        <Text style={styles.statLabel}>
-                            {item.label}
-                        </Text>
+                        <Text style={styles.statValue}>{item.value}</Text>
+                        <Text style={styles.statLabel}>{item.label}</Text>
                     </View>
-
-                    {index !== STATS.length - 1 && (
-                        <View style={styles.divider} />
-                    )}
+                    {index !== stats.length - 1 && <View style={styles.divider} />}
                 </React.Fragment>
             ))}
         </View>
@@ -140,110 +112,170 @@ const ReviewCard = memo(
 /*                                MAIN SCREEN                                 */
 /* -------------------------------------------------------------------------- */
 
-const DoctorProfile = ({
-    navigation,
-}: any) => {
+const DoctorProfile = ({ navigation, route }: any) => {
+
+    // prefer doctorId from navigation params if provided
+    const doctorIdFromParams = route?.params?.doctorId || null;
+
+    console.log("doctorIdFromParams", doctorIdFromParams);
+
+    const [showFullAbout, setShowFullAbout] = useState(false);
+    const [slots, setSlots] = useState<any>(null);
+    const [loadingSlots, setLoadingSlots] = useState(false);
+    const [slotsError, setSlotsError] = useState<any>(null);
+
+    const doctorIdParam = doctorIdFromParams;
+
+    const fetchDoctor = async (id: string) => {
+        try {
+            setLoadingSlots(true);
+            setSlotsError(null);
+            const resp = await getDoctorSlots({ id });
+            console.log("fetchDoctor response", resp);
+            setSlots(resp?.data || null);
+        } catch (err) {
+            setSlotsError(err);
+        } finally {
+            setLoadingSlots(false);
+        }
+    };
+
+    useEffect(() => {
+        if (doctorIdParam) fetchDoctor(doctorIdParam);
+    }, [doctorIdParam]);
+
+    const SPECIALIZATIONS = Array.isArray(slots?.specialized_therapies)
+        ? slots.specialized_therapies
+        : [];
+    // const SPECIALIZATIONS = slots?.specialized_therapies || [];
+
+    const STATS = [
+        { id: '1', value: slots?.total_patients || 0, label: 'PATIENTS' },
+        { id: '2', value: slots?.total_reviews || 0, label: 'REVIEWS' },
+        { id: '3', value: slots?.experience_display || 0, label: 'EXPERIENCE' },
+    ];
+
     return (
+
+
+
         <SafeAreaView style={styles.container}>
             <StatusBar
                 backgroundColor="#F3FAF7"
                 barStyle="dark-content"
             />
 
+            {/* FIXED HEADER ONLY */}
+            <View style={styles.headerTop}>
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => navigation.goBack()}
+                    style={styles.iconBtn}
+                >
+                    <Image
+                        source={Images.backIcon}
+                        style={styles.backIcon}
+                    />
+                </TouchableOpacity>
+
+                <Text style={styles.headerTitle}>
+                    Doctor Profile
+                </Text>
+
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.iconBtn}
+                >
+                    <Ionicons
+                        name="heart-outline"
+                        size={22}
+                        color={Colors.primaryColor}
+                    />
+                </TouchableOpacity>
+            </View>
+
+            {/* SCROLL START */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={
-                    styles.scrollContent
-                }
+                contentContainerStyle={styles.scrollContent}
             >
-                {/* HEADER */}
 
-                <View style={styles.headerContainer}>
-                    <View style={styles.headerTop}>
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() =>
-                                navigation.goBack()
-                            }
-                            style={styles.iconBtn}
-                        >
+                {/* PROFILE */}
+                <View style={styles.profileContainer}>
+                    <View style={styles.avatarWrapper}>
+                        {slots?.profile_image?.url ? (
                             <Image
-                                source={Images.backIcon}
-                                style={styles.backIcon}
-                            />
-                        </TouchableOpacity>
-
-                        <Text style={styles.headerTitle}>
-                            Doctor Profile
-                        </Text>
-
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.iconBtn}
-                        >
-                            <Ionicons
-                                name="heart-outline"
-                                size={22}
-                                color={
-                                    Colors.primaryColor
-                                }
-                            />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* PROFILE */}
-
-                    <View style={styles.profileContainer}>
-                        <View style={styles.avatarWrapper}>
-                            <Image
-                                source={Images.doctorImage}
+                                source={{
+                                    uri: slots?.profile_image?.url,
+                                }}
                                 style={styles.avatar}
                             />
-                        </View>
-
-                        <Text
-                            numberOfLines={1}
-                            style={styles.doctorName}
-                        >
-                            Dr. Arjun R Nair
-                        </Text>
-
-                        <Text
-                            numberOfLines={1}
-                            style={styles.speciality}
-                        >
-                            Senior Cardiologist
-                        </Text>
+                        ) : (
+                            <View style={styles.avatarFallback}>
+                                <Text style={styles.avatarLetter}>
+                                    {slots?.full_name
+                                        ?.charAt(0)
+                                        ?.toUpperCase()}
+                                </Text>
+                            </View>
+                        )}
                     </View>
+
+                    <Text
+                        numberOfLines={1}
+                        style={styles.doctorName}
+                    >
+                        {slots?.full_name}
+                    </Text>
+
+                    <Text
+                        numberOfLines={1}
+                        style={styles.speciality}
+                    >
+                        {slots?.designation}
+                    </Text>
                 </View>
 
                 {/* STATS */}
-
-                <StatBar />
-
-                {/* ABOUT */}
+                <StatBar stats={STATS} />
 
                 <View style={styles.section}>
+
                     <Text style={styles.sectionTitle}>
                         About
                     </Text>
 
                     <Text style={styles.aboutText}>
-                        Dr. Arjun R Nair is highly
-                        experienced Cardiologists
-                        with over 12 years of
-                        expertise in holistic
-                        healing and Ayurvedic
-                        medicine. He specialized in
-                        detoxification and
-                        rejuvenation therapies...
-                        <Text style={styles.readMore}>
-                            {' '}
-                            Read More
-                        </Text>
-                    </Text>
-                </View>
 
+                        {
+                            showFullAbout
+                                ? slots?.about
+                                : `${slots?.about?.substring(0, 150)}`
+                        }
+
+                        {
+                            slots?.about?.length > 150 && (
+                                <Text
+                                    onPress={() =>
+                                        setShowFullAbout(
+                                            !showFullAbout,
+                                        )
+                                    }
+
+                                    style={styles.readMore}
+                                >
+                                    {
+                                        showFullAbout
+                                            ? ' Read Less'
+                                            : '... Read More'
+                                    }
+                                </Text>
+                            )
+                        }
+
+                    </Text>
+
+                </View>
                 {/* SPECIALIZATION */}
 
                 <View style={styles.section}>
@@ -252,19 +284,16 @@ const DoctorProfile = ({
                     </Text>
 
                     <View style={styles.tagsWrapper}>
-                        {SPECIALIZATIONS.map(
-                            (item, index) => (
-                                <View
-                                    key={index}
-                                    style={styles.tag}
-                                >
-                                    <Text
-                                        style={styles.tagText}
-                                    >
-                                        {item}
-                                    </Text>
+                        {SPECIALIZATIONS?.length ? (
+                            SPECIALIZATIONS?.map((item: string, index: number) => (
+                                <View key={index} style={styles.tag}>
+                                    <Text style={styles.tagText}>{item}</Text>
                                 </View>
-                            ),
+                            ))
+                        ) : (
+                            <Text style={{ color: '#64748B', fontFamily: Fonts.PoppinsMedium }}>
+                                No specializations listed
+                            </Text>
                         )}
                     </View>
                 </View>
@@ -291,44 +320,39 @@ const DoctorProfile = ({
                         />
                     ))}
                 </View>
-
-                {/* FOOTER */}
-
-                <View style={styles.footer}>
-                    <View style={styles.priceContainer}>
-                        <Text style={styles.feeText}>
-                            Consult Fee
-                        </Text>
-
-                        <Text
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.price}
-                        >
-                            Rs. 1499.00
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={()=>navigation.navigate('DoctorSlot')}
-                        style={styles.bookBtn}
-                    >
-                        <Ionicons
-                            name="calendar-outline"
-                            size={18}
-                            color="#FFFFFF"
-                        />
-
-                        <Text
-                            numberOfLines={1}
-                            style={styles.bookText}
-                        >
-                            Book Appointment
-                        </Text>
-                    </TouchableOpacity>
-                </View>
             </ScrollView>
+
+            {/* FOOTER */}
+            <View style={styles.footer}>
+                <View style={styles.priceContainer}>
+                    <Text style={styles.feeText}>
+                        Consult Fee
+                    </Text>
+
+                    <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={styles.price}
+                    >
+                        Rs. {slots?.consultation_fee || 0}
+                    </Text>
+                </View>
+
+                <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('DoctorSlot', { doctorData: slots })} style={styles.bookBtn}>
+                    <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color="#FFFFFF"
+                    />
+
+                    <Text
+                        numberOfLines={1}
+                        style={styles.bookText}
+                    >
+                        Book Appointment
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 };
@@ -366,9 +390,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent:
             'space-between',
+        // backgroundColor: ''
 
         minHeight: 50,
         marginTop: 8,
+        paddingHorizontal: 20,
     },
 
     iconBtn: {
@@ -408,9 +434,16 @@ const styles = StyleSheet.create({
     profileContainer: {
         alignItems: 'center',
 
-        marginTop: 20,
-    },
+        marginTop: 12,
 
+        paddingTop: 30,
+        paddingBottom: 35,
+
+        borderBottomLeftRadius: 35,
+        borderBottomRightRadius: 35,
+
+        overflow: 'hidden',
+    },
     avatarWrapper: {
         width: width * 0.28,
         height: width * 0.28,
@@ -453,6 +486,27 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
 
+    avatarFallback: {
+        width: 90,
+        height: 90,
+
+        borderRadius: 16,
+
+        backgroundColor:
+            Colors.primaryColor,
+
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    avatarLetter: {
+        fontSize: 32,
+
+        color: '#FFFFFF',
+
+        fontFamily:
+            Fonts.PoppinsBold,
+    },
     doctorName: {
         marginTop: 14,
 

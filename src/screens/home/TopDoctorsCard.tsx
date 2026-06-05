@@ -21,9 +21,10 @@ const CARD_WIDTH = width * 0.50;
 
 interface Doctor {
   id: string;
-  name: string;
-  specialized_therapies: [];
+  full_name: string;
+  specializations: [];
   experience: string;
+  name : string;
   total_reviews: string;
   ranking_score: string;
   experience_years: string;
@@ -35,17 +36,24 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
   const renderItem = useCallback(({ item }: { item: Doctor }) => {
     const therapies = Array.isArray(
-      item?.specialized_therapies
+      item?.specializations
     )
-      ? item.specialized_therapies
+      ? item.specializations
       : [];
     return (
-      <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() => navigation.navigate('DoctorProfile')}>
+      <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() =>
+        navigation.navigate(
+          'DoctorProfile',
+          {
+            doctorId: item?.id,
+          },
+        )
+      }>
 
         {/* AVAILABLE TAG */}
         {item.has_availability && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Available Now</Text>
+            <Text style={styles.badgeText}> {item?.has_availability ? ' Available Now' : ''} </Text>
           </View>
         )}
 
@@ -74,9 +82,11 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
           </View>
           <View style={styles.info}>
-            <Text style={styles.name}>{item.name}</Text>
-            {/* <Text style={styles.specialization}> */}
-            {
+            <Text style={styles.name}>{item?.full_name || item?.name}</Text>
+            <Text style={styles.specialization}>
+              {therapies.join(', ')}
+            </Text>
+            {/* {
               therapies.map(
                 (therapy: string, index: number) => (
                   <Text key={index}>
@@ -86,9 +96,8 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
                   </Text>
                 )
               )
-            }
-            {/* {item?.specialized_therapies?.join(' • ')} */}
-            {/* </Text> */}
+            } */}
+
           </View>
         </View>
 

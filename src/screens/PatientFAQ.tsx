@@ -145,11 +145,10 @@ const PatientFAQ = ({ navigation }: any) => {
                             },
                         );
 
-                    const JSONDATA =
-                        await response.json();
-
+                    console.log("prakritiresponse", response)
+                   
                     const options =
-                        JSONDATA?.data
+                        response?.data
                             ?.prakriti_result_options ||
                         [];
 
@@ -215,11 +214,16 @@ const PatientFAQ = ({ navigation }: any) => {
                         },
                     );
 
-                const JSONDATA =
-                    await response.json();
+                // const JSONDATA = await response.json();
 
+                console.log(
+                    'PRATIKRIQUESTION ===>',
+                    response,
+                );
                 const questions =
-                    JSONDATA?.data?.questions || [];
+                    response?.data?.questions || [];
+
+                console.log("qustionnn", questions);
 
                 const formattedQuestions =
                     questions.map((item: any) => ({
@@ -462,7 +466,7 @@ const PatientFAQ = ({ navigation }: any) => {
 
                 <OptionCard
                     item={item}
-                   
+
                     active={active}
                     type={currentQuestion?.answer_type}
                     questionKey={currentQuestion?.key}
@@ -517,15 +521,14 @@ const PatientFAQ = ({ navigation }: any) => {
                         },
                     );
 
-                const JSONDATA =
-                    await response.json();
+                    console.log("assessement yes response", response)
 
                 if (
-                    JSONDATA?.success
+                    response?.success
                 ) {
 
                     showSuccessToast(
-                        JSONDATA?.message ||
+                        response?.message ||
                         'Submitted Successfully',
                         'success',
                     );
@@ -534,7 +537,7 @@ const PatientFAQ = ({ navigation }: any) => {
                 }
 
                 showSuccessToast(
-                    JSONDATA?.message ||
+                    response?.message ||
                     'Submission Failed',
                     'error',
                 );
@@ -568,17 +571,17 @@ const PatientFAQ = ({ navigation }: any) => {
                     payload,
                 );
 
-            const JSONDATA =
-                await response.json();
+            // const JSONDATA =
+            //     await response.json();
 
-            console.log('sucessfully', JSONDATA);
+            console.log('sucessfully', response);
 
             if (
-                JSONDATA?.success
+                response?.success
             ) {
 
                 showSuccessToast(
-                    JSONDATA?.message ||
+                    response?.message ||
                     'Submitted Successfully',
                     'success',
                 );
@@ -587,7 +590,7 @@ const PatientFAQ = ({ navigation }: any) => {
             }
 
             showSuccessToast(
-                JSONDATA?.message ||
+                response?.message ||
                 'Submission Failed',
                 'error',
             );

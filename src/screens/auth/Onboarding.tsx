@@ -30,6 +30,7 @@ import CommonButton from '../../components/CommonButton';
 import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as _PROFILE_SERVICE from '../../services/ProfileServices';
+import { showImagePicker } from '../../hooks/ImagePickerUtils';
 
 
 interface FormData {
@@ -56,6 +57,8 @@ interface FormErrors {
 const Onboarding = (props: any) => {
 
     const [isLoading, setIsLoading] = useState(false);
+
+    const [isLoadingImage, setImageloding] = useState(false);
     const [Isloading, setUSERID] = useState('');
     const dayRef = useRef<TextInput>(null);
     const monthRef = useRef<TextInput>(null);
@@ -102,32 +105,13 @@ const Onboarding = (props: any) => {
         console.log('Back pressed');
     };
 
-    const handleAddImage = () => {
-        Alert.alert(
-            'Select Image',
-            'Choose an option to select image',
-            [
-                {
-                    text: 'Camera',
-                    onPress: openCamera,
-                },
-                {
-                    text: 'Gallery',
-                    onPress: openGallery,
-                },
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-            ],
-            { cancelable: true }
-        );
-    };
+
 
     const uploadProfileImage = async (
         image: Asset
     ) => {
 
+        setImageloding(true)
         try {
 
             const formDataImage =
@@ -163,6 +147,7 @@ const Onboarding = (props: any) => {
                 res
             );
 
+
             /*
             ===================================
             SUCCESS
@@ -181,6 +166,7 @@ const Onboarding = (props: any) => {
                     res?.data?.url ||
                     '';
 
+                setImageloding(false)
                 setFormData(prev => ({
                     ...prev,
 
@@ -210,6 +196,7 @@ const Onboarding = (props: any) => {
             ERROR
             */
 
+            setImageloding(false)
             showSuccessToast(
                 res?.message ||
                 'Upload failed',
@@ -222,7 +209,7 @@ const Onboarding = (props: any) => {
                 'PROFILE IMAGE ERROR ===>',
                 error
             );
-
+            setImageloding(false)
             showSuccessToast(
                 'Something went wrong',
                 'error'
@@ -231,114 +218,13 @@ const Onboarding = (props: any) => {
     };
 
 
-    // ================================
-    // 3. openCamera UPDATE KARO
-    // pura replace kar do
-    // ================================
 
-    const openCamera = () => {
-
-        const options: CameraOptions = {
-            mediaType: 'photo',
-            includeBase64: false,
-            maxHeight: 2000,
-            maxWidth: 2000,
-            quality: 0.8,
-        };
-
-        launchCamera(
-            options,
-            async (response: ImagePickerResponse) => {
-
-                if (
-                    response.didCancel ||
-                    response.errorMessage
-                ) {
-
-                    showSuccessToast(
-                        'Camera cancelled or error',
-                        'error'
-                    );
-
-                    return;
-                }
-
-                if (
-                    response.assets &&
-                    response.assets[0]
-                ) {
-
-                    const asset =
-                        response.assets[0];
-
-                    console.log(
-                        'CAMERA IMAGE ===>',
-                        asset
-                    );
-
-                    // ✅ IMAGE UPLOAD
-                    await uploadProfileImage(
-                        asset
-                    );
-                }
-            }
+    const handleAddImage = () => {
+        showImagePicker(
+            uploadProfileImage,
         );
     };
 
-
-    // ================================
-    // 4. openGallery UPDATE KARO
-    // pura replace kar do
-    // ================================
-
-    const openGallery = () => {
-
-        const options: ImageLibraryOptions = {
-            mediaType: 'photo',
-            includeBase64: false,
-            maxHeight: 2000,
-            maxWidth: 2000,
-            quality: 0.8,
-        };
-
-        launchImageLibrary(
-            options,
-            async (response: ImagePickerResponse) => {
-
-                if (
-                    response.didCancel ||
-                    response.errorMessage
-                ) {
-
-                    showSuccessToast(
-                        'Gallery cancelled or error',
-                        'error'
-                    );
-
-                    return;
-                }
-
-                if (
-                    response.assets &&
-                    response.assets[0]
-                ) {
-
-                    const asset =
-                        response.assets[0];
-
-                    console.log(
-                        'GALLERY IMAGE ===>',
-                        asset
-                    );
-
-                    // ✅ IMAGE UPLOAD
-                    await uploadProfileImage(
-                        asset
-                    );
-                }
-            }
-        );
-    };
 
 
 
@@ -488,32 +374,25 @@ const Onboarding = (props: any) => {
 
             console.log('Onboarding Response:', response);
 
-            // ✅ JSON RESPONSE
-            const jsonResponse = await response.json();
-
-            console.log(
-                'Onboarding Response Message:',
-                jsonResponse
-            );
 
             // ===================================================
             // ✅ SUCCESS
             // ===================================================
 
-            if (response?.ok && jsonResponse?.success === true) {
+            if (response?.success) {
 
                 // STORE USER
                 await Utils.storeData(
                     '_USER_INFO',
-                    jsonResponse?.data
+                    response?.data
                 );
 
                 showSuccessToast(
-                    jsonResponse?.message || 'Welcome to Ayurmuni',
+                    response?.message || 'Welcome to Ayurmuni',
                     'success'
                 );
 
-                props.navigation.navigate('AssessmentType', {
+                props.navigation.replace('AssessmentType', {
                     form: 'all',
                 });
                 setIsLoading(false);
@@ -525,7 +404,7 @@ const Onboarding = (props: any) => {
             // ===================================================
 
             showSuccessToast(
-                jsonResponse?.message ||
+                response?.message ||
                 'Something went wrong',
                 'error'
             );
@@ -586,32 +465,29 @@ const Onboarding = (props: any) => {
                                     <View style={styles.profileContainer}>
 
                                         {/* BIG LIGHT CIRCLE */}
+
+
                                         <View style={styles.bigCircle}>
-
-                                            {formData.profileImage?.uri ? (
-
+                                            {isLoadingImage ? (
+                                                <ActivityIndicator size="small" />
+                                            ) : formData?.profileImage?.uri ? (
                                                 <Image
                                                     source={{
-                                                        uri: formData.profileImage.uri
+                                                        uri: formData.profileImage.uri,
                                                     }}
                                                     style={styles.profileImage}
                                                 />
-
                                             ) : (
                                                 <View style={styles.placeholderContainer}>
                                                     <Text style={styles.placeholderText}>
-
-                                                        {formData.firstName
+                                                        {formData?.firstName
                                                             ? formData.firstName
                                                                 .charAt(0)
                                                                 .toUpperCase()
-                                                            : 'A'}
-
+                                                            : ''}
                                                     </Text>
-
                                                 </View>
                                             )}
-
                                         </View>
 
                                         {/* SMALL GREEN CIRCLE */}

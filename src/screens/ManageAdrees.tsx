@@ -21,6 +21,7 @@ import *as _PROFILE_SERVICES from '../services/ProfileServices';
 import { useFocusEffect } from '@react-navigation/native';
 import { showSuccessToast } from '../config/Key';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
+import EmptyState from '../components/EmptyState';
 
 interface AddressItem {
     id: string;
@@ -45,23 +46,30 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
             const res: any = await _PROFILE_SERVICES.getAddresses();
 
-            const json = await res.json();
+            console.log('ADDRESS_RESPONSE', res);
 
-            console.log('ADDRESS_RESPONSE', json);
-
-            if (json?.success) {
+            if (res?.success) {
 
                 console.log(
                     'ADDRESS_DATA',
-                    json?.data?.results
+                    res?.data?.results
                 );
 
-
-
-
+                const addresses =
+                    res?.data?.results || [];
                 setAddressData(
-                    json?.data?.results || []
+                    addresses || []
                 );
+
+                const defaultAddress =
+                    addresses.find((item: any) => item.is_default
+                    );
+
+                if (defaultAddress) {
+                    setSelectedId(
+                        defaultAddress.id
+                    );
+                }
             }
 
         } catch (error) {
@@ -81,15 +89,13 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
         try {
             const res: any = await _PROFILE_SERVICES.DeleteAddresses(addressId);
 
-            const json = await res.json();
+            console.log('ADDRESS_DELETE_RESPONSE', res);
 
-            console.log('ADDRESS_DELETE_RESPONSE', json);
+            if (res?.success) {
 
-            if (json?.success) {
-
-                 AddressEvents.emit(
-        ADDRESS_UPDATED,
-    );
+                AddressEvents.emit(
+                    ADDRESS_UPDATED,
+                );
                 showSuccessToast('Address deleted successfully', 'success');
                 fetchAddresses();
 
@@ -127,20 +133,18 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                     payload,
                 );
 
-            const json = await res.json();
-
             console.log(
                 'DEFAULT_ADDRESS_RESPONSE',
-                json,
+                res,
             );
 
-            if (json?.success) {
+            if (res?.success) {
 
 
                 AddressEvents.emit(
-        ADDRESS_UPDATED,
-        json?.data,
-    );
+                    ADDRESS_UPDATED,
+                    res.data,
+                );
                 showSuccessToast(
                     'Default address updated',
                     'success',
@@ -164,34 +168,34 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
         return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
     };
 
-useEffect(() => {
+    useEffect(() => {
 
-    // INITIAL API HIT
-    fetchAddresses();
-
-    const refreshAddress = () => {
-
-        console.log(
-            'ADDRESS_UPDATED_EVENT'
-        );
-
+        // INITIAL API HIT
         fetchAddresses();
-    };
 
-    // LISTENER
-    const subscription =
-        AddressEvents.addListener(
-            ADDRESS_UPDATED,
-            refreshAddress,
-        );
+        const refreshAddress = () => {
 
-    // CLEANUP
-    return () => {
+            console.log(
+                'ADDRESS_UPDATED_EVENT'
+            );
 
-        subscription.remove();
-    };
+            fetchAddresses();
+        };
 
-}, []);
+        // LISTENER
+        const subscription =
+            AddressEvents.addListener(
+                ADDRESS_UPDATED,
+                refreshAddress,
+            );
+
+        // CLEANUP
+        return () => {
+
+            subscription.remove();
+        };
+
+    }, []);
 
     const renderAddressItem = ({
         item,
@@ -201,6 +205,9 @@ useEffect(() => {
 
         const isSelected =
             selectedId === item.id;
+
+
+        console.log("itemitemitemaddresss", item)
 
         return (
 
@@ -417,6 +424,12 @@ useEffect(() => {
                     renderItem={
                         renderAddressItem
                     }
+                    ListEmptyComponent={<EmptyState
+                        image={Images.location}
+                        imageSize={20}
+                        title="No Address Found"
+                        subtitle="You haven't added any address yet."
+                    />}
                     scrollEnabled={false}
                 />
 

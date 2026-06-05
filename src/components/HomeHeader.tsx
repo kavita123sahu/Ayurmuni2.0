@@ -54,6 +54,10 @@ const HomeHeader = () => {
     const [user, setUser] = useState<UserData | null>(null);
     const [savedAddresses, setSavedAddresses] = useState<AddressItem[]>([]);
     const [address, setAddress] = useState<Address | null>(null);
+
+
+
+
     const profileImage =
         user?.profile_picture || '';
 
@@ -74,25 +78,21 @@ const HomeHeader = () => {
                 const res: any =
                     await ProfileServices.user_profile();
 
-                const json =
-                    await res.json();
+                console.log("ressssssss", res);
 
-                const userData =
-                    json?.data;
-
-                setUser(userData || null);
+                setUser(res?.data || null);
 
                 const defaultAddress =
-                    userData?.addresses?.find(
+                    res?.data?.addresses?.find(
                         (item: any) =>
                             item?.is_default,
                     ) || null;
 
                 setSavedAddresses(
-                    userData?.addresses || [],
+                    res?.data?.addresses || [],
                 );
 
-                console.log('defaltaddresss', defaultAddress);
+                console.log('defaltaddresss',);
                 setAddress(
                     defaultAddress,
                 );
@@ -165,19 +165,17 @@ const HomeHeader = () => {
                     payload,
                 );
 
-            const json = await res.json();
-
             console.log(
                 'DEFAULT_ADDRESS_RESPONSE',
-                json,
+                res,
             );
 
-            if (json?.success) {
+            if (res?.success) {
 
 
                 AddressEvents.emit(
                     ADDRESS_UPDATED,
-                    json?.data,
+                    res,
                 );
                 // showSuccessToast(
                 //     'Default address updated',
@@ -399,6 +397,10 @@ const HomeHeader = () => {
 
                     <TouchableOpacity
                         activeOpacity={0.7}
+                        onPress={() => {
+                            setShowSheet(false);
+                            navigation.navigate('LocationPickerScreen');
+                        }}
                         style={styles.rowCard}
                     >
 

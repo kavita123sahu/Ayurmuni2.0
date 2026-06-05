@@ -13,15 +13,28 @@ import { Images } from '../../common/Images';
 import BrandList from '../../components/BrandList';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
+import { useMedicineData } from '../../hooks/useMedicineData';
 
 
-const MedicineScreen = () => {
+const MedicineScreen = (props: any) => {
 
+    const { route } = props;
 
+    const categoryId =
+        route?.params?.categoryId;
 
     const navigation = useNavigation();
     const productImage = require('../../assets/images/RecentsImage.png');
     const categoryImage = require('../../assets/images/CategiryImage.png');
+
+    const {
+        loading,
+        refreshing,
+        Diseasecategories,
+        onRefresh,
+    } = useMedicineData(categoryId);
+
+    console.log('Diseasecategories', Diseasecategories);
 
     const recentProducts = [
         {
@@ -121,7 +134,7 @@ const MedicineScreen = () => {
     return (
         <SafeAreaView style={{
             flex: 1,
-            paddingHorizontal:20,
+            paddingHorizontal: 20,
             backgroundColor: '#FDFDFB'
         }}>
 
@@ -137,7 +150,7 @@ const MedicineScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{}}
-                
+
             >
 
                 <SearchBar

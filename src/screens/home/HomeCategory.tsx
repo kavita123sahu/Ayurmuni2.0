@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
+import { Images } from '../../common/Images';
 
 const { width } = Dimensions.get('window');
 
@@ -19,40 +20,40 @@ const ITEM_SIZE = width / 5;
 interface Category {
     id: string;
     name: string;
+    image_url: string;
     icon: any;
 }
 
+const CATEGORY_ROUTES = {
+    Doctors: 'Consult',
+    Medicine: 'MedicineScreen',
+    Products: 'ProductsScreen',
+    Yoga: 'YogaScreen',
+    Diet: 'DietScreen',
+};
 
 const HomeCategory = ({ data = [], navigation }: any) => {
 
-    const handlePress = useCallback((item: Category) => {
-        switch (item.name) {
-            case 'Doctors':
-                navigation.navigate('Consult');
-                break;
+    const handlePress = useCallback(
+        (item: any) => {
 
-            case 'Medicine':
-                navigation.navigate('MedicineScreen');
-                break;
+            const route =
+                CATEGORY_ROUTES[item?.name];
 
-            case 'Products':
-                navigation.navigate('ProductsScreen');
-                break;
+            if (route) {
+                navigation.navigate(route);
+                return;
+            }
 
-            case 'Yoga':
-                navigation.navigate('YogaScreen');
-                break;
-                
-            case 'Diet':
-
-                navigation.navigate('DietScreen');
-                break;
-
-            default:
-                navigation.navigate('TopCategories');
-        }
-    }, [navigation]);
-
+            navigation.navigate(
+                'TopCategories',
+                {
+                    category: item,
+                },
+            );
+        },
+        [navigation],
+    );
 
 
     const renderItem = ({ item }: { item: Category }) => (
@@ -62,7 +63,7 @@ const HomeCategory = ({ data = [], navigation }: any) => {
             activeOpacity={0.7}
         >
             <View style={[styles.circle, { width: ITEM_SIZE - 10, height: ITEM_SIZE - 10 }]}>
-                <Image source={item.icon} style={styles.icon} />
+                <Image source={item?.image_url ? { uri: item.image_url } : Images.medicine} style={styles.icon} />
             </View>
 
             <Text numberOfLines={1} style={styles.text}>

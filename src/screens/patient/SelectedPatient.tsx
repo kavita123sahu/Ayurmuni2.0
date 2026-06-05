@@ -41,8 +41,16 @@ const SelectedPatientCard: React.FC<Props> = ({
       <View style={styles.topRow}>
         {/* Avatar with SELF badge */}
         <View style={styles.avatarWrapper}>
-          <Image source={{ uri: image }} style={styles.avatar} />
-
+          {image ? (
+            <Image
+              source={{ uri: image }}
+              style={styles.avatar}
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {name?.charAt(0)?.toUpperCase()}
+            </Text>
+          )}
         </View>
 
         {/* Name & Phone */}
@@ -110,11 +118,25 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     position: 'relative',
     marginRight: 14,
+    width: 80,
+    height: 80,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderRadius: 10,
+
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 12,
+  },
+  avatarText: {
+    fontSize: 20,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+
   },
   selfBadge: {
     alignSelf: "flex-start",

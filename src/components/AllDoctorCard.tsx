@@ -6,6 +6,7 @@ import {
     StyleSheet,
     Image,
     TouchableOpacity,
+    Pressable,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -36,8 +37,7 @@ interface Props {
 
 const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
-    console.log("ietmmmmmmmmmm", item);
-
+    
     const [isWishlisted, setIsWishlisted] = useState(false);
 
     const isAvailable = item.has_availability === true
@@ -48,7 +48,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
     return (
 
-        <View style={[styles.card, isAvailable ? styles.activeCard : styles.disabledCard]}>
+        <Pressable style={[styles.card, isAvailable ? styles.activeCard : styles.disabledCard]} onPress={() => onPress?.(item)}>
 
             <View style={{ flexDirection: 'row', flex: 1 }}>
                 <View style={styles.imageWrapper}>
@@ -170,7 +170,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
             </View>
 
-        </View>
+        </Pressable>
     );
 };
 

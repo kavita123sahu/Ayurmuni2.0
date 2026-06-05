@@ -12,8 +12,8 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
+import { bloodGroupOptions, genderOptions, relationOptions } from '../common/DataInterface';
 
-const genderOptions = ['Male', 'Female', 'Other'];
 
 const AppInputField = ({
   label,
@@ -21,26 +21,58 @@ const AppInputField = ({
   leftIcon,
   rightIcon,
   value,
+  options = [],
+  onSelect,
   onChangeText,
   containerStyle,
 }: any) => {
 
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-  const [genderModal, setGenderModal] = useState(false);
+
+  const isDropdownField =
+    options.length > 0;
+
+  const [dropdownVisible, setDropdownVisible] =
+    useState(false);
+
+  const [dropdownOptions, setDropdownOptions] =
+    useState<any[]>([]);
+
+  const [dropdownTitle, setDropdownTitle] =
+    useState('');
 
   const isDateField =
-    label?.toLowerCase().includes('date') ||
-    label?.toLowerCase().includes('birth');
+    label?.toLowerCase() === 'date of birth' ||
+    label?.toLowerCase() === 'valid thru';
 
   const isGenderField =
-    label?.toLowerCase().includes('gender');
+    label === 'Gender';
+
+  const isBloodGroupField =
+    label === 'Blood Group';
+
+  const isRelationField =
+    label === 'Relation';
+
+  const isEmergencyRelationField =
+    label === 'Emergency Relation';
+
+
 
   // 📅 format date
   const formatDate = (date: Date) => {
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = date.getFullYear();
-    return `${d}/${m}/${y}`;
+
+    const day = String(
+      date.getDate(),
+    ).padStart(2, '0');
+
+    const month = String(
+      date.getMonth() + 1,
+    ).padStart(2, '0');
+
+    const year = date.getFullYear();
+
+    return `${year}-${month}-${day}`;
   };
 
   const handleConfirm = (date: Date) => {
@@ -68,10 +100,15 @@ const AppInputField = ({
 
   // 👇 press handler
   const handlePress = () => {
+
     if (isDateField) {
       setDatePickerVisibility(true);
-    } else if (isGenderField) {
-      setGenderModal(true);
+      return;
+    }
+
+    if (isDropdownField) {
+      setDropdownVisible(true);
+      return;
     }
   };
 
@@ -89,12 +126,14 @@ const AppInputField = ({
           )}
 
           <TextInput
-            placeholder={placeholder}
-            placeholderTextColor="#6B7280"
             value={value}
-            onChangeText={handleChange}
+            placeholder={placeholder}
+            editable={
+              !isDateField &&
+              !isDropdownField
+            }
+            onChangeText={onChangeText}
             style={styles.input}
-            editable={!isGenderField} // gender me typing off
           />
 
           {rightIcon && (
@@ -108,68 +147,68 @@ const AppInputField = ({
         isVisible={isDatePickerVisible}
         mode="date"
         onConfirm={handleConfirm}
-        onCancel={() => setDatePickerVisibility(false)}
-        maximumDate={new Date()}
+        onCancel={() =>
+          setDatePickerVisibility(false)
+        }
+        maximumDate={
+          label === 'Date of Birth'
+            ? new Date()
+            : undefined
+        }
+        minimumDate={
+          label === 'Valid Thru'
+            ? new Date()
+            : undefined
+        }
       />
 
-      {/* 👇 GENDER MODAL */}
-      <Modal
-        visible={genderModal}
-        transparent
-        animationType="fade"
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setGenderModal(false)}
-        >
-          <View style={styles.modalBox}>
+     <Modal
+  visible={dropdownVisible}
+  transparent
+  animationType="fade"
+>
+  <TouchableOpacity
+    style={styles.modalOverlay}
+    activeOpacity={1}
+    onPress={() =>
+      setDropdownVisible(false)
+    }
+  >
+    <View style={styles.modalBox}>
 
-            {/* 🔥 TITLE */}
-            <Text style={styles.modalTitle}>Select Gender</Text>
+      <FlatList
+        data={options}
+        keyExtractor={item =>
+          item.value
+        }
+        renderItem={({ item }) => (
 
-            <FlatList
-              data={genderOptions}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => {
-                const isSelected = value === item;
+          <TouchableOpacity
+            style={styles.option}
+            onPress={() => {
 
-                return (
-                  <TouchableOpacity
-                    style={[
-                      styles.option,
-                      isSelected && styles.selectedOption,
-                    ]}
-                    onPress={() => {
-                      onChangeText && onChangeText(item);
-                      setGenderModal(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        isSelected && styles.selectedText,
-                      ]}
-                    >
-                      {item}
-                    </Text>
+              onSelect?.(item);
 
-                    {/* ✅ Tick Icon */}
-                    {isSelected && (
-                      <Image
-                        source={require('../assets/images/tick.png')} // 👈 apna tick icon
-                        style={styles.tickIcon}
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
+              onChangeText?.(
+                item.value,
+              );
 
+              setDropdownVisible(
+                false,
+              );
+            }}
+          >
+            <Text>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
 
-        </TouchableOpacity>
-      </Modal>
+        )}
+      />
+
+    </View>
+  </TouchableOpacity>
+</Modal>
     </View>
   );
 };
@@ -205,7 +244,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: Colors.textColor,
+    color: Colors.black,
     fontFamily: Fonts.PoppinsMedium,
   },
 

@@ -14,48 +14,62 @@ import { Images } from '../../common/Images';
 
 export interface Patient {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   relation: string;
   image: string;
+
+  profile_picture: string;
   selected?: boolean;
 }
 
 interface Props {
   patient: Patient;
-  navigation : any,
+  navigation: any,
   onSelect: (id: string) => void;
 }
 
 const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
+
+  const full_name = patient?.first_name + " " + patient?.last_name;
+
+
+  console.log('patient_card_patient', patient);
   return (
     <TouchableOpacity
       style={[styles.item, patient.selected && styles.itemSelected]}
       onPress={() => onSelect(patient.id)}
       activeOpacity={0.8}
     >
-   
-        <Image source={{ uri: patient.image }} style={styles.avatar} />
+      <Image source={{ uri: patient?.profile_picture || 'https://i.pravatar.cc/100?img=5' }}  style={styles.avatar} />
 
-    
       <View style={styles.info}>
-        <Text style={[styles.name,{marginBottom:-4}]}>{patient.name}</Text>
+        <Text style={[styles.name, { marginBottom: -4 }]}>{full_name}</Text>
         <Text style={Styles.specialty}>Relation: <Text style={styles.subtitle}> {patient.relation}</Text></Text>
       </View>
 
       <View style={styles.actions}>
         <TouchableOpacity
-          onPress={() => {navigation.navigate('EditPatientDetail')}}
+          onPress={() => {
+            navigation.navigate(
+              'AddEditPatientDetail',
+              {
+                mode: 'edit',
+                patientId: patient?.id,
+              },
+            );
+          }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-           <Image source={Images.editButton}  style={styles.IconSize} />
+          <Image source={Images.editButton} style={styles.IconSize} />
           {/* <Feather  name='edit' color={Colors.primaryColor} /> */}
         </TouchableOpacity>
 
         {patient.selected ? (
           // <View style={styles.checkCircle}>
-             <Image source={Images.verify}  style={styles.IconSize} />
+          <Image source={Images.verify} style={styles.IconSize} />
           // </View>
-        ) :  <Image source={Images.unverify} style={styles.IconSize} /> }
+        ) : <Image source={Images.unverify} style={styles.IconSize} />}
       </View>
     </TouchableOpacity>
   );
@@ -77,13 +91,15 @@ const styles = StyleSheet.create({
   itemSelected: {
     borderColor: Colors.primaryColor,
     // backgroundColor: '#F0FDFA',
-    borderWidth:0.5,
+    borderWidth: 0.5,
 
   },
   avatar: {
     width: 50,
+   
+    resizeMode: 'contain',
     height: 50,
-    borderRadius: 14,
+    borderRadius: 10,
     marginRight: 12,
     backgroundColor: Colors.bgcolor
   },
@@ -92,7 +108,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-     color: Colors.textColor,
+    color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   relation: {
@@ -122,13 +138,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-   subtitle: {
+  subtitle: {
     fontSize: 14,
     color: '#0D614E',
-    fontFamily : Fonts.PoppinsMedium
+    fontFamily: Fonts.PoppinsMedium
   },
-  IconSize:{
-    height : 22,
-    width:22
+  IconSize: {
+    height: 22,
+    width: 22
   }
 });

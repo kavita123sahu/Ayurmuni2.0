@@ -11,8 +11,10 @@ import {
 
 import { Ionicons } from '../common/Vector';
 import { Colors } from '../common/Colors';
+import * as _ASSESS_SERVICE from '../services/AssesmentService';
 import { Fonts } from '../common/Fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showSuccessToast } from '../config/Key';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,8 +36,56 @@ const AssessmentType = (props: any) => {
     const showPrakriti =
         form === 'prakriti' || form === 'all';
 
+    const SkipHandleAPI = async () => {
+        try {
+            const payload = {
+                is_skipped: true,
+            };
+
+            const response: any =
+                await _ASSESS_SERVICE.SkipAssesment(
+                    payload,
+                );
+
+            console.log(
+                'PRAKRITI_SKIP_RESPONSE =>',
+                response,
+            );
+
+            if (!response?.success) {
+                showSuccessToast(
+                    response?.message ||
+                    'Something went wrong',
+                    'error',
+                );
+                return;
+            }
+
+            showSuccessToast(
+                'Assessment skipped successfully',
+                'success',
+            );
+
+            props?.navigation.replace(
+                'Home',
+            );
+
+        } catch (error) {
+            console.log(
+                'PRAKRITI_SKIP_ERROR =>',
+                error,
+            );
+
+            showSuccessToast(
+                'Network Error',
+                'error',
+            );
+        }
+    };
+
     // ✅ SKIP
     const handleSkip = () => {
+        SkipHandleAPI()
         props.navigation.replace('HomeStack', {
             screen: 'Home',
         });

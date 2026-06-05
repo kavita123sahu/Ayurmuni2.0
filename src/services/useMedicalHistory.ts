@@ -9,15 +9,12 @@ export const useMedicalHistory = () => {
   const getQuestions = async () => {
     try {
       setLoading(true);
-
       const res =
         await _ASSESS_SERVICE.GetQuestionOptions({
           experience_type: 'medical_history',
         });
-
-      const json = await res.json();
-
-      setQuestions(json?.data?.questions || []);
+        console.log("MEDICAL HISTORY QUESTIONS ===>", res);
+      setQuestions(res?.questions || []);
     } catch (error) {
       console.log(error);
     } finally {

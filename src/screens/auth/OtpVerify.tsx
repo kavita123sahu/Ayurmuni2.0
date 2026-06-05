@@ -77,24 +77,16 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
             console.log("sverifyyyy---otpppppp", send_data);
             const response: any = await _AUTH_SERVICE.verify_otp(send_data);
-            const { status, data, message } = response;
-            console.log("newwwwwwuser", response);
-            const JSONData = await response.json();
-            console.log("verify_otp_response--->", JSONData);
+            console.log("verify_otp_response--->", response);
 
-            console.log(response);
+            if (response?.success) {
 
-            // const JSONData = await response.json();
-
-            console.log("verify_otp_response--->", JSONData);
+                Utils.storeData('_USER_ID', response?.data?.user_id);
+                Utils.storeData('_TOKEN', response?.data?.access);
+                Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
 
 
-            if (status === 200) {
-
-                Utils.storeData('_USER_ID', JSONData?.data?.user_id);
-                Utils.storeData('_TOKEN', JSONData?.data?.access);
-                Utils.storeData('_REFRESH_TOKEN', JSONData?.data?.refresh);
-                showSuccessToast(JSONData.message || 'OTP verified successfully', 'success');
+                showSuccessToast(response.message || 'OTP verified successfully', 'success');
                 props.navigation.replace('HomeStack', {
                     screen: 'TermsCondition',
                     params: {
@@ -104,7 +96,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             }
 
             else {
-                showSuccessToast(JSONData?.message || 'Failed to verify OTP', 'error');
+                showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
             }
 
         } catch (error) {
@@ -137,22 +129,21 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             console.log("sverifyyyy---otpppppp", send_data);
             const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
 
-            const datauser = await response.json()
+            console.log("verify_otp_login_response", response);
 
-            console.log("verify_otp_login_response", datauser);
-
-            if (response?.status === 200) {
+            if (response?.success) {
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
-                Utils.storeData('_USER_ID', datauser?.data?.user_id);
-                Utils.storeData('_TOKEN', datauser?.data?.access);
-                Utils.storeData('_REFRESH_TOKEN', datauser?.data?.refresh);
+
+                Utils.storeData('_USER_ID', response?.data?.user_id);
+                Utils.storeData('_TOKEN', response?.data?.access);
+                Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
 
                 props.navigation.replace('HomeStack', { screen: 'Home' });
 
             }
 
             else {
-                showSuccessToast(datauser?.message || 'Failed to verify OTP', 'error');
+                showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
             }
 
         } catch (error) {
@@ -217,11 +208,9 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
 
             const response: any = await _AUTH_SERVICE.send_otp(send_data);
-            const { data, message = "", status } = response;
-            const JSONData = await response.json();
-            console.log("resend_otp_response", response, JSONData);
+            console.log("resend_otp_response", response);
             setIsLoading(false);
-            if (status === 200 || response.ok) {
+            if (response?.success) {
                 setResendTimer(60);
                 showSuccessToast('New OTP has been send to your mobile number', 'success');
             }

@@ -1,6 +1,6 @@
 import { Utils } from "../common/Utils";
 import { BaseUrl, Method } from "../config/Key";
-import { apiClient, apiClient1 } from "./APIconfig";
+import { apiClient } from "./APIconfig";
 
 
 export const update_Profile = async (data: any) => {
@@ -17,29 +17,13 @@ export const update_Profile = async (data: any) => {
 }
 
 // export const user_profile = async () => {
-//     return new Promise(async (resolve, reject) => {
-//         try {
-//             // const customer_id = await Utils.getData('_CUSTOMER_ID');
-//             const user = await Utils.getData('_USER_INFO');
-//             const id = user?.id;
-//             console.log("userprofile---->>>", user, id);
-//             let fetchParameter = {
-//                 method: Method.GET,
-//                 headers: {
-//                     'Accept': 'application/json',
-//                     'Content-Type': 'application/json',
-//                     // 'Authorization': `Bearer ${token}`,
-//                 },
-//             }
-
-//             let serverResponse = await fetch(BaseUrl.base_url + `customers/customer/${id}/`, fetchParameter);
-//             resolve(serverResponse);
-//         }
-//         catch (error) {
-//             reject(error);
-//         }
-//     })
-// }
+//     return apiClient(
+//         'customers/profile/',
+//         {
+//             method: 'GET',
+//         },
+//     );
+// };
 
 
 export const user_profile = async () => {
@@ -47,38 +31,28 @@ export const user_profile = async () => {
         const response = await apiClient('customers/profile/', {
             method: 'GET',
         });
-
         return response;
     } catch (error) {
         throw error;
     }
 };
 
-export const delete_Profile = async (Id: string) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.DELETE,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log(BaseUrl.base_url + `ecom/customer/${Id}/`)
-            let serverResponse = await fetch(BaseUrl.base_url + `customers/customer/${Id}/`, fetchParameter);
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-
-
-export const UploadProfilePhoto = async (data: FormData, method: 'POST' | 'PUT' = 'POST') => {
+export const deleteAccount = async () => {
     try {
-        const response = await apiClient1('user/upload/', {
+        const response = await apiClient('customers/profile/', {
+            method: 'DELETE',
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+export const UploadProfilePhoto = async (data: FormData) => {
+    try {
+        const response = await apiClient('user/upload/', {
             method: 'POST',
             body: data
         });
@@ -88,6 +62,8 @@ export const UploadProfilePhoto = async (data: FormData, method: 'POST' | 'PUT' 
         throw error;
     }
 }
+
+
 
 
 export const getAddresses = async () => {

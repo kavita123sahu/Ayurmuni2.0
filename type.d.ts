@@ -11,10 +11,11 @@ export type RootStackParamList = {
     Onboarding: undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
-    AddEditAddress : undefined;
+    AddEditAddress: undefined;
     History: undefined;
+    LocationPickerScreen : undefined;
     MultipleDoctorSlip: undefined;
-    PrescriptionDetail : undefined;
+    PrescriptionDetail: undefined;
     AuthStack: undefined;
     DoctorSlot: undefined;
     DoctorProfile: undefined;
@@ -26,7 +27,7 @@ export type RootStackParamList = {
     WelcomeScreen: undefined;
     PrakritiProfile: undefined;
     OtpVerify: undefined;
-    EditProfile : undefined;
+    EditProfile: undefined;
     WeeklyMeal: WeeklyMeal;
     MedicalReceipt: undefined;
     AllDoctors: undefined;
@@ -42,7 +43,7 @@ export type RootStackParamList = {
     TermsCondition: undefined;
     YogaScreen: undefined;
     PatientFAQ: undefined;
-    EditPatientDetail: undefined;
+    AddEditPatientDetail: undefined;
     ConsultMentor: undefined;
     ProductDetails: undefined;
     TopCategories: undefined;
@@ -50,6 +51,7 @@ export type RootStackParamList = {
     YogaSession: undefined;
     MyCart: undefined;
     Mentor: undefined;
+    RazorpayScreen :undefined;
     Checkout: undefined;
     DietScreen: undefined;
     Wishlist: undefined;
@@ -85,9 +87,11 @@ export type RootBottomParamList = {
     Home: undefined;
     Shop: undefined;
     Centers: undefined;
+    Medicine :undefined;
     History: undefined;
+    Diet : undefined;
     MyCart: undefined;
-    Products : undefined;
+    Products: undefined;
     Profile: undefined;
     Consult: undefined;
     consultHome: undefined;

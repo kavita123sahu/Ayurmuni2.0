@@ -1,5 +1,6 @@
 import { Images } from "./Images";
 
+import dayjs from 'dayjs';
 export type OrderStatus = 'DELIVERED' | 'IN_PROGRESS';
 
 
@@ -55,6 +56,104 @@ const productImage2 = require('../assets/images/DietImage.png');
 const productImage1 = require('../assets/images/YogaImage.png');
 const productImage3 = require('../assets/images/ImageSpa.png');
 
+
+export const bloodGroupOptions = [
+  { label: 'A+', value: 'A+' },
+  { label: 'A-', value: 'A-' },
+  { label: 'B+', value: 'B+' },
+  { label: 'B-', value: 'B-' },
+  { label: 'AB+', value: 'AB+' },
+  { label: 'AB-', value: 'AB-' },
+  { label: 'O+', value: 'O+' },
+  { label: 'O-', value: 'O-' },
+];
+
+export const relationOptions = [
+  { label: 'Self', value: 'self' },
+  { label: 'Spouse', value: 'spouse' },
+  { label: 'Father', value: 'father' },
+  { label: 'Mother', value: 'mother' },
+  { label: 'Son', value: 'son' },
+  { label: 'Daughter', value: 'daughter' },
+  { label: 'Brother', value: 'brother' },
+  { label: 'Sister', value: 'sister' },
+];
+
+export const INITIAL_FILTERS = {
+  speciality: null,
+  availabilityValue: '',
+  availabilityFrom: '',
+  availabilityTo: '',
+  experience: '',
+};
+
+  export const TABS = [
+    {
+        key: 'speciality',
+        label: 'Speciality',
+    },
+    {
+        key: 'availability',
+        label: 'Availability',
+    },
+    {
+        key: 'experience',
+        label: 'Experience',
+    },
+];
+
+export const EXPERIENCE_OPTIONS = [
+    {
+        label: '1+ Years',
+        value: '1',
+    },
+    {
+        label: '5+ Years',
+        value: '5',
+    },
+    {
+        label: '10+ Years',
+        value: '10',
+    },
+    {
+        label: '15+ Years',
+        value: '15',
+    },
+    {
+        label: '20+ Years',
+        value: '20',
+    },
+];
+export const AVAILABILITY_OPTIONS = [
+    {
+        label: 'Today',
+        value: 'today',
+    },
+    {
+        label: 'Tomorrow',
+        value: 'tomorrow',
+    },
+    {
+        label: 'This Week',
+        value: 'this_week',
+    },
+    {
+        label: 'Next Week',
+        value: 'next_week',
+    },
+    {
+        label: 'This Month',
+        value: 'this_month',
+    },
+    {
+        label: 'Next Month',
+        value: 'next_month',
+    },
+    {
+        label: 'Select Date',
+        value: 'custom_date',
+    },
+];
 export const topSelling = [
   {
     id: '1',
@@ -320,6 +419,295 @@ export const generateDates = (daysBefore = 3, daysAfter = 10) => {
   return dates;
 };
 
+
+export const formatDate = (
+  date: string | Date,
+) => {
+
+  if (!date) {
+    return '';
+  }
+
+  const formattedDate =
+    typeof date === 'string'
+      ? new Date(date)
+      : date;
+
+  return formattedDate
+    .toISOString()
+    .split('T')[0];
+};
+
+export const hasMatchingAvailability = (
+  doctor: any,
+  selectedAvailability: string,
+) => {
+
+  if (!selectedAvailability) {
+    return true;
+  }
+
+  const slots =
+    doctor?.slots || [];
+
+  const availableSlots =
+    slots.filter(
+      (slot: any) =>
+        String(slot?.status)
+          ?.toLowerCase?.() === 'available',
+    );
+
+  if (!availableSlots.length) {
+    return false;
+  }
+
+  const today =
+    new Date();
+
+  /*
+  TODAY
+  */
+
+  if (
+    selectedAvailability ===
+    'Today'
+  ) {
+
+    const todayDate =
+      formatDate(today);
+
+    return availableSlots.some(
+      (slot: any) =>
+        slot?.date === todayDate,
+    );
+  }
+
+  /*
+  TOMORROW
+  */
+
+  if (
+    selectedAvailability ===
+    'Tomorrow'
+  ) {
+
+    const tomorrow =
+      new Date();
+
+    tomorrow.setDate(
+      tomorrow.getDate() + 1,
+    );
+
+    const tomorrowDate =
+      formatDate(tomorrow);
+
+    return availableSlots.some(
+      (slot: any) =>
+        slot?.date === tomorrowDate,
+    );
+  }
+
+  /*
+  NEXT WEEK
+  */
+
+  if (
+    selectedAvailability ===
+    'Next Week'
+  ) {
+
+    const nextWeek =
+      new Date();
+
+    nextWeek.setDate(
+      today.getDate() + 7,
+    );
+
+    return availableSlots.some(
+      (slot: any) => {
+
+        const slotDate =
+          new Date(
+            slot?.date,
+          );
+
+        return (
+          slotDate >= today &&
+          slotDate <= nextWeek
+        );
+      },
+    );
+  }
+
+  /*
+  THIS MONTH
+  */
+
+  if (
+    selectedAvailability ===
+    'This Month'
+  ) {
+
+    const currentMonth =
+      today.getMonth();
+
+    const currentYear =
+      today.getFullYear();
+
+    return availableSlots.some(
+      (slot: any) => {
+
+        const slotDate =
+          new Date(
+            slot?.date,
+          );
+
+        return (
+          slotDate.getMonth() === currentMonth &&
+          slotDate.getFullYear() === currentYear
+        );
+      },
+    );
+  }
+
+  return true;
+};
+
+export const convertTo12Hour = (time: string) => {
+
+  if (!time) return '';
+
+  const [hour, minute] = time.split(':');
+
+  const date = new Date();
+
+  date.setHours(Number(hour));
+  date.setMinutes(Number(minute));
+
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+export const generateFutureDates = (
+  monthOffset = 0,
+) => {
+
+  const today = new Date();
+
+  const currentMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + monthOffset,
+    1,
+  );
+
+  const year = currentMonth.getFullYear();
+
+  const month = currentMonth.getMonth();
+
+  const totalDays = new Date(
+    year,
+    month + 1,
+    0,
+  ).getDate();
+
+  const dates = [];
+
+  /*
+  |--------------------------------------------------------------------------
+  | TODAY RESET
+  |--------------------------------------------------------------------------
+  */
+
+  const todayDate = new Date();
+
+  todayDate.setHours(
+    0,
+    0,
+    0,
+    0,
+  );
+
+  for (let i = 1; i <= totalDays; i++) {
+
+    const dateObj = new Date(
+      year,
+      month,
+      i,
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOCAL DATE FORMAT (NO UTC ISSUE)
+    |--------------------------------------------------------------------------
+    */
+
+    const localYear =
+      dateObj.getFullYear();
+
+    const localMonth =
+      String(
+        dateObj.getMonth() + 1,
+      ).padStart(2, '0');
+
+    const localDay =
+      String(
+        dateObj.getDate(),
+      ).padStart(2, '0');
+
+    const fullDate =
+      `${localYear}-${localMonth}-${localDay}`;
+
+    /*
+    |--------------------------------------------------------------------------
+    | DISABLE PAST DATES
+    |--------------------------------------------------------------------------
+    */
+
+    const compareDate =
+      new Date(dateObj);
+
+    compareDate.setHours(
+      0,
+      0,
+      0,
+      0,
+    );
+
+    const isPast =
+      compareDate < todayDate;
+
+    dates.push({
+
+      day: dateObj
+        .toLocaleDateString(
+          'en-US',
+          {
+            weekday: 'short',
+          },
+        )
+        .toUpperCase(),
+
+      date: i,
+
+      month: dateObj
+        .toLocaleDateString(
+          'en-US',
+          {
+            month: 'short',
+          },
+        ),
+
+      fullDate,
+
+      isDisabled: isPast,
+    });
+  }
+
+  return dates;
+};
 
 export const QUESTIONS_DATA = [
 
@@ -683,3 +1071,46 @@ export const QUESTIONS_DATA = [
 ];
 
 
+
+
+export const getAvailabilityDate = (
+  type: string,
+) => {
+
+  switch (type) {
+
+    case 'today':
+      return dayjs()
+        .format('YYYY-MM-DD');
+
+    case 'tomorrow':
+      return dayjs()
+        .add(1, 'day')
+        .format('YYYY-MM-DD');
+
+    case 'this_week':
+      return dayjs()
+        .endOf('week')
+        .format('YYYY-MM-DD');
+
+    case 'next_week':
+      return dayjs()
+        .add(1, 'week')
+        .endOf('week')
+        .format('YYYY-MM-DD');
+
+    case 'this_month':
+      return dayjs()
+        .endOf('month')
+        .format('YYYY-MM-DD');
+
+    case 'next_month':
+      return dayjs()
+        .add(1, 'month')
+        .endOf('month')
+        .format('YYYY-MM-DD');
+
+    default:
+      return '';
+  }
+};

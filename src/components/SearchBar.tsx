@@ -11,11 +11,17 @@ import { Fonts } from '../common/Fonts';
 interface Props {
   placeholder?: string;
   icon: ImageSourcePropType;
+  value?: string;
+  onChangeText?: (
+    text: string,
+  ) => void;
 }
 
 const SearchBar: React.FC<Props> = ({
   placeholder = 'Search...',
   icon,
+  value,
+  onChangeText,
 }) => {
   return (
     <View style={styles.container}>
@@ -26,7 +32,8 @@ const SearchBar: React.FC<Props> = ({
         placeholder={placeholder}
         placeholderTextColor="#64748B"
         style={styles.input}
-        
+        value={value}
+        onChangeText={onChangeText}
       />
     </View>
   );

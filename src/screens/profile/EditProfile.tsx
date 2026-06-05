@@ -12,6 +12,8 @@ import {
     ScrollView,
     StatusBar,
     ActivityIndicator,
+    ImageBackground,
+    Image,
 } from 'react-native';
 
 import {
@@ -26,6 +28,9 @@ import { Colors } from '../../common/Colors';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { Feather } from '../../common/Vector';
+import { CameraOptions, ImageLibraryOptions, ImagePickerResponse, launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { showImagePicker } from '../../hooks/ImagePickerUtils';
+import { uploadImage } from '../../hooks/usePatientData';
 
 
 const EditProfile = ({
@@ -33,6 +38,8 @@ const EditProfile = ({
 }: any) => {
 
     const [loading, setLoading] =
+        useState(false);
+         const [loadingImage, setImageLoading] =
         useState(false);
 
     const [profileLoading,
@@ -56,14 +63,25 @@ const EditProfile = ({
 
             gender: "",
 
+            profile_picture: "",
+
             date_of_birth: "",
         });
 
-    /*
-    ---------------------------------
-    UPDATE FIELD
-    ---------------------------------
-    */
+
+    const imageUri =
+        formData?.profile_picture?.trim();
+
+
+    useEffect(() => {
+        console.log(
+            'FORMDATA IMAGE =>',
+            formData.profile_picture
+        );
+    }, [formData.profile_picture]);
+
+
+
 
     const updateField = (
         key: string,
@@ -94,46 +112,28 @@ const EditProfile = ({
                 const res: any =
                     await _PROFILE_SERVICES.user_profile();
 
-                const json =
-                    await res.json();
-
                 console.log(
                     'Updated_PROFILE_RESPONSE',
-                    json,
+                    res,
                 );
 
                 if (
-                    json?.success
+                    res?.success
                 ) {
 
                     const user =
-                        json?.data;
+                        res?.data;
+
+                    console.log("userrr", user);
 
                     setFormData({
-
-                        first_name:
-                            user?.first_name ||
-                            '',
-
-                        last_name:
-                            user?.last_name ||
-                            '',
-
-                        email:
-                            user?.email ||
-                            '',
-
-                        secondary_number:
-                            user?.secondary_number ||
-                            '',
-
-                        gender:
-                            user?.gender ||
-                            '',
-
-                        date_of_birth:
-                            user?.date_of_birth ||
-                            '',
+                        first_name: user?.first_name || '',
+                        last_name: user?.last_name || '',
+                        email: user?.email || '',
+                        profile_picture: user?.profile_picture || '',
+                        secondary_number: user?.secondary_number || '',
+                        gender: user?.gender || '',
+                        date_of_birth: user?.date_of_birth || '',
                     });
                 }
 
@@ -152,11 +152,53 @@ const EditProfile = ({
             }
         };
 
-    /*
-    ---------------------------------
-    UPDATE PROFILE
-    ---------------------------------
-    */
+
+
+    const handleAddImage = () => {
+        showImagePicker(
+            handleUploadImage,
+        );
+    };
+
+    const handleUploadImage = async (
+        image: any,
+    ) => {
+        try {
+            setImageLoading(true);
+
+            const res =
+                await uploadImage(image);
+
+            if (res?.success) {
+
+                const imageUrl =
+                    res?.data?.url ||
+                    res?.url ||
+                    '';
+
+                console.log(
+                    'IMAGE URL =>',
+                    imageUrl
+                );
+
+                setFormData(prev => ({
+                    ...prev,
+                    profile_picture: imageUrl,
+                }));
+
+                showSuccessToast(
+                    'Profile updated successfully',
+                    'success',
+                );
+            }
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setImageLoading(false);
+        }
+    };
+
+
 
     const handleUpdateProfile = async () => {
 
@@ -164,13 +206,19 @@ const EditProfile = ({
 
             setLoading(true);
 
-            const payload = {
 
+            console.log(
+                'PROFILE PICTURE PAYLOAD =>',
+                formData.profile_picture
+            );
+
+            const payload = {
                 first_name: formData.first_name,
                 last_name: formData.last_name,
                 email: formData.email,
                 secondary_number: formData.secondary_number,
                 gender: formData.gender,
+                profile_picture: formData.profile_picture,
                 date_of_birth: formData.date_of_birth,
             };
 
@@ -187,14 +235,12 @@ const EditProfile = ({
                 res?.status,
             );
 
-            const json = await res.json();
-
             console.log(
                 'UPDATE_PROFILE_RESPONSE',
-                json
+                res
             );
 
-            if (json?.success) {
+            if (res?.success) {
 
                 showSuccessToast(
                     'Profile updated successfully',
@@ -255,6 +301,11 @@ const EditProfile = ({
                 }
             />
 
+
+
+
+
+
             {
                 profileLoading
                     ? (
@@ -282,6 +333,90 @@ const EditProfile = ({
                                 styles.scrollContent
                             }
                         >
+
+
+                            <View style={styles.avatarBgWrapper}>
+
+                                <ImageBackground
+                                    source={Images.BackgroundImage}
+                                    style={styles.avatarBg}
+                                    imageStyle={{
+                                        borderRadius: 100,
+                                    }}
+                                >
+
+                                    <View
+                                        style={styles.avatarWrapper}
+                                    >
+
+                                        {/* IMAGE */}
+
+                                        {/* {formData?.profile_picture ? ( */}
+                                        <Image
+                                            source={{
+                                                uri: formData.profile_picture,
+                                            }}
+                                            style={styles.avatar}
+                                            onLoad={() =>
+                                                console.log('IMAGE LOADED')
+                                            }
+                                            onError={(e) =>
+                                                console.log(
+                                                    'IMAGE ERROR',
+                                                    e.nativeEvent,
+                                                )
+                                            }
+                                        />
+                                        {/* ) : (
+                                        //     <View style={styles.initialWrapper}>
+                                        //         <Text style={styles.initialText}>
+                                        //             {formData.first_name
+                                        //                 ?.charAt(0)
+                                        //                 ?.toUpperCase()}
+                                        //         </Text>
+                                        //     </View>
+                                        )} */}
+
+                                        {/* LOADER */}
+
+                                        {loadingImage && (
+                                            <View
+                                                style={
+                                                    styles.loaderOverlay
+                                                }
+                                            >
+                                                <ActivityIndicator
+                                                    size="small"
+                                                    color="#fff"
+                                                />
+                                            </View>
+                                        )}
+
+                                        {/* EDIT */}
+
+                                        <TouchableOpacity
+                                            activeOpacity={0.8}
+                                            style={styles.editIcon}
+                                            onPress={
+                                                handleAddImage
+                                            }
+                                        >
+                                            <Image
+                                                source={
+                                                    Images.profileEdit
+                                                }
+                                                style={
+                                                    styles.IconSize
+                                                }
+                                            />
+
+                                        </TouchableOpacity>
+
+                                    </View>
+
+                                </ImageBackground>
+                            </View>
+
 
                             {/* FIRST NAME */}
 
@@ -658,6 +793,120 @@ const styles = StyleSheet.create({
         backgroundColor:
             '#F8FAFC',
     },
+
+    avatarBgWrapper: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: -10,
+    },
+
+    avatarBg: {
+        padding: 30,
+        height: 150,
+        width: 200,
+        borderRadius: 100,
+        overflow: 'hidden',
+
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    avatarWrapper: {
+        width: 105,
+        height: 105,
+
+        borderRadius: 24,
+
+        borderWidth: 1,
+        borderColor: '#DDEBE8',
+
+        backgroundColor: '#FFFFFF',
+
+        justifyContent: 'center',
+        alignItems: 'center',
+
+        marginBottom: 12,
+
+        overflow: 'hidden',
+
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowRadius: 6,
+        elevation: 5,
+    },
+
+    avatar: {
+        width: 90,
+        height: 90,
+        borderRadius: 16,
+    },
+
+
+    /*
+   =====================================================
+       FIRST LETTER UI
+   =====================================================
+   */
+
+    initialWrapper: {
+        width: 90,
+        height: 90,
+
+        borderRadius: 18,
+
+        backgroundColor:
+            Colors.primaryColor,
+
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    initialText: {
+        fontSize: 34,
+
+        color: '#fff',
+
+        fontFamily:
+            Fonts.PoppinsBold,
+    },
+
+    /*
+    =====================================================
+        LOADER
+    =====================================================
+    */
+
+    loaderOverlay: {
+        position: 'absolute',
+
+        width: '100%',
+        height: '100%',
+
+        backgroundColor:
+            'rgba(0,0,0,0.45)',
+
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    editIcon: {
+        position: 'absolute',
+        bottom: -2,
+        right: 1,
+
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    IconSize: {
+        width: 30,
+        height: 30,
+    },
+
 
     loaderContainer: {
         flex: 1,

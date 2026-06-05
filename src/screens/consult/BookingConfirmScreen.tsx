@@ -1,4 +1,4 @@
-import React, { memo, useRef, useState } from 'react';
+import React, { memo, useRef, useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,21 @@ import {
   StyleSheet,
   Dimensions,
   Pressable,
+  BackHandler,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Share, { Social } from 'react-native-share';
 
+import Clipboard
+  from '@react-native-clipboard/clipboard';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { Styles } from '../../common/Styles';
 import { Ionicons } from '../../common/Vector';
 import { Animated } from 'react-native';
+import { formatDate } from '../../common/DataInterface';
+import { getAppointmentShareMessage } from '../../helper/shareMessage';
 
 const { width } = Dimensions.get('window');
 
@@ -26,12 +32,12 @@ const { width } = Dimensions.get('window');
 /* -------------------------------------------------------------------------- */
 
 type AppointmentStatus =
-  | 'COMPLETED'
   | 'CANCELLED'
+  | 'CONFIRMED'
   | 'UPCOMING';
 
 interface BadgeProps {
-  status: AppointmentStatus;
+  appointment_status: AppointmentStatus;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -43,47 +49,51 @@ interface BadgeProps {
 const { height } = Dimensions.get('window');
 
 const SHEET_HEIGHT = height / 1.9;
-
 const shareOptions = [
   {
     id: 1,
     title: 'WhatsApp',
+    type: 'whatsapp',
     icon: require('../../assets/images/whatsappIcon.png'),
     bg: '#0D614E26',
-    Color: Colors.primaryColor
+    Color: Colors.primaryColor,
   },
 
   {
     id: 2,
     title: 'Messages',
+    type: 'message',
     icon: require('../../assets/images/chatSupport.png'),
     bg: '#DBEAFE',
-    Color: '#2563EB'
+    Color: '#2563EB',
   },
 
   {
     id: 3,
     title: 'Email',
+    type: 'email',
     icon: require('../../assets/images/email.png'),
     bg: '#FFEDD5',
-    Color: '#EA580C'
+    Color: '#EA580C',
   },
 
   {
     id: 4,
     title: 'Copy Link',
+    type: 'copy',
     icon: require('../../assets/images/copyIcon.png'),
     bg: '#F3F4F6',
-    Color: '#475569'
+    Color: '#475569',
   },
 ];
 
-
 const BADGE_CONFIG = {
-  COMPLETED: {
+  CONFIRMED: {
     bg: '#DCFCE7',
     color: '#16A34A',
   },
+
+
 
   CANCELLED: {
     bg: '#FEE2E2',
@@ -100,8 +110,8 @@ const BADGE_CONFIG = {
 /*                              REUSABLE COMPONENTS                           */
 /* -------------------------------------------------------------------------- */
 
-const Badge = memo(({ status }: BadgeProps) => {
-  const config = BADGE_CONFIG[status];
+const Badge = memo(({ appointment_status }: BadgeProps) => {
+  const config = BADGE_CONFIG[appointment_status];
 
   return (
     <View
@@ -120,7 +130,7 @@ const Badge = memo(({ status }: BadgeProps) => {
           },
         ]}
       >
-        {status}
+        {appointment_status}
       </Text>
     </View>
   );
@@ -164,12 +174,34 @@ const DetailRow = memo(
 /*                              MAIN COMPONENT                                */
 /* -------------------------------------------------------------------------- */
 
-const BookingConfrimScreen = ({
-  navigation,
-}: any) => {
+const BookingConfrimScreen = ({ navigation, route }: any) => {
+  const { SlotsDetail } = route?.params || {};
 
+  console.log("navigationnavigation", navigation)
 
   const [visible, setVisible] = useState(false);
+
+  // Disable hardware back button and gesture back to prevent leaving this
+  // confirmation screen except via explicit buttons (Home or Share).
+  useEffect(() => {
+    const onHardwareBack = () => true;
+
+    const backHandler =
+      BackHandler.addEventListener(
+        'hardwareBackPress',
+        onHardwareBack,
+      );
+
+    return () => backHandler.remove();
+  }, []);
+  // Hide header back button and disable gestures if using stack navigator
+  useLayoutEffect(() => {
+    try {
+      navigation.setOptions && navigation.setOptions({ headerLeft: () => null, gestureEnabled: false });
+    } catch (e) {
+      // ignore if navigator doesn't support these options
+    }
+  }, [navigation]);
 
   const slideAnim = useRef(
     new Animated.Value(SHEET_HEIGHT),
@@ -180,8 +212,115 @@ const BookingConfrimScreen = ({
   ).current;
 
 
+  const shareMessage =
+    getAppointmentShareMessage({
+      doctorName:
+        SlotsDetail?.info?.doctor_name,
+
+      specialization:
+        SlotsDetail?.doctor_specialization?.join(', '),
+
+      date: formatDate(
+        SlotsDetail?.slot?.date,
+      ),
+
+      time:
+        SlotsDetail?.slot?.slot_time,
+
+      status:
+        SlotsDetail?.status,
+
+      hospitalName:
+        SlotsDetail?.hospital_name,
+    });
+
+
+  // =============================
+  // SHARE FUNCTIONS
+  // =============================
+  const handleShare = async (
+    type: string,
+  ) => {
+
+    try {
+
+      if (type === 'copy') {
+
+        Clipboard.setString(
+          shareMessage,
+        );
+
+        closeBottomSheet();
+
+        return;
+      }
+
+      if (type === 'message') {
+
+        await Share.open({
+          message:
+            shareMessage,
+        });
+
+        closeBottomSheet();
+
+        return;
+      }
+
+      const shareOptions: any = {
+        message:
+          shareMessage,
+      };
+
+      if (
+        type === 'whatsapp'
+      ) {
+
+        shareOptions.social =
+          Social.Whatsapp;
+
+      } else if (
+        type === 'email'
+      ) {
+
+        shareOptions.social =
+          Social.Email;
+
+        shareOptions.subject =
+          'Appointment Details';
+      }
+
+      await Share.shareSingle(
+        shareOptions,
+      );
+
+      closeBottomSheet();
+
+    } catch (error) {
+
+      console.log(
+        `${type} ERROR =>`,
+        error,
+      );
+    }
+  };
+
+  // =============================
+  // OPTION HANDLE
+  // =============================
+
+  const onPressShareOption = (
+    type: string,
+  ) => {
+
+    handleShare(type);
+  };
+
+
+
   const openBottomSheet = () => {
     setVisible(true);
+
 
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -197,24 +336,24 @@ const BookingConfrimScreen = ({
     ]).start();
   };
 
-  const 
-  closeBottomSheet = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: SHEET_HEIGHT,
-        duration: 250,
-        useNativeDriver: true,
-      }),
+  const
+    closeBottomSheet = () => {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: SHEET_HEIGHT,
+          duration: 250,
+          useNativeDriver: true,
+        }),
 
-      Animated.timing(overlayAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setVisible(false);
-    });
-  };
+        Animated.timing(overlayAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setVisible(false);
+      });
+    };
 
 
 
@@ -257,14 +396,16 @@ const BookingConfrimScreen = ({
           {/* BADGE */}
 
           <View style={styles.badgeWrapper}>
-            <Badge status="COMPLETED" />
+            <Badge appointment_status={SlotsDetail?.appointment_status?.toUpperCase()} />
           </View>
 
           {/* DOCTOR INFO */}
 
           <View style={styles.doctorRow}>
             <Image
-              source={Images.doctorImage}
+              source={SlotsDetail?.doctor_image ? {
+                uri: SlotsDetail?.doctor_image
+              } : Images.doctorImage}
               style={styles.avatar}
             />
 
@@ -273,14 +414,14 @@ const BookingConfrimScreen = ({
                 style={styles.doctorName}
                 numberOfLines={2}
               >
-                Dr. Arjun R Nair
+                {SlotsDetail?.info?.doctor_name}
               </Text>
 
               <Text
                 style={styles.speciality}
                 numberOfLines={1}
               >
-                Cardiology Specialist
+                {SlotsDetail?.doctor_specialization?.join(', ')}
               </Text>
             </View>
           </View>
@@ -291,27 +432,30 @@ const BookingConfrimScreen = ({
             <DetailRow
               icon={Images.calender}
               label="DATE"
-              value="Tuesday, Oct 24, 2023"
+              value={formatDate(SlotsDetail?.slot?.date)}
             />
 
             <DetailRow
               icon={Images.clock}
               label="TIME"
-              value="09:30 AM - 10:00 AM"
+              value={SlotsDetail?.slot?.slot_time}
             />
 
-            <DetailRow
-              icon={Images.clock}
-              label="CONCERN"
-              value="Related to heart"
-            />
+            {SlotsDetail?.slot?.concern && (
+              <DetailRow
+                icon={Images.clock}
+                label="CONCERN"
+                value={SlotsDetail?.slot?.concern}
+              />
+            )}
+
           </View>
         </View>
 
         {/* ACTION BUTTONS */}
 
         <View style={styles.actionRow}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => navigation.navigate('AddCalendar')}
             activeOpacity={0.8}
             style={styles.secondaryBtn}
@@ -327,7 +471,7 @@ const BookingConfrimScreen = ({
             >
               Add to Calendar
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             activeOpacity={0.8}
@@ -354,7 +498,8 @@ const BookingConfrimScreen = ({
           activeOpacity={0.9}
           style={styles.primaryBtn}
           onPress={() =>
-            navigation.navigate('Home')
+            navigation.replace('HomeStack', { screen: 'Home' })
+
           }
         >
           <Text style={styles.primaryText}>
@@ -372,136 +517,270 @@ const BookingConfrimScreen = ({
       </ScrollView>
 
 
-      {visible && (
-        <View style={styles.absoluteContainer}>
-          {/* OVERLAY */}
+      {
+        visible && (
 
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={closeBottomSheet}
+          <View
+            style={
+              styles.absoluteContainer
+            }
           >
-            <Animated.View
-              style={[
-                styles.overlay,
-                {
-                  opacity: overlayAnim,
-                },
-              ]}
-            />
-          </Pressable>
 
-          {/* BOTTOM SHEET */}
+            {/* OVERLAY */}
 
-          <Animated.View
-            style={[
-              styles.bottomSheet,
-              {
-                transform: [
+            <Pressable
+              style={
+                StyleSheet.absoluteFill
+              }
+              onPress={
+                closeBottomSheet
+              }
+            >
+
+              <Animated.View
+                style={[
+                  styles.overlay,
                   {
-                    translateY: slideAnim,
+                    opacity:
+                      overlayAnim,
                   },
-                ],
-              },
-            ]}
-          >
-            {/* HANDLE */}
-
-            <View style={styles.handle} />
-
-            {/* TITLE */}
-
-            <Text style={styles.sheetTitle}>
-              Share Details
-            </Text>
-
-            <Text style={styles.sheetSubtitle}>
-              Share appointment information
-              with your contacts.
-            </Text>
-
-            {/* CARD */}
-
-            <View style={styles.shareCard}>
-              <Image
-                source={Images.doctorImage}
-                style={styles.doctorImage}
+                ]}
               />
 
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={styles.doctorName1}
+            </Pressable>
+
+            {/* SHEET */}
+
+            <Animated.View
+              style={[
+                styles.bottomSheet,
+                {
+                  transform: [
+                    {
+                      translateY:
+                        slideAnim,
+                    },
+                  ],
+                },
+              ]}
+            >
+
+              {/* HANDLE */}
+
+              <View
+                style={styles.handle}
+              />
+
+              {/* TITLE */}
+
+              <Text
+                style={
+                  styles.sheetTitle
+                }
+              >
+                Share Details
+              </Text>
+
+              <Text
+                style={
+                  styles.sheetSubtitle
+                }
+              >
+                Share appointment
+                information with
+                your contacts.
+              </Text>
+
+              {/* CARD */}
+
+              <View
+                style={
+                  styles.shareCard
+                }
+              >
+
+                <Image
+                  source={
+                    SlotsDetail?.doctor_image
+                      ? {
+                        uri:
+                          SlotsDetail?.doctor_image,
+                      }
+                      : Images.doctorImage
+                  }
+                  style={
+                    styles.doctorImage
+                  }
+                />
+
+                <View
+                  style={{
+                    flex: 1,
+                  }}
                 >
-                  Dr. Arjun R Nair
-                </Text>
 
-                <Text
-                  style={styles.speciality}
-                >
-                  CARDIOLOGY SPECIALIST
-                </Text>
-
-                <View style={styles.dateRow}>
-                  <Image
-                    source={Images.calender}
-                    style={styles.dateIcon}
-                  />
-
-                  <Text style={styles.dateText}>
-                    Oct 24, 2023 - 09:30 AM
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* SHARE OPTIONS */}
-
-            <View style={styles.optionsRow}>
-              {shareOptions.map(item => {
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    activeOpacity={0.8}
-                    style={styles.optionWrapper}
+                  <Text
+                    style={
+                      styles.doctorName1
+                    }
                   >
-                    <View
-                      style={[
-                        styles.iconBox,
-                        {
-                          backgroundColor:
-                            item.bg,
-                        },
-                      ]}
-                    >
-                      <Image
-                        source={item.icon}
-                        style={[styles.optionIcon, { tintColor: item.Color }]}
-                      />
-                    </View>
+                    {
+                      SlotsDetail?.info?.doctor_name
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.speciality
+                    }
+                  >
+                    {
+                      SlotsDetail?.doctor_specialization?.join(
+                        ', ',
+                      )
+                    }
+                  </Text>
+
+                  <View
+                    style={
+                      styles.dateRow
+                    }
+                  >
+
+                    <Image
+                      source={
+                        Images.calender
+                      }
+                      style={
+                        styles.dateIcon
+                      }
+                    />
 
                     <Text
-                      style={styles.optionText}
+                      style={
+                        styles.dateText
+                      }
                     >
-                      {item.title}
+                      {
+                        formatDate(
+                          SlotsDetail?.slot?.date,
+                        )
+                      }
+
+                      {' - '}
+
+                      {
+                        SlotsDetail?.slot?.slot_time
+                      }
                     </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
 
-            {/* CANCEL */}
+                  </View>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.cancelBtn}
-              onPress={closeBottomSheet}
-            >
-              <Text style={styles.cancelText}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      )}
+                </View>
+
+              </View>
+
+              {/* OPTIONS */}
+
+              <View
+                style={
+                  styles.optionsRow
+                }
+              >
+
+                {
+                  shareOptions.map(
+                    item => {
+
+                      return (
+
+                        <TouchableOpacity
+                          key={
+                            item.id
+                          }
+                          activeOpacity={
+                            0.8
+                          }
+                          style={
+                            styles.optionWrapper
+                          }
+                          onPress={() =>
+                            onPressShareOption(
+                              item.type,
+                            )
+                          }
+                        >
+
+                          <View
+                            style={[
+                              styles.iconBox,
+                              {
+                                backgroundColor:
+                                  item.bg,
+                              },
+                            ]}
+                          >
+
+                            <Image
+                              source={
+                                item.icon
+                              }
+                              style={[
+                                styles.optionIcon,
+                                {
+                                  tintColor:
+                                    item.Color,
+                                },
+                              ]}
+                            />
+
+                          </View>
+
+                          <Text
+                            style={
+                              styles.optionText
+                            }
+                          >
+                            {
+                              item.title
+                            }
+                          </Text>
+
+                        </TouchableOpacity>
+                      );
+                    },
+                  )
+                }
+
+              </View>
+
+              {/* CANCEL */}
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={
+                  styles.cancelBtn
+                }
+                onPress={
+                  closeBottomSheet
+                }
+              >
+
+                <Text
+                  style={
+                    styles.cancelText
+                  }
+                >
+                  Cancel
+                </Text>
+
+              </TouchableOpacity>
+
+            </Animated.View>
+
+          </View>
+        )
+      }
     </SafeAreaView>
   );
 };
@@ -771,7 +1050,7 @@ const styles = StyleSheet.create({
 
   dateText: {
     fontSize: 12,
- flex: 1,
+    flex: 1,
 
     color: '#64748B',
 
@@ -783,17 +1062,17 @@ const styles = StyleSheet.create({
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-flexWrap: 'wrap',
+    flexWrap: 'wrap',
 
     marginTop: 28,
   },
 
   optionWrapper: {
-     width: '20%',
+    width: '20%',
 
-  alignItems: 'center',
+    alignItems: 'center',
 
-  marginBottom: 18,
+    marginBottom: 18,
   },
 
   iconBox: {
@@ -818,25 +1097,25 @@ flexWrap: 'wrap',
 
     color: '#475569',
 
-  textAlign: 'center',
+    textAlign: 'center',
 
-  flexShrink: 1,
+    flexShrink: 1,
     fontFamily: Fonts.PoppinsMedium,
   },
 
   /* CANCEL */
 
   cancelBtn: {
-     marginTop: 12,
+    marginTop: 12,
 
-  height: 56,
+    height: 56,
 
-  borderRadius: 18,
+    borderRadius: 18,
 
-  backgroundColor: '#F1F5F9',
+    backgroundColor: '#F1F5F9',
 
-  justifyContent: 'center',
-  alignItems: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   cancelText: {

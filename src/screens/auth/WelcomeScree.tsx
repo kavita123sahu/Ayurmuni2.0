@@ -278,7 +278,7 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
             case 'strategy': return <StrategyScreen data={item} />;
             case 'doshas': return <DoshasScreen data={item} />;
             case 'doshaDetail': return <DoshaDetailScreen data={item} />;
-            case 'cta': return <CTAScreen data={item} onPress={()=>navigation.navigate('PatientFAQ')
+            case 'cta': return <CTAScreen data={item} onPress={() => navigation.navigate('PatientFAQ')
             } />;
             default: return null;
         }

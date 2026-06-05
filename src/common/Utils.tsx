@@ -8,11 +8,16 @@ export const Utils = {
     async storeData(key: any, value: any) {
         try {
             const jsonValue = JSON.stringify(value);
+             
+
             await AsyncStorage.setItem(key, jsonValue)
         } catch (e) {
             // saving error
         }
     },
+
+
+
 
     async getData(key: any) {
         try {
@@ -23,7 +28,7 @@ export const Utils = {
         }
     },
 
-    
+
     async storeStringData(key: any, value: any) {
         try {
             await AsyncStorage.setItem(key, value);
@@ -50,6 +55,17 @@ export const Utils = {
             console.log(e);
             // error reading value
         }
+    },
+
+    async removeData(key: any) {
+        try {
+            await AsyncStorage.removeItem(key);
+
+        } catch (e) {
+            console.log(e);
+            // error reading value
+        }
+
     },
 
     notNull(val: any) {

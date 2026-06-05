@@ -23,6 +23,7 @@ import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '../../common/Colors';
 
 
 type ProductItem = {
@@ -68,12 +69,10 @@ const INITIAL_DATA: SectionType[] = [
             },
         ],
     },
-
     {
         id: 'prescribed',
         title: 'Prescribed Medicines',
         type: 'prescribed',
-
         items: [
             {
                 id: '3',
@@ -345,113 +344,169 @@ const MyCart = ({ navigation }: any) => {
         return (
             <View style={styles.productCard}>
 
-                {/* LEFT */}
+                {/* TOP ROW */}
 
                 <View
-                    style={styles.leftWrapper}
+                    style={styles.productTopRow}
                 >
 
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() =>
-                            toggleItemSelection(
-                                item.id,
-                            )
-                        }
-                        style={[
-                            styles.checkbox,
+                    {/* LEFT */}
 
-                            isSelected &&
-                            styles.checkboxActive,
-                        ]}
+                    <View
+                        style={styles.leftWrapper}
                     >
-                        {
-                            isSelected && (
 
-                                <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFFFF', resizeMode: 'contain' }} />
-                            )
-                        }
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() =>
+                                toggleItemSelection(
+                                    item.id,
+                                )
+                            }
+                            style={[
+                                styles.checkbox,
 
-                    <Image
-                        source={item.image}
-                        style={styles.image}
-                    />
-                </View>
+                                isSelected &&
+                                styles.checkboxActive,
+                            ]}
+                        >
+                            {
+                                isSelected && (
 
-                {/* CENTER */}
+                                    <Image
+                                        source={Images.tick}
+                                        style={{
+                                            height: 15,
+                                            width: 15,
+                                            tintColor: '#FFFFFF',
+                                            resizeMode: 'contain',
+                                        }}
+                                    />
+                                )
+                            }
+                        </TouchableOpacity>
 
-                <View
-                    style={{ flex: 1 }}
-                >
+                        <Image
+                            source={item.image}
+                            style={styles.image}
+                        />
+                    </View>
 
-                    <Text
-                        style={styles.name}
+                    {/* CENTER */}
+
+                    <View
+                        style={{ flex: 1 }}
                     >
-                        {item.name}
-                    </Text>
 
-                    <Text
-                        style={styles.weight}
-                    >
-                        {item.weight}
-                    </Text>
-
-                    <Text
-                        style={styles.price}
-                    >
-                        Rs. {item.price}.00
-                    </Text>
-
-                </View>
-
-
-                {/* QTY */}
-
-                <View style={styles.qtyBox}>
-
-                    <TouchableOpacity
-                        style={styles.qtyBtn}
-                        onPress={() =>
-                            increaseQty(
-                                item.id,
-                            )
-                        }
-                    >
                         <Text
-                            style={
-                                styles.qtyBtnText
+                            style={styles.name}
+                        >
+                            {item.name}
+                        </Text>
+
+                        <Text
+                            style={styles.weight}
+                        >
+                            {item.weight}
+                        </Text>
+
+                        <Text
+                            style={styles.price}
+                        >
+                            Rs. {item.price}.00
+                        </Text>
+
+                    </View>
+
+                    {/* QTY */}
+
+                    <View style={styles.qtyBox}>
+
+                        <TouchableOpacity
+                            style={styles.qtyBtn}
+                            onPress={() =>
+                                increaseQty(
+                                    item.id,
+                                )
                             }
                         >
-                            +
-                        </Text>
-                    </TouchableOpacity>
+                            <Text
+                                style={
+                                    styles.qtyBtnText
+                                }
+                            >
+                                +
+                            </Text>
+                        </TouchableOpacity>
 
-                    <Text
-                        style={styles.qtyText}
-                    >
-                        {item.quantity}
-                    </Text>
-
-                    <TouchableOpacity
-                        style={styles.qtyBtn}
-                        onPress={() =>
-                            decreaseQty(
-                                item.id,
-                            )
-                        }
-                    >
                         <Text
-                            style={
-                                styles.qtyBtnText
+                            style={styles.qtyText}
+                        >
+                            {item.quantity}
+                        </Text>
+
+                        <TouchableOpacity
+                            style={styles.qtyBtn}
+                            onPress={() =>
+                                decreaseQty(
+                                    item.id,
+                                )
                             }
                         >
-                            −
-                        </Text>
-                    </TouchableOpacity>
+                            <Text
+                                style={
+                                    styles.qtyBtnText
+                                }
+                            >
+                                −
+                            </Text>
+                        </TouchableOpacity>
+
+                    </View>
+
                 </View>
 
-                
+                {/* PRESCRIBED SECTION */}
+
+                {
+                    type === 'prescribed' && (
+
+                        <View
+                            style={
+                                styles.prescribedWrapper
+                            }
+                        >
+
+                            <Image
+                                source={Images.doctorImage}
+                                style={
+                                    styles.prescribedDoctorImage
+                                }
+                            />
+
+                            <Text
+                                numberOfLines={1}
+                                style={
+                                    styles.prescribedText
+                                }
+                            >
+                                Prescribed by{' '}
+
+                                <Text
+                                    style={
+                                        styles.prescribedDoctorName
+                                    }
+                                >
+                                    {item?.doctorName ||
+                                        'Dr. Arjun R Nair'}
+                                </Text>
+
+                            </Text>
+
+                        </View>
+                    )
+                }
+
             </View>
         );
     };
@@ -488,7 +543,7 @@ const MyCart = ({ navigation }: any) => {
                 }}
             >
 
-              
+
 
                 {/* SECTIONS */}
 
@@ -553,7 +608,7 @@ const MyCart = ({ navigation }: any) => {
                                         >
                                             {
                                                 isSectionSelected && (
-                                                     <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFFFF', resizeMode: 'contain' }} />
+                                                    <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFFFF', resizeMode: 'contain' }} />
                                                 )
                                             }
                                         </TouchableOpacity>
@@ -720,7 +775,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF3F1',
         borderRadius: 28,
         padding: 14,
-        marginTop:20,
+        marginTop: 20,
         marginBottom: 20,
     },
 
@@ -741,7 +796,7 @@ const styles = StyleSheet.create({
     },
 
     productCard: {
-        flexDirection: 'row',
+        // flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFF',
         borderRadius: 20,
@@ -749,6 +804,21 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
 
+    productTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+
+    prescribedWrapper: {
+        marginTop: 14,
+        paddingTop: 12,
+
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     leftWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -842,20 +912,24 @@ const styles = StyleSheet.create({
             Fonts.PoppinsSemiBold,
     },
 
-    prescribedTag: {
-        marginTop: 10,
-        alignSelf: 'flex-start',
-        backgroundColor: '#0D614E',
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+
+    prescribedDoctorImage: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        marginRight: 8,
     },
 
     prescribedText: {
-        fontSize: 10,
-        color: '#FFF',
-        fontFamily:
-            Fonts.PoppinsMedium,
+        flex: 1,
+        fontSize: 11,
+        color: '#065F46',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    prescribedDoctorName: {
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#047857',
     },
 
     billBox: {

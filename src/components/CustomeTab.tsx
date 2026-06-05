@@ -17,7 +17,7 @@ import { Fonts } from '../common/Fonts';
 const { width } = Dimensions.get("window");
 
 // 🔥 Responsive scaling
-const scale = width / 350;
+const scale = width / 400;
 
 const TAB_HEIGHT = 72 * scale;
 // const INNER_SIZE = 60 * scale;
@@ -41,9 +41,9 @@ const CustomeTab = (props: any) => {
             case "Home":
                 return Images.home;
             case "Products":
+                return Images.products;
+            case "Medicine":
                 return Images.medicine;
-            case "History":
-                return Images.History;
             case "Profile":
                 return Images.Profile;
             default:
@@ -226,14 +226,14 @@ const styles = StyleSheet.create({
     },
 
     consultIcon: {
-        width: 26 * scale,
-        height: 26 * scale,
+        width: 20 * scale,
+        height: 20 * scale,
         tintColor: "#fff",
     },
 
     consultLabel: {
         color: "#fff",
-        fontSize: 11 * scale,
+        fontSize: 10 * scale,
         marginTop: 2,
         fontFamily: Fonts.PoppinsMedium,
     },

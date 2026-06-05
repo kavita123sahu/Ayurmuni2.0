@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import {
     View,
@@ -48,6 +48,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
     const editData = route?.params?.data;
     const type = route?.params?.type;
+    const selectedLocation = route?.params?.selectedLocation;
 
     const isEdit = type === 'EDIT';
 
@@ -90,6 +91,17 @@ const AddEditAddress = ({ navigation, route }: any) => {
         !zip ||
         !stateValue;
 
+    // AUTO-FILL FORM FROM LOCATION PICKER
+    useEffect(() => {
+        if (selectedLocation) {
+            setAddress1(selectedLocation.address_line_1 || '');
+            setAddress2(selectedLocation.address_line_2 || '');
+            setCity(selectedLocation.city || '');
+            setStateValue(selectedLocation.state || '');
+            setZip(selectedLocation.zipcode || '');
+        }
+    }, [selectedLocation]);
+
     const handleSubmit = async () => {
 
         try {
@@ -131,18 +143,16 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     res,
                 );
 
-                const json = await res.json();
-
                 console.log(
                     'UPDATE_ADDRESS_RESPONSE',
-                    json,
+                    res,
                 );
 
-                if (json?.success) {
+                if (res?.success) {
 
                     AddressEvents.emit(
                         ADDRESS_UPDATED,
-                        json?.data,
+                        res,
                     );
                     showSuccessToast('Address updated successfully', 'success');
 
@@ -180,24 +190,17 @@ const AddEditAddress = ({ navigation, route }: any) => {
                         payload,
                     );
 
-                const json = await res.json();
-
                 console.log(
                     'ADD_ADDRESS_RESPONSE',
-                    res,
+                    res.data,
                 );
 
-                console.log(
-                    'ADD_ADDRESS_RESPONSE_JSON',
-                    json,
-                );
-
-                if (json?.success) {
+                if (res?.success) {
 
 
                     AddressEvents.emit(
                         ADDRESS_UPDATED,
-                        json?.data,
+                        res.data,
                     );
                     showSuccessToast('Address added successfully', 'success');
 
@@ -262,7 +265,12 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
                     {/* LOCATION */}
 
-                    <View style={styles.locationBadge}>
+                    <TouchableOpacity 
+                        activeOpacity={0.8}
+                        onPress={() => 
+                            navigation.navigate('LocationPickerScreen')
+                        }
+                        style={styles.locationBadge}>
 
                         <Image
                             source={Images.currentLocation}
@@ -273,7 +281,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                             Current Location
                         </Text>
 
-                    </View>
+                    </TouchableOpacity>
 
                     {/* ADDRESS TYPE */}
 
