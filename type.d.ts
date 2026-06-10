@@ -9,6 +9,7 @@ export type RootStackParamList = {
     Otp: undefined;
     MentorCheckout: undefined;
     Onboarding: undefined;
+    FavDoctors : undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
     AddEditAddress: undefined;

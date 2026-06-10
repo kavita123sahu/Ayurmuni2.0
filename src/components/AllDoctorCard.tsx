@@ -1,5 +1,5 @@
 // DoctorCard.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -12,9 +12,13 @@ import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Ionicons } from '../common/Vector';
 import { Images } from '../common/Images';
+import *as _CONSULT_SERVICES from '../services/ConsultServce';
+import FavouriteButton from './FavouriteButton';
+import { showSuccessToast } from '../config/Key';
 
 interface DoctorItem {
     id: string;
+    is_favorite: boolean;
     image: any;
     name: string
     full_name: string;
@@ -37,15 +41,49 @@ interface Props {
 
 const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
-    
-    const [isWishlisted, setIsWishlisted] = useState(false);
 
+    console.log("itemitem", item)
     const isAvailable = item.has_availability === true
 
-    // const availabilityText = isAvailable
-    //     ? 'Available Now'
-    //     : `Available in ${Math.ceil(item.availableInMinutes / 60)} Hrs.`;
+    const [isWishlisted, setIsWishlisted] =
+        useState(false);
 
+    useEffect(() => {
+        setIsWishlisted(
+            item?.is_favorite ?? false,
+        );
+    }, [item]);
+    const handleWishlist = async () => {
+        const prev = isWishlisted;
+
+        setIsWishlisted(!prev);
+
+        try {
+            const response =
+                await _CONSULT_SERVICES.ToggleFavDoctor(
+                    item?.id,
+                    'POST',
+                );
+
+            console.log(
+                'WISHLIST RESPONSE =>',
+                response,
+            );
+            showSuccessToast(response?.message, 'success')
+
+            if (!response?.success) {
+                setIsWishlisted(prev);
+            }
+
+        } catch (error) {
+            setIsWishlisted(prev);
+            showSuccessToast(error?.message, 'error')
+            console.log(
+                'WISHLIST ERROR =>',
+                error,
+            );
+        }
+    };
     return (
 
         <Pressable style={[styles.card, isAvailable ? styles.activeCard : styles.disabledCard]} onPress={() => onPress?.(item)}>
@@ -81,9 +119,25 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             </Text>
                         </View>
 
-                        <TouchableOpacity onPress={() => setIsWishlisted(prev => !prev)}>
-                            <Image source={Images.favourite} style={{ height: 25, width: 25, resizeMode: 'contain', tintColor: isWishlisted ? Colors.primaryColor : '#94A3B8' }} />
-                        </TouchableOpacity>
+                        {/* <TouchableOpacity
+                            onPress={handleWishlist}>
+                            <Ionicons
+                                name={
+                                    isWishlisted
+                                        ? 'heart'
+                                        : 'heart-outline'
+                                }
+                                size={22}
+                                color={Colors.primaryColor}
+                            />
+                        </TouchableOpacity> */}
+
+
+                        <FavouriteButton
+                            isFavourite={isWishlisted}
+                            onPress={handleWishlist}
+                            style={styles.iconBtn}
+                        />
 
                     </View>
 
@@ -104,7 +158,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             Array.isArray(
                                 item?.specialized_therapies,
                             )
-                                ? item.specialized_therapies.join(
+                                ? item?.specialized_therapies.join(
                                     ' • ',
                                 )
                                 : ''
@@ -120,7 +174,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                                 color={isAvailable ? '#64748B' : '#CBD5E1'}
                             />
                             <Text style={[styles.infoText, !isAvailable && styles.disabledinfoText]}>
-                                {' '}{item.experience_years + 'Yrs. Exp'}
+                                {' '}{item?.experience_years ?? '' + 'Yrs. Exp'}
                             </Text>
                         </View>
 
@@ -264,6 +318,14 @@ const styles = StyleSheet.create({
 
     disabledTagText: {
         color: '#94A3B8',
+    },
+    iconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     // ── TEXT ──────────────────────────────

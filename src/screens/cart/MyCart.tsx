@@ -1,6 +1,7 @@
 import React, {
     memo,
     useCallback,
+    useEffect,
     useMemo,
     useState,
 } from 'react';
@@ -14,6 +15,7 @@ import {
     Image,
     ScrollView,
     StatusBar,
+    ActivityIndicator,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,129 +24,82 @@ import AppHeader from '../../components/AppHeader';
 
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import * as _CART_SERVICES from '../../services/CartService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAllCartData } from '../../hooks/Cart';
+import { getProductData, MyCartData, ProductItem, SectionType } from '../../common/DataInterface';
+import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
 
 
-type ProductItem = {
-    id: string;
-    name: string;
-    weight: string;
-    price: number;
-    quantity: number;
-    image: any;
-    doctorName?: string;
-};
 
-type SectionType = {
-    id: string;
-    title: string;
-    type: 'cart' | 'prescribed';
-    items: ProductItem[];
-};
-
-const INITIAL_DATA: SectionType[] = [
-    {
-        id: 'cart',
-        title: 'My Cart',
-        type: 'cart',
-
-        items: [
-            {
-                id: '1',
-                name: 'Foxtail Millet',
-                weight: '500g Pack',
-                price: 149,
-                quantity: 1,
-                image: Images.detailimage,
-            },
-
-            {
-                id: '2',
-                name: 'Foxtail Millet',
-                weight: '500g Pack',
-                price: 149,
-                quantity: 1,
-                image: Images.detailimage,
-            },
-        ],
-    },
-    {
-        id: 'prescribed',
-        title: 'Prescribed Medicines',
-        type: 'prescribed',
-        items: [
-            {
-                id: '3',
-                name: 'Foxtail Millet',
-                weight: '500g Pack',
-                price: 149,
-                quantity: 1,
-                image: Images.detailimage,
-                doctorName: 'Dr. Arjun R Nair',
-            },
-
-            {
-                id: '4',
-                name: 'Foxtail Millet',
-                weight: '500g Pack',
-                price: 149,
-                quantity: 1,
-                image: Images.detailimage,
-                doctorName: 'Dr. Arjun R Nair',
-            },
-        ],
-    },
-];
 
 const MyCart = ({ navigation }: any) => {
 
-    const [sections, setSections] =
-        useState<SectionType[]>(INITIAL_DATA);
-
-    /*
-        SELECTED IDS
-    */
-
+    const { CartData, loading } =
+        useAllCartData();
 
     const insets = useSafeAreaInsets();
+    const [sections, setSections] =
+        useState<SectionType[]>([]);
 
     const [selectedItems, setSelectedItems] =
         useState<string[]>([]);
 
-    /* ========================================================= */
 
-    const allIds = useMemo(() => {
+    console.log('CartDataCartDataCartDataCartData', CartData);
 
-        return sections.flatMap(section =>
-            section.items.map(item => item.id),
-        );
+    const mappedSections = useMemo<SectionType[]>(() => {
+        const sections: SectionType[] = [];
 
+        if (CartData?.my_cart?.items?.length) {
+            sections.push({
+                id: 'cart',
+                title: 'My Cart',
+                type: 'cart',
+                items: CartData.my_cart.items.map(getProductData),
+            });
+        }
+
+        if (CartData?.prescription_cart?.items?.length) {
+            sections.push({
+                id: 'prescribed',
+                title: 'Prescribed Medicines',
+                type: 'prescribed',
+                items: CartData.prescription_cart.items.flatMap(
+                    (prescription: any) =>
+                        prescription.items.map((item: any) =>
+                            getProductData(
+                                item,
+                                prescription.doctor_name,
+                            ),
+                        ),
+                ),
+            });
+        }
+
+        return sections;
+    }, [CartData]);
+
+
+    useEffect(() => {
+        setSections(mappedSections);
+    }, [mappedSections]);
+
+    useEffect(() => {
+        if (
+            sections.length &&
+            selectedItems.length === 0
+        ) {
+            setSelectedItems(
+                sections.flatMap(section =>
+                    section.items.map(
+                        item => item.id,
+                    ),
+                ),
+            );
+        }
     }, [sections]);
-
-    /* ========================================================= */
-
-    const isAllSelected =
-        allIds.length > 0 &&
-        selectedItems.length === allIds.length;
-
-    /* ========================================================= */
-
-    const toggleAllSelection =
-        useCallback(() => {
-
-            if (isAllSelected) {
-
-                setSelectedItems([]);
-
-                return;
-            }
-
-            setSelectedItems(allIds);
-
-        }, [allIds, isAllSelected]);
-
-    /* ========================================================= */
 
     const toggleSectionSelection =
         useCallback(
@@ -201,116 +156,124 @@ const MyCart = ({ navigation }: any) => {
 
         }, []);
 
-    /* ========================================================= */
 
-    const increaseQty = useCallback(
-        (id: string) => {
+    const updateQuantity = useCallback(
+        async (
+            variantId: string,
+            action: 'plus' | 'minus',
+        ) => {
+
+            console.log("varinttid", variantId)
+
+            let newQty = 1;
+            let oldQty = 1;
 
             setSections(prev =>
                 prev.map(section => ({
                     ...section,
+                    items: section.items.map(item => {
 
-                    items: section.items.map(
-                        item =>
-                            item.id === id
-                                ? {
-                                    ...item,
-                                    quantity:
-                                        item.quantity +
-                                        1,
-                                }
-                                : item,
-                    ),
+                        if (
+                            item.variant_id !==
+                            variantId
+                        ) {
+                            return item;
+                        }
+
+                        oldQty = item.quantity;
+
+                        newQty =
+                            action === 'plus'
+                                ? item.quantity + 1
+                                : Math.max(
+                                    1,
+                                    item.quantity - 1,
+                                );
+
+                        return {
+                            ...item,
+                            quantity: newQty,
+                        };
+                    }),
                 })),
             );
-        },
-        [],
-    );
 
-    /* ========================================================= */
+            console.log("newwquanttiy", newQty);
 
-    const decreaseQty = useCallback(
-        (id: string) => {
+            try {
 
-            setSections(prev =>
-                prev.map(section => ({
-                    ...section,
+                const resposne = await _CART_SERVICES.AddupdateCart({
+                    variant_id: variantId,
+                    quantity: newQty,
+                });
+                console.log("myacrdpluminus", resposne)
 
-                    items: section.items
-                        .map(item => {
+            } catch (error) {
+
+                setSections(prev =>
+                    prev.map(section => ({
+                        ...section,
+                        items: section.items.map(item => {
 
                             if (
-                                item.id === id
+                                item.variant_id !==
+                                variantId
                             ) {
-
-                                return {
-                                    ...item,
-
-                                    quantity:
-                                        item.quantity >
-                                            1
-                                            ? item.quantity -
-                                            1
-                                            : 1,
-                                };
+                                return item;
                             }
 
-                            return item;
-                        })
-                        .filter(
-                            item =>
-                                item.quantity > 0,
-                        ),
-                })),
-            );
+                            return {
+                                ...item,
+                                quantity: oldQty,
+                            };
+                        }),
+                    })),
+                );
+            }
         },
         [],
     );
-
-    /* ========================================================= */
 
     const selectedProducts =
         useMemo(() => {
-
             return sections
-                .flatMap(section =>
-                    section.items,
+                .flatMap(
+                    section =>
+                        section.items,
                 )
                 .filter(item =>
                     selectedItems.includes(
                         item.id,
                     ),
                 );
-
         }, [sections, selectedItems]);
 
-    /* ========================================================= */
 
-    const subtotal = useMemo(() => {
 
-        return selectedProducts.reduce(
-            (sum, item) =>
-                sum +
-                item.price * item.quantity,
-
-            0,
-        );
-
-    }, [selectedProducts]);
-
-    /* ========================================================= */
 
     const totalItems =
         selectedProducts.length;
 
-    const deliveryFee = 40;
+    const deliveryFee = 0;
 
-    const total =
-        subtotal > 0
-            ? subtotal + deliveryFee
-            : 0;
+    const subtotal = useMemo(() => {
+        return Number(
+            selectedProducts
+                .reduce(
+                    (sum, item) =>
+                        sum +
+                        item.price * item.quantity,
+                    0,
+                )
+                .toFixed(2),
+        );
+    }, [selectedProducts]);
 
-    /* ========================================================= */
+    const total = Number(
+        (subtotal + deliveryFee).toFixed(2),
+    );
+
+
 
     const handleCheckout = () => {
 
@@ -326,192 +289,28 @@ const MyCart = ({ navigation }: any) => {
         );
     };
 
-    /* ========================================================= */
 
-    const renderProduct = ({
-        item,
-        type,
-    }: {
-        item: ProductItem;
-        type: 'cart' | 'prescribed';
-    }) => {
-
-        const isSelected =
-            selectedItems.includes(
-                item.id,
-            );
-
+    const laodingCart = () => {
         return (
-            <View style={styles.productCard}>
+            <SafeAreaView style={styles.loaderContainer}>
+                <View style={styles.loaderCard}>
+                    <ActivityIndicator
+                        size="large"
+                        color={Colors.primaryColor}
+                    />
 
-                {/* TOP ROW */}
+                    <Text style={styles.loadingTitle}>
+                        Loading Cart
+                    </Text>
 
-                <View
-                    style={styles.productTopRow}
-                >
-
-                    {/* LEFT */}
-
-                    <View
-                        style={styles.leftWrapper}
-                    >
-
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() =>
-                                toggleItemSelection(
-                                    item.id,
-                                )
-                            }
-                            style={[
-                                styles.checkbox,
-
-                                isSelected &&
-                                styles.checkboxActive,
-                            ]}
-                        >
-                            {
-                                isSelected && (
-
-                                    <Image
-                                        source={Images.tick}
-                                        style={{
-                                            height: 15,
-                                            width: 15,
-                                            tintColor: '#FFFFFF',
-                                            resizeMode: 'contain',
-                                        }}
-                                    />
-                                )
-                            }
-                        </TouchableOpacity>
-
-                        <Image
-                            source={item.image}
-                            style={styles.image}
-                        />
-                    </View>
-
-                    {/* CENTER */}
-
-                    <View
-                        style={{ flex: 1 }}
-                    >
-
-                        <Text
-                            style={styles.name}
-                        >
-                            {item.name}
-                        </Text>
-
-                        <Text
-                            style={styles.weight}
-                        >
-                            {item.weight}
-                        </Text>
-
-                        <Text
-                            style={styles.price}
-                        >
-                            Rs. {item.price}.00
-                        </Text>
-
-                    </View>
-
-                    {/* QTY */}
-
-                    <View style={styles.qtyBox}>
-
-                        <TouchableOpacity
-                            style={styles.qtyBtn}
-                            onPress={() =>
-                                increaseQty(
-                                    item.id,
-                                )
-                            }
-                        >
-                            <Text
-                                style={
-                                    styles.qtyBtnText
-                                }
-                            >
-                                +
-                            </Text>
-                        </TouchableOpacity>
-
-                        <Text
-                            style={styles.qtyText}
-                        >
-                            {item.quantity}
-                        </Text>
-
-                        <TouchableOpacity
-                            style={styles.qtyBtn}
-                            onPress={() =>
-                                decreaseQty(
-                                    item.id,
-                                )
-                            }
-                        >
-                            <Text
-                                style={
-                                    styles.qtyBtnText
-                                }
-                            >
-                                −
-                            </Text>
-                        </TouchableOpacity>
-
-                    </View>
-
+                    <Text style={styles.loadingSubTitle}>
+                        Please wait a moment...
+                    </Text>
                 </View>
+            </SafeAreaView>
+        )
+    }
 
-                {/* PRESCRIBED SECTION */}
-
-                {
-                    type === 'prescribed' && (
-
-                        <View
-                            style={
-                                styles.prescribedWrapper
-                            }
-                        >
-
-                            <Image
-                                source={Images.doctorImage}
-                                style={
-                                    styles.prescribedDoctorImage
-                                }
-                            />
-
-                            <Text
-                                numberOfLines={1}
-                                style={
-                                    styles.prescribedText
-                                }
-                            >
-                                Prescribed by{' '}
-
-                                <Text
-                                    style={
-                                        styles.prescribedDoctorName
-                                    }
-                                >
-                                    {item?.doctorName ||
-                                        'Dr. Arjun R Nair'}
-                                </Text>
-
-                            </Text>
-
-                        </View>
-                    )
-                }
-
-            </View>
-        );
-    };
-
-    /* ========================================================= */
 
     return (
         <SafeAreaView
@@ -533,175 +332,194 @@ const MyCart = ({ navigation }: any) => {
                 }
             />
 
-            <ScrollView
-                showsVerticalScrollIndicator={
-                    false
-                }
-                contentContainerStyle={{
-                    paddingBottom: 180,
-                    paddingHorizontal: 20,
-                }}
-            >
+            {loading ? laodingCart() :
 
+                <>
+                    (
+                    <ScrollView
+                        showsVerticalScrollIndicator={
+                            false
+                        }
+                        contentContainerStyle={{
+                            paddingBottom: 180,
+                            paddingHorizontal: 20,
+                        }}
+                    >
 
+                        {
+                            sections.map(
+                                section => {
 
-                {/* SECTIONS */}
-
-                {
-                    sections.map(
-                        section => {
-
-                            const sectionIds =
-                                section.items.map(
-                                    item =>
-                                        item.id,
-                                );
-
-                            const isSectionSelected =
-                                sectionIds.every(
-                                    id =>
-                                        selectedItems.includes(
-                                            id,
-                                        ),
-                                );
-
-                            return (
-                                <View
-                                    key={
-                                        section.id
-                                    }
-                                    style={
-                                        styles.sectionCard
-                                    }
-                                >
-
-                                    {/* HEADER */}
-
-                                    <View
-                                        style={
-                                            styles.sectionHeader
-                                        }
-                                    >
-
-                                        <Text
-                                            style={
-                                                styles.sectionTitle
-                                            }
-                                        >
-                                            {
-                                                section.title
-                                            }
-                                        </Text>
-
-                                        <TouchableOpacity
-                                            onPress={() =>
-                                                toggleSectionSelection(
-                                                    section,
-                                                )
-                                            }
-                                            style={[
-                                                styles.checkbox,
-
-                                                isSectionSelected &&
-                                                styles.checkboxActive,
-                                            ]}
-                                        >
-                                            {
-                                                isSectionSelected && (
-                                                    <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFFFF', resizeMode: 'contain' }} />
-                                                )
-                                            }
-                                        </TouchableOpacity>
-                                    </View>
-
-
-
-                                    {
+                                    const sectionIds =
                                         section.items.map(
                                             item =>
-                                                renderProduct(
-                                                    {
-                                                        item,
+                                                item.id,
+                                        );
 
-                                                        type: section.type,
-                                                    },
+                                    const isSectionSelected =
+                                        sectionIds.every(
+                                            id =>
+                                                selectedItems.includes(
+                                                    id,
                                                 ),
-                                        )
-                                    }
-                                </View>
-                            );
-                        },
-                    )
-                }
+                                        );
 
-                {/* BILL */}
+                                    return (
+                                        <View
+                                            key={
+                                                section.id
+                                            }
+                                            style={
+                                                styles.sectionCard
+                                            }
+                                        >
 
-                <View style={styles.billBox}>
+                                            {/* HEADER */}
 
-                    <BillRow
-                        label="Items"
-                        value={`${totalItems}`}
-                    />
+                                            <View
+                                                style={
+                                                    styles.sectionHeader
+                                                }
+                                            >
 
-                    <BillRow
-                        label="Subtotal"
-                        value={`Rs. ${subtotal}`}
-                    />
+                                                <Text
+                                                    style={
+                                                        styles.sectionTitle
+                                                    }
+                                                >
+                                                    {
+                                                        section.title
+                                                    }
+                                                </Text>
 
-                    <BillRow
-                        label="Delivery"
-                        value={`Rs. ${deliveryFee}`}
-                    />
+                                                <TouchableOpacity
+                                                    onPress={() =>
+                                                        toggleSectionSelection(
+                                                            section,
+                                                        )
+                                                    }
+                                                    style={[
+                                                        styles.checkbox,
 
-                    <View
-                        style={
-                            styles.divider
+                                                        isSectionSelected &&
+                                                        styles.checkboxActive,
+                                                    ]}
+                                                >
+                                                    {
+                                                        isSectionSelected && (
+                                                            <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFFFF', resizeMode: 'contain' }} />
+                                                        )
+                                                    }
+                                                </TouchableOpacity>
+                                            </View>
+
+
+                                            {
+                                                section.items.map(item => (
+                                                    <MyProductCard
+                                                        key={item.id}
+                                                        item={item}
+                                                        type={section.type}
+                                                        isSelected={selectedItems.includes(
+                                                            item.id,
+                                                        )}
+                                                        toggleItemSelection={
+                                                            toggleItemSelection
+                                                        }
+                                                        updateQuantity={updateQuantity}
+                                                        styles={styles}
+                                                    />
+                                                ))
+                                            }
+                                        </View>
+                                    );
+                                },
+                            )
                         }
-                    />
 
-                    <BillRow
-                        label="Total"
-                        value={`Rs. ${total}`}
-                        isTotal
-                    />
-                </View>
-            </ScrollView>
+                        {/* BILL */}
 
-            {/* CHECKOUT */}
+                        <View style={styles.billBox}>
 
-            <TouchableOpacity
-                activeOpacity={0.9}
-                disabled={
-                    selectedProducts.length ===
-                    0
-                }
-                onPress={handleCheckout}
-                style={[
-                    styles.checkoutBtn,
-                    {
-                        bottom: insets.bottom > 0
-                            ? insets.bottom + 10
-                            : 20,
-                    },
-                ]}
-            >
+                            <BillRow
+                                label="Items"
+                                value={`${totalItems}`}
+                            />
 
-                <Text
-                    style={
-                        styles.checkoutText
-                    }
-                >
-                    Proceed To Checkout
-                </Text>
+                            <BillRow
+                                label="Subtotal"
+                                value={`Rs. ${subtotal}`}
+                            />
 
-                <Text
-                    style={
-                        styles.checkoutPrice
-                    }
-                >
-                    Rs. {total}
-                </Text>
-            </TouchableOpacity>
+                            <BillRow
+                                label="Delivery"
+                                value={`Rs. ${deliveryFee}`}
+                            />
+
+                            <View
+                                style={
+                                    styles.divider
+                                }
+                            />
+
+                            <BillRow
+                                label="Total"
+                                value={`Rs. ${total}`}
+                                isTotal
+                            />
+
+
+                        </View>
+                    </ScrollView>
+
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        disabled={
+                            selectedProducts.length ===
+                            0
+                        }
+                        onPress={handleCheckout}
+                        style={[
+                            styles.checkoutBtn,
+                            {
+                                bottom: insets.bottom > 0
+                                    ? insets.bottom + 10
+                                    : 20,
+                            },
+                        ]}
+                    >
+
+                        <Text
+                            style={
+                                styles.checkoutText
+                            }
+                        >
+                            Proceed To Checkout
+                        </Text>
+
+                        <View
+                            style={{
+                                minWidth: 70,
+                                alignItems: 'flex-end',
+                            }}
+                        >
+                            {/* {loading ? (
+                        <ActivityIndicator
+                            color="#FFF"
+                            size="small"
+                        />
+                    ) : ( */}
+                            <Text style={styles.checkoutPrice}>
+                                Rs. {Math.round(total)}
+                            </Text>
+                            {/* )} */}
+                        </View>
+                    </TouchableOpacity>
+                    )
+                </>
+            }
+
+
         </SafeAreaView>
     );
 };
@@ -852,6 +670,7 @@ const styles = StyleSheet.create({
         width: 74,
         height: 74,
         borderRadius: 18,
+        backgroundColor: Colors.bgcolor,
         marginLeft: 12,
     },
 
@@ -930,6 +749,36 @@ const styles = StyleSheet.create({
     prescribedDoctorName: {
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#047857',
+    },
+    loaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F8FAF8',
+    },
+
+    loaderCard: {
+
+        paddingVertical: 30,
+        paddingHorizontal: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+
+
+    },
+
+    loadingTitle: {
+        marginTop: 16,
+        fontSize: 18,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    loadingSubTitle: {
+        marginTop: 6,
+        fontSize: 13,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
     },
 
     billBox: {

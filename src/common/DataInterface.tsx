@@ -3,6 +3,69 @@ import { Images } from "./Images";
 import dayjs from 'dayjs';
 export type OrderStatus = 'DELIVERED' | 'IN_PROGRESS';
 
+export type ProductItem = {
+  id: string;
+  name: string;
+  weight: string;
+  price: number;
+  variant_id: string;
+  quantity: number;
+  image: any;
+  doctorName?: string;
+};
+
+export type SectionType = {
+  id: string;
+  title: string;
+  type: 'cart' | 'prescribed';
+  items: ProductItem[];
+};
+
+
+export type CartItem = {
+  id: string;
+  quantity: number | string;
+  price: number | string;
+
+  variant?: {
+    variant_id?: string;
+    product_name?: string;
+    variant_title?: string;
+    media?: {
+      media_url?: string;
+    }[];
+  };
+};
+
+export const getProductData = (
+  item: CartItem,
+  doctorName?: string,
+): ProductItem => ({
+  id: item.id,
+  name: item.variant?.product_name || '',
+  weight: item.variant?.variant_title || '',
+  variant_id: item?.variant?.variant_id || '',
+
+  price: Number(item.price || 0),
+  quantity: Number(item.quantity || 1),
+  image:
+    item.variant?.media?.[0]
+      ?.media_url || '',
+  doctorName,
+});
+
+export type MyCartData = {
+  my_cart?: {
+    items: CartItem[];
+  };
+
+  prescription_cart?: {
+    items: {
+      doctor_name: string;
+      items: CartItem[];
+    }[];
+  };
+};
 
 // KEYSROE pass word = Ayurmuni , Aimantra, 
 
@@ -87,72 +150,72 @@ export const INITIAL_FILTERS = {
   experience: '',
 };
 
-  export const TABS = [
-    {
-        key: 'speciality',
-        label: 'Speciality',
-    },
-    {
-        key: 'availability',
-        label: 'Availability',
-    },
-    {
-        key: 'experience',
-        label: 'Experience',
-    },
+export const TABS = [
+  {
+    key: 'speciality',
+    label: 'Speciality',
+  },
+  {
+    key: 'availability',
+    label: 'Availability',
+  },
+  {
+    key: 'experience',
+    label: 'Experience',
+  },
 ];
 
 export const EXPERIENCE_OPTIONS = [
-    {
-        label: '1+ Years',
-        value: '1',
-    },
-    {
-        label: '5+ Years',
-        value: '5',
-    },
-    {
-        label: '10+ Years',
-        value: '10',
-    },
-    {
-        label: '15+ Years',
-        value: '15',
-    },
-    {
-        label: '20+ Years',
-        value: '20',
-    },
+  {
+    label: '1+ Years',
+    value: '1',
+  },
+  {
+    label: '5+ Years',
+    value: '5',
+  },
+  {
+    label: '10+ Years',
+    value: '10',
+  },
+  {
+    label: '15+ Years',
+    value: '15',
+  },
+  {
+    label: '20+ Years',
+    value: '20',
+  },
 ];
 export const AVAILABILITY_OPTIONS = [
-    {
-        label: 'Today',
-        value: 'today',
-    },
-    {
-        label: 'Tomorrow',
-        value: 'tomorrow',
-    },
-    {
-        label: 'This Week',
-        value: 'this_week',
-    },
-    {
-        label: 'Next Week',
-        value: 'next_week',
-    },
-    {
-        label: 'This Month',
-        value: 'this_month',
-    },
-    {
-        label: 'Next Month',
-        value: 'next_month',
-    },
-    {
-        label: 'Select Date',
-        value: 'custom_date',
-    },
+  {
+    label: 'Today',
+    value: 'today',
+  },
+  {
+    label: 'Tomorrow',
+    value: 'tomorrow',
+  },
+  {
+    label: 'This Week',
+    value: 'this_week',
+  },
+  {
+    label: 'Next Week',
+    value: 'next_week',
+  },
+  {
+    label: 'This Month',
+    value: 'this_month',
+  },
+  {
+    label: 'Next Month',
+    value: 'next_month',
+  },
+  {
+    label: 'Select Date',
+    value: 'custom_date',
+  },
 ];
 export const topSelling = [
   {

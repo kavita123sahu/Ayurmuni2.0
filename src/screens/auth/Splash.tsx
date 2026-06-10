@@ -110,11 +110,26 @@ const Splash = (props: any) => {
         },
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.log(
         'GET USER ERROR =>',
         error,
       );
+
+      if (
+        error?.response?.status === 403
+      ) {
+        props.navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'AccountInactiveScreen',
+            },
+          ],
+        });
+
+        return;
+      }
 
       showSuccessToast(
         'Network Error',

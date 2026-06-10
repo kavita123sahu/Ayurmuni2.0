@@ -104,7 +104,7 @@ const ProfilePage = ({ navigation }: any) => {
                 break;
 
             case 'Favourite Doctor':
-                navigation.navigate('AllDoctors');
+                navigation.navigate('FavDoctors');
                 break;
 
             case 'Wishlist':

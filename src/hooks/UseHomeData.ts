@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import *as _HOME_SERVICES from "../services/HomeServices";
+import * as _PRODUCT_SERVICES from "../services/ProductServices";
 
 
 export const useHomeData = () => {
@@ -16,6 +17,8 @@ export const useHomeData = () => {
     const [homeBanner, setHomeBanner] =
         useState<any[]>([]);
 
+    const [productData, setProductData] =
+        useState<any[]>([]);
 
     const [SuggestDoctor, setSuggestDoctor] =
         useState<any[]>([]);
@@ -30,14 +33,16 @@ export const useHomeData = () => {
                 const [
                     categoryRes,
                     SuggestDoctorRes,
+                    productData
                 ] = await Promise.all([
                     _HOME_SERVICES.getHomeCategory(),
                     _HOME_SERVICES.getSuggestedDoctor(),
+                    _PRODUCT_SERVICES.getProduct(),
                 ]);
 
                 console.log(
-                    'SuggestDoctorRes ===>',
-                    SuggestDoctorRes,
+                    'productsssssssssss ===>',
+                    productData,
                 );
 
                 setCategories(
@@ -46,6 +51,10 @@ export const useHomeData = () => {
 
                 setSuggestDoctor(
                     SuggestDoctorRes?.data?.results || [],
+                );
+
+                setProductData(
+                    productData?.data?.results || [],
                 );
 
             } catch (error) {
@@ -79,6 +88,7 @@ export const useHomeData = () => {
         refreshing,
         categories,
         SuggestDoctor,
+        productData,
         onRefresh,
     };
 };

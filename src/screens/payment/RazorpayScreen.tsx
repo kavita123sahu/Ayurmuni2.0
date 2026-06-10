@@ -85,53 +85,53 @@ const RazorpayScreen = ({
 
 
 
-    const confirmExit = useCallback(() => {
-        Alert.alert(
-            'Cancel payment',
-            'Do you want to cancel payment?',
-            [
-                {
-                    text: 'No',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Yes',
-                    onPress: async () => {
-                        // Clear local reservation
-                        try {
-                            await Utils.storeData(STORAGE_KEY, null);
-                        } catch (e) {
-                            console.log('clear storage error', e);
-                        }
-                        navigation.goBack();
-                    },
-                },
-            ],
-            { cancelable: true },
-        );
-    }, [navigation]);
+    // const confirmExit = useCallback(() => {
+    //     Alert.alert(
+    //         'Cancel payment',
+    //         'Do you want to cancel payment?',
+    //         [
+    //             {
+    //                 text: 'No',
+    //                 style: 'cancel',
+    //             },
+    //             {
+    //                 text: 'Yes',
+    //                 onPress: async () => {
+    //                     // Clear local reservation
+    //                     try {
+    //                         await Utils.storeData(STORAGE_KEY, null);
+    //                     } catch (e) {
+    //                         console.log('clear storage error', e);
+    //                     }
+    //                     navigation.goBack();
+    //                 },
+    //             },
+    //         ],
+    //         { cancelable: true },
+    //     );
+    // }, [navigation]);
 
     /* -------------------------------------------------------------------------- */
     /*                             DISABLE BACK PRESS                             */
     /* -------------------------------------------------------------------------- */
 
-    useFocusEffect(
-        useCallback(() => {
+    // useFocusEffect(
+    //     useCallback(() => {
 
-            const onBackPress = () => {
-                confirmExit();
-                return true;
-            };
+    //         const onBackPress = () => {
+    //             confirmExit();
+    //             return true;
+    //         };
 
-            const subscription = BackHandler.addEventListener(
-                'hardwareBackPress',
-                onBackPress,
-            );
+    //         const subscription = BackHandler.addEventListener(
+    //             'hardwareBackPress',
+    //             onBackPress,
+    //         );
 
-            return () => subscription.remove();
+    //         return () => subscription.remove();
 
-        }, [confirmExit]),
-    );
+    //     }, [confirmExit]),
+    // );
 
     /* -------------------------------------------------------------------------- */
     /*                                PRICE DATA                                  */
@@ -205,7 +205,7 @@ const RazorpayScreen = ({
                             console.log('clear storage on success error', e);
                         }
                         navigation.navigate('BookingConfrimScreen', {
-                           
+
                             SlotsDetail
                         });
 
@@ -250,20 +250,20 @@ const RazorpayScreen = ({
 
             <View style={styles.header}>
 
-                {
-                    !paymentProcessing && (
+                {/* {
+                    !paymentProcessing && ( */}
 
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={confirmExit}
-                        >
-                            <Image
-                                source={Images.backIcon}
-                                style={styles.backIcon}
-                            />
-                        </TouchableOpacity>
-                    )
-                }
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Image
+                        source={Images.backIcon}
+                        style={styles.backIcon}
+                    />
+                </TouchableOpacity>
+                {/* )
+                } */}
 
                 <Text style={styles.headerTitle}>
                     Confirm Booking
@@ -418,20 +418,7 @@ const RazorpayScreen = ({
 
                 </TouchableOpacity>
 
-                {
-                    paymentProcessing && (
-
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.cancelButton}
-                            onPress={confirmExit}
-                        >
-                            <Text style={styles.cancelText}>
-                                Cancel Payment
-                            </Text>
-                        </TouchableOpacity>
-                    )
-                }
+                <TouchableOpacity activeOpacity={0.8} style={styles.cancelButton} onPress={() => navigation.goBack()}> <Text style={styles.cancelText}> Cancel Payment </Text> </TouchableOpacity>
 
             </View>
 
@@ -640,29 +627,49 @@ const styles = StyleSheet.create({
 
         fontFamily: Fonts.PoppinsSemiBold,
     },
-    cancelButton:{
+    paymentProcessingContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        paddingVertical: 24,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        marginTop: 20,
+        marginHorizontal: 20,
 
-        width:'100%',
-        borderWidth:1,
-        borderRadius:18,
-        paddingVertical:18,
-        borderColor:'#EF4444'
-        ,marginTop:16
-           
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+    },
 
+    processingTitle: {
+        marginTop: 16,
+        fontSize: 18,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
 
-
-
+    cancelButton: {
+        marginTop: 20,
+        height: 46,
+        minWidth: 160,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#EF4444',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
     },
 
     cancelText: {
-        marginTop: 16,
-
-        textAlign: 'center',
-
-        fontSize: 14,
         color: '#EF4444',
-
+        fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
     },
+
+
 });

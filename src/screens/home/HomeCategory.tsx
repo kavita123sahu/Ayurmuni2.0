@@ -24,14 +24,14 @@ interface Category {
     icon: any;
 }
 
-const CATEGORY_ROUTES = {
-    Doctors: 'Consult',
-    Medicine: 'MedicineScreen',
-    Products: 'ProductsScreen',
-    Yoga: 'YogaScreen',
-    Diet: 'DietScreen',
-};
 
+const CATEGORY_ROUTES: Record<string, string> = {
+    Doctors: "Consult",
+    Medicine: "MedicineScreen",
+    Products: "ProductsScreen",
+    Yoga: "YogaScreen",
+    Diet: "DietScreen"
+};
 const HomeCategory = ({ data = [], navigation }: any) => {
 
     const handlePress = useCallback(

@@ -229,6 +229,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
             data,
         );
 
+        
+
         if (!response.ok) {
             return null;
         }

@@ -38,6 +38,9 @@ export const useConsultData = () => {
     const [topDoctors, setTopDoctors] =
         useState<any[]>([]);
 
+    const [favDoctor, setFavDoctors] =
+        useState<any[]>([]);
+
 
     const fetchAllData =
         useCallback(async () => {
@@ -47,25 +50,23 @@ export const useConsultData = () => {
                 setLoading(true);
 
                 const [
-                    // doctorRecent,
                     categoryRes,
                     topDoctorRes,
+                    AllfavDoctor
                 ] = await Promise.all([
                     // _CONSULT_SERVICES.getConsultCategory(),
                     _CONSULT_SERVICES.getConsultCategory(),
-
                     _CONSULT_SERVICES.getTopDoctor(),
+                    _CONSULT_SERVICES.AllDoctorData(),
 
                 ]);
 
-                console.log(
-                    'CATEGORY RES ===>',
-                    categoryRes,
-                );
+                console.log('ALL DOCTOR DATA ==>', AllfavDoctor);
 
                 setRecentDoctors(doctorRecent);
 
-                // setRecentDoctors(doctorRecent)
+                setFavDoctors(AllfavDoctor?.data?.results || []);
+
                 setCategories(
                     categoryRes?.data || [],
                 );
@@ -109,6 +110,7 @@ export const useConsultData = () => {
         refreshing,
         categories,
         topDoctors,
+        favDoctor,
         recentDoctors,
         onRefresh,
     };

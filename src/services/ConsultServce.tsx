@@ -95,6 +95,41 @@ export const getTopDoctor = async () => {
 }
 
 
+export const ToggleFavDoctor = async (doctorID: number, method: 'POST') => {
+    try {
+        const response = await apiClient(`favorites/doctors/?doctor_id=${doctorID}`, {
+            method: method
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const AllFavDoctor = async () => {
+    try {
+        const response = await apiClient('favorites/doctors/', {
+            method: 'GET'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const AllDoctorData = async () => {
+    try {
+        const response = await apiClient('customers/doctors/', {
+            method: 'GET'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
 
 export const getDoctorSpecialities = async () => {
     try {

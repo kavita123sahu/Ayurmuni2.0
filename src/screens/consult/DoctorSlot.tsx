@@ -10,6 +10,8 @@ import {
     StatusBar,
     ImageBackground,
     Dimensions,
+    Platform,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -268,185 +270,159 @@ const DoctorSlot = (props: any) => {
                     <Ionicons name="heart-outline" size={25} color="#0F172A" />
                 </TouchableOpacity>
             </View>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={
+                    Platform.OS === 'ios'
+                        ? 'padding'
+                        : 'height'
+                }
+            >
+                <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                >
+                    {/* <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}> */}
+                    <View style={styles.headerContainer}>
+                        <View style={styles.profileContainer}>
+                            <View style={styles.avatarBgWrapper}>
+                                <ImageBackground source={Images.BackgroundImage} style={styles.avatarBg} imageStyle={{ borderRadius: 100 }}>
+                                    <View style={styles.avatarWrapper}>
+                                        <Image source={Images.doctorImage} style={styles.avatar} />
+                                    </View>
+                                </ImageBackground>
+                            </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.headerContainer}>
-                    <View style={styles.profileContainer}>
-                        <View style={styles.avatarBgWrapper}>
-                            <ImageBackground source={Images.BackgroundImage} style={styles.avatarBg} imageStyle={{ borderRadius: 100 }}>
-                                <View style={styles.avatarWrapper}>
-                                    <Image source={Images.doctorImage} style={styles.avatar} />
-                                </View>
-                            </ImageBackground>
-                        </View>
-
-                        <Text style={styles.doctorName}>{slotsData?.full_name ?? doctorData?.full_name}</Text>
-                        <Text style={styles.speciality}>{slotsData?.designation ?? doctorData?.designation}</Text>
-                    </View>
-                </View>
-
-                <View style={styles.statsContainer}>
-                    {[
-                        { label: 'PATIENTS', value: slotsData?.total_patients ?? doctorData?.total_patients ?? '' },
-                        { label: 'REVIEWS', value: slotsData?.total_reviews ?? doctorData?.total_reviews ?? '' },
-                        { label: 'EXPERIENCE', value: slotsData?.experience_display ?? doctorData?.experience_display ?? '' },
-                    ].map((item, index) => (
-                        <View key={index} style={[styles.statBox, index !== 2 && styles.borderRight]}>
-                            <Text style={styles.statValue}>{item.value}</Text>
-                            <Text style={styles.statLabel}>{item.label}</Text>
-                        </View>
-                    ))}
-                </View>
-
-                <View style={styles.section}>
-                    <View style={styles.rowBetween}>
-                        <Text style={styles.sectionTitle}>Schedules</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <TouchableOpacity disabled={monthOffset === 0} onPress={() => setMonthOffset(prev => prev - 1)}>
-                                <Ionicons name="chevron-back" size={22} color={monthOffset === 0 ? '#CBD5E1' : Colors.primaryColor} />
-                            </TouchableOpacity>
-                            <Text style={styles.monthText}>{new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
-                            <TouchableOpacity onPress={() => setMonthOffset(prev => prev + 1)}>
-                                <Ionicons name="chevron-forward" size={22} color={Colors.primaryColor} />
-                            </TouchableOpacity>
+                            <Text style={styles.doctorName}>{slotsData?.full_name ?? doctorData?.full_name}</Text>
+                            <Text style={styles.speciality}>{slotsData?.designation ?? doctorData?.designation}</Text>
                         </View>
                     </View>
 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysContainer}>
-                        {DAYS.map((item: any) => {
-                            const isActive = selectedDate === item.fullDate;
-                            return (
-                                <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => setSelectedDate(item.fullDate)} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
-                                    <Text style={[styles.dayText, isActive && { color: '#FFFFFF' }]}>{item.day}</Text>
-                                    <Text style={[styles.dateText, isActive && { color: '#FFFFFF' }]}>{item.date}</Text>
-                                    <Text style={[styles.monthDayText, isActive && { color: '#FFFFFF' }]}>{item.month}</Text>
+                    <View style={styles.statsContainer}>
+                        {[
+                            { label: 'PATIENTS', value: slotsData?.total_patients ?? doctorData?.total_patients ?? '' },
+                            { label: 'REVIEWS', value: slotsData?.total_reviews ?? doctorData?.total_reviews ?? '' },
+                            { label: 'EXPERIENCE', value: slotsData?.experience_display ?? doctorData?.experience_display ?? '' },
+                        ].map((item, index) => (
+                            <View key={index} style={[styles.statBox, index !== 2 && styles.borderRight]}>
+                                <Text style={styles.statValue}>{item.value}</Text>
+                                <Text style={styles.statLabel}>{item.label}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <View style={styles.section}>
+                        <View style={styles.rowBetween}>
+                            <Text style={styles.sectionTitle}>Schedules</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <TouchableOpacity disabled={monthOffset === 0} onPress={() => setMonthOffset(prev => prev - 1)}>
+                                    <Ionicons name="chevron-back" size={22} color={monthOffset === 0 ? '#CBD5E1' : Colors.primaryColor} />
                                 </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
+                                <Text style={styles.monthText}>{new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                                <TouchableOpacity onPress={() => setMonthOffset(prev => prev + 1)}>
+                                    <Ionicons name="chevron-forward" size={22} color={Colors.primaryColor} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
 
-                    {/* Legend */}
-                    <View style={{ flexDirection: 'row', marginTop: 12, gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <View style={{ backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 12 }}>
-                            <Text style={{ color: '#fff', fontSize: 12, fontFamily: Fonts.PoppinsMedium }}>Available</Text>
-                        </View>
-                        <View style={{ backgroundColor: '#F59E0B', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 12 }}>
-                            <Text style={{ color: '#fff', fontSize: 12, fontFamily: Fonts.PoppinsMedium }}>Reserved</Text>
-                        </View>
-                        <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 12 }}>
-                            <Text style={{ color: '#fff', fontSize: 12, fontFamily: Fonts.PoppinsMedium }}>Booked</Text>
-                        </View>
-                        <View style={{ backgroundColor: Colors.primaryColor, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 12 }}>
-                            <Text style={{ color: '#fff', fontSize: 12, fontFamily: Fonts.PoppinsMedium }}>Reserved (You)</Text>
-                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysContainer}>
+                            {DAYS.map((item: any) => {
+                                const isActive = selectedDate === item.fullDate;
+                                return (
+                                    <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => setSelectedDate(item.fullDate)} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
+                                        <Text style={[styles.dayText, isActive && { color: '#FFFFFF' }]}>{item.day}</Text>
+                                        <Text style={[styles.dateText, isActive && { color: '#FFFFFF' }]}>{item.date}</Text>
+                                        <Text style={[styles.monthDayText, isActive && { color: '#FFFFFF' }]}>{item.month}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        {/* Slots */}
+                        {loadingSlots ? (
+                            <View style={{ marginTop: 24, alignItems: 'center' }}>
+                                <Ionicons name="hourglass-outline" size={32} color="#CBD5E1" />
+                                <Text style={{ marginTop: 10, color: '#64748B', fontFamily: Fonts.PoppinsMedium }}>Loading available slots...</Text>
+                            </View>
+                        ) : groupedSlots?.length > 0 ? (
+                            groupedSlots.map(([sectionTitle, sectionSlots]: any) => {
+                                const sectionIcon = sectionTitle === 'Morning' ? 'sunny-outline' : sectionTitle === 'Afternoon' ? 'partly-sunny-outline' : 'moon-outline';
+                                return (
+                                    <View key={sectionTitle} style={styles.slotSection}>
+                                        <View style={styles.slotHeader}>
+                                            <Ionicons name={sectionIcon} size={16} color="#94A3B8" />
+                                            <Text style={styles.slotTitle}>{sectionTitle}</Text>
+                                        </View>
+
+                                        <View style={styles.slotGrid}>
+                                            {sectionSlots.map((slot: any) => {
+                                                const status = String(slot?.status || '').toLowerCase();
+                                                const isAvailable = status === 'available';
+                                                const isBooked = status === 'booked';
+                                                const isReservedByMe = reservedData?.slotId === slot?.id;
+                                                const selectable = isAvailable || isReservedByMe;
+
+                                                return (
+                                                    <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable} onPress={() => { if (isAvailable || isReservedByMe) setSelectedSlot(slot?.id); }} style={[
+                                                        styles.slotBtn,
+                                                        selectedSlot === slot?.id && styles.activeSlotBtn,
+                                                        !selectable && { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', opacity: 0.6 },
+                                                        isReservedByMe && !(selectedSlot === slot?.id) && { borderColor: Colors.primaryColor, backgroundColor: '#E6FFFA' },
+                                                        isBooked && { backgroundColor: '#FFF1F2', borderColor: '#FEE2E2' },
+                                                    ]}>
+
+                                                        <Text style={[styles.slotText, selectedSlot === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
+
+                                                        {isBooked && <Text style={styles.slotStatus}>Booked</Text>}
+                                                        {!isAvailable && !isBooked && !isReservedByMe && <Text style={styles.slotStatus}>Reserved</Text>}
+
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <View style={styles.emptyContainer}>
+                                <Ionicons name="calendar-outline" size={42} color="#CBD5E1" />
+                                <Text style={styles.emptyTitle}>No Slots Available</Text>
+                            </View>
+                        )}
+
                     </View>
 
-                    <View
-                        style={{
-                            marginTop: 14,
-                            backgroundColor: '#E0F2FE',
-                            padding: 12,
-                            borderRadius: 12,
-                            borderLeftWidth: 4,
-                            borderLeftColor: Colors.primaryColor,
-                            borderRightWidth: 1,
-                            borderRightColor: '#BAE6FD',
-                            borderTopWidth: 1,
-                            borderTopColor: '#BAE6FD',
-                            borderBottomWidth: 1,
-                            borderBottomColor: '#BAE6FD',
-                        }}
-                    >
-                        <Text style={{ fontSize: 12, color: '#0369A1', fontFamily: Fonts.PoppinsMedium, marginBottom: 6 }}>📌 Slot Status Info:</Text>
-                        <Text
-                            style={{
-                                fontSize: 11,
-                                lineHeight: 16,
-                                color: '#0369A1',
-                                fontFamily: Fonts.PoppinsRegular,
-                            }}
-                        >
-                            • <Text style={{ fontFamily: Fonts.PoppinsMedium }}>Reserved (You)</Text> - Your slot is held for 5 minutes. Complete payment before time expires, or it becomes available for others.{'\n'}
-                            • <Text style={{ fontFamily: Fonts.PoppinsMedium }}>Reserved</Text> - Held by another user waiting for payment.{'\n'}
-                            • <Text style={{ fontFamily: Fonts.PoppinsMedium }}>Booked</Text> - Already confirmed by another user.{'\n'}
-                            • <Text style={{ fontFamily: Fonts.PoppinsMedium }}>Available</Text> - Open for booking.
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            Concern
                         </Text>
+
+                        <TextInput
+                            multiline
+                            value={concern}
+                            onChangeText={setConcern}
+                            placeholder="Briefly describe your symptoms..."
+                            placeholderTextColor="#94A3B8"
+                            style={styles.input}
+                            textAlignVertical="top"
+                        />
                     </View>
 
-                    {/* Slots */}
-                    {loadingSlots ? (
-                        <View style={{ marginTop: 24, alignItems: 'center' }}>
-                            <Ionicons name="hourglass-outline" size={32} color="#CBD5E1" />
-                            <Text style={{ marginTop: 10, color: '#64748B', fontFamily: Fonts.PoppinsMedium }}>Loading available slots...</Text>
+                    <View style={styles.footer}>
+                        <View>
+                            <Text style={styles.feeLabel}>Consult Fee</Text>
+                            <Text style={styles.price}>Rs. {slotsData?.consult_fee?.amount ?? doctorData?.followup_fee ?? 0}</Text>
                         </View>
-                    ) : groupedSlots?.length > 0 ? (
-                        groupedSlots.map(([sectionTitle, sectionSlots]: any) => {
-                            const sectionIcon = sectionTitle === 'Morning' ? 'sunny-outline' : sectionTitle === 'Afternoon' ? 'partly-sunny-outline' : 'moon-outline';
-                            return (
-                                <View key={sectionTitle} style={styles.slotSection}>
-                                    <View style={styles.slotHeader}>
-                                        <Ionicons name={sectionIcon} size={16} color="#94A3B8" />
-                                        <Text style={styles.slotTitle}>{sectionTitle}</Text>
-                                    </View>
 
-                                    <View style={styles.slotGrid}>
-                                        {sectionSlots.map((slot: any) => {
-                                            const status = String(slot?.status || '').toLowerCase();
-                                            const isAvailable = status === 'available';
-                                            const isBooked = status === 'booked';
-                                            const isReserved = status === 'reserved' || (!isAvailable && !isBooked);
-                                            const isReservedByMe = reservedData?.slotId === slot?.id;
-                                            const selectable = isAvailable || isReservedByMe;
-
-                                            return (
-                                                <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable} onPress={() => { if (isAvailable || isReservedByMe) setSelectedSlot(slot?.id); }} style={[
-                                                    styles.slotBtn,
-                                                    selectedSlot === slot?.id && styles.activeSlotBtn,
-                                                    !selectable && { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', opacity: 0.6 },
-                                                    isReservedByMe && !(selectedSlot === slot?.id) && { borderColor: Colors.primaryColor, backgroundColor: '#E6FFFA' },
-                                                    isBooked && { backgroundColor: '#FFF1F2', borderColor: '#FEE2E2' },
-                                                ]}>
-
-                                                    <Text style={[styles.slotText, selectedSlot === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
-
-                                                    {isBooked && <Text style={styles.slotStatus}>Booked</Text>}
-                                                    {!isAvailable && !isBooked && !isReservedByMe && <Text style={styles.slotStatus}>Reserved</Text>}
-                                                    {isReservedByMe && <Text style={[styles.slotStatus, { color: Colors.primaryColor }]}>Reserved (You){reservedRemainingMs > 0 ? ` · ${formatMs(reservedRemainingMs)}` : ''}</Text>}
-
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
-                            );
-                        })
-                    ) : (
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="calendar-outline" size={42} color="#CBD5E1" />
-                            <Text style={styles.emptyTitle}>No Slots Available</Text>
-                        </View>
-                    )}
-
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Concern</Text>
-                    <TextInput multiline value={concern} onChangeText={setConcern} placeholder="Briefly describe your symptoms..." placeholderTextColor="#94A3B8" style={styles.input} textAlignVertical="top" />
-                </View>
-
-                <View style={styles.footer}>
-                    <View>
-                        <Text style={styles.feeLabel}>Consult Fee</Text>
-                        <Text style={styles.price}>Rs. {slotsData?.consult_fee?.amount ?? doctorData?.followup_fee ?? 0}</Text>
+                        <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot || loadingSlots || groupedSlots.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={reserveLocalAndNavigate}>
+                            <Ionicons name="card-outline" size={18} color="#FFFFFF" />
+                            <Text style={styles.payText}>{loadingSlots ? 'Loading...' : 'Continue'}</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot || loadingSlots || groupedSlots.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={reserveLocalAndNavigate}>
-                        <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-                        <Text style={styles.payText}>{loadingSlots ? 'Loading...' : 'Continue'}</Text>
-                    </TouchableOpacity>
-                </View>
-
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 };

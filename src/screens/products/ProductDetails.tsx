@@ -9,15 +9,19 @@ import DashboardCard from '../../components/DashboardCard'
 import PrimaryButton from '../../components/PrimaryButton'
 import { reviews } from '../../common/DataInterface'
 import ReviewSection from '../../components/ReviewSecton'
+import { useProductData } from '../../hooks/useProductData'
 
 const { width } = Dimensions.get("window");
 const ProductDetails = (props: any) => {
 
     console.log("propssssssssssssssssss", props)
+    const { varientID } = props?.route?.params;
+    console.log("varientID", varientID)
+
+
+    const { ProductData } = useProductData(varientID);
+    console.log("ProductData->>", ProductData)
     const [quantity, setQuantity] = React.useState(1);
-
-
-    ;
 
     const product = {
         id: 1,
@@ -47,7 +51,7 @@ const ProductDetails = (props: any) => {
 
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
 
-               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
 
             <AppHeader
@@ -64,7 +68,7 @@ const ProductDetails = (props: any) => {
             >
 
                 <View>
-                    <Detailimages images={product.images} />
+                    <Detailimages images={ProductData?.variants?.media || [Images.detailimage]} />
                 </View>
 
                 <View style={styles.infoContainer}>

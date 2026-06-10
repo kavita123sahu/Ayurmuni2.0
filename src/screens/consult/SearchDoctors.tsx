@@ -105,9 +105,6 @@ const AVAILABILITY_OPTIONS = [
 ];
 
 
-
-
-
 const AllDoctors = (props: any) => {
     const { all } = props.route.params;
 

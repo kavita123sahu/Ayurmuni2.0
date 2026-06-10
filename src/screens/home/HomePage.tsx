@@ -62,11 +62,12 @@ const HomePage: React.FC = (props: any) => {
     refreshing,
     categories,
     SuggestDoctor,
+    productData,
     onRefresh,
   } = useHomeData();
 
-  console.log('SuggestDoctor', SuggestDoctor);
 
+  console.log('productDataproductData', productData);
 
   const isFocused = useIsFocused();
   const [PakritiData, setPakritiData] = useState<Prakriti | null>(null);
@@ -163,7 +164,6 @@ const HomePage: React.FC = (props: any) => {
 
         <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
 
-
         <Detailimages
           images={product.images}
           itemWidth={width - 80}
@@ -174,13 +174,13 @@ const HomePage: React.FC = (props: any) => {
         <SectionHeader title="Suggested Medicines" actionText="View all" />
 
 
-        <TopSellingList data={topSelling} navigation={props.navigation} />
+        <TopSellingList data={productData} navigation={props.navigation} />
 
 
         <SectionHeader title="Suggested Products" actionText="View all" />
 
 
-        <TopSellingList data={topSelling} navigation={props.navigation} />
+        <TopSellingList data={productData} navigation={props.navigation} />
 
 
         <SectionHeader title="Yoga’s" actionText="View all" />

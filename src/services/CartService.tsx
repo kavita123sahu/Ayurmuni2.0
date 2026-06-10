@@ -1,5 +1,21 @@
 import { Utils } from "../common/Utils";
 import { BaseUrl, Method } from "../config/Key";
+import { apiClient } from "./APIconfig";
+
+
+export const AddupdateCart = async (variant_id: any) => {
+    try {
+        const response = await apiClient(`cart/?variant_id=${variant_id}`, {
+            method: 'GET'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+
 
 export const get_cart_list = async (CustomerID: string) => {
     return new Promise(async (resolve, reject) => {
@@ -47,7 +63,7 @@ export const add_cart_item = async (data: object) => {
     })
 }
 
-export const update_cart_item_quantity = async (ID : string, data: object) => {
+export const update_cart_item_quantity = async (ID: string, data: object) => {
     return new Promise(async (resolve, reject) => {
         try {
             const token = await Utils.getData('_TOKEN');
@@ -94,23 +110,16 @@ export const order_place_item = async (data: object) => {
 }
 
 
-export const delete_item = async (itemID: string) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const token = await Utils.getData('_TOKEN');
-            let fetchParameter = {
-                method: Method.DELETE,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-            console.log(BaseUrl.base_url + `ecom/cartitem/${itemID}/`);
-            let serverResponse = await fetch(BaseUrl.base_url + `carts/cartitem/${itemID}/`, fetchParameter);
-            resolve(serverResponse);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
+
+
+
+export const getAllCart = async () => {
+    try {
+        const response = await apiClient('cart/', {
+            method: 'GET'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
 }

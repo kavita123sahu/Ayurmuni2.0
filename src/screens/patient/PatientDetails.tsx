@@ -1,5 +1,4 @@
-
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,25 +8,26 @@ import {
   FlatList,
   ScrollView,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
-import PatientCard, { Patient } from './PatientCard';
-import { Styles } from '../../common/Styles';
-import { Colors } from '../../common/Colors';
-import { Fonts } from '../../common/Fonts';
-import SelectedPatientCard from './SelectedPatient';
-import Header from '../../components/Header';
-import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Utils } from '../../common/Utils';
-import * as  _PROFILE_SERVICES from '../../services/ProfileServices';
-import { usePatientData } from '../../hooks/usePatientData';
+
+import PatientCard from './PatientCard';
+import Header from '../../components/Header';
 import EmptyState from '../../components/EmptyState';
 import CommonButton from '../../components/CommonButton';
 import CommonModal from '../../components/LogoutModal';
+import SelectedPatientCard from './SelectedPatient'; // Create this component
+import { Styles } from '../../common/Styles';
+import { Colors } from '../../common/Colors';
+import { Fonts } from '../../common/Fonts';
+import { Images } from '../../common/Images';
+import { Utils } from '../../common/Utils';
 import { showSuccessToast } from '../../config/Key';
-
-
+import { usePatientData } from '../../hooks/usePatientData';
+import * as PROFILE_SERVICES from '../../services/ProfileServices';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface UserInterface {
   first_name: string;
@@ -36,237 +36,207 @@ interface UserInterface {
   phone_number: string;
 }
 
-const PatientDetails: React.FC = (props: any) => {
+interface NavigationProps {
+  navigation: any;
+}
 
+const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
+  // ─── State ─────────────────────────────────────────────────
+  const [user, setUser] = useState<UserInterface | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ─── Custom Hooks ──────────────────────────────────────────
   const {
     patients,
-    loading,
+    loading: patientsLoading,
     fetchPatients,
     switchPatient,
   } = usePatientData();
 
-  const [user, setUser] =
-    useState<UserInterface | null>(null);
+  // ─── Memoized Values ───────────────────────────────────────
+  const fullName = useMemo(
+    () => `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim(),
+    [user?.first_name, user?.last_name]
+  );
 
+  const hasPatients = useMemo(() => patients.length > 0, [patients]);
 
-  const [deleteLoading, setDeleteLoading] =
-    useState(false);
-  const [deleteVisible, setDeleteVisible] = useState(false);
+  // ─── Data Fetching ─────────────────────────────────────────
+  const fetchUserData = useCallback(async () => {
+    try {
+      const res = await PROFILE_SERVICES.user_profile();
+      setUser(res?.data || null);
+    } catch (error) {
+      console.log('Profile Error:', error);
+      showSuccessToast('Failed to load profile', 'error');
+    }
+  }, []);
 
-  const fetchUserData =
-    useCallback(async () => {
+  const loadAllData = useCallback(async () => {
+    try {
+      await Promise.all([fetchPatients(), fetchUserData()]);
+    } catch (error) {
+      console.log('Load Data Error:', error);
+      showSuccessToast('Failed to load data', 'error');
+    }
+  }, [fetchPatients, fetchUserData]);
 
-      try {
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadAllData();
+    setIsRefreshing(false);
+  }, [loadAllData]);
 
-        const res: any =
-          await _PROFILE_SERVICES.user_profile();
-        console.log('user_profile_json', res?.data);
-        setUser(
-          res?.data || null,
-        );
-
-      } catch (error) {
-
-        console.log(
-          'Profile Error:',
-          error,
-        );
-
-      }
-
-    }, []);
-
+  // ─── Effects ───────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
-      const loadData = async () => {
-        await Promise.all([
-          fetchPatients(),
-          fetchUserData(),
-        ]);
-      };
-
-      loadData();
-    }, [
-      fetchPatients,
-      fetchUserData,
-    ]),
+      loadAllData();
+    }, [loadAllData])
   );
 
-  const handleSelect = useCallback(
-    async (id: string) => {
+  // ─── Handlers ──────────────────────────────────────────────
+  const handleSelectPatient = useCallback(
+    async (patientId: string) => {
       try {
-        await switchPatient(id);
-
-        await Promise.all([
-          fetchPatients(),
-          fetchUserData(),
-        ]);
+        await switchPatient(patientId);
+        await loadAllData();
+        showSuccessToast('Patient switched successfully', 'success');
       } catch (error) {
-        console.log(
-          'SWITCH PATIENT ERROR =>',
-          error,
-        );
+        console.log('SWITCH PATIENT ERROR =>', error);
+        showSuccessToast('Failed to switch patient', 'error');
       }
     },
-    [
-      switchPatient,
-      fetchPatients,
-      fetchUserData,
-    ],
+    [switchPatient, loadAllData]
   );
 
-  const openDeleteModal =
-    useCallback(() => {
-      setDeleteVisible(true);
-    }, []);
+  const handleAddPatient = useCallback(() => {
+    navigation.navigate('AddEditPatientDetail', { mode: 'add' });
+  }, [navigation]);
 
-  const closeDeleteModal =
-    useCallback(() => {
-      setDeleteVisible(false);
-    }, []);
+  const handleViewRecords = useCallback(() => {
+    navigation.navigate('Records');
+  }, [navigation]);
 
-  const handleDeleteAccount =
-    useCallback(async () => {
-      try {
-        setDeleteLoading(true);
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      setIsDeleting(true);
+      const response = await PROFILE_SERVICES.deleteAccount();
 
-        const response: any =
-          await _PROFILE_SERVICES.deleteAccount();
-
-        console.log(
-          'DELETE ACCOUNT RESPONSE =>',
-          response,
-        );
-
-        if (!response?.success) {
-          showSuccessToast(
-            response?.message ||
-            'Failed to delete account',
-            'error',
-          );
-          return;
-        }
-
-        await Promise.all([
-          Utils.removeData('_TOKEN'),
-          Utils.removeData('_REFRESH_TOKEN'),
-          Utils.removeData('_USER_INFO'),
-        ]);
-
-        showSuccessToast(
-          response?.message ||
-          'Account deleted successfully',
-          'success',
-        );
-
-        setDeleteVisible(false);
-
-        props.navigation.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'AuthStack',
-            },
-          ],
-        });
-      } catch (error) {
-        console.log(
-          'DELETE ACCOUNT ERROR =>',
-          error,
-        );
-
-        showSuccessToast(
-          'Something went wrong',
-          'error',
-        );
-      } finally {
-        setDeleteLoading(false);
+      if (!response?.success) {
+        showSuccessToast(response?.message || 'Failed to delete account', 'error');
+        return;
       }
-    }, [props.navigation]);
 
+      await Promise.all([
+        Utils.removeData('_TOKEN'),
+        Utils.removeData('_REFRESH_TOKEN'),
+        Utils.removeData('_USER_INFO'),
+      ]);
 
+      showSuccessToast(response?.message || 'Account deleted successfully', 'success');
+      setDeleteModalVisible(false);
 
-  const fullName =
-    `${user?.first_name ?? ''} ${user?.last_name ?? ''
-      }`.trim();
-  const phoneNumber = user?.phone_number;
-  const profileImage = user?.profile_picture;
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthStack' }],
+      });
+    } catch (error) {
+      console.log('DELETE ACCOUNT ERROR =>', error);
+      showSuccessToast('Something went wrong', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [navigation]);
 
+  // ─── Loading State ─────────────────────────────────────────
+  if (patientsLoading && !hasPatients) {
+    return (
+      <SafeAreaView style={[styles.safeArea,{paddingHorizontal:20}]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <Header
+          title="Patient Details"
+          subtitle="Manage family profiles"
+          backIcon={Images.backIcon}
+          onBack={() => navigation.goBack()}
+        />
+        <LoadingSpinner message="Loading patients..." />
+      </SafeAreaView>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <StatusBar barStyle={'dark-content'} backgroundColor={'#ffffff'} />
-
-      <Header
+      <View style={{paddingHorizontal:20}}>
+        <Header
         title="Patient Details"
         subtitle="Manage family profiles"
         backIcon={Images.backIcon}
-        onBack={() => { props.navigation.goBack() }}
+        onBack={() => navigation.goBack()}
       />
+      </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[Colors.primaryColor]}
+            tintColor={Colors.primaryColor}
+          />
+        }
       >
+        {/* Currently Selected Section */}
+        <View style={styles.section}>
+          <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
+          <SelectedPatientCard
+            name={fullName || "Not set"}
+            phone={user?.phone_number || ""}
+            relation="Self"
+            navigation={""}
+            image={user?.profile_picture || ""}
+            onViewRecords={handleViewRecords}
+          />
+        </View>
 
-        <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
-
-        <SelectedPatientCard
-          name={fullName || ""}
-          phone={phoneNumber || ""}
-          relation="Self"
-          image={profileImage || ""}
-          navigation={props.navigation}
-        // onViewRecords={() => navigation.navigate('Records')}
-        />
-
-
+        {/* Patient List Header */}
         <View style={styles.rowBetween}>
           <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
-
-          <TouchableOpacity onPress={() => props.navigation.navigate(
-            'AddEditPatientDetail',
-            {
-              mode: 'add',
-              // patient: item,
-            },
-          )}>
-            <Text style={Styles.addBtn}>+  Add Patient</Text>
+          <TouchableOpacity onPress={handleAddPatient} activeOpacity={0.7}>
+            <Text style={Styles.addBtn}>+ Add Patient</Text>
           </TouchableOpacity>
         </View>
 
-
-        <View style={{ marginBottom: 10 }}>
-
+        {/* Patient List */}
+        <View style={styles.patientListContainer}>
           <FlatList
             data={patients}
-            keyExtractor={item =>
-              item.id
-            }
+            keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <PatientCard
                 patient={{
                   ...item,
-                  selected:
-                    item?.is_active_profile,
+                  selected: item?.is_active_profile,
                 }}
-                onSelect={() =>
-                  handleSelect(
-                    item.id,
-                  )
-                }
-                navigation={
-                  props.navigation
-                }
+                onSelect={() => handleSelectPatient(item.id)}
+                navigation={navigation}
               />
             )}
-
-            ListEmptyComponent={<EmptyState
-              image={Images.patient}
-              title="No Patients Added"
-              subtitle="Add your first patient to get started."
-            />}
+            ListEmptyComponent={
+              <EmptyState
+                image={Images.patient}
+                title="No Patients Added"
+                subtitle="Add your first patient to get started."
+              />
+            }
+            scrollEnabled={false}
             removeClippedSubviews
             initialNumToRender={5}
             maxToRenderPerBatch={5}
@@ -274,12 +244,11 @@ const PatientDetails: React.FC = (props: any) => {
           />
         </View>
 
-        {/* ── INFO BOX ── */}
+        {/* Info Box */}
         <View style={styles.infoBox}>
           <View style={styles.iconCircle}>
-            <Image source={Images.notification} style={styles.IconSize} />
+            <Image source={Images.notification} style={styles.iconSize} />
           </View>
-
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>Switching Patients</Text>
             <Text style={styles.infoText}>
@@ -289,27 +258,28 @@ const PatientDetails: React.FC = (props: any) => {
           </View>
         </View>
 
-        <View style={{ position: "relative", bottom: 10, top: 20 }}>
-          <CommonButton title='Delete Account' loading={loading} onPress={openDeleteModal} />
-
+        {/* Delete Account Button */}
+        <View style={styles.deleteButtonContainer}>
+          <CommonButton title="Delete Account" onPress={() => setDeleteModalVisible(true)} />
         </View>
-        {/* ── VERSION ── */}
+
+        {/* Version Text */}
         <Text style={styles.version}>APP VERSION 1.2</Text>
       </ScrollView>
 
+      {/* Delete Confirmation Modal */}
       <CommonModal
-        visible={deleteVisible}
+        visible={deleteModalVisible}
         icon="🗑️"
         title="Delete Account"
         subtitle="This action cannot be undone. Are you sure you want to delete your account?"
         cancelText="Cancel"
         confirmText="Delete"
-        loading={deleteLoading}
-        onClose={closeDeleteModal}
+        loading={isDeleting}
+        onClose={() => setDeleteModalVisible(false)}
         onConfirm={handleDeleteAccount}
       />
     </SafeAreaView>
-
   );
 };
 
@@ -318,160 +288,38 @@ export default PatientDetails;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    paddingHorizontal: 20,
-
-    // paddingBottom:80,
     backgroundColor: '#ffffff',
   },
   scroll: {
     flex: 1,
-    backgroundColor: "#FDFDFB"
+    backgroundColor: '#FDFDFB',
   },
   container: {
-    // padding: 18,
-    // paddingHorizontal:20,
+    paddingHorizontal: 20,
     paddingBottom: 32,
   },
-
-  // ── Header ──
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+  section: {
+    marginBottom: 8,
   },
-  backBtn: {
-    width: 32,
-    alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 28,
-    color: '#0F172A',
-    lineHeight: 32,
-  },
-  headerTextWrap: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  headerSub: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-
-  // ── Card ──
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  // ── Section label ──
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#94A3B8',
-    letterSpacing: 0.8,
-    marginBottom: 12,
-  },
-
-  // ── Currently Selected ──
-  selectedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  avatarLarge: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-  },
-  selfBadge: {
-    position: 'absolute',
-    top: -6,
-    alignSelf: 'center',
-    left: 10,
-    backgroundColor: '#0F766E',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  selfBadgeText: {
-    color: '#fff',
-    fontSize: 8,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  selectedInfo: {
-    flex: 1,
-  },
-  selectedName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  phone: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  viewRecords: {
-    fontSize: 12,
-    color: '#0F766E',
-    fontWeight: '600',
-  },
-
-  // ── Avatar group ──
-  avatarGroup: {
-    flexDirection: 'row',
-    marginTop: 14,
-  },
-  avatarGroupImg: {
-    width: 30,
-    height: 30,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: '#fff',
-    marginLeft: -6,
-  },
-
-  // ── Row between ──
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
-    marginTop: 10
+    marginTop: 10,
   },
-
-
-  // ── Info Box ──
+  patientListContainer: {
+    marginBottom: 10,
+  },
   infoBox: {
-
     paddingHorizontal: 25,
     paddingVertical: 35,
     backgroundColor: Colors.bgcolor,
-    // padding: 16,
     borderWidth: 1.5,
     borderColor: Colors.BGIcon,
     borderRadius: 16,
     flexDirection: 'row',
-    // alignItems: 'flex-start',
     gap: 16,
-
   },
   iconCircle: {
     width: 40,
@@ -480,28 +328,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.BGIcon,
     justifyContent: 'center',
     alignItems: 'center',
-
     marginRight: 8,
   },
-
-  IconSize: {
+  iconSize: {
     height: 24,
-    width: 24
-  },
-
-  infoIcon: {
-    fontSize: 16,
-    marginTop: 1,
+    width: 24,
   },
   infoContent: {
     flex: 1,
-
   },
   infoTitle: {
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
-    marginBottom: 2
+    marginBottom: 2,
   },
   infoText: {
     fontSize: 12,
@@ -509,14 +349,17 @@ const styles = StyleSheet.create({
     color: Colors.subTextColor,
     lineHeight: 14,
   },
-
-  // ── Version ──
+  deleteButtonContainer: {
+    position: 'relative',
+    bottom: 10,
+    top: 20,
+  },
   version: {
     textAlign: 'center',
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
     color: '#94A3B8',
     marginTop: 30,
-    marginBottom: 30
+    marginBottom: 30,
   },
 });

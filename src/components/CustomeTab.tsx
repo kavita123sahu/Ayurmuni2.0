@@ -8,7 +8,6 @@ import {
     Platform,
 } from 'react-native';
 import React from 'react';
-import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../common/Colors';
 import { Images } from '../common/Images';
@@ -57,10 +56,11 @@ const CustomeTab = (props: any) => {
 
                 {/* Blur for iOS */}
                 {Platform.OS === 'ios' ? (
-                    <BlurView
-                        style={StyleSheet.absoluteFill}
-                        blurType="light"
-                        blurAmount={15}
+                    <View
+                        style={[
+                            StyleSheet.absoluteFill,
+                            { backgroundColor: 'rgba(0,0,0,0.4)' },
+                        ]}
                     />
                 ) : (
                     <View

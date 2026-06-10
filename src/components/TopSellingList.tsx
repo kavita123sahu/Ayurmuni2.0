@@ -7,12 +7,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
 import WishlistButton from './WishlistButton';
-
+import { Images } from '../common/Images';
+import *as _CART_SERVICES from '../services/CartService';
+import { showSuccessToast } from '../config/Key';
+import { Colors } from '../common/Colors';
 interface Props {
   data: any[];
   isGrid?: boolean;
@@ -33,9 +37,13 @@ const ITEM_WIDTH =
 
 
 const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, header = false, navigation }) => {
-  console.log("navigationnnnnnnnn", navigation)
-  const [showAll, setShowAll] = useState(false);
+  console.log("datadatadata---->>", data)
 
+  const [addingItems, setAddingItems] =
+    useState<string[]>([]);
+
+  const [showAll, setShowAll] = useState(false);
+  const [showCartModal, setShowCartModal] = useState(false);
   const displayData = showAll ? data : data.slice(0, 6);
 
   const formattedData =
@@ -44,7 +52,79 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
       : displayData;
 
 
+  const handleAddToCart = async (
+    item: any,
+  ) => {
 
+    const variantId =
+      item?.variant_id;
+
+    const Quantity = item?.quantity;
+
+    if (!variantId) {
+      return;
+    }
+
+    if (
+      addingItems.includes(
+        variantId,
+      )
+    ) {
+      return;
+    }
+
+    // already added hai
+    if (
+      addingItems.includes(
+        variantId,
+      )
+    ) {
+      return;
+    }
+
+    setAddingItems(prev => [
+      ...prev,
+      variantId,
+    ]);
+
+    try {
+
+      const response =
+        await _CART_SERVICES.AddupdateCart({
+          variant_id: variantId,
+          quantity: Quantity + 1,
+        });
+
+      if (response?.success) {
+
+        setAddingItems(prev => [
+          ...prev,
+          variantId,
+        ]);
+
+        // showSuccessToast(
+        //   'Item added to cart successfully',
+        //   'success',
+        // );
+      }
+
+    } catch (error) {
+
+      console.log(
+        'ADD CART ERROR',
+        error,
+      );
+
+    } finally {
+
+      setAddingItems(prev =>
+        prev.filter(
+          id =>
+            id !== variantId,
+        ),
+      );
+    }
+  };
 
 
   const ListHeaderComponent = () => (
@@ -90,16 +170,26 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
       }
 
       renderItem={({ item }) => {
+        const isAdding =
+          addingItems.includes(
+            item?.variant_id,
+          );
+
+        const isAdded =
+          addingItems.includes(
+            item?.variant_id,
+          );
+
         if (item.empty) {
           return <View style={[styles.card, styles.gridCard, styles.emptyCard]} />;
         }
 
         return (
-          <TouchableOpacity onPress={() => navigation.navigate('ProductDetails')} style={[styles.card, isGrid && styles.gridCard]}>
-
+          <TouchableOpacity onPress={() => navigation.navigate('ProductDetails', {
+            varientID: item?.variant_id
+          })} style={[styles.card, isGrid && styles.gridCard]}>
 
             {fav && <WishlistButton />}
-
 
             {/* BADGE */}
             {item.tag && (
@@ -110,37 +200,70 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
 
             {/* IMAGE */}
             <View style={styles.imageContainer}>
-              <Image source={item.image} style={styles.image} />
+              <Image source={item?.image_url ? { uri: item?.image_url } : Images.medicine} style={styles.image} />
             </View>
 
             {/* CONTENT */}
             <View style={styles.subContainer}>
-              <Text style={styles.title} numberOfLines={2}>
-                {item.name}
+              <Text
+                style={styles.title}
+                numberOfLines={2}
+                ellipsizeMode="tail">
+                {item.product_name}
               </Text>
 
-              {item.subtitle && (
+              {item.brand_name && (
                 <Text numberOfLines={2}
-                  ellipsizeMode="tail" style={styles.subtitle}>{item.subtitle}</Text>
+                  ellipsizeMode="tail" style={styles.subtitle}>{item?.brand_name}</Text>
               )}
 
               <View style={styles.priceContainer}>
-                {item.oldPrice && (
-                  <Text style={styles.oldPrice}>Rs. {item.oldPrice}</Text>
-                )}
-                <Text style={styles.price}>Rs. {item.price}</Text>
+                {/* {item?.variant && ( */}
+                <Text style={styles.oldPrice}>Rs. {item.mrp}</Text>
+                {/* )} */}
+                <Text style={styles.price}>Rs. {item.selling_price}</Text>
               </View>
 
               {/* CART BUTTON */}
-              <TouchableOpacity style={styles.cartBtn} onPress={() => navigation.navigate('MyCart')}>
-                <Image
-                  source={require('../assets/images/CartFrame.png')}
-                  style={styles.cartFrame}
-                />
-                <Image
-                  source={require('../assets/images/Cart.png')}
-                  style={styles.cartIcon}
-                />
+              <TouchableOpacity
+                disabled={isAdded}
+                onPress={() =>
+                  handleAddToCart(item)
+                }
+                style={styles.cartBtn}
+              >
+                {isAdded ? (
+                  <View style={{
+                    backgroundColor: Colors.primaryColor,
+                    borderRadius: 11,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: 35, width: 35
+                  }}>
+
+
+                    <Image
+                      source={Images.tick}
+                      style={{
+                        width: 16,
+                        height: 16, tintColor: Colors.white
+
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <>
+                    <Image
+                      source={require('../assets/images/CartFrame.png')}
+                      style={styles.cartFrame}
+                    />
+
+                    <Image
+                      source={require('../assets/images/Cart.png')}
+                      style={styles.cartIcon}
+                    />
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -177,7 +300,7 @@ export default TopSellingList;
 
 const styles = StyleSheet.create({
   card: {
-    width: ITEM_WIDTH / 1.2,
+    width: ITEM_WIDTH / 1.1,
     position: 'relative',
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
@@ -185,7 +308,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     borderColor: '#F1F5F9',
-    // height: 240,
+    height: 340,
   },
 
   gridCard: {
@@ -218,25 +341,26 @@ const styles = StyleSheet.create({
   },
 
   subContainer: {
-    margin: 6,
-    minHeight: 70,
+    margin: 8,
+    minHeight: 130,
+    paddingBottom: 50, // cart button ke liye space
   },
 
   title: {
     fontSize: 16,
-    marginBottom: -5,
+    marginBottom: 4,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
+    lineHeight: 22,
+    height: 44, // 2 lines fix
   },
-
   subtitle: {
     fontSize: 12,
     color: '#64748B',
-    // marginTop: 2,
-
     fontFamily: Fonts.PoppinsMedium,
+    lineHeight: 18,
+    height: 36, // 2 lines
   },
-
   priceContainer: {
     marginTop: 6,
   },
@@ -277,7 +401,7 @@ const styles = StyleSheet.create({
   cartBtn: {
     position: 'absolute',
     right: 10,
-    bottom: 5,
+    bottom: 60,
     width: 40,
     height: 40,
     justifyContent: 'center',
