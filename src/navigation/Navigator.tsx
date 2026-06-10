@@ -19,7 +19,7 @@ import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
 
 import HomePage from "../screens/home/HomePage";
-import ConsultHome from "../screens/consult/ConsultHome";
+// import ConsultHome from "../screens/consult/ConsultHome";
 import ProfilePage from "../screens/profile/ProfilePage";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import CustomeTab from "../components/CustomeTab";
@@ -140,11 +140,11 @@ const TabStack = () => {
       <Tab.Screen name="Products" component={ProductsScreen} />
       <Tab.Screen name="Medicine" component={MedicineScreen} />
       <Tab.Screen name="Profile" component={ProfilePage} />
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Consult"
         component={ConsultHome}
         options={{ tabBarButton: () => null }} // 👈 hide from default tab
-      />
+      /> */}
     </Tab.Navigator>
   );
 };

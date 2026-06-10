@@ -10,7 +10,7 @@ export const useAllCartData = () => {
         useState(false);
 
     const [CartData, setCartData] =
-    useState<any>({});
+        useState<any>({});
 
     const [favDoctor, setFavDoctors] =
         useState<any[]>([]);
@@ -31,9 +31,9 @@ export const useAllCartData = () => {
 
                 console.log('ALLcartlist DATA ==>', CartList?.data);
 
-             setCartData(
-    CartList?.data || {},
-);
+                setCartData(
+                    CartList?.data || {},
+                );
 
             } catch (error) {
 
@@ -70,4 +70,39 @@ export const useAllCartData = () => {
         favDoctor,
         onRefresh,
     };
+};
+
+
+
+type UseCartActionsReturn = {
+    isAdding: boolean;
+    addToCart: (variantId: string | number, quantity: number) => Promise<boolean>;
+};
+
+export const useCartActions = (): UseCartActionsReturn => {
+    const [isAdding, setIsAdding] = useState(false);
+
+    const addToCart = useCallback(
+        async (variantId: string | number, quantity: number): Promise<boolean> => {
+            if (!variantId || isAdding) return false;
+            console.log("variiiiiiii", variantId, quantity)
+            setIsAdding(true);
+            try {
+                const response = await _CART_SERVICES.AddupdateCart({
+                    variant_id: variantId,
+                    quantity,                  // whatever qty user selected
+                });
+                console.log("rasonsecardd", response)
+                return response?.success ?? false;
+            } catch (error) {
+                console.error('[CART ERROR]', error);
+                return false;
+            } finally {
+                setIsAdding(false);
+            }
+        },
+        [isAdding],
+    );
+
+    return { isAdding, addToCart };
 };

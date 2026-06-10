@@ -1,474 +1,448 @@
-import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions, StatusBar } from 'react-native'
-import React from 'react'
-import AppHeader from '../../components/AppHeader'
-import { Images } from '../../common/Images'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Detailimages from '../../components/Detailimages'
-import { Fonts } from '../../common/Fonts'
-import DashboardCard from '../../components/DashboardCard'
-import PrimaryButton from '../../components/PrimaryButton'
-import { reviews } from '../../common/DataInterface'
-import ReviewSection from '../../components/ReviewSecton'
-import { useProductData } from '../../hooks/useProductData'
+// screens/ProductDetails/ProductDetails.tsx
+import React, { useEffect, useState } from 'react';
+import {
+    View, Text, ScrollView, StyleSheet, Image,
+    TouchableOpacity, StatusBar, Share, ActivityIndicator,
+    useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '../../components/AppHeader';
+import Detailimages from '../../components/Detailimages';
+import DashboardCard from '../../components/DashboardCard';
+import ReviewSection from '../../components/ReviewSecton';
+import QuantityControl from '../../components/QuantityControl';
+import { useProductData } from '../../hooks/useProductData';
+import { Images } from '../../common/Images';
+import { Fonts } from '../../common/Fonts';
+import { reviews } from '../../common/DataInterface';
+import { useCartActions } from '../../hooks/Cart';
+import { showSuccessToast } from '../../config/Key';
 
-const { width } = Dimensions.get("window");
-const ProductDetails = (props: any) => {
+// ── Small reusable pieces ─────────────────────────────────────────────────────
+const Divider = () => <View style={styles.divider} />;
 
-    console.log("propssssssssssssssssss", props)
-    const { varientID } = props?.route?.params;
-    console.log("varientID", varientID)
+const SectionHeader = ({ title }: { title: string }) => (
+    <Text style={styles.sectionHeader}>{title}</Text>
+);
 
-
-    const { ProductData } = useProductData(varientID);
-    console.log("ProductData->>", ProductData)
-    const [quantity, setQuantity] = React.useState(1);
-
-    const product = {
-        id: 1,
-        name: "Fresh Apple",
-        images: [
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-        ],
-    };
-
-
-    const increaseQty = (newQuantity: number) => {
-        setQuantity(newQuantity);
-    };
-
-    const decreaseQty = (newQuantity: number) => {
-        if (quantity > 1) {
-            setQuantity(newQuantity);
-        }
-
-    };
+const InfoRow = ({ title, value }: { title: string; value?: string | null }) => {
+    if (!value) return null;
     return (
+        <>
+            <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{title}</Text>
+                <Text style={styles.infoValue}>{value}</Text>
+            </View>
+            <Divider />
+        </>
+    );
+};
 
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
+const NutritionRow = ({
+    label, value, last,
+}: { label: string; value: string; last?: boolean }) => (
+    <>
+        <View style={styles.nutritionRow}>
+            <Text style={styles.nutritionLabel}>{label}</Text>
+            <Text style={styles.nutritionValue}>{value}</Text>
+        </View>
+        {!last && <Divider />}
+    </>
+);
 
-            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
+    <View style={[styles.card, style]}>{children}</View>
+);
 
+const Badge = ({
+    label, color = '#0D614E', bg = '#E6F4F0',
+}: { label: string; color?: string; bg?: string }) => (
+    <View style={[styles.badge, { backgroundColor: bg }]}>
+        <Text style={[styles.badgeText, { color }]}>{label}</Text>
+    </View>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+const ProductDetails = (props: any) => {
+    const { varientID } = props?.route?.params;
+    const { ProductData } = useProductData(varientID);
+    const { isAdding, addToCart } = useCartActions();
+    const { width } = useWindowDimensions();
+
+    const variants = ProductData?.variants || [];
+    const defaultVariant = variants.find((v: any) => v?.is_default) || variants[0];
+    const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
+
+    // ── LOCAL quantity — no API, just counter ────────────────────────────────
+    const [quantity, setQuantity] = useState(1);
+
+    // reset qty when variant changes
+    useEffect(() => {
+        if (defaultVariant) setSelectedVariant(defaultVariant);
+    }, [ProductData]);
+
+    useEffect(() => {
+        setQuantity(1);
+    }, [selectedVariant?.id]);
+
+    const increaseQty = () => setQuantity(q => q + 1);
+    const decreaseQty = () => setQuantity(q => (q > 1 ? q - 1 : 1));
+
+    // ── Add to Cart: fires API with selected qty ─────────────────────────────
+    const handleAddToCart = async () => {
+        const success = await addToCart(selectedVariant?.id, quantity);
+        if (success) {
+            props.navigation.navigate('MyCart');
+        }
+        else {
+            showSuccessToast("try again to add into cart", 'error')
+        }
+    };
+
+    const handleShare = async () => {
+        try { await Share.share({ message: `Check out ${ProductData?.name}` }); } catch (_) { }
+    };
+
+    // stock
+    const stockLabel = !selectedVariant?.stock ? 'Out of Stock'
+        : selectedVariant.stock > 10 ? 'In Stock'
+            : `Only ${selectedVariant.stock} Left`;
+    const stockColor = !selectedVariant?.stock ? '#DC2626'
+        : selectedVariant.stock > 10 ? '#16A34A' : '#D97706';
+
+    const totalPrice = (selectedVariant?.selling_price || 0) * quantity;
+
+    const nutritionData = [
+        { label: 'Energy', value: '331 kcal' },
+        { label: 'Protein', value: '12.3 g' },
+        { label: 'Dietary Fiber', value: '8 g' },
+        { label: 'Iron', value: '2.8 mg' },
+    ];
+
+    const highlights = [
+        { image: Images.organic, label: '100% Organic' },
+        { image: Images.glutenFree, label: 'Gluten Free' },
+        { image: Images.highFiber, label: 'High Fiber' },
+    ];
+
+    return (
+        <SafeAreaView style={styles.safeArea}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
             <AppHeader
                 title="Product Details"
                 leftIcon={Images.backIcon}
                 rightIcon={Images.share}
                 onLeftPress={() => props.navigation.goBack()}
-                onRightPress={() => console.log("Share clicked")}
+                onRightPress={handleShare}
             />
+
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
-
+                contentContainerStyle={styles.scrollContent}
             >
+                {/* 1. Images */}
+                <Detailimages
+                    images={selectedVariant?.media?.length ? selectedVariant.media : [Images.detailimage]}
+                />
 
-                <View>
-                    <Detailimages images={ProductData?.variants?.media || [Images.detailimage]} />
-                </View>
-
-                <View style={styles.infoContainer}>
-
+                {/* 2. Title */}
+                <Card style={styles.cardNoTop}>
                     <View style={styles.topRow}>
-                        <Text style={styles.tag}>PREMIUM QUALITY</Text>
-
-                        <View style={styles.ratingBox}>
+                        <Badge label="PREMIUM QUALITY" />
+                        <View style={styles.ratingPill}>
                             <Image source={Images.star} style={styles.starIcon} />
                             <Text style={styles.ratingText}>4.8</Text>
                         </View>
                     </View>
+                    <Text style={styles.brandName}>{ProductData?.brand_name}</Text>
+                    <Text style={styles.productName}>{ProductData?.name}</Text>
+                    <Text style={styles.description}>{ProductData?.full_description}</Text>
+                </Card>
 
-                    <Text style={styles.title}>
-                        Foxtail Millet {"\n"}(Kangni)
-                    </Text>
-
-                    <Text style={styles.desc}>
-                        Nutritious, gluten-free ancient grain, rich in fiber and minerals.
-                        Perfect for healthy meals and daily nutrition.
-                    </Text>
-
-                    <View style={styles.bottomRow}>
-
-                        <View>
-                            <Text style={styles.price}>Rs. 649.00</Text>
-                            <Text style={styles.oldPrice}>Rs. 799.00</Text>
-                        </View>
-
-
-                        <View style={styles.qtyBox}>
-                            <TouchableOpacity onPress={() => increaseQty(quantity)} style={styles.btn} >
-                                <Text style={styles.plus}>+</Text>
-                            </TouchableOpacity>
-
-                            <Text style={styles.qty}>{quantity}</Text>
-
-                            <TouchableOpacity onPress={() => decreaseQty(quantity)} style={styles.btn}>
-                                <Text style={styles.minus}>−</Text>
-                            </TouchableOpacity>
-                        </View>
-                        {/* <View style={styles.qtyContainer}>
-                            <Text style={styles.qtyBtn}>−</Text>
-                            <Text style={styles.qtyText}>1</Text>
-                            <Text style={styles.qtyBtn}>+</Text>
-                        </View> */}
-                    </View>
-                </View>
-
-
-                <Text style={styles.subHeader}>Product Highlights</Text>
-                <DashboardCard
-                    data={[
-                        { image: Images.organic, label: "100% Organic" },
-                        { image: Images.glutenFree, label: "Gluten Free" },
-                        { image: Images.highFiber, label: "High Fiber" },
-                    ]}
-                />
-
-                <View style={styles.sectionContainer}>
-
-                    <View style={styles.card}>
-
-                        <View style={styles.titleRow}>
-                            <Image source={Images.nutritionIcon} style={styles.titleIcon} />
-                            <Text style={styles.sectionTitle}>Nutritional Facts</Text>
-                        </View>
-
-                        {[
-                            { label: 'Energy', value: '331 kcal' },
-                            { label: 'Protein', value: '12.3 g' },
-                            { label: 'Dietary Fiber', value: '8 g' },
-                            { label: 'Iron', value: '2.8 mg' },
-                        ].map((item, index) => (
-                            <View key={index}>
-
-                                <View style={styles.row}>
-                                    <Text style={styles.label}>{item.label}</Text>
-                                    <Text style={styles.value}>{item.value}</Text>
-                                </View>
-
-                                {index !== 3 && <View style={styles.divider} />}
-
+                {/* 3. Price */}
+                <Card>
+                    <View style={styles.priceRow}>
+                        <Text style={styles.sellingPrice}>₹{selectedVariant?.selling_price}</Text>
+                        <Text style={styles.mrpPrice}>₹{selectedVariant?.mrp}</Text>
+                        {!!selectedVariant?.discount && (
+                            <View style={styles.discountBadge}>
+                                <Text style={styles.discountText}>{selectedVariant.discount}% OFF</Text>
                             </View>
-                        ))}
-
+                        )}
                     </View>
+                    <Text style={styles.taxNote}>Inclusive of all taxes</Text>
+                    <View style={styles.stockRow}>
+                        <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
+                        <Text style={[styles.stockLabel, { color: stockColor }]}>{stockLabel}</Text>
+                    </View>
+                </Card>
 
-                    <ReviewSection
-                        navigation={props.navigation}
-                        reviews={reviews}
-                    />
+                {/* 4. Variant Selector */}
+                {variants.length > 0 && (
+                    <Card>
+                        <SectionHeader title="Select Variant" />
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.variantRow}
+                        >
+                            {variants.map((item: any) => {
+                                const selected = selectedVariant?.id === item?.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={item?.id}
+                                        activeOpacity={0.75}
+                                        onPress={() => setSelectedVariant(item)}
+                                        style={[styles.variantChip, selected && styles.variantChipSelected]}
+                                    >
+                                        <Text
+                                            numberOfLines={1}
+                                            style={[styles.variantChipText, selected && styles.variantChipTextSelected]}
+                                        >
+                                            {item?.weight || item?.size || item?.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </Card>
+                )}
 
+                {/* ── 5. Quantity Selector (local only, no API) ── */}
+                <Card>
+                    <SectionHeader title="Select Quantity" />
+                    <View style={styles.qtySection}>
+                        <QuantityControl
+                            quantity={quantity}
+                            onIncrease={increaseQty}
+                            onDecrease={decreaseQty}
+                        />
+                        <View style={styles.qtyRight}>
+                            <Text style={styles.qtyTotalLabel}>Total</Text>
+                            <Text style={styles.qtyTotalPrice}>₹{totalPrice.toFixed(0)}</Text>
+                        </View>
+                    </View>
+                </Card>
+
+                {/* 6. Delivery */}
+                <Card>
+                    <SectionHeader title="Delivery & Services" />
+                    <InfoRow title="Free Delivery" value={selectedVariant?.is_free_shipping ? 'Available' : 'Charges Apply'} />
+                    <InfoRow title="Return Policy" value={selectedVariant?.returnable_days ? `${selectedVariant.returnable_days} Days` : null} />
+                    <InfoRow title="Cash On Delivery" value={selectedVariant?.pay_on_delivery ? 'Available' : 'Not Available'} />
+                </Card>
+
+                {/* 7. Product Info */}
+                <Card>
+                    <SectionHeader title="Product Information" />
+                    <InfoRow title="Manufacturer" value={ProductData?.manufacturer} />
+                    <InfoRow title="Origin" value={ProductData?.origin} />
+                    <InfoRow title="Treatment Type" value={ProductData?.treatment_type} />
+                    <InfoRow title="Dosage" value={ProductData?.dosages} />
+                </Card>
+
+                {/* 8. Benefits */}
+                {!!ProductData?.benifits && (
+                    <Card>
+                        <SectionHeader title="Benefits" />
+                        <Text style={styles.bodyText}>{ProductData.benifits}</Text>
+                    </Card>
+                )}
+
+                {/* 9. Highlights */}
+                <Card>
+                    <SectionHeader title="Product Highlights" />
+                    <DashboardCard data={highlights} />
+                </Card>
+
+                {/* 10. Composition */}
+                {!!ProductData?.compositions && (
+                    <Card>
+                        <SectionHeader title="Composition" />
+                        <Text style={styles.bodyText}>{ProductData.compositions}</Text>
+                    </Card>
+                )}
+
+                {/* 11. Nutrition */}
+                <Card>
+                    <View style={styles.nutritionHeader}>
+                        <Image source={Images.nutritionIcon} style={styles.nutritionIcon} />
+                        <SectionHeader title="Nutritional Facts" />
+                    </View>
+                    {nutritionData.map((item, i) => (
+                        <NutritionRow key={item.label} label={item.label} value={item.value} last={i === nutritionData.length - 1} />
+                    ))}
+                </Card>
+
+                {/* 12. How To Use */}
+                {!!ProductData?.how_to_use && (
+                    <Card>
+                        <SectionHeader title="How To Use" />
+                        <Text style={styles.bodyText}>{ProductData.how_to_use}</Text>
+                    </Card>
+                )}
+
+                {/* 13. Safety */}
+                {!!ProductData?.safety_information && (
+                    <Card>
+                        <SectionHeader title="Safety Information" />
+                        <Text style={styles.bodyText}>{ProductData.safety_information}</Text>
+                    </Card>
+                )}
+
+                {/* 14. Reviews */}
+                <View style={styles.card1}>
+                    <ReviewSection navigation={props.navigation} reviews={reviews} />
                 </View>
 
-
-
-
-
+                <View style={{ height: 100 }} />
             </ScrollView>
 
-            <View style={styles.buttonrow}>
+            {/* ── Sticky Bottom Bar: wishlist + qty display + Add to Cart ── */}
+            <View style={styles.stickyBar}>
 
-                <TouchableOpacity style={styles.wishlistBox}>
-                    <Image
-                        source={Images.wishlist}
-                        style={styles.wishlistIcon}
-                    />
+                {/* Wishlist */}
+                <TouchableOpacity style={styles.wishlistBtn} activeOpacity={0.75}>
+                    <Image source={Images.wishlist} style={styles.wishlistIcon} />
                 </TouchableOpacity>
 
-                <View style={{ flex: 1 }} >
-                    <PrimaryButton
-                        title="Add to Cart"
-                        icon={Images.shopCart}
-                        onPress={() => props.navigation.navigate('MyCart')}
-                        backgroundColor="#0D614E"
-                        textColor="#FFFFFF"
-                        TextFont={Fonts.PoppinsRegular}
-                    />
-                </View>
+                {/* Qty indicator */}
+                {/* <View style={styles.stickyQtyBox}>
+                    <Text style={styles.stickyQtyLabel}>Qty</Text>
+                    <Text style={styles.stickyQtyValue}>{quantity}</Text>
+                </View> */}
+
+                {/* Add to Cart — fires API with current qty */}
+                <TouchableOpacity
+                    style={[styles.addToCartBtn, isAdding && styles.addToCartBtnDisabled]}
+                    onPress={handleAddToCart}
+                    activeOpacity={0.85}
+                    disabled={isAdding || !selectedVariant?.stock}
+                >
+                    {isAdding ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                        <View style={styles.addToCartInner}>
+                            <Image source={Images.shopCart} style={styles.cartIcon} />
+                            <View>
+                                <Text style={styles.addToCartText}>Add to Cart</Text>
+                                {/* <Text style={styles.addToCartPrice}>₹{totalPrice.toFixed(0)}</Text> */}
+                            </View>
+                        </View>
+                    )}
+                </TouchableOpacity>
 
             </View>
         </SafeAreaView>
+    );
+};
 
+export default ProductDetails;
 
-
-    )
-}
-
-export default ProductDetails
-
-
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    infoContainer: {
-        marginTop: 16,
-        marginBottom: 30,
-
-
-    },
-    topRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-
-    },
-
-    tag: {
-        backgroundColor: '#0D614E1A',
-        color: '#0D614E',
-        fontSize: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
-        fontFamily: Fonts.PoppinsSemiBold
-    },
-    ratingBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#0D614E1A',
-        paddingVertical: 4,
-        borderRadius: 8,
-        paddingHorizontal: 8,
-    },
-    star: {
-        fontSize: 14,
-    },
-    starIcon: {
-        width: 14,
-        height: 14,
-        resizeMode: 'contain',
-    },
-    ratingText: {
-        marginLeft: 4,
-        fontWeight: '600',
-        color: '#0D614E',
-
-    },
-    title: {
-        fontSize: 30,
-        marginTop: 10,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold
-    },
-    desc: {
-        marginTop: 2,
-        color: '#475569',
-        fontSize: 16,
-        lineHeight: 26,
-        fontWeight: 400
-    },
-    bottomRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flex: 1,
-        marginTop: 10,
-    },
-    price: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#0D614E',
-    },
-    oldPrice: {
-        textDecorationLine: 'line-through',
-        color: '#A0A0A0',
-        fontSize: 12,
-        fontWeight: 400
-    },
-    qtyBox: {
-        width: 100,
-        // height: 100,
-        flexDirection: 'row',
-        backgroundColor: '#DCE7E5',
-        borderRadius: 11,
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 2,
-        paddingHorizontal: 3,
-    },
-
-    btn: {
-        width: 36,
-        height: 36,
-        borderRadius: 11,
-        backgroundColor: '#ffff',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    plus: {
-        fontSize: 16,
-        color: '#0D614E',
-        fontWeight: '600',
-    },
-
-    minus: {
-        fontSize: 16,
-        color: '#0D614E',
-        fontWeight: '600',
-    },
-
-    qty: {
-        fontSize: 12,
-
-        fontFamily: Fonts.PoppinsSemiBold
-    },
-    qtyBtn: {
-        width: 32,
-        height: 32,
-        textAlign: 'center',
-        textAlignVertical: 'center',
-        fontSize: 18,
-        color: '#0D614E',
-    },
-    qtyText: {
-        minWidth: 30,
-        textAlign: 'center',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-
-    sectionContainer: {
-
-        marginTop: 20,
-    },
+    safeArea: { flex: 1, backgroundColor: '#F1F5F9' },
+    scrollContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 20 },
 
     card: {
-        backgroundColor: '#F6F6F6',
-        borderRadius: 16,
-        padding: 16
+        backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 12,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     },
 
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#0F172A',
-        lineHeight: 28,
-    },
-
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    titleIcon: {
-        width: 16,
-        height: 16,
-        marginRight: 6,
-        resizeMode: 'contain',
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 10,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#ECECEC',
-    },
-    label: {
-        color: '#475569',
-        fontSize: 14,
-        fontWeight: "400",
-        lineHeight: 20
-    },
-    value: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        lineHeight: 20
-    },
-    reviewHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    viewAll: {
-        color: '#0D614E',
-        fontWeight: '600',
-        fontSize: 14
-    },
-    reviewCard: {
-        backgroundColor: '#F6F6F6',
-        borderRadius: 16,
-        padding: 16,
-        marginTop: 10,
-        marginBottom: 40
-    },
-    reviewTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        backgroundColor: '#0D614E1A',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarText: {
-        color: '#0D614E',
-        fontWeight: '700',
-    },
-    name: {
-        fontWeight: '700',
-        fontSize: 14,
-        lineHeight: 20,
-        color: '#0F172A'
-    },
-    stars: {
-        color: '#FFD700',
-        fontSize: 12,
-    },
-    reviewText: {
-        marginTop: 10,
-        color: '#475569',
-        fontSize: 12,
-        lineHeight: 18,
-        fontFamily: Fonts.PoppinsMedium
-    },
-    nameRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flex: 1,
-    },
-
-    subHeader: {
-        fontSize: 18,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 10
-
+    card1: {
+        backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginTop: 12,
 
     },
+    cardNoTop: { marginTop: 10, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
 
-    buttonrow: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 10,
-        gap: 12,
+    sectionHeader: { fontSize: 15, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A', marginBottom: 12 },
+    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 2 },
+
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    badgeText: { fontSize: 10, fontFamily: Fonts.PoppinsSemiBold, letterSpacing: 0.5 },
+
+    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    ratingPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0D614E', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 },
+    starIcon: { width: 13, height: 13, tintColor: '#FFF' },
+    ratingText: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold, color: '#FFF' },
+
+    brandName: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+    productName: { fontSize: 20, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A', lineHeight: 28, marginBottom: 8 },
+    description: { fontSize: 13, fontFamily: Fonts.PoppinsMedium, color: '#64748B', lineHeight: 20 },
+
+    priceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+    sellingPrice: { fontSize: 26, fontFamily: Fonts.PoppinsSemiBold, color: '#0D614E' },
+    mrpPrice: { fontSize: 15, fontFamily: Fonts.PoppinsMedium, color: '#94A3B8', textDecorationLine: 'line-through' },
+    discountBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    discountText: { fontSize: 12, fontFamily: Fonts.PoppinsSemiBold, color: '#16A34A' },
+    taxNote: { fontSize: 11, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium, marginBottom: 10 },
+    stockRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    stockDot: { width: 8, height: 8, borderRadius: 4 },
+    stockLabel: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold },
+
+    variantRow: { paddingVertical: 4, gap: 10 },
+    variantChip: { minWidth: 80, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: '#CBD5E1', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14, backgroundColor: '#F8FAFC' },
+    variantChipSelected: { backgroundColor: '#0D614E', borderColor: '#0D614E' },
+    variantChipText: { fontSize: 13, fontFamily: Fonts.PoppinsMedium, color: '#334155' },
+    variantChipTextSelected: { color: '#FFFFFF', fontFamily: Fonts.PoppinsSemiBold },
+
+    // Qty section inside card
+    qtySection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    qtyRight: { alignItems: 'flex-end' },
+    qtyTotalLabel: { fontSize: 11, fontFamily: Fonts.PoppinsMedium, color: '#94A3B8' },
+    qtyTotalPrice: { fontSize: 18, fontFamily: Fonts.PoppinsSemiBold, color: '#0D614E' },
+
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, alignItems: 'flex-start' },
+    infoLabel: { fontSize: 13, fontFamily: Fonts.PoppinsMedium, color: '#64748B', flex: 1 },
+    infoValue: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A', flex: 1, textAlign: 'right' },
+
+    bodyText: { fontSize: 13, fontFamily: Fonts.PoppinsMedium, color: '#475569', lineHeight: 22 },
+
+    nutritionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    nutritionIcon: { width: 22, height: 22, resizeMode: 'contain' },
+    nutritionRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 },
+    nutritionLabel: { fontSize: 13, fontFamily: Fonts.PoppinsMedium, color: '#64748B' },
+    nutritionValue: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
+
+    // Sticky bar
+    stickyBar: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 14, paddingVertical: 10, paddingBottom: 18,
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1, borderTopColor: '#E2E8F0',
+        gap: 10,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08, shadowRadius: 8, elevation: 12,
     },
-
-    wishlistBox: {
-        width: 58,
-        height: 58,
-        borderRadius: 12,
-        backgroundColor: "#0D614E1A",
-        alignItems: "center",
-        justifyContent: "center",
+    wishlistBtn: {
+        width: 48, height: 48, borderRadius: 14,
+        borderWidth: 1.5, borderColor: '#E2E8F0',
+        justifyContent: 'center', alignItems: 'center',
+        backgroundColor: '#FFF8F8',
     },
+    wishlistIcon: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#EF4444' },
 
-    wishlistIcon: {
-        width: 22,
-        height: 22,
-        resizeMode: "contain",
+    stickyQtyBox: {
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F1F5F9', borderRadius: 12,
+        paddingHorizontal: 12, paddingVertical: 6, minWidth: 48,
     },
+    stickyQtyLabel: { fontSize: 10, fontFamily: Fonts.PoppinsMedium, color: '#94A3B8' },
+    stickyQtyValue: { fontSize: 16, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
 
-
+    addToCartBtn: {
+        flex: 1, height: 52, borderRadius: 16,
+        backgroundColor: '#0D614E',
+        justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#0D614E', shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    },
+    addToCartBtnDisabled: { backgroundColor: '#94A3B8', shadowOpacity: 0 },
+    addToCartInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    cartIcon: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#FFFFFF' },
+    addToCartText: { fontSize: 15, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },
+    addToCartPrice: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: '#A7F3D0' },
 });

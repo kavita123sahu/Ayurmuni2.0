@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -9,75 +9,178 @@ import {
     TextInput,
     StatusBar,
 } from 'react-native';
+import {
+    useFocusEffect,
+} from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import { useHomeData } from '../../hooks/UseHomeData';
 
-const Checkout: React.FC = (props : any) => {
+
+const Option = ({ selected, title, sub, onPress, icon }: any) => (
+    <TouchableOpacity
+        style={[
+            styles.option,
+            selected && styles.optionActive
+        ]}
+        onPress={onPress}
+    >
+        <View style={styles.row}>
+
+            <View style={styles.radioWrapper}>
+                <View style={[styles.radioOuter, selected && styles.radioOuterActive]}>
+                    {selected && <View style={styles.radioInner} />}
+                </View>
+            </View>
+
+            <View style={{ flex: 1 }}>
+                <Text style={styles.optionTitle}>{title}</Text>
+                {sub && <Text style={styles.optionSub}>{sub}</Text>}
+            </View>
+
+            {icon && (
+                <Image source={icon} style={styles.rightIcon} />
+            )}
+
+        </View>
+    </TouchableOpacity>
+);
+
+const Checkout: React.FC = (props: any) => {
     const [deliveryMethod, setDeliveryMethod] = useState('standard');
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [upiId, setUpiId] = useState('');
 
-    const Option = ({ selected, title, sub, onPress, icon }: any) => (
-        <TouchableOpacity
-            style={[
-                styles.option,
-                selected && styles.optionActive
-            ]}
-            onPress={onPress}
-        >
-            <View style={styles.row}>
+    const [user, setUser] = useState<any>(null);
+    const [address, setAddress] = useState<any>(null);
+    const { totalSubtotal, selectedProducts } = props.route.params;
 
-                <View style={styles.radioWrapper}>
-                    <View style={[styles.radioOuter, selected && styles.radioOuterActive]}>
-                        {selected && <View style={styles.radioInner} />}
-                    </View>
-                </View>
+    console.log("totallsubtoll", totalSubtotal, selectedProducts);
 
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.optionTitle}>{title}</Text>
-                    {sub && <Text style={styles.optionSub}>{sub}</Text>}
-                </View>
+    const {
+        loading,
+        refreshing,
+        customerData,
+        onRefresh,
+    } = useHomeData();
 
-                {icon && (
-                    <Image source={icon} style={styles.rightIcon} />
-                )}
+    console.log("customerdatat", customerData);
 
-            </View>
-        </TouchableOpacity>
+    useFocusEffect(
+        useCallback(() => {
+            onRefresh();
+        }, [])
     );
+
+    const defaultAddress =
+        customerData?.addresses?.find(
+            (item: any) => item?.is_default,
+        ) || null;
+
 
     return (
         <SafeAreaView style={styles.container}>
 
-             <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
-            <AppHeader title="Checkout" leftIcon={Images.backIcon} onLeftPress={()=>props.navigation.goBack()} />
+            <AppHeader title="Checkout" leftIcon={Images.backIcon} onLeftPress={() => props.navigation.goBack()} />
 
             <ScrollView contentContainerStyle={styles.content}>
 
-                <Text style={styles.sectionTitle}>Shipping Address</Text>
+                <Text style={styles.sectionTitle}>
+                    Shipping Address
+                </Text>
 
                 <View style={styles.addressCard}>
-                    <View style={styles.row}>
-                        <View style={styles.iconBox}>
-                            <Image source={Images.location} style={styles.icon} />
-                        </View>
+                    {
+                        defaultAddress ? (
 
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.home}>Home</Text>
-                            <Text style={styles.addressText}>
-                                123 Organic Lane, Green Valley, CA 902
-                            </Text>
-                        </View>
+                            <View style={styles.addressRow}>
 
-                        <TouchableOpacity style={styles.changeBtn} onPress={()=>props.navigation.navigate('ManageAdrees')}>
-                            <Text style={styles.changeText}>Change</Text>
-                        </TouchableOpacity>
-                    </View>
+                                <View style={styles.iconBox}>
+                                    <Image
+                                        source={Images.location}
+                                        style={styles.icon}
+                                    />
+                                </View>
+
+                                <View style={styles.addressInfo}>
+
+                                    <Text style={styles.home}>
+                                        {defaultAddress?.address_type || 'Home'}
+                                    </Text>
+
+                                    <Text
+                                        numberOfLines={2}
+                                        style={styles.addressText}
+                                    >
+                                        {[
+                                            defaultAddress?.address_line_1,
+                                            defaultAddress?.address_line_2,
+                                            defaultAddress?.city,
+                                            defaultAddress?.state,
+                                            defaultAddress?.pincode,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(', ')}
+                                    </Text>
+
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.changeBtn}
+                                    onPress={() =>
+                                        props.navigation.navigate(
+                                            'ManageAdrees'
+                                        )
+                                    }
+                                >
+                                    <Text style={styles.changeText}>
+                                        Change
+                                    </Text>
+                                </TouchableOpacity>
+
+                            </View>
+
+                        ) : (
+
+                            <View style={styles.emptyAddressContainer}>
+
+                                <View style={styles.emptyIconWrapper}>
+                                    <Image
+                                        source={Images.location}
+                                        style={styles.emptyLocationIcon}
+                                    />
+                                </View>
+
+                                <Text style={styles.emptyTitle}>
+                                    Add Delivery Address
+                                </Text>
+
+                                <Text style={styles.emptySubTitle}>
+                                    Please add an address before checkout
+                                </Text>
+
+                                <TouchableOpacity
+                                    style={styles.addAddressBtn}
+                                    onPress={() =>
+                                        props.navigation.navigate(
+                                            'ManageAdrees'
+                                        )
+                                    }
+                                >
+                                    <Text style={styles.addAddressText}>
+                                        Add New Address
+                                    </Text>
+                                </TouchableOpacity>
+
+                            </View>
+
+                        )
+                    }
                 </View>
-
                 <Text style={styles.sectionTitle}>Delivery Method</Text>
 
                 <Option
@@ -136,24 +239,41 @@ const Checkout: React.FC = (props : any) => {
 
                     <Text style={styles.summaryTitle}>Order Summary</Text>
 
-                    <Row label="Organic Avocados (x2)" value="Rs. 129.00" />
-                    <Row label="Fresh Kale Bunch" value="Rs. 129.00" />
-                    <Row label="Raw Almonds (500g)" value="Rs. 129.00" />
+                    {
+                        selectedProducts.map((item: any) => (
+                            <Row
+                                key={item.id}
+                                label={`${item.name} (x${item.quantity})`}
+                                value={`Rs. ${Math.round(item.price * item.quantity).toFixed(2)}`}
+                            />
+                        ))
+                    }
+                    <View style={styles.divider} />
+
+                    <Row
+                        label="Subtotal"
+                        value={`Rs. ${totalSubtotal.toFixed(2)}`}
+                    />
+
+                    <Row
+                        label="Shipping"
+                        value="Free"
+                        isFree
+                    />
 
                     <View style={styles.divider} />
 
-                    <Row label="Subtotal" value="Rs. 129.00" />
-                    <Row label="Shipping" value="Free" isFree />
-
-                    <View style={styles.divider} />
-
-                    <Row label="Total" value="Rs. 248.00" isTotal />
+                    <Row
+                        label="Total"
+                        value={`Rs. ${totalSubtotal.toFixed(2)}`}
+                        isTotal
+                    />
 
                 </View>
 
             </ScrollView>
 
-            <TouchableOpacity style={styles.checkout} onPress={()=>props.navigation.navigate('OrderConfirmation')}>
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('OrderConfirmation')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Proceed to Checkout</Text>
 
@@ -245,6 +365,85 @@ const styles = StyleSheet.create({
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium
     },
+    emptyAddressCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        paddingVertical: 24,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: '#CBD5E1',
+
+        marginBottom: 20,
+    },
+
+
+
+
+    addressRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+
+    addressInfo: {
+        flex: 1,
+    },
+
+    emptyAddressContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+    },
+
+    emptyIconWrapper: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#0D614E12',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+
+    emptyLocationIcon: {
+        width: 28,
+        height: 28,
+        tintColor: '#0D614E',
+    },
+
+    emptyTitle: {
+        fontSize: 16,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    emptySubTitle: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        marginTop: 4,
+        marginBottom: 14,
+        fontFamily: Fonts.PoppinsRegular,
+    },
+
+    addAddressBtn: {
+        backgroundColor: '#0D614E',
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+
+    addAddressText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+
+
+
 
     changeBtn: {
         backgroundColor: '#0D614E1A',
@@ -422,5 +621,4 @@ const styles = StyleSheet.create({
         tintColor: '#fff',
         top: -2
     },
-
 });

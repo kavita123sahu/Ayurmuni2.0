@@ -273,9 +273,14 @@ const MyCart = ({ navigation }: any) => {
         (subtotal + deliveryFee).toFixed(2),
     );
 
+    const totalSubtotal =
+        Math.round(Number(CartData?.my_cart?.subtotal || 0) +
+            Number(CartData?.prescription_cart?.subtotal || 0));
 
 
     const handleCheckout = () => {
+
+        console.log("selctedproduct", selectedProducts);
 
         if (selectedProducts.length === 0) {
             return;
@@ -285,6 +290,7 @@ const MyCart = ({ navigation }: any) => {
             'Checkout',
             {
                 selectedProducts,
+                totalSubtotal
             },
         );
     };
@@ -332,7 +338,9 @@ const MyCart = ({ navigation }: any) => {
                 }
             />
 
-            {loading ? laodingCart() :
+            {loading ? (
+                laodingCart()
+            ) : (
 
                 <>
                     (
@@ -448,7 +456,7 @@ const MyCart = ({ navigation }: any) => {
 
                             <BillRow
                                 label="Subtotal"
-                                value={`Rs. ${subtotal}`}
+                                value={`Rs. ${Math.round(Number(subtotal))}`}
                             />
 
                             <BillRow
@@ -464,7 +472,7 @@ const MyCart = ({ navigation }: any) => {
 
                             <BillRow
                                 label="Total"
-                                value={`Rs. ${total}`}
+                                value={`Rs. ${Math.round(Number(total))}`}
                                 isTotal
                             />
 
@@ -516,7 +524,7 @@ const MyCart = ({ navigation }: any) => {
                         </View>
                     </TouchableOpacity>
                     )
-                </>
+                </>)
             }
 
 

@@ -87,7 +87,7 @@ const Detailimages: React.FC<Props> = ({
             }}
           >
             <Image
-              source={typeof item === 'string' ? { uri: item } : item}
+              source={item?.media_url ? { uri: item?.media_url } : item}
               style={{
                 width: finalWidth,
                 height: finalHeight,

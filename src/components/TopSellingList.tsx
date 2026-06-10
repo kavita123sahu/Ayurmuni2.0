@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   View,
@@ -42,9 +42,15 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
   const [addingItems, setAddingItems] =
     useState<string[]>([]);
 
+  const [productData, setProductData] =
+    useState(data);
+
+  useEffect(() => {
+    setProductData(data);
+  }, [data]);
+
   const [showAll, setShowAll] = useState(false);
-  const [showCartModal, setShowCartModal] = useState(false);
-  const displayData = showAll ? data : data.slice(0, 6);
+  const displayData = showAll ? productData : productData.slice(0, 6);
 
   const formattedData =
     isGrid && displayData.length % 2 !== 0
@@ -54,34 +60,34 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
 
   const handleAddToCart = async (
     item: any,
-  ) => {
 
+  ) => {
+    console.log("itemm", item);
     const variantId =
       item?.variant_id;
 
-    const Quantity = item?.quantity;
 
+    const Quantity = item?.quantity;
+    console.log("varintt", variantId, Quantity)
     if (!variantId) {
       return;
     }
 
-    if (
-      addingItems.includes(
-        variantId,
-      )
-    ) {
-      return;
-    }
+
 
     // already added hai
-    if (
-      addingItems.includes(
-        variantId,
-      )
-    ) {
-      return;
-    }
+    // if (
+    //   addingItems.includes(
+    //     variantId,
+    //   )
+    // ) {
+    //   return;
+    // }
 
+    const currentProduct =
+      productData.find(
+        p => p.variant_id === variantId,
+      );
     setAddingItems(prev => [
       ...prev,
       variantId,
@@ -92,20 +98,23 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
       const response =
         await _CART_SERVICES.AddupdateCart({
           variant_id: variantId,
-          quantity: Quantity + 1,
+          quantity: (currentProduct?.quantity || 0) + 1,
         });
 
+      console.log("cartresponse", response);
       if (response?.success) {
 
-        setAddingItems(prev => [
-          ...prev,
-          variantId,
-        ]);
+        setProductData(prev =>
+          prev.map(product =>
+            product.variant_id === variantId
+              ? {
+                ...product,
+                quantity: (product.quantity || 0) + 1,
+              }
+              : product,
+          ),
+        );
 
-        // showSuccessToast(
-        //   'Item added to cart successfully',
-        //   'success',
-        // );
       }
 
     } catch (error) {
@@ -171,9 +180,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
 
       renderItem={({ item }) => {
         const isAdding =
-          addingItems.includes(
-            item?.variant_id,
-          );
+          addingItems.includes(item?.variant_id);
 
         const isAdded =
           addingItems.includes(
@@ -232,7 +239,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
                 }
                 style={styles.cartBtn}
               >
-                {isAdded ? (
+                {isAdding ? (
                   <View style={{
                     backgroundColor: Colors.primaryColor,
                     borderRadius: 11,

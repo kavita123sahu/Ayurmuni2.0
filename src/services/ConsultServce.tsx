@@ -382,7 +382,7 @@ export const addPatient = async (data: Object) => {
 
 export const createConsultationPayment = async (data: object) => {
     try {
-        const response = await apiClient('doctors/consultation/payment/', {
+        const response = await apiClient('payments/customer/consultation/payment/book-slot/', {
             method: 'POST',
             body: JSON.stringify(data)
         });
@@ -396,7 +396,7 @@ export const createConsultationPayment = async (data: object) => {
 
 export const verifyConsultationPayment = async (data: object) => {
     try {
-        const response = await apiClient('doctors/consultation/payment/verify/', {
+        const response = await apiClient('payments/customer/consultation/payment/verify-payment/', {
             method: 'POST',
             body: JSON.stringify(data)
         });

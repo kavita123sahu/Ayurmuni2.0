@@ -8,9 +8,11 @@ import {
   TextInput,
   Animated,
   Image,
+  Alert,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
+import { useCreateReview } from '../hooks/useCreateReview';
 
 type Props = {
   visible: boolean;
@@ -21,7 +23,7 @@ type Props = {
 const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
-
+  const { loading, submitReview } = useCreateReview();
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -44,11 +46,46 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
     }
   }, [visible]);
 
-  const handleSubmit = () => {
-    onSubmit(rating, feedback);
-    setRating(0);
-    setFeedback('');
+
+
+  const handleSubmit = async () => {
+
+    if (!rating) {
+      Alert.alert('Validation', 'Please select rating');
+      return;
+    }
+
+    const payload = {
+      appointment: "9abcf4d9-4fb2-45de-908b-f8cc922511c1",
+      rating,
+      review: feedback,
+    };
+
+    console.log("paylaoddd", payload)
+    const response = await submitReview(payload);
+    console.log("resonserevieww", response);
+    if (response.success) {
+
+      Alert.alert(
+        'Success',
+        'Review submitted successfully',
+      );
+
+      setRating(0);
+      setFeedback('');
+
+      // onSubmit?.();
+      // onClose();
+
+    } else {
+
+      Alert.alert(
+        'Error',
+        'Unable to submit review',
+      );
+    }
   };
+
 
   return (
     <Modal transparent visible={visible} animationType="none">
@@ -91,8 +128,14 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
             onChangeText={setFeedback}
           />
 
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-            <Text style={styles.submitText}>Submit</Text>
+          <TouchableOpacity
+            style={styles.submitBtn}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Text style={styles.submitText}>
+              {loading ? 'Submitting...' : 'Submit'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onClose}>
@@ -161,7 +204,7 @@ const styles = StyleSheet.create({
   },
 
   starIcon: {
-    height: 28,   
+    height: 28,
     width: 28,
     marginHorizontal: 6,
     resizeMode: 'contain',
@@ -170,14 +213,14 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 90,
-     color: '#0F172A',
+    color: '#0F172A',
     backgroundColor: '#0D614E0D',
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
     fontFamily: Fonts.PoppinsMedium,
 
-    textAlignVertical: 'top', 
+    textAlignVertical: 'top',
   },
   submitBtn: {
     width: '100%',

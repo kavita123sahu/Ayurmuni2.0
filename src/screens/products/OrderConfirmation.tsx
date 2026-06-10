@@ -27,7 +27,7 @@ type OrderItemType = {
     price: string;
 };
 
-const OrderConfirmation: React.FC = (props : any) => {
+const OrderConfirmation: React.FC = (props: any) => {
 
     const [showModal, setShowModal] = useState(false);
 
@@ -38,7 +38,7 @@ const OrderConfirmation: React.FC = (props : any) => {
 
         return () => clearTimeout(timer);
     }, []);
-    
+
 
     useEffect(() => {
         const backAction = () => {
@@ -92,12 +92,12 @@ const OrderConfirmation: React.FC = (props : any) => {
 
     return (
         <SafeAreaView style={styles.container}>
-               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
             <AppHeader
                 title="Order Confirmation"
                 leftIcon={Images.backIcon}
-                onLeftPress={()=>props.navigation.goBack()}
+                onLeftPress={() => props.navigation.goBack()}
 
             />
 
@@ -190,6 +190,7 @@ const OrderConfirmation: React.FC = (props : any) => {
                     // navigation.navigate('Home'); 
                 }}
             />
+
         </SafeAreaView>
     );
 };
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
     successCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        
+
         alignItems: 'center',
         marginBottom: 20,
     },
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffff',
         height: 80,
         width: 80,
-        marginTop:30,
+        marginTop: 30,
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
