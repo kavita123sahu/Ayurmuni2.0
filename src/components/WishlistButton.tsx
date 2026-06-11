@@ -1,41 +1,66 @@
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Animated,
   StyleSheet,
+  View,
 } from 'react-native';
 import { Ionicons } from '../common/Vector';
+import { Colors } from '../common/Colors';
 
-const WishlistButton = () => {
-  const [liked, setLiked] = useState(false);
-  const scale = new Animated.Value(1);
+interface WishlistButtonProps {
+  isWishlisted: boolean;
+  onPress: () => void;
+}
+
+const WishlistButton = ({
+  isWishlisted,
+  onPress,
+}: WishlistButtonProps) => {
+  const scale = useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
-    setLiked(!liked);
-
-    // 🔥 Animation
     Animated.sequence([
       Animated.timing(scale, {
-        toValue: 1.3,
-        duration: 120,
+        toValue: 1.25,
+        duration: 100,
         useNativeDriver: true,
       }),
       Animated.spring(scale, {
         toValue: 1,
-        friction: 3,
         useNativeDriver: true,
       }),
     ]).start();
+
+    onPress?.();
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.container}>
-      <Animated.View style={{ transform: [{ scale }] }}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={handlePress}
+      style={styles.container}
+    >
+      <Animated.View
+        style={[
+          styles.iconWrapper,
+          {
+            transform: [{ scale }],
+          },
+        ]}
+      >
         <Ionicons
-          name={liked ? 'heart' : 'heart-outline'}
-          size={25}
-         
-          color={liked ? '#EF4444' : '#ffffff'} // red / grey
+          name={
+            isWishlisted
+              ? 'heart'
+              : 'heart-outline'
+          }
+          size={16}
+          color={
+            isWishlisted
+              ? Colors.primaryColor
+              : '#666'
+          }
         />
       </Animated.View>
     </TouchableOpacity>
@@ -46,18 +71,28 @@ export default WishlistButton;
 
 const styles = StyleSheet.create({
   container: {
-  position: 'absolute',
-    top: -0,
-    right: 4,
-    zIndex: 25,
-    // backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 6,
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 99,
   },
-  wishlist: {
-  
-  top: 8,
-  right: 8,
-  zIndex: 10,
-}
+
+  iconWrapper: {
+    width: 26,
+    height: 26,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    elevation: 1,
+
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 2,
+    // },
+    // shadowOpacity: 0.15,
+    // shadowRadius: 4,
+  },
 });

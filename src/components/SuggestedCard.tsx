@@ -10,7 +10,6 @@ import {
 import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
-import WishlistButton from './WishlistButton';
 
 interface Props {
     data: any[];

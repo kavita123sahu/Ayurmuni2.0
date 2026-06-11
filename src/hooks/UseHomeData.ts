@@ -89,6 +89,7 @@ export const useHomeData = () => {
         categories,
         SuggestDoctor,
         productData,
+        setProductData,
         onRefresh,
     };
 };

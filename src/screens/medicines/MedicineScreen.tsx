@@ -196,10 +196,10 @@ const MedicineScreen = (props: any) => {
 
 
                 <SectionHeader title="Medicines" actionText="View all" />
-                <TopSellingList data={Medicines} navigation={navigation} />
+                <TopSellingList data={Medicines} navigation={navigation} getProducts={()=>""}/>
 
                 <SectionHeader title="Ayurveda" actionText="View all" />
-                <TopSellingList data={Medicines} navigation={navigation} />
+                <TopSellingList data={Medicines} navigation={navigation} getProducts={()=>""} />
             </ScrollView>
         </SafeAreaView>
     );

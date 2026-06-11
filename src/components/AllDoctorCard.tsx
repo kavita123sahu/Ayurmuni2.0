@@ -69,7 +69,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                 'WISHLIST RESPONSE =>',
                 response,
             );
-            showSuccessToast(response?.message, 'success')
+            // showSuccessToast(response?.message, 'success')
 
             if (!response?.success) {
                 setIsWishlisted(prev);
@@ -320,9 +320,11 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
     },
     iconBtn: {
-        width: 40,
-        height: 40,
+        width: 26,
+        height: 26,
         borderRadius: 12,
+
+        // elevation:1,
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',

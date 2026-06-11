@@ -21,7 +21,7 @@ const FavouriteButton = ({
   onPress,
   size = 24,
   style,
-  activeColor = '#FF3B30',
+  activeColor = Colors.primaryColor,
   inactiveColor = Colors.primaryColor,
 }: FavouriteButtonProps) => {
   const scaleAnim = useRef(

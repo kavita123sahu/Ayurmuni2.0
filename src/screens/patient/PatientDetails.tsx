@@ -153,7 +153,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
   // ─── Loading State ─────────────────────────────────────────
   if (patientsLoading && !hasPatients) {
     return (
-      <SafeAreaView style={[styles.safeArea,{paddingHorizontal:20}]}>
+      <SafeAreaView style={[styles.safeArea, { paddingHorizontal: 20 }]}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
         <Header
           title="Patient Details"
@@ -171,13 +171,13 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <View style={{paddingHorizontal:20}}>
+      <View style={{ paddingHorizontal: 20 }}>
         <Header
-        title="Patient Details"
-        subtitle="Manage family profiles"
-        backIcon={Images.backIcon}
-        onBack={() => navigation.goBack()}
-      />
+          title="Patient Details"
+          subtitle="Manage family profiles"
+          backIcon={Images.backIcon}
+          onBack={() => navigation.goBack()}
+        />
       </View>
 
       <ScrollView

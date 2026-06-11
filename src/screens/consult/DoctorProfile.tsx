@@ -20,6 +20,7 @@ import { Fonts } from '../../common/Fonts';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { showSuccessToast } from '../../config/Key';
+import FavouriteButton from '../../components/FavouriteButton';
 
 const { width } = Dimensions.get('window');
 
@@ -314,31 +315,12 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
                 <Text style={styles.headerTitle}>Doctor Profile</Text>
 
-
-
-                <TouchableOpacity
-                    activeOpacity={0.8}
+                <FavouriteButton
+                    isFavourite={isFavourite}
+                    onPress={handleFavourite}
                     style={styles.iconBtn}
-                    onPress={onFavouritePress}>
-                    <Animated.View
-                        style={{
-                            transform: [{ scale: scaleAnim }],
-                        }}>
-                        <Ionicons
-                            name={
-                                isFavourite
-                                    ? 'heart'
-                                    : 'heart-outline'
-                            }
-                            size={24}
-                            color={
-                                isFavourite
-                                    ? '#FF3B30'
-                                    : Colors.primaryColor
-                            }
-                        />
-                    </Animated.View>
-                </TouchableOpacity>
+                />
+
             </View>
 
             {/* Scrollable Content */}

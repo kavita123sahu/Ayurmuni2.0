@@ -72,11 +72,11 @@ export default function DoctorCard({
 
                 {/* Fav (optional) */}
                 {showFav && (
-                <TouchableOpacity onPress={handleFav} style={{ bottom: 40 }}>
-                    <Text style={{ fontSize: 18 }}>
-                        {fav ? "❤️" : "🤍"}
-                    </Text>
-                </TouchableOpacity>
+                    <TouchableOpacity onPress={handleFav} style={{ bottom: 40 }}>
+                        <Text style={{ fontSize: 18 }}>
+                            {fav ? "❤️" : "🤍"}
+                        </Text>
+                    </TouchableOpacity>
                 )}
             </View>
 

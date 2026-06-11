@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions, StatusBar } from 'react-native'
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -22,20 +22,43 @@ const ProductDetails = (props: any) => {
     const { ProductData } = useProductData(varientID);
     console.log("ProductData->>", ProductData)
     const [quantity, setQuantity] = React.useState(1);
+    const [selectedVariant, setSelectedVariant] =
+        React.useState<any>(null);
 
-    const product = {
-        id: 1,
-        name: "Fresh Apple",
-        images: [
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-        ],
-    };
+    const [activeVariant, setActiveVariant] =
+        useState<any>(null);
 
+
+
+    useEffect(() => {
+
+        if (
+            selectedVariant &&
+            !activeVariant
+        ) {
+            setActiveVariant(
+                selectedVariant,
+            );
+        }
+
+    }, [
+        selectedVariant,
+        activeVariant,
+    ]);
+
+
+    const totalPrice = useMemo(() => {
+
+        return (
+            Number(
+                activeVariant?.selling_price || 0,
+            ) * quantity
+        );
+
+    }, [
+        activeVariant,
+        quantity,
+    ]);
 
     const increaseQty = (newQuantity: number) => {
         setQuantity(newQuantity);
@@ -68,7 +91,14 @@ const ProductDetails = (props: any) => {
             >
 
                 <View>
-                    <Detailimages images={ProductData?.variants?.media || [Images.detailimage]} />
+                    <Detailimages
+                        images={
+                            activeVariant?.media?.length
+                                ? activeVariant.media
+                                : [Images.detailimage]
+                        }
+                    />
+
                 </View>
 
                 <View style={styles.infoContainer}>
@@ -83,7 +113,9 @@ const ProductDetails = (props: any) => {
                     </View>
 
                     <Text style={styles.title}>
-                        Foxtail Millet {"\n"}(Kangni)
+                        {
+                            activeVariant?.product_name
+                        }
                     </Text>
 
                     <Text style={styles.desc}>
@@ -94,8 +126,15 @@ const ProductDetails = (props: any) => {
                     <View style={styles.bottomRow}>
 
                         <View>
-                            <Text style={styles.price}>Rs. 649.00</Text>
-                            <Text style={styles.oldPrice}>Rs. 799.00</Text>
+                            <Text style={styles.price}>
+                                ₹ {totalPrice.toFixed(2)}
+                            </Text>
+
+                            <Text style={styles.oldPrice}>
+                                ₹ {activeVariant?.mrp}
+                            </Text>
+                            {/* <Text style={styles.price}>Rs. 649.00</Text>
+                            <Text style={styles.oldPrice}>Rs. 799.00</Text> */}
                         </View>
 
 

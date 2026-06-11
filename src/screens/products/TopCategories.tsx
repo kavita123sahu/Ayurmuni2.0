@@ -251,7 +251,7 @@ const TopCategories = (props: any) => {
         icon={require('../../assets/images/search.png')}
       />
 
-      <TopSellingList data={topSelling} header ={true} isGrid={true}  navigation={props.navigation}  />
+      <TopSellingList data={topSelling} header ={true} isGrid={true} getProducts={()=>""} navigation={props.navigation}  />
       
   
 

@@ -6,7 +6,6 @@ import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
 import PromoCard from '../../components/PromoCard';
 import SectionHeader from '../../components/SectionHeader';
-import TopSellingList from '../../components/TopSellingList';
 import { Images } from '../../common/Images';
 import { Styles } from '../../common/Styles';
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';

@@ -63,6 +63,7 @@ const HomePage: React.FC = (props: any) => {
     categories,
     SuggestDoctor,
     productData,
+    setProductData,
     onRefresh,
   } = useHomeData();
 
@@ -174,13 +175,13 @@ const HomePage: React.FC = (props: any) => {
         <SectionHeader title="Suggested Medicines" actionText="View all" />
 
 
-        <TopSellingList data={productData} navigation={props.navigation} />
+        <TopSellingList data={productData} navigation={props.navigation}   setProductData={setProductData} />
 
 
         <SectionHeader title="Suggested Products" actionText="View all" />
 
 
-        <TopSellingList data={productData} navigation={props.navigation} />
+        <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData}   />
 
 
         <SectionHeader title="Yoga’s" actionText="View all" />

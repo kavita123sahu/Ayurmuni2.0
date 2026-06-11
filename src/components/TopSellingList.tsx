@@ -17,10 +17,14 @@ import { Images } from '../common/Images';
 import *as _CART_SERVICES from '../services/CartService';
 import { showSuccessToast } from '../config/Key';
 import { Colors } from '../common/Colors';
+import { TogglewishlistProduct } from '../services/ProductServices';
 interface Props {
   data: any[];
   isGrid?: boolean;
-  fav?: boolean;
+  fav?: boolean; 
+  setProductData: React.Dispatch<
+    React.SetStateAction<any[]>
+  >;
   header?: boolean;
   navigation: any
   ListHeaderComponent?: React.ReactNode;
@@ -36,7 +40,7 @@ const ITEM_WIDTH =
   (SCREEN_WIDTH - SPACING * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
 
 
-const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, header = false, navigation }) => {
+const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, isGrid = false, header = false, navigation }) => {
   console.log("datadatadata---->>", data)
 
   const [addingItems, setAddingItems] =
@@ -127,6 +131,48 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
   };
 
 
+ const handleWishlist = async (
+  item: any,
+) => {
+  const oldValue =
+    item?.is_wishlist_item;
+
+  // Instant UI Update
+  setProductData(prev =>
+    prev.map(product =>
+      product.variant_id ===
+      item.variant_id
+        ? {
+            ...product,
+            is_wishlist_item:
+              !oldValue,
+          }
+        : product,
+    ),
+  );
+
+  try {
+    await TogglewishlistProduct(
+      item.variant_id,
+     'POST',
+    );
+  } catch (error) {
+    // Rollback
+    setProductData(prev =>
+      prev.map(product =>
+        product.variant_id ===
+        item.variant_id
+          ? {
+              ...product,
+              is_wishlist_item:
+                oldValue,
+            }
+          : product,
+      ),
+    );
+  }
+};
+
   const ListHeaderComponent = () => (
     <>
       <PromoCard
@@ -189,7 +235,13 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
             varientID: item?.variant_id
           })} style={[styles.card, isGrid && styles.gridCard]}>
 
-            {fav && <WishlistButton />}
+
+            <WishlistButton
+              isWishlisted={item?.is_wishlist_item}
+              onPress={() =>
+                handleWishlist(item)
+              }
+            />
 
             {/* BADGE */}
             {item.tag && (
