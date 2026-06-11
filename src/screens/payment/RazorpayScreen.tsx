@@ -17,6 +17,8 @@ import {
     ActivityIndicator,
     BackHandler,
     Alert,
+    Modal,
+    ScrollView,
 } from 'react-native';
 
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
@@ -76,7 +78,7 @@ const RazorpayScreen = ({
     const [loading, setLoading] =
         useState(false);
 
-    const [paymentProcessing, setPaymentProcessing] =
+    const [isVerifyingPayment, setIsVerifyingPayment] =
         useState(false);
 
     const paymentStartedRef =
@@ -155,7 +157,6 @@ const RazorpayScreen = ({
         try {
             setLoading(true);
             paymentStartedRef.current = true;
-            setPaymentProcessing(true);
 
             const paymentResponse =
                 await _CONSULT_SERVICES.createConsultationPayment({
@@ -166,6 +167,7 @@ const RazorpayScreen = ({
 
             console.log("paymentResponse", paymentResponse);
             if (!paymentResponse?.success) {
+
                 showSuccessToast(paymentResponse?.message, 'error');
                 return;
             }
@@ -185,6 +187,8 @@ const RazorpayScreen = ({
                 themeColor: Colors.primaryColor,
             })
                 .then(async (razorpayResult: any) => {
+                    setIsVerifyingPayment(true);
+
                     const verifyResponse =
                         await _CONSULT_SERVICES.verifyConsultationPayment({
                             payment_id: paymentData?.payment_id,
@@ -193,10 +197,14 @@ const RazorpayScreen = ({
                             razorpay_signature: razorpayResult?.razorpay_signature,
                         });
 
+                    setIsVerifyingPayment(false);
+
                     console.log("verfiyResposne", verifyResponse);
 
                     const SlotsDetail = verifyResponse?.data;
                     if (verifyResponse?.success) {
+                        setIsVerifyingPayment(false);
+
                         showSuccessToast('Payment Successful', 'success');
                         // Clear local reservation after successful payment
                         try {
@@ -216,19 +224,24 @@ const RazorpayScreen = ({
                         //     selectedTime,
                         // }
                     } else {
+                        setIsVerifyingPayment(false);
                         showSuccessToast('Payment verification failed', 'error');
                     }
                 })
                 .catch(async () => {
+                    setIsVerifyingPayment(false);
+
                     showSuccessToast('Payment cancelled', 'error');
                     paymentStartedRef.current = false;
-                    setPaymentProcessing(false);
+
                 });
         } catch (error) {
+            setIsVerifyingPayment(false);
+
             showSuccessToast('Something went wrong', 'error');
         } finally {
+
             setLoading(false);
-            setPaymentProcessing(false);
             paymentStartedRef.current = false;
         }
     };
@@ -238,191 +251,239 @@ const RazorpayScreen = ({
     /* -------------------------------------------------------------------------- */
 
     return (
+        <>
+            {!isVerifyingPayment && (
+                <SafeAreaView style={styles.container}>
 
-        <SafeAreaView style={styles.container}>
+                    <StatusBar
+                        backgroundColor="#FFFFFF"
+                        barStyle="dark-content"
+                    />
 
-            <StatusBar
-                backgroundColor="#FFFFFF"
-                barStyle="dark-content"
-            />
+                    {/* HEADER */}
 
-            {/* HEADER */}
+                    <View style={styles.header}>
 
-            <View style={styles.header}>
-
-                {/* {
+                        {/* {
                     !paymentProcessing && ( */}
 
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Image
-                        source={Images.backIcon}
-                        style={styles.backIcon}
-                    />
-                </TouchableOpacity>
-                {/* )
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Image
+                                source={Images.backIcon}
+                                style={styles.backIcon}
+                            />
+                        </TouchableOpacity>
+                        {/* )
                 } */}
 
-                <Text style={styles.headerTitle}>
-                    Confirm Booking
-                </Text>
-
-                <View style={{ width: 40 }} />
-
-            </View>
-
-            {/* DOCTOR CARD */}
-
-            <View style={styles.card}>
-
-                <View style={styles.row}>
-
-                    <Image
-                        source={Images.doctorImage}
-                        style={styles.avatar}
-                    />
-
-                    <View style={{ flex: 1 }}>
-
-                        <Text style={styles.doctorName}>
-                            {doctorData?.full_name}
+                        <Text style={styles.headerTitle}>
+                            Confirm Booking
                         </Text>
 
-                        <Text style={styles.speciality}>
-                            {doctorData?.designation}
-                        </Text>
+                        <View style={{ width: 40 }} />
 
                     </View>
+                    <ScrollView
+                        contentContainerStyle={{
+                            flexGrow: 1,
+                            paddingBottom: 30,
+                        }}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {/* DOCTOR CARD */}
 
-                </View>
+                        <View style={styles.card}>
 
-                <View style={styles.divider} />
+                            <View style={styles.row}>
 
-                <View style={styles.infoRow}>
-                    <Text style={styles.label}>
-                        Appointment Date
-                    </Text>
-
-                    <Text style={styles.value}>
-                        {date}
-                    </Text>
-                </View>
-
-                <View style={styles.infoRow}>
-                    <Text style={styles.label}>
-                        Consultation Time
-                    </Text>
-
-                    <Text style={styles.value}>
-                        {selectedTime}
-                    </Text>
-                </View>
-
-                {concern ? (
-                    <View style={styles.concernSection}>
-                        <Text style={styles.label}>
-                            Concern
-                        </Text>
-                        <Text style={styles.concernValue}>
-                            {concern}
-                        </Text>
-                    </View>
-                ) : null}
-
-            </View>
-
-            {/* PAYMENT CARD */}
-
-            <View style={styles.paymentCard}>
-
-                <View style={styles.amountRow}>
-
-                    <Text style={styles.totalLabel}>
-                        Total Amount
-                    </Text>
-
-                    <Text style={styles.totalAmount}>
-                        ₹ {totalAmount}
-                    </Text>
-
-                </View>
-
-                <View style={styles.paymentInfo}>
-
-                    <Ionicons
-                        name="shield-checkmark"
-                        size={18}
-                        color={Colors.primaryColor}
-                    />
-
-                    <Text style={styles.paymentInfoText}>
-                        Secure payment powered by Razorpay
-                    </Text>
-
-                </View>
-
-            </View>
-
-            {/* BUTTON */}
-
-            <View style={styles.footer}>
-
-                <TouchableOpacity
-                    activeOpacity={0.9}
-                    disabled={loading}
-                    onPress={handlePayment}
-                    style={[
-                        styles.payButton,
-
-                        loading && {
-                            opacity: 0.7,
-                        },
-                    ]}
-                >
-
-                    {
-                        loading ? (
-
-                            <View style={styles.loaderRow}>
-
-                                <ActivityIndicator
-                                    size="small"
-                                    color="#FFFFFF"
+                                <Image
+                                    source={Images.doctorImage}
+                                    style={styles.avatar}
                                 />
 
-                                <Text style={styles.payText}>
-                                    Processing Payment...
+                                <View style={{ flex: 1 }}>
+
+                                    <Text style={styles.doctorName}>
+                                        {doctorData?.full_name}
+                                    </Text>
+
+                                    <Text style={styles.speciality}>
+                                        {doctorData?.designation}
+                                    </Text>
+
+                                </View>
+
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>
+                                    Appointment Date
+                                </Text>
+
+                                <Text style={styles.value}>
+                                    {date}
+                                </Text>
+                            </View>
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>
+                                    Consultation Time
+                                </Text>
+
+                                <Text style={styles.value}>
+                                    {selectedTime}
+                                </Text>
+                            </View>
+
+                            {concern ? (
+                                <View style={styles.concernSection}>
+                                    <Text style={styles.label}>
+                                        Concern
+                                    </Text>
+                                    <Text style={styles.concernValue}>
+                                        {concern}
+                                    </Text>
+                                </View>
+                            ) : null}
+
+                        </View>
+
+                        {/* PAYMENT CARD */}
+
+                        <View style={styles.paymentCard}>
+
+                            <View style={styles.amountRow}>
+
+                                <Text style={styles.totalLabel}>
+                                    Total Amount
+                                </Text>
+
+                                <Text style={styles.totalAmount}>
+                                    ₹ {totalAmount}
                                 </Text>
 
                             </View>
 
-                        ) : (
-
-                            <>
+                            <View style={styles.paymentInfo}>
 
                                 <Ionicons
-                                    name="card-outline"
-                                    size={20}
-                                    color="#FFFFFF"
+                                    name="shield-checkmark"
+                                    size={18}
+                                    color={Colors.primaryColor}
                                 />
 
-                                <Text style={styles.payText}>
-                                    Pay Now
+                                <Text style={styles.paymentInfoText}>
+                                    Secure payment powered by Razorpay
                                 </Text>
 
-                            </>
-                        )
-                    }
+                            </View>
 
-                </TouchableOpacity>
+                        </View>
 
-                <TouchableOpacity activeOpacity={0.8} style={styles.cancelButton} onPress={() => navigation.goBack()}> <Text style={styles.cancelText}> Cancel Payment </Text> </TouchableOpacity>
+                        {/* BUTTON */}
 
-            </View>
+                        <View style={styles.footer}>
 
-        </SafeAreaView>
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                disabled={loading}
+                                onPress={handlePayment}
+                                style={[
+                                    styles.payButton,
+
+                                    loading && {
+                                        opacity: 0.7,
+                                    },
+                                ]}
+                            >
+
+                                {
+                                    loading ? (
+
+                                        <View style={styles.loaderRow}>
+
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="#FFFFFF"
+                                            />
+
+                                            <Text style={styles.payText}>
+                                                Processing Payment...
+                                            </Text>
+
+                                        </View>
+
+                                    ) : (
+
+                                        <View style={styles.buttonContent}>
+                                            <Ionicons
+                                                name="card-outline"
+                                                size={20}
+                                                color="#FFFFFF"
+                                            />
+
+                                            <Text style={styles.payText}>
+                                                Pay Now
+                                            </Text>
+                                        </View>
+                                    )
+                                }
+
+                            </TouchableOpacity>
+
+                            <TouchableOpacity activeOpacity={0.8} style={styles.cancelButton} onPress={() => navigation.goBack()}>
+                                <Text style={styles.cancelText}> Cancel Payment </Text>
+                            </TouchableOpacity>
+
+                        </View>
+
+                    </ScrollView>
+
+
+                </SafeAreaView>)}
+
+            <Modal
+                visible={isVerifyingPayment}
+                animationType="fade"
+                transparent={false}
+            >
+                <SafeAreaView style={styles.verificationScreen}>
+                    <View style={styles.verificationContent}>
+
+                        <ActivityIndicator
+                            size="large"
+                            color={Colors.primaryColor}
+                        />
+
+                        <Text style={styles.verificationTitle}>
+                            Verifying Payment
+                        </Text>
+
+                        <Text style={styles.verificationSubtitle}>
+                            Please wait while we confirm your transaction.
+                        </Text>
+
+                        <View style={styles.verificationInfo}>
+                            <Ionicons
+                                name="shield-checkmark"
+                                size={18}
+                                color={Colors.primaryColor}
+                            />
+
+                            <Text style={styles.verificationInfoText}>
+                                Do not press back or close the app
+                            </Text>
+                        </View>
+
+                    </View>
+                </SafeAreaView>
+            </Modal>
+        </>
     );
 };
 
@@ -612,21 +673,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingHorizontal: 20
     },
 
     loaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    buttonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     payText: {
-        marginLeft: 10,
-
+        marginLeft: 8,
         fontSize: 16,
         color: '#FFFFFF',
-
         fontFamily: Fonts.PoppinsSemiBold,
     },
+
     paymentProcessingContainer: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
@@ -670,6 +738,49 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
     },
+    verificationScreen: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
 
+    verificationContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 30,
+    },
+
+    verificationTitle: {
+        marginTop: 24,
+        fontSize: 22,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    verificationSubtitle: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 22,
+        fontFamily: Fonts.PoppinsRegular,
+    },
+
+    verificationInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 30,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+    },
+
+    verificationInfoText: {
+        marginLeft: 8,
+        color: '#475569',
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsMedium,
+    },
 
 });

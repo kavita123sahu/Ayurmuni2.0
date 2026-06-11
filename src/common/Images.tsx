@@ -7,7 +7,7 @@ export const Images = {
     userprofile: require('../assets/images/userprofile.png'),
 
     pdfIcon: require('../assets/images/pdfIcon.png'),
-    
+
     Bell: require('../assets/images/bell.png'),
     VideoPlayer: require('../assets/images/VideoPlayer.png'),
 
@@ -33,7 +33,7 @@ export const Images = {
     UPIMethod: require('../assets/images/UPIMethod.png'),
 
 
-    
+
     camera: require('../assets/images/camera.png'),
     shop: require('../assets/images/shop.png'),
     home: require('../assets/images/home.png'),
@@ -90,7 +90,7 @@ export const Images = {
     leaf1: require('../assets/images/leaf1.png'),
     leaf2: require('../assets/images/leaf2.png'),
     favourite: require('../assets/images/Favourite.png'),
-    
+
     Spoon: require('../assets/images/Spoon.png'),
     SaveAddress: require('../assets/images/SaveAddress.png'),
     logout: require('../assets/images/logout.png'),
@@ -100,12 +100,12 @@ export const Images = {
     History: require('../assets/images/history.png'),
     Breakfast: require('../assets/images/Breakfast.png'),
 
-    
+
     Ingredient: require('../assets/images/Ingredient.png'),
-    
+
     Refund: require('../assets/images/refund.png'),
     exchange: require('../assets/images/exchange.png'),
-    
+
 
 
     ChatSupport: require('../assets/images/chatSupport.png'),
@@ -131,7 +131,7 @@ export const Images = {
     card: require('../assets/images/card.png'),
     flash: require('../assets/images/flash.png'),
     cash: require('../assets/images/cash.png'),
-    upi: require('../assets/images/upi.png'),
+    upi: require('../assets/images/UPI.png'),
     truck: require('../assets/images/truck.png'),
     bellnotification: require('../assets/images/bellnotification.png'),
 
@@ -141,14 +141,14 @@ export const Images = {
     doctorSOS: require('../assets/images/doctorSOS.png'),
     downArrow: require('../assets/images/downArrow.png'),
     medicine: require('../assets/images/medicine.png'),
-    
+
     Doctors: require('../assets/images/Doctors.png'),
-    Medicines: require('../assets/images/Medicines.png'),
+    Medicines: require('../assets/images/medicines.png'),
     products: require('../assets/images/products.png'),
     moreButton: require('../assets/images/moreButton.png'),
     flashred: require('../assets/images/flashred.png'),
     gpay: require('../assets/images/gpay.png'),
-    
+
     dropdown: require('../assets/images/dropdown.png'),
     lock: require('../assets/images/lock.png'),
     net: require('../assets/images/net.png'),
@@ -176,16 +176,16 @@ export const Images = {
     Password: require('../assets/images/password.png'),
     Privacy: require('../assets/images/privacy.png'),
 
-    
+
     Yoga: require('../assets/images/Yoga.png'),
     Diet: require('../assets/images/Diet.png'),
     Panchakarma: require('../assets/images/panchkarma.png'),
-                              
-    
+
+
     HairImage: require('../assets/images/HairImage.png'),
-    
+
     yesHuman: require('../assets/images/Yes.png'),
-    
+
     noHuman: require('../assets/images/No.png'),
     MentorImage: require('../assets/images/MentorProfile.png'),
 
@@ -210,5 +210,5 @@ export const QUESTION_IMAGES = {
     temperament: require('../assets/images/Temp.png'),
     personality: require('../assets/images/persnal2.png'),
 
-    
+
 };

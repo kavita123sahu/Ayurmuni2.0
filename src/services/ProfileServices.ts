@@ -48,6 +48,19 @@ export const deleteAccount = async () => {
     }
 };
 
+export const createReview = async (reviewData: object) => {
+    try {
+        const response = await apiClient('reviews/reviewscreate/', {
+            method: 'POST',
+            body: JSON.stringify(reviewData)
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 
 
 export const UploadProfilePhoto = async (data: FormData) => {

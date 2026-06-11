@@ -62,7 +62,7 @@ const MyProductCard = ({
                     </Text>
 
                     <Text style={styles.price}>
-                        Rs. {item.price}.00
+                        Rs.{Math.round(Number(item.price))}
                     </Text>
                 </View>
 
