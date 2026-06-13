@@ -303,7 +303,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, isGrid = false, hea
   );
 };
 
-export default TopSellingList;
+export default React.memo(TopSellingList);
 
 const styles = StyleSheet.create({
   card: {

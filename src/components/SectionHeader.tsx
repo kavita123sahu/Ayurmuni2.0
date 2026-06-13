@@ -24,7 +24,7 @@ const SectionHeader: React.FC<Props> = ({ title, actionText, onPress }) => {
   );
 };
 
-export default SectionHeader;
+export default React.memo(SectionHeader);
 
 const styles = StyleSheet.create({
   container: {
@@ -32,16 +32,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 14,
     flexDirection: 'row',
-    paddingHorizontal:10,
+    paddingHorizontal: 10,
     justifyContent: 'space-between',
   },
   title: {
-    fontFamily :Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsSemiBold,
     fontSize: 18,
   },
   action: {
     color: '#0D614E',
     fontSize: 14,
-   fontFamily : Fonts.PoppinsSemiBold
+    fontFamily: Fonts.PoppinsSemiBold
   },
 });

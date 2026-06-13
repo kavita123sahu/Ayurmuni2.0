@@ -147,7 +147,7 @@ const Detailimages: React.FC<Props> = ({
   );
 };
 
-export default Detailimages;
+export default React.memo(Detailimages);
 
 const styles = StyleSheet.create({
   indicatorContainer: {

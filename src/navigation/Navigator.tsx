@@ -91,6 +91,8 @@ import RazorpayScreen from "../screens/payment/RazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 import { AllFavDoctor } from "../services/ConsultServce";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
+import consultHome from "../screens/consult/consultHome";
+import PatientVideoCallScreen from "../screens/consult/PatientVideoCall";
 
 enableScreens();
 
@@ -220,6 +222,9 @@ const HomeStack = () => {
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="consultHome" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
+
+      <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCallScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

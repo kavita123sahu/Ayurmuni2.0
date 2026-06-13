@@ -28,6 +28,9 @@ const CustomeTab = (props: any) => {
 
     const insets = useSafeAreaInsets(); // ✅ SAFE AREA FIX
 
+
+    console.log("propss", props);
+
     const visibleRoutes = state.routes.filter(
         (route: any) => route.name !== "Consult"
     );
@@ -123,7 +126,7 @@ const CustomeTab = (props: any) => {
 
             {/* CONSULT BUTTON */}
             <TouchableOpacity
-                onPress={() => navigation.jumpTo("Consult")}
+                onPress={() => navigation.navigate("consultHome")}
                 activeOpacity={0.85}
                 style={[
                     styles.consultBtn,

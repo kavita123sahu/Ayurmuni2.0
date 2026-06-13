@@ -42,7 +42,7 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                 tag="CURATED EXCELLENCE"
                 image={require('../assets/images/cosmetic.png')}
                 showButton={false}
-                
+
             />
             <SectionHeader title="Top  Selling Products" actionText="View all" />
         </>
@@ -94,8 +94,8 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                                 {item.subtitle && (
                                     <Text
                                         style={styles.subtitle}
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail"
+                                        numberOfLines={2}
+                                        ellipsizeMode="tail"
                                     >
                                         {item.subtitle}
                                     </Text>
@@ -144,12 +144,12 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                 ) : null
             }
 
-            
+
         />
     );
 };
 
-export default SuggestedCard;
+export default React.memo(SuggestedCard);
 
 const styles = StyleSheet.create({
     card: {
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F1F5F9',
         // height: 240,
-        marginBottom:20,
+        marginBottom: 20,
         // minHeight: 200,
 
     },

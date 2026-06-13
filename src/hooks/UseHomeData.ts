@@ -11,10 +11,19 @@ export const useHomeData = () => {
     const [refreshing, setRefreshing] =
         useState(false);
 
-    const [categories, setCategories] =
-        useState<any[]>([]);
+    const [loadingCategories, setloadingCategories] =
+        useState(false);
 
-    const [customerData, setCustomerData] =
+    const [loadingProducts, setloadingProducts] =
+        useState(false);
+
+    const [loadingDoctors, setloadingDoctors] =
+        useState(false);
+    const [loadingCustomer, setLoadingCustomer] = useState(false);
+
+    const [customerData, setCustomerData] = useState<any | null>(null);
+
+    const [categories, setCategories] =
         useState<any[]>([]);
 
     const [productData, setProductData] =
@@ -24,76 +33,110 @@ export const useHomeData = () => {
         useState<any[]>([]);
 
 
-    const fetchAllData =
-        useCallback(async () => {
+    const fetchCategories = async () => {
+        try {
+            setloadingCategories(true);
 
-            try {
+            const res =
+                await _HOME_SERVICES.getHomeCategory();
 
-                setLoading(true);
-                const [
-                    categoryRes,
-                    SuggestDoctorRes,
-                    productData,
-                    userData
-                ] = await Promise.all([
-                    _HOME_SERVICES.getHomeCategory(),
-                    _HOME_SERVICES.getSuggestedDoctor(),
-                    _PRODUCT_SERVICES.getProduct(),
-                    _PROFILE_SERVICES.user_profile()
-                ]);
+            setCategories(res?.data || []);
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setloadingCategories(false);
+        }
+    };
 
-                console.log(
-                    'userDatauserData ===>',
-                    userData,
-                );
+    const fetchDoctors = async () => {
+        try {
+            setloadingDoctors(true);
 
-                setCategories(
-                    categoryRes?.data || [],
-                );
+            const res =
+                await _HOME_SERVICES.getSuggestedDoctor();
+            console.log("suggestdoctor", res);
+            setSuggestDoctor(
+                res?.data?.results || [],
+            );
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setloadingDoctors(false);
+        }
+    };
 
-                setSuggestDoctor(
-                    SuggestDoctorRes?.data?.results || [],
-                );
+    const fetchProducts = async () => {
+        try {
+            setloadingProducts(true);
 
-                setProductData(
-                    productData?.data?.results || [],
-                );
+            const res =
+                await _PRODUCT_SERVICES.getProduct();
 
-                setCustomerData(userData?.data || [])
+            setProductData(
+                res?.data?.results || [],
+            );
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setloadingProducts(false);
+        }
+    };
 
-            } catch (error) {
 
-                console.log(
-                    ' HOME CATEGORY API ERROR ===>',
-                    error,
-                );
 
-            } finally {
-                setLoading(false);
-                setRefreshing(false);
+    const fetchCustomerData = async () => {
+        try {
+            setLoadingCustomer(true);
+
+            const res =
+                await _PROFILE_SERVICES.user_profile();
+
+            if (res?.status === 200) {
+                setCustomerData(res?.data || null);
             }
-        }, []);
+
+        } catch (error) {
+            console.log('CUSTOMER API ERROR ===>', error);
+        } finally {
+            setLoadingCustomer(false);
+        }
+    };
 
     useEffect(() => {
-        fetchAllData();
+        fetchCustomerData();
+        fetchCategories();
+        fetchDoctors();
+        fetchProducts();
     }, []);
 
-    const onRefresh =
-        useCallback(() => {
+    // const onRefresh =
+    //     useCallback(() => {
 
-            setRefreshing(true);
+    //         setRefreshing(true);
 
-            fetchAllData();
+    //         fetchCategories();
+    //         fetchDoctors();
+    //         fetchProducts();
 
-        }, [fetchAllData]);
+    //     }, [fetchCategories(),
+    //     fetchDoctors(),
+    //     fetchCustomerData(),
+    //     fetchProducts()]);
 
     return {
-        loading,
-        refreshing,
+
         categories,
         SuggestDoctor,
-        customerData,
         productData,
-        onRefresh,
+        customerData,
+
+
+        loadingCustomer,
+        loadingCategories,
+        loadingDoctors,
+        loadingProducts,
+
+        loading,
+        refreshing,
     };
 };
