@@ -229,7 +229,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
             data,
         );
 
-        
+
 
         if (!response.ok) {
             return null;
@@ -306,11 +306,8 @@ const getFreshToken = async () => {
 
     isRefreshing = true;
 
-    refreshPromise =
-        refreshAccessToken();
-
+    refreshPromise = refreshAccessToken();
     console.log("resfrsporimisee", refreshPromise);
-
 
     try {
         return await refreshPromise;
@@ -364,112 +361,223 @@ const makeRequest = async (
 |--------------------------------------------------------------------------
 */
 
+// export const apiClient = async (
+//     endpoint: string,
+//     options: RequestInit = {},
+// ) => {
+//     try {
+//         let token =
+//             await Utils.getData('_TOKEN');
+
+//         console.log(
+//             'API REQUEST111111111 =>',
+//             endpoint,
+//             token,
+//             options,
+//         );
+
+
+//         let response =
+//             await makeRequest(
+//                 endpoint,
+//                 options,
+//                 token,
+//             );
+
+//         /*
+//         --------------------------------------------------
+//         TOKEN EXPIRED
+//         --------------------------------------------------
+//         */
+
+//         console.log(
+//             'API REQUEST =>',
+//             endpoint,
+//             token,
+//             response.status,
+//         );
+
+//         if (
+//             response.status === 401 ||
+//             response.status === 403
+//         ) {
+//             console.log(
+//                 'TOKEN EXPIRED => REFRESHING',
+//             );
+
+//             const freshToken =
+//                 await getFreshToken();
+
+//             console.log("freshTokenfreshToken", freshToken)
+
+//             if (!freshToken) {
+//                 // await clearSession();
+
+//                 return {
+//                     success: false,
+//                     logout: true,
+//                     message:
+//                         'Session expired',
+//                 };
+//             }
+
+//             /*
+//             --------------------------------------------------
+//             RETRY ORIGINAL REQUEST
+//             --------------------------------------------------
+//             */
+
+//             response =
+//                 await makeRequest(
+//                     endpoint,
+//                     options,
+//                     freshToken,
+//                 );
+//         }
+
+//         /*
+//         --------------------------------------------------
+//         SAFE JSON PARSE
+//         --------------------------------------------------
+//         */
+
+//         let data = null;
+
+//         try {
+//             data =
+//                 await response.json();
+//         } catch {
+//             data = null;
+//         }
+
+
+//         console.log(
+//             'APIRESPONSE =>',
+//             data,
+//             response
+//         );
+//         /*
+//         --------------------------------------------------
+//         ERROR RESPONSE
+//         --------------------------------------------------
+//         */
+
+//         if (!response.ok) {
+//             return {
+//                 success: false,
+//                 status:
+//                     response.status,
+//                 message:
+//                     data?.message ||
+//                     data?.detail ||
+//                     'Something went wrong',
+//                 data,
+//             };
+//         }
+
+//         /*
+//         --------------------------------------------------
+//         SUCCESS RESPONSE
+//         --------------------------------------------------
+//         */
+
+//         return {
+//             success: true,
+//             status:
+//                 response.status,
+//             ...(data || data),
+//         };
+//     } catch (error: any) {
+//         console.log(
+//             'API ERROR =>',
+//             error,
+//         );
+
+//         return {
+//             success: false,
+//             message:
+//                 error?.message ||
+//                 'Network Error',
+//         };
+//     }
+// };
+
+
 export const apiClient = async (
     endpoint: string,
     options: RequestInit = {},
+    requireAuth: boolean = true,
 ) => {
     try {
-        let token =
-            await Utils.getData('_TOKEN');
+        let token = null;
 
+        // ✅ Sirf auth wali APIs me token lo
+        if (requireAuth) {
+            token = await Utils.getData('_TOKEN');
+        }
+
+        console.log("requireAuthrequireAuth", requireAuth)
         console.log(
-            'API REQUEST111111111 =>',
+            'API REQUEST =>',
             endpoint,
             token,
             options,
         );
 
-
-        let response =
-            await makeRequest(
-                endpoint,
-                options,
-                token,
-            );
-
-        /*
-        --------------------------------------------------
-        TOKEN EXPIRED
-        --------------------------------------------------
-        */
-
-        console.log(
-            'API REQUEST =>',
+        let response = await makeRequest(
             endpoint,
+            options,
             token,
-            response.status,
         );
 
+        // ✅ Refresh token bhi sirf auth APIs ke liye
         if (
-            response.status === 401 ||
-            response.status === 403
+            requireAuth &&
+            (response.status === 401 ||
+                response.status === 403)
         ) {
-            console.log(
-                'TOKEN EXPIRED => REFRESHING',
-            );
+            console.log('TOKEN EXPIRED => REFRESHING');
 
             const freshToken =
                 await getFreshToken();
 
-            console.log("freshTokenfreshToken", freshToken)
+            console.log(
+                'FRESH TOKEN =>',
+                freshToken,
+            );
 
             if (!freshToken) {
-                // await clearSession();
-
                 return {
                     success: false,
                     logout: true,
-                    message:
-                        'Session expired',
+                    message: 'Session expired',
                 };
             }
 
-            /*
-            --------------------------------------------------
-            RETRY ORIGINAL REQUEST
-            --------------------------------------------------
-            */
+            response = await makeRequest(
+                endpoint,
+                options,
+                freshToken,
+            );
 
-            response =
-                await makeRequest(
-                    endpoint,
-                    options,
-                    freshToken,
-                );
+            console.log(
+                'RETRY STATUS =>',
+                response.status,
+            );
         }
-
-        /*
-        --------------------------------------------------
-        SAFE JSON PARSE
-        --------------------------------------------------
-        */
 
         let data = null;
 
         try {
-            data =
-                await response.json();
+            data = await response.json();
         } catch {
             data = null;
         }
 
-
-        console.log(
-            'APIRESPONSE =>',
-            data,
-            response
-        );
-        /*
-        --------------------------------------------------
-        ERROR RESPONSE
-        --------------------------------------------------
-        */
-
         if (!response.ok) {
             return {
                 success: false,
-                status:
-                    response.status,
+                status: response.status,
                 message:
                     data?.message ||
                     data?.detail ||
@@ -478,24 +586,14 @@ export const apiClient = async (
             };
         }
 
-        /*
-        --------------------------------------------------
-        SUCCESS RESPONSE
-        --------------------------------------------------
-        */
-
         return {
             success: true,
-            status:
-                response.status,
-            ...(data || data),
+            status: response.status,
+            ...(data || {}),
         };
-    } catch (error: any) {
-        console.log(
-            'API ERROR =>',
-            error,
-        );
+    }
 
+    catch (error: any) {
         return {
             success: false,
             message:

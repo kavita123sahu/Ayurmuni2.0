@@ -14,7 +14,15 @@ import BrandList from '../../components/BrandList';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useMedicineData } from '../../hooks/useMedicineData';
-
+import { RootStackParamList } from '../../../type';
+type Item = {
+    id: string;
+    title: string;
+    subtitle: string;
+    icon: any;
+    bgIcon: any;
+    screen: keyof RootStackParamList;
+};
 
 const MedicineScreen = (props: any) => {
 
@@ -34,7 +42,7 @@ const MedicineScreen = (props: any) => {
         onRefresh,
     } = useMedicineData(categoryId);
 
-    console.log('Diseasecategories', Diseasecategories);
+    console.log('categoryIdcategoryId', categoryId);
 
     const recentProducts = [
         {
@@ -64,7 +72,8 @@ const MedicineScreen = (props: any) => {
         { id: '8', name: 'Drinks', icon: categoryImage },
     ];
 
-    const dataItems = [
+
+    const dataItems: Item[] = [
         {
             id: '1',
             title: 'Order With Prescription',
@@ -168,7 +177,8 @@ const MedicineScreen = (props: any) => {
                 <RecentProductsList data={recentProducts} />
 
                 <SectionHeader title="Shop by Concern" />
-                <CategoryList data={categories} navigation={navigation} />
+
+                {/* <CategoryList data={categories} navigation={navigation} /> */}
 
                 <SectionHeader title="Trusted Brands" />
 
@@ -194,12 +204,11 @@ const MedicineScreen = (props: any) => {
                 />
 
 
-
                 <SectionHeader title="Medicines" actionText="View all" />
-                <TopSellingList data={Medicines} navigation={navigation} getProducts={()=>""}/>
+                <TopSellingList data={Medicines} navigation={navigation} setProductData={() => ""} />
 
                 <SectionHeader title="Ayurveda" actionText="View all" />
-                <TopSellingList data={Medicines} navigation={navigation} getProducts={()=>""} />
+                <TopSellingList data={Medicines} navigation={navigation} setProductData={() => ""} />
             </ScrollView>
         </SafeAreaView>
     );

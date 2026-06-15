@@ -131,9 +131,10 @@ export const Images = {
     card: require('../assets/images/card.png'),
     flash: require('../assets/images/flash.png'),
     cash: require('../assets/images/cash.png'),
-    upi: require('../assets/images/UPI.png'),
+    upi: require('../assets/images/upi.png'),
     truck: require('../assets/images/truck.png'),
     bellnotification: require('../assets/images/bellnotification.png'),
+
 
     currentLocation: require('../assets/images/currentLocation.png'),
     sosIcon: require('../assets/images/sosIcon.png'),

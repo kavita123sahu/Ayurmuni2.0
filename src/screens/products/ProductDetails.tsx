@@ -17,6 +17,10 @@ import { Fonts } from '../../common/Fonts';
 import { reviews } from '../../common/DataInterface';
 import { useCartActions } from '../../hooks/Cart';
 import { showSuccessToast } from '../../config/Key';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '../../common/Colors';
+import { handleShareAction, handleShareProduct } from '../../hooks/DownloadFuction';
+import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 
 // ── Small reusable pieces ─────────────────────────────────────────────────────
 const Divider = () => <View style={styles.divider} />;
@@ -65,10 +69,12 @@ const Badge = ({
 // ─────────────────────────────────────────────────────────────────────────────
 const ProductDetails = (props: any) => {
     const { varientID } = props?.route?.params;
-    const { ProductData } = useProductData(varientID);
+    const { ProductData, loading, ReviewAll } = useProductData(varientID);
     const { isAdding, addToCart } = useCartActions();
-    const { width } = useWindowDimensions();
 
+
+    console.log("ReviewAllReviewAll", ReviewAll)
+    const insets = useSafeAreaInsets();
     const variants = ProductData?.variants || [];
     const defaultVariant = variants.find((v: any) => v?.is_default) || variants[0];
     const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
@@ -99,9 +105,7 @@ const ProductDetails = (props: any) => {
         }
     };
 
-    const handleShare = async () => {
-        try { await Share.share({ message: `Check out ${ProductData?.name}` }); } catch (_) { }
-    };
+
 
     // stock
     const stockLabel = !selectedVariant?.stock ? 'Out of Stock'
@@ -125,6 +129,24 @@ const ProductDetails = (props: any) => {
         { image: Images.highFiber, label: 'High Fiber' },
     ];
 
+    if (loading) {
+        return (
+            <SafeAreaView
+                style={styles.safeArea}
+            >
+                <AppHeader
+                    title="Product Details"
+                    leftIcon={Images.backIcon}
+                    onLeftPress={() =>
+                        props.navigation.goBack()
+                    }
+                />
+
+                <ProductDetailShimmer />
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -133,8 +155,17 @@ const ProductDetails = (props: any) => {
                 title="Product Details"
                 leftIcon={Images.backIcon}
                 rightIcon={Images.share}
-                onLeftPress={() => props.navigation.goBack()}
-                onRightPress={handleShare}
+                onLeftPress={() =>
+                    props.navigation.goBack()
+                }
+                onRightPress={() =>
+                    handleShareAction({
+                        type: 'whatsapp',
+                        message:
+                            selectedVariant?.media?.[0]
+                                ?.media_url,
+                    })
+                }
             />
 
             <ScrollView
@@ -143,11 +174,13 @@ const ProductDetails = (props: any) => {
             >
                 {/* 1. Images */}
                 <Detailimages
+                    itemHeight={300}
+  DynamicResize="contain"
                     images={selectedVariant?.media?.length ? selectedVariant.media : [Images.detailimage]}
                 />
 
                 {/* 2. Title */}
-                <Card style={styles.cardNoTop}>
+                <View style={styles.card1}>
                     <View style={styles.topRow}>
                         <Badge label="PREMIUM QUALITY" />
                         <View style={styles.ratingPill}>
@@ -158,10 +191,10 @@ const ProductDetails = (props: any) => {
                     <Text style={styles.brandName}>{ProductData?.brand_name}</Text>
                     <Text style={styles.productName}>{ProductData?.name}</Text>
                     <Text style={styles.description}>{ProductData?.full_description}</Text>
-                </Card>
+                </View>
 
                 {/* 3. Price */}
-                <Card>
+                <View style={styles.card1}>
                     <View style={styles.priceRow}>
                         <Text style={styles.sellingPrice}>₹{selectedVariant?.selling_price}</Text>
                         <Text style={styles.mrpPrice}>₹{selectedVariant?.mrp}</Text>
@@ -171,16 +204,17 @@ const ProductDetails = (props: any) => {
                             </View>
                         )}
                     </View>
+                    
                     <Text style={styles.taxNote}>Inclusive of all taxes</Text>
                     <View style={styles.stockRow}>
                         <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
                         <Text style={[styles.stockLabel, { color: stockColor }]}>{stockLabel}</Text>
                     </View>
-                </Card>
+                </View>
 
                 {/* 4. Variant Selector */}
                 {variants.length > 0 && (
-                    <Card>
+                    <View style={styles.card1}>
                         <SectionHeader title="Select Variant" />
                         <ScrollView
                             horizontal
@@ -200,17 +234,17 @@ const ProductDetails = (props: any) => {
                                             numberOfLines={1}
                                             style={[styles.variantChipText, selected && styles.variantChipTextSelected]}
                                         >
-                                            {item?.weight || item?.size || item?.name}
+                                            {item?.size} {item?.weightage || ''}
                                         </Text>
                                     </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
-                    </Card>
+                    </View>
                 )}
 
                 {/* ── 5. Quantity Selector (local only, no API) ── */}
-                <Card>
+                <View style={styles.card1}>
                     <SectionHeader title="Select Quantity" />
                     <View style={styles.qtySection}>
                         <QuantityControl
@@ -223,7 +257,7 @@ const ProductDetails = (props: any) => {
                             <Text style={styles.qtyTotalPrice}>₹{totalPrice.toFixed(0)}</Text>
                         </View>
                     </View>
-                </Card>
+                </View>
 
                 {/* 6. Delivery */}
                 <Card>
@@ -244,24 +278,24 @@ const ProductDetails = (props: any) => {
 
                 {/* 8. Benefits */}
                 {!!ProductData?.benifits && (
-                    <Card>
+                    <View style={styles.card1}>
                         <SectionHeader title="Benefits" />
                         <Text style={styles.bodyText}>{ProductData.benifits}</Text>
-                    </Card>
+                    </View>
                 )}
 
                 {/* 9. Highlights */}
-                <Card>
+                {/* <View style={styles.card1}>
                     <SectionHeader title="Product Highlights" />
                     <DashboardCard data={highlights} />
-                </Card>
+                </View> */}
 
                 {/* 10. Composition */}
                 {!!ProductData?.compositions && (
-                    <Card>
+                    <View style={styles.card1}>
                         <SectionHeader title="Composition" />
                         <Text style={styles.bodyText}>{ProductData.compositions}</Text>
-                    </Card>
+                    </View>
                 )}
 
                 {/* 11. Nutrition */}
@@ -293,19 +327,27 @@ const ProductDetails = (props: any) => {
 
                 {/* 14. Reviews */}
                 <View style={styles.card1}>
-                    <ReviewSection navigation={props.navigation} reviews={reviews} />
+                    <ReviewSection navigation={props.navigation} reviews={ReviewAll} />
                 </View>
 
                 <View style={{ height: 100 }} />
             </ScrollView>
 
             {/* ── Sticky Bottom Bar: wishlist + qty display + Add to Cart ── */}
-            <View style={styles.stickyBar}>
+            <View
+                style={[
+                    styles.stickyBar,
+                    {
+                        paddingBottom:
+                            Math.max(insets.bottom, 10),
+                    },
+                ]}
+            >
 
                 {/* Wishlist */}
-                <TouchableOpacity style={styles.wishlistBtn} activeOpacity={0.75}>
+                {/* <TouchableOpacity style={styles.wishlistBtn} activeOpacity={0.75}>
                     <Image source={Images.wishlist} style={styles.wishlistIcon} />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 {/* Qty indicator */}
                 {/* <View style={styles.stickyQtyBox}>
@@ -334,7 +376,7 @@ const ProductDetails = (props: any) => {
                 </TouchableOpacity>
 
             </View>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 
@@ -342,7 +384,7 @@ export default ProductDetails;
 
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F1F5F9' },
+    safeArea: { flex: 1, backgroundColor: Colors.background },
     scrollContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 20 },
 
     card: {
@@ -436,13 +478,15 @@ const styles = StyleSheet.create({
     addToCartBtn: {
         flex: 1, height: 52, borderRadius: 16,
         backgroundColor: '#0D614E',
+        position: 'relative',
+        bottom: 5,
         justifyContent: 'center', alignItems: 'center',
         shadowColor: '#0D614E', shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
     },
-    addToCartBtnDisabled: { backgroundColor: '#94A3B8', shadowOpacity: 0 },
+    addToCartBtnDisabled: { backgroundColor: Colors.cardBackground, shadowOpacity: 0 },
     addToCartInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     cartIcon: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#FFFFFF' },
     addToCartText: { fontSize: 15, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },
-    addToCartPrice: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: '#A7F3D0' },
+    addToCartPrice: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: '#6c9180' },
 });

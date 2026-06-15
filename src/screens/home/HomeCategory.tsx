@@ -24,33 +24,31 @@ interface Category {
     icon: any;
 }
 
-
 const CATEGORY_ROUTES: Record<string, string> = {
-    Doctors: "Consult",
-    Medicine: "MedicineScreen",
-    Products: "ProductsScreen",
-    Yoga: "YogaScreen",
-    Diet: "DietScreen"
+    doctors: 'Consult',
+    medicine: 'MedicineScreen',
+    products: 'ProductsScreen',
+    yoga: 'YogaScreen',
+    diet: 'DietScreen',
 };
-const HomeCategory = ({ data = [], navigation }: any) => {
 
+
+const HomeCategory = ({ data = [], navigation }: any) => {
     const handlePress = useCallback(
         (item: any) => {
-
             const route =
-                CATEGORY_ROUTES[item?.name];
+                CATEGORY_ROUTES[
+                item?.name?.trim().toLowerCase()
+                ];
 
             if (route) {
-                navigation.navigate(route);
+                navigation.navigate(route as never);
                 return;
             }
 
-            navigation.navigate(
-                'TopCategories',
-                {
-                    category: item,
-                },
-            );
+            navigation.navigate('TopCategories', {
+                category: item,
+            });
         },
         [navigation],
     );

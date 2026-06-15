@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 import *as _PRODUCT_SERVICES from "../services/ProductServices";
-export const useProductData = (variantID : string) => {
+export const useProductData = (variantID: string) => {
 
     const [loading, setLoading] =
         useState(true);
 
+
     const [refreshing, setRefreshing] =
         useState(false);
 
+    const [ReviewAll, setReviewAll] =
+        useState<any>(null);
+
+
     const [ProductData, setProductData] =
-        useState<any[]>([]);
+        useState<any>(null);
 
-
+    const ReviewPayload = {
+        entity_type: 'product',
+        variant_id: variantID,
+    };
 
     const fetchAllData =
         useCallback(async () => {
@@ -22,13 +30,16 @@ export const useProductData = (variantID : string) => {
 
                 const [
                     ProductList,
+                    ProductReviews,
                 ] = await Promise.all([
                     _PRODUCT_SERVICES.getProductByVariant(variantID),
+                    _PRODUCT_SERVICES.getReviewsAll(ReviewPayload),
 
                 ]);
 
-                console.log('ALLProductList ==>', ProductList);
-                setProductData(ProductList?.data || [],)
+                console.log('ProductReviewsProductReviewsProductReviews ==>', ProductReviews);
+                setProductData(ProductList?.data || [])
+                setReviewAll(ProductReviews?.data || [])
 
             } catch (error) {
 
@@ -64,6 +75,7 @@ export const useProductData = (variantID : string) => {
         loading,
         refreshing,
         ProductData,
+        ReviewAll,
         onRefresh,
     };
 };

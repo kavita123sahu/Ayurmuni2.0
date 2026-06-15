@@ -8,7 +8,8 @@ export const send_otp = async (data: Object) => {
         const response = await apiClient('user/send-otp/', {
             method: 'POST',
             body: JSON.stringify(data),
-        });
+            
+        }, false,);
         console.log("response,", response);
         return response;
     } catch (error) {
@@ -18,25 +19,12 @@ export const send_otp = async (data: Object) => {
 
 
 
-
-
 export const verify_otp_login = async (data: Object) => {
     try {
         const response = await apiClient('user/customer/login/', {
             method: 'POST',
             body: JSON.stringify(data),
-        });
-        return response;
-    } catch (error) {
-        throw error;
-    }
-};
-export const customer_login = async (data: Object) => {
-    try {
-        const response = await apiClient('user/customerlogin/', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
+        },false,);
         return response;
     } catch (error) {
         throw error;
@@ -80,7 +68,7 @@ export const verify_otp = async (data: Object) => {
         const response = await apiClient('user/customer/register/', {
             method: 'POST',
             body: JSON.stringify(data),
-        });
+        },false,);
         return response;
     } catch (error) {
         throw error;

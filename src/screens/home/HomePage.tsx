@@ -165,23 +165,24 @@ const HomePage: React.FC = (props: any) => {
 
         <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
 
+
         <Detailimages
           images={product.images}
-          itemWidth={width - 80}
           itemHeight={150}
-          DynamicResize='contain'
-
+          itemWidth={width * 0.88}
+          DynamicResize="cover"
         />
+
         <SectionHeader title="Suggested Medicines" actionText="View all" />
 
 
-        <TopSellingList data={productData} navigation={props.navigation}   setProductData={setProductData} />
+        <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData} />
 
 
         <SectionHeader title="Suggested Products" actionText="View all" />
 
 
-        <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData}   />
+        <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData} />
 
 
         <SectionHeader title="Yoga’s" actionText="View all" />

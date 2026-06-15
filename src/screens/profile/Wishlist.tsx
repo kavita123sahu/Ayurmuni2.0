@@ -7,6 +7,8 @@ import { topSelling } from '../../common/DataInterface'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Colors } from '../../common/Colors'
 import { useHomeData } from '../../hooks/UseHomeData'
+import { WishlistSkeleton } from '../../simmerScreen/ShimmerHook'
+import EmptyState from '../../components/EmptyState'
 
 const Wishlist = (props: any) => {
 
@@ -37,8 +39,29 @@ const Wishlist = (props: any) => {
             />
 
 
-            <View style={{ flex: 1, paddingTop: 20, paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
-                <TopSellingList data={productData} fav={false} isGrid={true} navigation={props.navigation} setProductData={setProductData} />
+            <View style={{ flex: 1, paddingTop: 20, paddingHorizontal: 15, backgroundColor: '#FDFDFB' }}>
+
+                {
+                    loading ? (
+                        <WishlistSkeleton />
+                    ) : productData?.length > 0 ? (
+                        <TopSellingList
+                            data={productData}
+                            fav={false}
+                            isGrid={true}
+                            navigation={props.navigation}
+                            setProductData={setProductData}
+                        />
+                    ) : (
+                        <EmptyState
+                            imageSize={25}
+                            image={Images.wishlist}
+                            title="Wishlist is Empty"
+                            subtitle="No products added to wishlist yet."
+                        />
+                    )
+                }
+
             </View>
 
 

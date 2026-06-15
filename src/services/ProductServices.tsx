@@ -23,6 +23,46 @@ export const getProductByVariant = async (variantID: string) => {
     }
 }
 
+export const getReviewsAll = async (
+    payload: object,
+) => {
+    try {
+
+        const cleanPayload =
+            Object.fromEntries(
+                Object.entries(payload)
+                    .filter(
+                        ([_, value]) =>
+                            value !== undefined &&
+                            value !== null &&
+                            value !== '',
+                    ),
+            );
+
+        const query =
+            new URLSearchParams(
+                cleanPayload as any,
+            ).toString();
+
+        console.log(
+            'Review Query Params:',
+            query,
+        );
+
+        const response =
+            await apiClient(
+                `review/?${query}`,
+                {
+                    method: 'GET',
+                },
+            );
+
+        return response;
+
+    } catch (error) {
+        throw error;
+    }
+};
 
 export const TogglewishlistProduct = async (variant_ID: number, method: 'POST') => {
     try {

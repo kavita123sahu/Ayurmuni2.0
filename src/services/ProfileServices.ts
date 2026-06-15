@@ -48,7 +48,52 @@ export const deleteAccount = async () => {
     }
 };
 
-export const createReview = async (reviewData: object) => {
+export const createDoctorReview = async (
+    ReviewQuery: object,
+    payload: object,
+) => {
+    try {
+
+        const cleanPayload =
+            Object.fromEntries(
+                Object.entries(ReviewQuery)
+                    .filter(
+                        ([_, value]) =>
+                            value !== undefined &&
+                            value !== null &&
+                            value !== '',
+                    ),
+            );
+
+        const query =
+            new URLSearchParams(
+                cleanPayload as any,
+            ).toString();
+
+        console.log(
+            'Review Query Params:',
+            query,
+        );
+
+        const response =
+            await apiClient(
+                `review/?${query}`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                },
+            );
+
+        return response;
+
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+export const createReview = async (reviewData: object,) => {
     try {
         const response = await apiClient('reviews/reviewscreate/', {
             method: 'POST',

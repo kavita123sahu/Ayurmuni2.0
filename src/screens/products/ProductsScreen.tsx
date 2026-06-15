@@ -97,7 +97,7 @@ const ProductsScreen = () => {
 
         <SectionHeader title="Top Selling Products" actionText="View all" />
 
-        <TopSellingList data={topSelling} navigation={navigation} getProducts={()=>""} />
+        <TopSellingList data={topSelling} navigation={navigation} setProductData={()=>""} />
 
       </ScrollView>
     </SafeAreaView>

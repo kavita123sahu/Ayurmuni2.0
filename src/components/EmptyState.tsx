@@ -15,7 +15,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Fonts } from '../common/Fonts';
-import { Colors } from '../common/Colors';
 
 interface EmptyStateProps {
 
@@ -37,16 +36,13 @@ const EmptyState = ({
     style,
     imageSize = 20,
 }: EmptyStateProps) => {
-
     return (
-
         <Animated.View
             entering={FadeIn.duration(500)}
             style={[
                 styles.container,
                 style,
-            ]}
-        >
+            ]}>
 
             <Animated.View
                 entering={FadeInDown.delay(150)}
@@ -99,7 +95,7 @@ const styles = StyleSheet.create({
     },
 
     image: {
-        backgroundColor: Colors.onfillColor,
+        // backgroundColor: Colors.onfillColor,
         borderRadius: 20,
         padding: 20,
         resizeMode: 'contain',

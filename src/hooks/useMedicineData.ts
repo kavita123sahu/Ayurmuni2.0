@@ -29,7 +29,7 @@ export const useMedicineData = (categoryId: string,) => {
                     );
 
 
-                    console.log("meicncategory", response);
+                console.log("meicncategory", response);
                 setDiseasecategories(
                     response?.data || [],
                 );

@@ -21,7 +21,7 @@ import { TogglewishlistProduct } from '../services/ProductServices';
 interface Props {
   data: any[];
   isGrid?: boolean;
-  fav?: boolean; 
+  fav?: boolean;
   setProductData: React.Dispatch<
     React.SetStateAction<any[]>
   >;
@@ -36,25 +36,35 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const SPACING = 12;
 const NUM_COLUMNS = 2; // 👈 change to 3 if needed
 
-const ITEM_WIDTH =
-  (SCREEN_WIDTH - SPACING * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+
+const { width } = Dimensions.get('window');
+
+const DEFAULT_WIDTH = width * 0.9;
+const DEFAULT_HEIGHT = 240;
 
 
-const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, isGrid = false, header = false, navigation }) => {
+const itemWidth = width - 80;
+const itemHeight = 100;
+
+const finalWidth = itemWidth ?? DEFAULT_WIDTH;
+const finalHeight = itemHeight ?? DEFAULT_HEIGHT;
+
+
+const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isGrid = false, header = false, navigation }) => {
   console.log("datadatadata---->>", data)
 
   const [addingItems, setAddingItems] =
     useState<string[]>([]);
 
-  const [productData, setProductData] =
-    useState(data);
+  // const [productData, setProductData] =
+  //   useState(data);
 
   useEffect(() => {
     setProductData(data);
   }, [data]);
 
   const [showAll, setShowAll] = useState(false);
-  const displayData = showAll ? productData : productData.slice(0, 6);
+  const displayData = showAll ? data : data.slice(0, 6);
 
   const formattedData =
     isGrid && displayData.length % 2 !== 0
@@ -89,7 +99,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, i
     // }
 
     const currentProduct =
-      productData.find(
+      data.find(
         p => p.variant_id === variantId,
       );
     setAddingItems(prev => [
@@ -107,7 +117,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, i
 
       console.log("cartresponse", response);
       if (response?.success) {
-
+        showSuccessToast(response?.message || "Product Added Card", 'success');
         setProductData(prev =>
           prev.map(product =>
             product.variant_id === variantId
@@ -140,47 +150,47 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, i
   };
 
 
- const handleWishlist = async (
-  item: any,
-) => {
-  const oldValue =
-    item?.is_wishlist_item;
+  const handleWishlist = async (
+    item: any,
+  ) => {
+    const oldValue =
+      item?.is_wishlist_item;
 
-  // Instant UI Update
-  setProductData(prev =>
-    prev.map(product =>
-      product.variant_id ===
-      item.variant_id
-        ? {
+    // Instant UI Update
+    setProductData(prev =>
+      prev.map(product =>
+        product.variant_id ===
+          item.variant_id
+          ? {
             ...product,
             is_wishlist_item:
               !oldValue,
           }
-        : product,
-    ),
-  );
-
-  try {
-    await TogglewishlistProduct(
-      item.variant_id,
-     'POST',
+          : product,
+      ),
     );
-  } catch (error) {
-    // Rollback
-    setProductData(prev =>
-      prev.map(product =>
-        product.variant_id ===
-        item.variant_id
-          ? {
+
+    try {
+      await TogglewishlistProduct(
+        item.variant_id,
+        'POST',
+      );
+    } catch (error) {
+      // Rollback
+      setProductData(prev =>
+        prev.map(product =>
+          product.variant_id ===
+            item.variant_id
+            ? {
               ...product,
               is_wishlist_item:
                 oldValue,
             }
-          : product,
-      ),
-    );
-  }
-};
+            : product,
+        ),
+      );
+    }
+  };
 
   const ListHeaderComponent = () => (
     <>
@@ -196,34 +206,26 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, i
   );
 
   return (
-    <FlatList
-      key={isGrid ? 'grid' : 'list'}
+    <FlatList key={isGrid ? 'grid' : 'list'}
       data={formattedData}
       keyExtractor={(item, index) => item.id || index.toString()}
-      horizontal={!isGrid}
-      numColumns={isGrid ? 2 : 1}
+      horizontal={!isGrid} numColumns={isGrid ? 2 : 1}
       ListHeaderComponent={header ? <ListHeaderComponent /> : undefined}
       showsHorizontalScrollIndicator={false}
-
-      // ✅ 🔥 REMOVE ALL HORIZONTAL PADDING
-      contentContainerStyle={{
-        paddingBottom: 20,
-        paddingTop: 10,
-      }}
-
-      showsVerticalScrollIndicator={false}
       stickyHeaderHiddenOnScroll={false}
-      columnWrapperStyle={
-        isGrid
-          ? {
-            justifyContent: 'space-between',
-            // marginBottom: 14,
-            paddingHorizontal: SPACING,
-            marginBottom: SPACING,
-          }
-          : undefined
-      }
-
+      // contentContainerStyle={{
+      //   paddingBottom: 20,
+      //   paddingRight: !isGrid ? 14
+      //    : 0,
+      // }}
+      contentContainerStyle={{
+        // paddingHorizontal: 5,
+        paddingBottom: 20,
+      }}
+      columnWrapperStyle={isGrid ? {
+        justifyContent: 'space-between',
+        marginBottom: 14, paddingHorizontal: SPACING,
+      } : undefined}
       renderItem={({ item }) => {
         const isAdding =
           addingItems.includes(item?.variant_id);
@@ -238,92 +240,117 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true,   setProductData, i
         }
 
         return (
-          <TouchableOpacity onPress={() => navigation.navigate('ProductDetails', {
-            varientID: item?.variant_id
-          })} style={[styles.card, isGrid && styles.gridCard]}>
-
-
-            <WishlistButton
-              isWishlisted={item?.is_wishlist_item}
-              onPress={() =>
-                handleWishlist(item)
-              }
-            />
-
-            {/* BADGE */}
-            {item.tag && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{item.tag}</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ProductDetails', { varientID: item?.variant_id })}
+            style={[
+              styles.card,
+              isGrid
+                ? styles.gridCard
+                : styles.horizontalCard,
+            ]}
+          >
+            {/* Discount */}
+            {item?.mrp > item?.selling_price && (
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>
+                  {Math.round(
+                    ((item.mrp - item.selling_price) /
+                      item.mrp) *
+                    100,
+                  )}
+                  % OFF
+                </Text>
               </View>
             )}
 
-            {/* IMAGE */}
+            {/* Wishlist */}
+            <WishlistButton
+              isWishlisted={item?.is_wishlist_item}
+              onPress={() => handleWishlist(item)}
+            />
+
+            {/* Image */}
             <View style={styles.imageContainer}>
-              <Image source={item?.image_url ? { uri: item?.image_url } : Images.medicine} style={styles.image} />
+              <Image
+                source={
+                  item?.image_url
+                    ? { uri: item.image_url }
+                    : Images.medicine
+                }
+                style={{
+                  width: '100%',
+                  height: '100%',
+                }}
+                resizeMode="contain"
+              />
             </View>
 
-            {/* CONTENT */}
-            <View style={styles.subContainer}>
+            {/* Content */}
+            <View style={styles.contentContainer}>
               <Text
+                numberOfLines={1}
                 style={styles.title}
-                numberOfLines={2}
-                ellipsizeMode="tail">
+              >
                 {item.product_name}
               </Text>
 
-              {item.brand_name && (
-                <Text numberOfLines={2}
-                  ellipsizeMode="tail" style={styles.subtitle}>{item?.brand_name}</Text>
-              )}
+              <Text
+                numberOfLines={1}
+                style={styles.subtitle}
+              >
+                {item.brand_name}
+              </Text>
 
-              <View style={styles.priceContainer}>
-                {/* {item?.variant && ( */}
-                <Text style={styles.oldPrice}>Rs. {item.mrp}</Text>
-                {/* )} */}
-                <Text style={styles.price}>Rs. {item.selling_price}</Text>
+              <View style={{ flexDirection: 'row' }}>
+                <Text style={styles.oldPrice}>
+                  ₹{item.mrp}
+                </Text>
+
+                <View style={styles.ratingRow}>
+                  <Image
+                    source={Images.star}
+                    style={styles.starIcon}
+                  />
+
+                  <Text style={styles.ratingText}>
+                    {item?.avg_rating || '0'}
+                  </Text>
+
+                  <Text style={styles.reviewText}>
+                    ({item?.total_reviews || '0'})
+                  </Text>
+                </View>
+
               </View>
 
-              {/* CART BUTTON */}
-              <TouchableOpacity
-                disabled={isAdded}
-                onPress={() =>
-                  handleAddToCart(item)
-                }
-                style={styles.cartBtn}
-              >
-                {isAdding ? (
-                  <View style={{
-                    backgroundColor: Colors.primaryColor,
-                    borderRadius: 11,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: 35, width: 35
-                  }}>
+              <View style={styles.bottomRow}>
+                <Text style={styles.price}>
+                  ₹{item.selling_price}
+                </Text>
 
-
+                <TouchableOpacity
+                  onPress={() =>
+                    handleAddToCart(item)
+                  }
+                  style={styles.cartButton}
+                >
+                  {isAdding ? (
+                    <ActivityIndicator
+                      color="#fff"
+                      size="small"
+                    />
+                  ) : (
                     <Image
-                      source={Images.tick}
+                      source={Images.shopCart}
                       style={{
-                        width: 16,
-                        height: 16, tintColor: Colors.white
-
+                        width: 18,
+                        height: 18,
+                        tintColor: '#fff',
                       }}
                     />
-                  </View>
-                ) : (
-                  <>
-                    <Image
-                      source={require('../assets/images/CartFrame.png')}
-                      style={styles.cartFrame}
-                    />
-
-                    <Image
-                      source={require('../assets/images/Cart.png')}
-                      style={styles.cartIcon}
-                    />
-                  </>
-                )}
-              </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </TouchableOpacity>
         );
@@ -359,148 +386,161 @@ export default TopSellingList;
 
 const styles = StyleSheet.create({
   card: {
-    width: ITEM_WIDTH / 1.1,
-    position: 'relative',
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
-    marginRight: 14,
-    borderWidth: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 18,
     overflow: 'hidden',
-    borderColor: '#F1F5F9',
-    height: 340,
+    borderWidth: 1,
+    borderColor: '#EEF2F7',
+
+    // elevation: 3,
   },
 
   gridCard: {
     width: '48%',
-
-    marginRight: 0,
   },
 
-  emptyCard: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
+  horizontalCard: {
+    width: 190,
+    marginLeft: 10,
+    marginBottom: 5,
   },
-
   imageContainer: {
-    height: ITEM_WIDTH * 0.8,
-    backgroundColor: '#0D614E1A',
-
-    paddingTop: 28,
-    paddingBottom: 8,
+    height: 180,
+    width: '100%',
+    backgroundColor: '#F5F8F7',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-    borderTopRightRadius: 16,
-    borderTopLeftRadius: 16,
+    padding: 10,
   },
 
   image: {
-    width: 95,
-    height: 95,
-    resizeMode: 'contain',
+    width: '95%',
+    height: '95%',
   },
-
-  subContainer: {
-    margin: 8,
-    minHeight: 130,
-    paddingBottom: 50, // cart button ke liye space
+  contentContainer: {
+    padding: 12,
   },
 
   title: {
-    fontSize: 16,
-    marginBottom: 4,
-    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 15,
     color: '#1E293B',
-    lineHeight: 22,
-    height: 44, // 2 lines fix
+    fontFamily: Fonts.PoppinsSemiBold,
   },
+
   subtitle: {
     fontSize: 12,
     color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 18,
-    height: 36, // 2 lines
-  },
-  priceContainer: {
-    marginTop: 6,
+    marginTop: 2,
+    fontFamily: Fonts.PoppinsRegular,
   },
 
   oldPrice: {
-    fontFamily: Fonts.PoppinsRegular,
-    fontSize: 10,
-    marginBottom: -5,
-    color: '#64748B',
+    marginTop: 6,
+    fontSize: 12,
+    color: '#94A3B8',
     textDecorationLine: 'line-through',
   },
 
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+
   price: {
-    fontSize: 16,
+    fontSize: 18,
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0D614E',
-    // marginTop: 2,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    marginLeft: 10,
+
+    // marginTop: ,
   },
 
-  badge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    borderTopLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    backgroundColor: '#F0BE27',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    zIndex: 10,
+  starIcon: {
+    width: 14,
+    height: 14,
+    marginBottom: 2,
+    tintColor: '#FBBF24',
   },
 
-  badgeText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsMedium,
+  ratingText: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#1E293B',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
-  cartBtn: {
-    position: 'absolute',
-    right: 10,
-    bottom: 60,
-    width: 40,
-    height: 40,
+  reviewText: {
+    marginLeft: 4,
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  cartButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryColor,
+
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  cartFrame: {
+  discountBadge: {
     position: 'absolute',
-    width: 40,
-    height: 40,
+    top: 0,
+    left: 0,
+
+    backgroundColor: '#FBBF24',
+
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+
+    borderBottomRightRadius: 14,
+    zIndex: 100,
   },
 
-  cartIcon: {
-    width: 20,
-    height: 20,
+  discountText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  emptyCard: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
 
   footerContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 10,
+    paddingVertical: 20,
+    paddingBottom: 40,
   },
 
   discoverBtn: {
-    backgroundColor: '#0D614E',
+    backgroundColor: Colors.primaryColor,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 12,
+    borderRadius: 14,
   },
 
   discoverText: {
-    color: '#FFFFFF',
-    fontSize: 14, fontFamily: Fonts.PoppinsMedium,
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   countText: {
-    marginTop: 8,
+    marginTop: 10,
     fontSize: 12,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
-    marginBottom: 40
   },
 });

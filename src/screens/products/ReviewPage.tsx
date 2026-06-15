@@ -1,5 +1,5 @@
-import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity, Dimensions, StatusBar } from 'react-native'
-import React, { useState } from 'react'
+import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity, Dimensions, StatusBar, Image } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
@@ -8,72 +8,111 @@ import { Fonts } from '../../common/Fonts'
 import { Colors } from '../../common/Colors'
 
 const ReviewPage = (props: any) => {
-    
 
-    const ratingData = {
-        average: 4.8,
-        totalReviews: 1240,
-        breakdown: [
-            { star: 5, percent: 75 },
-            { star: 4, percent: 15 },
-            { star: 3, percent: 5 },
-            { star: 2, percent: 3 },
-            { star: 1, percent: 2 },
-        ],
-    };
-
-    const product = {
-        images: [
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-            Images.detailimage,
-        ],
-    };
-    const reviews = [
-        {
-            id: '1',
-            name: 'Amara Singh',
-            time: '2 days ago',
-            rating: 5,
-            review: 'The quality of this millet is exceptional. It’s very clean and cooks perfectly every time.',
-        },
-        {
-            id: '2',
-            name: 'Marcus Chen',
-            time: '1 week ago',
-            rating: 5,
-            review: 'Really good product. Packaging was eco-friendly and quality is great.',
-        },
-        {
-            id: '3',
-            name: 'Sarah Jenkins',
-            time: '2 weeks ago',
-            rating: 4,
-            review: 'Perfect for my morning porridge. Will definitely buy again!',
-        },
-    ];
-
+    const { reviews } = props.route.params;
     const [activeFilter, setActiveFilter] = useState('All Reviews');
+
+    const filteredReviews = useMemo(() => {
+        switch (activeFilter) {
+            case 'With Photos':
+                return reviews.filter((item: any) => item.image_urls?.length > 0);
+
+            case '5 Star':
+                return reviews.filter((item: any) => Number(item.rating) === 5);
+
+            case 'Recent':
+                return [...reviews].sort(
+                    (a: any, b: any) =>
+                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+
+            default:
+                return reviews;
+        }
+    }, [reviews, activeFilter]);
+
+
+    const ratingData = useMemo(() => {
+        const total = reviews.length;
+
+        const counts: Record<number, number> = {
+            5: 0,
+            4: 0,
+            3: 0,
+            2: 0,
+            1: 0,
+        };
+
+        reviews.forEach((r: any) => {
+            const rating = Number(r.rating);
+            counts[rating] = (counts[rating] || 0) + 1;
+        });
+
+        const breakdown = [5, 4, 3, 2, 1].map((star) => ({
+            star,
+            percent: total ? Math.round((counts[star] / total) * 100) : 0,
+        }));
+
+        const average =
+            total > 0
+                ? Number(
+                    (
+                        reviews.reduce((sum, r) => sum + Number(r.rating), 0) / total
+                    ).toFixed(1)
+                )
+                : 0;
+
+        return {
+            average,
+            totalReviews: total,
+            breakdown,
+        };
+    }, [reviews]);
+
+
+    const allImages = useMemo(() => {
+        const reviewImages = reviews.flatMap((item: any) => item.image_urls || []);
+
+        const mediaImages = reviews
+            .map((item: any) => item.media_url)
+            .filter(Boolean);
+
+        return [...mediaImages, ...reviewImages];
+    }, [reviews]);
+
+
+    const MAX_VISIBLE_IMAGES = 4;
+
+    const visibleImages =
+        allImages.slice(0, MAX_VISIBLE_IMAGES);
+
+    const remainingCount =
+        allImages.length - MAX_VISIBLE_IMAGES;
+
+    const getInitials = (patient_name: string) => {
+        return patient_name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase();
+    };
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
-               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
 
-             <AppHeader
-                    title="Foxtail millet (Kangni)"
-                    leftIcon={Images.backIcon}
-                    onLeftPress={() => props.navigation.goBack()}
-                />
+            <AppHeader
+                // title="Foxtail millet (Kangni)"
+                title={"Reviews"}
+                leftIcon={Images.backIcon}
+                onLeftPress={() => props.navigation.goBack()}
+            />
+
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal:15 }}
+                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 15 }}
             >
-
-               
 
                 <View style={styles.ratingContainer}>
 
@@ -108,68 +147,120 @@ const ReviewPage = (props: any) => {
 
                 </View>
 
-                <Text style={styles.sectionTitle}>User Photos</Text>
 
+                {allImages.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>
+                            User Photos
+                        </Text>
 
-                <Detailimages
-                    images={product.images}
-                    itemWidth={128}
-                    itemHeight={128}
-                    showIndicator={false}
-                />
+                        <View style={styles.imageRow}>
+                            {visibleImages.map(
+                                (item, index) => {
 
-             <View style={styles.filterRow}>
-    {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
-        <TouchableOpacity
-            key={item}
-            style={[
-                styles.filterBtn,
-                activeFilter === item && styles.activeFilterBtn
-            ]}
-            onPress={() => setActiveFilter(item)}
-            activeOpacity={0.7}
-        >
-            <Text
-                style={[
-                    styles.filterText,
-                    activeFilter === item && styles.activeFilterText
-                ]}
-            >
-                {item}
-            </Text>
-        </TouchableOpacity>
-    ))}
-</View>
+                                    const isLastVisible =
+                                        index ===
+                                        MAX_VISIBLE_IMAGES - 1 &&
+                                        allImages.length >
+                                        MAX_VISIBLE_IMAGES;
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={index}
+                                            activeOpacity={0.8}
+                                            onPress={() =>
+                                                props?.navigation.navigate(
+                                                    'ReviewGalleryScreen',
+                                                    {
+                                                        images: allImages,
+                                                        selectedIndex:
+                                                            index,
+                                                    },
+                                                )
+                                            }
+                                        >
+                                            <Image
+                                                source={{ uri: item }}
+                                                style={
+                                                    styles.reviewImage
+                                                }
+                                            />
+
+                                            {isLastVisible && (
+                                                <View
+                                                    style={
+                                                        styles.overlay
+                                                    }
+                                                >
+                                                    <Text
+                                                        style={
+                                                            styles.overlayText
+                                                        }
+                                                    >
+                                                        +{remainingCount}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                },
+                            )}
+                        </View>
+                    </>
+                )}
+
+                <View style={styles.filterRow}>
+                    {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
+                        <TouchableOpacity
+                            key={item}
+                            style={[
+                                styles.filterBtn,
+                                activeFilter === item && styles.activeFilterBtn
+                            ]}
+                            onPress={() => setActiveFilter(item)}
+                            activeOpacity={0.7}
+                        >
+                            <Text
+                                style={[
+                                    styles.filterText,
+                                    activeFilter === item && styles.activeFilterText
+                                ]}
+                            >
+                                {item}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
 
 
                 <FlatList
-                    data={reviews}
+                    data={filteredReviews}
                     keyExtractor={(item) => item.id}
                     scrollEnabled={false}
                     renderItem={({ item }) => (
                         <View style={styles.reviewCard}>
-
                             <View style={styles.reviewHeaderRow}>
-
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>
-                                        {item.name.charAt(0)}
+                                        {getInitials(item.patient_name)}
                                     </Text>
                                 </View>
 
                                 <View style={{ flex: 1, marginLeft: 10 }}>
-                                    <Text style={styles.name}>{item.name}</Text>
+                                    <Text style={styles.name}>{item.patient_name}</Text>
                                     <Text style={styles.verified}>VERIFIED PURCHASE</Text>
                                 </View>
 
-                                <Text style={styles.time}>{item.time}</Text>
-
+                                <Text style={styles.time}>
+                                    {new Date(item.created_at).toLocaleDateString()}
+                                </Text>
                             </View>
 
-                            <Text style={styles.stars}>⭐⭐⭐⭐⭐</Text>
+                            <Text style={styles.stars}>
+                                {"⭐".repeat(item.rating)}
+                            </Text>
 
                             <Text style={styles.reviewText}>{item.review}</Text>
-
                         </View>
                     )}
                 />
@@ -194,7 +285,7 @@ const styles = StyleSheet.create({
 
     avgRating: {
         fontSize: 48,
-       fontFamily: Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
         color: '#0D614E',
         lineHeight: 60
     },
@@ -255,7 +346,7 @@ const styles = StyleSheet.create({
         left: 6
     },
 
-     filterRow: {
+    filterRow: {
         flexDirection: 'row',
         // flexWrap: 'wrap', // 🔥 small screen fix
         justifyContent: 'center', // 🔥 center align
@@ -316,7 +407,7 @@ const styles = StyleSheet.create({
 
     avatarText: {
         color: '#0D614E',
-        fontSize: 16,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
@@ -339,13 +430,42 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsMedium
     },
-    
+
     reviewText: {
         marginTop: 8,
         color: '#475569',
         fontSize: 14,
-        fontFamily : Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
         lineHeight: 22,
     },
 
+    imageRow: {
+        flexDirection: 'row',
+        marginTop: 12,
+    },
+
+    reviewImage: {
+        width: 90,
+        height: 90,
+        backgroundColor: Colors.bgcolor,
+        borderRadius: 12,
+        marginRight: 8,
+    },
+
+    overlay: {
+        position: 'absolute',
+        width: 90,
+        height: 90,
+        borderRadius: 12,
+        backgroundColor:
+            'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    overlayText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '700',
+    },
 });

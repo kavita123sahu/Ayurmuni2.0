@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
+import { Colors } from '../common/Colors';
 
 const { width } = Dimensions.get('window');
 
@@ -30,8 +31,12 @@ const Detailimages: React.FC<Props> = ({
   showIndicator = true,
 }) => {
 
+  const DEFAULT_WIDTH = width;
+  const DEFAULT_HEIGHT = 320;
+
   const finalWidth = itemWidth ?? DEFAULT_WIDTH;
   const finalHeight = itemHeight ?? DEFAULT_HEIGHT;
+
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -41,6 +46,34 @@ const Detailimages: React.FC<Props> = ({
   if (!images || images.length === 0) return null;
 
   const SIDE_GAP = (width - finalWidth) / 2;
+
+ const getImageSource = (item: any) => {
+  if (!item) return null;
+
+  // Local image require(...)
+  if (typeof item === 'number') {
+    return item;
+  }
+
+  // URL string
+  if (typeof item === 'string') {
+    return { uri: item };
+  }
+
+  // Remote image object
+  if (item?.uri) {
+    return item;
+  }
+
+  return {
+    uri:
+      item?.media_url ||
+      item?.image_url ||
+      item?.image ||
+      item?.url,
+  };
+};
+
 
   return (
     <View>
@@ -84,16 +117,22 @@ const Detailimages: React.FC<Props> = ({
           <View
             style={{
               marginLeft: index === 0 ? 0 : SPACING,
+              width: finalWidth,
+              height: finalHeight,
+              backgroundColor: '#fff',
+              borderRadius: 24,
+              overflow: 'hidden',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
             <Image
-              source={item?.media_url ? { uri: item?.media_url } : item}
+              source={getImageSource(item)}
               style={{
-                width: finalWidth,
-                height: finalHeight,
-                resizeMode: DynamicResize,
-                borderRadius: 24,
+                width: '100%',
+                height: '100%',
               }}
+              resizeMode={DynamicResize}
             />
           </View>
         )}

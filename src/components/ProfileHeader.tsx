@@ -192,7 +192,7 @@ const ProfileHeader = ({ user }: any) => {
 
         {/* STATS */}
 
-        <View style={styles.statsRow}>
+        {/* <View style={styles.statsRow}> */}
           <DashboardCard
             data={[
               {
@@ -209,7 +209,7 @@ const ProfileHeader = ({ user }: any) => {
               },
             ]}
           />
-        </View>
+        {/* </View> */}
 
       </View>
     </View>

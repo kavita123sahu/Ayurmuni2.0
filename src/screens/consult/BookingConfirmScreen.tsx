@@ -11,10 +11,7 @@ import {
   Pressable,
   BackHandler,
 } from 'react-native';
-import Share, { Social } from 'react-native-share';
-
-import Clipboard
-  from '@react-native-clipboard/clipboard';
+import DoctorReviewModal from '../../screens/consult/ReviewModal'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
@@ -24,6 +21,9 @@ import { Ionicons } from '../../common/Vector';
 import { Animated } from 'react-native';
 import { formatDate } from '../../common/DataInterface';
 import { getAppointmentShareMessage } from '../../helper/shareMessage';
+import { handleShareAction } from '../../hooks/DownloadFuction';
+import { createDoctorReview, createReview } from '../../services/ProfileServices';
+import { showSuccessToast } from '../../config/Key';
 
 const { width } = Dimensions.get('window');
 
@@ -177,23 +177,40 @@ const DetailRow = memo(
 const BookingConfrimScreen = ({ navigation, route }: any) => {
   const { SlotsDetail } = route?.params || {};
 
-  console.log("navigationnavigation", navigation)
+  console.log("SlotsDetail", SlotsDetail)
+
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowModal(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
 
   const [visible, setVisible] = useState(false);
 
   // Disable hardware back button and gesture back to prevent leaving this
   // confirmation screen except via explicit buttons (Home or Share).
   useEffect(() => {
-    const onHardwareBack = () => true;
+    const onHardwareBack = () => {
 
-    const backHandler =
-      BackHandler.addEventListener(
-        'hardwareBackPress',
-        onHardwareBack,
-      );
+      if (!showModal) {
+        setShowModal(true);
+        return true; // back action stop
+      }
 
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onHardwareBack,
+    );
     return () => backHandler.remove();
-  }, []);
+  }, [showModal]);
   // Hide header back button and disable gestures if using stack navigator
   useLayoutEffect(() => {
     try {
@@ -202,6 +219,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
       // ignore if navigator doesn't support these options
     }
   }, [navigation]);
+
 
   const slideAnim = useRef(
     new Animated.Value(SHEET_HEIGHT),
@@ -235,87 +253,83 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     });
 
 
-  // =============================
-  // SHARE FUNCTIONS
-  // =============================
-  const handleShare = async (
-    type: string,
-  ) => {
-
-    try {
-
-      if (type === 'copy') {
-
-        Clipboard.setString(
-          shareMessage,
-        );
-
-        closeBottomSheet();
-
-        return;
-      }
-
-      if (type === 'message') {
-
-        await Share.open({
-          message:
-            shareMessage,
-        });
-
-        closeBottomSheet();
-
-        return;
-      }
-
-      const shareOptions: any = {
-        message:
-          shareMessage,
-      };
-
-      if (
-        type === 'whatsapp'
-      ) {
-
-        shareOptions.social =
-          Social.Whatsapp;
-
-      } else if (
-        type === 'email'
-      ) {
-
-        shareOptions.social =
-          Social.Email;
-
-        shareOptions.subject =
-          'Appointment Details';
-      }
-
-      await Share.shareSingle(
-        shareOptions,
-      );
-
-      closeBottomSheet();
-
-    } catch (error) {
-
-      console.log(
-        `${type} ERROR =>`,
-        error,
-      );
-    }
-  };
 
   // =============================
   // OPTION HANDLE
   // =============================
 
-  const onPressShareOption = (
-    type: string,
-  ) => {
 
-    handleShare(type);
+
+  const submitDoctorReview = async (data: {
+    rating: number;
+    review: string;
+    tags: string[];
+
+  }) => {
+    try {
+      const payload = {
+        rating: data.rating,
+        review: data.review,
+        tags: data.tags,
+      };
+
+      const response = await createDoctorReview(
+        {
+          entity_type: 'doctor',
+          appointment_id: SlotsDetail?.appointment_id,
+        },
+        payload,
+      );
+
+      console.log(
+        'Review Response =>',
+        response,
+      );
+
+      if (response?.success) {
+        showSuccessToast(
+          response?.message ||
+          'Review submitted successfully',
+          'success',
+        );
+
+        setShowModal(false); // Sirf success pe close
+        return true;
+      }
+
+      showSuccessToast(
+        response?.message ||
+        'Failed to submit review',
+        'error',
+      );
+
+      return false;
+    } catch (error: any) {
+      console.log(
+        'Review Error =>',
+        error,
+      );
+
+      showSuccessToast(
+        error?.message ||
+        'Something went wrong',
+        'error',
+      );
+
+      return false;
+    }
   };
 
+  const onPressShareOption = async (
+    type: string,
+  ) => {
+    await handleShareAction({
+      type,
+      message: shareMessage,
+      onComplete:
+        closeBottomSheet,
+    });
+  };
 
 
   const openBottomSheet = () => {
@@ -354,7 +368,6 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
         setVisible(false);
       });
     };
-
 
 
   return (
@@ -781,6 +794,18 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           </View>
         )
       }
+      <DoctorReviewModal
+        visible={showModal}
+        doctorName={SlotsDetail?.info?.doctor_name}
+        doctorSpeciality={
+          SlotsDetail?.doctor_specialization?.join(', ')
+        }
+        doctorImage={SlotsDetail?.doctor_image}
+        onClose={() => setShowModal(false)}
+        onSubmit={async data => {
+          submitDoctorReview(data)
+        }}
+      />
     </SafeAreaView>
   );
 };
