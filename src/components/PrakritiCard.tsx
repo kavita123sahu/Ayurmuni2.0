@@ -94,7 +94,7 @@ const PrakritiCard: React.FC<Props> = ({
   );
 };
 
-export default PrakritiCard;
+export default React.memo(PrakritiCard);
 
 const styles = StyleSheet.create({
   card: {

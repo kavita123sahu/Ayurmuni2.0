@@ -382,7 +382,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
   );
 };
 
-export default TopSellingList;
+export default React.memo(TopSellingList);
 
 const styles = StyleSheet.create({
   card: {

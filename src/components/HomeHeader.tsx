@@ -529,7 +529,8 @@ const HomeHeader = () => {
     );
 };
 
-export default HomeHeader;
+export default React.memo(HomeHeader);
+
 
 const styles = StyleSheet.create({
 

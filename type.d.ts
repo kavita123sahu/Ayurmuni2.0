@@ -9,11 +9,10 @@ export type RootStackParamList = {
     Otp: undefined;
     MentorCheckout: undefined;
     Onboarding: undefined;
-    Prescription: undefined;
-    SearchScreen: undefined;
     FavDoctors: undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
+    PatientVideoCallScreen: undefined;
     AddEditAddress: undefined;
     History: undefined;
     LocationPickerScreen: undefined;

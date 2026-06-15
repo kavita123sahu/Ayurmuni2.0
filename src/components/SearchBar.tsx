@@ -39,7 +39,7 @@ const SearchBar: React.FC<Props> = ({
   );
 };
 
-export default SearchBar;
+export default React.memo(SearchBar);
 
 const styles = StyleSheet.create({
   container: {
