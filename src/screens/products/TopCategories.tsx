@@ -248,10 +248,10 @@ const TopCategories = (props: any) => {
       <View style={styles.flexContain}>
         <SearchBar
         placeholder="Search seeds, oils..."
-        icon={require('../../assets/images/search.png')}
+        icon={require('../../assets/images/Search.png')}
       />
 
-      <TopSellingList data={topSelling} header ={true} isGrid={true} getProducts={()=>""} navigation={props.navigation}  />
+      <TopSellingList data={topSelling} header ={true} isGrid={true} setProductData={()=>""} navigation={props.navigation}  />
       
   
 

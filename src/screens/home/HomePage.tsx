@@ -5,205 +5,201 @@
 
 
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   StatusBar,
+  FlatList,
 } from 'react-native';
 import { Dimensions } from 'react-native';
-import { Images } from '../../common/Images';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { Colors } from '../../common/Colors';
 import PrakritiCard from '../../components/PrakritiCard';
 import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
-import CategoryList from '../../components/CategoryList';
 import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
 import TopSellingList from '../../components/TopSellingList';
-import { doctorsData, product, topSelling, topSelling1, topSelling2, topSelling3 } from '../../common/DataInterface';
+import { product, topSelling1, topSelling2, topSelling3 } from '../../common/DataInterface';
 import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useIsFocused } from '@react-navigation/native';
 import HomeCategory from './HomeCategory';
-import { ScreenWrapper } from '../../components/ScreenWrapper';
 import SuggestedCard from '../../components/SuggestedCard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHomeData } from '../../hooks/UseHomeData';
+import { HomeCategorySkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 
-
-
-type Prakriti = {
-  id: string;
-  customer: string;
-  vata_score: number;
-  pitta_score: number;
-  kapha_score: number;
-  dominant_dosha: string | null;
-  created_at: string;
-  updated_at: string;
-  answered_questions: number;
-  total_questions: number;
-  medical_history_progress: number;
-  prakriti_progress: number;
-};
 
 const { width } = Dimensions.get('window');
 
 const HomePage: React.FC = (props: any) => {
 
   const {
-    loading,
-    refreshing,
     categories,
     SuggestDoctor,
     productData,
+    customerData,
     setProductData,
-    onRefresh,
+
+
+    loadingCategories,
+    loadingDoctors,
+    loadingProducts,
+    loadingCustomer,
   } = useHomeData();
 
 
   console.log('productDataproductData', productData);
 
-  const isFocused = useIsFocused();
-  const [PakritiData, setPakritiData] = useState<Prakriti | null>(null);
-  const data = [
+
+  const data = useMemo(() => [
     {
       title: 'Prakriti',
-      status: PakritiData?.prakriti_progress === 100 ? 'Profile Complete' : 'Profile Pending',
-      screen: PakritiData?.prakriti_progress === 100 ? 'PatientFAQ' : 'PatientFAQ',
-      progress: PakritiData?.prakriti_progress ?? 0,
-      // 🔥 screen 1
+      status:
+        customerData?.prakriti_progress === 100
+          ? 'Profile Complete'
+          : 'Profile Pending',
+      screen: 'PatientFAQ',
+      progress: customerData?.prakriti_progress ?? 0,
     },
     {
-      title:
-        // PakritiData?.answered_percentage === 100
-        //   ? 'Your profile is ready'
-        //   :
-        'Medical History',
-      status: PakritiData?.medical_history_progress === 100 ? 'Profile Complete' : 'Profile Pending',
-      screen: PakritiData?.medical_history_progress === 100 ? 'MedicalHistory' : 'MedicalHistory', // 🔥 screen 2
-      progress: PakritiData?.medical_history_progress ?? 0,
-      // 🔥 screen 2
+      title: 'Medical History',
+      status:
+        customerData?.medical_history_progress === 100
+          ? 'Profile Complete'
+          : 'Profile Pending',
+      screen: 'MedicalHistory',
+      progress:
+        customerData?.medical_history_progress ?? 0,
     },
-  ];
-
-
-
-  useEffect(() => {
-    getUserDetails();
-  }, [isFocused]);
-
-
-  const getUserDetails = async () => {
-
-    try {
-
-      const result: any = await _PROFILE_SERVICES.user_profile();
-
-      console.log("ProfileuuuuData ===>", result)
-      if (result.status === 200) {
-        setPakritiData(result?.data);
-      }
-
-      else {
-        console.log("Error in fetching profile data", result);
-      }
-
-    } catch (error) {
-      console.log(error);
-    }
-  }
+  ], [customerData]);
 
 
   return (
-
-
     <SafeAreaView style={styles.container}>
-
-      <StatusBar backgroundColor={Colors.primaryColor} barStyle="dark-content" />
+      <StatusBar
+        backgroundColor={Colors.primaryColor}
+        barStyle="dark-content"
+      />
 
       <HomeHeader />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 70 }} style={{ backgroundColor: Colors.background }}>
+      <FlatList
+        data={[1]}
+        keyExtractor={() => 'home'}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <>
+            <SearchBar
+              placeholder="Search doctors, medicine and products..."
+              icon={require('../../assets/images/Search.png')}
+            />
+          </>
+        }
+        renderItem={() => (
+          <>
 
-        <SearchBar
-          placeholder="Search doctors, medicine and products..."
-          icon={require('../../assets/images/search.png')}
-        />
+            <View style={styles.containerprakriti}>
+              {data.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.cardWrapper}
+                  onPress={() => props.navigation.navigate(item.screen, {
+                    update: true
+                  }
+                  )}
+                >
+                  <PrakritiCard
+                    title={item.title}
+                    status={item.status}
+                    progress={Math.round(item.progress)}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
 
-        <View style={styles.containerprakriti}>
-          {data.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.cardWrapper}
-              onPress={() => props.navigation.navigate(item.screen, {
-                update: true
-              }
-              )}
-            >
-              <PrakritiCard
-                title={item.title}
-                status={item.status}
-                progress={Math.round(item.progress)}
-              />
-            </TouchableOpacity>
-          ))}
-        </View>
+            {loadingCategories ? (
+              <HomeCategorySkeleton />
+            ) : (
+              <HomeCategory data={categories} navigation={props.navigation} />
+            )}
 
-        {/* <CategoryList data={categories} navigation={props.navigation} /> */}
-        <HomeCategory data={categories} navigation={props.navigation} />
+            <SectionHeader title="Suggested Doctors" actionText="View all" onPress={() => props.navigation.navigate('AllDoctors', {
+              all: true
+            })} />
 
-        <SectionHeader title="Suggested Doctors" actionText="View all" onPress={() => props.navigation.navigate('AllDoctors', {
-          all: true
-        })} />
+            {loadingDoctors ? (
+              <TopDoctorsCardSkeleton />
+            ) : (
+              <>
 
-        <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
+                <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
 
+              </>
 
-        <Detailimages
-          images={product.images}
-          itemHeight={150}
-          itemWidth={width * 0.88}
-          DynamicResize="cover"
-        />
-
-        <SectionHeader title="Suggested Medicines" actionText="View all" />
-
-
-        <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData} />
-
-
-        <SectionHeader title="Suggested Products" actionText="View all" />
-
-
-        <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData} />
-
-
-        <SectionHeader title="Yoga’s" actionText="View all" />
+            )}
 
 
-        <SuggestedCard data={topSelling1} navigation={props.navigation} />
+
+            <Detailimages
+              images={product.images}
+              itemWidth={width - 80}
+              itemHeight={150}
+              DynamicResize='contain'
+
+            />
 
 
-        <SectionHeader title="Suggested Diet Plan" actionText="View all" />
+            <SectionHeader title="Suggested Medicines" actionText="View all" />
 
 
-        <SuggestedCard data={topSelling2} navigation={props.navigation} />
+            {loadingProducts ? (
+              <TopSellingListSkeleton />
+            ) : (
+              <>
 
-        <SectionHeader title="Panchakarma" actionText="View all" />
+                <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData} />
+              </>
 
-        <SuggestedCard data={topSelling3} navigation={props.navigation} price={true} />
+            )}
 
-      </ScrollView>
+            <SectionHeader title="Suggested Products" actionText="View all" />
 
+            {loadingProducts ? (
+              <TopSellingListSkeleton />
+            ) : (
+              <>
+
+                <TopSellingList data={productData} navigation={props.navigation} setProductData={setProductData} />
+              </>
+
+            )}
+
+
+
+            <SectionHeader title="Yoga’s" actionText="View all" />
+
+
+            <SuggestedCard data={topSelling1} navigation={props.navigation} />
+
+
+            <SectionHeader title="Suggested Diet Plan" actionText="View all" />
+
+
+            <SuggestedCard data={topSelling2} navigation={props.navigation} />
+
+            <SectionHeader title="Panchakarma" actionText="View all" />
+
+            <SuggestedCard data={topSelling3} navigation={props.navigation} price={true} />
+          </>
+        )}
+      />
     </SafeAreaView>
-    // </ScreenWrapper>
 
   );
 };

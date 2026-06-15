@@ -33,7 +33,7 @@ export const useHomeData = () => {
         useState<any[]>([]);
 
 
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         try {
             setloadingCategories(true);
 
@@ -46,9 +46,9 @@ export const useHomeData = () => {
         } finally {
             setloadingCategories(false);
         }
-    };
+    }, []);
 
-    const fetchDoctors = async () => {
+    const fetchDoctors = useCallback(async () => {
         try {
             setloadingDoctors(true);
 
@@ -63,9 +63,9 @@ export const useHomeData = () => {
         } finally {
             setloadingDoctors(false);
         }
-    };
+    }, []);
 
-    const fetchProducts = async () => {
+    const fetchProducts = useCallback(async () => {
         try {
             setloadingProducts(true);
 
@@ -80,11 +80,11 @@ export const useHomeData = () => {
         } finally {
             setloadingProducts(false);
         }
-    };
+    }, []);
 
 
 
-    const fetchCustomerData = async () => {
+    const fetchCustomerData = useCallback(async () => {
         try {
             setLoadingCustomer(true);
 
@@ -100,28 +100,18 @@ export const useHomeData = () => {
         } finally {
             setLoadingCustomer(false);
         }
-    };
-
-    useEffect(() => {
-        fetchCustomerData();
-        fetchCategories();
-        fetchDoctors();
-        fetchProducts();
     }, []);
 
-    // const onRefresh =
-    //     useCallback(() => {
+    useEffect(() => {
+        Promise.all([
+            fetchCustomerData(),
+            fetchCategories(),
+            fetchDoctors(),
+            fetchProducts(),
+        ]);
+    }, []);
 
-    //         setRefreshing(true);
 
-    //         fetchCategories();
-    //         fetchDoctors();
-    //         fetchProducts();
-
-    //     }, [fetchCategories(),
-    //     fetchDoctors(),
-    //     fetchCustomerData(),
-    //     fetchProducts()]);
 
     return {
 
@@ -135,6 +125,9 @@ export const useHomeData = () => {
         loadingCategories,
         loadingDoctors,
         loadingProducts,
+        setProductData,
+       fetchCustomerData, // 👈 add this
+
 
         loading,
         refreshing,

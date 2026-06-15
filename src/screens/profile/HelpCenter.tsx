@@ -115,7 +115,7 @@ const HelpCenterScreen = (props: any) => {
 
                     <SearchBar
                         placeholder="Search for reports, doctors..."
-                        icon={require('../../assets/images/search.png')} />
+                        icon={require('../../assets/images/Search.png')} />
 
 
 

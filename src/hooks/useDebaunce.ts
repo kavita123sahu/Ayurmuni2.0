@@ -1,19 +1,25 @@
 import { useEffect, useState } from "react";
 import NetInfo from '@react-native-community/netinfo';
 
-export const useDebouncedValue = (inputValue: string, delay: any) => {
-    const [debouncedValue, setDebouncedValue] = useState(inputValue);
+export const useDebounce = (
+    value: string,
+    delay = 500,
+) => {
+    const [debounced,
+        setDebounced] =
+        useState(value);
+
     useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedValue(inputValue);
-        }, delay);
+        const timer =
+            setTimeout(() => {
+                setDebounced(value);
+            }, delay);
 
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [inputValue, delay]);
+        return () =>
+            clearTimeout(timer);
+    }, [value, delay]);
 
-    return debouncedValue;
+    return debounced;
 };
 
 
@@ -32,5 +38,39 @@ export const useNetworkStatus = () => {
 };
 
 
+import dayjs from 'dayjs';
+
+export const getAvailabilityRange =
+(value:string)=>{
+
+   const today =
+   dayjs().startOf('day');
+
+   switch(value){
+
+      case 'today':
+         return {
+            from:today.format('YYYY-MM-DD'),
+            to:today.format('YYYY-MM-DD'),
+         };
+
+      case 'tomorrow':
+         return {
+            from:today
+            .add(1,'day')
+            .format('YYYY-MM-DD'),
+
+            to:today
+            .add(1,'day')
+            .format('YYYY-MM-DD'),
+         };
+
+      default:
+         return {
+            from:'',
+            to:'',
+         };
+   }
+};
 
 

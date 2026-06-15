@@ -117,7 +117,11 @@ const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
 /* -------------------------------------------------------------------------- */
 
 const DoctorProfile = ({ navigation, route }: any) => {
-    const doctorId = route?.params?.doctorId || null;
+    const {doctorId} = route?.params;
+
+    console.log("docororpf", doctorId);
+
+   
 
     // State
     const [doctorData, setDoctorData] = useState<DoctorData | null>(null);

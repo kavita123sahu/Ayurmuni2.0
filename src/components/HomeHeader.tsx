@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -9,24 +9,23 @@ import {
     FlatList,
 } from 'react-native';
 import { Feather } from '../common/Vector';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import * as ProfileServices from '../services/ProfileServices';
-import { ADDRESS_UPDATED, AddressEvents, Utils } from '../common/Utils';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Images } from '../common/Images';
 import *as _PROFILE_SERVICES from '../services/ProfileServices';
 import CustomBottomSheet from './CustomBottomSheet';
-import { showSuccessToast } from '../config/Key';
+import { useHomeData } from '../hooks/UseHomeData';
 
 interface Address {
+    id: string;
     city: string;
     address_line_1?: string;
     is_default: boolean;
     state: string;
     zipcode: string;
 }
-
 interface UserData {
     first_name: string;
     profile_picture?: string;
@@ -36,6 +35,8 @@ interface UserData {
 interface AddressItem {
     id: string;
     type?: string;
+    is_default: boolean;
+
     address_type: string;
     address_type_name: string;
     address_line_1?: string;
@@ -45,241 +46,232 @@ interface AddressItem {
 }
 
 
-
-
 const HomeHeader = () => {
     const navigation = useNavigation<any>();
+    const [localAddresses, setLocalAddresses] =
+        useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [user, setUser] = useState<UserData | null>(null);
-    const [savedAddresses, setSavedAddresses] = useState<AddressItem[]>([]);
-    const [address, setAddress] = useState<Address | null>(null);
+
+    const {
+        customerData,
+        fetchCustomerData
+    } = useHomeData();
 
 
+    const savedAddresses =
+        localAddresses || [];
+
+
+    const defaultAddress = useMemo(
+        () =>
+            savedAddresses.find(
+                item => item?.is_default,
+            ) || null,
+        [savedAddresses],
+    );
+
+    const shortAddress = useMemo(() => {
+        if (!defaultAddress?.address_line_1) {
+            return 'Select Location';
+        }
+
+        return `${defaultAddress.address_line_1.slice(
+            0,
+            22,
+        )}, ${defaultAddress.city}`;
+    }, [defaultAddress]);
 
 
     const profileImage =
-        user?.profile_picture || '';
+        customerData?.profile_picture || '';
 
-    const fetchUserData = useCallback(
-        async () => {
+    const firstLetter =
+        customerData?.first_name
+            ?.charAt(0)
+            ?.toUpperCase() || '';
 
-            try {
+    const addressCount =
+        customerData?.addresses?.length || 0;
 
-                const token =
-                    await Utils.getData(
-                        '_TOKEN',
-                    );
+    useFocusEffect(
+        useCallback(() => {
+            fetchCustomerData();
+        }, [fetchCustomerData]),
+    );
 
-                if (!token) {
+
+    useEffect(() => {
+        if (customerData?.addresses) {
+            setLocalAddresses(
+                customerData.addresses,
+            );
+        }
+    }, [customerData]);
+
+
+    const UpdateDefaultAddress =
+        useCallback(
+            async (item: AddressItem) => {
+
+                if (item?.is_default) {
                     return;
                 }
 
-                const res: any =
-                    await ProfileServices.user_profile();
+                const previousAddresses =
+                    [...localAddresses];
 
-                console.log("ressssssss", res);
+                console.log("localAddress", localAddresses);
 
-                setUser(res?.data || null);
-
-                const defaultAddress =
-                    res?.data?.addresses?.find(
-                        (item: any) =>
-                            item?.is_default,
-                    ) || null;
-
-                setSavedAddresses(
-                    res?.data?.addresses || [],
+                setLocalAddresses(prev =>
+                    prev.map(address => ({
+                        ...address,
+                        is_default:
+                            address.id === item.id,
+                    })),
                 );
+                try {
 
-                console.log('defaltaddresss',);
-                setAddress(
-                    defaultAddress,
+                    const payload = {
+                        is_default: true,
+                    };
+
+                    console.log(
+                        'DEFAULT_ADDRESS_PAYLOAD',
+                        payload,
+                    );
+
+                    const res: any =
+                        await _PROFILE_SERVICES.UpdateAddresses(
+                            item.id,
+                            payload,
+                        );
+
+                    console.log(
+                        'DEFAULT_ADDRESS_RESPONSE',
+                        res,
+                    );
+
+                    if (
+                        res?.success ||
+                        res?.status === 200
+                    ) {
+                        setShowSheet(false);
+
+                        await fetchCustomerData();
+
+                        AddressEvents.emit(
+                            ADDRESS_UPDATED,
+                            res,
+                        );
+                    }
+
+                } catch (error) {
+                    setLocalAddresses(
+                        previousAddresses,
+                    );
+                    console.log(
+                        'DEFAULT_ADDRESS_ERROR',
+                        error,
+                    );
+                }
+            }, [
+            fetchCustomerData]);
+
+
+
+    const renderSavedAddress =
+        useCallback(
+            ({ item }: {
+                item: AddressItem;
+            }) => {
+
+                const fullAddress =
+                    `${item?.address_line_1 || ''}, ${item?.city || ''}, ${item?.state || ''} ${item?.zipcode || ''}`;
+
+                const isSelected =
+                    item?.is_default;
+
+                return (
+
+                    <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() =>
+                            UpdateDefaultAddress(item)
+                        }
+                        style={[
+                            styles.savedCard,
+                            isSelected && styles.activeSavedCard,
+                        ]}
+                    >
+
+                        {/* LEFT ICON */}
+
+                        <View style={styles.homeBox}>
+
+                            {
+                                item?.address_type === 'home' ||
+                                    item?.address_type === 'other' ? (
+
+                                    <Feather
+                                        name="home"
+                                        size={20}
+                                        color={Colors.primaryColor}
+                                    />
+
+                                ) : (
+
+                                    <Feather
+                                        name="briefcase"
+                                        size={20}
+                                        color={Colors.primaryColor}
+                                    />
+
+                                )
+                            }
+
+
+                        </View>
+
+                        {/* CONTENT */}
+
+                        <View style={styles.savedContent}>
+
+                            <Text style={styles.homeTitle}>
+                                {item?.address_type_name ?? ''}
+                            </Text>
+
+                            <Text
+                                style={styles.savedAddress}
+                                numberOfLines={2}
+                            >
+                                {fullAddress}
+                            </Text>
+
+                        </View>
+
+                        {/* RIGHT */}
+
+                        <View
+                            style={[
+                                styles.radioOuter,
+                                isSelected && styles.radioOuterActive,
+                            ]}
+                        >
+                            {
+                                isSelected && (
+                                    <View style={styles.radioInner} />
+                                )
+                            }
+                        </View>
+
+                    </TouchableOpacity>
                 );
+            }, [UpdateDefaultAddress]);
 
-                setSelectedId(defaultAddress?.id || null);
-
-            } catch (error) {
-
-                console.log(
-                    'Profile Error:',
-                    error,
-                );
-            }
-        },
+    const keyExtractor = useCallback(
+        (item: AddressItem) => item.id,
         [],
     );
-
-    useEffect(() => {
-
-        fetchUserData();
-
-        const refreshAddress = () => {
-            fetchUserData();
-        };
-
-        AddressEvents.addListener(
-            ADDRESS_UPDATED,
-            refreshAddress,
-        );
-
-        return () => {
-
-            AddressEvents.emit(
-                ADDRESS_UPDATED,
-                refreshAddress,
-            );
-        };
-
-    }, []);
-
-
-
-
-    const firstLetter = user?.first_name?.charAt(0)?.toUpperCase() || '';
-    const addressCount =
-        user?.addresses?.length || 0;
-
-    const shortAddress = address?.address_line_1 ? address.address_line_1.slice(0, 22) + ", " + address?.city || 'Select City' : 'Select Location';
-
-
-    const UpdateDefaultAddress = async (item: AddressItem) => {
-
-        try {
-
-            // UI instant update
-            setSelectedId(item.id);
-
-            const payload = {
-                is_default: true,
-            };
-
-            console.log(
-                'DEFAULT_ADDRESS_PAYLOAD',
-                payload,
-            );
-
-            const res: any =
-                await _PROFILE_SERVICES.UpdateAddresses(
-                    item.id,
-                    payload,
-                );
-
-            console.log(
-                'DEFAULT_ADDRESS_RESPONSE',
-                res,
-            );
-
-            if (res?.success) {
-
-
-                AddressEvents.emit(
-                    ADDRESS_UPDATED,
-                    res,
-                );
-                // showSuccessToast(
-                //     'Default address updated',
-                //     'success',
-                // ); 
-                fetchUserData();
-            }
-
-        } catch (error) {
-
-            console.log(
-                'DEFAULT_ADDRESS_ERROR',
-                error,
-            );
-        }
-    };
-
-
-
-    const renderSavedAddress = ({ item }: { item: AddressItem }) => {
-
-        const fullAddress =
-            `${item?.address_line_1 || ''}, ${item?.city || ''}, ${item?.state || ''} ${item?.zipcode || ''}`;
-
-        const isSelected = selectedId === item?.id;
-
-        return (
-
-            <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() =>
-                    UpdateDefaultAddress(item)
-                }
-                style={[
-                    styles.savedCard,
-                    isSelected && styles.activeSavedCard,
-                ]}
-            >
-
-                {/* LEFT ICON */}
-
-                <View style={styles.homeBox}>
-
-                    {
-                        item?.address_type === 'home' ||
-                            item?.address_type === 'other' ? (
-
-                            <Feather
-                                name="home"
-                                size={20}
-                                color={Colors.primaryColor}
-                            />
-
-                        ) : (
-
-                            <Feather
-                                name="briefcase"
-                                size={20}
-                                color={Colors.primaryColor}
-                            />
-
-                        )
-                    }
-
-
-                </View>
-
-                {/* CONTENT */}
-
-                <View style={styles.savedContent}>
-
-                    <Text style={styles.homeTitle}>
-                        {item?.address_type_name ?? ''}
-                    </Text>
-
-                    <Text
-                        style={styles.savedAddress}
-                        numberOfLines={2}
-                    >
-                        {fullAddress}
-                    </Text>
-
-                </View>
-
-                {/* RIGHT */}
-
-                <View
-                    style={[
-                        styles.radioOuter,
-                        isSelected && styles.radioOuterActive,
-                    ]}
-                >
-                    {
-                        isSelected && (
-                            <View style={styles.radioInner} />
-                        )
-                    }
-                </View>
-
-            </TouchableOpacity>
-        );
-    };
-
-
     return (
         <View style={styles.container}>
             <View style={styles.topRow}>
@@ -314,11 +306,11 @@ const HomeHeader = () => {
 
                         <Text style={styles.locationLabel}>
                             {
-                                [address?.state, address?.zipcode]
+                                [defaultAddress?.state, defaultAddress?.zipcode]
                                     .filter(Boolean)
                                     .join(', ') || ''
                             }
-                            {/* {address?.state + ', ' + address?.zipcode || '.....'} */}
+
                         </Text>
 
                         <View style={styles.locationRow}>
@@ -328,7 +320,7 @@ const HomeHeader = () => {
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
                             >
-                                {shortAddress || 'Select Location'}
+                                {shortAddress}
                             </Text>
 
                             {/* ICON WRAPPER */}
@@ -372,26 +364,6 @@ const HomeHeader = () => {
                 visible={showSheet}
                 onClose={() => setShowSheet(false)}
             >
-
-                {/* SEARCH
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.searchContainer}
-                >
-
-                    <Feather
-                        name="search"
-                        size={22}
-                        color="#98A2B3"
-                    />
-
-                    <Text style={styles.searchText}>
-                        Search area, apartment...
-                    </Text>
-
-                </TouchableOpacity> */}
-
-                {/* CURRENT LOCATION CARD */}
 
                 <View style={styles.bigCard}>
 
@@ -446,7 +418,17 @@ const HomeHeader = () => {
 
                     <TouchableOpacity
                         activeOpacity={0.7}
-                        onPress={() => navigation.navigate('AddEditAddress', { type: 'ADD' })}
+                        onPress={() => {
+                            setShowSheet(false);
+
+                            setTimeout(() => {
+                                navigation.navigate(
+                                    'AddEditAddress',
+                                    { type: 'ADD' },
+                                );
+                            }, 300);
+                        }}
+                        // onPress={() => navigation.navigate('AddEditAddress', { type: 'ADD' })}
                         style={styles.rowCard}
                     >
 
@@ -508,18 +490,14 @@ const HomeHeader = () => {
 
                 <FlatList
                     data={savedAddresses}
-                    keyExtractor={(item, index) =>
-                        item?.id?.toString() || index.toString()
-                    }
                     renderItem={renderSavedAddress}
+                    keyExtractor={keyExtractor}
+                    removeClippedSubviews
+                    initialNumToRender={5}
+                    maxToRenderPerBatch={5}
+                    windowSize={5}
+                    updateCellsBatchingPeriod={50}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{
-                        paddingBottom: 100,
-                    }}
-                    ItemSeparatorComponent={() => (
-
-                        <View style={{ height: 10 }} />
-                    )}
                 />
 
             </CustomBottomSheet>

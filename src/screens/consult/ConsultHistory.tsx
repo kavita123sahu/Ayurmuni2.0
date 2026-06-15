@@ -337,7 +337,7 @@ const ConsultHistory = (
 
             <SearchBar
                 placeholder="Search doctors..."
-                icon={require('../../assets/images/search.png')}
+                icon={require('../../assets/images/Search.png')}
                 value={searchText}
                 onChangeText={setSearchText}
             />

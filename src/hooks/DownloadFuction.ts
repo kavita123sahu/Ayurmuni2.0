@@ -217,6 +217,7 @@ import Share, {
   Social,
 } from 'react-native-share';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { useEffect, useState } from 'react';
 
 export const handleShareAction = async ({
   type,
@@ -287,3 +288,4 @@ export const handleShareProduct = async (
     );
   }
 };
+

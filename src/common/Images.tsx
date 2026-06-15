@@ -17,7 +17,7 @@ export const Images = {
     wellness: require('../assets/images/wellnessIcon.png'),
     detailimage: require('../assets/images/Detailimage.png'),
     share: require('../assets/images/Share.png'),
-    searchIcon: require('../assets/images/search.png'),
+    searchIcon: require('../assets/images/Search.png'),
     micIcon: require('../assets/images/Mic.png'),
     linemark: require('../assets/images/Linemark.png'),
     takechnageIcons: require('../assets/images/TakechangeIcon.png'),

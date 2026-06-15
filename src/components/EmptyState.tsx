@@ -32,7 +32,7 @@ interface EmptyStateProps {
 const EmptyState = ({
     title = 'No Results Found',
     subtitle = 'Try searching with another keyword.',
-    image = require('../assets/images/search.png'),
+    image = require('../assets/images/Search.png'),
     style,
     imageSize = 20,
 }: EmptyStateProps) => {

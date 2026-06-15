@@ -1,5 +1,5 @@
 // DoctorCard.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -41,22 +41,32 @@ interface Props {
 
 const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
+    const [isWishlisted, setIsWishlisted] = useState(item?.is_favorite ?? false);
 
-    console.log("itemitem", item)
-    const isAvailable = item.has_availability === true
-
-    const [isWishlisted, setIsWishlisted] =
-        useState(false);
+    const isAvailable =
+        useMemo(
+            () => item?.has_availability === true,
+            [item?.has_availability],
+        );
 
     useEffect(() => {
         setIsWishlisted(
             item?.is_favorite ?? false,
         );
-    }, [item]);
-    const handleWishlist = async () => {
-        const prev = isWishlisted;
+    }, [item?.is_favorite]);
 
-        setIsWishlisted(!prev);
+    const doctorName =
+        item?.name || item?.full_name;
+
+    const specialityText =
+        Array.isArray(item?.specialized_therapies)
+            ? item.specialized_therapies.join(' • ')
+            : '';
+
+    const handleWishlist = useCallback(async () => {
+        const previous = isWishlisted;
+
+        setIsWishlisted(!previous);
 
         try {
             const response =
@@ -65,28 +75,17 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     'POST',
                 );
 
-            console.log(
-                'WISHLIST RESPONSE =>',
-                response,
-            );
-            // showSuccessToast(response?.message, 'success')
-
             if (!response?.success) {
-                setIsWishlisted(prev);
+                setIsWishlisted(previous);
             }
-
-        } catch (error) {
-            setIsWishlisted(prev);
-            showSuccessToast(error?.message, 'error')
-            console.log(
-                'WISHLIST ERROR =>',
-                error,
-            );
+        } catch {
+            setIsWishlisted(previous);
         }
-    };
+    }, [isWishlisted, item?.id]);
     return (
 
-        <Pressable style={[styles.card, isAvailable ? styles.activeCard : styles.disabledCard]} onPress={() => onPress?.(item)}>
+        // /isAvailable ? styles.activeCard : styles.disabledCard
+        <Pressable style={[styles.card,]} onPress={() => onPress?.(item)}>
 
             <View style={{ flexDirection: 'row', flex: 1 }}>
                 <View style={styles.imageWrapper}>
@@ -104,33 +103,22 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             styles.imageGrayscale,
                         ]}
                     />
-                    {/* Grayscale overlay for unavailable */}
-                    {!isAvailable && <View style={styles.grayscaleOverlay} />}
+
                 </View>
 
                 <View style={styles.right}>
 
                     {/* TOP ROW: Tag + Wishlist */}
                     <View style={styles.topRow}>
-                        <View style={[styles.tag, !isAvailable && styles.disabledTag]}>
-                            <Text style={[styles.tagText, !isAvailable && styles.disabledTagText]}>
-                                {/* {availabilityText} */}
-                                {isAvailable ? 'Available' : 'Unavailable'}
+                        <View style={[styles.tag,]}>
+
+                            <Text style={[styles.tagText,]}>
+                                {isAvailable ? '  Active' : 'Inactive'}
                             </Text>
+
                         </View>
 
-                        {/* <TouchableOpacity
-                            onPress={handleWishlist}>
-                            <Ionicons
-                                name={
-                                    isWishlisted
-                                        ? 'heart'
-                                        : 'heart-outline'
-                                }
-                                size={22}
-                                color={Colors.primaryColor}
-                            />
-                        </TouchableOpacity> */}
+
 
 
                         <FavouriteButton
@@ -142,7 +130,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     </View>
 
                     {/* NAME */}
-                    <Text style={[styles.name, !isAvailable && styles.disabledText]} numberOfLines={1}>
+                    <Text style={[styles.name]} numberOfLines={1}>
                         {item?.name || item?.full_name}
                     </Text>
 
@@ -150,8 +138,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     <Text
                         style={[
                             styles.speciality,
-                            !isAvailable &&
-                            styles.disabledSpeciality,
+
                         ]}
                     >
                         {
@@ -171,10 +158,10 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             <Ionicons
                                 name="time-outline"
                                 size={14}
-                                color={isAvailable ? '#64748B' : '#CBD5E1'}
+                                color={'#64748B'}
                             />
-                            <Text style={[styles.infoText, !isAvailable && styles.disabledinfoText]}>
-                                {' '}{item?.experience_years ?? '' + 'Yrs. Exp'}
+                            <Text style={[styles.infoText]}>
+                                {`${item?.experience_years || 0} Yrs Exp`}
                             </Text>
                         </View>
 
@@ -182,11 +169,13 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             <Ionicons
                                 name="star"
                                 size={12}
-                                color={isAvailable ? '#F59E0B' : '#A1A1AA'}
+                                color={'#F59E0B'}
                             />
-                            <Text style={[styles.infoText, !isAvailable && styles.disabledinfoText]}>
-                                {' '}{item.ranking_score}{' '}
-                                <Text style={styles.reviewCount}>({item?.total_reviews})</Text>
+                            <Text style={styles.infoText}>
+                                {item?.ranking_score || 0}
+                                <Text style={styles.reviewCount}>
+                                    {` (${item?.total_reviews || 0})`}
+                                </Text>
                             </Text>
                         </View>
                     </View>
@@ -202,7 +191,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
                 {/* Chat Button */}
                 <TouchableOpacity
-                    style={[styles.chatBtn, !isAvailable && styles.chatBtnDisabled]}
+                    style={[styles.chatBtn,]}
                     disabled={!isAvailable}
                     onPress={() => onChatPress?.(item)}
                 >
@@ -211,13 +200,13 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
                 {/* Consult Button */}
                 <TouchableOpacity
-                    style={[styles.consultBtn, !isAvailable && styles.consultBtnDisabled]}
+                    style={[styles.consultBtn,]}
                     // disabled={!isAvailable}
                     onPress={() => onPress?.(item)}
                     activeOpacity={0.8}
                 >
-                    <Image source={Images.consult} style={{ height: 24, width: 24, resizeMode: 'contain', tintColor: isAvailable ? Colors.white : '#64748B' }} />
-                    <Text style={[styles.consultText, !isAvailable && styles.consultTextDisabled]}>
+                    <Image source={Images.consult} style={{ height: 24, width: 24, resizeMode: 'contain', tintColor: Colors.white }} />
+                    <Text style={[styles.consultText,]}>
                         Consult Now
                     </Text>
                 </TouchableOpacity>
@@ -229,19 +218,136 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 };
 
 
-export default AllDoctorCard;
+export default React.memo(AllDoctorCard);
 
 
 const styles = StyleSheet.create({
 
-    // ── CARD ──────────────────────────────
     card: {
-        borderRadius: 24,
-        padding: 15,
-        borderColor: '#F1F5F9',
-        backgroundColor: Colors.white,
+        borderRadius: 18,
+        padding: 12,
         borderWidth: 1,
+        borderColor: '#EEF2F6',
+        backgroundColor: '#FFF',
     },
+
+    imageWrapper: {
+        width: 78,
+        height: 78,
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginRight: 10,
+        backgroundColor: Colors.bgborderColor,
+    },
+
+    image: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+
+    right: {
+        flex: 1,
+        justifyContent: 'flex-start',
+    },
+
+    topRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 26,
+    },
+
+    tag: {
+        backgroundColor: '#EAF8F4',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 5,
+    },
+
+    tagText: {
+        fontSize: 11,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    iconBtn: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    name: {
+        fontSize: 15,
+        lineHeight: 20,
+        color: '#1E293B',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginTop: 4,
+    },
+
+    speciality: {
+        fontSize: 12,
+        lineHeight: 17,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsMedium,
+        marginTop: 2,
+    },
+
+
+    consultBtn: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: Colors.primaryColor,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+    },
+
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 14,
+    },
+
+    infoText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+
+    bottomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+
+    chatBtn: {
+        width: 46,
+        height: 46,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F1F8F6',
+        marginRight: 8,
+    },
+
+
+    consultText: {
+        color: '#FFF',
+        fontSize: 13,
+        marginLeft: 8,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
 
     activeCard: {
         backgroundColor: '#FFFFFF',
@@ -258,22 +364,7 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',             // grey border when unavailable
     },
 
-    // ── IMAGE ─────────────────────────────
-    imageWrapper: {
-        position: 'relative',
-        marginRight: 20,
-        height: 86,
-        width: 86,
-        borderRadius: 16,
-        backgroundColor: Colors.bgborderColor,
-    },
 
-    image: {
-        width: 86,
-        height: 86,
-        borderRadius: 16,
-        resizeMode: 'cover',
-    },
 
     imageGrayscale: {
         // opacity: 0.4,   
@@ -286,65 +377,20 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(200,200,200,0.35)',
     },
 
-    // ── RIGHT SECTION ─────────────────────
-    right: {
-        flex: 1,
-    },
 
-    topRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
 
-    // ── AVAILABILITY TAG ──────────────────
-    tag: {
-        backgroundColor: '#E6F4F1',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-    },
+
 
     disabledTag: {
         backgroundColor: '#F1F5F9',
     },
 
-    tagText: {
-        fontSize: 12,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
 
     disabledTagText: {
         color: '#94A3B8',
     },
-    iconBtn: {
-        width: 26,
-        height: 26,
-        borderRadius: 12,
 
-        // elevation:1,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
 
-    // ── TEXT ──────────────────────────────
-    name: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#1E293B',
-        minHeight: 30,
-        flexShrink: 1,
-    },
-
-    speciality: {
-        fontSize: 12,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsMedium,
-        marginBottom: 4,
-    },
 
     disabledSpeciality: {
         color: '#A1A1AA',
@@ -359,23 +405,8 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
-    // ── INFO ROW ──────────────────────────
-    infoRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 8,
-    },
 
-    infoItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
 
-    infoText: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
 
     disabledinfoText: {
         fontSize: 12,
@@ -389,47 +420,19 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
     },
 
-    // ── BOTTOM ROW ────────────────────────
-    bottomRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 5,
-    },
 
-    chatBtn: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        backgroundColor: '#E6F4F1',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+
 
     chatBtnDisabled: {
         backgroundColor: '#F1F5F9',
     },
 
-    consultBtn: {
-        flex: 1,
-        height: 50,
-        borderRadius: 12,
-        gap: 10,
-        backgroundColor: Colors.primaryColor,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+
 
     consultBtnDisabled: {
         backgroundColor: '#E5E7EB',
     },
 
-    consultText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-    },
 
     consultTextDisabled: {
         color: '#64748B',

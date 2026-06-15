@@ -181,7 +181,7 @@ const MedicalRecords = (props: any) => {
 
             <SearchBar
                 placeholder="Search for help topics..."
-                icon={require('../../assets/images/search.png')}
+                icon={require('../../assets/images/Search.png')}
             />
 
             <TabButton />

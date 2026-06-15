@@ -189,7 +189,7 @@ const YogaScreen = (props: any) => {
 
             <SearchBar
                 placeholder="Search doctors, concerns..."
-                icon={require('../../assets/images/search.png')}
+                icon={require('../../assets/images/Search.png')}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>

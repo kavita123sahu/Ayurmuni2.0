@@ -95,7 +95,7 @@ export const getTopDoctor = async () => {
 }
 
 
-export const ToggleFavDoctor = async (doctorID: number, method: 'POST') => {
+export const ToggleFavDoctor = async (doctorID: string, method: 'POST') => {
     try {
         const response = await apiClient(`favorites/doctors/?doctor_id=${doctorID}`, {
             method: method

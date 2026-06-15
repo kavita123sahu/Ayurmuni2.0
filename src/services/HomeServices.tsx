@@ -16,7 +16,7 @@ export const getHomeCategory = async () => {
 
 export const getSuggestedDoctor = async () => {
     try {
-        const response = await apiClient(`customers/doctors/?suggested=${true}`, {
+        const response = await apiClient('customers/doctors/', {
             method: 'GET'
         });
         console.log("sugesstedresposneeee", response);

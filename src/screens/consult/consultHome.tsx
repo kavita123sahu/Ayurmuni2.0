@@ -180,7 +180,7 @@ const ConsultScreen = () => {
 
             <SearchBar
               placeholder="Search doctors, concerns..."
-              icon={require('../../assets/images/search.png')}
+              icon={require('../../assets/images/Search.png')}
             />
 
             <PromoCard title="Consult with Specialists" desc="Over 50+ Medical Experts" imageLeft={Images.PlusBag} image={require('../../assets/images/doctorbanner.png')} buttontext='Book an appointment online' approved={true} arrowIcon={require('../../assets/images/arrow.png')} onPress={() => { navigation.navigate('PatientVideoCallScreen') }} showButton={true} />

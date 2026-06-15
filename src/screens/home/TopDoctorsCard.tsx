@@ -17,14 +17,18 @@ import { Fonts } from '../../common/Fonts';
 const { width } = Dimensions.get('window');
 
 // 🔥 Dynamic card width
-const CARD_WIDTH = width * 0.50;
+const CARD_WIDTH = Math.min(
+  width * 0.60,
+  300,
+);
+// const CARD_WIDTH = width * 0.50;
 
 interface Doctor {
   id: string;
   full_name: string;
   specializations: [];
   experience: string;
-  name : string;
+  name: string;
   total_reviews: string;
   ranking_score: string;
   experience_years: string;
@@ -34,7 +38,11 @@ interface Doctor {
 
 const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
+  console.log("data--->", data);
+
+
   const renderItem = useCallback(({ item }: { item: Doctor }) => {
+    console.log('item?.specializations', item);
     const therapies = Array.isArray(
       item?.specializations
     )
@@ -51,24 +59,15 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
       }>
 
         {/* AVAILABLE TAG */}
-        {item.has_availability && (
+        {/* {item.has_availability && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}> {item?.has_availability ? ' Available Now' : ''} </Text>
           </View>
-        )}
+        )} */}
 
         {/* TOP SECTION */}
         <View style={styles.topRow}>
-
-          <View style={{
-            height: 55, width: 55,
-            borderRadius: 10,
-            justifyContent: 'center',   // vertical center
-            alignItems: 'center',
-            marginBottom: 10,
-            marginRight: 10, backgroundColor: Colors.bgcolor
-          }}>
-
+          <View style={styles.doctorImageWrapper}>
             <Image
               source={
                 item?.profile_image
@@ -77,27 +76,31 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
               }
               style={styles.avatar}
             />
-
-            {/* <Image source={item.image} style={styles.avatar} /> */}
-
           </View>
+
           <View style={styles.info}>
-            <Text style={styles.name}>{item?.full_name || item?.name}</Text>
-            <Text style={styles.specialization}>
+            <Text
+              numberOfLines={2}
+              style={styles.name}
+            >
+              {item?.full_name || item?.name}
+            </Text>
+
+            <Text
+              numberOfLines={2}
+              style={styles.specialization}
+            >
               {therapies.join(', ')}
             </Text>
-            {/* {
-              therapies.map(
-                (therapy: string, index: number) => (
-                  <Text key={index}>
-                    <Text>
-                      {therapies.join(', ')}
-                    </Text>
-                  </Text>
-                )
-              )
-            } */}
 
+            {item?.has_availability && (
+              <View style={styles.availableBadge}>
+                <View style={styles.dot} />
+                <Text style={styles.availableText}>
+                  Available Now
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -106,7 +109,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
           <Text style={styles.exp}>{item?.experience_years} Yrs. Exp</Text>
         </View>
 
-        {/* RATING + CALL */}
+
         <View style={styles.bottomRow}>
 
           <View style={styles.ratingRow}>
@@ -149,19 +152,18 @@ export default React.memo(TopDoctorsCard);
 
 const styles = StyleSheet.create({
   container: {
-    // paddingHorizontal:10,
+    paddingRight: 10,
     paddingBottom: 10,
   },
 
   card: {
     width: CARD_WIDTH,
-
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 15,
-    marginRight: 14,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 14,
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#EEF2F7',
   },
 
   badge: {
@@ -170,8 +172,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#E6F4EA',
     paddingHorizontal: 8,
-    paddingVertical: 5,
-    alignItems: 'center',
+    paddingVertical: 4,
     borderTopLeftRadius: 10,
     borderBottomLeftRadius: 10,
     zIndex: 10,
@@ -184,39 +185,82 @@ const styles = StyleSheet.create({
   },
 
   topRow: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
 
+  doctorImageWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: Colors.bgcolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
   avatar: {
     width: 55,
     height: 55,
     borderRadius: 10,
-    marginRight: 10,
-    resizeMode: 'contain'
   },
-
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   info: {
     flex: 1,
+    justifyContent: 'center',
   },
 
   name: {
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
+    lineHeight: 22,
+
   },
+
+
 
   specialization: {
-
+    marginTop: 2,
     fontSize: 12,
+    lineHeight: 18,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsRegular,
-
   },
+
+  availableBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: Colors.bgcolor,
+  },
+
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primaryColor,
+    marginRight: 6,
+  },
+
+  availableText: {
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+
   row: {
     flexDirection: 'row',
-    alignItems: 'center',   // 🔥 vertical center
-    marginTop: 10,
-    marginBottom: -15
+    alignItems: 'center',
+    marginTop: 12,
   },
 
   ratingRow: {
@@ -237,16 +281,14 @@ const styles = StyleSheet.create({
   },
 
   bottomRow: {
-
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    // marginTop: 14,
   },
-
   rating: {
     fontSize: 12,
     color: '#F59E0B',
-    marginTop: 4,
     fontFamily: Fonts.PoppinsMedium,
   },
   callBtn: {
@@ -259,11 +301,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   IconSize: {
-    marginBottom: 15,
-    borderRadius: 12,
+    // marginBottom: 15,
+    // borderRadius: 12,
     height: 42,
     width: 42,
-    justifyContent: 'center',
-    alignItems: 'center',
+    // justifyContent: 'center',
+    // alignItems: 'center',
   }
 });

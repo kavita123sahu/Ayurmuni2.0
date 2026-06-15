@@ -2,6 +2,7 @@ import {
     useEffect,
     useState,
     useCallback,
+    useRef,
 } from 'react';
 
 import * as _CONSULT_SERVICES
@@ -179,9 +180,6 @@ export const useDoctorSlots = (
 
 
 
-
-
-
 export const groupSlotsByTime = (
     slots: SlotItem[] = [],
 ) => {
@@ -251,9 +249,44 @@ export const groupSlotsByTime = (
     );
 };
 
+export const useAllDoctors = (selectedFilters: any) => {
+    const [loading, setLoading] = useState(false);
+    const [doctorData, setDoctorData] = useState<any[]>([]);
+
+    const getAllDoctors = useCallback(async () => {
+        try {
+            setLoading(true);
 
 
+            const payload = {
+                specialization: selectedFilters.speciality || '',
+                experience: selectedFilters.experience || '',
+                from_date: selectedFilters.availabilityFrom || '',
+                to_date: selectedFilters.availabilityTo || '',
+            };
+            console.log("payloaddd", payload);
 
+            const res = await _CONSULT_SERVICES.getFilterTopDoctor(payload);
+
+            setDoctorData(res?.data?.results || []);
+        } catch (e) {
+            console.log("ALL_DOCTOR_ERROR", e);
+        } finally {
+            setLoading(false);
+        }
+    }, [
+        selectedFilters?.speciality?.id,
+        selectedFilters?.availabilityFrom,
+        selectedFilters?.availabilityTo,
+        selectedFilters?.experience,
+    ]);
+
+    useEffect(() => {
+        getAllDoctors();
+    }, [getAllDoctors]);
+
+    return { loading, doctorData, refetch: getAllDoctors };
+};
 
 
 

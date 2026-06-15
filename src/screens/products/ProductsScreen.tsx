@@ -73,7 +73,7 @@ const ProductsScreen = () => {
 
         <SearchBar
           placeholder="Search seeds, oils..."
-          icon={require('../../assets/images/search.png')}
+          icon={require('../../assets/images/Search.png')}
         />
 
         <PromoCard

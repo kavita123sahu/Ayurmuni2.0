@@ -6,10 +6,11 @@ export const BaseUrl = {
     url: 'https://clikshop.co.in/api/v1/',
     urlV3: 'https://clikshop.co.in/api/v3/',
     base: 'https://clikshop.co.in/',
-    base_url: 'https://ayurmuni-backend.onrender.com/'
+    base_url: 'https://6057-203-110-81-106.ngrok-free.app/'
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/
     // 'https://ayurmuni.aimantra.info/',
+    //"https://ayurmuni-backend.onrender.com/"
 };
 
 

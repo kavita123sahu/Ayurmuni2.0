@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   View,
@@ -46,22 +46,12 @@ const DEFAULT_HEIGHT = 240;
 const itemWidth = width - 80;
 const itemHeight = 100;
 
-const finalWidth = itemWidth ?? DEFAULT_WIDTH;
-const finalHeight = itemHeight ?? DEFAULT_HEIGHT;
-
 
 const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isGrid = false, header = false, navigation }) => {
-  console.log("datadatadata---->>", data)
-
+ 
   const [addingItems, setAddingItems] =
     useState<string[]>([]);
 
-  // const [productData, setProductData] =
-  //   useState(data);
-
-  useEffect(() => {
-    setProductData(data);
-  }, [data]);
 
   const [showAll, setShowAll] = useState(false);
   const displayData = showAll ? data : data.slice(0, 6);
@@ -76,7 +66,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
     item: any,
 
   ) => {
-    console.log("itemm", item);
+  
     const variantId =
       item?.variant_id;
 
@@ -86,17 +76,6 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
     if (!variantId) {
       return;
     }
-
-
-
-    // already added hai
-    // if (
-    //   addingItems.includes(
-    //     variantId,
-    //   )
-    // ) {
-    //   return;
-    // }
 
     const currentProduct =
       data.find(
@@ -171,11 +150,14 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
     );
 
     try {
-      await TogglewishlistProduct(
+      const res = await TogglewishlistProduct(
         item.variant_id,
         'POST',
       );
-    } catch (error) {
+
+      console.log("wishlistresponse", res)
+    }
+    catch (error) {
       // Rollback
       setProductData(prev =>
         prev.map(product =>
@@ -192,6 +174,201 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
     }
   };
 
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      if (item.empty) {
+        return (
+          <View
+            style={[
+              styles.card,
+              styles.emptyCard,
+            ]}
+          />
+        );
+      }
+      const isAdding = addingItems.includes(
+        item?.variant_id,
+      );
+
+      return (
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate(
+              'ProductDetails',
+              {
+                varientID:
+                  item?.variant_id,
+              },
+            )
+          }
+          style={[
+            styles.card,
+            isGrid
+              ? styles.gridCard
+              : styles.horizontalCard,
+          ]}
+        >
+          {item?.mrp >
+            item?.selling_price && (
+              <View
+                style={styles.discountBadge}
+              >
+                <Text
+                  style={
+                    styles.discountText
+                  }
+                >
+                  {Math.round(
+                    ((item.mrp -
+                      item.selling_price) /
+                      item.mrp) *
+                    100,
+                  )}
+                  % OFF
+                </Text>
+              </View>
+            )}
+
+          <WishlistButton
+            isWishlisted={
+              item?.is_wishlist_item
+            }
+            onPress={() =>
+              handleWishlist(item)
+            }
+          />
+
+          <View
+            style={styles.imageContainer}
+          >
+            <Image
+              source={
+                item?.image_url
+                  ? {
+                    uri: item.image_url,
+                  }
+                  : Images.medicine
+              }
+              style={{
+                width: '100%',
+                height: '100%',
+              }}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={styles.contentContainer}
+          >
+            <Text
+              numberOfLines={2}
+              style={styles.title}
+            >
+              {item.product_name}
+            </Text>
+
+            <Text
+              numberOfLines={1}
+              style={styles.subtitle}
+            >
+              {item.brand_name}
+            </Text>
+
+            <View
+              style={{
+                flexDirection: 'row',
+              }}
+            >
+              <Text
+                style={styles.oldPrice}
+              >
+                ₹{item.mrp}
+              </Text>
+
+              <View
+                style={styles.ratingRow}
+              >
+                <Image
+                  source={Images.star}
+                  style={
+                    styles.starIcon
+                  }
+                />
+
+                <Text
+                  style={
+                    styles.ratingText
+                  }
+                >
+                  {item?.avg_rating ||
+                    '0'}
+                </Text>
+
+                <Text
+                  style={
+                    styles.reviewText
+                  }
+                >
+                  (
+                  {item?.total_reviews ||
+                    '0'}
+                  )
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={styles.bottomRow}
+            >
+              <Text
+                style={styles.price}
+              >
+                ₹
+                {item.selling_price}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  handleAddToCart(item)
+                }
+                style={
+                  styles.cartButton
+                }
+              >
+                {isAdding ? (
+                  <ActivityIndicator
+                    color="#fff"
+                    size="small"
+                  />
+                ) : (
+                  <Image
+                    source={
+                      Images.shopCart
+                    }
+                    style={{
+                      width: 18,
+                      height: 18,
+                      tintColor:
+                        '#fff',
+                    }}
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [
+      navigation,
+      isGrid,
+      addingItems,
+      handleWishlist,
+      handleAddToCart,
+    ],
+  );
+
+
   const ListHeaderComponent = () => (
     <>
       <PromoCard
@@ -204,6 +381,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
       <SectionHeader title="Top  Selling Products" actionText="View all" />
     </>
   );
+
 
   return (
     <FlatList key={isGrid ? 'grid' : 'list'}
@@ -226,135 +404,12 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
         justifyContent: 'space-between',
         marginBottom: 14, paddingHorizontal: SPACING,
       } : undefined}
-      renderItem={({ item }) => {
-        const isAdding =
-          addingItems.includes(item?.variant_id);
 
-        const isAdded =
-          addingItems.includes(
-            item?.variant_id,
-          );
-
-        if (item.empty) {
-          return <View style={[styles.card, styles.gridCard, styles.emptyCard]} />;
-        }
-
-        return (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('ProductDetails', { varientID: item?.variant_id })}
-            style={[
-              styles.card,
-              isGrid
-                ? styles.gridCard
-                : styles.horizontalCard,
-            ]}
-          >
-            {/* Discount */}
-            {item?.mrp > item?.selling_price && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>
-                  {Math.round(
-                    ((item.mrp - item.selling_price) /
-                      item.mrp) *
-                    100,
-                  )}
-                  % OFF
-                </Text>
-              </View>
-            )}
-
-            {/* Wishlist */}
-            <WishlistButton
-              isWishlisted={item?.is_wishlist_item}
-              onPress={() => handleWishlist(item)}
-            />
-
-            {/* Image */}
-            <View style={styles.imageContainer}>
-              <Image
-                source={
-                  item?.image_url
-                    ? { uri: item.image_url }
-                    : Images.medicine
-                }
-                style={{
-                  width: '100%',
-                  height: '100%',
-                }}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* Content */}
-            <View style={styles.contentContainer}>
-              <Text
-                numberOfLines={1}
-                style={styles.title}
-              >
-                {item.product_name}
-              </Text>
-
-              <Text
-                numberOfLines={1}
-                style={styles.subtitle}
-              >
-                {item.brand_name}
-              </Text>
-
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={styles.oldPrice}>
-                  ₹{item.mrp}
-                </Text>
-
-                <View style={styles.ratingRow}>
-                  <Image
-                    source={Images.star}
-                    style={styles.starIcon}
-                  />
-
-                  <Text style={styles.ratingText}>
-                    {item?.avg_rating || '0'}
-                  </Text>
-
-                  <Text style={styles.reviewText}>
-                    ({item?.total_reviews || '0'})
-                  </Text>
-                </View>
-
-              </View>
-
-              <View style={styles.bottomRow}>
-                <Text style={styles.price}>
-                  ₹{item.selling_price}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() =>
-                    handleAddToCart(item)
-                  }
-                  style={styles.cartButton}
-                >
-                  {isAdding ? (
-                    <ActivityIndicator
-                      color="#fff"
-                      size="small"
-                    />
-                  ) : (
-                    <Image
-                      source={Images.shopCart}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        tintColor: '#fff',
-                      }}
-                    />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }}
+      renderItem={renderItem}
+      removeClippedSubviews
+      initialNumToRender={6}
+      maxToRenderPerBatch={6}
+      windowSize={5}
 
       ListFooterComponent={
         isGrid && data.length > 6 ? (
@@ -418,19 +473,28 @@ const styles = StyleSheet.create({
     height: '95%',
   },
   contentContainer: {
+    // padding: 12,
     padding: 12,
+    minHeight: 120,
+    justifyContent: 'space-between',
   },
 
   title: {
-    fontSize: 15,
+    // fontSize: 15,
+    // color: '#1E293B',
+    // fontFamily: Fonts.PoppinsSemiBold,
+
+    fontSize: 14,
+    lineHeight: 20,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
+    // minHeight: 40,
   },
 
   subtitle: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
+    // marginTop: 2,
     fontFamily: Fonts.PoppinsRegular,
   },
 
@@ -445,7 +509,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    // marginTop: 6,
   },
 
   price: {

@@ -57,7 +57,7 @@ const ReviewPage = (props: any) => {
             total > 0
                 ? Number(
                     (
-                        reviews.reduce((sum, r) => sum + Number(r.rating), 0) / total
+                        reviews.reduce((sum : any, r :any) => sum + Number(r.rating), 0) / total
                     ).toFixed(1)
                 )
                 : 0;

@@ -156,7 +156,7 @@ const AllFavDoctors = (props: any) => {
                                         setSearch
                                     }
 
-                                    icon={require('../../assets/images/search.png')}
+                                    icon={require('../../assets/images/Search.png')}
                                 />
                             </>
                         }

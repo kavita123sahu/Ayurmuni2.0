@@ -34,8 +34,11 @@ import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
 import SearchBar from '../../components/SearchBar';
 import { generateDates, formatDate } from '../../common/DataInterface';
-import { useConsultData } from '../../hooks/useConsultData';
+import { useAllDoctors, useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
+import { useDebounce, } from '../../hooks/useDebaunce';
+import { DoctorCardSkeleton } from '../../simmerScreen/ShimmerHook';
+import FilterTabs from '../../components/FilterTab';
 
 const TABS = [
     {
@@ -107,8 +110,6 @@ const AVAILABILITY_OPTIONS = [
 
 
 
-
-
 const AllDoctors = (props: any) => {
     const all =
         props?.route?.params?.all ??
@@ -116,295 +117,122 @@ const AllDoctors = (props: any) => {
 
     console.log("allllllllllll", all);
 
-    const [loading, setLoading] =
-        useState(true);
-
-    const [filterLoading, setFilterLoading] =
-        useState(false);
-
-
-    const [doctorData, setDoctorData] =
-        useState<any[]>([]);
 
     const [search, setSearch] =
         useState('');
 
-    const [activeTab, setActiveTab] =
-        useState<string | null>(null);
+    // const debouncedFilters = useDebounce(selectedFilters, 500);
 
-    const [specialities, setSpecialities] =
-        useState<any[]>([]);
     const [showDatePicker, setShowDatePicker] =
         useState(false);
     const [showCustomDateOptions, setShowCustomDateOptions] =
         useState(false);
     const [datePickerTarget, setDatePickerTarget] =
         useState<'from' | 'to' | null>(null);
-
-    const [selectedDateLabel, setSelectedDateLabel] =
-        useState('');
+    const [activeTab, setActiveTab] = useState<string | null>(null);
 
     const [selectedFilters, setSelectedFilters] = useState({
-        speciality: null as any,
-        availabilityValue: '',
-        availabilityFrom: '',
-        availabilityTo: '',
+        specialization: null,
+        date_range: '',
+        from_date: '',
+        to_date: '',
         experience: '',
     });
 
 
-    const isFirstRender = useRef(true);
+    console.log("selectedFiltersselectedFilters", selectedFilters)
+    const [showCalendar, setShowCalendar] = useState(false);
+    const [tempFromDate, setTempFromDate] = useState<Date | null>(null);
+    const [tempToDate, setTempToDate] = useState<Date | null>(null);
+
+    const [calendarStep, setCalendarStep] = useState<'from' | 'to'>('from');
+
+    const [selectedDateLabel, setSelectedDateLabel] = useState('');
+
+
+
 
     const { categories } = useConsultData();
 
+    console.log("categories", categories)
 
-    useEffect(() => {
-        setSpecialities(categories || []);
-    }, [categories]);
+    const apiFilters = useMemo(() => ({
+        specialization: selectedFilters.specialization || '',
+        experience: selectedFilters.experience || '',
+        from_date: selectedFilters.from_date || '',
+        to_date: selectedFilters.to_date || '',
+    }), [selectedFilters]);
 
+    const debouncedSearch =
+        useDebounce(search);
 
-    const FILTER_OPTIONS =
-        useMemo(
-            () => ({
-                speciality:
-                    specialities,
+    const applyDate = () => {
+        if (!tempFromDate || !tempToDate) return;
 
-                availability:
-                    AVAILABILITY_OPTIONS,
+        const from = dayjs(tempFromDate).format('YYYY-MM-DD');
+        const to = dayjs(tempToDate).format('YYYY-MM-DD');
 
-                experience:
-                    EXPERIENCE_OPTIONS,
-            }),
-            [specialities],
+        setSelectedFilters(prev => ({
+            ...prev,
+            availabilityFrom: from,
+            availabilityTo: to,
+            availabilityValue: 'custom_date',
+        }));
+
+        setSelectedDateLabel(
+            `${dayjs(tempFromDate).format('DD MMM')} - ${dayjs(tempToDate).format('DD MMM')}`
         );
 
-    const dropdownOptions =
-        useMemo(() => {
-            if (!activeTab) {
-                return [];
-            }
-
-            if (
-                activeTab === 'availability' &&
-                showCustomDateOptions
-            ) {
-                return [];
-            }
-
-            const key = activeTab as keyof typeof FILTER_OPTIONS;
-            return FILTER_OPTIONS[key] || [];
-        }, [activeTab, showCustomDateOptions, FILTER_OPTIONS]);
-
-
-
-    const getAllDoctors =
-        useCallback(
-            async (
-                isFilter = false,
-            ) => {
-
-                try {
-
-                    /*
-                      🔥 ONLY FILTER LOADER
-                    */
-
-                    if (isFilter) {
-                        setFilterLoading(true);
-                    } else {
-                        setLoading(true);
-                    }
-
-                    const payload = {
-                        specialization:
-                            selectedFilters?.speciality?.id || '',
-
-                        from_date:
-                            selectedFilters?.availabilityFrom || '',
-                        to_date:
-                            selectedFilters?.availabilityTo || '',
-
-                        experience:
-                            selectedFilters?.experience || '',
-
-                        // search,
-                    };
-
-                    console.log("FILTER PAYLOAD ===>", payload);
-
-                    const response =
-                        await _CONSULT_SERVICES.getFilterTopDoctor(
-                            payload,
-                        );
-
-                    if (!response) {
-                        console.warn('No response from API');
-                        setDoctorData([]);
-                        return;
-                    }
-
-                    console.log(
-                        'FILTER DOCTOR RESPONSE ===>',
-                        response?.data,
-                    );
-
-                    const apiDoctors =
-                        response?.data?.results || [];
-
-                    setDoctorData(apiDoctors || []);
-
-                } catch (error) {
-
-                    console.log(
-                        'ALL DOCTOR ERROR ===>',
-                        error,
-                    );
-
-                } finally {
-
-                    setLoading(false);
-
-                    setFilterLoading(false);
-                }
-            },
-            [
-                selectedFilters,
-                // search,
-            ],
-        );
-    /*
-    ====================================
-    API RELOAD
-    ====================================
-    */
-
-    useEffect(() => {
-        if (isFirstRender.current) {
-            getAllDoctors();
-            isFirstRender.current = false;
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            getAllDoctors(true);
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [selectedFilters, getAllDoctors]);  //search, 
-
-    /*
-    ====================================
-    FILTER SELECT
-    ====================================
-    */
-
-    const getAvailabilityRange = (value: string) => {
-        const today = dayjs().startOf('day');
-
-        switch (value) {
-            case 'today':
-                return {
-                    from: today.format('YYYY-MM-DD'),
-                    to: today.format('YYYY-MM-DD'),
-                };
-            case 'tomorrow':
-                return {
-                    from: today.add(1, 'day').format('YYYY-MM-DD'),
-                    to: today.add(1, 'day').format('YYYY-MM-DD'),
-                };
-            case 'this_week': {
-                const endOfWeek = today.endOf('week');
-                return {
-                    from: today.format('YYYY-MM-DD'),
-                    to: endOfWeek.format('YYYY-MM-DD'),
-                };
-            }
-            case 'next_week': {
-                const startOfNextWeek = today.add(1, 'week').startOf('week');
-                const endOfNextWeek = startOfNextWeek.endOf('week');
-                return {
-                    from: startOfNextWeek.format('YYYY-MM-DD'),
-                    to: endOfNextWeek.format('YYYY-MM-DD'),
-                };
-            }
-            case 'this_month': {
-                const endOfMonth = today.endOf('month');
-                return {
-                    from: today.format('YYYY-MM-DD'),
-                    to: endOfMonth.format('YYYY-MM-DD'),
-                };
-            }
-            case 'next_month': {
-                const startOfNextMonth = today.add(1, 'month').startOf('month');
-                const endOfNextMonth = startOfNextMonth.endOf('month');
-                return {
-                    from: startOfNextMonth.format('YYYY-MM-DD'),
-                    to: endOfNextMonth.format('YYYY-MM-DD'),
-                };
-            }
-            default:
-                return {
-                    from: '',
-                    to: '',
-                };
-        }
+        setShowCalendar(false);
     };
 
-    const onSelectFilter = (
-        key: string,
-        item: any,
-    ) => {
-        if (
-            key === 'availability' &&
-            item?.value === 'custom_date'
-        ) {
-            setShowCustomDateOptions(true);
-            setShowDatePicker(false);
-            setActiveTab('availability');
-            return;
-        }
+    const {
+        loading,
+        doctorData,
+    } = useAllDoctors(
+        apiFilters
+        // selectedFilters,
 
-        if (key === 'speciality') {
-            setSelectedFilters(
-                prev => ({
-                    ...prev,
-                    speciality: item,
-                }),
-            );
-            setActiveTab(null);
-            return;
-        }
+        // search,
+        // debouncedSearch
+    );
 
-        if (key === 'availability') {
-            const range = getAvailabilityRange(item?.value);
-            setSelectedFilters(prev => ({
-                ...prev,
-                availabilityValue: item?.value || '',
-                availabilityFrom: range.from,
-                availabilityTo: range.to,
-            }));
-            setSelectedDateLabel(item?.label || 'Availability');
-            setShowCustomDateOptions(false);
-            setActiveTab(null);
-            return;
-        }
 
-        setSelectedFilters(
-            prev => ({
-                ...prev,
-                [key]:
-                    item?.value ||
-                    item,
-            }),
-        );
 
-        setActiveTab(null);
+    const FILTER_OPTIONS = useMemo(() => ({
+        speciality: categories.map((c: any) => ({
+            label: c.name,
+            value: c.id,
+        })),
+        availability: AVAILABILITY_OPTIONS,
+        experience: EXPERIENCE_OPTIONS,
+    }), [categories]);
+
+
+
+
+    const applyDateRange = (from: string, to: string) => {
+        setSelectedFilters(prev => ({
+            ...prev,
+            availabilityFrom: from,
+            availabilityTo: to,
+        }));
+
+        setSelectedDateLabel(`${from} - ${to}`);
     };
-    /*
-    ====================================
-    CLEAR FILTER
-    ====================================
-    */
+
+    const dropdownOptions = useMemo(() => {
+        if (!activeTab) return [];
+
+        const map: any = {
+            speciality: FILTER_OPTIONS.speciality,
+            experience: FILTER_OPTIONS.experience,
+            availability: FILTER_OPTIONS.availability,
+        };
+
+        return map[activeTab] || [];
+    }, [activeTab, FILTER_OPTIONS]);
+
 
     const clearFilter =
         useCallback(
@@ -452,7 +280,7 @@ const AllDoctors = (props: any) => {
             AVAILABILITY_OPTIONS.find(
                 item =>
                     item.value ===
-                    selectedFilters?.availabilityValue,
+                    selectedFilters?.date_range,
             );
 
         return (
@@ -461,154 +289,91 @@ const AllDoctors = (props: any) => {
         );
     };
 
-    const [customDateRange, setCustomDateRange] =
-        useState({
-            from: '',
-            to: '',
-        });
-
-    const onDateChange = (
-        event: any,
-        date?: Date,
-    ) => {
-        if (event.type === 'dismissed') {
-            setShowDatePicker(false);
-            setDatePickerTarget(null);
-            return;
+    const getTabLabel = (tab: any) => {
+        if (tab.key === 'speciality') {
+            const found = categories.find(c => c.id === selectedFilters.specialization);
+            return found?.name || 'Speciality';
         }
 
-        if (!date || !datePickerTarget) {
-            setShowDatePicker(false);
-            setDatePickerTarget(null);
-            return;
+        if (tab.key === 'experience') {
+            const found = EXPERIENCE_OPTIONS.find(i => i.value === selectedFilters.experience);
+            return found?.label || 'Experience';
         }
 
-        const formattedDate =
-            dayjs(date).format('YYYY-MM-DD');
+        if (tab.key === 'availability') {
+            if (selectedFilters.date_range === 'custom_date') {
+                return selectedDateLabel || 'Select Date';
+            }
 
-        setCustomDateRange(prev => ({
-            ...prev,
-            [datePickerTarget]: formattedDate,
-        }));
+            const selected = AVAILABILITY_OPTIONS.find(
+                i => i.value === selectedFilters.date_range
+            );
 
-        setShowDatePicker(false);
-        setDatePickerTarget(null);
+            return selected?.label || 'Availability';
+        }
+
+        return tab.label;
     };
 
-    const applyCustomDateRange = () => {
-        if (!customDateRange.from && !customDateRange.to) {
-            return;
+
+
+
+
+    const handleDoctorPress =
+        useCallback(
+            (doctorId: string) => {
+                props.navigation.navigate(
+                    'DoctorProfile',
+                    { doctorId }
+                );
+            },
+            [props.navigation],
+        );
+
+
+    const getPresetDates = (type: string) => {
+        const today = dayjs();
+
+        switch (type) {
+            case 'today':
+                return {
+                    from: today.format('YYYY-MM-DD'),
+                    to: today.format('YYYY-MM-DD'),
+                };
+
+            case 'tomorrow':
+                return {
+                    from: today.add(1, 'day').format('YYYY-MM-DD'),
+                    to: today.add(1, 'day').format('YYYY-MM-DD'),
+                };
+
+            case 'this_week':
+                return {
+                    from: today.startOf('week').format('YYYY-MM-DD'),
+                    to: today.endOf('week').format('YYYY-MM-DD'),
+                };
+
+            case 'next_week':
+                return {
+                    from: today.add(1, 'week').startOf('week').format('YYYY-MM-DD'),
+                    to: today.add(1, 'week').endOf('week').format('YYYY-MM-DD'),
+                };
+
+            case 'this_month':
+                return {
+                    from: today.startOf('month').format('YYYY-MM-DD'),
+                    to: today.endOf('month').format('YYYY-MM-DD'),
+                };
+
+            case 'next_month':
+                return {
+                    from: today.add(1, 'month').startOf('month').format('YYYY-MM-DD'),
+                    to: today.add(1, 'month').endOf('month').format('YYYY-MM-DD'),
+                };
+
+            default:
+                return { from: '', to: '' };
         }
-
-        const fromDate =
-            customDateRange.from ||
-            customDateRange.to;
-        const toDate =
-            customDateRange.to ||
-            customDateRange.from;
-
-        setSelectedFilters(prev => ({
-            ...prev,
-            availabilityValue: 'custom_date',
-            availabilityFrom: fromDate,
-            availabilityTo: toDate,
-        }));
-
-        setSelectedDateLabel(
-            fromDate === toDate
-                ? dayjs(fromDate).format('DD MMM YYYY')
-                : `${dayjs(fromDate).format('DD MMM YYYY')} - ${dayjs(toDate).format('DD MMM YYYY')}`,
-        );
-
-        setActiveTab(null);
-        setShowCustomDateOptions(false);
-    };
-
-    /*
-    ====================================
-    TAB BUTTON
-    ====================================
-    */
-
-    const TabButton = () => {
-        return (
-            <View style={styles.tabs}>
-                {TABS.map(tab => {
-                    const selectedValue =
-                        tab.key === 'availability'
-                            ? selectedFilters.availabilityValue
-                            : tab.key === 'speciality'
-                                ? selectedFilters.speciality
-                                : selectedFilters[tab.key as keyof typeof selectedFilters];
-
-                    return (
-                        <TouchableOpacity
-                            key={tab.key}
-                            activeOpacity={0.8}
-                            onPress={() =>
-                                setActiveTab(
-                                    activeTab === tab.key
-                                        ? null
-                                        : tab.key,
-                                )
-                            }
-                            style={[
-                                styles.tabBtn,
-                                selectedValue &&
-                                styles.activeTab,
-                            ]}
-                        >
-                            <Text
-                                style={[
-                                    styles.tabText,
-                                    selectedValue &&
-                                    styles.activeTabText,
-                                ]}
-                                numberOfLines={1}
-                            >
-                                {
-                                    tab.key === 'speciality'
-                                        ? selectedFilters?.speciality?.name ||
-                                        tab.label
-
-                                        : tab.key === 'availability'
-                                            ? getAvailabilityLabel()
-
-                                            : selectedValue ||
-                                            tab.label
-                                }
-                            </Text>
-
-                            {selectedValue ? (
-                                <TouchableOpacity
-                                    onPress={() =>
-                                        clearFilter(
-                                            tab.key,
-                                        )
-                                    }
-                                >
-                                    <Ionicons
-                                        name="close"
-                                        size={16}
-                                        color="#fff"
-                                    />
-                                </TouchableOpacity>
-                            ) : (
-                                <Ionicons
-                                    name={
-                                        activeTab === tab.key
-                                            ? 'chevron-up'
-                                            : 'chevron-down'
-                                    }
-                                    size={18}
-                                    color="#0F172A"
-                                />
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
-        );
     };
 
     const renderDoctorItem =
@@ -618,248 +383,183 @@ const AllDoctors = (props: any) => {
                 <AllDoctorCard
                     item={item}
                     onPress={() =>
-                        props.navigation.navigate(
-                            'DoctorProfile',
-                            { doctorId: item?.id },
-                        )
+                        handleDoctorPress(item.id)
                     }
                 />
+
             ),
-            [],
+            [handleDoctorPress],
         );
 
-    /*
-    ====================================
-    LOADER
-    ====================================
-    */
 
-    // if (loading) {
-
-    //     return (
-
-    //         <SafeAreaView
-    //             style={styles.loaderContainer}
-    //         >
-
-    //             <ActivityIndicator
-    //                 size="large"
-    //                 color={Colors.primaryColor}
-    //             />
-
-    //         </SafeAreaView>
-    //     );
-    // }
 
     return (
 
-        <SafeAreaView
-            style={styles.container}
-        >
+        <>
+            <SafeAreaView
+                style={styles.container}
+            >
 
-            <StatusBar
-                barStyle={'dark-content'}
-                backgroundColor={
-                    Colors.white
-                }
-            />
+                <StatusBar
+                    barStyle={'dark-content'}
+                    backgroundColor={
+                        Colors.white
+                    }
+                />
 
-            <AppHeader
-                title=""
-                leftIcon={Images.backIcon}
-                onLeftPress={() =>
-                    props.navigation.goBack()
-                }
-                rightIcon={Images.Bell}
-            />
+                <AppHeader
+                    title=""
+                    leftIcon={Images.backIcon}
+                    onLeftPress={() =>
+                        props.navigation.goBack()
+                    }
+                    rightIcon={Images.Bell}
+                />
 
-
-
-            {
-                loading ? (
-
-                    <View
-                        style={
-                            styles.loaderContainer
+                <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                    <SearchBar
+                        placeholder="Search doctors..."
+                        value={search}
+                        onChangeText={
+                            setSearch
                         }
-                    >
-                        <ActivityIndicator
-                            size="large"
-                            color={
-                                Colors.primaryColor
+
+                        icon={require('../../assets/images/Search.png')}
+                    />
+
+                    <FilterTabs
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        selectedFilters={selectedFilters}
+                        setSelectedFilters={setSelectedFilters}
+                        clearFilter={clearFilter}
+                        dropdownOptions={dropdownOptions}
+                        getTabLabel={getTabLabel}
+                        setTempFromDate={setTempFromDate}
+                        setTempToDate={setTempToDate}
+                        setCalendarStep={setCalendarStep}
+                        setShowCalendar={setShowCalendar}
+                        getPresetDates={getPresetDates}
+                    />
+
+                    {loading ?
+                        <DoctorCardSkeleton />
+
+                        : <FlatList
+                            data={doctorData}
+                            keyExtractor={(item) =>
+                                String(item?.id)
                             }
-                        />
-                    </View>
 
-                )
-                    : (<FlatList
-                        data={doctorData}
-                        keyExtractor={(item) =>
-                            String(item?.id)
-                        }
+                            showsVerticalScrollIndicator={
+                                false
+                            }
 
-                        showsVerticalScrollIndicator={
-                            false
-                        }
-
-                        contentContainerStyle={
-                            styles.listContent
-                        }
+                            contentContainerStyle={
+                                styles.listContent
+                            }
 
 
+                            renderItem={renderDoctorItem}
 
-                        ListHeaderComponent={
-                            <>
+                            ItemSeparatorComponent={() => (
+                                <View
+                                    style={{
+                                        height: 14,
+                                    }}
+                                />
+                            )}
+
+                            initialNumToRender={10}
+                            maxToRenderPerBatch={10}
+                            windowSize={5}
+                            removeClippedSubviews
+                            updateCellsBatchingPeriod={50}
+                            ListEmptyComponent={() => (
+
+                                <EmptyState image={Images.doctorImage} title='No doctor found' />
+                            )}
+                        />}
+                </View>
 
 
-                                {/* SEARCH */}
+            </SafeAreaView>
 
-                                <SearchBar
-                                    placeholder="Search doctors..."
-                                    value={search}
-                                    onChangeText={
-                                        setSearch
+            {showCalendar && (
+                <Modal transparent animationType="fade">
+                    <View style={styles.modalOverlay}>
+
+                        <View style={styles.modalBox}>
+
+                            <Text style={styles.modalTitle}>
+                                {calendarStep === 'from'
+                                    ? 'Select Start Date'
+                                    : 'Select End Date'}
+                            </Text>
+
+                            {/* DATE PICKER */}
+                            <DateTimePicker
+                                value={new Date()}
+                                mode="date"
+                                display="calendar"
+                                onChange={(event, date) => {
+                                    if (!date) return;
+
+                                    if (calendarStep === 'from') {
+                                        setTempFromDate(date);
+                                        setCalendarStep('to');
+                                    } else {
+                                        setTempToDate(date);
                                     }
-
-                                    icon={require('../../assets/images/search.png')}
-                                />
-
-                                {/* FILTER TAB */}
-
-                                <TabButton />
-
-                                {
-                                    activeTab && (
-
-                                        <View style={styles.dropdown}>
-
-                                            {
-                                                activeTab === 'availability' &&
-                                                    showCustomDateOptions ? (
-                                                    <>
-                                                        <View style={styles.customDatePanel}>
-                                                            <TouchableOpacity
-                                                                style={styles.dateButton}
-                                                                onPress={() => {
-                                                                    setDatePickerTarget('from');
-                                                                    setShowDatePicker(true);
-                                                                }}
-                                                            >
-                                                                <Text style={styles.dateButtonText}>
-                                                                    From: {customDateRange.from ? dayjs(customDateRange.from).format('DD MMM YYYY') : 'Select start date'}
-                                                                </Text>
-                                                            </TouchableOpacity>
-
-                                                            <TouchableOpacity
-                                                                style={styles.dateButton}
-                                                                onPress={() => {
-                                                                    setDatePickerTarget('to');
-                                                                    setShowDatePicker(true);
-                                                                }}
-                                                            >
-                                                                <Text style={styles.dateButtonText}>
-                                                                    To: {customDateRange.to ? dayjs(customDateRange.to).format('DD MMM YYYY') : 'Select end date'}
-                                                                </Text>
-                                                            </TouchableOpacity>
-
-                                                            <TouchableOpacity
-                                                                style={styles.applyButton}
-                                                                activeOpacity={0.8}
-                                                                onPress={applyCustomDateRange}
-                                                            >
-                                                                <Text style={styles.applyButtonText}>
-                                                                    Apply Date Range
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        </View>
-
-                                                        {showDatePicker && (
-                                                            <DateTimePicker
-                                                                value={
-                                                                    datePickerTarget && customDateRange[datePickerTarget]
-                                                                        ? new Date(customDateRange[datePickerTarget])
-                                                                        : new Date()
-                                                                }
-                                                                mode="date"
-                                                                display="calendar"
-                                                                minimumDate={new Date()}
-                                                                onChange={onDateChange}
-                                                            />
-                                                        )}
-                                                    </>
-                                                ) : (
-
-                                                    <ScrollView
-                                                        nestedScrollEnabled
-                                                        showsVerticalScrollIndicator
-                                                    >
-
-                                                        {
-                                                            dropdownOptions.map(
-                                                                (
-                                                                    item: any,
-                                                                    index,
-                                                                ) => (
-
-                                                                    <TouchableOpacity
-                                                                        key={index}
-                                                                        style={styles.option}
-                                                                        onPress={() =>
-                                                                            onSelectFilter(
-                                                                                activeTab,
-                                                                                item,
-                                                                            )
-                                                                        }
-                                                                    >
-
-                                                                        <Text
-                                                                            style={
-                                                                                styles.optionText
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                item?.name ||
-                                                                                item?.label
-                                                                            }
-                                                                        </Text>
-
-                                                                    </TouchableOpacity>
-                                                                ),
-                                                            )
-                                                        }
-
-                                                    </ScrollView>
-
-                                                )
-                                            }
-
-                                        </View>
-                                    )
-                                }
-
-                                <SectionHeader
-                                    title="All Doctors"
-                                />
-
-                            </>
-                        }
-
-                        renderItem={renderDoctorItem}
-
-                        ItemSeparatorComponent={() => (
-                            <View
-                                style={{
-                                    height: 14,
                                 }}
                             />
-                        )}
 
-                        ListEmptyComponent={() => (
+                            {/* ACTION BUTTONS */}
+                            <View style={styles.modalActions}>
 
-                            <EmptyState image={Images.doctorImage} title='No doctor found' />
-                        )}
-                    />)}
-        </SafeAreaView>
+                                <TouchableOpacity
+                                    style={styles.modalBtnCancel}
+                                    onPress={() => {
+                                        setShowCalendar(false);
+                                        setTempFromDate(null);
+                                        setTempToDate(null);
+                                    }}
+                                >
+                                    <Text style={{ color: 'red' }}>Cancel</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.modalBtnApply}
+                                    onPress={() => {
+                                        if (!tempFromDate || !tempToDate) return;
+
+                                        const from = dayjs(tempFromDate).format('YYYY-MM-DD');
+                                        const to = dayjs(tempToDate).format('YYYY-MM-DD');
+
+                                        setSelectedFilters(prev => ({
+                                            ...prev,
+                                            availabilityFrom: from,
+                                            availabilityTo: to,
+                                            availabilityValue: 'custom_date',
+                                        }));
+
+                                        setSelectedDateLabel(`${from} - ${to}`);
+                                        setShowCalendar(false);
+                                    }}
+                                >
+                                    <Text style={{ color: '#fff' }}>Apply</Text>
+                                </TouchableOpacity>
+
+                            </View>
+
+                        </View>
+                    </View>
+                </Modal>
+            )}
+
+        </>
+
+
     );
 };
 
@@ -873,7 +573,7 @@ const styles = StyleSheet.create({
     },
 
     listContent: {
-        paddingHorizontal: 20,
+        // paddingHorizontal: 20,
         paddingBottom: 120,
     },
 
@@ -884,6 +584,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
     },
 
+    tabsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 10,
+    },
+
+    tabWrapper: {
+        flex: 1,
+        position: 'relative', // 👈 IMPORTANT
+    },
+
     tabs: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -892,29 +603,32 @@ const styles = StyleSheet.create({
     },
 
     tabBtn: {
-        flex: 1,
-
-        marginHorizontal: 4,
-
+        width: '100%',   // 👈 force equal width inside wrapper
         flexDirection: 'row',
-
-        alignItems: 'center',
-
         justifyContent: 'space-between',
-
-        paddingHorizontal: 10,
-
-        paddingVertical: 12,
-
-        minHeight: 50,
-
-        borderRadius: 14,
-
+        padding: 12,
+        borderRadius: 12,
         borderWidth: 1,
-
         borderColor: '#E2E8F0',
+        backgroundColor: '#fff',
+    },
+    dropdownWrapper: {
+        position: 'absolute',
+        top: 60,
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        maxHeight: 200,
+        paddingHorizontal: 20,
+        // elevation: 8,
+        // zIndex: 999,
+    },
 
-        backgroundColor: '#FFF',
+    option: {
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
     },
 
     activeTab: {
@@ -923,6 +637,8 @@ const styles = StyleSheet.create({
 
         borderColor:
             Colors.primaryColor,
+
+
     },
 
     tabText: {
@@ -938,26 +654,25 @@ const styles = StyleSheet.create({
         marginRight: 6,
     },
 
+
+
     activeTabText: {
-        color: '#FFFFFF',
+        color: '#fff',
     },
 
+
     dropdown: {
-        marginTop: 8,
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-
-        maxHeight: 250,
-
+        position: 'absolute',
+        top: 50,
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        maxHeight: 180,
+        zIndex: 999,
         elevation: 5,
-
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
     },
 
     dropdownScroll: {
@@ -968,10 +683,6 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
     },
 
-    option: {
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-    },
 
     optionText: {
         fontSize: 14,
@@ -1001,6 +712,51 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: Fonts.PoppinsMedium,
         color: '#0F172A',
+    },
+
+    dropdownList: {
+        maxHeight: 220,
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    modalBox: {
+        width: '90%',
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        elevation: 10,
+    },
+
+    modalTitle: {
+        fontSize: 16,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#0F172A',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 16,
+    },
+
+    modalBtnCancel: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+    },
+
+    modalBtnApply: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        backgroundColor: Colors.primaryColor,
+        borderRadius: 10,
     },
 
     applyButton: {

@@ -73,7 +73,7 @@ const OrderHistory = (props: any) => {
 
             <SearchBar
                 placeholder="Search order id..."
-                icon={require('../../assets/images/search.png')}
+                icon={require('../../assets/images/Search.png')}
             />
 
 

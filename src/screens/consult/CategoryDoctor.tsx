@@ -119,7 +119,7 @@ const CategoryDoctor = (props: any) => {
                                 //     setSearch
                                 // }
                                 placeholder="Search doctor name or experience..."
-                                icon={require('../../assets/images/search.png')}
+                                icon={require('../../assets/images/Search.png')}
                             />
                             <PromoCard
                                 title="Consult with Specialists"
