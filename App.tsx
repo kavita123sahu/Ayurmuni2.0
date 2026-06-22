@@ -5,8 +5,13 @@ import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import { store } from './src/reduxfile/Store';
 import { Fonts } from './src/common/Fonts';
 
-const toastConfig = {
 
+// console.log = () => { };
+// console.warn = () => { };
+// console.error = () => { };
+
+
+const toastConfig = {
   success: (props: any) => (
 
     <BaseToast

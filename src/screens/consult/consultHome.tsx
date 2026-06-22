@@ -99,19 +99,19 @@ const ConsultScreen = () => {
     ====================================
   */
 
-  if (loading) {
+  // if (loading) {
 
-    return (
-      <SafeAreaView
-        style={styles.loaderContainer}
-      >
-        <ActivityIndicator
-          size="large"
-          color={Colors.primaryColor}
-        />
-      </SafeAreaView>
-    );
-  }
+  //   return (
+  //     <SafeAreaView
+  //       style={styles.loaderContainer}
+  //     >
+  //       <ActivityIndicator
+  //         size="large"
+  //         color={Colors.primaryColor}
+  //       />
+  //     </SafeAreaView>
+  //   );
+  // }
 
 
   /*

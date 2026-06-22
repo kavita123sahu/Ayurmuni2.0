@@ -95,6 +95,30 @@ export const getTopDoctor = async () => {
 }
 
 
+export const getDoctorSlip = async (DoctorID: string) => {
+    try {
+        const response = await apiClient(`customers/doctor-slip/?doctor_id=${DoctorID}`, {
+            method: 'GET'
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+export const fetchAgoraToken = async (consultationId: string) => {
+    try {
+        const response = await apiClient(`doctors/appointments/${consultationId}/call/token/`, {
+            method: 'POST'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
 export const ToggleFavDoctor = async (doctorID: string, method: 'POST') => {
     try {
         const response = await apiClient(`favorites/doctors/?doctor_id=${doctorID}`, {
@@ -147,12 +171,44 @@ export const getMedicalReceipt = async (appointmentId: string) => {
         const response = await apiClient(`customers/doctors/consultation-receipt/?consultation_id=${appointmentId}`, {
             method: 'GET'
         });
+        console.log("getPrescriptionAPIresponse", response)
 
         return response;
     } catch (error) {
         throw error;
     }
 }
+
+
+export const getAppointmentDetail = async (appointmentId: string) => {
+    try {
+        const response = await apiClient(`customers/patient/consultation/?appointment_id=${appointmentId}`, {
+            method: 'GET'
+        });
+        console.log("getAppointmentAPIresponse", response)
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+export const getPrescriptionDetail = async (doctor_id: string) => {
+    try {
+        const response = await apiClient(`customers/doctor-slip/?doctor_id=${doctor_id}`, {
+            method: 'GET'
+        });
+        console.log("getPrescriptionAPIresponse", response)
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+
 
 
 export const getConsultHistory = async (
@@ -235,10 +291,38 @@ export const getDoctorSlots = async (
                 },
             );
 
+        console.log("docotorResposne", response);
+
         return response;
 
     } catch (error) {
 
+        throw error;
+    }
+};
+export const appointmentActionAPI = async ({
+    appointmentId,
+    payload,
+}: {
+    appointmentId: string;
+    payload: {
+        action: "reschedule" | "cancel";
+        availability?: string;
+        reschedule_reason?: string;
+        cancellation_reason?: string;
+    };
+}) => {
+    try {
+        const response = await apiClient(
+            `customers/doctors/appointments/action/?id=${appointmentId}`,
+            {
+                method: "POST",
+                body: JSON.stringify(payload),
+            }
+        );
+
+        return response;
+    } catch (error) {
         throw error;
     }
 };

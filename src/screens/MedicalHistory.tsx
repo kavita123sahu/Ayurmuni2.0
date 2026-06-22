@@ -189,39 +189,75 @@ const MedicalHistory = ({ navigation }: any) => {
     };
 
     /* =========================================================
+      BASIC QUESTIONS
+   ========================================================= */
+
+    const ageQuestion = useMemo(
+        () =>
+            questions.find((item: any) =>
+                item?.question?.toLowerCase()?.includes('age'),
+            ),
+        [questions],
+    );
+
+    const genderQuestion = useMemo(
+        () =>
+            questions.find((item: any) =>
+                item?.question?.toLowerCase()?.includes('gender'),
+            ),
+        [questions],
+    );
+
+    const weightQuestion = questions.find(
+        (item: any) =>
+            item?.question?.toLowerCase()?.includes('weight'),
+    );
+    const heightQuestion = useMemo(
+        () =>
+            questions.find((item: any) =>
+                item?.question?.toLowerCase()?.includes('height'),
+            ),
+        [questions],
+    );
+
+    /* =========================================================
        FILTER BASIC INFO QUESTIONS
     ========================================================= */
 
     const filteredQuestions = useMemo(() => {
 
-        const used = new Set();
+        const basicInfoIds = [
+            ageQuestion?.id,
+            genderQuestion?.id,
+            heightQuestion?.id,
+            weightQuestion?.id,
+        ].filter(Boolean);
+
+        let basicInfoAdded = false;
 
         return questions.filter((item: any) => {
 
-            const question =
-                item?.question
-                    ?.toLowerCase()
-                    ?.trim();
+            if (basicInfoIds.includes(item?.id)) {
 
-            const isBasicInfo =
-                question?.includes('age') ||
-                question?.includes('gender') ||
-                question?.includes('height');
+                if (basicInfoAdded) {
+                    return false;
+                }
 
-            if (!isBasicInfo) {
+                basicInfoAdded = true;
+
                 return true;
             }
-
-            if (used.has('basic_info')) {
-                return false;
-            }
-
-            used.add('basic_info');
 
             return true;
         });
 
-    }, [questions]);
+    }, [
+        questions,
+        ageQuestion,
+        genderQuestion,
+        heightQuestion,
+        weightQuestion,
+    ]);
 
     /* =========================================================
        CURRENT QUESTION
@@ -236,43 +272,21 @@ const MedicalHistory = ({ navigation }: any) => {
 
     const isBasicInfoStep = useMemo(() => {
 
-        const question =
-            currentQuestion?.question
-                ?.toLowerCase()
-                ?.trim();
+        return [
+            ageQuestion?.id,
+            genderQuestion?.id,
+            heightQuestion?.id,
+            weightQuestion?.id,
+        ].includes(currentQuestion?.id);
 
-        return (
-            question?.includes('age') ||
-            question?.includes('gender') ||
-            question?.includes('height')
-        );
+    }, [
+        currentQuestion,
+        ageQuestion,
+        genderQuestion,
+        heightQuestion,
+        weightQuestion,
+    ]);
 
-    }, [currentQuestion]);
-
-    /* =========================================================
-       BASIC QUESTIONS
-    ========================================================= */
-
-    const ageQuestion = questions.find(
-        (item: any) =>
-            item?.question
-                ?.toLowerCase()
-                ?.includes('age'),
-    );
-
-    const genderQuestion = questions.find(
-        (item: any) =>
-            item?.question
-                ?.toLowerCase()
-                ?.includes('gender'),
-    );
-
-    const heightQuestion = questions.find(
-        (item: any) =>
-            item?.question
-                ?.toLowerCase()
-                ?.includes('height'),
-    );
 
     /* =========================================================
        PROGRESS
@@ -630,12 +644,15 @@ const MedicalHistory = ({ navigation }: any) => {
 
             if (isLast) {
 
-                navigation.replace(
-                    'AssessmentType',
-                    {
-                        form: 'medical',
-                    },
-                );
+                navigation.navigate('HomeStack', {
+                    screen: 'Home'
+                })
+                // navigation.replace(
+                //     'AssessmentType',
+                //     {
+                //         form: 'prakriti',
+                //     },
+                // );
 
                 return;
             }
@@ -662,6 +679,28 @@ const MedicalHistory = ({ navigation }: any) => {
     /* =========================================================
        BACK
     ========================================================= */
+    const handleSkip = () => {
+
+        // First question skip nahi hogi
+        if (step === 0) {
+            return;
+        }
+
+        // Last question skip nahi hogi
+        if (step >= filteredQuestions.length - 1) {
+            return;
+        }
+
+        // setAnswers((prev: any) => ({
+        //     ...prev,
+        //     [currentQuestion?.key]:
+        //         currentQuestion?.answer_type === 'multi_choice'
+        //             ? []
+        //             : null,
+        // }));
+
+        setStep(prev => prev + 1);
+    };
 
     const handleBack = () => {
 
@@ -719,6 +758,12 @@ const MedicalHistory = ({ navigation }: any) => {
                         filteredQuestions.length
                     }
                     onBack={handleBack}
+                    onSkip={handleSkip}
+                    showSkip={
+                        step > 0 &&
+                        step < filteredQuestions.length - 1 &&
+                        currentQuestion?.key !== 'prakritiType'
+                    }
                 />
 
                 {/* PROGRESS */}

@@ -10,14 +10,17 @@ import { Images } from '../common/Images';
 const MyProductCard = ({
     item,
     type,
-    isSelected,
+    isSelected, navigation,
     toggleItemSelection,
     updateQuantity,
     styles,
 }: any) => {
-    console.log('MyProductCard rendered', item);
+    console.log('MyProductCardrendered', updateQuantity);
     return (
-        <View style={styles.productCard}>
+        <TouchableOpacity style={styles.productCard} onPress={() => navigation.navigate('ProductDetails', {
+            varientID:
+                item?.variant_id,
+        },)}>
             <View style={styles.productTopRow}>
                 <View style={styles.leftWrapper}>
                     <TouchableOpacity
@@ -133,7 +136,7 @@ const MyProductCard = ({
                     </Text>
                 </View>
             )}
-        </View>
+        </TouchableOpacity>
     );
 };
 

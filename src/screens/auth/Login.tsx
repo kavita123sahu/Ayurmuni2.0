@@ -44,7 +44,7 @@ const Login: React.FC = (props: any) => {
 
       const response: any =
         await _AUTH_SERVICE.send_otp(send_data);
-        
+
       console.log('OTP Response:', response);
 
       const isCustomer =
@@ -85,25 +85,21 @@ const Login: React.FC = (props: any) => {
   const isValid = phoneNumber.length === 10;
 
   return (
-    // <SafeAreaView style={styles.safeArea}>
+
     <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={
-        Platform.OS === 'ios'
-          ? 'padding'
-          : undefined
-      }
-      keyboardVerticalOffset={20}
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <TouchableWithoutFeedback
         onPress={Keyboard.dismiss}
       >
         <ScrollView
-          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={
-            styles.scrollContainer
-          }
+          keyboardDismissMode="interactive"
+          contentContainerStyle={{
+            flexGrow: 1,
+            // paddingBottom: 100,
+          }}
         >
           {/* ===== TOP GREEN SECTION ===== */}
 
@@ -228,7 +224,7 @@ const Login: React.FC = (props: any) => {
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
-    // </SafeAreaView>
+
   );
 };
 

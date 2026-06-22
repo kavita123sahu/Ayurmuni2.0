@@ -89,6 +89,17 @@ export const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
+    skipBtn: {
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+},
+
+skipText: {
+  fontSize: scale(14),
+  color: COLORS.primary,
+  fontWeight: '600',
+},
+
     /* ================= PROGRESS ================= */
 
     progressWrapper: {
@@ -202,7 +213,7 @@ export const styles = StyleSheet.create({
     card: {
         width: '100%',
 
-        minHeight: scale(88),
+        minHeight: scale(80),
 
         borderRadius: scale(22),
 
@@ -212,11 +223,11 @@ export const styles = StyleSheet.create({
 
         borderColor: '#EEF0EA',
 
-        paddingHorizontal: scale(16),
+        paddingHorizontal: scale(10),
 
-        paddingVertical: scale(14),
+        paddingVertical: scale(10),
 
-        marginBottom: scale(16),
+        marginBottom: scale(10),
 
         flexDirection: 'row',
 

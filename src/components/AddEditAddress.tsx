@@ -265,9 +265,9 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
                     {/* LOCATION */}
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => 
+                        onPress={() =>
                             navigation.navigate('LocationPickerScreen')
                         }
                         style={styles.locationBadge}>
@@ -348,7 +348,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     {/* ADDRESS LINE 1 */}
 
                     <Text style={styles.label}>
-                        Address Line 1
+                        Address Line 1 *
                     </Text>
 
                     <TextInput
@@ -362,7 +362,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     {/* ADDRESS LINE 2 */}
 
                     <Text style={styles.label}>
-                        Address Line 2
+                        Address Line 2 *
                     </Text>
 
                     <TextInput
@@ -380,7 +380,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                         <View style={styles.flex}>
 
                             <Text style={styles.label}>
-                                City
+                                City *
                             </Text>
 
                             <TextInput
@@ -398,7 +398,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                         <View style={styles.flex}>
 
                             <Text style={styles.label}>
-                                Zip Code
+                                Zip Code *
                             </Text>
 
                             <TextInput
@@ -425,7 +425,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     {/* STATE */}
 
                     <Text style={styles.label}>
-                        State
+                        State *
                     </Text>
 
                     <TextInput

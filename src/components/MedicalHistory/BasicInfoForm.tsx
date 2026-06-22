@@ -184,7 +184,7 @@ const BasicInfoSection = ({
           </View>
 
           <Text style={styles.label}>
-            Gender
+            Gender *
           </Text>
         </View>
 
@@ -238,7 +238,7 @@ const BasicInfoSection = ({
       {/* ================= HEIGHT ================= */}
 
       <InputCard
-        label="Height"
+        label="Height *"
         placeholder="Enter height"
         value={
           selectedAnswers?.[
@@ -263,13 +263,13 @@ const BasicInfoSection = ({
       {/* ================= WEIGHT ================= */}
 
       <InputCard
-        label="Weight"
+        label="Weight *"
         placeholder="Enter weight"
         value={
           selectedAnswers?.[
           `${heightQuestion?.id}_weight`
           ] || ''
-        } 
+        }
         onChangeText={(text: string) => {
 
           onChange(

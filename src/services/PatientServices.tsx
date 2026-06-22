@@ -1,4 +1,4 @@
-import { apiClient} from "./APIconfig";
+import { apiClient } from "./APIconfig";
 
 export const getPatientList = async () => {
     try {
@@ -60,6 +60,30 @@ export const PatientSwitch = async (id: string) => {
             method: 'POST'
         });
 
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const getAllMedicalRecord = async () => {
+    try {
+        const response = await apiClient('customers/medical-records/', {
+            method: 'GET',
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const AddMedicalRecord = async (patientData: any) => {
+    try {
+        const response = await apiClient('customers/medical-records/', {
+            method: 'POST',
+            body: JSON.stringify(patientData)
+        });
+        console.log('add_patient_response', response);
         return response;
     } catch (error) {
         throw error;

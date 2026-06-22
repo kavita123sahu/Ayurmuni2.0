@@ -55,7 +55,7 @@ const AllFavDoctors = (props: any) => {
                     onPress={() =>
                         props.navigation.navigate(
                             'DoctorProfile',
-                            { doctorId: item?.id },
+                            { doctorData: item },
                         )
                     }
                 />
@@ -68,23 +68,6 @@ const AllFavDoctors = (props: any) => {
     LOADER
     ====================================
     */
-
-    if (loading) {
-
-        return (
-
-            <SafeAreaView
-                style={styles.loaderContainer}
-            >
-
-                <ActivityIndicator
-                    size="large"
-                    color={Colors.primaryColor}
-                />
-
-            </SafeAreaView>
-        );
-    }
 
     return (
 

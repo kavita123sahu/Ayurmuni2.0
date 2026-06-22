@@ -12,9 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
-import { PatientDetails } from './DoctorSlip';
 import { Colors } from '../../common/Colors';
 import SectionHeader from '../../components/SectionHeader';
+import { AppText, PatientDetails } from './DoctorSlip';
+import { Ionicons } from '../../common/Vector';
 
 const { width } = Dimensions.get('window');
 
@@ -68,22 +69,20 @@ const consultationData = [
     },
 ];
 
-const regimenData = [
-    {
-        id: '1',
-        name: 'Triphala Churna',
-        dose: '3x Daily',
-        desc: 'One 500mg therapeutic dose. Modulates cortisol response and improves overall restorative sleep quality.',
-    },
-    {
-        id: '2',
-        name: 'Ashwagandha Tablets',
-        dose: '1x Daily',
-        desc: 'One 500mg therapeutic dose. Modulates cortisol response and improves overall restorative sleep quality.',
-    },
-];
 
-const MultipleDoctorSlip = (props: any) => {
+
+const MultipleDoctorSlip = ({
+    consultation,
+    navigation,
+}: any) => {
+
+    const regimenData =
+        consultation?.consultations?.flatMap(
+            (item: any) =>
+                item?.prescription?.items || []
+        ) || [];
+    console.log("consultation----?", navigation, consultation);
+
     const renderConsultationCard = (item: any) => {
         const isGreen = item.type === 'green';
         const isBlue = item.type === 'blue';
@@ -151,32 +150,55 @@ const MultipleDoctorSlip = (props: any) => {
     };
 
     const renderRegimenCard = (item: any) => {
+        console.log("itemmmmmmmmmm", item);
         return (
-            <View style={styles.regimenCard}>
-                <View style={styles.regimenIcon}>
-                    <View style={styles.dot} />
-                </View>
+            <View style={styles.medicineCard}>
+                <View style={styles.medicineTopRow}>
+                    <View style={styles.medicineLeft}>
+                        <View style={styles.iconWrapper}>
+                            <Image source={{ uri: item?.medicine_image }} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
+                            <Ionicons
+                                name={Images.Medicines}
+                                size={18}
+                                color={Colors.primaryColor}
+                            />
+                        </View>
 
-                <View style={styles.regimenContent}>
-                    <View style={styles.regimenTop}>
-                        <Text style={styles.regimenName}>
-                            {item.name}
-                        </Text>
+                        <View style={styles.medicineInfo}>
+                            <AppText
+                                text={item?.medicine_name}
+                                style={styles.medicineName}
+                            />
 
-                        <View style={styles.doseBadge}>
-                            <Text style={styles.doseText}>
-                                {item.dose}
-                            </Text>
+                            <AppText
+                                text={item?.instruction}
+                                style={styles.medicineDesc}
+                            />
                         </View>
                     </View>
 
-                    <Text style={styles.regimenDesc}>
-                        {item.desc}
-                    </Text>
+                    <View style={styles.timeWrapper}>
+                        <AppText
+                            text={item?.frequency}
+                            style={styles.timeText}
+                        />
+                        <AppText
+                            text={item?.dosage}
+                            style={styles.timeText}
+                        />
+                    </View>
+                </View>
+
+                <View style={styles.bottomRow}>
+                    <AppText
+                        text={item?.duration}
+                        style={styles.daysText}
+                    />
                 </View>
             </View>
         );
     };
+
 
     return (
         <SafeAreaView style={styles.container}>
@@ -187,16 +209,15 @@ const MultipleDoctorSlip = (props: any) => {
                 title="Doctor Slip"
                 subtitle="Find best advice for your health"
                 backIcon={Images.backIcon}
-                onBack={() => props.navigation.goBack()}
+                onBack={() => navigation.goBack()}
             />
-
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
 
-                <PatientDetails />
+                <PatientDetails data={consultation?.consultations} doctor={consultation?.doctor} />
 
                 <View style={styles.successCard}>
                     <Text style={styles.successTitle}>
@@ -237,7 +258,7 @@ const MultipleDoctorSlip = (props: any) => {
                 {/* REGIMEN */}
                 <SectionHeader title='Current Stitched Regimen' />
 
-                {regimenData.map(item =>
+                {regimenData?.map((item: any) =>
                     renderRegimenCard(item),
                 )}
             </ScrollView>
@@ -411,6 +432,86 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primaryColor,   // tera green color
         borderColor: Colors.secondaryColor,
     },
+    //Medcine*/
+
+    listGap: {
+        paddingTop: 6,
+    },
+
+    medicineCard: {
+        marginTop: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#94A3B833',
+        padding: 15,
+    },
+
+    medicineTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+
+    medicineLeft: {
+        flex: 1,
+        flexDirection: 'row',
+        paddingRight: 10,
+    },
+
+    iconWrapper: {
+        width: 42,
+        height: 42,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0051470D',
+        marginRight: 12,
+    },
+
+    medicineInfo: {
+        flex: 1,
+    },
+
+    medicineName: {
+        fontSize: 15,
+        lineHeight: 24,
+        color: '#0F172A',
+        fontFamily: Fonts.semiBold,
+    },
+
+    medicineDesc: {
+        marginTop: 2,
+        fontSize: 13,
+        lineHeight: 22,
+        color: '#64748B',
+        fontFamily: Fonts.medium,
+    },
+
+    timeWrapper: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#FFBA2033',
+        borderRadius: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+
+    timeText: {
+        fontSize: 10,
+        color: '#5E4200',
+        fontFamily: Fonts.semiBold,
+    },
+
+    bottomRow: {
+        alignItems: 'flex-end',
+        marginTop: 12,
+    },
+
+    daysText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.medium,
+    },
+
 
     /* SECTION */
 

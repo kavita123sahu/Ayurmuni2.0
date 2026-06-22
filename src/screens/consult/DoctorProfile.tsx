@@ -21,6 +21,7 @@ import { getDoctorSlots } from '../../services/ConsultServce';
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { showSuccessToast } from '../../config/Key';
 import FavouriteButton from '../../components/FavouriteButton';
+import ReviewSection from '../../components/ReviewSecton';
 
 const { width } = Dimensions.get('window');
 
@@ -117,36 +118,77 @@ const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
 /* -------------------------------------------------------------------------- */
 
 const DoctorProfile = ({ navigation, route }: any) => {
-    const {doctorId} = route?.params;
+    const { doctorData } = route?.params;
 
-    console.log("docororpf", doctorId);
+    console.log("docororpf", doctorData);
 
-   
-
-    // State
-    const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [showFullAbout, setShowFullAbout] = useState(false);
     const [isFavourite, setIsFavourite] = useState(false);
 
-    // Memoized Values
-    const stats = useMemo<StatItem[]>(() => {
-        if (!doctorData) return [];
-        return [
-            { id: '1', value: doctorData?.total_patients || 0, label: 'PATIENTS' },
-            { id: '2', value: doctorData?.total_reviews || 0, label: 'REVIEWS' },
-            { id: '3', value: doctorData?.experience_display || 0, label: 'EXPERIENCE' },
-        ];
-    }, [doctorData]);
+    const [doctorDetails, setDoctorDetails] = useState<any>(null);
 
-    const specializations = useMemo(
-        () => doctorData?.specialized_therapies || [],
-        [doctorData]
+    const doctor = useMemo(
+        () => ({
+            ...doctorData,
+            ...doctorDetails,
+        }),
+        [doctorData, doctorDetails]
     );
 
-    const aboutText = useMemo(() => doctorData?.about || '', [doctorData]);
+
+    // Memoized Values
+    const stats = useMemo(() => [
+        {
+            id: "1",
+            value: doctor?.patients_display || doctor?.total_patients || 0,
+            label: "PATIENTS",
+        },
+        {
+            id: "2",
+            value: doctor?.total_reviews || 0,
+            label: "REVIEWS",
+        },
+        {
+            id: "3",
+            value: doctor?.experience_display || `${doctor?.experience_years || 0}+`,
+            label: "EXPERIENCE",
+        },
+    ], [doctor]);
+
+    const specializations = useMemo(
+        () =>
+            doctor?.specialized_therapies ||
+            doctor?.specializations ||
+            [],
+        [
+            doctor?.specialized_therapies,
+            doctor?.specializations,
+        ]
+    );
+
+    const reviews = useMemo(
+        () => doctor?.reviews || [],
+        [doctor?.reviews]
+    );
+    const formattedReviews = useMemo(
+        () =>
+            reviews?.map((review: any) => ({
+                id: review.id,
+                name: review.reviewer_name,
+                review: review.review,
+                time: review.time_ago,
+                image: review.reviewer_profile_image
+                    ? { uri: review.reviewer_profile_image }
+                    : Images.doctorImage,
+            })),
+        [reviews]
+    );
+
+    const aboutText = useMemo(
+        () => doctor?.bio || '',
+        [doctor?.bio]
+    );
     const shouldTruncate = aboutText.length > 150;
 
     const truncatedAbout = useMemo(() => {
@@ -154,34 +196,31 @@ const DoctorProfile = ({ navigation, route }: any) => {
         return `${aboutText.substring(0, 150)}`;
     }, [aboutText, shouldTruncate, showFullAbout]);
 
-    // Data Fetching
-    const fetchDoctorData = useCallback(async (id: string, isRefresh = false) => {
-        if (!id) {
-            setError('Doctor ID not found');
-            setLoading(false);
-            return;
-        }
 
+    const getDoctorDetails = useCallback(async () => {
         try {
-            if (!isRefresh) setLoading(true);
-            setError(null);
-
-            const response = await getDoctorSlots({ id });
-
-            if (response?.data) {
-
-                setDoctorData(response.data);
-            } else {
-                setError('Failed to load doctor data');
+            const res = await getDoctorSlots({
+                id: doctorData?.id
             }
-        } catch (err) {
-            console.error('Fetch Doctor Error:', err);
-            setError('Unable to load doctor profile. Please try again.');
-        } finally {
-            setLoading(false);
-            if (isRefresh) setRefreshing(false);
+            );
+            console.log("dattaaa", res?.data);
+            if (res?.data) {
+                setDoctorDetails(res?.data
+                );
+            }
+        } catch (error) {
+            console.log(
+                'DOCTOR DETAILS ERROR =>',
+                error
+            );
         }
-    }, []);
+    }, [doctorData?.id]);
+
+    useEffect(() => {
+        if (doctorData?.id) {
+            getDoctorDetails();
+        }
+    }, [doctorData?.id]);
 
 
     const handleFavourite = async () => {
@@ -208,7 +247,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
         } catch (error) {
             setIsFavourite(prev);
-            showSuccessToast(error?.message || 'Failed to update favourite status', 'error')
+            showSuccessToast('Failed to update favourite status', 'error')
 
             console.log(
                 'FAVOURITE ERROR =>',
@@ -217,90 +256,36 @@ const DoctorProfile = ({ navigation, route }: any) => {
         }
     };
 
-    const handleRefresh = useCallback(() => {
-        if (!doctorId) return;
-        setRefreshing(true);
-        fetchDoctorData(doctorId, true);
-    }, [doctorId, fetchDoctorData]);
-
+    const handleRefresh = useCallback(async () => {
+        try {
+            setRefreshing(true);
+            await getDoctorDetails();
+        } finally {
+            setRefreshing(false);
+        }
+    }, [getDoctorDetails]);
 
     useEffect(() => {
-        if (doctorData) {
-            setIsFavourite(
-                doctorData.is_favorite,
-            );
-        }
-    }, [doctorData]);
-    // Effects
-    useEffect(() => {
-        if (doctorId) {
-            fetchDoctorData(doctorId);
-        } else {
-            setLoading(false);
-            setError('No doctor selected');
-        }
-    }, [doctorId, fetchDoctorData]);
+        setIsFavourite(
+            doctor?.is_favorite ?? false
+        );
+    }, [doctor?.is_favorite]);
+
 
     // Handlers
     const handleBookAppointment = useCallback(() => {
-        if (doctorData) {
-            navigation.navigate('DoctorSlot', { doctorData });
+        if (doctorDetails) {
+            navigation.navigate('DoctorSlot', { doctorDetails });
         }
-    }, [navigation, doctorData]);
+    }, [navigation, doctorDetails]);
+    
 
     const handleToggleAbout = useCallback(() => {
         setShowFullAbout(prev => !prev);
     }, []);
 
-    const scaleAnim = useRef(
-        new Animated.Value(1),
-    ).current;
 
-    const animateHeart = () => {
-        Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 1.3,
-                duration: 120,
-                useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 120,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    };
 
-    const onFavouritePress = () => {
-        animateHeart();
-        handleFavourite();
-    };
-
-    // Loading State
-    // if (loading) {
-    //     return (
-    //         <SafeAreaView style={styles.container}>
-    //             <StatusBar backgroundColor="#F3FAF7" barStyle="dark-content" />
-    //             <LoadingSpinner message="Loading doctor profile..." />
-    //         </SafeAreaView>
-    //     );
-    // }
-
-    // Error State
-    // if (error || !doctorData) {
-    //     return (
-    //         <SafeAreaView style={styles.container}>
-    //             <StatusBar backgroundColor="#F3FAF7" barStyle="dark-content" />
-    //             <View style={styles.errorContainer}>
-    //                 <Ionicons name="alert-circle-outline" size={64} color={Colors.primaryColor} />
-    //                 <Text style={styles.errorText}>{error || 'Doctor not found'}</Text>
-    //                 <TouchableOpacity style={styles.retryBtn} onPress={handleRefresh}>
-    //                     <Text style={styles.retryText}>Retry</Text>
-    //                 </TouchableOpacity>
-    //             </View>
-    //         </SafeAreaView>
-    //     );
-    // }
 
     // Main Render
     return (
@@ -343,26 +328,26 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 {/* Profile Section */}
                 <View style={styles.profileContainer}>
                     <View style={styles.avatarWrapper}>
-                        {doctorData?.profile_image?.url ? (
+                        {doctor?.profile_image?.url ? (
                             <Image
-                                source={{ uri: doctorData?.profile_image.url }}
+                                source={{ uri: doctor?.profile_image.url }}
                                 style={styles.avatar}
                             />
                         ) : (
                             <View style={styles.avatarFallback}>
                                 <Text style={styles.avatarLetter}>
-                                    {doctorData?.full_name?.charAt(0)?.toUpperCase() || ''}
+                                    {doctor?.full_name?.charAt(0)?.toUpperCase() || ''}
                                 </Text>
                             </View>
                         )}
                     </View>
 
                     <Text numberOfLines={1} style={styles.doctorName}>
-                        {doctorData?.full_name || 'Doctor'}
+                        {doctor?.full_name || 'Doctor'}
                     </Text>
 
                     <Text numberOfLines={1} style={styles.speciality}>
-                        {doctorData?.designation || 'Medical Specialist'}
+                        {doctor?.designation || 'Medical Specialist'}
                     </Text>
                 </View>
 
@@ -390,16 +375,31 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
                 {/* Reviews Section */}
                 <View style={styles.section}>
-                    <View style={styles.reviewHeader}>
+                    <TouchableOpacity style={styles.reviewHeader} >
                         <Text style={styles.sectionTitle}>Patient Reviews</Text>
-                        <TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => navigation.navigate("ReviewPage", {
+                            reviews: reviews,
+                        })}>
                             <Text style={styles.viewAll}>View All</Text>
                         </TouchableOpacity>
-                    </View>
 
-                    {REVIEWS.map(review => (
-                        <ReviewCard key={review.id} review={review} />
-                    ))}
+                    </TouchableOpacity>
+
+                    {reviews?.length > 0 ? (
+                        formattedReviews.map((review: any) => (
+                            <ReviewCard
+                                key={review.id}
+                                review={review}
+                            />
+
+                            // <ReviewSection key={review.id} navigation={navigation} reviews={review} />
+                        ))
+                    ) : (
+                        <Text style={styles.emptyText}>
+                            No Reviews Found
+                        </Text>
+                    )}
                 </View>
             </ScrollView>
 
@@ -407,8 +407,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
             <View style={styles.footer}>
                 <View style={styles.priceContainer}>
                     <Text style={styles.feeText}>Consult Fee</Text>
-                    <Text numberOfLines={1} adjustsFontSizeToFit style={styles.price}>
-                        Rs. {doctorData?.consultation_fee || 0}
+                    <Text style={styles.price}>
+                        {doctor?.consult_fee?.formatted ||
+                            `Rs. ${doctor?.consultation_fee || 0}`}
                     </Text>
                 </View>
 
@@ -428,21 +429,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
 };
 
 export default DoctorProfile;
-
-// Sample reviews data (move to separate file in production)
-const REVIEWS = [
-    {
-        id: '1',
-        name: 'Rohan Mishra',
-        image: Images.doctorImage,
-        review: 'Dr. Arjun was incredibly thorough and took the time to explain everything clearly. Highly recommended!',
-        time: '2 days ago',
-    },
-];
-
-/* -------------------------------------------------------------------------- */
-/*                                   STYLES                                   */
-/* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
     container: {

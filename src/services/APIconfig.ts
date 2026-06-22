@@ -3,141 +3,6 @@ import { BaseUrl } from "../config/Key";
 import * as _AUTH_SERVICES from "./AuthService";
 
 
-// export const apiClient = async (
-//     endpoint: string,
-//     options: RequestInit = {}
-// ) => {
-//     try {
-//         const token = await Utils.getData('_TOKEN');
-
-//         console.log('API CALL ===>', token, endpoint, options);
-
-//         const headers = {
-//             Accept: 'application/json',
-//             'Content-Type': 'application/json',
-//             'ngrok-skip-browser-warning': 'true',
-//             ...(token ? { Authorization: `Bearer ${token}` } : {}),
-//             ...(options.headers || {}),
-//         };
-
-//         const response = await fetch(BaseUrl.base_url + endpoint, {
-//             ...options,
-//             headers,
-//         });
-
-//         return response;
-//     } catch (error) {
-//         throw error;
-//     }
-// };
-
-
-
-// export const apiClient1 = async (
-//     endpoint: string,
-//     options: RequestInit = {},
-// ) => {
-
-//     try {
-
-//         const token = await Utils.getData('_TOKEN');
-
-//         /*
-//             CHECK FORM DATA
-//         */
-
-//         const isFormData =
-//             options?.body instanceof FormData;
-
-//         /*
-//             HEADERS
-//         */
-
-//         const headers: any = {
-//             Accept: 'application/json',
-
-//             'ngrok-skip-browser-warning':
-//                 'true',
-
-//             ...(token
-//                 ? {
-//                     Authorization: `Bearer ${token}`,
-//                 }
-//                 : {}),
-
-//             /*
-//                 JSON HEADER ONLY
-//                 IF NOT FORM DATA
-//             */
-
-//             ...(!isFormData && {
-//                 'Content-Type':
-//                     'application/json',
-//             }),
-
-//             ...(options.headers || {}),
-//         };
-
-//         /*
-//             API CALL
-//         */
-
-//         const response = await fetch(
-//             BaseUrl.base_url + endpoint,
-//             {
-//                 ...options,
-//                 headers,
-//             },
-//         );
-
-//         /*
-//             JSON RESPONSE
-//         */
-
-//         const data = await response.json();
-
-//         /*
-//             ERROR RESPONSE
-//         */
-
-//         if (!response.ok) {
-
-//             return {
-//                 success: false,
-//                 status: response.status,
-//                 message:
-//                     data?.message ||
-//                     'Something went wrong',
-//                 data,
-//             };
-//         }
-
-//         /*
-//             SUCCESS RESPONSE
-//         */
-
-//         return {
-//             success: true,
-//             status: response.status,
-//             ...data,
-//         };
-
-//     } catch (error: any) {
-
-//         console.log(
-//             'API CLIENT ERROR ===>',
-//             error,
-//         );
-
-//         return {
-//             success: false,
-//             message:
-//                 error?.message ||
-//                 'Network Error',
-//         };
-//     }
-// };
-
 let isRefreshing = false;
 
 let refreshPromise: Promise<string | null> | null =
@@ -149,10 +14,6 @@ let refreshPromise: Promise<string | null> | null =
 |--------------------------------------------------------------------------
 */
 
-const clearSession = async () => {
-    await Utils.removeData('_TOKEN');
-    await Utils.removeData('_REFRESH_TOKEN');
-};
 
 /*
 |--------------------------------------------------------------------------
@@ -230,8 +91,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
         );
 
 
-
-        if (!response.ok) {
+        if (!data.success) {
             return null;
         }
 
@@ -241,32 +101,14 @@ const refreshAccessToken = async (): Promise<string | null> => {
         --------------------------------------------------
         */
 
-        const accessToken =
-            data?.access ||
-            data?.access_token;
-
-        const newRefreshToken =
-            data?.refresh ||
-            data?.refresh_token;
-
-        console.log(
-            'NEW ACCESS TOKEN =>',
-            accessToken,
-        );
-
-        console.log(
-            'NEW REFRESH TOKEN =>',
-            newRefreshToken,
-        );
+        const accessToken = data?.data?.access;
+        const newRefreshToken = data?.data?.refresh;
 
         if (!accessToken) {
             return null;
         }
 
-        await Utils.storeData(
-            '_TOKEN',
-            accessToken,
-        );
+        await Utils.storeData('_TOKEN', accessToken);
 
         if (newRefreshToken) {
             await Utils.storeData(
@@ -276,7 +118,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
         }
 
         console.log(
-            'TOKENS SAVED SUCCESSFULLY',
+            'NEW TOKEN SAVED =>',
+            accessToken,
         );
 
         return accessToken;
@@ -355,153 +198,6 @@ const makeRequest = async (
     );
 };
 
-/*
-|--------------------------------------------------------------------------
-| API CLIENT
-|--------------------------------------------------------------------------
-*/
-
-// export const apiClient = async (
-//     endpoint: string,
-//     options: RequestInit = {},
-// ) => {
-//     try {
-//         let token =
-//             await Utils.getData('_TOKEN');
-
-//         console.log(
-//             'API REQUEST111111111 =>',
-//             endpoint,
-//             token,
-//             options,
-//         );
-
-
-//         let response =
-//             await makeRequest(
-//                 endpoint,
-//                 options,
-//                 token,
-//             );
-
-//         /*
-//         --------------------------------------------------
-//         TOKEN EXPIRED
-//         --------------------------------------------------
-//         */
-
-//         console.log(
-//             'API REQUEST =>',
-//             endpoint,
-//             token,
-//             response.status,
-//         );
-
-//         if (
-//             response.status === 401 ||
-//             response.status === 403
-//         ) {
-//             console.log(
-//                 'TOKEN EXPIRED => REFRESHING',
-//             );
-
-//             const freshToken =
-//                 await getFreshToken();
-
-//             console.log("freshTokenfreshToken", freshToken)
-
-//             if (!freshToken) {
-//                 // await clearSession();
-
-//                 return {
-//                     success: false,
-//                     logout: true,
-//                     message:
-//                         'Session expired',
-//                 };
-//             }
-
-//             /*
-//             --------------------------------------------------
-//             RETRY ORIGINAL REQUEST
-//             --------------------------------------------------
-//             */
-
-//             response =
-//                 await makeRequest(
-//                     endpoint,
-//                     options,
-//                     freshToken,
-//                 );
-//         }
-
-//         /*
-//         --------------------------------------------------
-//         SAFE JSON PARSE
-//         --------------------------------------------------
-//         */
-
-//         let data = null;
-
-//         try {
-//             data =
-//                 await response.json();
-//         } catch {
-//             data = null;
-//         }
-
-
-//         console.log(
-//             'APIRESPONSE =>',
-//             data,
-//             response
-//         );
-//         /*
-//         --------------------------------------------------
-//         ERROR RESPONSE
-//         --------------------------------------------------
-//         */
-
-//         if (!response.ok) {
-//             return {
-//                 success: false,
-//                 status:
-//                     response.status,
-//                 message:
-//                     data?.message ||
-//                     data?.detail ||
-//                     'Something went wrong',
-//                 data,
-//             };
-//         }
-
-//         /*
-//         --------------------------------------------------
-//         SUCCESS RESPONSE
-//         --------------------------------------------------
-//         */
-
-//         return {
-//             success: true,
-//             status:
-//                 response.status,
-//             ...(data || data),
-//         };
-//     } catch (error: any) {
-//         console.log(
-//             'API ERROR =>',
-//             error,
-//         );
-
-//         return {
-//             success: false,
-//             message:
-//                 error?.message ||
-//                 'Network Error',
-//         };
-//     }
-// };
-
 
 export const apiClient = async (
     endpoint: string,
@@ -537,14 +233,8 @@ export const apiClient = async (
                 response.status === 403)
         ) {
             console.log('TOKEN EXPIRED => REFRESHING');
-
             const freshToken =
                 await getFreshToken();
-
-            console.log(
-                'FRESH TOKEN =>',
-                freshToken,
-            );
 
             if (!freshToken) {
                 return {
@@ -553,6 +243,8 @@ export const apiClient = async (
                     message: 'Session expired',
                 };
             }
+
+            token = freshToken;
 
             response = await makeRequest(
                 endpoint,

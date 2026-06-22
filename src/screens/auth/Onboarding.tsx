@@ -262,13 +262,10 @@ const Onboarding = (props: any) => {
         }
 
         // EMAIL
-        if (!formData.email.trim()) {
-
-            newErrors.email = 'Email is required';
-            isValid = false;
-
-        } else if (!EmailValidator(formData.email.trim())) {
-
+        if (
+            formData.email.trim() &&
+            !EmailValidator(formData.email.trim())
+        ) {
             newErrors.email = 'Please enter a valid email address';
             isValid = false;
         }
@@ -508,7 +505,7 @@ const Onboarding = (props: any) => {
                             <View style={styles.row}>
 
                                 <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>First Name</Text>
+                                    <Text style={styles.label}>First Name *</Text>
                                     <TextInput
                                         placeholder="ABC"
                                         placeholderTextColor="#9CA3AF"
@@ -526,7 +523,7 @@ const Onboarding = (props: any) => {
 
                                 {/* LAST NAME */}
                                 <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>Last Name</Text>
+                                    <Text style={styles.label}>Last Name *</Text>
                                     <TextInput
                                         placeholder="XYZ"
                                         placeholderTextColor="#9CA3AF"
@@ -544,7 +541,7 @@ const Onboarding = (props: any) => {
                             </View>
 
                             {/* GENDER */}
-                            <Text style={styles.label}>Gender</Text>
+                            <Text style={styles.label}>Gender *</Text>
 
                             <View style={styles.genderRow}>
                                 {genderOptions.map((item: any) => (
@@ -570,7 +567,7 @@ const Onboarding = (props: any) => {
                             </View>
 
                             {/* DOB */}
-                            <Text style={styles.label}>Date of Birth</Text>
+                            <Text style={styles.label}>Date of Birth *</Text>
 
                             <View style={styles.dobContainer}>
 

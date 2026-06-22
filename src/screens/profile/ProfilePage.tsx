@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -32,24 +32,41 @@ const ProfilePage = ({ navigation }: any) => {
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [user, setUser] = useState(null);
 
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const CustomerInfo = await Utils.getData('_USER_INFO');
+
+            if (CustomerInfo) {
+                setUser(CustomerInfo); // pehle local data show hoga
+            }
+
+            fetchUserData(); // phir API se latest data
+        };
+
+        loadUser();
+    }, []);
+
     const fetchUserData = async () => {
         try {
             const token = await Utils.getData('_TOKEN');
-
+            const CustomerInfo = await Utils.getData('_USER_INFO');
+            console.log("CustomerInfo", CustomerInfo);
             if (!token) return;
             const res: any = await ProfileServices.user_profile();
             console.log("profile_response", res.data);
-            setUser(res?.data || null);
+            setUser(CustomerInfo || res?.data);
         } catch (error) {
             console.log('Profile Error:', error);
         }
     };
 
-    useFocusEffect(
-        React.useCallback(() => {
-            fetchUserData();
-        }, [])
-    );
+
+    // useFocusEffect(
+    //     React.useCallback(() => {
+    //         fetchUserData();
+    //     }, [])
+    // );
 
     const logout = () => {
         setLogoutVisible(true);
@@ -135,8 +152,6 @@ const ProfilePage = ({ navigation }: any) => {
             case 'Analysis':
                 navigation.navigate('PrakritiProfile');
                 break;
-
-
 
             default:
                 console.log('No navigation defined for:', item.title);

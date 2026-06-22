@@ -16,6 +16,8 @@ import { scale } from '../../common/Colors';
 
 const Header = ({
     step,
+    showSkip,
+    onSkip,
     total,
     onBack,
 }: any) => {
@@ -46,18 +48,30 @@ const Header = ({
                 </Text>
             </View>
 
-            <View style={styles.secureWrapper}>
-
-                <Ionicons
-                    name="shield-checkmark"
-                    size={scale(18)}
-                    color={COLORS.primary}
-                />
-
-                <Text style={styles.secureText}>
-                    100% Secure
-                </Text>
-            </View>
+{
+    showSkip ? (
+        <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onSkip}
+            style={styles.skipBtn}
+        >
+            <Text style={styles.skipText}>
+                Skip
+            </Text>
+        </TouchableOpacity>
+    ) : (
+        <View style={styles.secureWrapper}>
+            <Ionicons
+                name="shield-checkmark"
+                size={scale(18)}
+                color={COLORS.primary}
+            />
+            <Text style={styles.secureText}>
+                100% Secure
+            </Text>
+        </View>
+    )
+}
         </View>
     );
 };

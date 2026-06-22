@@ -12,33 +12,50 @@ import {
     Dimensions,
     Platform,
     KeyboardAvoidingView,
+    RefreshControl,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
-import { generateFutureDates, convertTo12Hour } from '../../common/DataInterface';
+import { generateFutureDates, } from '../../common/DataInterface';
 import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
-import { showSuccessToast } from '../../config/Key';
-import { Utils } from '../../common/Utils';
+import { useMedicalRecord } from '../../hooks/usePatientData';
+import { pick } from '@react-native-documents/picker';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(92, Math.max(64, Math.floor(SCREEN_WIDTH * 0.168)));
 const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 
-const STORAGE_KEY = 'SELECTED_SLOT';
-const RESERVE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
-    const { doctorData, initialSlots, initialSelectedDate, doctorId } = route?.params || {};
+
+    const { doctorDetails } = route?.params || {};
+
+    const { patientsRecord } = useMedicalRecord();
+
+    console.log("patientsRecordpatientsRecordpatientsRecord", patientsRecord)
+
+    const [doctorDetailData, setDoctorDetailData] = useState<any>(null);
+    const [records, setRecords] = useState<any[]>([]);
+    const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
+    const doctorInfo = useMemo(() => doctorDetails, [doctorDetails]);
+
+    console.log("dcorsolotdata", doctorDetails);
+
 
     const [monthOffset, setMonthOffset] = useState(0);
-    const DAYS = useMemo(() => generateFutureDates(monthOffset), [monthOffset]);
-
+    // const DAYS = useMemo(() => generateFutureDates(monthOffset), [monthOffset]);
+    const DAYS = useMemo(() => {
+        return generateFutureDates(monthOffset).filter(
+            (item: any) => !item.isDisabled,
+        );
+    }, [monthOffset]);
     const getTodayDate = () => {
         const todayEntry = DAYS.find((d: any) => d.isToday);
         if (todayEntry) return todayEntry.fullDate;
@@ -51,155 +68,112 @@ const DoctorSlot = (props: any) => {
         return `${yyyy}-${mm}-${dd}`;
     };
 
-    const [selectedDate, setSelectedDate] = useState(initialSelectedDate || getTodayDate());
+    const getDoctorDetails = useCallback(async () => {
+        try {
+            const res = await getDoctorSlots({
+                id: doctorDetails?.id
+            }
+            );
+            console.log("dattaaa", res?.data);
+            if (res?.data) {
+                setDoctorDetailData(res?.data
+                );
+            }
+        } catch (error) {
+            console.log(
+                'DOCTOR DETAILS ERROR =>',
+                error
+            );
+        }
+    }, [doctorDetails?.id]);
+
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
     const [selectedSlot, setSelectedSlot] = useState('');
+
     const [concern, setConcern] = useState('');
 
-    const [slotsData, setSlotsData] = useState<any | null>(initialSlots || null);
+    const [slotsData, setSlotsData] = useState<any | null>(null);
     const [loadingSlots, setLoadingSlots] = useState(false);
-    const [slotsError, setSlotsError] = useState<any>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const [reservedData, setReservedData] = useState<any | null>(null);
-    const [reservedRemainingMs, setReservedRemainingMs] = useState<number>(0);
-    const reserveIntervalRef = useRef<any>(null);
-
-    const doctorIdParam = doctorId || doctorData?.id;
+    const scrollRef = useRef<ScrollView>(null);
+    const doctorIdParam = doctorDetails?.id;
 
     useEffect(() => {
         if (!doctorIdParam) console.warn('Doctor ID missing in route params');
     }, [doctorIdParam]);
 
+    const isFirstRender = useRef(true);
+
     useEffect(() => {
-        setSelectedSlot('');
-        setSlotsData(null);
-    }, [selectedDate]);
+        const todayIndex = DAYS.findIndex(
+            (item: any) => item.isToday,
+        );
 
-    const fetchSlotsForDate = async (date: string) => {
-        if (!doctorIdParam || !date) return null;
-        try {
-            setLoadingSlots(true);
-            setSlotsError(null);
-            const resp = await getDoctorSlots({ id: doctorIdParam, date });
-            setSlotsData(resp?.data || null);
-            return resp?.data || null;
-        } catch (e) {
-            setSlotsError(e);
-            return null;
-        } finally {
-            setLoadingSlots(false);
+        if (todayIndex >= 0) {
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({
+                    x: todayIndex * (CARD_WIDTH + 12),
+                    animated: false,
+                });
+            }, 100);
         }
-    };
+    }, [DAYS]);
 
-    // clear reservation locally and refresh slot status
-    const clearLocalReservation = useCallback(async () => {
-        try {
-            await Utils.storeData(STORAGE_KEY, null);
-        } catch (e) {
-            // ignore
-        }
 
-        setReservedData(null);
-        setReservedRemainingMs(0);
-        if (reserveIntervalRef.current) {
-            clearInterval(reserveIntervalRef.current);
-            reserveIntervalRef.current = null;
-        }
-
-        // refresh slots to show updated status
-        await fetchSlotsForDate(selectedDate?.split('T')[0]);
-    }, [selectedDate, doctorIdParam]);
-
-    // Rehydrate stored reservation on focus and refresh slots
     useFocusEffect(
         useCallback(() => {
-            let mounted = true;
+            if (isFirstRender.current) {
+                isFirstRender.current = false;
+                return;
+            }
 
-            const rehydrate = async () => {
-                try {
-                    const stored: any = await Utils.getData(STORAGE_KEY);
-                    const storedValid = stored && stored.slotId && stored.date === selectedDate && stored.doctorId === doctorIdParam;
-
-                    if (storedValid) {
-                        const expiresAt = (stored.reservedAt || 0) + RESERVE_TTL_MS;
-                        const remaining = Math.max(0, expiresAt - Date.now());
-                        if (mounted) {
-                            setReservedData(stored);
-                            setReservedRemainingMs(remaining);
-                        }
-                    } else {
-                        if (mounted) {
-                            setReservedData(null);
-                            setReservedRemainingMs(0);
-                        }
-                    }
-
-                    // fetch latest slots to update UI, but do NOT clear a local reservation
-                    // just because server reports the slot as 'available' — keep local
-                    // reservation authoritative until TTL expires. Only clear if
-                    // the reservation expired or server reports the slot as 'booked'.
-                    const data = await fetchSlotsForDate(selectedDate?.split('T')[0]);
-
-                    if (storedValid) {
-                        const expiresAt = (stored.reservedAt || 0) + RESERVE_TTL_MS;
-                        if (Date.now() >= expiresAt) {
-                            await Utils.storeData(STORAGE_KEY, null);
-                            if (mounted) {
-                                setReservedData(null);
-                                setReservedRemainingMs(0);
-                            }
-                        } else {
-                            const latest = (data?.slots || []).find((s: any) => String(s.id) === String(stored.slotId));
-                            if (latest && String(latest.status || '').toLowerCase() === 'booked') {
-                                // someone else booked it already on server — clear local reservation
-                                await Utils.storeData(STORAGE_KEY, null);
-                                if (mounted) {
-                                    setReservedData(null);
-                                    setReservedRemainingMs(0);
-                                }
-                            }
-                        }
-                    }
-                } catch (e) {
-                    // ignore
-                }
-            };
-
-            rehydrate();
-
-            return () => { mounted = false; };
-        }, [selectedDate, doctorIdParam])
+            fetchSlotsForDate(selectedDate);
+        }, [selectedDate])
     );
 
 
+    const fetchSlotsForDate = useCallback(async (date: string) => {
+        if (!doctorIdParam || !date) return;
 
-    // countdown
+        try {
+            setLoadingSlots(true);
+
+            const resp = await getDoctorSlots({
+                id: doctorIdParam,
+                date,
+            });
+            console.log("slotresposne", resp);
+            setSlotsData(resp?.data);
+
+        } finally {
+            setLoadingSlots(false);
+        }
+    }, [doctorIdParam]);
     useEffect(() => {
-        if (reserveIntervalRef.current) {
-            clearInterval(reserveIntervalRef.current);
-            reserveIntervalRef.current = null;
+        if (selectedDate && doctorIdParam) {
+            fetchSlotsForDate(selectedDate);
         }
-        if (reservedRemainingMs > 0) {
-            reserveIntervalRef.current = setInterval(() => {
-                setReservedRemainingMs(prev => {
-                    const next = Math.max(0, prev - 1000);
-                    if (next === 0) {
-                        // expired - clear local reservation and refresh slots
-                        clearLocalReservation();
-                    }
-                    return next;
-                });
-            }, 1000);
-        }
-        return () => {
-            if (reserveIntervalRef.current) {
-                clearInterval(reserveIntervalRef.current);
-                reserveIntervalRef.current = null;
-            }
-        };
-    }, [reservedRemainingMs, clearLocalReservation]);
+    }, [selectedDate, doctorIdParam, fetchSlotsForDate]);
 
-    // grouped slots
-    const groupedSlots = useMemo(() => groupSlotsByTime(slotsData?.slots || []), [slotsData]);
+    const onRefresh = useCallback(async () => {
+        try {
+            setRefreshing(true);
+
+            // await fetchSlotsForDate(selectedDate);
+            await getDoctorDetails();
+
+        } finally {
+            setRefreshing(false);
+        }
+    }, [selectedDate, fetchSlotsForDate]);
+
+    const groupedSlots = useMemo(
+        () => groupSlotsByTime(slotsData?.slots || []),
+        [slotsData]
+    );
+
+
 
     useEffect(() => {
         if (!selectedSlot && slotsData?.slots?.length) {
@@ -208,56 +182,28 @@ const DoctorSlot = (props: any) => {
         }
     }, [slotsData]);
 
-    const reserveLocalAndNavigate = async () => {
+    const handleContinue = () => {
         if (!selectedSlot) return;
-        const selectedSlotObj = (slotsData?.slots || []).find((s: any) => String(s.id) === String(selectedSlot));
-        const reservedAt = Date.now();
-        const saved = {
-            slotId: selectedSlot,
-            date: selectedDate,
-            selectedTime: selectedSlotObj?.displayTime || selectedSlotObj?.start_time,
-            doctorId: doctorIdParam,
-            concern,
-            reservedAt,
-        };
 
-        try {
-            await Utils.storeData(STORAGE_KEY, saved);
-            setReservedData(saved);
-            setReservedRemainingMs(Math.max(0, reservedAt + RESERVE_TTL_MS - Date.now()));
-
-            // start countdown
-            if (reserveIntervalRef.current) {
-                clearInterval(reserveIntervalRef.current);
-                reserveIntervalRef.current = null;
-            }
-            reserveIntervalRef.current = setInterval(() => {
-                setReservedRemainingMs(prev => Math.max(0, prev - 1000));
-            }, 1000);
-        } catch (e) {
-            console.log('store reserve failed', e);
-        }
+        const selectedSlotObj = slotsData?.slots?.find(
+            (s: any) => String(s.id) === String(selectedSlot)
+        );
 
         navigation.navigate('RazorpayScreen', {
-            doctorData,
+            doctorInfo,
             doctorId: doctorIdParam,
             slotId: selectedSlot,
             date: selectedDate,
-            selectedTime: selectedSlotObj?.displayTime || selectedSlotObj?.start_time,
+            selectedTime:
+                selectedSlotObj?.displayTime ||
+                selectedSlotObj?.start_time,
             concern,
         });
     };
 
-    const formatMs = (ms: number) => {
-        const totalSec = Math.max(0, Math.floor(ms / 1000));
-        const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
-        const s = (totalSec % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
-    };
-
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar backgroundColor="#0D614E0D" barStyle="dark-content" />
+            <StatusBar backgroundColor={Colors.background} barStyle="dark-content" />
 
             <View style={styles.headerTop}>
                 <TouchableOpacity onPress={() => { navigation.goBack(); }} style={styles.iconBtn}>
@@ -267,8 +213,13 @@ const DoctorSlot = (props: any) => {
                 <Text style={styles.headerTitle}>Doctor Profile</Text>
 
                 <TouchableOpacity activeOpacity={0.8} style={styles.iconBtn}>
-                    <Ionicons name="heart-outline" size={25} color="#0F172A" />
+                    {doctorInfo?.is_favorite ?
+                        <Ionicons name="heart" size={25} color={Colors.primaryColor} /> :
+                        <Ionicons name="heart-outline" size={25} color="#0F172A" />
+                    }
+
                 </TouchableOpacity>
+
             </View>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
@@ -282,28 +233,34 @@ const DoctorSlot = (props: any) => {
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
                 >
-                    {/* <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}> */}
+
                     <View style={styles.headerContainer}>
                         <View style={styles.profileContainer}>
                             <View style={styles.avatarBgWrapper}>
-                                <ImageBackground source={Images.BackgroundImage} style={styles.avatarBg} imageStyle={{ borderRadius: 100 }}>
-                                    <View style={styles.avatarWrapper}>
-                                        <Image source={Images.doctorImage} style={styles.avatar} />
-                                    </View>
-                                </ImageBackground>
+                                {/* <ImageBackground source={Images.BackgroundImage} style={styles.avatarBg} imageStyle={{ borderRadius: 100 }}> */}
+                                <View style={styles.avatarWrapper}>
+                                    <Image source={Images.doctorImage} style={styles.avatar} />
+                                </View>
+                                {/* </ImageBackground> */}
                             </View>
 
-                            <Text style={styles.doctorName}>{slotsData?.full_name ?? doctorData?.full_name}</Text>
-                            <Text style={styles.speciality}>{slotsData?.designation ?? doctorData?.designation}</Text>
+                            <Text style={styles.doctorName}>{doctorInfo?.full_name}</Text>
+                            <Text style={styles.speciality}>{doctorInfo?.designation || doctorInfo?.qualification}</Text>
                         </View>
                     </View>
 
                     <View style={styles.statsContainer}>
                         {[
-                            { label: 'PATIENTS', value: slotsData?.total_patients ?? doctorData?.total_patients ?? '' },
-                            { label: 'REVIEWS', value: slotsData?.total_reviews ?? doctorData?.total_reviews ?? '' },
-                            { label: 'EXPERIENCE', value: slotsData?.experience_display ?? doctorData?.experience_display ?? '' },
+                            { label: 'PATIENTS', value: doctorInfo?.total_patients ?? '0' },
+                            { label: 'REVIEWS', value: doctorInfo?.total_reviews ?? '0' },
+                            { label: 'EXPERIENCE', value: doctorInfo?.experience_display ?? '0' },
                         ].map((item, index) => (
                             <View key={index} style={[styles.statBox, index !== 2 && styles.borderRight]}>
                                 <Text style={styles.statValue}>{item.value}</Text>
@@ -358,24 +315,42 @@ const DoctorSlot = (props: any) => {
                                         <View style={styles.slotGrid}>
                                             {sectionSlots.map((slot: any) => {
                                                 const status = String(slot?.status || '').toLowerCase();
+
                                                 const isAvailable = status === 'available';
+                                                const isReserved = status === 'reserved';
                                                 const isBooked = status === 'booked';
-                                                const isReservedByMe = reservedData?.slotId === slot?.id;
-                                                const selectable = isAvailable || isReservedByMe;
+
+                                                const selectable = isAvailable;
 
                                                 return (
-                                                    <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable} onPress={() => { if (isAvailable || isReservedByMe) setSelectedSlot(slot?.id); }} style={[
-                                                        styles.slotBtn,
-                                                        selectedSlot === slot?.id && styles.activeSlotBtn,
-                                                        !selectable && { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', opacity: 0.6 },
-                                                        isReservedByMe && !(selectedSlot === slot?.id) && { borderColor: Colors.primaryColor, backgroundColor: '#E6FFFA' },
-                                                        isBooked && { backgroundColor: '#FFF1F2', borderColor: '#FEE2E2' },
-                                                    ]}>
+                                                    <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable}
+                                                        onPress={() => setSelectedSlot(slot.id)}
+                                                        style={[
+                                                            styles.slotBtn,
+                                                            selectedSlot === slot.id && styles.activeSlotBtn,
+
+                                                            isReserved && {
+                                                                backgroundColor: '#FEF3C7',
+                                                                borderColor: '#F59E0B',
+                                                            },
+
+                                                            isBooked && {
+                                                                backgroundColor: '#FFF1F2',
+                                                                borderColor: '#FEE2E2',
+                                                            },
+                                                        ]}
+
+                                                    >
 
                                                         <Text style={[styles.slotText, selectedSlot === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
 
                                                         {isBooked && <Text style={styles.slotStatus}>Booked</Text>}
-                                                        {!isAvailable && !isBooked && !isReservedByMe && <Text style={styles.slotStatus}>Reserved</Text>}
+
+                                                        {isReserved && (
+                                                            <Text style={styles.slotStatus}>
+                                                                Reserved
+                                                            </Text>
+                                                        )}
 
                                                     </TouchableOpacity>
                                                 );
@@ -392,7 +367,6 @@ const DoctorSlot = (props: any) => {
                         )}
 
                     </View>
-
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>
                             Concern
@@ -407,15 +381,101 @@ const DoctorSlot = (props: any) => {
                             style={styles.input}
                             textAlignVertical="top"
                         />
+
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.uploadBtn}
+                            onPress={() => navigation.navigate('MedicalRecords')}
+                        >
+                            <Ionicons
+                                name="cloud-upload-outline"
+                                size={20}
+                                color={Colors.primaryColor}
+                            />
+
+                            <Text style={styles.uploadText}>
+                                Upload Medical Records
+                            </Text>
+                        </TouchableOpacity>
                     </View>
+
+                    {records.length > 0 && (
+                        <View style={{ marginTop: 20 }}>
+                            <Text style={styles.recordTitle}>
+                                Medical Records
+                            </Text>
+
+                            {records.map(item => {
+                                const selected =
+                                    selectedRecords.includes(item.id);
+
+                                return (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        activeOpacity={0.8}
+                                        onPress={() => {
+                                            setSelectedRecords(prev =>
+                                                prev.includes(item.id)
+                                                    ? prev.filter(
+                                                        x => x !== item.id,
+                                                    )
+                                                    : [...prev, item.id],
+                                            );
+                                        }}
+                                        style={[
+                                            styles.recordCard,
+                                            selected &&
+                                            styles.selectedRecordCard,
+                                        ]}
+                                    >
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                flex: 1,
+                                            }}
+                                        >
+                                            <Ionicons
+                                                name={
+                                                    item?.name
+                                                        ?.includes('.pdf')
+                                                        ? 'document-text-outline'
+                                                        : 'image-outline'
+                                                }
+                                                size={22}
+                                                color={Colors.primaryColor}
+                                            />
+
+                                            <Text
+                                                numberOfLines={1}
+                                                style={styles.recordName}
+                                            >
+                                                {item.name}
+                                            </Text>
+                                        </View>
+
+                                        <Ionicons
+                                            name={
+                                                selected
+                                                    ? 'checkbox'
+                                                    : 'square-outline'
+                                            }
+                                            size={24}
+                                            color={Colors.primaryColor}
+                                        />
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
 
                     <View style={styles.footer}>
                         <View>
                             <Text style={styles.feeLabel}>Consult Fee</Text>
-                            <Text style={styles.price}>Rs. {slotsData?.consult_fee?.amount ?? doctorData?.followup_fee ?? 0}</Text>
+                            <Text style={styles.price}>Rs. {slotsData?.consult_fee?.amount ?? doctorDetails?.followup_fee ?? 0}</Text>
                         </View>
 
-                        <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot || loadingSlots || groupedSlots.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={reserveLocalAndNavigate}>
+                        <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot || loadingSlots || groupedSlots.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={handleContinue}>
                             <Ionicons name="card-outline" size={18} color="#FFFFFF" />
                             <Text style={styles.payText}>{loadingSlots ? 'Loading...' : 'Continue'}</Text>
                         </TouchableOpacity>
@@ -430,13 +490,13 @@ const DoctorSlot = (props: any) => {
 export default DoctorSlot;
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0D614E0D' },
+    container: { flex: 1, backgroundColor: Colors.background },
     scrollContent: { paddingBottom: 40, backgroundColor: '#FFFFFF' },
     headerContainer: { backgroundColor: '#0D614E0D', borderBottomLeftRadius: 56, borderBottomRightRadius: 56, paddingHorizontal: 20, paddingBottom: 28 },
-    headerTop: { flexDirection: 'row', paddingHorizontal: 20, backgroundColor: '#F3FAF7', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, minHeight: 50 },
+    headerTop: { flexDirection: 'row', paddingHorizontal: 20, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'space-between', minHeight: 50 },
     iconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
     avatarBgWrapper: { justifyContent: 'center', alignItems: 'center', marginBottom: -10 },
-    avatarBg: { padding: 30, height: 150, width: '58%', aspectRatio: 1, borderRadius: 100, overflow: 'hidden', shadowOpacity: 4, shadowColor: Colors.primaryColor, alignItems: 'center', justifyContent: 'center' },
+
     avatarWrapper: { width: 105, height: 105, borderRadius: 24, borderWidth: 1, overflow: 'hidden', borderColor: '#DDEBE8', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginBottom: 12, padding: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
     avatar: { width: 90, height: 90, borderRadius: 16, resizeMode: 'cover' },
     headerTitle: { fontSize: 22, color: '#1E293B', fontFamily: Fonts.PoppinsSemiBold },
@@ -451,6 +511,57 @@ const styles = StyleSheet.create({
     section: { marginTop: 24, paddingHorizontal: 20 },
     rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     sectionTitle: { fontSize: 18, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
+
+
+    recordTitle: {
+        fontSize: 16,
+        marginBottom: 12,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    recordCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#FFF',
+        marginBottom: 10,
+    },
+
+    selectedRecordCard: {
+        borderColor: Colors.primaryColor,
+        backgroundColor: '#F0FDF4',
+    },
+
+    recordName: {
+        flex: 1,
+        marginLeft: 10,
+        color: '#334155',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    uploadBtn: {
+        marginTop: 16,
+        height: 56,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: Colors.primaryColor,
+        backgroundColor: '#F8FFFC',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+
+    uploadText: {
+        fontSize: 15,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
     monthText: { fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor, marginRight: 4 },
     daysContainer: { paddingTop: 18, paddingBottom: 8 },
     dayCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12, paddingHorizontal: 6 },

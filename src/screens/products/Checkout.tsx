@@ -63,14 +63,14 @@ const Checkout: React.FC = (props: any) => {
         loading,
         refreshing,
         customerData,
-        onRefresh,
+        refreshHomeData,
     } = useHomeData();
 
     console.log("customerdatat", customerData);
 
     useFocusEffect(
         useCallback(() => {
-            onRefresh();
+            refreshHomeData();
         }, [])
     );
 

@@ -79,8 +79,11 @@ const ProductDetails = (props: any) => {
     const defaultVariant = variants.find((v: any) => v?.is_default) || variants[0];
     const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
 
-    // ── LOCAL quantity — no API, just counter ────────────────────────────────
-    const [quantity, setQuantity] = useState(1);
+    // ── LOCAL quantity — no API, just counter ────
+
+    const [quantity, setQuantity] = useState(
+        selectedVariant?.quantity || 1,
+    );
 
     // reset qty when variant changes
     useEffect(() => {
@@ -88,11 +91,19 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        setQuantity(1);
+        setQuantity(
+            selectedVariant?.quantity || 1,
+        );
+        console.log("selelctedporudtselcprodutc", selectedVariant)
     }, [selectedVariant?.id]);
 
-    const increaseQty = () => setQuantity(q => q + 1);
-    const decreaseQty = () => setQuantity(q => (q > 1 ? q - 1 : 1));
+    const increaseQty = () =>
+        setQuantity((q: number) => q + 1);
+
+    const decreaseQty = () =>
+        setQuantity((q: number) =>
+            q > 1 ? q - 1 : 1,
+        );
 
     // ── Add to Cart: fires API with selected qty ─────────────────────────────
     const handleAddToCart = async () => {
@@ -175,7 +186,7 @@ const ProductDetails = (props: any) => {
                 {/* 1. Images */}
                 <Detailimages
                     itemHeight={300}
-  DynamicResize="contain"
+                    DynamicResize="contain"
                     images={selectedVariant?.media?.length ? selectedVariant.media : [Images.detailimage]}
                 />
 
@@ -204,7 +215,7 @@ const ProductDetails = (props: any) => {
                             </View>
                         )}
                     </View>
-                    
+
                     <Text style={styles.taxNote}>Inclusive of all taxes</Text>
                     <View style={styles.stockRow}>
                         <View style={[styles.stockDot, { backgroundColor: stockColor }]} />

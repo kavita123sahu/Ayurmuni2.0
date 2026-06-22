@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { TABS } from "../common/DataInterface";
 import { Ionicons } from "../common/Vector";
+import { Fonts } from "../common/Fonts";
+import { Colors } from "../common/Colors";
 
 
 type FilterTabsProps = {
@@ -50,15 +52,16 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
         getPresetDates,
     } = props;
 
+    console.log("CHILD activeTab =>", activeTab);
+
     return (
         <View style={styles.tabsRow}>
             {TABS.map(tab => {
                 const isOpen = activeTab === tab.key;
-
                 const isSelected =
-                    (tab.key === "speciality" && selectedFilters.specialization) ||
-                    (tab.key === "experience" && selectedFilters.experience) ||
-                    (tab.key === "availability" && selectedFilters.date_range);
+                    (tab.key === "speciality" && !!selectedFilters.specialization) ||
+                    (tab.key === "experience" && !!selectedFilters.experience) ||
+                    (tab.key === "availability" && !!selectedFilters.date_range);
 
                 return (
                     <View key={tab.key} style={styles.tabWrapper}>
@@ -66,7 +69,15 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                         {/* TAB BUTTON */}
                         <TouchableOpacity
                             activeOpacity={0.8}
-                            onPress={() => setActiveTab(isOpen ? null : tab.key)}
+                            onPress={() => {
+                                console.log("Pressed Tab =>", tab.key);
+
+                                setActiveTab(
+                                    activeTab === tab.key
+                                        ? null
+                                        : tab.key
+                                );
+                            }}
                             style={[
                                 styles.tabBtn,
                                 isSelected && styles.activeTab,
@@ -79,7 +90,7 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                                 ]}
                                 numberOfLines={1}
                             >
-                                {getTabLabel(tab)}
+                                {getTabLabel?.(tab) ?? tab.label}
                             </Text>
 
                             <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -87,7 +98,11 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                                 {/* CLEAR */}
                                 {isSelected && (
                                     <TouchableOpacity
-                                        onPress={() => clearFilter(tab.key)}
+
+                                        onPress={(e) => {
+                                            e.stopPropagation?.();
+                                            clearFilter(tab.key);
+                                        }}
                                         style={{ marginRight: 6 }}
                                     >
                                         <Ionicons name="close" size={14} color={isSelected ? "#fff" : "#0F172A"} />
@@ -116,10 +131,11 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
 
                                                 // CUSTOM DATE
                                                 if (tab.key === "availability" && item.value === "custom_date") {
+
+                                                    setShowCalendar(true);
                                                     setTempFromDate(null);
                                                     setTempToDate(null);
                                                     setCalendarStep("from");
-                                                    setShowCalendar(true);
                                                     setActiveTab(null);
                                                     return;
                                                 }
@@ -128,7 +144,7 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                                                 if (tab.key === "availability") {
                                                     const range = getPresetDates(item.value);
 
-                                                    setSelectedFilters(prev => ({
+                                                    setSelectedFilters((prev: any) => ({
                                                         ...prev,
                                                         date_range: item.value,
                                                         from_date: range.from,
@@ -185,35 +201,37 @@ export const styles = StyleSheet.create({
     },
 
     tabBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+
+        minHeight: 42,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderRadius: 18,
-        backgroundColor: "#F3F4F6",
+
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: "#E5E7EB",
-        minHeight: 42,
+        borderColor: '#E2E8F0',
+
+        backgroundColor: '#fff',
     },
 
     activeTab: {
-        backgroundColor: "#2563EB",
-        borderColor: "#2563EB",
+        backgroundColor: Colors.primaryColor,
+        borderColor: Colors.primaryColor,
     },
 
     tabText: {
-        fontSize: 13,
-        color: "#0F172A",
-        fontWeight: "500",
         flex: 1,
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#0F172A',
         marginRight: 6,
     },
 
     activeTabText: {
-        color: "#FFFFFF",
+        color: '#fff',
     },
-
     dropdown: {
         position: "absolute",
         top: 48,
@@ -237,6 +255,7 @@ export const styles = StyleSheet.create({
         zIndex: 999,
         overflow: "hidden",
     },
+
 
     option: {
         paddingVertical: 12,

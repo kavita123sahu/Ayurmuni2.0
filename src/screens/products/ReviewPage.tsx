@@ -10,6 +10,9 @@ import { Colors } from '../../common/Colors'
 const ReviewPage = (props: any) => {
 
     const { reviews } = props.route.params;
+
+    console.log("reviessssss", reviews);
+
     const [activeFilter, setActiveFilter] = useState('All Reviews');
 
     const filteredReviews = useMemo(() => {
@@ -57,7 +60,7 @@ const ReviewPage = (props: any) => {
             total > 0
                 ? Number(
                     (
-                        reviews.reduce((sum : any, r :any) => sum + Number(r.rating), 0) / total
+                        reviews.reduce((sum: any, r: any) => sum + Number(r.rating), 0) / total
                     ).toFixed(1)
                 )
                 : 0;
@@ -68,6 +71,7 @@ const ReviewPage = (props: any) => {
             breakdown,
         };
     }, [reviews]);
+
 
 
     const allImages = useMemo(() => {
@@ -89,11 +93,16 @@ const ReviewPage = (props: any) => {
     const remainingCount =
         allImages.length - MAX_VISIBLE_IMAGES;
 
-    const getInitials = (patient_name: string) => {
-        return patient_name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
+
+    const getInitials = (name = '') => {
+        if (!name?.trim()) return '';
+
+        return name
+            .trim()
+            .split(' ')
+            .map(word => word?.[0] || '')
+            .join('')
+            .substring(0, 2)
             .toUpperCase();
     };
 
@@ -238,29 +247,37 @@ const ReviewPage = (props: any) => {
                     keyExtractor={(item) => item.id}
                     scrollEnabled={false}
                     renderItem={({ item }) => (
+
                         <View style={styles.reviewCard}>
                             <View style={styles.reviewHeaderRow}>
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>
-                                        {getInitials(item.patient_name)}
+                                        {getInitials(item?.patient_name ||
+                                            item?.reviewer_name)}
                                     </Text>
                                 </View>
 
                                 <View style={{ flex: 1, marginLeft: 10 }}>
-                                    <Text style={styles.name}>{item.patient_name}</Text>
+                                    <Text style={styles.name}>{item?.patient_name || item?.reviewer_name}</Text>
                                     <Text style={styles.verified}>VERIFIED PURCHASE</Text>
                                 </View>
 
                                 <Text style={styles.time}>
-                                    {new Date(item.created_at).toLocaleDateString()}
+                                    {item?.created_at
+                                        ? new Date(item.created_at).toLocaleDateString()
+                                        : ''}
                                 </Text>
                             </View>
 
                             <Text style={styles.stars}>
-                                {"⭐".repeat(item.rating)}
+                                {/* {"⭐".repeat(item.rating)} */}
+                                {"⭐".repeat(Number(item?.rating || 0))}
                             </Text>
 
-                            <Text style={styles.reviewText}>{item.review}</Text>
+                            <Text style={styles.reviewText}>
+                                {/* {item.review} */}
+                                {item?.review || 'No review available'}
+                            </Text>
                         </View>
                     )}
                 />

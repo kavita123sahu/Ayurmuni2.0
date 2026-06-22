@@ -34,7 +34,7 @@ const EmptyState = ({
     subtitle = 'Try searching with another keyword.',
     image = require('../assets/images/Search.png'),
     style,
-    imageSize = 20,
+    imageSize = 0,
 }: EmptyStateProps) => {
     return (
         <Animated.View
@@ -54,6 +54,7 @@ const EmptyState = ({
                         styles.image,
                         {
                             width: imageSize,
+                            resizeMode: 'contain',
                             height: imageSize,
                         },
                     ]}
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
         // backgroundColor: Colors.onfillColor,
         borderRadius: 20,
         padding: 20,
-        resizeMode: 'contain',
+        resizeMode: 'cover',
     },
 
     title: {

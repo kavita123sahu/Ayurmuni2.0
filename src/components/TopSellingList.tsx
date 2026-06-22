@@ -48,7 +48,7 @@ const itemHeight = 100;
 
 
 const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isGrid = false, header = false, navigation }) => {
- 
+
   const [addingItems, setAddingItems] =
     useState<string[]>([]);
 
@@ -66,7 +66,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
     item: any,
 
   ) => {
-  
+
     const variantId =
       item?.variant_id;
 

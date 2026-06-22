@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -13,6 +13,8 @@ import {
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import *as _CONSULT_SERVICE from '../../services/ConsultServce';
+
 import Header from '../../components/Header';
 import SectionHeader from '../../components/SectionHeader';
 
@@ -20,6 +22,8 @@ import { Feather, Ionicons } from '../../common/Vector';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
+import MultipleDoctorSlip from './MultipleDoctorSlip';
+import { DoctorCardSkeleton, DoctorSlipSkeleton } from '../../simmerScreen/ShimmerHook';
 
 const { width } = Dimensions.get('window');
 
@@ -30,10 +34,15 @@ const { width } = Dimensions.get('window');
 interface MedicineItem {
     id: number;
     icon: keyof typeof Ionicons.glyphMap;
-    medicineName: string;
-    timing: string;
     description: string;
     days: string;
+    timing: string;
+    instruction: string
+    medicine_name: string;
+    dosage: string;
+    duration: string;
+    frequency: string
+
 }
 
 interface GuidelineItemType {
@@ -45,27 +54,7 @@ interface GuidelineItemType {
 /*                                    DATA                                    */
 /* -------------------------------------------------------------------------- */
 
-const MEDICINES: MedicineItem[] = [
-    {
-        id: 1,
-        icon: 'medical',
-        medicineName: 'Triphale Churna',
-        timing: '2x Daily',
-        description:
-            'Reduce Triglyceride in blood vessels. Recommended digestive medication.',
-        days: 'POST-MEAL',
-    },
 
-    {
-        id: 2,
-        icon: 'leaf',
-        medicineName: 'Ashwagandha Tablets',
-        timing: '2x Daily',
-        description:
-            'May reduce stress and improve overall wellness and quality.',
-        days: 'BEFORE BED',
-    },
-];
 
 const GUIDELINES: GuidelineItemType[] = [
     {
@@ -88,7 +77,7 @@ const GUIDELINES: GuidelineItemType[] = [
 /*                              REUSABLE TEXT                                 */
 /* -------------------------------------------------------------------------- */
 
-const AppText = memo(
+export const AppText = memo(
     ({
         text,
         style,
@@ -149,19 +138,28 @@ export const Divider = memo(() => {
     return <View style={styles.divider} />;
 });
 
-export const PatientDetails = memo(() => {
+export type Props = {
+    data: any;
+    doctor: any;
+};
+
+export const PatientDetails = ({
+    data,
+    doctor,
+}: Props) => {
+    console.log("doctordoctordoctor", doctor);
     return (
         <View style={styles.patientCard}>
             <View style={styles.rowBetween}>
                 <InfoBlock
-                    label="PATIENT"
-                    value="Katherine Sterling"
+                    label="DEGREE"
+                    value={doctor?.qualification ?? 'NA'}
                     subValue="ID: Sanctuary-882910"
                 />
 
                 <InfoBlock
                     label="DATE"
-                    value="05.25.2024"
+                    value={data?.appointment_date ?? 'NA'}
                     alignRight
                 />
             </View>
@@ -171,7 +169,7 @@ export const PatientDetails = memo(() => {
             <View style={styles.rowBetween}>
                 <InfoBlock
                     label="PHYSICIAN"
-                    value="Dr. Arjun R Nair"
+                    value={doctor?.doctor_name ?? 'NA'}
                 />
 
                 <InfoBlock
@@ -186,18 +184,19 @@ export const PatientDetails = memo(() => {
             <View style={styles.rowBetween}>
                 <InfoBlock
                     label="Disease"
-                    value="StreamOn Prim"
+                    value={data?.prescription?.symptom_description ?? 'NA'}
                 />
 
                 <InfoBlock
                     label="Follow-up date"
-                    value="10-30 Days"
+                    value={data?.prescription?.follow_up?.date ?? 'NA'}
                     alignRight
                 />
             </View>
         </View>
     );
-});
+};
+
 
 /* -------------------------------------------------------------------------- */
 /*                              MEDICINE CARD                                 */
@@ -206,10 +205,11 @@ export const PatientDetails = memo(() => {
 export const MedicineCard = memo(
     ({
         icon,
-        medicineName,
-        timing,
-        description,
-        days,
+        medicine_name,
+        dosage,
+        duration,
+        frequency,
+        instruction
     }: MedicineItem) => {
         return (
             <View style={styles.medicineCard}>
@@ -225,12 +225,12 @@ export const MedicineCard = memo(
 
                         <View style={styles.medicineInfo}>
                             <AppText
-                                text={medicineName}
+                                text={medicine_name}
                                 style={styles.medicineName}
                             />
 
                             <AppText
-                                text={description}
+                                text={instruction}
                                 style={styles.medicineDesc}
                             />
                         </View>
@@ -238,7 +238,11 @@ export const MedicineCard = memo(
 
                     <View style={styles.timeWrapper}>
                         <AppText
-                            text={timing}
+                            text={frequency}
+                            style={styles.timeText}
+                        />
+                        <AppText
+                            text={dosage}
                             style={styles.timeText}
                         />
                     </View>
@@ -246,7 +250,7 @@ export const MedicineCard = memo(
 
                 <View style={styles.bottomRow}>
                     <AppText
-                        text={days}
+                        text={duration}
                         style={styles.daysText}
                     />
                 </View>
@@ -328,17 +332,42 @@ const FooterButton = memo(
             </TouchableOpacity>
         );
     },
-);
+)
 
-/* -------------------------------------------------------------------------- */
-/*                                  SCREEN                                    */
-/* -------------------------------------------------------------------------- */
 
-const DoctorSlipScreen = ({ navigation }: any) => {
+const DoctorSlipScreen = (props: any) => {
+
+    const { doctorID } = props?.route.params;
+    console.log("DoctorIDDoctorID", doctorID);
+
+    const [loading, setLoading] = React.useState(true);
+    const [slipData, setSlipData] = React.useState<any>(null);
+    const MEDICINES =
+        slipData?.consultations?.[0]?.prescription?.items || [];
+
+    const slips = slipData?.consultations || [];
+
+    useEffect(() => {
+        const fetch = async () => {
+            try {
+                setLoading(true);
+                const res = await _CONSULT_SERVICE.getPrescriptionDetail(doctorID);
+                console.log("doctorIDrespprescription", res?.data);
+                setSlipData(res?.data);
+            } catch (err) {
+                console.log("ERROR", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetch();
+    }, [doctorID]);
+
 
     const insets = useSafeAreaInsets();
 
-    const renderMedicine = useCallback(
+     const renderMedicine = useCallback(
         ({ item }: { item: MedicineItem }) => {
             return <MedicineCard {...item} />;
         },
@@ -363,157 +392,177 @@ const DoctorSlipScreen = ({ navigation }: any) => {
         [],
     );
 
+
+
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar
-                backgroundColor="#FFFFFF"
-                barStyle="dark-content"
+
+
+        slips.length > 1 ? (
+
+            <MultipleDoctorSlip
+                consultation={slipData}
+                navigation={props.navigation}
+
             />
-
-            <Header
-                title="Doctor Slip"
-                subtitle="Find best advice for your health"
-                backIcon={Images.backIcon}
-                onBack={() => navigation.goBack()}
-            />
-
-            <ScrollView
-                bounces={false}
-                contentContainerStyle={styles.scrollContainer}
-                showsVerticalScrollIndicator={false}>
-
-                {/* PATIENT DETAILS */}
-
-                <PatientDetails />
-
-                {/* NOTES */}
-
-                <SectionHeader title="Doctor’s Notes" />
-
-                <View style={styles.noteCard}>
-                    <AppText
-                        text={`"Focus on maintaining a consistent sleep schedule this week. The Triphala will aid detoxification while the Ashwagandha supports your nervous system through the quarterly transition. Avoid iced beverages and favor lukewarm water. If you experience mild lethargy in the first 48 hours, it's a normal part of the adjustment phase."`}
-                        style={styles.noteText}
-                    />
-
-                    <Divider />
-
-                    <View style={styles.signRow}>
-                        <Image
-                            source={Images.approved}
-                            style={styles.signIcon}
-                            resizeMode="contain"
-                        />
-
-                        <AppText
-                            text="Digitally signed by Dr. Arjun R Nair"
-                            style={styles.signText}
-                        />
-                    </View>
-                </View>
-
-                {/* MEDICINES */}
-
-                <SectionHeader
-                    title="Current Regimen"
-                    actionText="VERIFIED PROTOCOL"
+        ) : (
+            <SafeAreaView style={styles.container}>
+                <StatusBar
+                    backgroundColor="#FFFFFF"
+                    barStyle="dark-content"
                 />
 
-                <FlatList
-                    data={MEDICINES}
-                    scrollEnabled={false}
-                    keyExtractor={item => item.id.toString()}
-                    renderItem={renderMedicine}
-                    contentContainerStyle={styles.listGap}
+                <Header
+                    title="Doctor Slip"
+                    subtitle="Find best advice for your health"
+                    backIcon={Images.backIcon}
+                    onBack={() => props?.navigation.goBack()}
                 />
 
-                {/* GUIDELINES */}
+                {loading ? <DoctorSlipSkeleton /> :
+                    <>
 
-                <View style={styles.guidelineCard}>
-                    <View style={styles.guidelineHeader}>
-                        <Image
-                            source={Images.notification}
-                            style={styles.guidelineIcon}
-                            resizeMode="contain"
-                        />
+                        <ScrollView
+                            bounces={false}
+                            contentContainerStyle={styles.scrollContainer}
+                            showsVerticalScrollIndicator={false}>
 
-                        <AppText
-                            text="GUIDELINES FOR SUCCESS"
-                            style={styles.guidelineTitle}
-                        />
-                    </View>
+                            {/* PATIENT DETAILS */}
 
-                    <FlatList
-                        data={GUIDELINES}
-                        scrollEnabled={false}
-                        keyExtractor={item => item.id.toString()}
-                        renderItem={renderGuideline}
-                        ItemSeparatorComponent={() => (
-                            <View style={styles.guidelineSpacing} />
-                        )}
-                    />
-                </View>
+                            <PatientDetails data={slipData?.consultations[0]} doctor={slipData} />
 
-                <Divider />
+                            {/* NOTES */}
 
-                {/* FOOTER */}
+                            <SectionHeader title="Doctor’s Notes" />
 
-                <View style={styles.doctorFooter}>
-                    <AppText
-                        text="Dr. Arjun R Nair"
-                        style={styles.footerDoctor}
-                    />
+                            <View style={styles.noteCard}>
+                                <AppText
+                                    text={slipData?.prescription?.diagnosis_advice || `"Focus on maintaining a consistent sleep schedule this week. The Triphala will aid detoxification while the Ashwagandha supports your nervous system through the quarterly transition. Avoid iced beverages and favor lukewarm water. If you experience mild lethargy in the first 48 hours, it's a normal part of the adjustment phase."`}
+                                    style={styles.noteText}
+                                />
 
-                    <View style={styles.authenticatedRow}>
-                        <Image
-                            source={Images.approved}
-                            style={styles.footerApprovedIcon}
-                            resizeMode="contain"
-                        />
+                                <Divider />
 
-                        <AppText
-                            text="ELECTRONICALLY AUTHENTICATED"
-                            style={styles.authenticatedText}
-                        />
-                    </View>
+                                <View style={styles.signRow}>
+                                    <Image
+                                        source={Images.approved}
+                                        style={styles.signIcon}
+                                        resizeMode="contain"
+                                    />
 
-                    <AppText
-                        text="The Clinical Sanctuary Holistic Center"
-                        style={styles.footerSpeciality}
-                    />
+                                    <AppText
+                                        text={`Digitally signed by ${slipData?.doctor?.doctor_name}`}
+                                        style={styles.signText}
+                                    />
+                                </View>
+                            </View>
 
-                    <AppText
-                        text="1200 WELLNESS DRIVE, SUITE 400 • SANCTUARY HEALTH NETWORK"
-                        style={styles.footerClinic}
-                    />
-                </View>
+                            {/* MEDICINES */}
 
-                <View style={styles.bottomSpacing} />
-            </ScrollView>
+                            <SectionHeader
+                                title="Current Regimen"
+                                actionText="VERIFIED PROTOCOL"
+                            />
 
-            {/* BOTTOM ACTIONS */}
+                            <FlatList
+                                data={MEDICINES}
+                                scrollEnabled={false}
+                                keyExtractor={item => item.id.toString()}
+                                renderItem={renderMedicine}
+                                contentContainerStyle={styles.listGap}
+                            />
 
-            <View style={[
-                styles.footer,
-                {
-                    paddingBottom:
-                        insets.bottom > 0
-                            ? insets.bottom
-                            : 18,
-                },
-            ]}>
-                <FooterButton
-                    title="PDF"
-                    icon="download"
-                />
+                            {/* GUIDELINES */}
 
-                <FooterButton
-                    title="Buy Now"
-                    onPress={() => navigation.navigate('MultipleDoctorSlip')}
-                    isPrimary
-                />
-            </View>
-        </SafeAreaView>
+                            <View style={styles.guidelineCard}>
+                                <View style={styles.guidelineHeader}>
+                                    <Image
+                                        source={Images.notification}
+                                        style={styles.guidelineIcon}
+                                        resizeMode="contain"
+                                    />
+
+                                    <AppText
+                                        text="GUIDELINES FOR SUCCESS"
+                                        style={styles.guidelineTitle}
+                                    />
+                                </View>
+
+                                <FlatList
+                                    data={GUIDELINES}
+                                    scrollEnabled={false}
+                                    keyExtractor={item => item.id.toString()}
+                                    renderItem={renderGuideline}
+                                    ItemSeparatorComponent={() => (
+                                        <View style={styles.guidelineSpacing} />
+                                    )}
+                                />
+                            </View>
+
+                            <Divider />
+
+                            {/* FOOTER */}
+
+                            <View style={styles.doctorFooter}>
+                                <AppText
+                                    text={slipData?.doctor?.doctor_name}
+                                    style={styles.footerDoctor}
+                                />
+
+                                <View style={styles.authenticatedRow}>
+                                    <Image
+                                        source={Images.approved}
+                                        style={styles.footerApprovedIcon}
+                                        resizeMode="contain"
+                                    />
+
+                                    <AppText
+                                        text="ELECTRONICALLY AUTHENTICATED"
+                                        style={styles.authenticatedText}
+                                    />
+                                </View>
+
+                                <AppText
+                                    text="The Clinical Sanctuary Holistic Center"
+                                    style={styles.footerSpeciality}
+                                />
+
+                                <AppText
+                                    text="1200 WELLNESS DRIVE, SUITE 400 • SANCTUARY HEALTH NETWORK"
+                                    style={styles.footerClinic}
+                                />
+                            </View>
+
+                            <View style={styles.bottomSpacing} />
+                        </ScrollView>
+
+
+                        <View style={[
+                            styles.footer,
+                            {
+                                paddingBottom:
+                                    insets.bottom > 0
+                                        ? insets.bottom
+                                        : 18,
+                            },
+                        ]}>
+                            <FooterButton
+                                title="PDF"
+                                icon="download"
+                            />
+
+                            <FooterButton
+                                title="Buy Now"
+                                onPress={() => props?.navigation.navigate('MultipleDoctorSlip')}
+                                isPrimary
+                            />
+                        </View>
+                    </>
+
+                }
+
+            </SafeAreaView>
+        )
+
     );
 };
 

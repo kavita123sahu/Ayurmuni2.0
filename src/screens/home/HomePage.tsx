@@ -5,7 +5,7 @@
 
 
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   StatusBar,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
@@ -39,6 +40,9 @@ const { width } = Dimensions.get('window');
 
 const HomePage: React.FC = (props: any) => {
 
+  const hasFetched = useRef(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const {
     categories,
     SuggestDoctor,
@@ -46,15 +50,22 @@ const HomePage: React.FC = (props: any) => {
     customerData,
     setProductData,
 
-
     loadingCategories,
     loadingDoctors,
     loadingProducts,
     loadingCustomer,
+    refreshHomeData
   } = useHomeData();
 
 
-  console.log('productDataproductData', productData);
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refreshHomeData();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshHomeData]);
 
 
   const data = useMemo(() => [
@@ -80,6 +91,16 @@ const HomePage: React.FC = (props: any) => {
   ], [customerData]);
 
 
+
+  useEffect(() => {
+    if (hasFetched.current) return;
+
+    hasFetched.current = true;
+
+    refreshHomeData();
+  }, []);
+
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
@@ -92,6 +113,12 @@ const HomePage: React.FC = (props: any) => {
       <FlatList
         data={[1]}
         keyExtractor={() => 'home'}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
@@ -123,11 +150,11 @@ const HomePage: React.FC = (props: any) => {
               ))}
             </View>
 
-            {loadingCategories ? (
+            {/* {loadingCategories ? (
               <HomeCategorySkeleton />
             ) : (
               <HomeCategory data={categories} navigation={props.navigation} />
-            )}
+            )} */}
 
             <SectionHeader title="Suggested Doctors" actionText="View all" onPress={() => props.navigation.navigate('AllDoctors', {
               all: true
@@ -170,6 +197,8 @@ const HomePage: React.FC = (props: any) => {
 
             <SectionHeader title="Suggested Products" actionText="View all" />
 
+
+
             {loadingProducts ? (
               <TopSellingListSkeleton />
             ) : (
@@ -204,6 +233,7 @@ const HomePage: React.FC = (props: any) => {
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     // flex: 1,
@@ -212,7 +242,7 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 10
     flex: 1,
     paddingHorizontal: 20,
-    // paddingBottom: 100,
+    paddingBottom: 100,
     backgroundColor: "#FDFDFB",
   },
   containerprakriti: {

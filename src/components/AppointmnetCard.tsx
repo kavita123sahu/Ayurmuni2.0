@@ -28,9 +28,15 @@ export type ActionKey =
 
 export interface Appointment {
     consultation_id: string;
+    doctorName: string;
+    specialty: string;
+    date: string;
+    time: string;
+    status: string;
+    image: string | null;
+    rawData?: any;
     appointment_status:
     AppointmentStatus;
-    date: string;
     doctor: {
         doctor_id: string;
         doctor_name: string;
@@ -51,7 +57,18 @@ interface AppointmentCardProps {
     ) => void;
     style?: ViewStyle;
 }
+const UPCOMING_STATUS = [
+  "pending",
+  "confirmed",
+  "reschedule",
+  "rescheduled",
+];
 
+const PAST_STATUS = [
+  "completed",
+  "cancelled",
+  "missed",
+];
 /* -------------------------------------------------------------------------- */
 /*                               BADGE CONFIG                                 */
 /* -------------------------------------------------------------------------- */

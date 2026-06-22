@@ -614,7 +614,7 @@ const AllDoctors = (props: any) => {
                     onPress={() =>
                         props.navigation.navigate(
                             'DoctorProfile',
-                            { doctorId: item?.id },
+                            { doctorData: item },
                         )
                     }
                 />

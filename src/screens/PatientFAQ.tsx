@@ -33,6 +33,7 @@ import {
 } from '../components/MedicalHistory/styles/MedicalHistor';
 import Header from '../components/MedicalHistory/MedicalHeader';
 import { Ionicons } from '../common/Vector';
+import { PRAKRITI_IMAGES } from '../common/DataInterface';
 
 const PatientFAQ = ({ navigation }: any) => {
 
@@ -146,7 +147,7 @@ const PatientFAQ = ({ navigation }: any) => {
                         );
 
                     console.log("prakritiresponse", response)
-                   
+
                     const options =
                         response?.data
                             ?.prakriti_result_options ||
@@ -188,10 +189,9 @@ const PatientFAQ = ({ navigation }: any) => {
                                     (
                                         item: string,
                                     ) => ({
-                                        index:
-                                            item,
-                                        value:
-                                            item,
+                                        index: item,
+                                        value: item,
+                                        image_path: PRAKRITI_IMAGES[item] || "",
                                     }),
                                 ),
                         },
@@ -521,17 +521,17 @@ const PatientFAQ = ({ navigation }: any) => {
                         },
                     );
 
-                    console.log("assessement yes response", response)
+                console.log("assessement yes response", response)
 
                 if (
                     response?.success
                 ) {
 
-                    showSuccessToast(
-                        response?.message ||
-                        'Submitted Successfully',
-                        'success',
-                    );
+                    // showSuccessToast(
+                    //     response?.message ||
+                    //     'Submitted Successfully',
+                    //     'success',
+                    // );
 
                     return true;
                 }
@@ -580,11 +580,11 @@ const PatientFAQ = ({ navigation }: any) => {
                 response?.success
             ) {
 
-                showSuccessToast(
-                    response?.message ||
-                    'Submitted Successfully',
-                    'success',
-                );
+                // showSuccessToast(
+                //     response?.message ||
+                //     'Submitted Successfully',
+                //     'success',
+                // );
 
                 return true;
             }
@@ -659,17 +659,20 @@ const PatientFAQ = ({ navigation }: any) => {
                 LAST STEP
             */
 
-            const isLast =
-                step === steps.length - 1;
+            const isLast = step === steps.length - 1;
 
             if (isLast) {
 
-                navigation.replace(
-                    'AssessmentType',
-                    {
-                        form: 'medical',
-                    },
-                );
+                if (answers?.knowPrakriti !== undefined) {
+                    navigation.replace('PrakritiProfile');
+                } else {
+                    navigation.replace(
+                        'AssessmentType',
+                        {
+                            form: 'medical',
+                        },
+                    );
+                }
 
                 return;
             }
@@ -744,6 +747,28 @@ const PatientFAQ = ({ navigation }: any) => {
     if (!currentQuestion) {
         return null;
     }
+    const handleSkip = () => {
+
+        // First question skip nahi hogi
+        if (step === 0) {
+            return;
+        }
+
+        // Last question skip nahi hogi
+        if (step >= steps.length - 1) {
+            return;
+        }
+
+        // setAnswers((prev: any) => ({
+        //     ...prev,
+        //     [currentQuestion?.key]:
+        //         currentQuestion?.answer_type === 'multi_choice'
+        //             ? []
+        //             : null,
+        // }));
+
+        setStep(prev => prev + 1);
+    };
 
     /* ===================================================== */
 
@@ -766,6 +791,12 @@ const PatientFAQ = ({ navigation }: any) => {
                     step={step}
                     total={steps.length}
                     onBack={handleBack}
+                    onSkip={handleSkip}
+                    showSkip={
+                        step > 0 &&
+                        step < steps.length - 1 &&
+                        currentQuestion?.key !== 'prakritiType'
+                    }
                 />
 
                 {/* PROGRESS */}
@@ -858,25 +889,26 @@ const PatientFAQ = ({ navigation }: any) => {
                         }}
                     />
 
-                    <View style={styles.infoCard}>
+                    {step > 0 && (
+                        <View style={styles.infoCard}>
 
-                        <View style={styles.infoLeft}>
+                            <View style={styles.infoLeft}>
 
-                            <Image source={require('../assets/images/ayurveda.png')} style={{ height: 50, width: 50, }} />
+                                <Image source={require('../assets/images/ayurveda.png')} style={{ height: 50, width: 50, }} />
 
+                            </View>
+
+                            <Text style={styles.infoText}>
+                                Ayurveda believes your hair reflects your
+                                inner balance and overall well-being.
+                            </Text>
+
+                            <Image source={require('../assets/images/ayurvedaLeaf.png')} style={{ height: 30, width: 30, resizeMode: 'contain' }} />
 
 
                         </View>
+                    )}
 
-                        <Text style={styles.infoText}>
-                            Ayurveda believes your hair reflects your
-                            inner balance and overall well-being.
-                        </Text>
-
-                        <Image source={require('../assets/images/ayurvedaLeaf.png')} style={{ height: 30, width: 30, resizeMode: 'contain' }} />
-
-
-                    </View>
                 </ScrollView>
 
                 {/* FOOTER */}

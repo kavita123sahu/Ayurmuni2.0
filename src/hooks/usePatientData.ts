@@ -208,3 +208,74 @@ export const uploadImage = async (
 
     return response;
 };
+
+
+export const useMedicalRecord = () => {
+
+    const [loading, setLoading] =
+        useState(true);
+
+    const [refreshing, setRefreshing] =
+        useState(false);
+
+    const [patientsRecord, setPatientRecord] =
+        useState<any[]>([]);
+
+    const fetchPatientsRecord =
+        useCallback(async () => {
+
+            try {
+
+                setLoading(true);
+
+                const response  =    await _PATIENT_SERVICES.getAllMedicalRecord();
+
+                console.log('patinerecordsss', response);
+
+                const data = response?.data || [];
+
+                setPatientRecord(data);
+
+
+            } catch (error) {
+
+                console.log(
+                    'PATIENT LIST ERROR ===>',
+                    error,
+                );
+
+            } finally {
+
+                setLoading(false);
+                setRefreshing(false);
+
+            }
+
+        }, []);
+
+    useEffect(() => {
+
+        fetchPatientsRecord();
+
+    }, [fetchPatientsRecord]);
+
+    const onRefresh =
+        useCallback(() => {
+
+            setRefreshing(true);
+
+            fetchPatientsRecord();
+
+        }, [fetchPatientsRecord]);
+
+
+
+    return {
+        loading,
+        refreshing,
+        patientsRecord,
+        fetchPatientsRecord,
+        onRefresh,
+    };
+};
+

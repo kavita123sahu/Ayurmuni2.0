@@ -141,30 +141,117 @@ export const relationOptions = [
   { label: 'Brother', value: 'brother' },
   { label: 'Sister', value: 'sister' },
 ];
-
-export const INITIAL_FILTERS = {
-  speciality: null,
-  availabilityValue: '',
-  availabilityFrom: '',
-  availabilityTo: '',
-  experience: '',
+export type Appointment = {
+  consultation_id: string;
+  doctorName: string;
+  specialty: string;
+  date: string;
+  time: string;
+  status: string;
+  image: string | null;
+  rawData?: any;
 };
-
-export const TABS = [
-  {
-    key: 'speciality',
-    label: 'Speciality',
-  },
-  {
-    key: 'availability',
-    label: 'Availability',
-  },
-  {
-    key: 'experience',
-    label: 'Experience',
-  },
+export const UPCOMING_STATUS = [
+  "pending",
+  "confirmed",
+  "reschedule",
+  "rescheduled",
 ];
 
+export const PAST_STATUS = [
+  "completed",
+  "cancelled",
+  "missed",
+];
+
+export const PRAKRITI_IMAGES: Record<string, string> = {
+  Kapha:
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/8d60cead33a545f29fa970408ebdb224.png",
+
+  Pitta:
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/288266a4c4e94f399be1fa0cdb7b3a9a.png",
+
+  Vata:
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/0b3da9d104be4bb1b37b1d1e698ff616.png",
+
+  "Kapha-Vata":
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/272b144fd9314a20a4e7d6bf579814c1.png",
+
+  "Pitta-Kapha":
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/888ac0e8619b4dfe812b2bf4583b37e8.png",
+
+  "Pitta-Vata":
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/ccb71b214bae4b01b5d62c9f82c0bd41.png",
+
+  "Vata-Kapha":
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/62eed856309c45e7b28d81bfeb4dda9f.png",
+
+  "Vata-Pitta":
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/491817a9fd8343459818b9ae3b6d1bf4.png",
+
+  "Kapha-Pitta":
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/3afbc6d6dc164344a02c6c7573040989.png",
+
+  Tridosha:
+    "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/1435b1ad1380475caa127c9f00fb03d7.png",
+};
+
+
+export const getStatusStyle = (status: string) => {
+  const styles = {
+    confirmed: {
+      backgroundColor: "#10B9811A",
+      color: "#10B981",
+    },
+    pending: {
+      backgroundColor: "#FFF7ED",
+      color: "#EA580C",
+    },
+    cancelled: {
+      backgroundColor: "#FEE2E2",
+      color: "#EF4444",
+    },
+    completed: {
+      backgroundColor: "#DCFCE7",
+      color: "#16A34A",
+    },
+    missed: {
+      backgroundColor: "#F3F4F6",
+      color: "#6B7280",
+    },
+    reschedule: {
+      backgroundColor: "#DBEAFE",
+      color: "#2563EB",
+    },
+    rescheduled: {
+      backgroundColor: "#DBEAFE",
+      color: "#2563EB",
+    },
+  };
+
+  return (
+    styles[status as keyof typeof styles] || {
+      backgroundColor: "#F3F4F6",
+      color: "#000",
+    }
+  );
+};
+
+export const TABS =
+  [
+    {
+      key: "speciality",
+      label: "Speciality",
+    },
+    {
+      key: "availability",
+      label: "Availability",
+    },
+    {
+      key: "experience",
+      label: "Experience",
+    },
+  ];
 export const EXPERIENCE_OPTIONS = [
   {
     label: '1+ Years',
@@ -635,6 +722,9 @@ export const hasMatchingAvailability = (
 
   return true;
 };
+
+
+
 
 export const convertTo12Hour = (time: string) => {
 

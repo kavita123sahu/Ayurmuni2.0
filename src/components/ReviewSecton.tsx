@@ -8,7 +8,10 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
     return "⭐".repeat(count); // simple star render
   };
 
-  const visibleReviews = reviews.slice(0, 3);
+  console.log("reviewsalll", reviews);
+  const visibleReviews = reviews?.slice(0, 3);
+
+
   const getInitials = (patient_name: string) => {
     return patient_name
       .split(" ")
@@ -18,7 +21,7 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
   };
 
   const ratingData = useMemo(() => {
-    const total = reviews.length;
+    const total = reviews?.length;
 
     const counts: Record<number, number> = {
       5: 0,
@@ -28,7 +31,7 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
       1: 0,
     };
 
-    reviews.forEach((r: any) => {
+    reviews?.forEach((r: any) => {
       const rating = Number(r.rating);
       counts[rating] = (counts[rating] || 0) + 1;
     });
@@ -42,7 +45,7 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
       total > 0
         ? Number(
           (
-            reviews.reduce((sum, r) => sum + Number(r.rating), 0) / total
+            reviews?.reduce((sum, r) => sum + Number(r.rating), 0) / total
           ).toFixed(1)
         )
         : 0;
@@ -57,10 +60,9 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
   const MAX_VISIBLE_IMAGES = 4;
 
   const allImages = useMemo(() => {
-    const reviewImages = reviews.flatMap((item: any) => item.image_urls || []);
+    const reviewImages = reviews?.flatMap((item: any) => item.image_urls || []);
 
-    const mediaImages = reviews
-      .map((item: any) => item.media_url)
+    const mediaImages = reviews?.map((item: any) => item.media_url)
       .filter(Boolean);
 
     return [...mediaImages, ...reviewImages];

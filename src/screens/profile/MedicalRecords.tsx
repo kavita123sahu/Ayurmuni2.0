@@ -14,12 +14,19 @@ import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
+import { pick } from '@react-native-documents/picker';
+
 import { Fonts } from '../../common/Fonts';
 import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import OrderCard from '../../components/OrderCard';
+import MedicalRecordCard from '../consult/MedicalRecordCard';
+import PreviewModal from '../consult/PreviewModal';
+import { useMedicalRecord, usePatientData } from '../../hooks/usePatientData';
+import { AddMedicalRecord } from '../../services/PatientServices';
+import { uploadFiles } from 'react-native-fs';
 
 // ✅ Tab-wise alag DATA
 const ALL_DATA = [
@@ -49,7 +56,15 @@ const ALL_DATA = [
 const MedicalRecords = (props: any) => {
     const [activeTab, setActiveTab] = useState('All Records');
 
+    const { patientsRecord, fetchPatientsRecord } = useMedicalRecord()
 
+    console.log("patientsRecordpatientsRecord", patientsRecord)
+    const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
+    const [records, setRecords] = useState(patientsRecord);
+    const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState('');
     const formatStatus = (status: string): 'DELIVERED' | 'IN PROGRESS' => {
         const s = status?.toUpperCase();
 
@@ -58,10 +73,16 @@ const MedicalRecords = (props: any) => {
         return 'IN PROGRESS';
     };
 
-
-    const filteredData = activeTab === 'All Records'
-        ? ALL_DATA
-        : ALL_DATA.filter(item => item.type === activeTab);
+    const selectedFiles = uploadedFiles.filter(
+        item =>
+            selectedRecords.includes(item.id),
+    );
+    const filteredData =
+        activeTab === 'All Records'
+            ? records
+            : records.filter(
+                item => item.medical_record_type === activeTab,
+            );
 
     const renderAllItem = ({ item }: any) => (
         <TouchableOpacity style={styles.card}>
@@ -159,17 +180,103 @@ const MedicalRecords = (props: any) => {
             </View>
         )
     }
-
-
-
-
-
-    const getRenderItem = () => {
-        if (activeTab === 'Prescriptions') return renderPrescriptionItem;
-        if (activeTab === 'Lab Reports') return renderLabItem;
-        return renderAllItem;
+    const toggleRecord = (id: string) => {
+        setSelectedRecords(prev =>
+            prev.includes(id)
+                ? prev.filter(item => item !== id)
+                : [...prev, id]
+        );
     };
 
+    const deleteRecord = (id: string) => {
+        setRecords(prev =>
+            prev.filter(item => item.id !== id)
+        );
+
+        setSelectedRecords(prev =>
+            prev.filter(item => item !== id)
+        );
+    };
+
+    const handleUploadRecord = async () => {
+        try {
+            const result = await pick({
+                mode: 'open',
+                type: ['image/*', 'application/pdf'],
+            });
+
+            const file = result?.[0];
+
+            if (!file) return;
+
+            const newFile = {
+                id: Date.now().toString(),
+                name: file.name,
+                uri: file.uri,
+                type: file.type,
+                isNew: true,
+            };
+
+            setUploadedFiles(prev => [newFile, ...prev]);
+
+            setSelectedRecords(prev => [
+                ...prev,
+                newFile.id,
+            ]);
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    const handleSubmitRecords = async () => {
+        try {
+            for (const file of selectedFiles) {
+
+                const payload = {
+                    medical_record_type: 'lab_report',
+                    file_type: file.type?.includes('pdf')
+                        ? 'pdf'
+                        : 'image',
+                    description:
+                        file.name || 'Medical Record',
+
+                    file_url:
+                        "https://ayurmuni.s3.ap-south-1.amazonaws.com/appointment_documents/aa1e39a5a8be42938c62b6c7ffb87bd6.jpg",
+                };
+
+                console.log('payload =>', payload);
+
+                await AddMedicalRecord(payload);
+            }
+
+            setSelectedRecords([]);
+            setUploadedFiles([]);
+            fetchPatientsRecord();
+
+        } catch (error) {
+            console.log('handleSubmitRecords Error =>', error);
+        }
+    };
+
+    
+    const renderItem = ({ item }: any) => (
+        <MedicalRecordCard
+            item={item}
+            selected={selectedRecords.includes(
+                item.id,
+            )}
+            onSelect={() =>
+                toggleRecord(item.id)
+            }
+            onPreview={() => {
+                setPreviewUrl(item.uri || item.file_url);
+                setPreviewVisible(true);
+            }}
+            onDelete={() =>
+                deleteRecord(item.id)
+            }
+        />
+    );
     return (
         <SafeAreaView style={styles.container}>
             <Header
@@ -184,35 +291,58 @@ const MedicalRecords = (props: any) => {
                 icon={require('../../assets/images/Search.png')}
             />
 
-            <TabButton />
+            {/* <TabButton /> */}
 
             <ScrollView>
-                <View style={styles.addBox}>
+                <TouchableOpacity
+                    style={styles.uploadContainer}
+                    onPress={handleUploadRecord}
+                >
 
-                    <View style={styles.iconWrapper}>
-                        <Ionicons name="cloud-upload-outline" size={22} color="#065F46" />
+                    <View style={styles.uploadIcon}>
+                        <Ionicons
+                            name="cloud-upload-outline"
+                            size={28}
+                            color="#065F46"
+                        />
                     </View>
 
-                    <Text style={styles.addTitle}>Add New Record</Text>
-                    <Text style={styles.addSub}>Upload PDF or Take a photo</Text>
+                    <Text style={styles.uploadTitle}>
+                        Upload Medical Record
+                    </Text>
 
+                    <Text style={styles.uploadSub}>
+                        Prescription, Lab Report, PDF or Image
+                    </Text>
+
+                </TouchableOpacity>
+
+                <View
+                    style={{
+                        marginVertical: 15,
+                        backgroundColor: '#ECFDF5',
+                        padding: 14,
+                        borderRadius: 14,
+                    }}>
+                    <Text
+                        style={{
+                            color: '#065F46',
+                            fontFamily: Fonts.PoppinsMedium,
+                        }}>
+                        Selected Records: {selectedRecords.length}
+                    </Text>
                 </View>
 
                 <SectionHeader title="Recent Documents" />
 
-                {/* 
+
+
                 <FlatList
-                    data={DATA}
+                    // data={patientsRecord}
+                    data={[
+                        ...(patientsRecord || []),
+                    ]}
                     renderItem={renderItem}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                /> */}
-
-
-
-                <FlatList
-                    data={filteredData}
-                    renderItem={getRenderItem()}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{ paddingBottom: 20 }}
                     ListEmptyComponent={
@@ -223,17 +353,60 @@ const MedicalRecords = (props: any) => {
                 />
 
                 <View style={{ paddingBottom: 40, paddingTop: 10 }}>
-                    <PrimaryButton title="Upload File"
+                    {/* <PrimaryButton title="Upload File"
                         icon={Images.upload}
                         onPress={() => console.log}
                         backgroundColor="#0D614E"
                         TextFont={Fonts.PoppinsRegular}
-                        textColor="#FFFFFF" />
+                        textColor="#FFFFFF" /> */}
+
+                    {selectedRecords.length > 0 && (
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                gap: 10,
+                                marginTop: 20,
+                            }}>
+
+                            <PrimaryButton
+                                icon={Images.upload}
+                                backgroundColor="#0D614E"
+                                TextFont={Fonts.PoppinsRegular}
+                                textColor="#FFFFFF"
+                                title="Preview"
+                                onPress={() =>
+                                    setPreviewVisible(true)
+                                }
+                            />
+
+                            <PrimaryButton
+                                icon={Images.upload}
+                                backgroundColor="#0D614E"
+                                TextFont={Fonts.PoppinsRegular}
+                                textColor="#FFFFFF"
+                                title="Upload Selected"
+                                onPress={handleSubmitRecords}
+                            />
+
+                        </View>
+                    )}
                 </View>
 
 
             </ScrollView>
 
+            {previewVisible && (
+                <PreviewModal
+                    visible={previewVisible}
+                    imageUrl={previewUrl}
+                    record={selectedRecords}
+                    onClose={() => {
+                        setPreviewVisible(false);
+                        setPreviewUrl('');
+                        // setSelectedRecord(null);
+                    }}
+                />
+            )}
 
 
         </SafeAreaView>
@@ -386,6 +559,38 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
 
+    uploadContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderColor: '#10B981',
+        paddingVertical: 28,
+        alignItems: 'center',
+        marginTop: 16,
+    },
+
+    uploadIcon: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#ECFDF5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+
+    uploadTitle: {
+        fontFamily: Fonts.PoppinsSemiBold,
+        fontSize: 16,
+        color: '#065F46',
+    },
+
+    uploadSub: {
+        fontFamily: Fonts.PoppinsRegular,
+        fontSize: 12,
+        color: '#64748B',
+    },
     addTitle: {
         fontSize: 16,
         fontFamily: Fonts.PoppinsSemiBold,

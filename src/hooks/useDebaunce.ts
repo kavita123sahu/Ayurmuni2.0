@@ -1,25 +1,23 @@
 import { useEffect, useState } from "react";
 import NetInfo from '@react-native-community/netinfo';
 
-export const useDebounce = (
-    value: string,
-    delay = 500,
-) => {
-    const [debounced,
-        setDebounced] =
-        useState(value);
 
-    useEffect(() => {
-        const timer =
-            setTimeout(() => {
-                setDebounced(value);
-            }, delay);
+export const useDebounce = <T,>(
+  value: T,
+  delay = 500,
+): T => {
+  const [debouncedValue, setDebouncedValue] =
+    useState<T>(value);
 
-        return () =>
-            clearTimeout(timer);
-    }, [value, delay]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
 
-    return debounced;
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
 };
 
 

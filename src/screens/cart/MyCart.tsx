@@ -30,6 +30,7 @@ import { useAllCartData } from '../../hooks/Cart';
 import { getProductData, MyCartData, ProductItem, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
+import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 
 
 
@@ -46,8 +47,7 @@ const MyCart = ({ navigation }: any) => {
     const [selectedItems, setSelectedItems] =
         useState<string[]>([]);
 
-
-    console.log('CartDataCartDataCartDataCartData', CartData);
+    console.log('CartDataCartData', CartData);
 
     const mappedSections = useMemo<SectionType[]>(() => {
         const sections: SectionType[] = [];
@@ -83,6 +83,7 @@ const MyCart = ({ navigation }: any) => {
 
 
     useEffect(() => {
+
         setSections(mappedSections);
     }, [mappedSections]);
 
@@ -163,75 +164,69 @@ const MyCart = ({ navigation }: any) => {
             action: 'plus' | 'minus',
         ) => {
 
-            console.log("varinttid", variantId)
-
             let newQty = 1;
             let oldQty = 1;
+
+            const selectedItem = sections
+                .flatMap(s => s.items)
+                .find(i => i.variant_id === variantId);
+
+            if (!selectedItem) return;
+
+            oldQty = selectedItem.quantity;
+
+            // Remove item if qty is 1 and user presses minus
+            if (
+                action === 'minus' &&
+                selectedItem.quantity === 1
+            ) {
+                setSections(prev =>
+                    prev.map(section => ({
+                        ...section,
+                        items: section.items.filter(
+                            item => item.variant_id !== variantId,
+                        ),
+                    })),
+                );
+
+                try {
+                    await _CART_SERVICES.AddupdateCart({
+                        variant_id: variantId,
+                        quantity: 0,
+                    });
+                } catch (error) {
+                    fetchCartData(); // reload cart
+                }
+
+                return;
+            }
+
+            newQty =
+                action === 'plus'
+                    ? oldQty + 1
+                    : oldQty - 1;
 
             setSections(prev =>
                 prev.map(section => ({
                     ...section,
-                    items: section.items.map(item => {
-
-                        if (
-                            item.variant_id !==
-                            variantId
-                        ) {
-                            return item;
-                        }
-
-                        oldQty = item.quantity;
-
-                        newQty =
-                            action === 'plus'
-                                ? item.quantity + 1
-                                : Math.max(
-                                    1,
-                                    item.quantity - 1,
-                                );
-
-                        return {
-                            ...item,
-                            quantity: newQty,
-                        };
-                    }),
+                    items: section.items.map(item =>
+                        item.variant_id === variantId
+                            ? { ...item, quantity: newQty }
+                            : item,
+                    ),
                 })),
             );
 
-            console.log("newwquanttiy", newQty);
-
             try {
-
-                const resposne = await _CART_SERVICES.AddupdateCart({
+                await _CART_SERVICES.AddupdateCart({
                     variant_id: variantId,
                     quantity: newQty,
                 });
-                console.log("myacrdpluminus", resposne)
-
             } catch (error) {
-
-                setSections(prev =>
-                    prev.map(section => ({
-                        ...section,
-                        items: section.items.map(item => {
-
-                            if (
-                                item.variant_id !==
-                                variantId
-                            ) {
-                                return item;
-                            }
-
-                            return {
-                                ...item,
-                                quantity: oldQty,
-                            };
-                        }),
-                    })),
-                );
+                fetchCartData();
             }
         },
-        [],
+        [sections],
     );
 
     const selectedProducts =
@@ -339,9 +334,32 @@ const MyCart = ({ navigation }: any) => {
             />
 
             {loading ? (
-                laodingCart()
-            ) : (
+                <MyProductCardSkeleton />
+            ) : sections.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Image
+                        source={Images.shopCart} // ya koi cart icon
+                        style={styles.emptyImage}
+                    />
 
+                    <Text style={styles.emptyTitle}>
+                        Your Cart is Empty
+                    </Text>
+
+                    <Text style={styles.emptySubTitle}>
+                        Looks like you haven't added any products yet.
+                    </Text>
+
+                    <TouchableOpacity
+                        style={styles.shopNowBtn}
+                        onPress={() => navigation.navigate('Home')}
+                    >
+                        <Text style={styles.shopNowText}>
+                            Shop Now
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
                 <>
                     (
                     <ScrollView
@@ -427,10 +445,12 @@ const MyCart = ({ navigation }: any) => {
                                                     <MyProductCard
                                                         key={item.id}
                                                         item={item}
+                                                        navigation={navigation}
                                                         type={section.type}
                                                         isSelected={selectedItems.includes(
                                                             item.id,
                                                         )}
+
                                                         toggleItemSelection={
                                                             toggleItemSelection
                                                         }
@@ -524,8 +544,8 @@ const MyCart = ({ navigation }: any) => {
                         </View>
                     </TouchableOpacity>
                     )
-                </>)
-            }
+                </>
+            )}
 
 
         </SafeAreaView>
@@ -674,6 +694,46 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
     },
 
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 30,
+    },
+
+    emptyImage: {
+        width: 120,
+        height: 120,
+        resizeMode: 'contain',
+        marginBottom: 20,
+    },
+
+    emptyTitle: {
+        fontSize: 22,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+    },
+
+    emptySubTitle: {
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
+        marginTop: 8,
+        fontFamily: Fonts.PoppinsRegular,
+    },
+
+    shopNowBtn: {
+        marginTop: 24,
+        backgroundColor: '#0D614E',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+
+    shopNowText: {
+        color: '#FFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
     image: {
         width: 74,
         height: 74,

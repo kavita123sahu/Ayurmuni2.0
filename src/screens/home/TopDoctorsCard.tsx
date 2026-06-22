@@ -53,7 +53,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
         navigation.navigate(
           'DoctorProfile',
           {
-            doctorId: item?.id,
+            doctorData: item,
           },
         )
       }>

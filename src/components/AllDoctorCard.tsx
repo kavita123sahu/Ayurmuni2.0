@@ -41,6 +41,8 @@ interface Props {
 
 const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
+
+    console.log("itemitemitem", item)
     const [isWishlisted, setIsWishlisted] = useState(item?.is_favorite ?? false);
 
     const isAvailable =
@@ -75,6 +77,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     'POST',
                 );
 
+                console.log("resposneeeewisglist", response)
             if (!response?.success) {
                 setIsWishlisted(previous);
             }

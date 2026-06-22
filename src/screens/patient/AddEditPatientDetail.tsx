@@ -19,18 +19,18 @@ const {
 } = Dimensions.get('window');
 
 export const GENDER_OPTIONS = [
-    { label: 'Male', value: 'male' },
-    { label: 'Female', value: 'female' },
-    { label: 'Others', value: 'others' },
+    { label: 'Male', value: 'Male' },
+    { label: 'Female', value: 'Female' },
+    { label: 'Others', value: 'Others' },
 ];
 
 export const RELATION_OPTIONS = [
-    { label: 'Self', value: 'self' },
-    { label: 'Spouse', value: 'spouse' },
-    { label: 'Father', value: 'father' },
-    { label: 'Mother', value: 'mother' },
-    { label: 'Child', value: 'child' },
-    { label: 'Other', value: 'other' },
+    // { label: 'Self', value: 'self' },
+    { label: 'Spouse', value: 'Spouse' },
+    { label: 'Father', value: 'Father' },
+    { label: 'Mother', value: 'Mother' },
+    { label: 'Child', value: 'Child' },
+    { label: 'Other', value: 'Other' },
 ];
 
 export const BLOOD_GROUP_OPTIONS = [
@@ -141,8 +141,6 @@ export default function AddEditPatientDetail(props: any) {
             valid:
                 patientData?.insurance_valid_thru || '',
 
-
-
         });
 
     }, [patientData]);
@@ -170,80 +168,81 @@ export default function AddEditPatientDetail(props: any) {
             return 'Relation is required';
         }
 
-        if (!formData.height) {
-            return 'Height is required';
-        }
+        // if (!formData.height) {
+        //     return 'Height is required';
+        // }
 
-        if (!formData.weight) {
-            return 'Weight is required';
-        }
 
-        // if (
-        //     !/^\d{12}$/.test(
-        //         formData.phonenumber,
-        //     )
-        // ) {
-        //     return 'Phone number must be 10 digits';
+        // if (!formData.weight) {
+        //     return 'Weight is required';
         // }
 
         if (
-            !GENDER_OPTIONS.some(
-                item => item.value === formData.gender,
-            )
-        ) {
-            return 'Please select valid gender';
-        }
-
-        if (
-            !RELATION_OPTIONS.some(
-                item => item.value === formData.relation,
-            )
-        ) {
-            return 'Please select valid relation';
-        }
-
-        if (
-            !BLOOD_GROUP_OPTIONS.some(
-                item => item.value === formData.bloodG,
-            )
-        ) {
-            return 'Please select valid blood group';
-        }
-        if (
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-                formData.email,
-            )
-        ) {
-            return 'Invalid email address';
-        }
-
-        if (!formData.contactName.trim()) {
-            return 'Emergency contact name is required';
-        }
-
-        if (!formData.emergencyRelation) {
-            return 'Emergency relation is required';
-        }
-
-        if (
             !/^\d{10}$/.test(
-                formData.EmergencyNO,
+                formData.phonenumber,
             )
         ) {
-            return 'Emergency phone must be 10 digits';
+            return 'Phone number must be 10 digits';
         }
 
-        if (!formData.insurance.trim()) {
-            return 'Insurance provider is required';
-        }
+        // if (
+        //     !GENDER_OPTIONS.some(
+        //         item => item.value === formData.gender,
+        //     )
+        // ) {
+        //     return 'Please select valid gender';
+        // }
 
-        if (!formData.policyNO.trim()) {
-            return 'Policy number is required';
-        }
+        // if (
+        //     !RELATION_OPTIONS.some(
+        //         item => item.value === formData.relation,
+        //     )
+        // ) {
+        //     return 'Please select valid relation';
+        // }
 
-        if (!formData.valid) {
-            return 'Insurance validity date is required';
-        }
+        // if (
+        //     !BLOOD_GROUP_OPTIONS.some(
+        //         item => item.value === formData.bloodG,
+        //     )
+        // ) {
+        //     return 'Please select valid blood group';
+        // }
+        // if (
+        //     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        //         formData.email,
+        //     )
+        // ) {
+        //     return 'Invalid email address';
+        // }
+
+        // if (!formData.contactName.trim()) {
+        //     return 'Emergency contact name is required';
+        // }
+
+        // if (!formData.emergencyRelation) {
+        //     return 'Emergency relation is required';
+        // }
+
+        // if (
+        //     !/^\d{10}$/.test(
+        //         formData.EmergencyNO,
+        //     )
+        // ) {
+        //     return 'Emergency phone must be 10 digits';
+        // }
+
+        // if (!formData.insurance.trim()) {
+        //     return 'Insurance provider is required';
+        // }
+
+        // if (!formData.policyNO.trim()) {
+        //     return 'Policy number is required';
+        // }
+
+        // if (!formData.valid) {
+        //     return 'Insurance validity date is required';
+        // }
 
         return null;
     };
@@ -261,15 +260,14 @@ export default function AddEditPatientDetail(props: any) {
         }
 
 
-
         const payload = {
             first_name,
             last_name,
 
             dob: formatToISODate(formData.dob),
-            gender: formData.gender,
+            gender: formData.gender.toLowerCase(),
             blood_group: formData.bloodG,
-            relation: formData.relation,
+            relation: formData.relation.toLowerCase(),
 
             height: Number(formData.height) || 0,
             weight: Number(formData.weight) || 0,
@@ -400,7 +398,7 @@ export default function AddEditPatientDetail(props: any) {
                     <SectionHeader title="Personal Information" />
 
 
-                    <AppInputField label="Full Name" placeholder="John Doe" value={formData.fullname} onChangeText={(text: any) => setFormData(prev => ({ ...prev, fullname: text }))} />
+                    <AppInputField label="Full Name *" placeholder="John Doe" value={formData.fullname} onChangeText={(text: any) => setFormData(prev => ({ ...prev, fullname: text }))} />
 
                     <AppInputField
                         label="Date of Birth"
@@ -416,9 +414,8 @@ export default function AddEditPatientDetail(props: any) {
                     />
 
 
-
                     <AppInputField
-                        label="Gender"
+                        label="Gender *"
                         value={formData.gender}
                         placeholder="Select Gender"
                         rightIcon={Images.dropdown}
@@ -435,9 +432,9 @@ export default function AddEditPatientDetail(props: any) {
                     <View style={styles.row}>
 
                         <AppInputField
-                            label="Blood Group"
+                            label="Blood Group *"
                             value={formData.bloodG}
-                            placeholder="Select Blood Group"
+                            placeholder="Blood Group"
                             rightIcon={Images.dropdown}
                             containerStyle={{
                                 flex: 1,
@@ -453,7 +450,7 @@ export default function AddEditPatientDetail(props: any) {
                         />
 
                         <AppInputField
-                            label="Relation"
+                            label="Relation *"
                             value={formData.relation}
                             placeholder="Select Relation"
                             rightIcon={Images.dropdown}
@@ -506,7 +503,7 @@ export default function AddEditPatientDetail(props: any) {
                     <SectionHeader title="Contact Information" />
 
                     <AppInputField
-                        label="Phone Number"
+                        label="Phone Number *"
                         placeholder="+1 (555) 000-0000"
                         value={formData.phonenumber}
                         keyboardType="number-pad"
@@ -587,8 +584,6 @@ export default function AddEditPatientDetail(props: any) {
 
 
 
-
-
                     <SectionHeader title="Insurance Details" />
 
                     <AppInputField value={formData.insurance} onChangeText={(text: any) => setFormData(prev => ({ ...prev, insurance: text }))} label="Insurance Provider" placeholder="Blue Cross Shield" />
@@ -628,7 +623,7 @@ export default function AddEditPatientDetail(props: any) {
                         <BottomButton
                             title="Cancel"
                             icon={Images.shopCart}
-                            onPress={() => props.navigation.navigate('MyCart')}
+                            onPress={() => props.navigation.goBack()}
                             backgroundColor="#FFFFFF"
                             borderColor={Colors.borderColor}
                             textColor={Colors.subTextColor}

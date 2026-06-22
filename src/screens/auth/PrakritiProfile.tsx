@@ -15,6 +15,7 @@ import { Colors } from '../../common/Colors';
 import { Images } from '../../common/Images';
 import { Styles } from '../../common/Styles';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
+import { PrakritiProfileSkeleton } from '../../simmerScreen/ShimmerHook';
 
 
 const { width } = Dimensions.get('window');
@@ -42,7 +43,9 @@ const PrakritiProfile = (props: any) => {
       dontList: [],
     },
   });
+  const [loading, setLoading] = React.useState(true);
 
+  console.log("propssss", props)
 
   useEffect(() => {
     getPrakritiInfo();
@@ -51,6 +54,8 @@ const PrakritiProfile = (props: any) => {
 
   const getPrakritiInfo = async () => {
     try {
+      setLoading(true);
+
       const response: any =
         await _PROFILE_SERVICES.get_prakriti_info();
 
@@ -61,6 +66,8 @@ const PrakritiProfile = (props: any) => {
 
       if (response?.success) {
         const apiData = response?.data;
+
+        console.log("resposnesucess", response)
 
         // ===== RESULT =====
 
@@ -168,123 +175,162 @@ const PrakritiProfile = (props: any) => {
         );
       }
     } catch (error) {
+      console.log(error);
       console.log(
         'prakriti-error',
         error,
       );
     }
+    finally {
+      setLoading(false);
+    }
   };
 
+  const handleGoHome = () => {
+    props.navigation.replace('HomeStack', {
+      screen: 'Home',
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
+
+      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.primaryColor} />
+      {/* ===== HEADER ===== */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => props.navigation.goBack()}>
+          <Image source={Images.backIcon} style={{ height: 40, width: 40 }} />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Prakriti Analysis</Text>
+
+        <TouchableOpacity style={styles.iconBtn}>
+          <Image source={Images.share} style={{ height: 40, width: 40 }} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <StatusBar barStyle={'dark-content'} backgroundColor={Colors.primaryColor} />
-        {/* ===== HEADER ===== */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => props.navigation.goBack()}>
-            <Image source={Images.backIcon} style={{ height: 40, width: 40 }} />
-          </TouchableOpacity>
+        {loading ? <PrakritiProfileSkeleton /> :
 
-          <Text style={styles.headerTitle}>Prakriti Analysis</Text>
+          (<>
+            <View style={styles.topSection}>
+              <Text style={styles.completedText}>
+                PRAKRITI ANALYSIS COMPLETE
+              </Text>
 
-          <TouchableOpacity style={styles.iconBtn}>
-            <Image source={Images.share} style={{ height: 40, width: 40 }} />
-          </TouchableOpacity>
-        </View>
+              <Text style={styles.mainTitle}>
+                {analysisData?.dominantType || 'Your Prakriti Type'}
+              </Text>
 
-        {/* ===== TOP CONTENT ===== */}
-        <View style={styles.topSection}>
-          <Text style={styles.completedText}>
-            PRAKRITI ANALYSIS COMPLETE
-          </Text>
-
-          <Text style={styles.mainTitle}>
-            {analysisData?.dominantType || 'Your Prakriti Type'}
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Your unique Ayurvedic soul-print, Priya.
-          </Text>
-        </View>
-
-        {/* ===== DOSHA CARD ===== */}
-        <View style={styles.doshaCard}>
-          {analysisData.doshas.map((item: any) => (
-            <View key={item.id} style={styles.doshaItem}>
-              <View
-                style={[
-                  styles.iconCircle,
-                  {
-                    borderColor: item.color,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.doshaIcon,
-                    {
-                      color: item.color,
-                    },
-                  ]}
-                >
-                  {item.icon}
-                </Text>
-              </View>
-
-              <Text style={styles.doshaName}>{item.name}</Text>
-
-              <Text style={styles.doshaPercent}>
-                {item.percentage}%
+              <Text style={styles.subtitle}>
+                Your unique Ayurvedic soul-print, Priya.
               </Text>
             </View>
-          ))}
-        </View>
 
-        {/* ===== CORE ESSENCE ===== */}
-        <View style={styles.essenceCard}>
-          <Text style={styles.smallHeading}>CORE ESSENCE</Text>
+            {/* ===== DOSHA CARD ===== */}
+            <View style={styles.doshaCard}>
+              {analysisData.doshas.map((item: any) => (
+                <View key={item.id} style={styles.doshaItem}>
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      {
+                        borderColor: item.color,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.doshaIcon,
+                        {
+                          color: item.color,
+                        },
+                      ]}
+                    >
+                      {item.icon}
+                    </Text>
+                  </View>
 
-          <Text style={styles.essenceTitle}>
-            {analysisData.coreEssence.title}
+                  <Text style={styles.doshaName}>{item.name}</Text>
+
+                  <Text style={styles.doshaPercent}>
+                    {item.percentage}%
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* ===== CORE ESSENCE ===== */}
+            <View style={styles.essenceCard}>
+              <Text style={styles.smallHeading}>CORE ESSENCE</Text>
+
+              <Text style={styles.essenceTitle}>
+                {analysisData.coreEssence.title}
+              </Text>
+
+              <Text style={styles.essenceDescription}>
+                {analysisData.coreEssence.description}
+              </Text>
+            </View>
+
+            {/* ===== GUIDELINES ===== */}
+            <View style={styles.guidelineHeader}>
+              <Text style={styles.guidelineTitle}>
+                Lifestyle Guidelines
+              </Text>
+
+              <Text style={styles.personalizedText}>
+                Personalized
+              </Text>
+            </View>
+
+            {/* ===== DO CARD ===== */}
+            <GuidelineCard
+              title="Daily Rituals (Do's)"
+              color={Colors.primaryColor}
+              icon={require('../../assets/images/check-icon.png')}
+              image={require('../../assets/images/bullettick.png')}
+              data={analysisData.lifestyleGuidelines.doList}
+            />
+
+            {/* ===== DONT CARD ===== */}
+            <GuidelineCard
+              title="To Avoid (Don'ts)"
+              color="#EA580C"
+              image={require('../../assets/images/crosstick.png')}
+              icon={require('../../assets/images/DontIcon.png')}
+              data={analysisData.lifestyleGuidelines.dontList}
+            />
+          </>)}
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={{
+            backgroundColor: Colors.primaryColor,
+            paddingVertical: 14,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginHorizontal: 20,
+            marginTop: 20,
+          }}
+          onPress={handleGoHome}
+
+        >
+          <Text
+            style={{
+              color: '#FFF',
+              fontSize: 16,
+              fontFamily: Fonts.PoppinsSemiBold,
+            }}
+          >
+            Go to Home
           </Text>
+        </TouchableOpacity>
 
-          <Text style={styles.essenceDescription}>
-            {analysisData.coreEssence.description}
-          </Text>
-        </View>
-
-        {/* ===== GUIDELINES ===== */}
-        <View style={styles.guidelineHeader}>
-          <Text style={styles.guidelineTitle}>
-            Lifestyle Guidelines
-          </Text>
-
-          <Text style={styles.personalizedText}>
-            Personalized
-          </Text>
-        </View>
-
-        {/* ===== DO CARD ===== */}
-        <GuidelineCard
-          title="Daily Rituals (Do's)"
-          color={Colors.primaryColor}
-          icon={require('../../assets/images/check-icon.png')}
-          image={require('../../assets/images/bullettick.png')}
-          data={analysisData.lifestyleGuidelines.doList}
-        />
-
-        {/* ===== DONT CARD ===== */}
-        <GuidelineCard
-          title="To Avoid (Don'ts)"
-          color="#EA580C"
-          image={require('../../assets/images/crosstick.png')}
-          icon={require('../../assets/images/DontIcon.png')}
-          data={analysisData.lifestyleGuidelines.dontList}
-        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -292,68 +338,69 @@ const PrakritiProfile = (props: any) => {
 
 export default PrakritiProfile;
 
-const GuidelineCard = ({
-  title,
-  color,
-  icon,
-  image,
-  data,
-}: GuidelineCardProps) => {
-  return (
-    <View
-      style={[
-        styles.guidelineCard,
-        {
-          borderLeftColor: color,
-        },
-      ]}
-    >
-      <View style={styles.guidelineTop}>
-        <View
-          style={[
-            styles.guidelineIconWrap,
-            {
-              backgroundColor: `${color}15`,
-            },
-          ]}
-        >
-          
-          <Image source={icon} style={{ height: 18, width: 18, tintColor: color }} />
-        </View>
-
-        <Text
-          style={[
-            styles.guidelineCardTitle,
-            {
-              color,
-            },
-          ]}
-        >
-          {title}
-        </Text>
-      </View>
-
-      {data.map((item: any, index: any) => (
-        <View key={index} style={styles.bulletRow}>
+const GuidelineCard = React.memo(
+  ({
+    title,
+    color,
+    icon,
+    image,
+    data,
+  }: GuidelineCardProps) => {
+    return (
+      <View
+        style={[
+          styles.guidelineCard,
+          {
+            borderLeftColor: color,
+          },
+        ]}
+      >
+        <View style={styles.guidelineTop}>
           <View
             style={[
-              styles.bulletDot,
+              styles.guidelineIconWrap,
               {
-                borderColor: color,
+                backgroundColor: `${color}15`,
               },
             ]}
           >
-            <Image source={image} style={{ height: 18, tintColor: color, width: 18, resizeMode: 'contain' }} />
+
+            <Image source={icon} style={{ height: 18, width: 18, tintColor: color }} />
           </View>
 
-          <Text style={styles.bulletText}>
-            {item}
+          <Text
+            style={[
+              styles.guidelineCardTitle,
+              {
+                color,
+              },
+            ]}
+          >
+            {title}
           </Text>
         </View>
-      ))}
-    </View>
-  );
-};
+
+        {data.map((item: any, index: any) => (
+          <View key={index} style={styles.bulletRow}>
+            <View
+              style={[
+                styles.bulletDot,
+                {
+                  borderColor: color,
+                },
+              ]}
+            >
+              <Image source={image} style={{ height: 18, tintColor: color, width: 18, resizeMode: 'contain' }} />
+            </View>
+
+            <Text style={styles.bulletText}>
+              {item}
+            </Text>
+          </View>
+        ))}
+      </View>
+    )
+  })
 
 
 // ===== STYLES =====

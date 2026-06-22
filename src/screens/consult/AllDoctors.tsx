@@ -40,21 +40,13 @@ import { useDebounce, } from '../../hooks/useDebaunce';
 import { DoctorCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import FilterTabs from '../../components/FilterTab';
 
-const TABS = [
-    {
-        key: 'speciality',
-        label: 'Speciality',
-    },
-    {
-        key: 'availability',
-        label: 'Availability',
-    },
-    {
-        key: 'experience',
-        label: 'Experience',
-    },
-];
-
+type SelectedFilters = {
+    specialization: string | null;
+    date_range: string;
+    from_date: string;
+    to_date: string;
+    experience: string;
+};
 const EXPERIENCE_OPTIONS = [
     {
         label: '1+ Years',
@@ -111,50 +103,32 @@ const AVAILABILITY_OPTIONS = [
 
 
 const AllDoctors = (props: any) => {
-    const all =
-        props?.route?.params?.all ??
-        false;
-
-    console.log("allllllllllll", all);
+    const all = props?.route?.params?.all ?? false;
 
 
-    const [search, setSearch] =
-        useState('');
-
-    // const debouncedFilters = useDebounce(selectedFilters, 500);
-
-    const [showDatePicker, setShowDatePicker] =
-        useState(false);
-    const [showCustomDateOptions, setShowCustomDateOptions] =
-        useState(false);
-    const [datePickerTarget, setDatePickerTarget] =
-        useState<'from' | 'to' | null>(null);
+    const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<string | null>(null);
 
-    const [selectedFilters, setSelectedFilters] = useState({
-        specialization: null,
-        date_range: '',
-        from_date: '',
-        to_date: '',
-        experience: '',
-    });
+    useEffect(() => {
+        console.log("PARENT ACTIVE TAB CHANGED =>", activeTab);
+    }, [activeTab]);
 
+    const [selectedFilters, setSelectedFilters] =
+        useState<SelectedFilters>({
+            specialization: null,
+            date_range: '',
+            from_date: '',
+            to_date: '',
+            experience: '',
+        });
 
-    console.log("selectedFiltersselectedFilters", selectedFilters)
     const [showCalendar, setShowCalendar] = useState(false);
     const [tempFromDate, setTempFromDate] = useState<Date | null>(null);
     const [tempToDate, setTempToDate] = useState<Date | null>(null);
-
     const [calendarStep, setCalendarStep] = useState<'from' | 'to'>('from');
-
     const [selectedDateLabel, setSelectedDateLabel] = useState('');
 
-
-
-
     const { categories } = useConsultData();
-
-    console.log("categories", categories)
 
     const apiFilters = useMemo(() => ({
         specialization: selectedFilters.specialization || '',
@@ -163,42 +137,29 @@ const AllDoctors = (props: any) => {
         to_date: selectedFilters.to_date || '',
     }), [selectedFilters]);
 
-    const debouncedSearch =
-        useDebounce(search);
-
-    const applyDate = () => {
-        if (!tempFromDate || !tempToDate) return;
-
-        const from = dayjs(tempFromDate).format('YYYY-MM-DD');
-        const to = dayjs(tempToDate).format('YYYY-MM-DD');
-
-        setSelectedFilters(prev => ({
-            ...prev,
-            availabilityFrom: from,
-            availabilityTo: to,
-            availabilityValue: 'custom_date',
-        }));
-
-        setSelectedDateLabel(
-            `${dayjs(tempFromDate).format('DD MMM')} - ${dayjs(tempToDate).format('DD MMM')}`
-        );
-
-        setShowCalendar(false);
-    };
+    const debouncedFilters = useDebounce(apiFilters, 500);
 
     const {
         loading,
         doctorData,
-    } = useAllDoctors(
-        apiFilters
-        // selectedFilters,
+    } = useAllDoctors(debouncedFilters);
 
-        // search,
-        // debouncedSearch
-    );
+    console.log('doctorDatadoctorData', doctorData)
+    const handleTabPress = (tab: string | null) => {
+        console.log("CLICKED =>", tab);
+
+        setActiveTab(prev => {
+            const next = prev === tab ? null : tab;
+
+            console.log("PREV =>", prev);
+            console.log("NEXT =>", next);
+
+            return next;
+        });
+    };
 
 
-
+    console.log("RENDER activeTab =>", activeTab);
     const FILTER_OPTIONS = useMemo(() => ({
         speciality: categories.map((c: any) => ({
             label: c.name,
@@ -208,18 +169,6 @@ const AllDoctors = (props: any) => {
         experience: EXPERIENCE_OPTIONS,
     }), [categories]);
 
-
-
-
-    const applyDateRange = (from: string, to: string) => {
-        setSelectedFilters(prev => ({
-            ...prev,
-            availabilityFrom: from,
-            availabilityTo: to,
-        }));
-
-        setSelectedDateLabel(`${from} - ${to}`);
-    };
 
     const dropdownOptions = useMemo(() => {
         if (!activeTab) return [];
@@ -234,101 +183,41 @@ const AllDoctors = (props: any) => {
     }, [activeTab, FILTER_OPTIONS]);
 
 
-    const clearFilter =
-        useCallback(
-            (key: string) => {
-                setSelectedFilters(
-                    (prev: any) => ({
-                        ...prev,
-                        speciality:
-                            key === 'speciality'
-                                ? null
-                                : prev.speciality,
-                        availabilityValue:
-                            key === 'availability'
-                                ? ''
-                                : prev.availabilityValue,
-                        availabilityFrom:
-                            key === 'availability'
-                                ? ''
-                                : prev.availabilityFrom,
-                        availabilityTo:
-                            key === 'availability'
-                                ? ''
-                                : prev.availabilityTo,
-                        experience:
-                            key === 'experience'
-                                ? ''
-                                : prev.experience,
-                    }),
-                );
+    const clearFilter = useCallback((key: string) => {
+        setSelectedFilters(prev => ({
+            ...prev,
+            specialization:
+                key === 'speciality'
+                    ? null
+                    : prev.specialization,
 
-                if (key === 'availability') {
-                    setSelectedDateLabel('');
-                    setShowCustomDateOptions(false);
-                }
-            },
-            [],
-        );
+            date_range:
+                key === 'availability'
+                    ? ''
+                    : prev.date_range,
 
-    const getAvailabilityLabel = () => {
-        if (selectedDateLabel) {
-            return selectedDateLabel;
+            from_date:
+                key === 'availability'
+                    ? ''
+                    : prev.from_date,
+
+            to_date:
+                key === 'availability'
+                    ? ''
+                    : prev.to_date,
+
+            experience:
+                key === 'experience'
+                    ? ''
+                    : prev.experience,
+        }));
+
+        if (key === 'availability') {
+            setSelectedDateLabel('');
         }
 
-        const selectedOption =
-            AVAILABILITY_OPTIONS.find(
-                item =>
-                    item.value ===
-                    selectedFilters?.date_range,
-            );
-
-        return (
-            selectedOption?.label ||
-            'Availability'
-        );
-    };
-
-    const getTabLabel = (tab: any) => {
-        if (tab.key === 'speciality') {
-            const found = categories.find(c => c.id === selectedFilters.specialization);
-            return found?.name || 'Speciality';
-        }
-
-        if (tab.key === 'experience') {
-            const found = EXPERIENCE_OPTIONS.find(i => i.value === selectedFilters.experience);
-            return found?.label || 'Experience';
-        }
-
-        if (tab.key === 'availability') {
-            if (selectedFilters.date_range === 'custom_date') {
-                return selectedDateLabel || 'Select Date';
-            }
-
-            const selected = AVAILABILITY_OPTIONS.find(
-                i => i.value === selectedFilters.date_range
-            );
-
-            return selected?.label || 'Availability';
-        }
-
-        return tab.label;
-    };
-
-
-
-
-
-    const handleDoctorPress =
-        useCallback(
-            (doctorId: string) => {
-                props.navigation.navigate(
-                    'DoctorProfile',
-                    { doctorId }
-                );
-            },
-            [props.navigation],
-        );
+        setActiveTab(null);
+    }, []);
 
 
     const getPresetDates = (type: string) => {
@@ -376,6 +265,46 @@ const AllDoctors = (props: any) => {
         }
     };
 
+    const getTabLabel = (tab: any) => {
+        if (tab.key === 'speciality') {
+            const found = categories.find(c => c.id === selectedFilters.specialization);
+            return found?.name || 'Speciality';
+        }
+
+        if (tab.key === 'experience') {
+            const found = EXPERIENCE_OPTIONS.find(i => i.value === selectedFilters.experience);
+            return found?.label || 'Experience';
+        }
+
+        if (tab.key === 'availability') {
+            if (selectedFilters.date_range === 'custom_date') {
+                return selectedDateLabel || 'Select Date';
+            }
+
+            const selected = AVAILABILITY_OPTIONS.find(
+                i => i.value === selectedFilters.date_range
+            );
+
+            return selected?.label || 'Availability';
+        }
+
+        return tab.label;
+    };
+
+
+    const handleDoctorPress =
+        useCallback(
+            (doctorData: string) => {
+                props.navigation.navigate(
+                    'DoctorProfile',
+                    { doctorData }
+                );
+            },
+            [props.navigation],
+        );
+
+
+
     const renderDoctorItem =
         useCallback(
             ({ item }: any) => (
@@ -383,7 +312,7 @@ const AllDoctors = (props: any) => {
                 <AllDoctorCard
                     item={item}
                     onPress={() =>
-                        handleDoctorPress(item.id)
+                        handleDoctorPress(item)
                     }
                 />
 
@@ -393,8 +322,10 @@ const AllDoctors = (props: any) => {
 
 
 
-    return (
 
+
+
+    return (
         <>
             <SafeAreaView
                 style={styles.container}
@@ -429,7 +360,7 @@ const AllDoctors = (props: any) => {
 
                     <FilterTabs
                         activeTab={activeTab}
-                        setActiveTab={setActiveTab}
+                        setActiveTab={handleTabPress}
                         selectedFilters={selectedFilters}
                         setSelectedFilters={setSelectedFilters}
                         clearFilter={clearFilter}
@@ -438,15 +369,18 @@ const AllDoctors = (props: any) => {
                         setTempFromDate={setTempFromDate}
                         setTempToDate={setTempToDate}
                         setCalendarStep={setCalendarStep}
-                        setShowCalendar={setShowCalendar}
                         getPresetDates={getPresetDates}
+                        setShowCalendar={setShowCalendar}
                     />
+
+
 
                     {loading ?
                         <DoctorCardSkeleton />
 
                         : <FlatList
                             data={doctorData}
+
                             keyExtractor={(item) =>
                                 String(item?.id)
                             }
@@ -477,7 +411,7 @@ const AllDoctors = (props: any) => {
                             updateCellsBatchingPeriod={50}
                             ListEmptyComponent={() => (
 
-                                <EmptyState image={Images.doctorImage} title='No doctor found' />
+                                <EmptyState image={Images.doctorImage} title='No doctor found' imageSize={20} />
                             )}
                         />}
                 </View>
@@ -508,9 +442,10 @@ const AllDoctors = (props: any) => {
                                     if (calendarStep === 'from') {
                                         setTempFromDate(date);
                                         setCalendarStep('to');
-                                    } else {
-                                        setTempToDate(date);
+                                        return;
                                     }
+
+                                    setTempToDate(date);
                                 }}
                             />
 
@@ -521,6 +456,7 @@ const AllDoctors = (props: any) => {
                                     style={styles.modalBtnCancel}
                                     onPress={() => {
                                         setShowCalendar(false);
+                                        setCalendarStep('from');
                                         setTempFromDate(null);
                                         setTempToDate(null);
                                     }}
@@ -535,15 +471,15 @@ const AllDoctors = (props: any) => {
 
                                         const from = dayjs(tempFromDate).format('YYYY-MM-DD');
                                         const to = dayjs(tempToDate).format('YYYY-MM-DD');
-
                                         setSelectedFilters(prev => ({
                                             ...prev,
-                                            availabilityFrom: from,
-                                            availabilityTo: to,
-                                            availabilityValue: 'custom_date',
+                                            date_range: 'custom_date',
+                                            from_date: from,
+                                            to_date: to,
                                         }));
 
                                         setSelectedDateLabel(`${from} - ${to}`);
+                                        setCalendarStep('from');
                                         setShowCalendar(false);
                                     }}
                                 >
@@ -575,147 +511,6 @@ const styles = StyleSheet.create({
     listContent: {
         // paddingHorizontal: 20,
         paddingBottom: 120,
-    },
-
-    loaderContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-    },
-
-    tabsRow: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 10,
-    },
-
-    tabWrapper: {
-        flex: 1,
-        position: 'relative', // 👈 IMPORTANT
-    },
-
-    tabs: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-    },
-
-    tabBtn: {
-        width: '100%',   // 👈 force equal width inside wrapper
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        backgroundColor: '#fff',
-    },
-    dropdownWrapper: {
-        position: 'absolute',
-        top: 60,
-        left: 0,
-        right: 0,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        maxHeight: 200,
-        paddingHorizontal: 20,
-        // elevation: 8,
-        // zIndex: 999,
-    },
-
-    option: {
-        padding: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-
-    activeTab: {
-        backgroundColor:
-            Colors.primaryColor,
-
-        borderColor:
-            Colors.primaryColor,
-
-
-    },
-
-    tabText: {
-        flexShrink: 1,
-
-        fontSize: 13,
-
-        fontFamily:
-            Fonts.PoppinsMedium,
-
-        color: '#0F172A',
-
-        marginRight: 6,
-    },
-
-
-
-    activeTabText: {
-        color: '#fff',
-    },
-
-
-    dropdown: {
-        position: 'absolute',
-        top: 50,
-        left: 0,
-        right: 0,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        maxHeight: 180,
-        zIndex: 999,
-        elevation: 5,
-    },
-
-    dropdownScroll: {
-        maxHeight: 260,
-    },
-
-    dropdownContent: {
-        paddingVertical: 6,
-    },
-
-
-    optionText: {
-        fontSize: 14,
-        fontFamily:
-            Fonts.PoppinsMedium,
-
-        color: '#1E293B',
-    },
-
-    customDatePanel: {
-        padding: 16,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 16,
-    },
-
-    dateButton: {
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        marginBottom: 12,
-    },
-
-    dateButtonText: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#0F172A',
-    },
-
-    dropdownList: {
-        maxHeight: 220,
     },
 
     modalOverlay: {
@@ -759,28 +554,4 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
 
-    applyButton: {
-        backgroundColor: Colors.primaryColor,
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: 'center',
-    },
-
-    applyButtonText: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#FFFFFF',
-    },
-
-    emptyContainer: {
-        alignItems: 'center',
-        marginTop: 100,
-    },
-
-    emptyText: {
-        fontSize: 15,
-        color: '#64748B',
-        fontFamily:
-            Fonts.PoppinsMedium,
-    },
 });

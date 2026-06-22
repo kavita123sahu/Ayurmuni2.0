@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Linking,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { useNavigation } from '@react-navigation/native';
@@ -15,34 +16,15 @@ import { Fonts } from '../../common/Fonts';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Images } from '../../common/Images';
+import * as _CONSULT_SERVICE from '../../services/ConsultServce';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppointmentDetailSkeleton } from '../../simmerScreen/ShimmerHook';
+import RescheduleModal from '../../components/RescheduleModal';
+import CancelAppointmentModal from '../../components/CancelAppointModal';
+import { handleAppointmentAction } from '../../hooks/AppointmentData';
+import { showSuccessToast } from '../../config/Key';
+import { Utils } from '../../common/Utils';
 
-/* ================= TYPES ================= */
-type AppointmentDetails = {
-  doctorName: string;
-  specialty: string;
-  date: string;
-  time: string;
-  patientName: string;
-  age: string;
-  gender: string;
-  reason: string;
-  image: string;
-};
-
-/* ================= DATA ================= */
-const data: AppointmentDetails = {
-  doctorName: 'Dr. Arjun R Nair',
-  specialty: 'Cardiology Specialist',
-  date: 'Tuesday, Oct 24, 2023',
-  time: '09:30 AM - 10:00 AM',
-  patientName: 'Alex Johnson',
-  age: '28 Years',
-  gender: 'Male',
-  reason:
-    'I have been experiencing mild chest tightness during morning jogs over the last two weeks. Looking for a routine check-up and professional advice.',
-  image: 'https://i.pravatar.cc/100?img=3',
-};
 
 
 const PrimaryButton = ({
@@ -64,65 +46,217 @@ const PrimaryButton = ({
   );
 };
 
+type Props = {
+  data: any;
+  navigation: any;
+  token: any;
+}
 
-const DoctorDetail =()=>{
+const DoctorDetail = ({ data, navigation, token }: Props) => {
+
+  const appointmentData = {
+    doctorName:
+      data?.doctor?.doctor_name || "",
+
+    consultationId:
+      data?.appointment?.consultation_id,
+  };
+
+
+  console.log("appointmentData", appointmentData);
+
+
   return (
-     <View style={styles.card}>
-          <View style={styles.row}>
-            <Image source={{ uri: data.image }} style={styles.avatar} />
+    <View style={styles.card}>
+      <View style={styles.row}>
 
-            <View>
-              <Text style={Styles.name}>{data.doctorName}</Text>
-              <Text style={[Styles.specialty, { color: Colors.primaryColor }]}>{data.specialty}</Text>
-            </View>
-          </View>
+        <Image source={data?.doctor?.doctor_image ? { uri: data?.doctor?.doctor_image } : Images.doctorImage} style={styles.avatar} />
 
-
-          <View style={styles.dateTimeBox}>
-
-            <View style={styles.dtItem}>
-              <View style={styles.iconCircle}>
-                <Image source={Images.calender} style={Styles.IconSize} />
-              </View>
-
-              <View style={styles.textContainer}>
-                <Text style={styles.label}>DATE</Text>
-                <Text style={styles.value}>{data.date}</Text>
-              </View>
-            </View>
-            {/* TIME */}
-            <View style={styles.dtItem}>
-              <View style={styles.iconCircle}>
-                <Image source={Images.clock} style={Styles.IconSize} />
-              </View>
-
-
-
-              <View style={styles.textContainer}>
-                <Text style={styles.label}>TIME</Text>
-                <Text style={styles.value}>{data.time}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={{ paddingHorizontal: 10 }}>
-            <PrimaryButton title="Join Video Call" page='appoint' />
-
-            <TouchableOpacity style={styles.secondaryBtn}>
-              <Text style={styles.secondaryText}>Chat with Doctor</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.techText}>
-            Technical Check: Test Audio & Video
-          </Text>
+        <View>
+          <Text style={Styles.name}>{data?.doctor?.doctor_name}</Text>
+          <Text style={[Styles.specialty, { color: Colors.primaryColor }]}>{data?.doctor?.doctor_specialization}</Text>
         </View>
+      </View>
+
+
+      <View style={styles.dateTimeBox}>
+
+        <View style={styles.dtItem}>
+          <View style={styles.iconCircle}>
+            <Image source={Images.calender} style={Styles.IconSize} />
+          </View>
+
+          <View style={styles.textContainer}>
+            <Text style={styles.label}>DATE</Text>
+            <Text style={styles.value}>{data?.appointment?.appointment_date}</Text>
+          </View>
+        </View>
+        {/* TIME */}
+        <View style={styles.dtItem}>
+          <View style={styles.iconCircle}>
+            <Image source={Images.clock} style={Styles.IconSize} />
+          </View>
+
+
+
+          <View style={styles.textContainer}>
+            <Text style={styles.label}>TIME</Text>
+            <Text style={styles.value}>{data?.appointment?.start_time}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 10 }}>
+        {/* navigation.navigate('PatientVideoCallScreen', {
+          consulation_data: appointmentData
+        }) */}
+
+        <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
+          const url = `https://3twgj6xg-3000.inc1.devtunnels.ms/patvideocall/${token}/${appointmentData?.consultationId}`;
+
+          if (url) {
+            const supported =
+              await Linking.canOpenURL(url);
+
+            if (supported) {
+              await Linking.openURL(url);
+            }
+          }
+        }} />
+
+        <TouchableOpacity style={styles.secondaryBtn}>
+          <Text style={styles.secondaryText}>Chat with Doctor</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.techText}>
+        Technical Check: Test Audio & Video
+      </Text>
+    </View>
   )
 }
 
-const AppointmentDetailScreen = (props: any) => {
 
-  console.log("propsss", props)
+const AppointmentDetailScreen = ({ route, navigation }: any) => {
+  const { consultation_id } = route.params;
+
+  const [loading, setLoading] = React.useState(true);
+  const [detail, setDetail] = React.useState<any>(null);
+  const [showRescheduleModal, setShowRescheduleModal] =
+    useState(false);
+  const [token, setToken] = useState('');
+
+  const [showCancelModal, setShowCancelModal] =
+    useState(false);
+
+  const fetchDetail = async () => {
+    try {
+      setLoading(true);
+
+      const res = await _CONSULT_SERVICE.getAppointmentDetail(consultation_id);
+
+      console.log("DETAILRES", res);
+
+      setDetail(res?.data);
+
+    } catch (error) {
+      console.log("DETAIL ERROR", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    const init = async () => {
+      const userToken =
+        await Utils.getData('_TOKEN');
+
+      setToken(userToken);
+
+    };
+
+    init();
+    fetchDetail();
+  }, [])
+
+
+
+
+  const normalizedAppointment = useMemo(() => {
+    if (!detail?.appointment) return null;
+
+    const item = detail;
+
+    return {
+      consultation_id: consultation_id,
+      doctorName: item.doctor?.doctor_name || "",
+      specialty:
+        item.doctor?.doctor_specialization ||
+        "General Physician",
+      date: item.appointment?.appointment_date,
+      time: item?.appointment?.start_time,
+      status: item?.appointment?.appointment_status,
+      image: item.doctor?.doctor_image,
+      availability: item.availability || [],
+      rawData: item,
+    };
+  }, [detail]);
+
+
+  const STATUS = normalizedAppointment?.status === 'cancelled';
+
+  const handleReschedule = async (
+    appointmentId: string,
+    payload: {
+      availability: any;
+      reschedule_reason: string;
+    }
+  ) => {
+    console.log("appointmentId", appointmentId);
+    console.log("payload", payload);
+    const res = await handleAppointmentAction({
+      appointmentId,
+      action: "reschedule",
+      availability: payload.availability,
+      reschedule_reason:
+        payload.reschedule_reason,
+    });
+    console.log("res--->>", res);
+
+
+    if (res?.success) {
+      fetchDetail?.();
+      showSuccessToast(res?.message, 'success');
+    }
+
+    setShowRescheduleModal(false);
+    showSuccessToast(res.message || "You cannot reschedule multiple times", 'error')
+  };
+
+
+  const handleCancel = async (
+    appointmentId: string,
+    reason: any
+  ) => {
+    console.log("appointmentId", appointmentId);
+    console.log("reason", reason);
+    const res = await handleAppointmentAction({
+      appointmentId,
+      action: "cancel",
+      cancellation_reason: reason?.cancellation_reason || "",
+    });
+
+    console.log("rescancel---->>", res);
+    if (res?.success) {
+      // fetchDetail?.();
+      navigation.navigate('Appointments')
+      showSuccessToast(res?.message, "success");
+    }
+    setShowCancelModal(false);
+    showSuccessToast(res?.message, 'error')
+  };
+
   return (
     <SafeAreaView style={styles.container}>
 
@@ -131,50 +265,102 @@ const AppointmentDetailScreen = (props: any) => {
       <AppHeader
         title="Appointment Details"
         leftIcon={Images.backIcon}
-        onLeftPress={() => props.navigation.goBack()}
+        onLeftPress={() => navigation.goBack()}
         rightIcon="search"
         onRightPress={() => console.log('Search clicked')}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
-       <DoctorDetail/>
+      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: '#FDFDFB' }}>
 
-        <Text style={styles.sectionTitle}>Patient Information</Text>
 
-        <View style={styles.card}>
+        {loading ? <AppointmentDetailSkeleton />
+          :
+          <>
+            <DoctorDetail data={detail} token={token} navigation={navigation} />
 
-          <View style={styles.infoRow}>
-            <Text style={Styles.label}>Name</Text>
-            <Text style={Styles.value}>{data.patientName}</Text>
-          </View>
+            <Text style={styles.sectionTitle}>Patient Information</Text>
 
-          <View style={styles.infoRow}>
-            <Text style={Styles.label}>Age</Text>
-            <Text style={Styles.value}>{data.age}</Text>
-          </View>
+            <View style={styles.card}>
 
-          <View style={styles.infoRow}>
-            <Text style={Styles.label}>Gender</Text>
-            <Text style={Styles.value}>{data.gender}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Text style={Styles.label}>Name</Text>
+                <Text style={Styles.value}>{detail?.appointment?.patient?.patient_name}</Text>
+              </View>
 
-        </View>
+              <View style={styles.infoRow}>
+                <Text style={Styles.label}>Age</Text>
+                <Text style={Styles.value}>{detail?.appointment?.patient?.age}</Text>
+              </View>
 
-        <Text style={styles.sectionTitle}>Reason for Visit</Text>
+              <View style={styles.infoRow}>
+                <Text style={Styles.label}>Gender</Text>
+                <Text style={Styles.value}>{detail?.appointment?.patient?.gender}</Text>
+              </View>
 
-        <View style={styles.card}>
-          <Text style={styles.reason}>{data.reason}</Text>
-        </View>
+            </View>
 
-        <View style={{ paddingHorizontal: 10 }}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Text style={Styles.outlineText}>Reschedule</Text>
-          </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Reason for Visit</Text>
 
-          <TouchableOpacity style={styles.cancelBtn}>
-            <Text style={Styles.cancelText}>Cancel Appointment</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.card}>
+              <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
+            </View>
+
+
+            {!STATUS && (<View style={{ paddingHorizontal: 10 }}>
+              <TouchableOpacity style={styles.outlineBtn} onPress={() => {
+                console.log("Reschedule Clicked");
+                setShowRescheduleModal(true);
+              }} >
+                <Text style={Styles.outlineText}>Reschedule</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => {
+                console.log("Cancel Clicked");
+                setShowCancelModal(true);
+              }}>
+                <Text style={Styles.cancelText}>Cancel Appointment</Text>
+              </TouchableOpacity>
+            </View>
+            )}
+
+          </>}
+
+        <RescheduleModal
+          visible={showRescheduleModal}
+          appointment={normalizedAppointment}
+          // slots={normalizedAppointment}
+          onClose={() => {
+            setShowRescheduleModal(false);
+            // navigation.goback();
+            // setSelectedAppointment(null);
+          }}
+          onSubmit={(payload) => {
+            handleReschedule(
+              normalizedAppointment?.consultation_id,
+              payload
+            );
+            setShowRescheduleModal(false);
+          }}
+        />
+
+        <CancelAppointmentModal
+          visible={showCancelModal}
+          onClose={() => {
+            setShowCancelModal(false);
+            // navigation.goBack()
+
+          }}
+          onSubmit={(payload: any) => {
+            handleCancel(
+              normalizedAppointment?.consultation_id,
+              payload
+            );
+
+            setShowCancelModal(false);
+          }}
+        />
+
+
 
       </ScrollView>
     </SafeAreaView>
@@ -218,6 +404,9 @@ const styles = StyleSheet.create({
   avatar: {
     width: 55,
     height: 55,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     marginRight: 12,
   },

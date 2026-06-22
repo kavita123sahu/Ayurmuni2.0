@@ -188,6 +188,7 @@ const ConsultHistory = (
             [],
         );
 
+
     const filteredHistory =
         history?.filter(
             (item: any) => {

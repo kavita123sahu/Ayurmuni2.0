@@ -78,7 +78,7 @@ export const ReviewGalleryScreen = ({
                 )}
             />
             <ImageView
-                images={images.map(item => ({
+                images={images.map((item: any) => ({
                     uri: item,
                 }))}
                 imageIndex={selectedIndex}

@@ -56,7 +56,7 @@ const RazorpayScreen = ({
 }: any) => {
 
     const {
-        doctorData,
+        doctorInfo,
         slotId,
         date,
         concern,
@@ -65,11 +65,13 @@ const RazorpayScreen = ({
 
 
 
-    console.log("paymentdatatta",
+    console.log("doctorInfodoctorInfodoctorInfo",
         slotId,
         date,
         concern,
-        selectedTime,)
+        selectedTime, doctorInfo )
+
+        
 
     /* -------------------------------------------------------------------------- */
     /*                                   STATES                                   */
@@ -142,10 +144,10 @@ const RazorpayScreen = ({
     const totalAmount = useMemo(() => {
 
         return Number(
-            doctorData?.consult_fee?.amount || 0,
+            doctorInfo?.consult_fee?.amount || 0,
         );
 
-    }, [doctorData]);
+    }, [doctorInfo]);
 
     /* -------------------------------------------------------------------------- */
     /*                              PAYMENT HANDLER                               */
@@ -174,15 +176,15 @@ const RazorpayScreen = ({
 
             const paymentData = paymentResponse?.data;
 
-            const contactNumber = String(doctorData?.phone_number || '')
+            const contactNumber = String(doctorInfo?.phone_number || '')
                 .replace(/\D/g, '');
 
             await openRazorpayPayment({
                 key: paymentData?.razorpay_key,
                 amount: Number(paymentData?.amount) * 100,
                 order_id: paymentData?.razorpay_order_id,
-                name: doctorData?.full_name,
-                email: doctorData?.email || 'test@gmail.com',
+                name: doctorInfo?.full_name,
+                email: doctorInfo?.email || 'test@gmail.com',
                 contact: `91${contactNumber}`,
                 themeColor: Colors.primaryColor,
             })
@@ -218,7 +220,7 @@ const RazorpayScreen = ({
                         });
 
                         // , {
-                        //     doctorData,
+                        //     doctorInfo,
                         //     date,
                         //     concern,
                         //     selectedTime,
@@ -307,11 +309,11 @@ const RazorpayScreen = ({
                                 <View style={{ flex: 1 }}>
 
                                     <Text style={styles.doctorName}>
-                                        {doctorData?.full_name}
+                                        {doctorInfo?.full_name}
                                     </Text>
 
                                     <Text style={styles.speciality}>
-                                        {doctorData?.designation}
+                                        {doctorInfo?.designation}
                                     </Text>
 
                                 </View>

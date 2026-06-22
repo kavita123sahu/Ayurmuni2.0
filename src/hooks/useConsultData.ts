@@ -54,7 +54,7 @@ export const useConsultData = () => {
                     categoryRes,
                     topDoctorRes,
                     AllfavDoctor
-                ] = await Promise.all([
+                ] :any = await Promise.all([
                     // _CONSULT_SERVICES.getConsultCategory(),
                     _CONSULT_SERVICES.getConsultCategory(),
                     _CONSULT_SERVICES.getTopDoctor(),
@@ -250,6 +250,10 @@ export const groupSlotsByTime = (
 };
 
 export const useAllDoctors = (selectedFilters: any) => {
+
+
+    console.log("selectedfilerpayload", selectedFilters);
+
     const [loading, setLoading] = useState(false);
     const [doctorData, setDoctorData] = useState<any[]>([]);
 
@@ -264,7 +268,7 @@ export const useAllDoctors = (selectedFilters: any) => {
                 from_date: selectedFilters.availabilityFrom || '',
                 to_date: selectedFilters.availabilityTo || '',
             };
-            console.log("payloaddd", payload);
+            console.log("payloadddddddddddd", payload);
 
             const res = await _CONSULT_SERVICES.getFilterTopDoctor(payload);
 
@@ -286,6 +290,39 @@ export const useAllDoctors = (selectedFilters: any) => {
     }, [getAllDoctors]);
 
     return { loading, doctorData, refetch: getAllDoctors };
+};
+
+
+
+export const useAppointmentHistory = () => {
+
+    const [loading, setLoading] = useState(false);
+    const [AppointData, setAppointData] = useState<any[]>([]);
+
+    const getAllAppointment = useCallback(async () => {
+        try {
+            setLoading(true);
+
+            const res = await _CONSULT_SERVICES.getConsultHistory({
+
+            });
+            console.log("consulresposne", res);
+   
+            setAppointData(res?.data?.results || []);
+             setLoading(false);
+
+        } catch (e) {
+            console.log("ALL_DOCTOR_APPOINT_ERROR", e);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        getAllAppointment();
+    }, [getAllAppointment]);
+
+    return { loading, AppointData,getAllAppointment };
 };
 
 

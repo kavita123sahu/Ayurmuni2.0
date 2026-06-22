@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,169 +11,68 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { Styles } from '../../common/Styles';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // path adjust kar
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../type';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppointmentHistory, useConsultData } from '../../hooks/useConsultData';
+import { Appointment, getStatusStyle, PAST_STATUS, UPCOMING_STATUS } from '../../common/DataInterface';
+import EmptyState from '../../components/EmptyState';
+import RenderAppoint from '../../components/RenderAppoint';
+import { AppointmentSkeletonList } from '../../simmerScreen/ShimmerHook';
+import RescheduleModal from '../../components/RescheduleModal';
+import CancelAppointmentModal from '../../components/CancelAppointModal';
+import { appointmentActionAPI } from '../../services/ConsultServce';
+import { showSuccessToast } from '../../config/Key';
+import { handleAppointmentAction } from '../../hooks/AppointmentData';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+
 const AppointmentScreen = () => {
 
+  const { AppointData, getAllAppointment, loading } = useAppointmentHistory();
   const navigation = useNavigation<NavigationProp>(); // ✅ FIX
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [showRescheduleModal, setShowRescheduleModal] =
+    useState(false);
+
+  const [showCancelModal, setShowCancelModal] =
+    useState(false);
+
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<any>(null);
 
 
+  const normalizedData = useMemo(() => {
+    const data = AppointData || [];
 
-  type Appointment = { id: string; doctorName: string; specialty: string; date: string; time: string; status: 'CONFIRMED' | 'PENDING' | 'CANCELLED'; image: string; };
-
-  const dummyData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'PENDING', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=2', },];
-
-
-  const pastData: Appointment[] = [{ id: '1', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '2', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=2', }, { id: '3', doctorName: 'Dr. Sarah Jenkins', specialty: 'Cardiologist - Heart Care Center', date: 'Oct 24, 2023', time: '10:30 AM', status: 'CANCELLED', image: 'https://i.pravatar.cc/100?img=1', }, { id: '4', doctorName: 'Dr. Michael Chen', specialty: 'Dermatologist - Skin Clinic', date: 'Oct 28, 2023', time: '02:15 PM', status: 'CONFIRMED', image: 'https://i.pravatar.cc/100?img=2', },];
+    return data.map(item => ({
+      consultation_id: item.consultation_id,
+      doctorName: item.doctor?.doctor_name || "",
+      specialty: item.doctor?.doctor_specialization || "General Physician",
+      date: item.appointment_date,
+      time: item.start_time,
+      status: item.appointment_status,
+      image: item.doctor?.doctor_image,
+      rawData: item,
+    }));
+  }, [AppointData]);
 
 
   const appointmentData = useMemo(() => {
-    return activeTab === 'upcoming'
-      ? dummyData
-      : pastData;
-  }, [activeTab]);
+    return normalizedData.filter(item =>
+      activeTab === "upcoming"
+        ? UPCOMING_STATUS.includes(item.status)
+        : PAST_STATUS.includes(item.status)
+    );
+  }, [normalizedData, activeTab]);
 
 
-  const DateTimeCard = ({ item }: { item: Appointment }) => {
-    return (
-
-      <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <View style={styles.iconCircle}>
-            <Image source={Images.calender} style={Styles.IconSize} />
-          </View>
-
-          <View>
-            <Text style={Styles.label}>DATE</Text>
-            <Text style={Styles.value}>{item.date}</Text>
-          </View>
-        </View>
-
-        <View style={styles.infoItem}>
-          <View style={styles.iconCircle}>
-            <Image source={Images.clock} style={Styles.IconSize} />
-          </View>
-          <View>
-            <Text style={Styles.label}>TIME</Text>
-            <Text style={Styles.value}>{item.time}</Text>
-          </View>
-        </View>
-
-      </View>
-    )
-  }
-  const renderItem = ({ item }: { item: Appointment }) => (
-
-    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AppointmentDetails')}>
-      <View style={styles.row}>
-        <Image source={{ uri: item.image }} style={styles.avatar} />
-
-        <View style={{ flex: 1 }}>
-          <Text style={Styles.name}>{item.doctorName}</Text>
-          <Text style={Styles.specialty}>{item.specialty}</Text>
-        </View>
-
-        <View
-          style={[
-            styles.status,
-            item.status === 'CONFIRMED'
-              ? styles.confirmed
-              : item.status === 'PENDING'
-                ? styles.pending
-                : item.status === 'CANCELLED'
-                  ? styles.cancelled
-                  : {},
-          ]}
-        >
-          <Text
-            style={[
-              styles.statusText,
-              {
-                color:
-                  item.status === 'CONFIRMED'
-                    ? Colors.green
-                    : item.status === 'CANCELLED'
-                      ? '#FF6B6B'
-                      : item.status === 'PENDING'
-                        ? '#EA580C'
-                        : '#000',
-              },
-            ]}
-          >
-            {item.status}
-          </Text>
-
-        </View>
-      </View>
-
-      <DateTimeCard item={item} />
-
-
-      {activeTab === 'upcoming' ? (
-        (item.status === 'CONFIRMED') ? (
-          <View style={styles.btnRow}>
-            <TouchableOpacity style={styles.outlineBtn} onPress={() => navigation.navigate('DoctorSlot')}>
-              <Text style={Styles.outlineText}>
-                Reschedule
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('')}>
-              <Text
-                numberOfLines={1}
-                style={styles.primaryText}
-              >
-                Join Call
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.cancelBtn}>
-            <Text
-              numberOfLines={1}
-              style={Styles.cancelText}
-            >
-              Cancel Appointment
-            </Text>
-          </TouchableOpacity>
-        )
-      ) : (
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('DoctorSlipScreen')}>
-          <Text
-            numberOfLines={1}
-            style={styles.primaryText}
-          >
-            View Details
-          </Text>
-        </TouchableOpacity>
-      )}
-
-
-      {/* {(item.status === 'CONFIRMED' || item.status === 'CANCELLED' && activeTab === 'upcoming') ? (
-        <View style={styles.btnRow}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Text style={Styles.outlineText}>Reschedule</Text>
-          </TouchableOpacity> 
-
-          <TouchableOpacity style={styles.primaryBtn}>
-            <Text numberOfLines={1} style={styles.primaryText}>Join Call</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <TouchableOpacity style={styles.cancelBtn}>
-          <Text numberOfLines={1} style={Styles.cancelText}>Cancel Appointment</Text>
-        </TouchableOpacity>
-      )} */}
-    </TouchableOpacity>
-  );
-
+  const listData = loading
+    ? Array.from({ length: 5 }, (_, i) => ({ id: i, skeleton: true }))
+    : appointmentData;
 
   const TabButton = () => {
     return (
@@ -211,6 +110,64 @@ const AppointmentScreen = () => {
     )
   }
 
+  const handleReschedule = async (
+    appointmentId: string,
+    payload: {
+      availability: any;
+      reschedule_reason: string;
+    }
+  ) => {
+    console.log("appointmentId", appointmentId);
+    console.log("payload", payload);
+    const res = await handleAppointmentAction({
+      appointmentId,
+      action: "reschedule",
+      availability: payload.availability,
+      reschedule_reason:
+        payload.reschedule_reason,
+    });
+    console.log("res--->>", res);
+
+
+    if (res?.success) {
+      getAllAppointment?.();
+      showSuccessToast(res?.message, 'success');
+    }
+
+    setShowRescheduleModal(false);
+    showSuccessToast(res.message, 'error')
+    setSelectedAppointment(null);
+  };
+
+
+  const handleCancel = async (
+    appointmentId: string,
+    reason: any
+  ) => {
+    console.log("appointmentId", appointmentId);
+    console.log("reason", reason);
+    const res = await handleAppointmentAction({
+      appointmentId,
+      action: "cancel",
+      cancellation_reason: reason?.cancellation_reason || "",
+    });
+
+    console.log("rescancel---->>", res);
+    if (res?.success) {
+      getAllAppointment?.();
+      showSuccessToast(res?.message, 'success');
+    }
+    setShowCancelModal(false);
+    showSuccessToast(res?.message, 'error')
+    setSelectedAppointment(null);
+  };
+
+
+
+  useEffect(() => {
+    console.log("showRescheduleModal", showRescheduleModal);
+  }, [showRescheduleModal]);
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -225,15 +182,79 @@ const AppointmentScreen = () => {
       <TabButton />
 
       <FlatList
-        data={appointmentData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 1, paddingVertical: 15, paddingBottom: 70 }}
+        data={listData}
+        // keyExtractor={(item, index) =>
+        //   loading ? index.toString() : item.id.toString()
+        // }
+        renderItem={({ item }) =>
+          loading ? (
+            <AppointmentSkeletonList />
+          ) : (
+            <RenderAppoint
+              item={item}
+              navigation={navigation}
+              onReschedule={() => {
+                setSelectedAppointment(item);
+                setShowRescheduleModal(true);
+              }}
+              onCancel={() => {
+                setSelectedAppointment(item);
+                setShowCancelModal(true);
+              }}
+            />
+          )
+        }
+        removeClippedSubviews
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingVertical: 20 }}
       />
 
-      <TouchableOpacity style={styles.bookBtn}>
+      <RescheduleModal
+        visible={showRescheduleModal}
+        appointment={selectedAppointment}
+        // slots={selectedAppointment}
+        onClose={() => {
+          setShowRescheduleModal(false);
+          setSelectedAppointment(null);
+        }}
+        onSubmit={(payload) => {
+          handleReschedule(
+            selectedAppointment?.consultation_id,
+            payload
+          );
+          setShowRescheduleModal(false);
+        }}
+      />
+
+      <CancelAppointmentModal
+        visible={showCancelModal}
+        onClose={() => {
+
+          setShowCancelModal(false);
+          setSelectedAppointment(null);
+        }}
+        onSubmit={(payload: any) => {
+          handleCancel(
+            selectedAppointment?.consultation_id,
+            payload
+          );
+
+          setShowCancelModal(false);
+        }}
+      />
+
+
+
+      <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('AllDoctors')}>
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
+
+
+
 
     </SafeAreaView>
   );
@@ -294,85 +315,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryColor,
     borderRadius: 2,
   },
-  /* Card */
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderColor,
-    overflow: 'hidden',
-  },
-
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    marginRight: 10,
-  },
-
-
-
-  status: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: 8,
-    alignSelf: 'flex-start', // 👈 fix
-    flexShrink: 0, // 👈 no compression
-  },
-
-  confirmed: {
-    backgroundColor: "#10B9811A",
-  },
-
-  cancelled: {
-    backgroundColor: '#FEE2E2',
-  },
-  pending: {
-    backgroundColor: '#FFF7ED',
-  },
-
-
-  statusText: {
-    fontSize: 10,
-
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.bgcolor,
-    padding: 12,
-    borderRadius: 12,
-    height: 68,
-    marginTop: 12,
-  },
-
-  infoItem: {
-    // flex:1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    marginRight: 8,
-  },
-
   icon: {
     fontSize: 14,
   },

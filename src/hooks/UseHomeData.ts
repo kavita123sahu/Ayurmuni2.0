@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import *as _HOME_SERVICES from "../services/HomeServices";
 import * as _PRODUCT_SERVICES from "../services/ProductServices";
 import *as _PROFILE_SERVICES from "../services/ProfileServices";
@@ -8,8 +8,7 @@ export const useHomeData = () => {
     const [loading, setLoading] =
         useState(true);
 
-    const [refreshing, setRefreshing] =
-        useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [loadingCategories, setloadingCategories] =
         useState(false);
@@ -75,6 +74,8 @@ export const useHomeData = () => {
             setProductData(
                 res?.data?.results || [],
             );
+
+
         } catch (error) {
             console.log(error);
         } finally {
@@ -102,16 +103,34 @@ export const useHomeData = () => {
         }
     }, []);
 
+    const hasFetched = useRef(false);
+
     useEffect(() => {
-        Promise.all([
-            fetchCustomerData(),
-            fetchCategories(),
-            fetchDoctors(),
-            fetchProducts(),
-        ]);
+        if (hasFetched.current) return;
+
+        hasFetched.current = true;
+
+        fetchCategories();
+        fetchDoctors();
+        fetchProducts();
+        fetchCustomerData();
     }, []);
 
+    const refreshHomeData = useCallback(async () => {
+        try {
+            setRefreshing(true);
 
+            await Promise.all([
+                fetchCategories(),
+                fetchDoctors(),
+                fetchProducts(),
+                fetchCustomerData()
+            ]);
+
+        } finally {
+            setRefreshing(false);
+        }
+    }, []);
 
     return {
 
@@ -126,9 +145,9 @@ export const useHomeData = () => {
         loadingDoctors,
         loadingProducts,
         setProductData,
-       fetchCustomerData, // 👈 add this
+        fetchCustomerData, // 👈 add this
 
-
+        refreshHomeData,
         loading,
         refreshing,
     };

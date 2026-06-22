@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import AppHeader from '../components/AppHeader';
 
 import { Fonts } from '../common/Fonts';
@@ -22,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { showSuccessToast } from '../config/Key';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface AddressItem {
     id: string;
@@ -37,19 +37,19 @@ interface AddressItem {
 const ManageAddress: React.FC<any> = ({ navigation }) => {
 
     const [selectedId, setSelectedId] = useState('current');
-
+    const [loading, setloading] = useState(false);
     const [addressData, setAddressData] = useState<AddressItem[]>([]);
 
     const fetchAddresses = async () => {
 
         try {
-
+            setloading(true)
             const res: any = await _PROFILE_SERVICES.getAddresses();
 
             console.log('ADDRESS_RESPONSE', res);
 
             if (res?.success) {
-
+                setloading(false)
                 console.log(
                     'ADDRESS_DATA',
                     res?.data?.results
@@ -73,7 +73,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
             }
 
         } catch (error) {
-
+            setloading(false)
             console.log(
                 'Address Error:',
                 error
@@ -324,116 +324,122 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 }
             />
 
-            <ScrollView
-                contentContainerStyle={
-                    styles.scroll
-                }
-                showsVerticalScrollIndicator={
-                    false
-                }
-            >
+            {loading ?
 
-                {/* CURRENT LOCATION */}
+                <LoadingSpinner />
 
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[
-                        styles.currentCard,
-                        selectedId === 'current' &&
-                        styles.selectedCard,
-                    ]}
-                    onPress={() =>
-                        setSelectedId('current')
+                :
+                <ScrollView
+                    contentContainerStyle={
+                        styles.scroll
+                    }
+                    showsVerticalScrollIndicator={
+                        false
                     }
                 >
 
-                    <View
-                        style={styles.locationBox}
+                    {/* CURRENT LOCATION */}
+
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[
+                            styles.currentCard,
+                            selectedId === 'current' &&
+                            styles.selectedCard,
+                        ]}
+                        onPress={() =>
+                            setSelectedId('current')
+                        }
                     >
 
-                        <Image
-                            source={
-                                Images.currentLocation
-                            }
-                            style={
-                                styles.locationIcon
-                            }
-                        />
-
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-
-                        <Text
-                            style={styles.currentTitle}
+                        <View
+                            style={styles.locationBox}
                         >
-                            Current Location
-                        </Text>
 
-                        <Text
-                            style={styles.addressText}
-                        >
-                            Sector 22 Gurgaon Haryana
-                        </Text>
-
-                        <Text style={styles.cityText}>
-                            Gurgaon, HR 122001
-                        </Text>
-
-                        <TouchableOpacity>
-
-                            <Text
-                                style={
-                                    styles.useLocation
-                                }
-                            >
-                                Use precise location
-                            </Text>
-
-                        </TouchableOpacity>
-
-                    </View>
-
-                    {
-                        selectedId ===
-                        'current' && (
                             <Image
                                 source={
-                                    Images.tickIcon
+                                    Images.currentLocation
                                 }
                                 style={
-                                    styles.tickIcon
+                                    styles.locationIcon
                                 }
                             />
-                        )
-                    }
 
-                </TouchableOpacity>
+                        </View>
 
-                {/* SECTION */}
+                        <View style={{ flex: 1 }}>
 
-                <Text style={styles.heading}>
-                    Saved Address
-                </Text>
+                            <Text
+                                style={styles.currentTitle}
+                            >
+                                Current Location
+                            </Text>
 
-                <FlatList
-                    data={addressData}
-                    keyExtractor={(item) =>
-                        item.id
-                    }
-                    renderItem={
-                        renderAddressItem
-                    }
-                    ListEmptyComponent={<EmptyState
-                        image={Images.location}
-                        imageSize={20}
-                        title="No Address Found"
-                        subtitle="You haven't added any address yet."
-                    />}
-                    scrollEnabled={false}
-                />
+                            <Text
+                                style={styles.addressText}
+                            >
+                                Sector 22 Gurgaon Haryana
+                            </Text>
 
-            </ScrollView>
+                            <Text style={styles.cityText}>
+                                Gurgaon, HR 122001
+                            </Text>
+
+                            <TouchableOpacity>
+
+                                <Text
+                                    style={
+                                        styles.useLocation
+                                    }
+                                >
+                                    Use precise location
+                                </Text>
+
+                            </TouchableOpacity>
+
+                        </View>
+
+                        {
+                            selectedId ===
+                            'current' && (
+                                <Image
+                                    source={
+                                        Images.tickIcon
+                                    }
+                                    style={
+                                        styles.tickIcon
+                                    }
+                                />
+                            )
+                        }
+
+                    </TouchableOpacity>
+
+                    {/* SECTION */}
+
+                    <Text style={styles.heading}>
+                        Saved Address
+                    </Text>
+
+                    <FlatList
+                        data={addressData}
+                        keyExtractor={(item) =>
+                            item.id
+                        }
+                        renderItem={
+                            renderAddressItem
+                        }
+                        ListEmptyComponent={<EmptyState
+                            image={Images.location}
+                            imageSize={20}
+                            title="No Address Found"
+                            subtitle="You haven't added any address yet."
+                        />}
+                        scrollEnabled={false}
+                    />
+
+                </ScrollView>
+            }
 
             {/* FOOTER */}
 

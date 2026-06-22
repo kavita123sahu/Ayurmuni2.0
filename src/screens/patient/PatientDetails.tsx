@@ -200,7 +200,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
             name={fullName || "Not set"}
             phone={user?.phone_number || ""}
             relation="Self"
-            navigation={""}
+            navigation={navigation}
             image={user?.profile_picture || ""}
             onViewRecords={handleViewRecords}
           />

@@ -31,15 +31,17 @@ import { Feather } from '../../common/Vector';
 import { CameraOptions, ImageLibraryOptions, ImagePickerResponse, launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import { uploadImage } from '../../hooks/usePatientData';
+import { Utils } from '../../common/Utils';
 
 
 const EditProfile = ({
     navigation,
 }: any) => {
 
+
     const [loading, setLoading] =
         useState(false);
-         const [loadingImage, setImageLoading] =
+    const [loadingImage, setImageLoading] =
         useState(false);
 
     const [profileLoading,
@@ -72,6 +74,19 @@ const EditProfile = ({
     const imageUri =
         formData?.profile_picture?.trim();
 
+    useEffect(() => {
+        const loadUser = async () => {
+            const CustomerInfo = await Utils.getData('_USER_INFO');
+
+            if (CustomerInfo) {
+                setFormData(CustomerInfo); // pehle local data show hoga
+            }
+
+            fetchProfile(); // phir API se latest data
+        };
+
+        loadUser();
+    }, []);
 
     useEffect(() => {
         console.log(
