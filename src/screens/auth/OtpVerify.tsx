@@ -19,7 +19,6 @@ import { Colors } from '../../common/Colors';
 import { ApiResponse, showSuccessToast } from '../../config/Key';
 import *as _AUTH_SERVICE from '../../services/AuthService'
 import { Utils } from '../../common/Utils';
-import { formatIndianPhoneNumber } from '../../common/Validator';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
 import { utils } from 'xlsx';
@@ -106,7 +105,24 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             setIsLoading(false);
         }
     };
+    // const loadStoredOtp = async () => {
+    //     try {
+    //         const storedOtp =
+    //             await Utils.getData("_OTP");
 
+    //         if (storedOtp) {
+    //             setOtp(
+    //                 storedOtp.toString().split(""),
+    //             );
+    //         }
+    //     } catch (error) {
+    //         console.log(error);
+    //     }
+    // };
+
+    // useEffect(() => {
+    //     loadStoredOtp();
+    // }, []);
 
     const LoginVerfiyOTP = async () => {
         Keyboard.dismiss();
@@ -129,7 +145,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             console.log("sverifyyyy---otpppppp", send_data);
             const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
 
-            console.log("verify_otp_login_response", response);
 
             if (response?.success) {
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
@@ -206,9 +221,11 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                 phone_number: `+91${phoneNumber}`,
             };
 
-
             const response: any = await _AUTH_SERVICE.send_otp(send_data);
-            console.log("resend_otp_response", response);
+            console.log("resend_otp_response", response?.data?.otp);
+            // Utils.storeData("_OTP", response?.data?.otp)
+            // await loadStoredOtp();
+
             setIsLoading(false);
             if (response?.success) {
                 setResendTimer(60);

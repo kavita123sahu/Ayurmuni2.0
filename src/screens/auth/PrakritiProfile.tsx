@@ -16,6 +16,7 @@ import { Images } from '../../common/Images';
 import { Styles } from '../../common/Styles';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { PrakritiProfileSkeleton } from '../../simmerScreen/ShimmerHook';
+import { Feather } from '../../common/Vector';
 
 
 const { width } = Dimensions.get('window');
@@ -330,6 +331,54 @@ const PrakritiProfile = (props: any) => {
             Go to Home
           </Text>
         </TouchableOpacity>
+
+        {/* {analysisData?.dominantType && ( */}
+        <View style={styles.pendingCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pendingTitle}>
+              Complete Your Health Profile
+            </Text>
+
+            <Text style={styles.pendingSubTitle}>
+              Prakriti Assessment & Medical History are pending.
+            </Text>
+          </View>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() =>
+                props.navigation.navigate('PatientFAQ')
+              }
+            >
+              <Feather
+                name="edit-2"
+                size={14}
+                color={Colors.primaryColor}
+              />
+              <Text style={styles.actionText}>
+                Prakriti
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() =>
+                props.navigation.navigate('MedicalHistory')
+              }
+            >
+              <Feather
+                name="edit-2"
+                size={14}
+                color={Colors.primaryColor}
+              />
+              <Text style={styles.actionText}>
+                Medical
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {/* )} */}
 
       </ScrollView>
     </SafeAreaView>
@@ -657,5 +706,50 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 24,
     fontWeight: '500',
+  },
+  pendingCard: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+
+  pendingTitle: {
+    fontSize: 15,
+    color: '#C2410C',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  pendingSubTitle: {
+    fontSize: 12,
+    color: '#9A3412',
+    marginTop: 2,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+  },
+
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+
+  actionText: {
+    marginLeft: 5,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
   },
 });

@@ -63,7 +63,7 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
   };
 
 
-  console.log("appointmentData", appointmentData);
+  console.log("appointmentData--->", appointmentData);
 
 
   return (
@@ -171,6 +171,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     const init = async () => {
       const userToken =
         await Utils.getData('_TOKEN');
+      console.log("tokennn", userToken)
 
       setToken(userToken);
 

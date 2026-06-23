@@ -90,13 +90,6 @@ export interface GenderOption {
 
 
 
-export interface FAQ {
-  question: string;
-  description: string;
-  steps: Step[];
-}
-
-
 export const genderOptions: GenderOption[] = [
   { id: '1', label: 'Male', value: 'male' },
   { id: '2', label: 'Female', value: 'female' },
@@ -147,6 +140,7 @@ export type Appointment = {
   specialty: string;
   date: string;
   time: string;
+   isHorizontal : boolean
   status: string;
   image: string | null;
   rawData?: any;
@@ -304,6 +298,7 @@ export const AVAILABILITY_OPTIONS = [
     value: 'custom_date',
   },
 ];
+
 export const topSelling = [
   {
     id: '1',

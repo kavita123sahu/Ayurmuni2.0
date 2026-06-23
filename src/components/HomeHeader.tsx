@@ -44,9 +44,15 @@ interface AddressItem {
     state?: string;
     zipcode?: string;
 }
+interface Props {
+    progress1?: number;
+    progress2?: number
+}
 
-
-const HomeHeader = () => {
+const HomeHeader = ({
+    progress1 = 0,
+    progress2 = 0,
+}: Props) => {
     const navigation = useNavigation<any>();
     const [localAddresses, setLocalAddresses] =
         useState<AddressItem[]>([]);
@@ -272,6 +278,15 @@ const HomeHeader = () => {
         (item: AddressItem) => item.id,
         [],
     );
+    const isCompleted =
+        progress1 === 100 &&
+        progress2 === 100;
+
+    const shouldShowCard = (
+        progress1 === 100 &&
+        progress2 !== 100
+    );
+
     return (
         <View style={styles.container}>
             <View style={styles.topRow}>
@@ -358,9 +373,64 @@ const HomeHeader = () => {
 
             </View>
 
+            {/* {shouldShowCard && (
+                <View style={[styles.profileCompletionCard, {
+                    backgroundColor: isCompleted
+                        ? '#ECFDF3'
+                        : '#FEF3F2',
+                    borderColor: isCompleted
+                        ? '#ABEFC6'
+                        : '#FDA29B',
+                },]}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.profileTitle, {
+                            color: isCompleted
+                                ? '#027A48'
+                                : '#B42318',
+                        },]}>
+                            {progress1 === 100 ? 'Prakriti Assessment Complete ✅' : 'Prakriti Assessment pending'}
+                        </Text>
+
+                        <Text
+                            numberOfLines={1}
+                            style={[
+                                styles.profileSubtitle,
+                                {
+                                    color: isCompleted
+                                        ? '#039855'
+                                        : '#D92D20',
+                                },
+                            ]}
+                        >
+                            Prakriti {progress1}% • Medical History {progress2}%
+                        </Text>
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={() =>
+                            navigation.navigate(
+                                progress1 < 100
+                                    ? 'PatientFAQ'
+                                    : 'MedicalHistory',
+                            )
+                        }
+                        style={styles.editButton}
+                    >
+                        <Feather
+                            name="edit-2"
+                            size={12}
+                            color={
+                                isCompleted
+                                    ? Colors.primaryColor
+                                    : '#D92D20'
+                            }
+                        />
+                    </TouchableOpacity>
+                </View>)} */}
 
 
             <CustomBottomSheet
+
                 visible={showSheet}
                 onClose={() => setShowSheet(false)}
             >
@@ -488,18 +558,21 @@ const HomeHeader = () => {
 
                 </View>
 
-                <FlatList
-                    data={savedAddresses}
-                    renderItem={renderSavedAddress}
-                    keyExtractor={keyExtractor}
-                    removeClippedSubviews
-                    initialNumToRender={5}
-                    maxToRenderPerBatch={5}
-                    windowSize={5}
-                    updateCellsBatchingPeriod={50}
-                    showsVerticalScrollIndicator={false}
-                />
+                <View style={{ flex: 1 }}>
+                    <FlatList
+                        data={savedAddresses}
+                        renderItem={renderSavedAddress}
+                        keyExtractor={keyExtractor}
+                        removeClippedSubviews
+                        initialNumToRender={5}
+                        nestedScrollEnabled
+                        maxToRenderPerBatch={5}
+                        windowSize={5}
+                        updateCellsBatchingPeriod={50}
+                        showsVerticalScrollIndicator={false}
+                    />
 
+                </View>
             </CustomBottomSheet>
 
 
@@ -515,7 +588,7 @@ const styles = StyleSheet.create({
     container: {
         paddingVertical: 12,
         backgroundColor: '#fff',
-        paddingHorizontal: 16, // important for responsiveness
+        paddingHorizontal: 5, // important for responsiveness
     },
     profileImage: {
         width: '100%',
@@ -544,6 +617,40 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
 
+    profileCompletionCard: {
+        marginTop: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: "#ECFDF3",
+        borderWidth: 1,
+        borderColor: "#ABEFC6",
+        flexDirection: "row",
+        alignItems: "center",
+    },
+
+    profileTitle: {
+        fontSize: 12,
+        color: "#027A48",
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    profileSubtitle: {
+        fontSize: 10,
+        color: "#039855",
+        fontFamily: Fonts.PoppinsRegular,
+        marginTop: 1,
+    },
+
+    editButton: {
+        height: 28,
+        width: 28,
+        borderRadius: 8,
+        backgroundColor: "#fff",
+        justifyContent: "center",
+        alignItems: "center",
+        marginLeft: 8,
+    },
     leftSection: {
         flexDirection: 'row',
         alignItems: 'center',

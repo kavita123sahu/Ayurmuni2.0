@@ -221,22 +221,23 @@ const ConsultScreen = () => {
 
             {/* TOP DOCTORS */}
 
-            <SectionHeader
-              title="Top Doctors"
-              actionText="View all"
-              onPress={() =>
-                navigation.navigate(
-                  'AllDoctors',
-                )
-              }
-            />
+            {topDoctors?.length > 0 && (
+              <>
+                <SectionHeader
+                  title="Top Doctors"
+                  actionText="View all"
+                  onPress={() =>
+                    navigation.navigate('AllDoctors')
+                  }
+                />
 
-            <TopDoctorsCard
-              data={topDoctors}
-              navigation={
-                navigation
-              }
-            />
+                <TopDoctorsCard
+                  data={topDoctors}
+                  navigation={navigation}
+                />
+              </>
+            )}
+
 
             <View
               style={{

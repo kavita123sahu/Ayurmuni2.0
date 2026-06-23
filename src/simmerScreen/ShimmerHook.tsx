@@ -1067,6 +1067,131 @@ export const DoctorSlipSkeleton = () => {
   );
 };
 
+export const HorizontalAppointmentSkeleton = () => {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingVertical: 5,
+        paddingRight: 20,
+      }}
+    >
+      {[1, 2, 3, 4, 5].map(item => (
+        <View
+          key={item}
+          style={{
+            width: 240,
+            marginRight: 12,
+            backgroundColor: Colors.white,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: Colors.borderColor,
+            padding: 10,
+          }}
+        >
+          <SkeletonPlaceholder
+            backgroundColor="#E5E7EB"
+            highlightColor="#F8FAFC"
+          >
+            {/* Status */}
+            <SkeletonPlaceholder.Item
+              alignSelf="flex-end"
+              width={70}
+              height={24}
+              borderRadius={8}
+            />
+
+            {/* Doctor Row */}
+            <SkeletonPlaceholder.Item
+              flexDirection="row"
+              alignItems="center"
+              marginTop={12}
+            >
+              <SkeletonPlaceholder.Item
+                width={42}
+                height={42}
+                borderRadius={12}
+              />
+
+              <SkeletonPlaceholder.Item
+                marginLeft={8}
+                flex={1}
+              >
+                <SkeletonPlaceholder.Item
+                  width="75%"
+                  height={12}
+                  borderRadius={6}
+                />
+
+                <SkeletonPlaceholder.Item
+                  marginTop={6}
+                  width="55%"
+                  height={10}
+                  borderRadius={6}
+                />
+              </SkeletonPlaceholder.Item>
+            </SkeletonPlaceholder.Item>
+
+            {/* Date Time Card */}
+            <SkeletonPlaceholder.Item
+              marginTop={12}
+              height={42}
+              borderRadius={10}
+              flexDirection="row"
+              justifyContent="space-between"
+              alignItems="center"
+              paddingHorizontal={10}
+            >
+              <SkeletonPlaceholder.Item
+                flexDirection="row"
+                alignItems="center"
+              >
+                <SkeletonPlaceholder.Item
+                  width={16}
+                  height={16}
+                  borderRadius={4}
+                />
+
+                <SkeletonPlaceholder.Item
+                  marginLeft={6}
+                  width={65}
+                  height={10}
+                  borderRadius={4}
+                />
+              </SkeletonPlaceholder.Item>
+
+              <SkeletonPlaceholder.Item
+                width={1}
+                height={16}
+                borderRadius={1}
+              />
+
+              <SkeletonPlaceholder.Item
+                flexDirection="row"
+                alignItems="center"
+              >
+                <SkeletonPlaceholder.Item
+                  width={16}
+                  height={16}
+                  borderRadius={4}
+                />
+
+                <SkeletonPlaceholder.Item
+                  marginLeft={6}
+                  width={45}
+                  height={10}
+                  borderRadius={4}
+                />
+              </SkeletonPlaceholder.Item>
+            </SkeletonPlaceholder.Item>
+          </SkeletonPlaceholder>
+        </View>
+      ))}
+    </ScrollView>
+  );
+};
+
 
 type Props = {
   prescribed?: boolean;

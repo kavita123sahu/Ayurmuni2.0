@@ -6,7 +6,6 @@ import { Images } from '../../common/Images';
 import { Utils } from '../../common/Utils';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
-import { useDispatch } from 'react-redux';
 import *as _AUTH_SERVICES from '../../services/AuthService';
 
 

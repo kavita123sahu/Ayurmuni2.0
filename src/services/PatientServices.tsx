@@ -77,6 +77,19 @@ export const getAllMedicalRecord = async () => {
     }
 }
 
+export const deleteMedicalRecord = async (recordID: string) => {
+    try {
+        const response = await apiClient(`customers/medical-records/?id=${recordID}`, {
+            method: 'DELETE',
+        });
+        console.log("resposnedleteeeeeeeeeeeeeeeee", response);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
 export const AddMedicalRecord = async (patientData: any) => {
     try {
         const response = await apiClient('customers/medical-records/', {

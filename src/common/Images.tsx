@@ -1,65 +1,41 @@
 export const Images = {
+
+    // MainIcon, logo ,wellnessIcon,Search,Mic,Linemark,TakechangeIcon,verifyLogo, loginbanner,messageIcon,googleIcon,DeleteItem,Spinner-Gradient
+    // backgroundFlower,approved,phoneIcon,promoIcon, organic,track,history,persnal2,Potential,Temp,Sleep,Sweating,Bowel,Appetite,Skin,BodyHair,SPrakriti
+    //Prakriti2,Body,Prakriti 
     backIcon: require('../assets/images/backButton.png'),
-    newlogo: require('../assets/images/MainIcon.png'),
     arrow: require('../assets/images/arrow.png'),
-    splashlogo: require('../assets/images/logo.png'),
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
-
     pdfIcon: require('../assets/images/pdfIcon.png'),
-
     Bell: require('../assets/images/bell.png'),
     VideoPlayer: require('../assets/images/VideoPlayer.png'),
-
     Profile: require('../assets/images/profile.png'),
     Breakfastbowl: require('../assets/images/Breakfastbowl.png'),
-
-    wellness: require('../assets/images/wellnessIcon.png'),
     detailimage: require('../assets/images/Detailimage.png'),
     share: require('../assets/images/Share.png'),
-    searchIcon: require('../assets/images/Search.png'),
-    micIcon: require('../assets/images/Mic.png'),
-    linemark: require('../assets/images/Linemark.png'),
-    takechnageIcons: require('../assets/images/TakechangeIcon.png'),
-
-
     BreakDown: require('../assets/images/BreakDown.png'),
     Notes: require('../assets/images/Notes.png'),
-
     ellipsebackground: require('../assets/images/ellipsebackground.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),
     user: require('../assets/images/user.png'),
     DebitCard: require('../assets/images/debitcard.png'),
     UPIMethod: require('../assets/images/UPIMethod.png'),
-
-
-
     camera: require('../assets/images/camera.png'),
     shop: require('../assets/images/shop.png'),
     home: require('../assets/images/home.png'),
-    loginbanner: require('../assets/images/loginbanner.png'),
-    verifylogo: require('../assets/images/verifyLogo.png'),
-    messageIcon: require('../assets/images/messageIcon.png'),
-    backgroundFlower: require('../assets/images/backgroundFlower.png'),
-    googleIcon: require('../assets/images/googleIcon.png'),
-    phoneIcon: require('../assets/images/phoneIcon.png'),
     approved: require('../assets/images/approved.png'),
-    spinner: require('../assets/images/Spinner-Gradient.png'),
     star: require('../assets/images/grade.png'),
     nutritionIcon: require('../assets/images/nutritionIcon.png'),
-    deleteitem: require('../assets/images/DeleteItem.png'),
-
-
     Phone: require('../assets/images/Phone.png'),
-
-
     HomeBanner: require('../assets/images/banner.png'),
-    organic: require('../assets/images/organic.png'),
-    promoIcon: require('../assets/images/promoIcon.png'),
     arrowRight: require('../assets/images/arrowRight.png'),
+
+
     apple: require('../assets/images/apple.png'),
     tickIcon: require('../assets/images/tickIcon.png'),
     starIcon: require('../assets/images/starIcon.png'),
+
     starFilled: require('../assets/images/starFilled.png'),
     starEmpty: require('../assets/images/starEmpty.png'),
     prescriptionIcon: require('../assets/images/prescriptionIcon.png'),
@@ -73,18 +49,17 @@ export const Images = {
     edit: require('../assets/images/edit.png'),
     Instruction: require('../assets/images/instruction.png'),
 
-    BackBorder: require('../assets/images/BackBorder.png'),
 
     prItem: require('../assets/images/prItem.png'),
     office: require('../assets/images/office.png'),
     waitClock: require('../assets/images/waitClock.png'),
     upload: require('../assets/images/Upload.png'),
-    track: require('../assets/images/track.png'),
     verify: require('../assets/images/verify.png'),
     editButton: require('../assets/images/editButton.png'),
     unverify: require('../assets/images/unverify.png'),
     notification: require('../assets/images/notification.png'),
     clock: require('../assets/images/clock.png'),
+
     calender: require('../assets/images/calender.png'),
     video: require('../assets/images/video.png'),
     leaf1: require('../assets/images/leaf1.png'),
@@ -97,9 +72,7 @@ export const Images = {
     setting: require('../assets/images/setting.png'),
 
 
-    History: require('../assets/images/history.png'),
     Breakfast: require('../assets/images/Breakfast.png'),
-
 
     Ingredient: require('../assets/images/Ingredient.png'),
 
@@ -195,21 +168,3 @@ export const Images = {
 export const Icons = {
 }
 
-
-export const QUESTION_IMAGES = {
-    knowPrakriti: require('../assets/images/Prakriti.png'),
-    prakriti: require('../assets/images/Prakriti2.png'),
-    bodyType: require('../assets/images/Body.png'),
-    scalpHair: require('../assets/images/SPrakriti.png'),
-    bodyHair: require('../assets/images/BodyHair.png'),
-    skin: require('../assets/images/Skin.png'),
-    appetite: require('../assets/images/Appetite.png'),
-    bowel: require('../assets/images/Bowel.png'),
-    sweating: require('../assets/images/Sweating.png'),
-    sleep: require('../assets/images/Sleep.png'),
-    learning: require('../assets/images/Potential.png'),
-    temperament: require('../assets/images/Temp.png'),
-    personality: require('../assets/images/persnal2.png'),
-
-
-};

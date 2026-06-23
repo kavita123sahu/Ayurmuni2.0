@@ -8,6 +8,7 @@ import {
     FlatList,
     Image,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import HomeHeader from '../../components/HomeHeader';
@@ -24,9 +25,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import OrderCard from '../../components/OrderCard';
 import MedicalRecordCard from '../consult/MedicalRecordCard';
 import PreviewModal from '../consult/PreviewModal';
-import { useMedicalRecord, usePatientData } from '../../hooks/usePatientData';
-import { AddMedicalRecord } from '../../services/PatientServices';
-import { uploadFiles } from 'react-native-fs';
+import { useMedicalRecord, useMedicalUpload, usePatientData } from '../../hooks/usePatientData';
+import { AddMedicalRecord, deleteMedicalRecord } from '../../services/PatientServices';
 
 // ✅ Tab-wise alag DATA
 const ALL_DATA = [
@@ -56,7 +56,18 @@ const ALL_DATA = [
 const MedicalRecords = (props: any) => {
     const [activeTab, setActiveTab] = useState('All Records');
 
-    const { patientsRecord, fetchPatientsRecord } = useMedicalRecord()
+    const {
+        patientsRecord,
+        fetchPatientsRecord,
+    } = useMedicalRecord();
+
+    const {
+        selectedFiles,
+        uploading,
+        selectFile,
+        submitFiles,
+        removeFile,
+    } = useMedicalUpload(fetchPatientsRecord,);
 
     console.log("patientsRecordpatientsRecord", patientsRecord)
     const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
@@ -73,10 +84,10 @@ const MedicalRecords = (props: any) => {
         return 'IN PROGRESS';
     };
 
-    const selectedFiles = uploadedFiles.filter(
-        item =>
-            selectedRecords.includes(item.id),
-    );
+    // const selectedFiles = uploadedFiles.filter(
+    //     item =>
+    //         selectedRecords.includes(item.id),
+    // );
     const filteredData =
         activeTab === 'All Records'
             ? records
@@ -188,16 +199,21 @@ const MedicalRecords = (props: any) => {
         );
     };
 
-    const deleteRecord = (id: string) => {
-        setRecords(prev =>
-            prev.filter(item => item.id !== id)
-        );
+    const deleteRecord = async (id: string) => {
+        try {
+            console.log('delete id =>', id);
 
-        setSelectedRecords(prev =>
-            prev.filter(item => item !== id)
-        );
+            await deleteMedicalRecord(id);
+
+            await fetchPatientsRecord();
+
+        } catch (error) {
+            console.log(
+                'DELETE ERROR =>',
+                error,
+            );
+        }
     };
-
     const handleUploadRecord = async () => {
         try {
             const result = await pick({
@@ -258,7 +274,7 @@ const MedicalRecords = (props: any) => {
         }
     };
 
-    
+
     const renderItem = ({ item }: any) => (
         <MedicalRecordCard
             item={item}
@@ -277,6 +293,7 @@ const MedicalRecords = (props: any) => {
             }
         />
     );
+
     return (
         <SafeAreaView style={styles.container}>
             <Header
@@ -294,45 +311,111 @@ const MedicalRecords = (props: any) => {
             {/* <TabButton /> */}
 
             <ScrollView>
-                <TouchableOpacity
-                    style={styles.uploadContainer}
-                    onPress={handleUploadRecord}
-                >
 
-                    <View style={styles.uploadIcon}>
-                        <Ionicons
-                            name="cloud-upload-outline"
-                            size={28}
-                            color="#065F46"
-                        />
-                    </View>
-
-                    <Text style={styles.uploadTitle}>
-                        Upload Medical Record
-                    </Text>
-
-                    <Text style={styles.uploadSub}>
-                        Prescription, Lab Report, PDF or Image
-                    </Text>
-
-                </TouchableOpacity>
-
-                <View
-                    style={{
-                        marginVertical: 15,
-                        backgroundColor: '#ECFDF5',
-                        padding: 14,
-                        borderRadius: 14,
-                    }}>
-                    <Text
+                {uploading ? (
+                    <View
                         style={{
-                            color: '#065F46',
-                            fontFamily: Fonts.PoppinsMedium,
-                        }}>
-                        Selected Records: {selectedRecords.length}
-                    </Text>
-                </View>
+                            paddingVertical: 30,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <ActivityIndicator
+                            size="large"
+                            color={Colors.primaryColor}
+                        />
 
+                        <Text
+                            style={{
+                                marginTop: 10,
+                                color: Colors.primaryColor,
+                                fontFamily: Fonts.PoppinsMedium,
+                            }}
+                        >
+                            Uploading...
+                        </Text>
+                    </View>
+                ) : (
+                    <>
+                        {selectedFiles.length === 0 ? (
+                            <TouchableOpacity
+                                style={styles.uploadContainer}
+                                onPress={selectFile}
+                            >
+                                <View style={styles.uploadIcon}>
+                                    <Ionicons
+                                        name="cloud-upload-outline"
+                                        size={28}
+                                        color="#065F46"
+                                    />
+                                </View>
+
+                                <Text style={styles.uploadTitle}>
+                                    Upload Medical Record
+                                </Text>
+
+                                <Text style={styles.uploadSub}>
+                                    Prescription, Lab Report, PDF or Image
+                                </Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={styles.uploadContainer}>
+                                <Text style={styles.uploadTitle}>
+                                    {selectedFiles.length} file(s) selected
+                                </Text>
+
+                                {selectedFiles.map(item => (
+                                    <View
+                                        key={item.id}
+                                        style={{ marginTop: 10 }}
+                                    >
+                                        <Text
+                                            style={{
+                                                color: '#065F46',
+                                            }}
+                                        >
+                                            {item.name} ({item.status})
+                                        </Text>
+
+                                        <TouchableOpacity
+                                            onPress={() =>
+                                                removeFile(item.id)
+                                            }
+                                        >
+                                            <Text
+                                                style={{
+                                                    color: 'red',
+                                                }}
+                                            >
+                                                Remove
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        <View
+                            style={{
+                                marginVertical: 15,
+                                backgroundColor: '#ECFDF5',
+                                padding: 14,
+                                borderRadius: 14,
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    color: '#065F46',
+                                    fontFamily:
+                                        Fonts.PoppinsMedium,
+                                }}
+                            >
+                                Selected Records:{' '}
+                                {selectedRecords.length}
+                            </Text>
+                        </View>
+                    </>
+                )}
                 <SectionHeader title="Recent Documents" />
 
 
@@ -360,7 +443,7 @@ const MedicalRecords = (props: any) => {
                         TextFont={Fonts.PoppinsRegular}
                         textColor="#FFFFFF" /> */}
 
-                    {selectedRecords.length > 0 && (
+                    {/* {selectedRecords.length > 0 && (
                         <View
                             style={{
                                 flexDirection: 'row',
@@ -387,8 +470,16 @@ const MedicalRecords = (props: any) => {
                                 title="Upload Selected"
                                 onPress={handleSubmitRecords}
                             />
-
                         </View>
+                    )} */}
+
+                    {selectedFiles.length > 0 && (
+                        <PrimaryButton
+                            title={uploading ? "Uploading..." : "Upload Selected"}
+                            onPress={submitFiles}
+                            backgroundColor="#0D614E"
+                            textColor="#fff"
+                        />
                     )}
                 </View>
 

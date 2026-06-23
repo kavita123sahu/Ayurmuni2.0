@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useMedicineData } from '../../hooks/useMedicineData';
 import { RootStackParamList } from '../../../type';
+import { useHomeData } from '../../hooks/UseHomeData';
 type Item = {
     id: string;
     title: string;
@@ -35,12 +36,27 @@ const MedicineScreen = (props: any) => {
     const productImage = require('../../assets/images/RecentsImage.png');
     const categoryImage = require('../../assets/images/CategiryImage.png');
 
+    // const {
+    //     loading,
+    //     refreshing,
+    //     Diseasecategories,
+    //     onRefresh,
+    // } = useMedicineData(categoryId);
+
+
     const {
-        loading,
-        refreshing,
-        Diseasecategories,
-        onRefresh,
-    } = useMedicineData(categoryId);
+        categories,
+        SuggestDoctor,
+        productData,
+        customerData,
+        setProductData,
+
+        loadingCategories,
+        loadingDoctors,
+        loadingProducts,
+        loadingCustomer,
+        refreshHomeData
+    } = useHomeData();
 
     console.log('categoryIdcategoryId', categoryId);
 
@@ -61,17 +77,16 @@ const MedicineScreen = (props: any) => {
         },
     ];
 
-    const categories = [
-        { id: '1', name: 'Seeds', icon: categoryImage },
-        { id: '2', name: 'Grains', icon: categoryImage },
-        { id: '3', name: 'Fats & Oils', icon: categoryImage },
-        { id: '4', name: 'Drinks', icon: categoryImage },
-        { id: '5', name: 'Seeds', icon: categoryImage },
-        { id: '6', name: 'Grains', icon: categoryImage },
-        { id: '7', name: 'Fats & Oils', icon: categoryImage },
-        { id: '8', name: 'Drinks', icon: categoryImage },
-    ];
-
+    // const categories = [
+    //     { id: '1', name: 'Seeds', icon: categoryImage },
+    //     { id: '2', name: 'Grains', icon: categoryImage },
+    //     { id: '3', name: 'Fats & Oils', icon: categoryImage },
+    //     { id: '4', name: 'Drinks', icon: categoryImage },
+    //     { id: '5', name: 'Seeds', icon: categoryImage },
+    //     { id: '6', name: 'Grains', icon: categoryImage },
+    //     { id: '7', name: 'Fats & Oils', icon: categoryImage },
+    //     { id: '8', name: 'Drinks', icon: categoryImage },
+    // ];
 
     const dataItems: Item[] = [
         {
@@ -178,7 +193,7 @@ const MedicineScreen = (props: any) => {
 
                 <SectionHeader title="Shop by Concern" />
 
-                {/* <CategoryList data={categories} navigation={navigation} /> */}
+                <CategoryList data={categories} navigation={navigation} />
 
                 <SectionHeader title="Trusted Brands" />
 
@@ -205,10 +220,12 @@ const MedicineScreen = (props: any) => {
 
 
                 <SectionHeader title="Medicines" actionText="View all" />
-                <TopSellingList data={Medicines} navigation={navigation} setProductData={() => ""} />
+
+                <TopSellingList data={productData} navigation={navigation} setProductData={() => ""} />
 
                 <SectionHeader title="Ayurveda" actionText="View all" />
-                <TopSellingList data={Medicines} navigation={navigation} setProductData={() => ""} />
+                <TopSellingList data={productData} navigation={navigation} setProductData={() => ""} />
+
             </ScrollView>
         </SafeAreaView>
     );

@@ -134,11 +134,7 @@ const ProductDetails = (props: any) => {
         { label: 'Iron', value: '2.8 mg' },
     ];
 
-    const highlights = [
-        { image: Images.organic, label: '100% Organic' },
-        { image: Images.glutenFree, label: 'Gluten Free' },
-        { image: Images.highFiber, label: 'High Fiber' },
-    ];
+
 
     if (loading) {
         return (

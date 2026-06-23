@@ -278,7 +278,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
             navigation.navigate('DoctorSlot', { doctorDetails });
         }
     }, [navigation, doctorDetails]);
-    
+
 
     const handleToggleAbout = useCallback(() => {
         setShowFullAbout(prev => !prev);
@@ -347,7 +347,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     </Text>
 
                     <Text numberOfLines={1} style={styles.speciality}>
-                        {doctor?.designation || 'Medical Specialist'}
+                        {doctor?.designation || ''}
                     </Text>
                 </View>
 
@@ -387,14 +387,14 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     </TouchableOpacity>
 
                     {reviews?.length > 0 ? (
-                        formattedReviews.map((review: any) => (
-                            <ReviewCard
-                                key={review.id}
-                                review={review}
-                            />
-
-                            // <ReviewSection key={review.id} navigation={navigation} reviews={review} />
-                        ))
+                        formattedReviews
+                            .slice(0, 3)
+                            .map((review: any) => (
+                                <ReviewCard
+                                    key={review.id}
+                                    review={review}
+                                />
+                            ))
                     ) : (
                         <Text style={styles.emptyText}>
                             No Reviews Found

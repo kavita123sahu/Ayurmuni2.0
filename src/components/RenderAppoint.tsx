@@ -13,42 +13,77 @@ import { Appointment, getStatusStyle } from "../common/DataInterface";
 import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
 import AppointAction from "./AppointAction";
+export const DateTimeCard = ({
+    item,
+    isHorizontal = false,
+}: any) => {
 
+    if (isHorizontal) {
+        return (
+            <View style={styles.horizontalDateCard}>
+                <View style={styles.horizontalDateItem}>
+                    <Image
+                        source={Images.calender}
+                        style={Styles.IconSize}
+                    />
+                    <Text style={styles.horizontalText}>
+                        {item.date}
+                    </Text>
+                </View>
 
+                <View style={styles.horizontalDivider} />
 
-const DateTimeCard = ({ item }: { item: Appointment }) => {
+                <View style={styles.horizontalDateItem}>
+                    <Image
+                        source={Images.clock}
+                        style={Styles.IconSize}
+                    />
+                    <Text style={styles.horizontalText}>
+                        {item.time}
+                    </Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
-
         <View style={styles.infoRow}>
             <View style={styles.infoItem}>
                 <View style={styles.iconCircle}>
-                    <Image source={Images.calender} style={Styles.IconSize} />
+                    <Image
+                        source={Images.calender}
+                        style={Styles.IconSize}
+                    />
                 </View>
 
                 <View>
-                    <Text style={Styles.label}>DATE</Text>
-                    <Text style={Styles.value}>{item.date}</Text>
+                    <Text>Date</Text>
+                    <Text>{item.date}</Text>
                 </View>
             </View>
 
             <View style={styles.infoItem}>
                 <View style={styles.iconCircle}>
-                    <Image source={Images.clock} style={Styles.IconSize} />
+                    <Image
+                        source={Images.clock}
+                        style={Styles.IconSize}
+                    />
                 </View>
+
                 <View>
-                    <Text style={Styles.label}>TIME</Text>
-                    <Text style={Styles.value}>{item.time}</Text>
+                    <Text>Time</Text>
+                    <Text>{item.time}</Text>
                 </View>
             </View>
-
         </View>
-    )
-}
+    );
+};
 
 const RenderAppoint = ({
     item,
     navigation,
     onReschedule,
+    isHorizontal = false,
     onCancel,
 }: any) => {
     const statusStyle = useMemo(
@@ -57,37 +92,17 @@ const RenderAppoint = ({
 
 
     );
-    console.log("itemitemitemitem", item)
-
-    return (
+    console.log("itemitemitemitem-->", item)
+    return isHorizontal ? (
         <TouchableOpacity
-            style={styles.card}
+            style={[styles.card, styles.horizontalCard]}
             onPress={() =>
                 navigation.navigate("AppointmentDetails", {
-                    consultation_id: item?.consultation_id
+                    consultation_id: item?.consultation_id,
                 })
             }
         >
-            <View style={styles.row}>
-                <Image
-                    source={
-                        item.image
-                            ? { uri: item.image }
-                            : Images.doctorImage
-                    }
-                    style={styles.avatar}
-                />
-
-                <View style={{ flex: 1 }}>
-                    <Text style={Styles.name}>
-                        {item.doctorName}
-                    </Text>
-
-                    <Text style={Styles.specialty}>
-                        {item.specialty}
-                    </Text>
-                </View>
-
+            <View style={styles.horizontalTop}>
                 <View
                     style={[
                         styles.status,
@@ -100,9 +115,7 @@ const RenderAppoint = ({
                     <Text
                         style={[
                             styles.statusText,
-                            {
-                                color: statusStyle.color,
-                            },
+                            { color: statusStyle.color },
                         ]}
                     >
                         {item.status?.toUpperCase()}
@@ -110,26 +123,112 @@ const RenderAppoint = ({
                 </View>
             </View>
 
-            <DateTimeCard item={item} />
+            <View style={styles.horizontalDoctorRow}>
+                <Image
+                    source={
+                        item.image
+                            ? { uri: item.image }
+                            : Images.doctorImage
+                    }
+                    style={styles.horizontalAvatar}
+                />
+
+                <View style={{ flex: 1 }}>
+                    <Text
+                        style={styles.horizontalDoctorName}
+                        numberOfLines={1}
+                    >
+                        {item.doctorName}
+                    </Text>
+
+                    <Text
+                        style={styles.horizontalSpeciality}
+                        numberOfLines={1}
+                    >
+                        {item.specialty}
+                    </Text>
+                </View>
+            </View>
+
+            <DateTimeCard
+                item={item}
+                isHorizontal
+            />
+        </TouchableOpacity>
+    ) : (
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() =>
+                navigation.navigate("AppointmentDetails", {
+                    consultation_id: item?.consultation_id,
+                })
+            }
+        >
+            {/* Existing Full Card */}
+            <View style={styles.contentContainer}>
+                <Image
+                    source={
+                        item.image
+                            ? { uri: item.image }
+                            : Images.doctorImage
+                    }
+                    style={styles.avatar}
+                />
+
+                <View style={{ flex: 1 }}>
+                    <View style={styles.headerRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={Styles.name}>
+                                {item.doctorName}
+                            </Text>
+
+                            <Text style={Styles.specialty}>
+                                {item.specialty}
+                            </Text>
+                        </View>
+
+                        <View
+                            style={[
+                                styles.status,
+                                {
+                                    backgroundColor:
+                                        statusStyle.backgroundColor,
+                                },
+                            ]}
+                        >
+                            <Text
+                                style={[
+                                    styles.statusText,
+                                    {
+                                        color: statusStyle.color,
+                                    },
+                                ]}
+                            >
+                                {item.status?.toUpperCase()}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <DateTimeCard item={item} navigation={navigation} />
+                </View>
+            </View>
 
             <AppointAction
                 status={item.status}
                 onReschedule={onReschedule}
                 onCancel={onCancel}
-
-                onJoinCall={() => {
+                onJoinCall={() =>
                     navigation.navigate("VideoCall", {
                         appointmentId: item.consultation_id,
                         doctorId: item.doctor_id,
-                    });
-                }}
-
-                onViewDetails={() => {
+                    })
+                }
+                onViewDetails={() =>
                     navigation.navigate("DoctorSlipScreen", {
-                        doctorID: item?.rawData?.doctor?.doctor_id
-                        // appointmentId: item?.doctor?.doctor_id
-                    });
-                }}
+                        doctorID:
+                            item?.rawData?.doctor?.doctor_id,
+                    })
+                }
             />
         </TouchableOpacity>
     );
@@ -149,6 +248,24 @@ const styles = StyleSheet.create({
         borderColor: Colors.borderColor,
         overflow: 'hidden',
     },
+
+
+    contentContainer: {
+        flexDirection: "column",
+    },
+
+    horizontalContent: {
+        flexDirection: "row",
+    },
+
+
+
+    headerRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+    },
+
 
     row: {
         flexDirection: 'row',
@@ -191,6 +308,7 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
+
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -207,6 +325,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
+    horizontalInfoRow: {
+        marginTop: 10,
+        height: "auto",
+        paddingVertical: 10,
+    },
     iconCircle: {
         width: 32,
         height: 32,
@@ -218,4 +341,67 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
 
+    horizontalCard: {
+        width: 240,
+        padding: 10,
+        marginRight: 10,
+        marginBottom: 0,
+    },
+
+    horizontalTop: {
+        alignItems: "flex-end",
+        marginBottom: 6,
+    },
+
+    horizontalDoctorRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 10,
+    },
+
+    horizontalAvatar: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        marginRight: 8,
+    },
+
+    horizontalDoctorName: {
+        fontSize: 13,
+        color: Colors.black,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    horizontalSpeciality: {
+        fontSize: 11,
+        color: Colors.grey1,
+        fontFamily: Fonts.PoppinsRegular,
+    },
+
+    horizontalDateCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: Colors.bgcolor,
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+    },
+
+    horizontalDateItem: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+
+    horizontalText: {
+        fontSize: 11,
+        marginLeft: 4,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    horizontalDivider: {
+        width: 1,
+        height: 16,
+        backgroundColor: Colors.borderColor,
+    },
 })

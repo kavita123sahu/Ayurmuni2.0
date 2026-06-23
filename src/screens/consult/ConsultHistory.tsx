@@ -27,7 +27,6 @@ import {
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
-
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
 import AppointmentCard, { Appointment } from '../../components/AppointmnetCard';

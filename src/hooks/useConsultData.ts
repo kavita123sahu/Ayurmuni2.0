@@ -54,7 +54,7 @@ export const useConsultData = () => {
                     categoryRes,
                     topDoctorRes,
                     AllfavDoctor
-                ] :any = await Promise.all([
+                ]: any = await Promise.all([
                     // _CONSULT_SERVICES.getConsultCategory(),
                     _CONSULT_SERVICES.getConsultCategory(),
                     _CONSULT_SERVICES.getTopDoctor(),
@@ -307,9 +307,9 @@ export const useAppointmentHistory = () => {
 
             });
             console.log("consulresposne", res);
-   
+
             setAppointData(res?.data?.results || []);
-             setLoading(false);
+            setLoading(false);
 
         } catch (e) {
             console.log("ALL_DOCTOR_APPOINT_ERROR", e);
@@ -322,7 +322,7 @@ export const useAppointmentHistory = () => {
         getAllAppointment();
     }, [getAllAppointment]);
 
-    return { loading, AppointData,getAllAppointment };
+    return { loading, AppointData, getAllAppointment };
 };
 
 

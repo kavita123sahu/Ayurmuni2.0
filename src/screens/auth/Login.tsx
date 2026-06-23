@@ -19,6 +19,7 @@ import { Images } from '../../common/Images';
 import * as _AUTH_SERVICE from '../../services/AuthService';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
+import { Utils } from '../../common/Utils';
 
 const Login: React.FC = (props: any) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -45,7 +46,10 @@ const Login: React.FC = (props: any) => {
       const response: any =
         await _AUTH_SERVICE.send_otp(send_data);
 
-      console.log('OTP Response:', response);
+      // const OTP = response?.data?.otp;
+
+      // console.log('OTP Response-->:', OTP);
+
 
       const isCustomer =
         response?.data?.user_roles?.some(
@@ -54,6 +58,9 @@ const Login: React.FC = (props: any) => {
         );
 
       if (response?.success) {
+
+        // Utils.storeData("_OTP", OTP)
+
         showSuccessToast(
           response.message || 'OTP sent successfully',
           'success',
@@ -62,6 +69,7 @@ const Login: React.FC = (props: any) => {
         props.navigation.navigate('OtpVerify', {
           phone: phoneNumber,
           customer: isCustomer,
+
         });
       } else {
         showSuccessToast(

@@ -29,7 +29,7 @@ export default React.memo(SectionHeader);
 const styles = StyleSheet.create({
   container: {
     // marginHorizontal: 4,  //14
-    marginTop: 20,
+    marginTop: 10,
     marginBottom: 14,
     flexDirection: 'row',
     paddingHorizontal: 10,

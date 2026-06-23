@@ -899,15 +899,15 @@
 
 
 
-import { View, Text } from 'react-native'
-import React from 'react'
+// import { View, Text } from 'react-native'
+// import React from 'react'
 
-const PatientVideoCall = () => {
-    return (
-        <View>
-            <Text>PatientVideoCall</Text>
-        </View>
-    )
-}
+// const PatientVideoCall = () => {
+//     return (
+//         <View>
+//             <Text>PatientVideoCall</Text>
+//         </View>
+//     )
+// }
 
-export default PatientVideoCall
+// export default PatientVideoCall

@@ -181,37 +181,38 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
 
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowModal(true);
-    }, 5000);
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setShowModal(true);
+  //   }, 5000);
 
-    return () => clearTimeout(timer);
-  }, []);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
 
   const [visible, setVisible] = useState(false);
 
   // Disable hardware back button and gesture back to prevent leaving this
   // confirmation screen except via explicit buttons (Home or Share).
-  useEffect(() => {
-    const onHardwareBack = () => {
+  // useEffect(() => {
+  //   const onHardwareBack = () => {
 
-      if (!showModal) {
-        setShowModal(true);
-        return true; // back action stop
-      }
+  //     if (!showModal) {
+  //       setShowModal(true);
+  //       return true; // back action stop
+  //     }
 
-      return true;
-    };
+  //     return true;
+  //   };
 
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      onHardwareBack,
-    );
-    return () => backHandler.remove();
-  }, [showModal]);
-  // Hide header back button and disable gestures if using stack navigator
+  //   const backHandler = BackHandler.addEventListener(
+  //     'hardwareBackPress',
+  //     onHardwareBack,
+  //   );
+  //   return () => backHandler.remove();
+  // }, [showModal]);
+
+
   useLayoutEffect(() => {
     try {
       navigation.setOptions && navigation.setOptions({ headerLeft: () => null, gestureEnabled: false });
@@ -293,7 +294,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           'success',
         );
 
-        setShowModal(false); // Sirf success pe close
+        // setShowModal(false); // Sirf success pe close
         return true;
       }
 

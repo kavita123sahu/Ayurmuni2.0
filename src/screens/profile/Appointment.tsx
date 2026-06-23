@@ -183,9 +183,6 @@ const AppointmentScreen = () => {
 
       <FlatList
         data={listData}
-        // keyExtractor={(item, index) =>
-        //   loading ? index.toString() : item.id.toString()
-        // }
         renderItem={({ item }) =>
           loading ? (
             <AppointmentSkeletonList />
@@ -193,6 +190,7 @@ const AppointmentScreen = () => {
             <RenderAppoint
               item={item}
               navigation={navigation}
+              isHorizontal={false}
               onReschedule={() => {
                 setSelectedAppointment(item);
                 setShowRescheduleModal(true);
@@ -204,13 +202,28 @@ const AppointmentScreen = () => {
             />
           )
         }
-        removeClippedSubviews
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
-        windowSize={5}
-        updateCellsBatchingPeriod={50}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 20 }}
+        contentContainerStyle={{
+          paddingVertical: 20,
+          flexGrow: 1,
+        }}
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState
+              image={Images.starEmpty} // apni image
+              title={
+                activeTab === 'upcoming'
+                  ? 'No Upcoming Appointments'
+                  : 'No Past Appointments'
+              }
+              subtitle={
+                activeTab === 'upcoming'
+                  ? 'You have no upcoming appointments.'
+                  : 'You have no past appointments.'
+              }
+            />
+          ) : null
+        }
       />
 
       <RescheduleModal
