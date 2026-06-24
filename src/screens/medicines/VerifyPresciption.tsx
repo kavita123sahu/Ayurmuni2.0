@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
 const VerifyPresciption = (props: any) => {
 

@@ -1,4 +1,4 @@
-import { utils } from "xlsx";
+
 import { BaseUrl, Method } from "../config/Key";
 import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";

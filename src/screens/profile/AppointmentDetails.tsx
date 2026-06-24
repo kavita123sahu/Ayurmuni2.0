@@ -24,6 +24,7 @@ import CancelAppointmentModal from '../../components/CancelAppointModal';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
+import { doctorsData } from '../../common/DataInterface';
 
 
 
@@ -107,11 +108,16 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
       </View>
 
       <View style={{ paddingHorizontal: 10 }}>
-        {/* navigation.navigate('PatientVideoCallScreen', {
-          consulation_data: appointmentData
-        }) */}
 
-        <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
+
+
+        <PrimaryButton title="Join Video Call" page='appoint' onPress={() => navigation.navigate('PatientVideoCallScreen', {
+          consultationId: appointmentData?.consultationId,
+          doctorName: appointmentData?.doctorName,
+        })}
+        />
+
+        {/* <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
           const url = `https://3twgj6xg-3000.inc1.devtunnels.ms/patvideocall/${token}/${appointmentData?.consultationId}`;
 
           if (url) {
@@ -122,7 +128,7 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
               await Linking.openURL(url);
             }
           }
-        }} />
+        }} /> */}
 
         <TouchableOpacity style={styles.secondaryBtn}>
           <Text style={styles.secondaryText}>Chat with Doctor</Text>

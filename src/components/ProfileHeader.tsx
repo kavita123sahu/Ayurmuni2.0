@@ -10,13 +10,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
-import {
-  launchCamera,
-  launchImageLibrary,
-  CameraOptions,
-  ImageLibraryOptions,
-  ImagePickerResponse,
-} from 'react-native-image-picker';
 
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';

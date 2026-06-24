@@ -21,7 +21,7 @@ import *as _AUTH_SERVICE from '../../services/AuthService'
 import { Utils } from '../../common/Utils';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
-import { utils } from 'xlsx';
+
 
 interface OTPVerificationProps {
     navigation?: any;

@@ -6,9 +6,9 @@ import { store } from './src/reduxfile/Store';
 import { Fonts } from './src/common/Fonts';
 
 
-console.log = () => { };
-console.warn = () => { };
-console.error = () => { };
+// console.log = () => { };
+// console.warn = () => { };
+// console.error = () => { };
 
 
 const toastConfig = {

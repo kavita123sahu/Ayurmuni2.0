@@ -37,7 +37,7 @@ import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 
 const MyCart = ({ navigation }: any) => {
 
-    const { CartData, loading } =
+    const { CartData, loading, fetchAllData } =
         useAllCartData();
 
     const insets = useSafeAreaInsets();
@@ -195,7 +195,7 @@ const MyCart = ({ navigation }: any) => {
                         quantity: 0,
                     });
                 } catch (error) {
-                    fetchCartData(); // reload cart
+                    fetchAllData(); // reload cart
                 }
 
                 return;
@@ -223,7 +223,7 @@ const MyCart = ({ navigation }: any) => {
                     quantity: newQty,
                 });
             } catch (error) {
-                fetchCartData();
+                fetchAllData();
             }
         },
         [sections],
@@ -289,28 +289,6 @@ const MyCart = ({ navigation }: any) => {
             },
         );
     };
-
-
-    const laodingCart = () => {
-        return (
-            <SafeAreaView style={styles.loaderContainer}>
-                <View style={styles.loaderCard}>
-                    <ActivityIndicator
-                        size="large"
-                        color={Colors.primaryColor}
-                    />
-
-                    <Text style={styles.loadingTitle}>
-                        Loading Cart
-                    </Text>
-
-                    <Text style={styles.loadingSubTitle}>
-                        Please wait a moment...
-                    </Text>
-                </View>
-            </SafeAreaView>
-        )
-    }
 
 
     return (

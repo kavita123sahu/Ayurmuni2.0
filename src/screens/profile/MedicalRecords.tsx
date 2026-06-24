@@ -214,65 +214,9 @@ const MedicalRecords = (props: any) => {
             );
         }
     };
-    const handleUploadRecord = async () => {
-        try {
-            const result = await pick({
-                mode: 'open',
-                type: ['image/*', 'application/pdf'],
-            });
 
-            const file = result?.[0];
 
-            if (!file) return;
 
-            const newFile = {
-                id: Date.now().toString(),
-                name: file.name,
-                uri: file.uri,
-                type: file.type,
-                isNew: true,
-            };
-
-            setUploadedFiles(prev => [newFile, ...prev]);
-
-            setSelectedRecords(prev => [
-                ...prev,
-                newFile.id,
-            ]);
-        } catch (error) {
-            console.log(error);
-        }
-    };
-
-    const handleSubmitRecords = async () => {
-        try {
-            for (const file of selectedFiles) {
-
-                const payload = {
-                    medical_record_type: 'lab_report',
-                    file_type: file.type?.includes('pdf')
-                        ? 'pdf'
-                        : 'image',
-                    description:
-                        file.name || 'Medical Record',
-
-                    file_url:
-                        "https://ayurmuni.s3.ap-south-1.amazonaws.com/appointment_documents/aa1e39a5a8be42938c62b6c7ffb87bd6.jpg",
-                };
-
-                console.log('payload =>', payload);
-
-                await AddMedicalRecord(payload);
-            }
-
-            setSelectedRecords([]);
-            setUploadedFiles([]);
-            fetchPatientsRecord();
-
-        } catch (error) {
-            console.log('handleSubmitRecords Error =>', error);
-        }
-    };
 
 
     const renderItem = ({ item }: any) => (
@@ -308,7 +252,7 @@ const MedicalRecords = (props: any) => {
                 icon={require('../../assets/images/Search.png')}
             />
 
-            {/* <TabButton /> */}
+            <TabButton />
 
             <ScrollView>
 

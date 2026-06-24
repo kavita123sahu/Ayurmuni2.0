@@ -89,11 +89,11 @@ import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
 import RazorpayScreen from "../screens/payment/RazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
-import { AllFavDoctor } from "../services/ConsultServce";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
 import consultHome from "../screens/consult/consultHome";
 import PatientVideoCallScreen from "../screens/consult/PatientVideoCall";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
+import { navigationRef } from "./navigationRef";
 
 enableScreens();
 
@@ -279,7 +279,7 @@ const Navigator = () => {
 
   return (
 
-    <NavigationContainer >
+    <NavigationContainer ref={navigationRef} >
 
       {isConnected ?
         <MainNavigator />

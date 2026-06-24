@@ -13,7 +13,7 @@ export const useMedicalHistory = () => {
         await _ASSESS_SERVICE.GetQuestionOptions({
           experience_type: 'medical_history',
         });
-        console.log("MEDICAL HISTORY QUESTIONS ===>", res);
+      console.log("MEDICAL HISTORY QUESTIONS ===>", res);
       setQuestions(res?.questions || []);
     } catch (error) {
       console.log(error);

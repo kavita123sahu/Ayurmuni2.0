@@ -68,6 +68,7 @@ export const useAllCartData = () => {
         refreshing,
         CartData,
         favDoctor,
+        fetchAllData,
         onRefresh,
     };
 };

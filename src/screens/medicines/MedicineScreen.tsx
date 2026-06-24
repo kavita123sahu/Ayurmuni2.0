@@ -107,54 +107,6 @@ const MedicineScreen = (props: any) => {
         },
     ];
 
-    const Medicines = [
-        {
-            id: '1',
-            name: 'Foxtail millet',
-            subtitle: 'Acne Clear  Cream',
-            subname: 'Acne Clear  Cream',
-            oldPrice: 699.00,
-            price: 649,
-            image: productImage,
-            tag: 'Bestselling',
-        },
-        {
-            id: '2',
-            name: 'Face Cream',
-            subtitle: 'Acne Clear  Cream',
-            price: 399,
-            oldPrice: 699,
-            image: productImage,
-            tag: '15% OFF',
-        },
-        {
-            id: '3',
-            name: 'Organic Rice',
-            subtitle: 'Acne Clear  Cream',
-            oldPrice: 699.00,
-            price: 250,
-            image: productImage,
-            tag: 'Hot',
-        },
-        {
-            id: '4',
-            name: 'Face Cream',
-            subtitle: 'Acne Clear  Cream',
-            price: 399,
-            oldPrice: 699,
-            image: productImage,
-            tag: '15% OFF',
-        },
-        {
-            id: '5',
-            name: 'Organic Rice',
-            subtitle: 'Acne Clear  Cream',
-            oldPrice: 699.00,
-            price: 250,
-            image: productImage,
-            tag: 'Hot',
-        },
-    ];
     return (
         <SafeAreaView style={{
             flex: 1,

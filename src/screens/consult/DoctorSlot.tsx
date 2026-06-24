@@ -25,6 +25,7 @@ import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import { useMedicalRecord } from '../../hooks/usePatientData';
 import { pick } from '@react-native-documents/picker';
+import PrescriptionUpload from './Uploadreport';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -45,7 +46,7 @@ const DoctorSlot = (props: any) => {
     const [records, setRecords] = useState<any[]>([]);
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const doctorInfo = useMemo(() => doctorDetails, [doctorDetails]);
-
+    const [prescriptionFiles, setPrescriptionFiles] = useState([]);
     console.log("dcorsolotdata", doctorDetails);
 
 
@@ -381,7 +382,7 @@ const DoctorSlot = (props: any) => {
                             style={styles.input}
                             textAlignVertical="top"
                         />
-
+                        {/* 
                         <TouchableOpacity
                             activeOpacity={0.8}
                             style={styles.uploadBtn}
@@ -396,7 +397,13 @@ const DoctorSlot = (props: any) => {
                             <Text style={styles.uploadText}>
                                 Upload Medical Records
                             </Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
+
+                        <PrescriptionUpload
+                            records={records}              // tumhara existing medical records array (API se aaya)
+                            files={prescriptionFiles}
+                            onChangeFiles={() => setPrescriptionFiles}
+                        />
                     </View>
 
                     {records.length > 0 && (

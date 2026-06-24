@@ -28,7 +28,6 @@ import { Colors } from '../../common/Colors';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { Feather } from '../../common/Vector';
-import { CameraOptions, ImageLibraryOptions, ImagePickerResponse, launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import { uploadImage } from '../../hooks/usePatientData';
 import { Utils } from '../../common/Utils';
