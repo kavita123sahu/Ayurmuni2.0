@@ -16,6 +16,7 @@ import {
     ScrollView,
     StatusBar,
     ActivityIndicator,
+    TextInput,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,7 +28,7 @@ import { Fonts } from '../../common/Fonts';
 import * as _CART_SERVICES from '../../services/CartService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAllCartData } from '../../hooks/Cart';
-import { getProductData, MyCartData, ProductItem, SectionType } from '../../common/DataInterface';
+import { getProductData, ProductItem, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
@@ -47,6 +48,9 @@ const MyCart = ({ navigation }: any) => {
     const [selectedItems, setSelectedItems] =
         useState<string[]>([]);
 
+    const [activeTab, setActiveTab] = useState<'cart' | 'prescribed'>('cart');
+    const [showDetails, setShowDetails] =
+        useState(false);
     console.log('CartDataCartData', CartData);
 
     const mappedSections = useMemo<SectionType[]>(() => {
@@ -272,6 +276,13 @@ const MyCart = ({ navigation }: any) => {
         Math.round(Number(CartData?.my_cart?.subtotal || 0) +
             Number(CartData?.prescription_cart?.subtotal || 0));
 
+    const currentSection = sections.find(
+        item =>
+            item.type ===
+            (activeTab === 'cart'
+                ? 'cart'
+                : 'prescribed'),
+    );
 
     const handleCheckout = () => {
 
@@ -350,132 +361,193 @@ const MyCart = ({ navigation }: any) => {
                         }}
                     >
 
-                        {
-                            sections.map(
-                                section => {
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                style={styles.tabBtn}
+                                onPress={() => setActiveTab('cart')}>
+                                <Text
+                                    style={[
+                                        styles.tabText,
+                                        activeTab === 'cart' &&
+                                        styles.activeTabText,
+                                    ]}>
+                                    My Cart
+                                </Text>
+                            </TouchableOpacity>
 
-                                    const sectionIds =
-                                        section.items.map(
-                                            item =>
+                            <TouchableOpacity
+                                style={styles.tabBtn}
+                                onPress={() =>
+                                    setActiveTab('prescribed')
+                                }>
+                                <Text
+                                    style={[
+                                        styles.tabText,
+                                        activeTab === 'prescribed' &&
+                                        styles.activeTabText,
+                                    ]}>
+                                    Prescribed
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+
+                        <View style={styles.infoCard}>
+                            <Text style={styles.infoTitle}>
+                                You have {totalItems} items in your cart
+                            </Text>
+
+                            <Text style={styles.infoSubTitle}>
+                                Complete your order and enjoy wellness.
+                            </Text>
+                        </View>
+
+                        {currentSection && (() => {
+
+                            const sectionIds =
+                                currentSection.items.map(
+                                    item => item.id,
+                                );
+
+                            const isSectionSelected =
+                                sectionIds.every(id =>
+                                    selectedItems.includes(id),
+                                );
+
+                            return (
+
+                                <View style={styles.sectionCard}>
+
+
+                                    <View style={styles.sectionHeader}>
+                                        <Text style={styles.sectionTitle}>
+                                            {activeTab === 'cart'
+                                                ? `My Cart (${currentSection.items.length})`
+                                                : `Prescribed (${currentSection.items.length})`}
+                                        </Text>
+
+                                        <TouchableOpacity
+                                            onPress={() =>
+                                                toggleSectionSelection(
+                                                    currentSection,
+                                                )
+                                            }
+                                            style={[
+                                                styles.checkbox,
+                                                isSectionSelected &&
+                                                styles.checkboxActive,
+                                            ]}>
+                                            {isSectionSelected && (
+                                                <Image
+                                                    source={Images.tick}
+                                                    style={{
+                                                        height: 15,
+                                                        width: 15,
+                                                        tintColor: '#FFF',
+                                                    }}
+                                                />
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {currentSection.items.map(item => (
+                                        <MyProductCard
+                                            key={item.id}
+                                            item={item}
+                                            navigation={navigation}
+                                            type={currentSection.type}
+                                            isSelected={selectedItems.includes(
                                                 item.id,
-                                        );
-
-                                    const isSectionSelected =
-                                        sectionIds.every(
-                                            id =>
-                                                selectedItems.includes(
-                                                    id,
-                                                ),
-                                        );
-
-                                    return (
-                                        <View
-                                            key={
-                                                section.id
+                                            )}
+                                            toggleItemSelection={
+                                                toggleItemSelection
                                             }
-                                            style={
-                                                styles.sectionCard
+                                            updateQuantity={
+                                                updateQuantity
                                             }
-                                        >
-
-                                            {/* HEADER */}
-
-                                            <View
-                                                style={
-                                                    styles.sectionHeader
-                                                }
-                                            >
-
-                                                <Text
-                                                    style={
-                                                        styles.sectionTitle
-                                                    }
-                                                >
-                                                    {
-                                                        section.title
-                                                    }
-                                                </Text>
-
-                                                <TouchableOpacity
-                                                    onPress={() =>
-                                                        toggleSectionSelection(
-                                                            section,
-                                                        )
-                                                    }
-                                                    style={[
-                                                        styles.checkbox,
-
-                                                        isSectionSelected &&
-                                                        styles.checkboxActive,
-                                                    ]}
-                                                >
-                                                    {
-                                                        isSectionSelected && (
-                                                            <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFFFF', resizeMode: 'contain' }} />
-                                                        )
-                                                    }
-                                                </TouchableOpacity>
-                                            </View>
+                                            styles={styles}
+                                        />
+                                    ))}
+                                </View>
+                            );
+                        })()}
 
 
-                                            {
-                                                section.items.map(item => (
-                                                    <MyProductCard
-                                                        key={item.id}
-                                                        item={item}
-                                                        navigation={navigation}
-                                                        type={section.type}
-                                                        isSelected={selectedItems.includes(
-                                                            item.id,
-                                                        )}
 
-                                                        toggleItemSelection={
-                                                            toggleItemSelection
-                                                        }
-                                                        updateQuantity={updateQuantity}
-                                                        styles={styles}
-                                                    />
-                                                ))
-                                            }
-                                        </View>
-                                    );
-                                },
-                            )
-                        }
+                        <View style={styles.promoCard}>
 
+                            <Text style={styles.promoTitle}>
+                                Got a promo code?
+                            </Text>
+
+                            <View style={styles.promoInputRow}>
+
+                                <TextInput
+                                    placeholder="Enter promo code"
+                                    style={styles.promoInput}
+                                    placeholderTextColor="#9CA3AF"
+                                />
+
+                                <TouchableOpacity
+                                    style={styles.applyBtn}>
+                                    <Text style={styles.applyText}>
+                                        Apply
+                                    </Text>
+                                </TouchableOpacity>
+
+                            </View>
+
+                        </View>
                         {/* BILL */}
 
                         <View style={styles.billBox}>
 
-                            <BillRow
-                                label="Items"
-                                value={`${totalItems}`}
-                            />
+                            <View style={styles.orderHeader}>
+                                <Text style={styles.orderTitle}>
+                                    ORDER SUMMARY
+                                </Text>
 
-                            <BillRow
-                                label="Subtotal"
-                                value={`Rs. ${Math.round(Number(subtotal))}`}
-                            />
+                                <TouchableOpacity
+                                    onPress={() =>
+                                        setShowDetails(!showDetails)
+                                    }>
+                                    <Text style={styles.viewDetails}>
+                                        {showDetails
+                                            ? 'Hide Details'
+                                            : 'View Details'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
 
-                            <BillRow
-                                label="Delivery"
-                                value={`Rs. ${deliveryFee}`}
-                            />
+                            {showDetails && (
+                                <>
+                                    <BillRow
+                                        label="Subtotal"
+                                        value={`Rs. ${subtotal}`}
+                                    />
 
-                            <View
-                                style={
-                                    styles.divider
-                                }
-                            />
+                                    <BillRow
+                                        label="Delivery Fee"
+                                        value={`Rs. ${deliveryFee}`}
+                                    />
+
+                                    <BillRow
+                                        label="Discount"
+                                        value="Rs. 0"
+                                    />
+
+                                    <View style={styles.divider} />
+                                </>
+                            )}
 
                             <BillRow
                                 label="Total"
-                                value={`Rs. ${Math.round(Number(total))}`}
+                                value={`Rs. ${Math.round(total)}`}
                                 isTotal
                             />
-
-
                         </View>
+
+
                     </ScrollView>
 
                     <TouchableOpacity
@@ -579,6 +651,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8FAF8',
     },
 
+    size: {
+        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 12
+    },
     selectAllRow: {
         flexDirection: 'row',
         justifyContent:
@@ -596,13 +672,11 @@ const styles = StyleSheet.create({
     },
 
     sectionCard: {
-        backgroundColor: '#EEF3F1',
-        borderRadius: 28,
-        padding: 14,
-        marginTop: 20,
-        marginBottom: 20,
+        // backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 12,
     },
-
     sectionHeader: {
         flexDirection: 'row',
         justifyContent:
@@ -712,6 +786,48 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontFamily: Fonts.PoppinsSemiBold,
     },
+    tabContainer: {
+        flexDirection: 'row',
+        marginTop: 10,
+        marginBottom: 20,
+    },
+
+    tabBtn: {
+        flex: 1,
+        alignItems: 'center',
+        paddingBottom: 10,
+        borderBottomWidth: 2,
+        borderBottomColor: '#E5E7EB',
+    },
+
+    tabText: {
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    activeTabText: {
+        color: '#0D614E',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    infoCard: {
+        backgroundColor: '#ECFDF5',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 15,
+    },
+
+    infoTitle: {
+        color: '#166534',
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    infoSubTitle: {
+        color: '#6B7280',
+        fontSize: 12,
+    },
+
     image: {
         width: 74,
         height: 74,
@@ -825,6 +941,68 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#64748B',
         fontFamily: Fonts.PoppinsRegular,
+    },
+
+    promoCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 18,
+        padding: 16,
+        marginBottom: 15,
+    },
+
+    promoTitle: {
+        fontSize: 18,
+        color: '#111827',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 12,
+    },
+
+    promoInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+
+    promoInput: {
+        flex: 1,
+        height: 48,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 15,
+        marginRight: 10,
+    },
+
+    applyBtn: {
+        height: 48,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        backgroundColor: '#0D614E',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    applyText: {
+        color: '#FFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    orderHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+
+    orderTitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    viewDetails: {
+        fontSize: 13,
+        color: '#0D614E',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     billBox: {

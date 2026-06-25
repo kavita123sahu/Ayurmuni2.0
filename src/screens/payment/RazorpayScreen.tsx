@@ -60,7 +60,7 @@ const RazorpayScreen = ({
         slotId,
         date,
         concern,
-        selectedTime,
+        selectedTime,medical_record_ids
     } = route?.params || {};
 
 
@@ -69,9 +69,9 @@ const RazorpayScreen = ({
         slotId,
         date,
         concern,
-        selectedTime, doctorInfo )
+        selectedTime, doctorInfo,medical_record_ids ,"medical_record_ids")
 
-        
+
 
     /* -------------------------------------------------------------------------- */
     /*                                   STATES                                   */
@@ -163,11 +163,12 @@ const RazorpayScreen = ({
             const paymentResponse =
                 await _CONSULT_SERVICES.createConsultationPayment({
                     slot_id: slotId,
-                    concern: concern
+                    concern: concern,
+                    medical_record_ids: medical_record_ids
 
                 });
 
-            console.log("paymentResponse", paymentResponse);
+            console.log("bookslottttttornottt", paymentResponse);
             if (!paymentResponse?.success) {
 
                 showSuccessToast(paymentResponse?.message, 'error');

@@ -18,12 +18,13 @@ const AppointmentActions = ({
     onJoinCall,
     onViewDetails,
 }: Props) => {
-    const activeStatuses = [
-        "pending",
-        "confirmed",
-        "reschedule",
-        "rescheduled",
-    ];
+    const appointmentStatus = status.toLowerCase();
+    // const activeStatuses = [
+    //     "pending",
+    //     "confirmed",
+    //     "reschedule",
+    //     "rescheduled",
+    // ];
 
     const closedStatuses = [
         "completed",
@@ -31,18 +32,39 @@ const AppointmentActions = ({
         "missed",
     ];
 
+    const showButtons = ![
+        'cancelled',
+        'completed',
+        'rescheduled',
+    ].includes(appointmentStatus);
+
+    const showReschedule =
+        status === 'pending' ||
+        status === 'missed' ||
+        status === 'reschedule';
+
+    const showCancel =
+        status === 'pending' ||
+        status === 'confirmed';
+
+
     const showJoinCall = false; // dynamic logic later
 
-    if (activeStatuses.includes(status)) {
+    if (
+        !['cancelled', 'completed', 'rescheduled'].includes(
+            status,
+        )
+    ) {
         return (
             <View style={styles.btnRow}>
-                {status !== "pending" && (
+                {showReschedule && (
                     <TouchableOpacity
                         style={styles.outlineBtn}
-                        onPress={onReschedule}
-                    >
+                        onPress={onReschedule}>
                         <Text style={Styles.outlineText}>
-                            Reschedule
+                            {status === 'reschedule'
+                                ? 'Request To Change'
+                                : 'Reschedule'}
                         </Text>
                     </TouchableOpacity>
                 )}
@@ -50,32 +72,31 @@ const AppointmentActions = ({
                 {showJoinCall ? (
                     <TouchableOpacity
                         style={styles.primaryBtn}
-                        onPress={onJoinCall}
-                    >
+                        onPress={onJoinCall}>
                         <Text style={styles.primaryText}>
                             Join Call
                         </Text>
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity
-                        style={[
-                            styles.cancelBtn,
-                            status !== "pending" && {
-                                flex: 1,
-                                marginTop: 0,
-                            },
-                        ]}
-                        onPress={onCancel}
-                    >
-                        <Text style={styles.cancelText}>
-                            Cancel
-                        </Text>
-                    </TouchableOpacity>
+                    showCancel && (
+                        <TouchableOpacity
+                            style={[
+                                styles.cancelBtn,
+                                showReschedule && {
+                                    flex: 1,
+                                    marginTop: 0,
+                                },
+                            ]}
+                            onPress={onCancel}>
+                            <Text style={styles.cancelText}>
+                                Cancel
+                            </Text>
+                        </TouchableOpacity>
+                    )
                 )}
             </View>
         );
     }
-
     if (closedStatuses.includes(status)) {
         return (
             <TouchableOpacity

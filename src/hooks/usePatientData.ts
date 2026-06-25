@@ -283,7 +283,10 @@ export const useMedicalRecord = () => {
 
 import { pick } from '@react-native-documents/picker';
 import { AddMedicalRecord } from '../services/PatientServices';
-import { uploadFiles } from 'react-native-fs';
+import {
+    launchCamera,
+} from 'react-native-image-picker';
+import { Alert } from 'react-native';
 
 type FileItem = {
     id: string;
@@ -295,12 +298,12 @@ type FileItem = {
 };
 
 export const useMedicalUpload = (
-    fetchPatientsRecord?: () => void
+    fetchPatientsRecord?: () => void,
+    onRecordSelected?: (recordId: string) => void,
 ) => {
-    const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
+
     const [uploading, setUploading] = useState(false);
 
-    // 📌 Pick from gallery / docs
     const selectFile = async () => {
         try {
             const result = await pick({
@@ -313,131 +316,143 @@ export const useMedicalUpload = (
             if (!file) return;
 
             setUploading(true);
+
+            // Upload S3
             const formData = new FormData();
 
-            formData.append(
-                'image',
-                {
-                    uri: file.uri,
-                    name: file.name,
-                    type:
-                        file.type ||
-                        'image/jpeg',
-                } as any,
-            );
+            formData.append('image', {
+                uri: file.uri,
+                name: file.name,
+                type: file.type,
+            } as any);
 
-            formData.append(
-                'dir',
-                'customer_avatar',
-            );
+            formData.append('dir', 'customer_avatar');
 
             const uploadResponse =
                 await _PROFILE_SERVICES.UploadProfilePhoto(
                     formData,
                 );
 
-            console.log(
-                'uploadResponse =>',
-                uploadResponse,
-            );
             const fileUrl =
-                uploadResponse?.data?.url
+                uploadResponse?.data?.url;
 
-            const uploadedFile = {
-                id: Date.now().toString(),
-                name: file.name,
-                uri: file.uri,
-                type: file.type,
-                file_url: fileUrl,
-                status: 'uploaded',
-            };
-
-            setSelectedFiles(prev => [
-                uploadedFile,
-                ...prev,
-            ]);
-        } catch (error) {
-            console.log('selectFile error =>', error);
-        } finally {
-            setUploading(false);
-        }
-    };
-
-
-    const deleteRecord = async (
-        recordID: string | number,
-    ) => {
-        try {
-            const response =
-                await _PATIENT_SERVICES.deleteMedicalRecord(
-                    recordID,
-                );
-
-            console.log(
-                'delete response =>',
-                response,
-            );
-
-            // uploaded files se bhi remove
-            setSelectedFiles(prev =>
-                prev.filter(
-                    item =>
-                        String(item.id) !==
-                        String(recordID),
-                ),
-            );
-
-            // list refresh
-            await fetchPatientsRecord?.();
-        } catch (error) {
-            console.log(
-                'DELETE RECORD ERROR =>',
-                error,
-            );
-        }
-    };
-
-
-    // 📌 Submit all selected files
-    const submitFiles = async () => {
-        try {
-            setUploading(true);
-
-            for (const file of selectedFiles) {
-                const resposne = await AddMedicalRecord({
+            // Add Medical Record
+            const recordResponse =
+                await AddMedicalRecord({
                     medical_record_type: 'lab_report',
                     file_type: file.type?.includes('pdf')
                         ? 'pdf'
                         : 'image',
-                    description:
-                        file.name || 'Medical Record',
-                    file_url: file.file_url,
+                    description: file.name,
+                    file_url: fileUrl,
                 });
-                console.log("resposneresposneresposne--->", resposne)
-            }
-            setSelectedFiles([])
 
-            await fetchPatientsRecord();
+            const recordId =
+                recordResponse?.data?.id;
+
+            // Auto Select Uploaded Record
+            if (recordId) {
+                onRecordSelected?.(recordId);
+            }
+
+            // Refresh Medical Records List
+            await fetchPatientsRecord?.();
+
         } catch (error) {
-            console.log(error);
+            console.log(
+                'UPLOAD ERROR =>',
+                error,
+            );
+        } finally {
+            setUploading(false);
+        }
+    };
+  
+    const removeFile = async (recordId: string) => {
+    try {
+        setUploading(true);
+
+        await _PATIENT_SERVICES.deleteMedicalRecord(recordId);
+
+        await fetchPatientsRecord?.();
+
+    } catch (error) {
+        console.log(
+            'REMOVE FILE ERROR =>',
+            error,
+        );
+    } finally {
+        setUploading(false);
+    }
+};
+    const CameraUpload = async () => {console.log("clickked")
+        try {
+            const result = await launchCamera({
+                mediaType: 'photo',
+                quality: 0.8,
+                saveToPhotos: false,
+            });
+
+            if (!result.assets?.length) {
+                return;
+            }
+
+            const file = result.assets[0];
+
+            setUploading(true);
+
+            const formData = new FormData();
+
+            formData.append(
+                'image',
+                {
+                    uri: file.uri,
+                    name: file.fileName || `photo_${Date.now()}.jpg`,
+                    type: file.type || 'image/jpeg',
+                } as any,
+            );
+
+            formData.append('dir', 'customer_avatar');
+
+            const uploadResponse =
+                await _PROFILE_SERVICES.UploadProfilePhoto(
+                    formData,
+                );
+
+            const fileUrl =
+                uploadResponse?.data?.url;
+
+            const recordResponse =
+                await AddMedicalRecord({
+                    medical_record_type: 'lab_report',
+                    file_type: 'image',
+                    description:
+                        file.fileName || 'Camera Image',
+                    file_url: fileUrl,
+                });
+
+            const recordId = String(
+                recordResponse?.data?.id,
+            );
+
+            if (recordId) {
+                onRecordSelected?.(recordId);
+            }
+
+            await fetchPatientsRecord?.();
+        } catch (error) {
+            console.log('CAMERA ERROR =>', error);
         } finally {
             setUploading(false);
         }
     };
 
-    const removeFile = (id: string) => {
-        setSelectedFiles(prev => prev.filter(item => item.id !== id));
-    };
+
 
     return {
-        selectedFiles,
         uploading,
         selectFile,
-
-
-        deleteRecord,
-        submitFiles,
         removeFile,
-        setSelectedFiles,
+        CameraUpload
     };
 };

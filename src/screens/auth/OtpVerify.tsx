@@ -105,24 +105,24 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             setIsLoading(false);
         }
     };
-    // const loadStoredOtp = async () => {
-    //     try {
-    //         const storedOtp =
-    //             await Utils.getData("_OTP");
+    const loadStoredOtp = async () => {
+        try {
+            const storedOtp =
+                await Utils.getData("_OTP");
 
-    //         if (storedOtp) {
-    //             setOtp(
-    //                 storedOtp.toString().split(""),
-    //             );
-    //         }
-    //     } catch (error) {
-    //         console.log(error);
-    //     }
-    // };
+            if (storedOtp) {
+                setOtp(
+                    storedOtp.toString().split(""),
+                );
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
 
-    // useEffect(() => {
-    //     loadStoredOtp();
-    // }, []);
+    useEffect(() => {
+        loadStoredOtp();
+    }, []);
 
     const LoginVerfiyOTP = async () => {
         Keyboard.dismiss();
@@ -223,8 +223,8 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
             const response: any = await _AUTH_SERVICE.send_otp(send_data);
             console.log("resend_otp_response", response?.data?.otp);
-            // Utils.storeData("_OTP", response?.data?.otp)
-            // await loadStoredOtp();
+            Utils.storeData("_OTP", response?.data?.otp)
+            await loadStoredOtp();
 
             setIsLoading(false);
             if (response?.success) {

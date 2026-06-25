@@ -46,7 +46,7 @@ const Login: React.FC = (props: any) => {
       const response: any =
         await _AUTH_SERVICE.send_otp(send_data);
 
-      // const OTP = response?.data?.otp;
+      const OTP = response?.data?.otp;
 
       // console.log('OTP Response-->:', OTP);
 
@@ -59,7 +59,7 @@ const Login: React.FC = (props: any) => {
 
       if (response?.success) {
 
-        // Utils.storeData("_OTP", OTP)
+        Utils.storeData("_OTP", OTP)
 
         showSuccessToast(
           response.message || 'OTP sent successfully',

@@ -61,13 +61,26 @@ const MedicalRecords = (props: any) => {
         fetchPatientsRecord,
     } = useMedicalRecord();
 
+    // const {
+    //     selectedFiles,
+    //     uploading,
+    //     selectFile,
+    //     submitFiles,
+    //     removeFile,
+    // } = useMedicalUpload(fetchPatientsRecord,);
+    const [uploading, setUploading] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+
     const {
-        selectedFiles,
-        uploading,
         selectFile,
-        submitFiles,
+        CameraUpload,
         removeFile,
-    } = useMedicalUpload(fetchPatientsRecord,);
+    } = useMedicalUpload(
+        fetchPatientsRecord,
+        (recordId) => {
+            setSelectedRecords(prev => [...prev, recordId]);
+        },
+    );
 
     console.log("patientsRecordpatientsRecord", patientsRecord)
     const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
@@ -355,7 +368,7 @@ const MedicalRecords = (props: any) => {
                                 }}
                             >
                                 Selected Records:{' '}
-                                {selectedRecords.length}
+                                {selectedRecords?.length}
                             </Text>
                         </View>
                     </>
@@ -418,6 +431,7 @@ const MedicalRecords = (props: any) => {
                     )} */}
 
                     {selectedFiles.length > 0 && (
+
                         <PrimaryButton
                             title={uploading ? "Uploading..." : "Upload Selected"}
                             onPress={submitFiles}

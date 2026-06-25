@@ -9,6 +9,8 @@ import {
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
+import CommonButton from '../../components/CommonButton';
+import CommonModal from '../../components/LogoutModal';
 interface Props {
   item: any;
   selected: boolean;
@@ -24,33 +26,22 @@ const MedicalRecordCard = ({
   onPreview,
   onDelete,
 }: Props) => {
+
+  const [deleteModal, setDeleteModal] = React.useState(false);
   return (
+
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.8}
       onPress={onSelect}
       style={[
         styles.card,
-        selected && styles.selectedCard,
+        // selected && styles.selectedCard,
       ]}>
 
-      <TouchableOpacity
-        onPress={onSelect}
-        style={styles.checkbox}>
-        <Ionicons
-          name={
-            selected
-              ? 'checkmark-circle'
-              : 'ellipse-outline'
-          }
-          size={26}
-          color={
-            selected
-              ? Colors.primaryColor
-              : '#BDBDBD'
-          }
-        />
-      </TouchableOpacity>
+      {/* Left */}
 
+
+      {/* File Icon */}
       <View style={styles.fileIcon}>
         <Ionicons
           name={
@@ -58,65 +49,59 @@ const MedicalRecordCard = ({
               ? 'document-text'
               : 'image'
           }
-          size={24}
-          color="#065F46"
+          size={20}
+          color={Colors.primaryColor}
         />
       </View>
 
-      <View style={{flex: 1}}>
-        <Text style={styles.title}>
-          {item.description || 'Medical Record'}
+      {/* Details */}
+      <View style={styles.content}>
+        <Text
+          numberOfLines={1}
+          style={styles.title}>
+          {item.description}
         </Text>
 
         <Text style={styles.subTitle}>
           {item.file_type?.toUpperCase()}
         </Text>
-
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {item.medical_record_type ===
-            'lab_report'
-              ? 'Lab Report'
-              : 'Prescription'}
-          </Text>
-        </View>
       </View>
 
-<View style={styles.actionContainer}>
+      {/* Right Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity
+          onPress={() =>
+            Linking.openURL(item.file_url)
+          }>
+          <Ionicons
+            name="eye-outline"
+            size={20}
+            color="#64748B"
+          />
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={styles.iconBtn}
-    onPress={onPreview}>
-    <Ionicons
-      name="eye-outline"
-      size={22}
-      color="#065F46"
-    />
-  </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setDeleteModal(true)}
+          style={{ marginLeft: 12 }}>
+          <Ionicons
+            name="trash-bin-outline"
+            size={20}
+            color="#EF4444"
+          />
+        </TouchableOpacity>
+      </View>
 
-  <TouchableOpacity
-    style={styles.iconBtn}
-    onPress={() =>
-      Linking.openURL(item.file_url)
-    }>
-    <Ionicons
-      name="open-outline"
-      size={22}
-      color="#2563EB"
-    />
-  </TouchableOpacity>
-
-  <TouchableOpacity
-    style={styles.iconBtn}
-    onPress={onDelete}>
-    <Ionicons
-      name="trash-outline"
-      size={22}
-      color="#DC2626"
-    />
-  </TouchableOpacity>
-
-</View>
+      <CommonModal
+        visible={deleteModal}
+        icon="🗑️"
+        title="Delete Record"
+        subtitle="Are you sure want to delete , this record?"
+        cancelText="Cancel"
+        confirmText="Delete"
+        // loading={isDeleting}
+        onClose={() => setDeleteModal(false)}
+        onConfirm={onDelete}
+      />
     </TouchableOpacity>
   );
 };
@@ -125,69 +110,52 @@ export default MedicalRecordCard;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 22,
-    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
 
   selectedCard: {
-    borderColor: '#065F46',
+    borderColor: Colors.primaryColor,
     backgroundColor: '#F0FDF4',
   },
 
-  checkbox: {
-    marginRight: 12,
-  },
-
   fileIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
     backgroundColor: '#ECFDF5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginLeft: 10,
+  },
+
+  content: {
+    flex: 1,
+    marginLeft: 10,
   },
 
   title: {
-    fontFamily: Fonts.PoppinsSemiBold,
     fontSize: 14,
-    color: Colors.black,
-  },
-
-  subTitle: {
-    fontFamily: Fonts.PoppinsRegular,
-    fontSize: 12,
-    color: Colors.subTextColor,
-    marginTop: 2,
-  },
-
-  badge: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-
-  badgeText: {
-    color: '#166534',
-    fontSize: 11,
+    color: '#111827',
     fontFamily: Fonts.PoppinsMedium,
   },
 
-  actionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  subTitle: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+    fontFamily: Fonts.PoppinsRegular,
   },
 
-  iconBtn: {
-    marginLeft: 10,
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

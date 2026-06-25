@@ -23,9 +23,10 @@ import { Colors } from '../../common/Colors';
 import { generateFutureDates, } from '../../common/DataInterface';
 import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
-import { useMedicalRecord } from '../../hooks/usePatientData';
+import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
 import { pick } from '@react-native-documents/picker';
 import PrescriptionUpload from './Uploadreport';
+import { launchCamera } from 'react-native-image-picker';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -35,16 +36,38 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 
 const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
-
+    const [selectedRecords, setSelectedRecords] =
+        useState<string[]>([]);
     const { doctorDetails } = route?.params || {};
 
-    const { patientsRecord } = useMedicalRecord();
+    const { patientsRecord, fetchPatientsRecord, } = useMedicalRecord();
 
-    console.log("patientsRecordpatientsRecordpatientsRecord", patientsRecord)
+    // const {
+    //     selectFile,
+    //     openCamera,
+    // } = useMedicalUpload(
+    //     fetchPatientsRecord,
+    //     (recordId) => {
+    //         setSelectedRecords(prev => [
+    //             ...prev,
+    //             recordId,
+    //         ]);
+    //     },
+    // );
+    const {
+        selectFile,
+        CameraUpload,
+    } = useMedicalUpload(
+        fetchPatientsRecord,
+        (recordId) => {
+            setSelectedRecords(prev => [...prev, recordId]);
+        },
+    );
+
+    console.log("patientsRecordpatientsRecordpatientsRecord", selectedRecords)
 
     const [doctorDetailData, setDoctorDetailData] = useState<any>(null);
-    const [records, setRecords] = useState<any[]>([]);
-    const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
+    // const [records, setRecords] = useState<any[]>([]);
     const doctorInfo = useMemo(() => doctorDetails, [doctorDetails]);
     const [prescriptionFiles, setPrescriptionFiles] = useState([]);
     console.log("dcorsolotdata", doctorDetails);
@@ -184,6 +207,8 @@ const DoctorSlot = (props: any) => {
     }, [slotsData]);
 
     const handleContinue = () => {
+        console.log("selectedRecordsselectedRecords", selectedRecords)
+     
         if (!selectedSlot) return;
 
         const selectedSlotObj = slotsData?.slots?.find(
@@ -199,6 +224,8 @@ const DoctorSlot = (props: any) => {
                 selectedSlotObj?.displayTime ||
                 selectedSlotObj?.start_time,
             concern,
+            
+            medical_record_ids: selectedRecords,
         });
     };
 
@@ -366,8 +393,8 @@ const DoctorSlot = (props: any) => {
                                 <Text style={styles.emptyTitle}>No Slots Available</Text>
                             </View>
                         )}
-
                     </View>
+
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>
                             Concern
@@ -400,81 +427,15 @@ const DoctorSlot = (props: any) => {
                         </TouchableOpacity> */}
 
                         <PrescriptionUpload
-                            records={records}              // tumhara existing medical records array (API se aaya)
-                            files={prescriptionFiles}
-                            onChangeFiles={() => setPrescriptionFiles}
+                            records={patientsRecord}
+                            selectedRecords={selectedRecords}
+                            onSelectRecord={setSelectedRecords}
+                            onUpload={selectFile}
+                            CameraUpload={CameraUpload}
                         />
+
                     </View>
 
-                    {records.length > 0 && (
-                        <View style={{ marginTop: 20 }}>
-                            <Text style={styles.recordTitle}>
-                                Medical Records
-                            </Text>
-
-                            {records.map(item => {
-                                const selected =
-                                    selectedRecords.includes(item.id);
-
-                                return (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        activeOpacity={0.8}
-                                        onPress={() => {
-                                            setSelectedRecords(prev =>
-                                                prev.includes(item.id)
-                                                    ? prev.filter(
-                                                        x => x !== item.id,
-                                                    )
-                                                    : [...prev, item.id],
-                                            );
-                                        }}
-                                        style={[
-                                            styles.recordCard,
-                                            selected &&
-                                            styles.selectedRecordCard,
-                                        ]}
-                                    >
-                                        <View
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                flex: 1,
-                                            }}
-                                        >
-                                            <Ionicons
-                                                name={
-                                                    item?.name
-                                                        ?.includes('.pdf')
-                                                        ? 'document-text-outline'
-                                                        : 'image-outline'
-                                                }
-                                                size={22}
-                                                color={Colors.primaryColor}
-                                            />
-
-                                            <Text
-                                                numberOfLines={1}
-                                                style={styles.recordName}
-                                            >
-                                                {item.name}
-                                            </Text>
-                                        </View>
-
-                                        <Ionicons
-                                            name={
-                                                selected
-                                                    ? 'checkbox'
-                                                    : 'square-outline'
-                                            }
-                                            size={24}
-                                            color={Colors.primaryColor}
-                                        />
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    )}
 
                     <View style={styles.footer}>
                         <View>

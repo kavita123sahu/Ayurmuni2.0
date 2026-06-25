@@ -18,6 +18,7 @@ import Login from "../screens/auth/Login";
 import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
 
+
 import HomePage from "../screens/home/HomePage";
 // import ConsultHome from "../screens/consult/ConsultHome";
 import ProfilePage from "../screens/profile/ProfilePage";
@@ -91,7 +92,6 @@ import RazorpayScreen from "../screens/payment/RazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
 import consultHome from "../screens/consult/consultHome";
-import PatientVideoCallScreen from "../screens/consult/PatientVideoCall";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 
@@ -225,7 +225,7 @@ const HomeStack = () => {
       <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="consultHome" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCallScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      {/* <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCallScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     </Stack.Navigator>
   );
 };
@@ -264,8 +264,9 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
-      <Stack.Screen name="SplashStack" component={SplashStack} />
+    <Stack.Navigator initialRouteName="Welcome" screenOptions={hideHeader}>
+      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="AuthStack" component={AuthStack} />
       <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>

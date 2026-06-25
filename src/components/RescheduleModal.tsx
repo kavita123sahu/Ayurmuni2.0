@@ -19,6 +19,7 @@ import { Fonts } from "../common/Fonts";
 interface Props {
     visible: boolean;
     onClose: () => void;
+
     onSubmit: (data: {
         availability: number;
         reschedule_reason: string;
@@ -27,6 +28,7 @@ interface Props {
     //     id: number;
     //     time: string;
     // }[];
+    isRescheduleRequest: boolean;
     appointment: any
 }
 
@@ -34,6 +36,7 @@ const RescheduleModal = ({
     visible,
     onClose,
     onSubmit,
+    isRescheduleRequest,
     appointment,
     // slots,
 }: Props) => {
@@ -44,6 +47,7 @@ const RescheduleModal = ({
     const [loadingSlots, setLoadingSlots] =
         useState(false);
     const [selectedDate, setSelectedDate] = useState("");
+
 
 
     console.log("appointmentappointment-->", appointment)
@@ -67,6 +71,21 @@ const RescheduleModal = ({
         setSelectedSlot(null);
         setReason("");
     }, [visible, appointment]);
+
+
+    const handleSubmit = () => {
+        onSubmit({
+            action: isRescheduleRequest
+                ? 'confirm_reschedule'
+                : 'reschedule',
+
+            availability: selectedSlot.id,
+
+            ...(!isRescheduleRequest && {
+                reschedule_reason: reason.trim(),
+            }),
+        });
+    };
 
     const fetchSlotsForDate = useCallback(
         async (date: string) => {
@@ -248,10 +267,7 @@ const RescheduleModal = ({
                                 },
                             ]}
                             onPress={() => {
-                                onSubmit({
-                                    availability: selectedSlot.id,
-                                    reschedule_reason: reason.trim(),
-                                });
+                                handleSubmit()
                             }}
                         >
                             <Text style={styles.primaryText}>

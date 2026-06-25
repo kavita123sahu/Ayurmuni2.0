@@ -68,14 +68,23 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
         {/* TOP SECTION */}
         <View style={styles.topRow}>
           <View style={styles.doctorImageWrapper}>
-            <Image
-              source={
-                item?.profile_image
-                  ? { uri: item.profile_image }
-                  : Images.doctorImage
-              }
-              style={styles.avatar}
-            />
+            {
+              item?.profile_image ? (
+                <Image
+                  source={{ uri: item.profile_image }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarText}>
+                    {(
+                      item?.first_name?.charAt(0) ||
+                      ''
+                    ).toUpperCase()}
+                  </Text>
+                </View>
+              )
+            }
           </View>
 
           <View style={styles.info}>
@@ -197,6 +206,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+  },
+
+  avatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: Colors.primaryColor,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  avatarText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
   },
   avatar: {
     width: 55,

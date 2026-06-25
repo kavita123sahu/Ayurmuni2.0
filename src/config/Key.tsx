@@ -16,7 +16,6 @@ export const BaseUrl = {
 };
 
 
-
 export const Method = {
     GET: 'GET',
     POST: 'POST',

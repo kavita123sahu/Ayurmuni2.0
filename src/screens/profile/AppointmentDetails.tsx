@@ -53,6 +53,7 @@ type Props = {
   token: any;
 }
 
+
 const DoctorDetail = ({ data, navigation, token }: Props) => {
 
   const appointmentData = {
@@ -61,10 +62,13 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
 
     consultationId:
       data?.appointment?.consultation_id,
+
   };
 
 
-  console.log("appointmentData--->", appointmentData);
+
+
+  console.log("appointmentData--->", data);
 
 
   return (
@@ -111,13 +115,13 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
 
 
 
-        <PrimaryButton title="Join Video Call" page='appoint' onPress={() => navigation.navigate('PatientVideoCallScreen', {
+        {/* <PrimaryButton title="Join Video Call" page='appoint' onPress={() => navigation.navigate('PatientVideoCallScreen', {
           consultationId: appointmentData?.consultationId,
           doctorName: appointmentData?.doctorName,
         })}
-        />
+        /> */}
 
-        {/* <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
+        <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
           const url = `https://3twgj6xg-3000.inc1.devtunnels.ms/patvideocall/${token}/${appointmentData?.consultationId}`;
 
           if (url) {
@@ -128,7 +132,7 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
               await Linking.openURL(url);
             }
           }
-        }} /> */}
+        }} />
 
         <TouchableOpacity style={styles.secondaryBtn}>
           <Text style={styles.secondaryText}>Chat with Doctor</Text>
@@ -211,12 +215,24 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   }, [detail]);
 
 
-  const STATUS = normalizedAppointment?.status === 'cancelled';
+  const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
+
+  const showButtons = ![
+    'cancelled',
+    'completed',
+    'rescheduled',
+  ].includes(appointmentStatus);
+
+  const isRescheduleRequest =
+    appointmentStatus === 'reschedule';
+
+
 
   const handleReschedule = async (
     appointmentId: string,
     payload: {
       availability: any;
+      action: "reschedule";
       reschedule_reason: string;
     }
   ) => {
@@ -312,30 +328,42 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
             </View>
 
+            {showButtons && (
+              <View style={{ paddingHorizontal: 10 }}>
 
-            {!STATUS && (<View style={{ paddingHorizontal: 10 }}>
-              <TouchableOpacity style={styles.outlineBtn} onPress={() => {
-                console.log("Reschedule Clicked");
-                setShowRescheduleModal(true);
-              }} >
-                <Text style={Styles.outlineText}>Reschedule</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.outlineBtn}
+                  onPress={() => {
+                    setShowRescheduleModal(true);
+                  }}
+                >
+                  <Text style={Styles.outlineText}>
+                    {isRescheduleRequest
+                      ? 'Request To Change'
+                      : 'Reschedule'}
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => {
-                console.log("Cancel Clicked");
-                setShowCancelModal(true);
-              }}>
-                <Text style={Styles.cancelText}>Cancel Appointment</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => {
+                    setShowCancelModal(true);
+                  }}
+                >
+                  <Text style={Styles.cancelText}>
+                    Cancel Appointment
+                  </Text>
+                </TouchableOpacity>
+
+              </View>
             )}
-
           </>}
 
         <RescheduleModal
           visible={showRescheduleModal}
           appointment={normalizedAppointment}
           // slots={normalizedAppointment}
+          isRescheduleRequest={isRescheduleRequest}
           onClose={() => {
             setShowRescheduleModal(false);
             // navigation.goback();

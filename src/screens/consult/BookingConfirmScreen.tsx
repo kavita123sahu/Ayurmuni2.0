@@ -795,7 +795,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           </View>
         )
       }
-      <DoctorReviewModal
+      {/* <DoctorReviewModal
         visible={showModal}
         doctorName={SlotsDetail?.info?.doctor_name}
         doctorSpeciality={
@@ -806,7 +806,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
         onSubmit={async data => {
           submitDoctorReview(data)
         }}
-      />
+      /> */}
     </SafeAreaView>
   );
 };

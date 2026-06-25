@@ -126,7 +126,7 @@ export const UploadProfilePhoto = async (data: FormData) => {
 
 export const getAddresses = async () => {
     try {
-        const response = await apiClient('customers/addresses/', {
+        const response = await apiClient('customers/address/', {
             method: 'GET',
         });
 
@@ -138,7 +138,7 @@ export const getAddresses = async () => {
 
 export const AddAddresses = async (data: any) => {
     try {
-        const response = await apiClient('customers/addresses/', {
+        const response = await apiClient('customers/address/', {
             method: 'POST',
             body: JSON.stringify(data)
         });
@@ -152,7 +152,7 @@ export const AddAddresses = async (data: any) => {
 
 export const UpdateAddresses = async (AddressID: any, data: any) => {
     try {
-        const response = await apiClient(`customers/addresses/?id=${AddressID}`, {
+        const response = await apiClient(`customers/address/?id=${AddressID}`, {
             method: 'PATCH',
             body: JSON.stringify(data)
         });
@@ -164,7 +164,7 @@ export const UpdateAddresses = async (AddressID: any, data: any) => {
 
 export const DeleteAddresses = async (AddressID: any) => {
     try {
-        const response = await apiClient(`customers/addresses/?id=${AddressID}`, {
+        const response = await apiClient(`customers/address/?id=${AddressID}`, {
             method: 'DELETE',
         });
         return response;

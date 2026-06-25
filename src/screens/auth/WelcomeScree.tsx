@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import {
     View,
@@ -14,37 +13,102 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '../../common/Vector';
+import { MaterialCommunityIcons, SimpleLineIcons } from '../../common/Vector';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
-import { useNavigation } from '@react-navigation/native';
-
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { Utils } from '../../common/Utils';
+import { showSuccessToast } from '../../config/Key';
+import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 const { width: SW } = Dimensions.get('window');
 
-// Theme Colors
+/* ============================================================
+   LUXURY THEME v2 — anchored to #0D614E
+   Ivory ground, deep emerald + saturated antique-gold accent.
+   Signature device: a 2px gold hairline "seal" rule on every card
+   (top edge gradient + corner notch) instead of drop-shadow elevation.
+   Flat surfaces, tight spacing scale (4/8/12/16/24 only).
+   ============================================================ */
+
 const C = {
-    primary: '#0D614E',
-    primaryLight: '#1a7a62',
-    primaryDark: '#0a4a3a',
-    background: '#FDFDFB',
-    bgDark: '#0A1A0D',
+    primary: '#0D614E',       // core brand green
+    primaryDeep: '#073B2E',   // deepest green — splash/CTA gradient + dark text accents
+    primaryLight: '#1C8268',  // lighter green for gradient glow
+    primarySoft: '#E6EFEA',   // pale green tint for chips/pillars
+
+    gold: '#C19A4B',          // richer, more saturated antique gold — THE signature accent
+    goldBright: '#E0B768',    // hairline/rule highlight, used sparingly
+    goldSoft: '#F6EEDA',
+    goldDeep: '#8A6A2E',
+
+    ivory: '#FAF7F0',         // base page background
+    card: '#FFFFFF',          // flat card surface, no shadow
+    cardBorder: '#E7E0D2',    // crisp 1px hairline border
+
+    ink: '#15201A',           // primary text
+    inkMuted: '#56615A',      // secondary text
+    inkFaint: '#8B9189',      // tertiary text
+
     white: '#FFFFFF',
-    vata: '#5BB5C8',
-    pitta: '#8BBF6A',
-    kapha: '#C8A45B',
+
+    // Dosha identity colors — distinct, but pulled into the same warm,
+    // muted-luxury register rather than bright/neon.
+    vata: '#3C7390',          // muted slate blue
+    pitta: '#C19A4B',         // gold — fire/transformation
+    kapha: '#62815A',         // deep sage
 };
 
+// Flat by default — luxury reads through hairline + gold seal, not elevation.
+const FLAT = {
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+};
+
+// Tight, consistent spacing scale — used instead of ad hoc margin/padding values.
+const SPACE = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
+
 const SCREENS = [
-    { id: 'splash', type: 'splash', tagline: 'The complete knowledge of life — how to live, remain healthy, and prevent suffering.', bgGradient: [C.primaryDark, C.primary, C.primaryLight] },
-    { id: 'what', type: 'info', items: [{ num: '1', title: 'Āyu (आयु)', desc: 'Not just "lifespan" — it means Quality of Living, not merely surviving.' }, { num: '2', title: 'Veda (वेद)', desc: 'Applied wisdom — science that can be practiced. Systematic, experiential knowledge that sustains life.' }], quote: '"The complete knowledge of life — how to live, how to remain healthy, and how to prevent suffering."', bgGradient: [C.bgDark, '#0D1810'] },
-    { id: 'strategy', type: 'strategy', shloka: ['स्वस्थस्य स्वास्थ्य रक्षणं आतुरस्य विकार प्रशमनं च॥'], shlokaTrans: 'Protect the health of the healthy · Alleviate disease in the diseased', goals: [{ icon: Images.tick, title: 'Prevention', subtitle: "Maintain health before disease arises", color: C.primary }, { icon: Images.clock, title: 'Healing', subtitle: 'Alleviate suffering in the diseased', color: C.primary }], pillars: [{ name: 'Mind', subtitle: "Right Thinking", icon: 'brain', color: C.primary }, { name: 'Diet', icon: 'brain', subtitle: "Seasonal Food", color: C.primary }, { name: 'LifeStyle ', subtitle: "Daily Rhythm", icon: 'brain', color: C.primary }, { name: 'Herbs', subtitle: "Herbal Medicine", icon: 'brain', color: C.primary }], bgGradient: [C.bgDark, '#0D1810'] },
-    { id: 'doshas', type: 'doshas', doshas: [{ name: 'Vāta', element: 'Air · Space', subtitle: 'Energy of movement — governs breathing, muscle movement, heart pulsation, and all cellular motion.', color: C.vata, icon: 'weather-windy', qualities: ['Creative', 'Flexibility'], status: 'Kinetic' }, { name: 'Pitta', element: 'Fire · Water', subtitle: 'Energy of transformation — governs digestion, metabolism, body temperature, and assimilation.', color: C.pitta, icon: 'Fire', qualities: ['Intelligent', 'Understanding'], status: 'Thermal' }, { name: 'Kapha', element: 'Earth · Water', subtitle: 'Energy of structure — governs all bodily fluids, lubricates joints, maintains immunity and cellular structure.', color: C.kapha, icon: 'water', qualities: ['Love', 'Calmness'], status: 'Potential' }], bgGradient: [C.bgDark, '#0D1810'] },
-    { id: 'vata', type: 'doshaDetail', dosha: 'Vāta', element: 'Air · Space', subtitle: 'Like Kinetic Energy — the energy of movement itself.', physic: 'Like Kinetic Energy — the energy of movement itself.', governs: ['Breathing', 'Blinking', 'Heart pulsation', 'Muscle movement', 'Cell membranes', 'Nerve impulses'], balance: ['Creative', 'Adaptability', 'Flexibility'], imbalance: ['Fear', 'Restlessness', 'Anxiety'], color: C.vata, bgGradient: ['#080F1A', '#0a1a2a'] },
-    { id: 'pitta', type: 'doshaDetail', dosha: 'Pitta', element: 'Fire · Water', subtitle: 'Expresses as the bodys metabolic system — transformation at every level.', physic: 'Like Thermal Energy — the energy of transformation and heat.', governs: ['Digestion', 'Metabolism', 'Absorption', 'Body temp', 'Body temp', 'Assimilation', 'Nutrition'], balance: ['Intelligent', 'Courage', 'Understanding'], imbalance: ['Anger', 'Jealousy', 'Hatred'], color: C.pitta, bgGradient: ['#0F140A', '#1a2010'] },
-    { id: 'kapha', type: 'doshaDetail', dosha: 'Kapha', element: 'Earth · Water', subtitle: 'The energy that forms the bodys structure — the glue that holds cells together.', physic: 'Like Potential Energy — stored energy, the foundation of all structure.', governs: ['Bodily fluids', 'Joint lubrication', 'Skin moisture', 'Immunity', 'Bones & muscles', 'Cellular glue'], balance: ['Love', 'Calmness', 'Forgiveness'], imbalance: ['Attachment', 'Greed', 'Envy'], color: C.kapha, bgGradient: ['#0A120F', '#102018'] },
-    { id: 'journey', type: 'cta', titleAccent: 'discover you?', desc: 'Find your unique Prakriti', cta1: 'Discover Your Prakriti', bgGradient: [C.primaryDark, C.primary, C.primaryLight] },
+    { id: 'splash', type: 'splash', tagline: 'The complete knowledge of life — how to live, remain healthy, and prevent suffering.', bgGradient: [C.primaryDeep, C.primary, C.primaryLight] },
+    { id: 'what', type: 'info', items: [{ num: '1', title: 'Āyu (आयु)', desc: 'Not just "lifespan" — it means Quality of Living, not merely surviving.' }, { num: '2', title: 'Veda (वेद)', desc: 'Applied wisdom — science that can be practiced. Systematic, experiential knowledge that sustains life.' }], quote: '"The complete knowledge of life — how to live, how to remain healthy, and how to prevent suffering."', bgGradient: [C.ivory, C.ivory] },
+    { id: 'strategy', type: 'strategy', shloka: ['स्वस्थस्य स्वास्थ्य रक्षणं आतुरस्य विकार प्रशमनं च॥'], shlokaTrans: 'Protect the health of the healthy · Alleviate disease in the diseased', goals: [{ icon: Images.tick, title: 'Prevention', subtitle: "Maintain health before disease arises", color: C.primary }, { icon: Images.clock, title: 'Healing', subtitle: 'Alleviate suffering in the diseased', color: C.primary }], pillars: [{ name: 'Mind', subtitle: "Right Thinking", icon: 'brain', color: C.primary }, { name: 'Diet', icon: 'brain', subtitle: "Seasonal Food", color: C.primary }, { name: 'LifeStyle ', subtitle: "Daily Rhythm", icon: 'brain', color: C.primary }, { name: 'Herbs', subtitle: "Herbal Medicine", icon: 'brain', color: C.primary }], bgGradient: [C.ivory, C.ivory] },
+    { id: 'doshas', type: 'doshas', doshas: [{ name: 'Vāta', element: 'Air · Space', subtitle: 'Energy of movement — governs breathing, muscle movement, heart pulsation, and all cellular motion.', color: C.vata, icon: 'weather-windy', qualities: ['Creative', 'Flexibility'], status: 'Kinetic' }, { name: 'Pitta', element: 'Fire · Water', subtitle: 'Energy of transformation — governs digestion, metabolism, body temperature, and assimilation.', color: C.pitta, icon: 'fire', qualities: ['Intelligent', 'Understanding'], status: 'Thermal' }, { name: 'Kapha', element: 'Earth · Water', subtitle: 'Energy of structure — governs all bodily fluids, lubricates joints, maintains immunity and cellular structure.', color: C.kapha, icon: 'water', qualities: ['Love', 'Calmness'], status: 'Potential' }], bgGradient: [C.ivory, C.ivory] },
+    { id: 'vata', type: 'doshaDetail', dosha: 'Vāta', element: 'Air · Space', subtitle: 'Governs breathing, movement, and every nerve impulse in the body.', physic: 'Like Kinetic Energy — the energy of movement itself.', governs: ['Breathing', 'Blinking', 'Heart pulsation', 'Muscle movement', 'Cell membranes', 'Nerve impulses'], balance: ['Creative', 'Adaptability', 'Flexibility'], imbalance: ['Fear', 'Restlessness', 'Anxiety'], color: C.vata, bgGradient: [C.ivory, C.ivory] },
+    { id: 'pitta', type: 'doshaDetail', dosha: 'Pitta', element: 'Fire · Water', subtitle: 'Governs digestion, metabolism, and how the body transforms everything it takes in.', physic: 'Like Thermal Energy — the energy of transformation and heat.', governs: ['Digestion', 'Metabolism', 'Absorption', 'Body temperature', 'Assimilation', 'Nutrition'], balance: ['Intelligent', 'Courage', 'Understanding'], imbalance: ['Anger', 'Jealousy', 'Hatred'], color: C.pitta, bgGradient: [C.ivory, C.ivory] },
+    { id: 'kapha', type: 'doshaDetail', dosha: 'Kapha', element: 'Earth · Water', subtitle: 'Forms the body\'s structure — the glue that holds every cell together.', physic: 'Like Potential Energy — stored energy, the foundation of all structure.', governs: ['Bodily fluids', 'Joint lubrication', 'Skin moisture', 'Immunity', 'Bones & muscles', 'Cellular glue'], balance: ['Love', 'Calmness', 'Forgiveness'], imbalance: ['Attachment', 'Greed', 'Envy'], color: C.kapha, bgGradient: [C.ivory, C.ivory] },
+    { id: 'journey', type: 'cta', titleAccent: 'discover you?', desc: 'Find your unique Prakriti', cta1: 'Discover Your Prakriti', bgGradient: [C.primaryDeep, C.primary, C.primaryLight] },
 ];
+
+// ---- Signature element ----------------------------------------------------
+// A thin gold "seal" rule across the top edge of a card, plus a small notch
+// at the corner — a manuscript-border motif used in place of drop shadows.
+// Reused on every flat card so the gold accent reads as one consistent
+// signature rather than scattered decoration.
+const GoldSeal = ({ color = C.gold }: { color?: string }) => (
+    <View style={styles.goldSealWrap} pointerEvents="none">
+        <LinearGradient
+            colors={['transparent', color, color, 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.goldSealLine}
+        />
+    </View>
+);
+
+// Pressable wrapper that gives every card a subtle, premium press-response
+// (scale + opacity) — small but reads as "interactive" rather than static.
+const PressableCard = ({ style, children, onPress }: any) => {
+    const scale = useRef(new Animated.Value(1)).current;
+    const pressIn = () => Animated.spring(scale, { toValue: 0.975, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+    const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
+    return (
+        <Animated.View style={[{ transform: [{ scale }] }]}>
+            <TouchableOpacity activeOpacity={0.9} onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
+                <View style={style}>{children}</View>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
 
 // Splash Screen Component - NO HOOKS inside render
 const SplashScreen = ({ data }: any) => {
@@ -52,30 +116,27 @@ const SplashScreen = ({ data }: any) => {
 
     useEffect(() => {
         Animated.loop(
-            Animated.timing(spinAnim, { toValue: 1, duration: 20000, useNativeDriver: true })
+            Animated.timing(spinAnim, { toValue: 1, duration: 10000, useNativeDriver: true })
         ).start();
     }, []);
 
     const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
-
-
     return (
         <LinearGradient colors={data.bgGradient} style={styles.slide} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.splashContent}>
                 <Animated.View style={[styles.mandala, { transform: [{ rotate: spin }] }]}>
-                    <View style={styles.mandalaOuter}><View style={styles.mandalaInner}><Text style={styles.mandalaCenter}>🌿</Text></View></View>
+                    <View style={styles.mandalaOuter}><View style={styles.mandalaInner}><Text style={styles.mandalaCenter}><Image source={Images.FinalLogo} style={{ height: 40, width: 40 }} /></Text></View></View>
                 </Animated.View>
                 <Text style={styles.overText}>Ancient Wisdom · Modern Life</Text>
-                <Text style={styles.splashTitle}>
-                    Āyur<Text style={styles.splashTitleAccent}>veda</Text>{'\n'}
-                    <Text style={styles.splashSubtitle}>for You</Text>
-                </Text>
+                <Text style={styles.splashTitle}>Āyurveda</Text>
+                <Text style={styles.splashSubtitle}>for You</Text>
+                <View style={styles.goldRule} />
                 <Text style={styles.splashTagline}>{data.tagline}</Text>
                 <View style={styles.doshaPills}>
                     {['Vāta', 'Pitta', 'Kapha'].map((d, i) => (
-                        <View key={d} style={[styles.pill, { borderColor: [C.vata, C.pitta, C.kapha][i] }]}>
-                            <View style={[styles.pillDot, { backgroundColor: [C.vata, C.pitta, C.kapha][i] }]} />
+                        <View key={d} style={[styles.pill, { borderColor: 'rgba(224,183,104,0.4)' }]}>
+                            <View style={[styles.pillDot, { backgroundColor: [C.vata, C.goldBright, C.kapha][i] }]} />
                             <Text style={styles.pillName}>{d}</Text>
                             <Text style={styles.pillElem}>{['Air', 'Fire', 'Earth'][i]}</Text>
                         </View>
@@ -86,11 +147,10 @@ const SplashScreen = ({ data }: any) => {
     );
 };
 
-
 const renderBoldText = (text: string) => {
     const highlights = ["Applied wisdom", "Quality of Living"];
 
-    let parts = [text];
+    let parts: any[] = [text];
 
     highlights.forEach((word) => {
         parts = parts.flatMap((part) =>
@@ -106,46 +166,43 @@ const renderBoldText = (text: string) => {
         );
 
         return (
-            <Text
-                key={index}
-                style={isBold ? styles.boldText : styles.infoDesc}
-            >
+            <Text key={index} style={isBold ? styles.boldText : styles.infoDesc}>
                 {part}
             </Text>
         );
     });
 };
+
 // Info Screen
 const InfoScreen = ({ data }: any) => (
     <LinearGradient colors={data.bgGradient} style={styles.slide}>
         <SafeAreaView style={styles.slideInner}>
-            {/* <Text style={styles.chip}>Module 01</Text> */}
+            <Text style={styles.chip}>Module 01</Text>
             <Text style={styles.sectionTitle}>Decoding <Text style={styles.sectionTitleAccent}>Āyurveda</Text></Text>
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, FLAT]}>
+                <GoldSeal />
                 {data.items.map((item: any, idx: number) => (
                     <React.Fragment key={idx}>
                         <View style={styles.infoRow}>
                             <View style={styles.infoNum}><Text style={styles.infoNumText}>{item.num}</Text></View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoTitle}>{item.title}</Text>
-                                {/* <Text style={styles.infoDesc}>{item.desc}</Text> */}
-                                <Text style={styles.infoDesc}>
-                                    {renderBoldText(item.desc)}
-                                </Text>
+                                <Text style={styles.infoDesc}>{renderBoldText(item.desc)}</Text>
                             </View>
                         </View>
                         {idx < data.items.length - 1 && <View style={styles.infoDivider} />}
                     </React.Fragment>
                 ))}
             </View>
-            <View style={styles.quoteBox}>
+            <View style={[styles.quoteBox, FLAT]}>
                 <Text style={styles.quoteLabel}>Definition</Text>
                 <Text style={styles.quoteText}>{data.quote}</Text>
-                {/* <Text style={styles.quoteAuthor}>— Charaka Samhita</Text> */}
             </View>
         </SafeAreaView>
     </LinearGradient>
 );
+
+
 
 // Strategy Screen
 const StrategyScreen = ({ data }: any) => (
@@ -186,19 +243,20 @@ const StrategyScreen = ({ data }: any) => (
 const DoshasScreen = ({ data }: any) => (
     <LinearGradient colors={data.bgGradient} style={styles.slide}>
         <SafeAreaView style={styles.slideInner}>
-            {/* <Text style={styles.chip}>Module 03</Text> */}
+            <Text style={styles.chip}>Module 03</Text>
             <Text style={styles.sectionTitle}>Three <Text style={styles.sectionTitleAccent}>Energies</Text></Text>
             <View style={styles.doshaList}>
                 {data.doshas.map((dosha: any, idx: number) => (
-                    <View key={idx} style={[styles.doshaBigCard, { backgroundColor: `${dosha.color}10`, borderColor: `${dosha.color}40` }]}>
+                    <PressableCard key={idx} style={[styles.doshaBigCard, { backgroundColor: C.card, borderWidth: 1, borderColor: `${dosha.color}30` }]}>
+                        <GoldSeal color={dosha.color} />
                         <View style={styles.doshaBigHeader}>
-                            <View style={[styles.doshaBigIcon, { backgroundColor: `${dosha.color}20` }]}><MaterialCommunityIcons name={dosha.icon} size={22} color={dosha.color} /></View>
+                            <View style={[styles.doshaBigIcon, { backgroundColor: `${dosha.color}18` }]}>{dosha?.name === 'Pitta' ? <SimpleLineIcons name={dosha.icon} size={22} color={dosha.color} /> : <MaterialCommunityIcons name={dosha.icon} size={22} color={dosha.color} />}</View>
                             <View><Text style={styles.doshaBigName}>{dosha.name}</Text><Text style={[styles.doshaBigElem, { color: dosha.color }]}>{dosha.element}</Text></View>
-                            <View style={[styles.doshaBadge, { backgroundColor: `${dosha.color}20` }]}><Text style={[styles.doshaBadgeText, { color: dosha.color }]}>{dosha?.status}</Text></View>
+                            <View style={[styles.doshaBadge, { backgroundColor: `${dosha.color}18` }]}><Text style={[styles.doshaBadgeText, { color: dosha.color }]}>{dosha?.status}</Text></View>
                         </View>
                         <Text style={styles.doshaBigDesc}>{dosha?.subtitle}</Text>
-                        <View style={styles.doshaQualities}>{dosha.qualities.map((q: string, i: number) => (<View key={i} style={[styles.qualityTag, { backgroundColor: `${dosha.color}15` }]}><Text style={[styles.qualityTagText, { color: dosha.color }]}>{q}</Text></View>))}</View>
-                    </View>
+                        <View style={styles.doshaQualities}>{dosha.qualities.map((q: string, i: number) => (<View key={i} style={[styles.qualityTag, { backgroundColor: `${dosha.color}14`, borderColor: `${dosha.color}30` }]}><Text style={[styles.qualityTagText, { color: dosha.color }]}>{q}</Text></View>))}</View>
+                    </PressableCard>
                 ))}
             </View>
         </SafeAreaView>
@@ -209,37 +267,51 @@ const DoshasScreen = ({ data }: any) => (
 const DoshaDetailScreen = ({ data }: any) => (
     <LinearGradient colors={data.bgGradient} style={styles.slide}>
         <SafeAreaView style={styles.slideInner}>
-            <View style={[styles.energyBadge, { backgroundColor: `${data.color}15`, borderColor: `${data.color}40` }]}>
+            <View style={[styles.energyBadge, { backgroundColor: `${data.color}16`, borderColor: `${data.color}40` }]}>
                 <View style={[styles.energyDot, { backgroundColor: data.color }]} /><Text style={[styles.energyText, { color: data.color }]}>{data.element}</Text>
             </View>
             <Text style={[styles.doshaDetailTitle, { color: data.color }]}>{data.dosha}</Text>
             <Text style={styles.doshaDetailDesc}>{data?.subtitle}</Text>
-            <View style={[styles.analogyBox, { backgroundColor: `${data.color}10`, borderColor: `${data.color}50` }]}>
+            <View style={[styles.analogyBox, FLAT, { backgroundColor: C.card, borderColor: `${data.color}35` }]}>
+                <GoldSeal color={data.color} />
                 <Text style={[styles.analogyLabel, { color: data.color }]}>Physics Analogy</Text><Text style={[styles.analogyText, { color: data.color }]}>{data?.physic}</Text>
             </View>
             <Text style={styles.governsLabel}>What {data.dosha} governs</Text>
-            <View style={styles.governsGrid}>{data.governs.map((item: string, idx: number) => (<View key={idx} style={styles.govItem}><View style={[styles.govDot, { backgroundColor: data.color }]} /><Text style={styles.govText}>{item}</Text></View>))}</View>
+            <View style={styles.governsGrid}>{data.governs.map((item: string, idx: number) => (<View key={idx} style={[styles.govItem, FLAT]}><View style={[styles.govDot, { backgroundColor: data.color }]} /><Text style={styles.govText}>{item}</Text></View>))}</View>
             <View style={styles.balanceRow}>
-                <View style={[styles.balanceBox, { backgroundColor: `${data.color}15`, borderColor: `${data.color}30` }]}><Text style={[styles.balanceLabel, { color: data.color }]}>In balance</Text><Text style={styles.balanceValues}>{data.balance.join('\n')}</Text></View>
-                <View style={[styles.balanceBox, { backgroundColor: 'rgba(226,75,74,0.1)', borderColor: 'rgba(226,75,74,0.2)' }]}><Text style={[styles.balanceLabel, { color: '#E24B4A' }]}>Out of balance</Text><Text style={styles.balanceValues}>{data.imbalance.join('\n')}</Text></View>
+                <View style={[styles.balanceBox, FLAT, { backgroundColor: `${data.color}10`, borderColor: `${data.color}30` }]}><Text style={[styles.balanceLabel, { color: data.color }]}>In balance</Text><Text style={styles.balanceValues}>{data.balance.join('\n')}</Text></View>
+                <View style={[styles.balanceBox, FLAT, { backgroundColor: 'rgba(184,58,58,0.07)', borderColor: 'rgba(184,58,58,0.22)' }]}><Text style={[styles.balanceLabel, { color: '#B83A3A' }]}>Out of balance</Text><Text style={styles.balanceValues}>{data.imbalance.join('\n')}</Text></View>
             </View>
         </SafeAreaView>
     </LinearGradient>
 );
 
 // CTA Screen
-const CTAScreen = ({ data, onPress }: any) => (
+const CTAScreen = ({ data, navigation }: any) => (
     <LinearGradient colors={data.bgGradient} style={styles.slide} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <View style={styles.ctaContent}>
-            <View style={styles.ctaIconWrap}><Text style={styles.ctaIcon}>🌿</Text></View>
+            <View style={styles.ctaIconWrap}>
+                <Image
+                    source={Images.FinalLogo}
+                    style={[{ justifyContent: 'center', borderRadius: 20, backgroundColor: '#ffffff', height: 40, width: 40, alignItems: 'center', marginRight: -1 }]}
+                    resizeMode="contain"
+                />
+
+            </View>
+            {/* <View style={styles.ctaIconWrap}><Text style={styles.ctaIcon}>  <Image  source={Images.FinalLogo}  style={{height:20, width:20,alignItems:'center' }}/></Text></View> */}
             <Text style={styles.ctaOver}>Begin Your Journey</Text>
             <Text style={styles.ctaTitle}>Ready to</Text>
             <Text style={[styles.ctaTitle, styles.ctaTitleAccent]}>{data.titleAccent}</Text>
+            <View style={styles.goldRule} />
             <Text style={styles.ctaDesc}>{data.desc}</Text>
 
-            {/* ()=>props.navigation.navigate('PatientFAQ') */}
-            <TouchableOpacity style={styles.ctaPrimary} onPress={onPress}><Text style={styles.ctaPrimaryText}>{data.cta1}</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.ctaSecondary}><Text style={styles.ctaSecondaryText}>Explore Herbs</Text></TouchableOpacity>
+            <TouchableOpacity
+                style={styles.ctaPrimary}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('AuthStack', { screen: 'Login' })}
+            >
+                <Text style={styles.ctaPrimaryText}>{data.cta1}</Text>
+            </TouchableOpacity>
         </View>
     </LinearGradient>
 );
@@ -251,6 +323,146 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
     const scrollX = useRef(new Animated.Value(0)).current;
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const autoPlayInterval = useRef<any>(null);
+
+    console.log("_PROFILE_SERVICES",)
+    const spinAnim = useRef(new Animated.Value(0)).current;
+    const isFocused = useIsFocused();
+
+    const navigation = useNavigation();
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.timing(spinAnim, { toValue: 1, duration: 20000, useNativeDriver: true })
+        ).start();
+    }, []);
+
+
+    useEffect(() => {
+        if (isFocused) {
+            getUser();
+        }
+    }, [isFocused]);
+
+
+    const getUser = async () => {
+        try {
+            const token = await Utils.getData('_TOKEN');
+
+            if (!token) {
+                navigation.replace('AuthStack', {
+                    screen: 'Login',
+                });
+                return;
+            }
+
+            const result: any =
+                await _PROFILE_SERVICES.user_profile();
+
+            console.log('PROFILE RESULT =>', result);
+
+            const isCustomer =
+                result?.data?.user_roles?.includes(
+                    'customer'
+                );
+
+            console.log('isCustomerisCustomer', isCustomer)
+
+            // if (result?.status === 404) {
+            //   props.navigation.replace(
+            //     'HomeStack',
+            //     {
+            //       screen: 'Onboarding',
+            //     },
+            //   );
+            //   return;
+            // }
+
+            if (!isCustomer) {
+                navigation.replace(
+                    'AuthStack',
+                    {
+                        screen: 'Login',
+                    },
+                );
+                return;
+            }
+
+            if (!result?.data?.is_onboarded && !result?.data?.is_skipped) {
+                navigation.replace(
+                    'HomeStack',
+                    {
+                        screen: 'AssessmentType',
+                    },
+                );
+                return;
+            }
+
+            if (result?.data?.is_skipped) {
+                navigation.replace(
+                    'HomeStack',
+                    {
+                        screen: 'Home',
+                    },
+                );
+                return;
+            }
+
+            if (!result?.success) {
+                showSuccessToast(
+                    result?.message ||
+                    'Something went wrong',
+                    'error',
+                );
+                return;
+            }
+
+            // SUCCESS
+
+            console.log(
+                'PROFILE DATA =>',
+                result,
+            );
+
+            await Utils.storeData(
+                '_USER_INFO',
+                result?.data,
+            );
+
+            navigation.replace(
+                'HomeStack',
+                {
+                    screen: 'Home',
+                },
+            );
+
+        } catch (error: any) {
+            console.log(
+                'GET USER ERROR =>',
+                error,
+            );
+
+            if (
+                error?.response?.status === 403
+            ) {
+                navigation.reset({
+                    index: 0,
+                    routes: [
+                        {
+                            name: 'AccountInactiveScreen',
+                        },
+                    ],
+                });
+
+                return;
+            }
+
+            showSuccessToast(
+                'Network Error',
+                'error',
+            );
+        }
+    };
+
 
     useEffect(() => {
         if (isAutoPlaying) {
@@ -268,18 +480,14 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
     };
 
 
-    const navigation = useNavigation();
-
-    // Define renderScreen BEFORE using it in renderItem
-    const renderScreen = (item: any, onPress?: () => void) => {
+    const renderScreen = (item: any) => {
         switch (item.type) {
             case 'splash': return <SplashScreen data={item} />;
             case 'info': return <InfoScreen data={item} />;
             case 'strategy': return <StrategyScreen data={item} />;
             case 'doshas': return <DoshasScreen data={item} />;
             case 'doshaDetail': return <DoshaDetailScreen data={item} />;
-            case 'cta': return <CTAScreen data={item} onPress={() => navigation.navigate('PatientFAQ')
-            } />;
+            case 'cta': return <CTAScreen data={item} navigation={navigation} />;
             default: return null;
         }
     };
@@ -290,20 +498,39 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
 
         return (
             <Animated.View style={[styles.slideContainer, { transform: [{ scale }] }]}>
-                {renderScreen(item, onComplete)}
+                {renderScreen(item)}
             </Animated.View>
         );
     };
 
+    // Dark backdrop only on the two bookend screens (splash / CTA); light status bar text reads better there.
+    // Content screens are light, so the status bar switches to dark text.
+    const isDarkSlide = activeIndex === 0 || activeIndex === SCREENS.length - 1;
+
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={C.primaryDark} />
-            <LinearGradient colors={['rgba(0,0,0,0.3)', 'transparent']} style={styles.headerGradient}>
+            <StatusBar barStyle={isDarkSlide ? 'light-content' : 'dark-content'} backgroundColor={isDarkSlide ? C.primaryDeep : C.ivory} />
+            <LinearGradient
+                colors={isDarkSlide ? ['rgba(0,0,0,0.25)', 'transparent'] : ['rgba(255,255,255,0.6)', 'transparent']}
+                style={styles.headerGradient}
+            >
                 <SafeAreaView style={styles.header}>
-                    <Text style={styles.headerLogo}>🌿 AYURVEDA</Text>
-                    {/* <TouchableOpacity onPress={() => setIsAutoPlaying(!isAutoPlaying)}>
-            <Text style={styles.autoPlayBtn}>{isAutoPlaying ? '⏸' : '▶'}</Text>
-          </TouchableOpacity> */}
+                    {/* <Text style={[styles.headerLogo, { color: isDarkSlide ? C.white : C.primary }]}> <Image  source={Images.FinalLogo}  style={{height:20, width:20,alignItems:'center' }}/> AYURVEDA</Text> */}
+                    <View style={styles.logoContainer}>
+                        <Image
+                            source={Images.FinalLogo}
+                            style={styles.logoImage}
+                            resizeMode="contain"
+                        />
+                        <Text
+                            style={[
+                                styles.headerLogo,
+                                { color: isDarkSlide ? C.white : C.primary }
+                            ]}
+                        >
+                            AYURVEDA
+                        </Text>
+                    </View>
                 </SafeAreaView>
             </LinearGradient>
 
@@ -321,10 +548,14 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
             />
 
             <View style={styles.navContainer}>
-                <View style={styles.dotsWrapper}>
+                <View style={[styles.dotsWrapper, { backgroundColor: isDarkSlide ? 'rgba(255,255,255,0.18)' : 'rgba(13,97,78,0.08)' }]}>
                     {SCREENS.map((_, index) => (
                         <TouchableOpacity key={index} onPress={() => goToSlide(index)}>
-                            <View style={[styles.dot, activeIndex === index && styles.dotActive, { backgroundColor: activeIndex === index ? C.pitta : 'rgba(255,255,255,0.3)' }]} />
+                            <View style={[
+                                styles.dot,
+                                activeIndex === index && styles.dotActive,
+                                { backgroundColor: activeIndex === index ? C.gold : (isDarkSlide ? 'rgba(255,255,255,0.45)' : 'rgba(13,97,78,0.25)') },
+                            ]} />
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -334,112 +565,134 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: C.primaryDark },
+    container: { flex: 1, backgroundColor: C.ivory },
     slideContainer: { width: SW, flex: 1 },
     slide: { flex: 1 },
-    slideInner: { flex: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 20 : 60, paddingBottom: 100 },
+    slideInner: { flex: 1, paddingHorizontal: SPACE.xl, paddingTop: Platform.OS === 'ios' ? 16 : 56, paddingBottom: 88 },
     headerGradient: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 8 : 16, paddingBottom: 12 },
-    headerLogo: { fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, letterSpacing: 2, color: C.white },
-    autoPlayBtn: { fontSize: 14, color: C.white, padding: 8 },
-    navContainer: { position: 'absolute', bottom: Platform.OS === 'ios' ? 40 : 50, left: 0, right: 0, alignItems: 'center' },
-    dotsWrapper: { flexDirection: 'row', gap: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 30 },
-    dot: { width: 6, height: 6, borderRadius: 3 },
-    dotActive: { width: 20 },
-    splashContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-    mandala: { marginBottom: 32 },
-    mandalaOuter: { width: 80, height: 80, borderRadius: 40, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' },
-    mandalaInner: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-    mandalaCenter: { fontSize: 28 },
-    overText: { fontSize: 10, letterSpacing: 4, color: C.pitta, textTransform: 'uppercase', fontFamily: Fonts.PoppinsMedium, marginBottom: 12 },
-    splashTitle: { fontSize: 52, fontFamily: Fonts.PoppinsMedium, color: C.white, },
-    splashTitleAccent: { fontFamily: Fonts.PoppinsMedium },
-    splashSubtitle: { fontSize: 52, fontFamily: Fonts.PoppinsMedium, color: C.white, textAlign: 'center', },
-    splashTagline: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 22, marginBottom: 36 },
-    doshaPills: { flexDirection: 'row', gap: 10 },
-    pill: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 24, borderWidth: 0.5, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', gap: 10, minWidth: 100 },
-    pillDot: { width: 7, height: 7, borderRadius: 3.5 },
-    pillName: { fontSize: 15, color: C.white, fontFamily: Fonts.PoppinsMedium, },
-    pillElem: { fontSize: 9, fontFamily: Fonts.PoppinsSemiBold, letterSpacing: 1.5, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' },
-    chip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(139,191,106,0.15)', borderWidth: 0.5, borderColor: 'rgba(139,191,106,0.25)', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: C.pitta, marginBottom: 16 },
-    sectionTitle: { fontSize: 38, fontFamily: Fonts.PoppinsMedium, color: C.white, marginBottom: 20, },
-    sectionTitleAccent: { fontFamily: Fonts.PoppinsMedium, color: C.pitta },
-    infoCard: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 18, padding: 18, marginBottom: 14 },
-    infoRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-    infoNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' },
-    infoNumText: { fontSize: 11, color: C.white, fontWeight: '500' },
-    infoContent: { flex: 1 },
-    infoTitle: { fontSize: 20, color: C.white, fontFamily: Fonts.PoppinsMedium },
-    // infoDesc: { fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: Fonts.PoppinsMedium, lineHeight: 18 },
-    infoDesc: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.45)',
-        fontFamily: Fonts.PoppinsRegular,
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACE.lg, paddingTop: Platform.OS === 'ios' ? 8 : 14, paddingBottom: SPACE.md },
+    // headerLogo: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold, letterSpacing: 2 },
+    logoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
 
-    boldText: {
-        fontFamily: Fonts.PoppinsSemiBold, // 👈 only font change
-        color: '#ffff',
+    logoImage: {
+        width: 20,
+        height: 20,
+        marginRight: 8,
     },
-    infoDivider: { height: 0.5, backgroundColor: 'rgba(255,255,255,0.07)', marginVertical: 14 },
-    quoteBox: { backgroundColor: 'rgba(139,191,106,0.08)', borderWidth: 0.5, borderColor: 'rgba(139,191,106,0.2)', borderRadius: 14, padding: 14 },
-    quoteLabel: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontFamily: Fonts.PoppinsMedium, color: C.pitta, marginBottom: 8 },
-    quoteText: { fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.7)', lineHeight: 22 },
-    quoteAuthor: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 8 },
-    shlokaBox: { backgroundColor: 'rgba(139,191,106,0.06)', borderWidth: 0.5, borderColor: 'rgba(139,191,106,0.18)', borderLeftWidth: 2, borderLeftColor: C.primary, borderRadius: 12, padding: 16, marginBottom: 18 },
-    shlokaText: { fontSize: 16, fontStyle: 'italic', color: C.pitta, lineHeight: 26, textAlign: 'left', },
-    shlokaTrans: { fontSize: 11, color: 'rgba(255, 255, 255, 0.96)', textAlign: 'center', marginTop: 8, fontFamily: Fonts.PoppinsMedium },
-    goalGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    goalCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 14, alignItems: 'center' },
-    goalIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-    goalIcon: { fontSize: 18, fontFamily: Fonts.PoppinsMedium },
-    goalTitle: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: C.white, marginBottom: 4 },
-    goalDesc: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
-    pillarsLabel: { fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: 2, fontFamily: Fonts.PoppinsMedium, textTransform: 'uppercase', marginBottom: 12 },
-    pillarsGrid: { flexDirection: 'row', gap: 8 },
-    pillarCard: { flex: 1, height: 80, backgroundColor: 'rgba(139,191,106,0.08)', borderWidth: 0.5, borderColor: 'rgba(139,191,106,0.15)', borderRadius: 12, padding: 10, alignItems: 'center', gap: 10 },
-    pillarName: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, marginBottom: -10 },
-    pillarDesc: { fontSize: 9, color: '#ffffff', fontFamily: Fonts.PoppinsMedium, textAlign: 'center' },
-    doshaList: { gap: 12 },
-    doshaBigCard: { borderRadius: 20, padding: 18, borderWidth: 0.5 },
-    doshaBigHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-    doshaBigIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    doshaBigName: { fontSize: 22, color: C.white, fontFamily: Fonts.PoppinsMedium, },
-    doshaBigElem: { fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: Fonts.PoppinsMedium, },
-    doshaBadge: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-    doshaBadgeText: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, },
-    doshaBigDesc: { fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18, fontFamily: Fonts.PoppinsMedium, marginBottom: 10 },
-    doshaQualities: { flexDirection: 'row', gap: 6, fontFamily: Fonts.PoppinsMedium, },
-    qualityTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 0.5 },
-    qualityTagText: { fontSize: 10, fontFamily: Fonts.PoppinsMedium, },
-    energyBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, marginBottom: 16 },
+
+    headerLogo: {
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 2,
+    },
+    navContainer: { position: 'absolute', bottom: Platform.OS === 'ios' ? 36 : 44, left: 0, right: 0, alignItems: 'center' },
+    dotsWrapper: { flexDirection: 'row', gap: SPACE.sm, paddingHorizontal: SPACE.lg, paddingVertical: SPACE.sm, borderRadius: 30 },
+    dot: { width: 6, height: 6, borderRadius: 3 },
+    dotActive: { width: 20 },
+
+    // Signature gold seal — thin gradient rule across the top edge of a flat
+    // card, used everywhere instead of drop shadows.
+    goldSealWrap: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, overflow: 'hidden' },
+    goldSealLine: { flex: 1 },
+    goldRule: { width: 36, height: 2, backgroundColor: C.gold, borderRadius: 1, marginTop: SPACE.sm, marginBottom: SPACE.md },
+
+    // Splash (dark gradient bookend)
+    splashContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACE.xl },
+    mandala: { marginBottom: SPACE.xl },
+    mandalaOuter: { width: 76, height: 76, borderRadius: 38, borderWidth: 1, borderColor: 'rgba(224,183,104,0.4)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' },
+    mandalaInner: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },
+    mandalaCenter: { fontSize: 26 },
+    overText: { fontSize: 10, letterSpacing: 4, color: C.gold, textTransform: 'uppercase', fontFamily: Fonts.PoppinsMedium, marginBottom: SPACE.sm },
+    splashTitle: { fontSize: 50, fontFamily: Fonts.PoppinsMedium, color: C.white },
+    splashSubtitle: { fontSize: 50, fontFamily: Fonts.PoppinsMedium, color: C.white, textAlign: 'center' },
+    splashTagline: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 20, marginBottom: SPACE.xl },
+    doshaPills: { flexDirection: 'row', gap: SPACE.sm },
+    pill: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderWidth: 0.5, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', gap: 10, minWidth: 100 },
+    pillDot: { width: 7, height: 7, borderRadius: 3.5 },
+    pillName: { fontSize: 15, color: C.white, fontFamily: Fonts.PoppinsMedium },
+    pillElem: { fontSize: 9, fontFamily: Fonts.PoppinsSemiBold, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' },
+
+    // Shared chip / section title (light content screens)
+    chip: { alignSelf: 'flex-start', paddingHorizontal: SPACE.md, paddingVertical: SPACE.xs, borderRadius: 10, backgroundColor: C.goldSoft, borderWidth: 0.5, borderColor: 'rgba(184,146,74,0.35)', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: C.goldDeep, marginBottom: SPACE.md, fontFamily: Fonts.PoppinsMedium },
+    sectionTitle: { fontSize: 34, fontFamily: Fonts.PoppinsMedium, color: C.ink, marginBottom: SPACE.lg },
+    sectionTitleAccent: { fontFamily: Fonts.PoppinsMedium, color: C.primary },
+
+    // Info screen
+    infoCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.cardBorder, borderRadius: 14, padding: SPACE.lg, marginBottom: SPACE.md, position: 'relative', overflow: 'hidden' },
+    infoRow: { flexDirection: 'row', gap: SPACE.md, alignItems: 'flex-start' },
+    infoNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' },
+    infoNumText: { fontSize: 11, color: C.white, fontWeight: '500' },
+    infoContent: { flex: 1 },
+    infoTitle: { fontSize: 18, color: C.ink, fontFamily: Fonts.PoppinsMedium },
+    infoDesc: { fontSize: 13, color: C.inkMuted, fontFamily: Fonts.PoppinsRegular },
+    boldText: { fontFamily: Fonts.PoppinsSemiBold, color: C.ink },
+    infoDivider: { height: 1, backgroundColor: C.cardBorder, marginVertical: SPACE.md },
+    quoteBox: { backgroundColor: C.primarySoft, borderWidth: 1, borderColor: 'rgba(13,97,78,0.18)', borderRadius: 12, padding: SPACE.lg },
+    quoteLabel: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontFamily: Fonts.PoppinsMedium, color: C.primary, marginBottom: SPACE.xs },
+    quoteText: { fontSize: 13, fontFamily: Fonts.PoppinsMedium, color: C.ink, lineHeight: 20 },
+    quoteAuthor: { fontSize: 11, color: C.inkFaint, marginTop: SPACE.xs },
+
+    // Strategy screen
+    shlokaBox: { backgroundColor: C.card, borderWidth: 1, borderColor: C.cardBorder, borderLeftWidth: 3, borderLeftColor: C.gold, borderRadius: 10, padding: SPACE.lg, marginBottom: SPACE.lg },
+    shlokaText: { fontSize: 15, fontStyle: 'italic', color: C.goldDeep, lineHeight: 24, textAlign: 'left' },
+    shlokaTrans: { fontSize: 11, color: C.inkMuted, textAlign: 'center', marginTop: SPACE.xs, fontFamily: Fonts.PoppinsMedium },
+    goalGrid: { flexDirection: 'row', gap: SPACE.sm, marginBottom: SPACE.lg },
+    goalCard: { flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.cardBorder, borderRadius: 14, padding: SPACE.md, alignItems: 'center', position: 'relative', overflow: 'hidden' },
+    goalIconWrap: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: SPACE.xs },
+    goalTitle: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: C.ink, marginBottom: 2 },
+    goalDesc: { fontSize: 11, fontFamily: Fonts.PoppinsMedium, color: C.inkMuted, textAlign: 'center' },
+    pillarsLabel: { fontSize: 10, color: C.inkFaint, letterSpacing: 2, fontFamily: Fonts.PoppinsMedium, textTransform: 'uppercase', marginBottom: SPACE.md },
+    pillarsGrid: { flexDirection: 'row', gap: SPACE.sm },
+    pillarCard: { flex: 1, height: 76, backgroundColor: C.primarySoft, borderWidth: 1, borderColor: 'rgba(13,97,78,0.15)', borderRadius: 10, padding: SPACE.sm, alignItems: 'center', justifyContent: 'center', gap: 4 },
+    pillarName: { fontSize: 12, fontFamily: Fonts.PoppinsMedium },
+    pillarDesc: { fontSize: 9, color: C.inkMuted, fontFamily: Fonts.PoppinsMedium, textAlign: 'center' },
+
+    // Doshas screen
+    doshaList: { gap: SPACE.md },
+    doshaBigCard: { borderRadius: 16, padding: SPACE.lg, position: 'relative', overflow: 'hidden' },
+    doshaBigHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.md, marginBottom: SPACE.sm },
+    doshaBigIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+    doshaBigName: { fontSize: 20, color: C.ink, fontFamily: Fonts.PoppinsMedium },
+    doshaBigElem: { fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: Fonts.PoppinsMedium },
+    doshaBadge: { marginLeft: 'auto', paddingHorizontal: SPACE.sm, paddingVertical: 4, borderRadius: 8 },
+    doshaBadgeText: { fontSize: 11, fontFamily: Fonts.PoppinsMedium },
+    doshaBigDesc: { fontSize: 12, color: C.inkMuted, lineHeight: 17, fontFamily: Fonts.PoppinsMedium, marginBottom: SPACE.sm },
+    doshaQualities: { flexDirection: 'row', gap: 6 },
+    qualityTag: { paddingHorizontal: SPACE.sm, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+    qualityTagText: { fontSize: 10, fontFamily: Fonts.PoppinsMedium },
+
+    // Dosha detail screen
+    energyBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: SPACE.md, paddingVertical: 6, borderRadius: 16, borderWidth: 1, marginBottom: SPACE.lg },
     energyDot: { width: 6, height: 6, borderRadius: 3 },
-    energyText: { fontSize: 12, letterSpacing: 1, fontFamily: Fonts.PoppinsMedium, },
-    doshaDetailTitle: { fontSize: 42, fontFamily: Fonts.PoppinsMedium, marginBottom: 8, },
-    doshaDetailDesc: { fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: Fonts.PoppinsMedium, marginBottom: 16, lineHeight: 22 },
-    analogyBox: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 20 },
-    analogyLabel: { fontSize: 10, letterSpacing: 2, fontFamily: Fonts.PoppinsMedium, textTransform: 'uppercase', marginBottom: 6 },
-    analogyText: { fontSize: 18, fontFamily: Fonts.PoppinsMedium, },
-    governsLabel: { fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: Fonts.PoppinsMedium, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 },
-    governsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-    govItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, width: '48%' },
+    energyText: { fontSize: 12, letterSpacing: 1, fontFamily: Fonts.PoppinsMedium },
+    doshaDetailTitle: { fontSize: 38, fontFamily: Fonts.PoppinsMedium, marginBottom: SPACE.xs },
+    doshaDetailDesc: { fontSize: 13, color: C.inkMuted, fontFamily: Fonts.PoppinsMedium, marginBottom: SPACE.lg, lineHeight: 20 },
+    analogyBox: { padding: SPACE.lg, borderRadius: 14, marginBottom: SPACE.lg, position: 'relative', overflow: 'hidden' },
+    analogyLabel: { fontSize: 10, letterSpacing: 2, fontFamily: Fonts.PoppinsMedium, textTransform: 'uppercase', marginBottom: 4 },
+    analogyText: { fontSize: 17, fontFamily: Fonts.PoppinsMedium },
+    governsLabel: { fontSize: 10, color: C.inkFaint, fontFamily: Fonts.PoppinsMedium, letterSpacing: 2, textTransform: 'uppercase', marginBottom: SPACE.md },
+    governsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginBottom: SPACE.lg },
+    govItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: C.card, borderWidth: 1, borderColor: C.cardBorder, borderRadius: 10, paddingHorizontal: SPACE.md, paddingVertical: SPACE.sm, width: '48%' },
     govDot: { width: 6, height: 6, borderRadius: 3 },
-    govText: { fontFamily: Fonts.PoppinsMedium, fontSize: 12, color: 'rgba(255,255,255,0.55)' },
-    balanceRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    balanceBox: { flex: 1, borderRadius: 14, padding: 14, borderWidth: 0.5 },
-    balanceLabel: { fontSize: 10, fontFamily: Fonts.PoppinsMedium, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 },
-    balanceValues: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.55)', lineHeight: 20 },
-    ctaContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
-    ctaIconWrap: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-    ctaIcon: { fontSize: 34 },
-    ctaOver: { fontSize: 10, fontFamily: Fonts.PoppinsMedium, letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 16 },
-    ctaTitle: { fontSize: 42, fontFamily: Fonts.PoppinsMedium, color: C.white, lineHeight: 48, textAlign: 'center' },
-    ctaTitleAccent: { fontFamily: Fonts.PoppinsMedium, opacity: 0.85 },
-    ctaDesc: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.62)', lineHeight: 22, textAlign: 'center', marginTop: 16, marginBottom: 32, maxWidth: 260 },
-    ctaPrimary: { backgroundColor: C.white, borderRadius: 50, paddingVertical: 15, paddingHorizontal: 28, width: '100%', alignItems: 'center', marginBottom: 12 },
+    govText: { fontFamily: Fonts.PoppinsMedium, fontSize: 12, color: C.inkMuted },
+    balanceRow: { flexDirection: 'row', gap: SPACE.md, marginTop: SPACE.xs },
+    balanceBox: { flex: 1, borderRadius: 12, padding: SPACE.md, borderWidth: 1 },
+    balanceLabel: { fontSize: 10, fontFamily: Fonts.PoppinsMedium, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: SPACE.sm },
+    balanceValues: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: C.inkMuted, lineHeight: 19 },
+
+    // CTA (dark gradient bookend)
+    ctaContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACE.xl + 8 },
+    ctaIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(224,183,104,0.4)', alignItems: 'center', justifyContent: 'center', marginBottom: SPACE.xl - 4 },
+    ctaIcon: { fontSize: 32 },
+    ctaOver: { fontSize: 10, fontFamily: Fonts.PoppinsMedium, letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginBottom: SPACE.md },
+    ctaTitle: { fontSize: 40, fontFamily: Fonts.PoppinsMedium, color: C.white, lineHeight: 46, textAlign: 'center' },
+    ctaTitleAccent: { fontFamily: Fonts.PoppinsMedium, color: C.goldBright },
+    ctaDesc: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: 'rgba(255,255,255,0.75)', lineHeight: 20, textAlign: 'center', marginBottom: SPACE.xl, maxWidth: 250 },
+    ctaPrimary: { backgroundColor: C.white, borderRadius: 50, paddingVertical: 15, paddingHorizontal: 28, width: '100%', alignItems: 'center' },
     ctaPrimaryText: { fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: C.primary, letterSpacing: 0.3 },
-    ctaSecondary: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 50, paddingVertical: 14, paddingHorizontal: 28, width: '100%', alignItems: 'center' },
-    ctaSecondaryText: { fontSize: 13, color: 'rgba(255,255,255,0.78)', fontFamily: Fonts.PoppinsMedium, letterSpacing: 0.3 },
 });
 
 export default AyurvedicIntroFlow;

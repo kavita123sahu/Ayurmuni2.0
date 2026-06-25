@@ -3,17 +3,17 @@ import { Images } from "./Images";
 import dayjs from 'dayjs';
 export type OrderStatus = 'DELIVERED' | 'IN_PROGRESS';
 
-export type ProductItem = {
+export interface ProductItem {
   id: string;
   name: string;
   weight: string;
-  price: number;
+  size?: string;
   variant_id: string;
+  price: number;
   quantity: number;
-  image: any;
+  image: string;
   doctorName?: string;
-};
-
+}
 export type SectionType = {
   id: string;
   title: string;
@@ -36,21 +36,31 @@ export type CartItem = {
     }[];
   };
 };
-
 export const getProductData = (
   item: CartItem,
   doctorName?: string,
 ): ProductItem => ({
   id: item.id,
-  name: item.variant?.product_name || '',
-  weight: item.variant?.variant_title || '',
-  variant_id: item?.variant?.variant_id || '',
 
-  price: Number(item.price || 0),
+  name: item.variant?.variant_title || '',
+
+  weight: item.variant?.size || '',
+
+  size: item.variant?.size || '',
+
+  brand_name: item.variant?.brand_name || '',
+
+  price: Number(
+    item.variant?.selling_price ||
+    item.price ||
+    0,
+  ),
+
   quantity: Number(item.quantity || 1),
+
   image:
-    item.variant?.media?.[0]
-      ?.media_url || '',
+    item.variant?.image_url || '',
+
   doctorName,
 });
 
@@ -140,7 +150,7 @@ export type Appointment = {
   specialty: string;
   date: string;
   time: string;
-   isHorizontal : boolean
+  isHorizontal: boolean
   status: string;
   image: string | null;
   rawData?: any;

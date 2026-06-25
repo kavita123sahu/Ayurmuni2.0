@@ -150,6 +150,23 @@ const RenderAppoint = ({
                 </View>
             </View>
 
+       {item?.rawData?.follow_up?.date && (
+    <View
+        style={{
+            alignSelf: 'flex-end',
+            marginBottom: 8,
+        }}>
+        <View
+            style={[
+                styles.followUP,
+                { backgroundColor: '#E8F5E9' },
+            ]}>
+            <Text style={styles.followUPText}>
+                Follow Up • {item.rawData.follow_up.date}
+            </Text>
+        </View>
+    </View>
+)}
             <DateTimeCard
                 item={item}
                 isHorizontal
@@ -166,14 +183,44 @@ const RenderAppoint = ({
         >
             {/* Existing Full Card */}
             <View style={styles.contentContainer}>
-                <Image
-                    source={
-                        item.image
-                            ? { uri: item.image }
-                            : Images.doctorImage
-                    }
-                    style={styles.avatar}
-                />
+                <View style={{ flexDirection: 'row' }}>
+                    <Image
+                        source={
+                            item.image
+                                ? { uri: item.image }
+                                : Images.doctorImage
+                        }
+                        style={styles.avatar}
+                    />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                            }}>
+                            <Text style={{
+                                flex: 1,
+                                marginRight: 10,
+                            }}>
+                                {item.name}
+                            </Text>
+
+                            {item?.rawData?.follow_up?.date && (
+                                <View
+                                    style={[
+                                        styles.followUP,
+                                        { backgroundColor: '#E8F5E9' },
+                                    ]}>
+                                    <Text style={styles.followUPText}>
+                                        Follow Up • {item.rawData.follow_up.date}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </View>
+
 
                 <View style={{ flex: 1 }}>
                     <View style={styles.headerRow}>
@@ -279,7 +326,19 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
 
+    followUP: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        backgroundColor: '#E8F5E9',
+        alignSelf: 'flex-start',
+    },
 
+    followUPText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#0D614E',
+    },
 
     status: {
         paddingHorizontal: 10,

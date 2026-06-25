@@ -15,33 +15,35 @@ const MyProductCard = ({
     updateQuantity,
     styles,
 }: any) => {
-    console.log('MyProductCardrendered', updateQuantity);
+    console.log('itemitemitemitem', item);
     return (
-        <TouchableOpacity style={styles.productCard} onPress={() => navigation.navigate('ProductDetails', {
-            varientID:
-                item?.variant_id,
-        },)}>
+        <TouchableOpacity
+            style={styles.productCard}
+            activeOpacity={0.9}
+            onPress={() =>
+                navigation.navigate('ProductDetails', {
+                    varientID: item?.variant_id,
+                })
+            }>
+
             <View style={styles.productTopRow}>
+
+                {/* Left */}
                 <View style={styles.leftWrapper}>
                     <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() =>
-                            toggleItemSelection(item.id)
-                        }
+                        onPress={() => toggleItemSelection(item.id)}
                         style={[
                             styles.checkbox,
-                            isSelected &&
-                            styles.checkboxActive,
-                        ]}
-                    >
+                            isSelected && styles.checkboxActive,
+                        ]}>
                         {isSelected && (
                             <Image
                                 source={Images.tick}
                                 style={{
-                                    height: 15,
-                                    width: 15,
+                                    width: 12,
+                                    height: 12,
                                     tintColor: '#FFF',
-                                    resizeMode: 'contain',
                                 }}
                             />
                         )}
@@ -49,26 +51,38 @@ const MyProductCard = ({
 
                     <Image
                         source={{
-                            uri: item.image,
+                            uri: item?.image,
                         }}
                         style={styles.image}
                     />
                 </View>
 
+                {/* Center */}
                 <View style={{ flex: 1 }}>
                     <Text style={styles.name}>
                         {item.name}
                     </Text>
 
                     <Text style={styles.weight}>
-                        {item.weight}
+                        {item.brand_name}
+                    </Text>
+
+                    <Text style={styles.size}>
+                        {item.size} g
                     </Text>
 
                     <Text style={styles.price}>
-                        Rs.{Math.round(Number(item.price))}
+                        Rs. {Math.round(item.price)}
                     </Text>
+
+                    {type === 'prescribed' && (
+                        <Text style={styles.prescribedDoctorName}>
+                            Prescribed by {item?.doctorName}
+                        </Text>
+                    )}
                 </View>
 
+                {/* Quantity */}
                 <View style={styles.qtyBox}>
                     <TouchableOpacity
                         style={styles.qtyBtn}
@@ -77,11 +91,8 @@ const MyProductCard = ({
                                 item.variant_id,
                                 'plus',
                             )
-                        }
-                    >
-                        <Text style={styles.qtyBtnText}>
-                            +
-                        </Text>
+                        }>
+                        <Text style={styles.qtyBtnText}>+</Text>
                     </TouchableOpacity>
 
                     <Text style={styles.qtyText}>
@@ -95,47 +106,11 @@ const MyProductCard = ({
                                 item.variant_id,
                                 'minus',
                             )
-                        }
-                    >
-                        <Text style={styles.qtyBtnText}>
-                            −
-                        </Text>
+                        }>
+                        <Text style={styles.qtyBtnText}>−</Text>
                     </TouchableOpacity>
                 </View>
             </View>
-
-            {type === 'prescribed' && (
-                <View
-                    style={
-                        styles.prescribedWrapper
-                    }
-                >
-                    <Image
-                        source={
-                            Images.doctorImage
-                        }
-                        style={
-                            styles.prescribedDoctorImage
-                        }
-                    />
-
-                    <Text
-                        numberOfLines={1}
-                        style={
-                            styles.prescribedText
-                        }
-                    >
-                        Prescribed by{' '}
-                        <Text
-                            style={
-                                styles.prescribedDoctorName
-                            }
-                        >
-                            {item.doctorName}
-                        </Text>
-                    </Text>
-                </View>
-            )}
         </TouchableOpacity>
     );
 };
