@@ -334,11 +334,11 @@ const styles = StyleSheet.create({
 
         borderWidth: 1,
         borderColor: Colors.questionGreen,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.primaryColor,
     },
 
     skipText: {
-        color: Colors.questionGreen,
+        color: Colors.white,
         fontSize: scale(15),
         fontFamily: Fonts.PoppinsSemiBold,
     },

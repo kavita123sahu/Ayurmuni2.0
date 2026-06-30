@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { enableScreens } from "react-native-screens";
@@ -264,9 +264,9 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="Welcome" screenOptions={hideHeader}>
-      {/* <Stack.Screen name="SplashStack" component={SplashStack} /> */}
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+    <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
+      <Stack.Screen name="SplashStack" component={SplashStack} />
+      {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
       <Stack.Screen name="AuthStack" component={AuthStack} />
       <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>
@@ -278,17 +278,14 @@ const MainNavigator = () => {
 const Navigator = () => {
   const isConnected = useNetworkStatus();
 
+  if (isConnected === null) {
+    return null; // ya ActivityIndicator
+  }
+
   return (
-
-    <NavigationContainer ref={navigationRef} >
-
-      {isConnected ?
-        <MainNavigator />
-        : <NetworkError />}
-
+    <NavigationContainer ref={navigationRef}>
+      {isConnected ? <MainNavigator /> : <NetworkError />}
     </NavigationContainer>
-
   );
 };
-
 export default Navigator;

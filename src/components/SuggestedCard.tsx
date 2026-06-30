@@ -21,7 +21,8 @@ interface Props {
 }
 
 const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, header = false, navigation }) => {
-    console.log("navigationnnnnnnnn", navigation)
+    console.log("dataypggaaa-->", data);
+
     const [showAll, setShowAll] = useState(false);
 
     const displayData = showAll ? data : data.slice(0, 6);
@@ -75,7 +76,12 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                 }
 
                 return (
-                    <TouchableOpacity onPress={() => navigation.navigate('ProductDetails')} style={[styles.card, isGrid && styles.gridCard]}>
+                    <TouchableOpacity onPress={() => navigation.navigate('ProductDetails',{
+                         
+                varientID:
+                  item?.variant_id,
+              
+                    })} style={[styles.card, isGrid && styles.gridCard]}>
 
                         {/* IMAGE */}
                         <View style={styles.imageContainer}>

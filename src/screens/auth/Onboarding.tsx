@@ -57,7 +57,9 @@ interface FormErrors {
 const Onboarding = (props: any) => {
 
     const [isLoading, setIsLoading] = useState(false);
-
+    const [focusedField, setFocusedField] = useState<
+        'day' | 'month' | 'year' | null
+    >(null);
     const [isLoadingImage, setImageloding] = useState(false);
     const [Isloading, setUSERID] = useState('');
     const dayRef = useRef<TextInput>(null);
@@ -434,12 +436,12 @@ const Onboarding = (props: any) => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
 
-                <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                {/* <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                     <Image
                         source={Images.backIcon}
                         style={styles.backIcon}
                     />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
                         keyboardShouldPersistTaps="handled"
@@ -457,49 +459,45 @@ const Onboarding = (props: any) => {
 
                             {/* PROFILE IMAGE */}
                             <View style={styles.imageWrapper}>
-                                <TouchableOpacity onPress={handleAddImage}>
-
-                                    <View style={styles.profileContainer}>
-
-                                        {/* BIG LIGHT CIRCLE */}
-
-
-                                        <View style={styles.bigCircle}>
-                                            {isLoadingImage ? (
-                                                <ActivityIndicator size="small" />
-                                            ) : formData?.profileImage?.uri ? (
-                                                <Image
-                                                    source={{
-                                                        uri: formData.profileImage.uri,
-                                                    }}
-                                                    style={styles.profileImage}
-                                                />
-                                            ) : (
+                                <TouchableOpacity
+                                    activeOpacity={0.8}
+                                    onPress={handleAddImage}
+                                    style={styles.profileContainer}
+                                >
+                                    <View style={styles.bigCircle}>
+                                        {isLoadingImage ? (
+                                            <ActivityIndicator size="small" color="#2E7D32" />
+                                        ) : formData?.profileImage?.uri ? (
+                                            <Image
+                                                source={{ uri: formData.profileImage.uri }}
+                                                style={styles.profileImage}
+                                            />
+                                        ) : (
+                                            <>
                                                 <View style={styles.placeholderContainer}>
                                                     <Text style={styles.placeholderText}>
                                                         {formData?.firstName
-                                                            ? formData.firstName
-                                                                .charAt(0)
-                                                                .toUpperCase()
-                                                            : ''}
+                                                            ? formData.firstName.charAt(0).toUpperCase()
+                                                            : ""}
                                                     </Text>
                                                 </View>
-                                            )}
-                                        </View>
 
-                                        {/* SMALL GREEN CIRCLE */}
-                                        <TouchableOpacity style={styles.smallCircle} onPress={handleAddImage}>
-                                            <Image
-                                                source={Images.calender}
-                                                style={styles.cameraImage}
-                                            />
-                                        </TouchableOpacity>
-
+                                                {/* Overlay Text */}
+                                                <View style={styles.uploadOverlay}>
+                                                    <Text style={styles.uploadText}>Upload Photo</Text>
+                                                </View>
+                                            </>
+                                        )}
                                     </View>
 
+                                    {/* Camera Icon */}
+                                    <View style={styles.smallCircle}>
+                                        <Image
+                                            source={Images.calender} // Better if you have a camera icon
+                                            style={styles.cameraImage}
+                                        />
+                                    </View>
                                 </TouchableOpacity>
-
-                                <Text style={styles.uploadText}>Upload Photo</Text>
                             </View>
 
                             <View style={styles.row}>
@@ -575,7 +573,11 @@ const Onboarding = (props: any) => {
 
                                 <TextInput
                                     ref={dayRef}
-                                    placeholder="DD"
+                                    placeholder={
+                                        focusedField === 'day' || dob.year === ''
+                                            ? 'DD'
+                                            : ''
+                                    }
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.day}
                                     keyboardType="number-pad"
@@ -598,6 +600,8 @@ const Onboarding = (props: any) => {
                                             monthRef.current?.focus();
                                         }
                                     }}
+                                    onFocus={() => setFocusedField('day')}
+                                    onBlur={() => setFocusedField(null)}
                                     onKeyPress={({ nativeEvent }) => {
 
                                         // BACK TO PREVIOUS
@@ -614,7 +618,11 @@ const Onboarding = (props: any) => {
 
                                 <TextInput
                                     ref={monthRef}
-                                    placeholder="MM"
+                                    placeholder={
+                                        focusedField === 'month' || dob.year === ''
+                                            ? 'MM'
+                                            : ''
+                                    }
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.month}
                                     keyboardType="number-pad"
@@ -623,6 +631,8 @@ const Onboarding = (props: any) => {
                                         styles.dobInput,
                                         dob.month && styles.inputFilled,
                                     ]}
+                                    onFocus={() => setFocusedField('month')}
+                                    onBlur={() => setFocusedField(null)}
                                     onChangeText={(t) => {
 
                                         const value = t.replace(/[^0-9]/g, '');
@@ -651,11 +661,18 @@ const Onboarding = (props: any) => {
 
                                 {/* YEAR */}
 
+
                                 <TextInput
                                     ref={yearRef}
-                                    placeholder="YYYY"
-                                    placeholderTextColor="#9CA3AF"
                                     value={dob.year}
+                                    placeholder={
+                                        focusedField === 'year' || dob.year === ''
+                                            ? 'YYYY'
+                                            : ''
+                                    }
+                                    placeholderTextColor="#9CA3AF"
+                                    onFocus={() => setFocusedField('year')}
+                                    onBlur={() => setFocusedField(null)}
                                     keyboardType="number-pad"
                                     maxLength={4}
                                     style={[
@@ -664,9 +681,7 @@ const Onboarding = (props: any) => {
                                         dob.year && styles.inputFilled,
                                     ]}
                                     onChangeText={(t) => {
-
                                         const value = t.replace(/[^0-9]/g, '');
-
                                         setDob({
                                             ...dob,
                                             year: value,
@@ -683,6 +698,10 @@ const Onboarding = (props: any) => {
                                         }
                                     }}
                                 />
+
+
+
+
 
                             </View>
 
@@ -862,7 +881,15 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
         tintColor: '#FFFFFF',
     },
-
+    uploadOverlay: {
+        position: "absolute",
+        // bottom: 12,
+        alignSelf: "center",
+        // backgroundColor: "rgba(0,0,0,0.45)",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
     uploadText: {
         marginTop: 14,
         fontSize: 15,

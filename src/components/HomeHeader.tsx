@@ -355,10 +355,17 @@ const HomeHeader = ({
                 {/* RIGHT */}
                 <View style={styles.rightIcons}>
 
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         onPress={() => navigation.navigate('EmergencySOS')}
                     >
                         <Image source={Images.SOS} style={{ height: 40, width: 40 }} />
+                    </TouchableOpacity> */}
+
+                    <TouchableOpacity
+                        style={styles.bellButton}
+                        onPress={() => navigation.navigate('MyCart')}
+                    >
+                        <Image source={Images.shopCart} style={{ height: 20, tintColor: Colors.primaryColor, width: 20 }} />
                     </TouchableOpacity>
 
                     <TouchableOpacity

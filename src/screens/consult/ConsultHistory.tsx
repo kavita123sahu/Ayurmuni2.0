@@ -239,7 +239,7 @@ const ConsultHistory = (
         actionKey: ActionKey,
         item: Appointment,
     ) => {
-
+        console.log("itemhistory", item);
         switch (actionKey) {
 
             case 'view_receipt':
@@ -267,7 +267,7 @@ const ConsultHistory = (
                 navigation.navigate(
                     'AppointmentDetails',
                     {
-                        appointmentId:
+                        consultation_id:
                             item.consultation_id,
                     },
                 );

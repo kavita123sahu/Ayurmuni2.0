@@ -337,131 +337,129 @@ const AyurvedicIntroFlow = ({ onComplete, }: { onComplete?: () => void, }) => {
     }, []);
 
 
-    useEffect(() => {
-        if (isFocused) {
-            getUser();
-        }
-    }, [isFocused]);
+    // useEffect(() => {
+    //     if (isFocused) {
+    //         getUser();
+    //     }
+    // }, [isFocused]);
 
 
-    const getUser = async () => {
-        try {
-            const token = await Utils.getData('_TOKEN');
+    // const getUser = async () => {
+    //     try {
+    //         const token = await Utils.getData('_TOKEN');
 
-            if (!token) {
-                navigation.replace('AuthStack', {
-                    screen: 'Login',
-                });
-                return;
-            }
+    //         if (!token) {
+    //             navigation.replace('AuthStack', {
+    //                 screen: 'Login',
+    //             });
+    //             return;
+    //         }
 
-            const result: any =
-                await _PROFILE_SERVICES.user_profile();
+    //         const result: any =
+    //             await _PROFILE_SERVICES.user_profile();
 
-            console.log('PROFILE RESULT =>', result);
+    //         console.log('PROFILE RESULT =>', result);
 
-            const isCustomer =
-                result?.data?.user_roles?.includes(
-                    'customer'
-                );
+    //         const isCustomer =
+    //             result?.data?.user_roles?.includes(
+    //                 'customer'
+    //             );
 
-            console.log('isCustomerisCustomer', isCustomer)
+    //         console.log('isCustomerisCustomer', isCustomer)
 
-            // if (result?.status === 404) {
-            //   props.navigation.replace(
-            //     'HomeStack',
-            //     {
-            //       screen: 'Onboarding',
-            //     },
-            //   );
-            //   return;
-            // }
+    //         // if (result?.status === 404) {
+    //         //   props.navigation.replace(
+    //         //     'HomeStack',
+    //         //     {
+    //         //       screen: 'Onboarding',
+    //         //     },
+    //         //   );
+    //         //   return;
+    //         // }
 
-            if (!isCustomer) {
-                navigation.replace(
-                    'AuthStack',
-                    {
-                        screen: 'Login',
-                    },
-                );
-                return;
-            }
+    //         if (!isCustomer) {
+    //             navigation.replace(
+    //                 'AuthStack',
+    //                 {
+    //                     screen: 'Login',
+    //                 },
+    //             );
+    //             return;
+    //         }
 
-            if (!result?.data?.is_onboarded && !result?.data?.is_skipped) {
-                navigation.replace(
-                    'HomeStack',
-                    {
-                        screen: 'AssessmentType',
-                    },
-                );
-                return;
-            }
+    //         if (!result?.data?.is_onboarded && !result?.data?.is_skipped) {
+    //             navigation.replace(
+    //                 'HomeStack',
+    //                 {
+    //                     screen: 'AssessmentType',
+    //                 },
+    //             );
+    //             return;
+    //         }
 
-            if (result?.data?.is_skipped) {
-                navigation.replace(
-                    'HomeStack',
-                    {
-                        screen: 'Home',
-                    },
-                );
-                return;
-            }
+    //         if (result?.data?.is_skipped) {
+    //             navigation.replace(
+    //                 'HomeStack',
+    //                 {
+    //                     screen: 'Home',
+    //                 },
+    //             );
+    //             return;
+    //         }
 
-            if (!result?.success) {
-                showSuccessToast(
-                    result?.message ||
-                    'Something went wrong',
-                    'error',
-                );
-                return;
-            }
+    //         if (!result?.success) {
+    //             showSuccessToast(
+    //                 result?.message ||
+    //                 'Something went wrong',
+    //                 'error',
+    //             );
+    //             return;
+    //         }
 
-            // SUCCESS
+    //         // SUCCESS
 
-            console.log(
-                'PROFILE DATA =>',
-                result,
-            );
+    //         console.log(
+    //             'PROFILE DATA =>',
+    //             result,
+    //         );
 
-            await Utils.storeData(
-                '_USER_INFO',
-                result?.data,
-            );
+    //         await Utils.storeData(
+    //             '_USER_INFO',
+    //             result?.data,
+    //         );
 
-            navigation.replace(
-                'HomeStack',
-                {
-                    screen: 'Home',
-                },
-            );
+    //         navigation.replace(
+    //             'HomeStack',
+    //             {
+    //                 screen: 'Home',
+    //             },
+    //         );
 
-        } catch (error: any) {
-            console.log(
-                'GET USER ERROR =>',
-                error,
-            );
+    //     } catch (error: any) {
+    //         console.log(
+    //             'GET USER ERROR =>',
+    //             error,
+    //         );
 
-            if (
-                error?.response?.status === 403
-            ) {
-                navigation.reset({
-                    index: 0,
-                    routes: [
-                        {
-                            name: 'AccountInactiveScreen',
-                        },
-                    ],
-                });
+    //         if (
+    //             error?.response?.status === 403
+    //         ) {
+    //             navigation.replace(
+    //                 'AuthStack',
+    //                 {
+    //                     screen: 'Login',
+    //                 },
+    //             );
 
-                return;
-            }
+    //             return;
+    //         }
 
-            showSuccessToast(
-                'Network Error',
-                'error',
-            );
-        }
-    };
+    //         showSuccessToast(
+    //             'Network Error',
+    //             'error',
+    //         );
+    //     }
+    // };
 
 
     useEffect(() => {

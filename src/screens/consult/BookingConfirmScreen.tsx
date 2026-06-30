@@ -177,7 +177,6 @@ const DetailRow = memo(
 const BookingConfrimScreen = ({ navigation, route }: any) => {
   const { SlotsDetail } = route?.params || {};
 
-  console.log("SlotsDetail", SlotsDetail)
 
   const [showModal, setShowModal] = useState(false);
 
@@ -222,6 +221,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
   }, [navigation]);
 
 
+
   const slideAnim = useRef(
     new Animated.Value(SHEET_HEIGHT),
   ).current;
@@ -254,11 +254,19 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     });
 
 
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        return true;
+      },
+    );
 
-  // =============================
-  // OPTION HANDLE
-  // =============================
+    return () => {
 
+      subscription.remove();
+    };
+  }, [navigation]);
 
 
   const submitDoctorReview = async (data: {

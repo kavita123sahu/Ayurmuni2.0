@@ -150,6 +150,8 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
 const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const { consultation_id } = route.params;
 
+  console.log("consultation_idconsultation_idconsultation_id", consultation_id)
+
   const [loading, setLoading] = React.useState(true);
   const [detail, setDetail] = React.useState<any>(null);
   const [showRescheduleModal, setShowRescheduleModal] =
@@ -227,36 +229,36 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     appointmentStatus === 'reschedule';
 
 
-
   const handleReschedule = async (
     appointmentId: string,
     payload: {
-      availability: any;
-      action: "reschedule";
+      availability: number;
+      action: string;
       reschedule_reason: string;
     }
   ) => {
     console.log("appointmentId", appointmentId);
-    console.log("payload", payload);
+    console.log("payload--->>", payload);
+
     const res = await handleAppointmentAction({
       appointmentId,
-      action: "reschedule",
-      availability: payload.availability,
-      reschedule_reason:
-        payload.reschedule_reason,
+      ...payload, // previous page ka pura payload direct bhej do
     });
-    console.log("res--->>", res);
 
+    console.log("res--->>", res);
 
     if (res?.success) {
       fetchDetail?.();
-      showSuccessToast(res?.message, 'success');
+      setShowRescheduleModal(false);
+      showSuccessToast(res.message, "success");
+      return;
     }
 
-    setShowRescheduleModal(false);
-    showSuccessToast(res.message || "You cannot reschedule multiple times", 'error')
+    showSuccessToast(
+      res?.message || "You cannot reschedule multiple times",
+      "error"
+    );
   };
-
 
   const handleCancel = async (
     appointmentId: string,

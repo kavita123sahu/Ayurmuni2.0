@@ -17,16 +17,17 @@ import { Fonts } from '../../common/Fonts';
 const { width } = Dimensions.get('window');
 
 // 🔥 Dynamic card width
-const CARD_WIDTH = Math.min(
-  width * 0.60,
-  300,
-);
+// const CARD_WIDTH = Math.min(
+//   width * 0.60,
+//   300,
+// );
+const CARD_WIDTH = width * 0.52;
 // const CARD_WIDTH = width * 0.50;
 
 interface Doctor {
   id: string;
   full_name: string;
-  specializations: [];
+  health_diseases: [];
   experience: string;
   name: string;
   total_reviews: string;
@@ -38,16 +39,14 @@ interface Doctor {
 
 const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
-  console.log("data--->", data);
+  console.log("datadoctorrr--->", data);
 
 
   const renderItem = useCallback(({ item }: { item: Doctor }) => {
     console.log('item?.specializations', item);
-    const therapies = Array.isArray(
-      item?.specializations
-    )
-      ? item.specializations
-      : [];
+    const therapies = Array.isArray(item?.health_diseases)
+      ? item.health_diseases.map(disease => disease.name).join(", ")
+      : "";
     return (
       <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() =>
         navigation.navigate(
@@ -58,12 +57,6 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
         )
       }>
 
-        {/* AVAILABLE TAG */}
-        {/* {item.has_availability && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}> {item?.has_availability ? ' Available Now' : ''} </Text>
-          </View>
-        )} */}
 
         {/* TOP SECTION */}
         <View style={styles.topRow}>
@@ -89,17 +82,16 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
           <View style={styles.info}>
             <Text
-              numberOfLines={2}
-              style={styles.name}
-            >
-              {item?.full_name || item?.name}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={styles.name}>
+              {item.full_name || item.name}
             </Text>
-
             <Text
               numberOfLines={2}
               style={styles.specialization}
             >
-              {therapies.join(', ')}
+              {therapies?.split(',').slice(0, 2).join(', ')}
             </Text>
 
             {item?.has_availability && (
@@ -158,22 +150,32 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 
 export default React.memo(TopDoctorsCard);
 
-
 const styles = StyleSheet.create({
   container: {
     paddingRight: 10,
     paddingBottom: 10,
   },
-
   card: {
     width: CARD_WIDTH,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 14,
-    marginRight: 12,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: '#EEF2F7',
+    borderColor: "#EDF1F5",
+    // elevation: 2,
   },
+
+  // card: {
+  //   width: CARD_WIDTH,
+  //   backgroundColor: '#FFF',
+  //   borderRadius: 20,
+  //   padding: 14,
+  //   marginRight: 12,
+  //   borderWidth: 1,
+  //   borderColor: '#EEF2F7',
+  // },
 
   badge: {
     position: 'absolute',
@@ -194,17 +196,15 @@ const styles = StyleSheet.create({
   },
 
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   doctorImageWrapper: {
-    width: 56,
-    height: 56,
+    width: 54,
+    height: 54,
     borderRadius: 12,
-    backgroundColor: Colors.bgcolor,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: "hidden",
     marginRight: 10,
   },
 
@@ -223,9 +223,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   avatar: {
-    width: 55,
-    height: 55,
-    borderRadius: 10,
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
   },
   headerRow: {
     flexDirection: 'row',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
 
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
     lineHeight: 22,
@@ -249,8 +249,8 @@ const styles = StyleSheet.create({
 
   specialization: {
     marginTop: 2,
-    fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 15,
+    fontSize: 11,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsRegular,
   },
@@ -282,9 +282,9 @@ const styles = StyleSheet.create({
 
 
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
   },
 
   ratingRow: {
@@ -305,10 +305,10 @@ const styles = StyleSheet.create({
   },
 
   bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    // marginTop: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
   },
   rating: {
     fontSize: 12,
@@ -328,6 +328,7 @@ const styles = StyleSheet.create({
     // marginBottom: 15,
     // borderRadius: 12,
     height: 42,
+    resizeMode: "contain",
     width: 42,
     // justifyContent: 'center',
     // alignItems: 'center',

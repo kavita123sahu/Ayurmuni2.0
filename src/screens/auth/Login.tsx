@@ -59,7 +59,7 @@ const Login: React.FC = (props: any) => {
 
       if (response?.success) {
 
-        Utils.storeData("_OTP", OTP)
+        // Utils.storeData("_OTP", OTP)
 
         showSuccessToast(
           response.message || 'OTP sent successfully',

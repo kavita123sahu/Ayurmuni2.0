@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
+import { useNotifications } from '../hooks/useNotification';
 
 interface NotificationItem {
     id: string;
@@ -22,69 +23,11 @@ interface NotificationItem {
     icon: any;
     iconBg: string;
     image?: any;
-    type: 'appointment' | 'normal';
-    section: 'upcoming' | 'today' | 'yesterday';
+    type: string;
+    section: string;
+    is_read?: boolean;
+    rawData?: any;
 }
-
-const notifications: NotificationItem[] =
-    [
-        {
-            id: '1',
-            title: 'Doctor Appointment',
-            description:
-                'Your consultation with Dr. Arjun R Nair starts soon. Please be ready.',
-            time: 'In 30 Mins',
-            icon: require('../assets/images/calendarNot.png'),
-            iconBg: '#0D614E',
-            type: 'appointment',
-            section: 'upcoming',
-        },
-        {
-            id: '2',
-            title: 'Order Out for Delivery',
-            description:
-                'Your medicine order #MD-9821 is arriving today by 6:00 PM.',
-            time: '2h ago',
-            icon: require('../assets/images/truckNot.png'),
-            iconBg: '#4A90E2',
-            type: 'normal',
-            section: 'today',
-        },
-        {
-            id: '3',
-            title: 'Health Sale is Live!',
-            description:
-                'Get up to 25% OFF on all skincare products including Elixir Face Cream.',
-            time: '5h ago',
-            icon: require('../assets/images/tagNot.png'),
-            iconBg: '#F5A623',
-            image: require('../assets/images/productNot.png'),
-            type: 'normal',
-            section: 'today',
-        },
-        {
-            id: '4',
-            title: 'Refill Reminder',
-            description:
-                'Your prescription for Vitamin D3 is running low. Tap to refill your order.',
-            time: '8h ago',
-            icon: require('../assets/images/listNot.png'),
-            iconBg: '#FF5A5F',
-            type: 'normal',
-            section: 'today',
-        },
-        {
-            id: '5',
-            title: 'Lab Reports Ready',
-            description:
-                'Your Annual Health Checkup reports are now available to view and download.',
-            time: '1d ago',
-            icon: require('../assets/images/labNot.png'),
-            iconBg: '#4CD7A5',
-            type: 'normal',
-            section: 'yesterday',
-        },
-    ];
 
 const renderStyledText = (text: string) => {
     if (text.includes('Dr.') && text.includes('starts')) {
@@ -167,7 +110,8 @@ const SectionHeader = ({ title }: { title: string }) => (
 );
 
 const NotificationCard = ({ item }: { item: NotificationItem }) => {
-    if (item.type === 'appointment') {
+    const status = item.rawData?.data?.status;
+    if (item.type === "appointment") {
         return (
             <View style={styles.appointmentCard}>
                 <View style={styles.row}>
@@ -190,18 +134,22 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
                         </Text>
 
                         <View style={styles.buttonRow}>
-                            <TouchableOpacity style={styles.joinBtn}>
-                                <Text numberOfLines={1} style={styles.joinText}>Join Call</Text>
-                            </TouchableOpacity>
+                            {status === "completed" && (
+                                <TouchableOpacity style={styles.joinBtn}>
+                                    <Text numberOfLines={1} style={styles.joinText}>Join Call</Text>
+                                </TouchableOpacity>
+                            )}
 
-                            <TouchableOpacity style={styles.detailBtn}>
-                                <Text numberOfLines={1} style={styles.detailText}>Details</Text>
-                            </TouchableOpacity>
+                            {status === "cancelled" && (
+                                <TouchableOpacity style={styles.detailBtn}>
+                                    <Text numberOfLines={1} style={styles.detailText}>Details</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </View>
             </View>
-        );
+        )
     }
 
     return (
@@ -231,8 +179,18 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
 };
 
 const NotificationsScreen = (props: any) => {
+
+    const {
+        notifications,
+        loading,
+        refreshNotifications,
+    } = useNotifications();
+
+    console.log("notificationsnotifications", notifications)
+
     const renderSection = (section: string, title: string) => {
         const data = notifications.filter(n => n.section === section);
+        console.log("data", data)
 
         if (data.length === 0) return null;
 
@@ -249,7 +207,7 @@ const NotificationsScreen = (props: any) => {
     return (
         <SafeAreaView style={styles.container}>
             {/* HEADER */}
-   <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
             <AppHeader
                 title="Notifications"
@@ -259,23 +217,11 @@ const NotificationsScreen = (props: any) => {
             // ✅ FIX
             />
 
-            {/* <View style={styles.header}>
-                <TouchableOpacity onPress={() => { props.navigation.goBack() }}>
-                    <Image
-                        source={Images.backIcon}
-                        style={styles.backIcon}
-                    />
-                </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>Notifications</Text>
-
-                <TouchableOpacity onPress={() => { }}>
-                    <Text style={styles.clear}>Clear All</Text>
-                </TouchableOpacity>
-            </View> */}
             <View style={{ paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
                 <FlatList
-                    data={[]}
+                    data={[1]}
+
                     renderItem={null}
                     ListHeaderComponent={
                         <>
@@ -296,7 +242,7 @@ export default NotificationsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        marginBottom:50,
+        marginBottom: 50,
         backgroundColor: '#FDFDFB',
 
     },
@@ -341,7 +287,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 14,
         padding: 12,
-        shadowColor:'#ffff',
+        shadowColor: '#ffff',
         marginBottom: 12,
     },
 

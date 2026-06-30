@@ -324,7 +324,7 @@ const TopSellingList: React.FC<Props> = ({ data, fav = true, setProductData, isG
                 style={styles.price}
               >
                 ₹
-                {item.selling_price}
+                {Math.floor(Number(item?.selling_price || 0))}
               </Text>
 
               <TouchableOpacity

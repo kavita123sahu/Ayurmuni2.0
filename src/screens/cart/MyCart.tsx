@@ -561,17 +561,14 @@ const MyCart = ({ navigation }: any) => {
                             styles.checkoutBtn,
                             {
                                 bottom: insets.bottom > 0
-                                    ? insets.bottom + 10
-                                    : 20,
+                                    ? insets.bottom : 10,
                             },
                         ]}
                     >
 
                         <Text
                             style={
-                                styles.checkoutText
-                            }
-                        >
+                                styles.checkoutText} >
                             Proceed To Checkout
                         </Text>
 
@@ -581,16 +578,11 @@ const MyCart = ({ navigation }: any) => {
                                 alignItems: 'flex-end',
                             }}
                         >
-                            {/* {loading ? (
-                        <ActivityIndicator
-                            color="#FFF"
-                            size="small"
-                        />
-                    ) : ( */}
+
                             <Text style={styles.checkoutPrice}>
                                 Rs. {Math.round(total)}
                             </Text>
-                            {/* )} */}
+
                         </View>
                     </TouchableOpacity>
                     )
@@ -698,8 +690,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFF',
         borderRadius: 20,
-        padding: 14,
-        marginBottom: 14,
+        padding: 10,
+        marginBottom: 10,
     },
 
     productTopRow: {

@@ -299,13 +299,13 @@ export const useAppointmentHistory = () => {
     const [loading, setLoading] = useState(false);
     const [AppointData, setAppointData] = useState<any[]>([]);
 
+    const [refreshing, setRefreshing] = useState(false);
+
     const getAllAppointment = useCallback(async () => {
         try {
             setLoading(true);
 
-            const res = await _CONSULT_SERVICES.getConsultHistory({
-
-            });
+            const res = await _CONSULT_SERVICES.getConsultHistory({});
             console.log("consulresposne", res);
 
             setAppointData(res?.data?.results || []);
@@ -318,11 +318,25 @@ export const useAppointmentHistory = () => {
         }
     }, []);
 
+
+    const refreshUpcoming = useCallback(async () => {
+        try {
+            setRefreshing(true);
+
+            await Promise.all([
+                getAllAppointment()
+            ]);
+
+        } finally {
+            setRefreshing(false);
+        }
+    }, []);
+
     useEffect(() => {
         getAllAppointment();
     }, [getAllAppointment]);
 
-    return { loading, AppointData, getAllAppointment };
+    return { loading, AppointData, refreshUpcoming };
 };
 
 

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import *as _HOME_SERVICES from "../services/HomeServices";
 import * as _PRODUCT_SERVICES from "../services/ProductServices";
 import *as _PROFILE_SERVICES from "../services/ProfileServices";
+import * as _CONSULT_SERVICES from "../services/ConsultServce";
+import * as _YOGA_SERVICES from '../services/YogaServices'
 
 export const useHomeData = () => {
 
-    const [loading, setLoading] =
-        useState(true);
+    const [loading, setLoading] = useState(true);
 
     const [refreshing, setRefreshing] = useState(false);
 
@@ -16,9 +17,11 @@ export const useHomeData = () => {
     const [loadingProducts, setloadingProducts] =
         useState(false);
 
+    const [loadingNotification, setloadingNotification] =
+        useState(false);
     const [loadingDoctors, setloadingDoctors] =
         useState(false);
-    const [loadingCustomer, setLoadingCustomer] = useState(false);
+    const [loadingCustomer, setLoadingCustomer] = useState(true);
 
     const [customerData, setCustomerData] = useState<any | null>(null);
 
@@ -26,6 +29,9 @@ export const useHomeData = () => {
         useState<any[]>([]);
 
     const [productData, setProductData] =
+        useState<any[]>([]);
+
+    const [YogaSession, setYogasession] =
         useState<any[]>([]);
 
     const [SuggestDoctor, setSuggestDoctor] =
@@ -84,6 +90,26 @@ export const useHomeData = () => {
     }, []);
 
 
+    const fetchYogaSession = useCallback(async () => {
+        try {
+            setloadingNotification(true);
+
+            const res =
+                await _YOGA_SERVICES.getYogaSession();
+            console.log("getYogaSessiongetYogaSession", res);
+
+            setYogasession(
+                res?.data ||[],
+            );
+
+
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setloadingNotification(false);
+        }
+    }, []);
+
 
     const fetchCustomerData = useCallback(async () => {
         try {
@@ -91,8 +117,9 @@ export const useHomeData = () => {
 
             const res =
                 await _PROFILE_SERVICES.user_profile();
-
+            console.log("customerdata", res)
             if (res?.status === 200) {
+                console.log("customerres", res?.data)
                 setCustomerData(res?.data || null);
             }
 
@@ -113,6 +140,7 @@ export const useHomeData = () => {
         fetchCategories();
         fetchDoctors();
         fetchProducts();
+        fetchYogaSession()
         fetchCustomerData();
     }, []);
 
@@ -138,6 +166,7 @@ export const useHomeData = () => {
         SuggestDoctor,
         productData,
         customerData,
+        YogaSession,
 
 
         loadingCustomer,

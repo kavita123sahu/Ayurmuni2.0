@@ -92,7 +92,13 @@ const RenderAppoint = ({
 
 
     );
-    console.log("itemitemitemitem-->", item)
+    const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
+        ? item.rawData.doctor.health_diseases
+            .map(disease => disease.name)
+            .join(", ")
+        : "";
+
+    console.log("therapiestherapies", therapies)
     return isHorizontal ? (
         <TouchableOpacity
             style={[styles.card, styles.horizontalCard]}
@@ -145,28 +151,33 @@ const RenderAppoint = ({
                         style={styles.horizontalSpeciality}
                         numberOfLines={1}
                     >
-                        {item.specialty}
+
+                        {therapies?.split(',').slice(0, 2).join(', ')}
+
+
+                        {/* {item.specialty}
+                         */}
                     </Text>
                 </View>
             </View>
 
-       {item?.rawData?.follow_up?.date && (
-    <View
-        style={{
-            alignSelf: 'flex-end',
-            marginBottom: 8,
-        }}>
-        <View
-            style={[
-                styles.followUP,
-                { backgroundColor: '#E8F5E9' },
-            ]}>
-            <Text style={styles.followUPText}>
-                Follow Up • {item.rawData.follow_up.date}
-            </Text>
-        </View>
-    </View>
-)}
+            {item?.rawData?.follow_up?.date && (
+                <View
+                    style={{
+                        alignSelf: 'flex-end',
+                        marginBottom: 8,
+                    }}>
+                    <View
+                        style={[
+                            styles.followUP,
+                            { backgroundColor: '#E8F5E9' },
+                        ]}>
+                        <Text style={styles.followUPText}>
+                            Follow Up • {item.rawData.follow_up.date}
+                        </Text>
+                    </View>
+                </View>
+            )}
             <DateTimeCard
                 item={item}
                 isHorizontal
@@ -230,7 +241,9 @@ const RenderAppoint = ({
                             </Text>
 
                             <Text style={Styles.specialty}>
-                                {item.specialty}
+                                {/* {item.specialty} */}
+                                {therapies?.split(',').slice(0, 2).join(', ')}
+
                             </Text>
                         </View>
 

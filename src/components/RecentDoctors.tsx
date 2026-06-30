@@ -16,7 +16,7 @@ interface Props {
   date: string;
 
   onPressReceipt?: () => void;
-  onPressReschedule?: () => void;
+  onPressReschedule?: (item: any) => void;
 }
 
 const RecentDoctors: React.FC<Props> = ({

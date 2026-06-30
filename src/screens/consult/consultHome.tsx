@@ -83,9 +83,11 @@ const ConsultScreen = () => {
               )
             }
             onPressReschedule={() =>
-              navigation.navigate(
-                'DoctorSlot',
-              )
+              // navigation.navigate(
+              //   'DoctorSlot',
+                
+              // )
+              navigation.navigate('DoctorSlot')
             }
           />
         );

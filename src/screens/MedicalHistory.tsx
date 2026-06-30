@@ -644,9 +644,13 @@ const MedicalHistory = ({ navigation }: any) => {
 
             if (isLast) {
 
-                navigation.navigate('HomeStack', {
-                    screen: 'Home'
-                })
+
+                navigation.replace('PrakritiProfile');
+
+
+                // navigation.navigate('HomeStack', {
+                //     screen: 'Home'
+                // })
                 // navigation.replace(
                 //     'AssessmentType',
                 //     {

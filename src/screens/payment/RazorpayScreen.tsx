@@ -60,7 +60,7 @@ const RazorpayScreen = ({
         slotId,
         date,
         concern,
-        selectedTime,medical_record_ids
+        selectedTime, medical_record_ids
     } = route?.params || {};
 
 
@@ -69,7 +69,7 @@ const RazorpayScreen = ({
         slotId,
         date,
         concern,
-        selectedTime, doctorInfo,medical_record_ids ,"medical_record_ids")
+        selectedTime, doctorInfo, medical_record_ids, "medical_record_ids")
 
 
 
@@ -89,65 +89,13 @@ const RazorpayScreen = ({
 
 
 
-    // const confirmExit = useCallback(() => {
-    //     Alert.alert(
-    //         'Cancel payment',
-    //         'Do you want to cancel payment?',
-    //         [
-    //             {
-    //                 text: 'No',
-    //                 style: 'cancel',
-    //             },
-    //             {
-    //                 text: 'Yes',
-    //                 onPress: async () => {
-    //                     // Clear local reservation
-    //                     try {
-    //                         await Utils.storeData(STORAGE_KEY, null);
-    //                     } catch (e) {
-    //                         console.log('clear storage error', e);
-    //                     }
-    //                     navigation.goBack();
-    //                 },
-    //             },
-    //         ],
-    //         { cancelable: true },
-    //     );
-    // }, [navigation]);
-
-    /* -------------------------------------------------------------------------- */
-    /*                             DISABLE BACK PRESS                             */
-    /* -------------------------------------------------------------------------- */
-
-    // useFocusEffect(
-    //     useCallback(() => {
-
-    //         const onBackPress = () => {
-    //             confirmExit();
-    //             return true;
-    //         };
-
-    //         const subscription = BackHandler.addEventListener(
-    //             'hardwareBackPress',
-    //             onBackPress,
-    //         );
-
-    //         return () => subscription.remove();
-
-    //     }, [confirmExit]),
-    // );
-
-    /* -------------------------------------------------------------------------- */
-    /*                                PRICE DATA                                  */
-    /* -------------------------------------------------------------------------- */
-
     const totalAmount = useMemo(() => {
 
         return Number(
-            doctorInfo?.consult_fee?.amount || 0,
+            slotId?.amount || 0,
         );
 
-    }, [doctorInfo]);
+    }, [slotId]);
 
     /* -------------------------------------------------------------------------- */
     /*                              PAYMENT HANDLER                               */
@@ -162,7 +110,7 @@ const RazorpayScreen = ({
 
             const paymentResponse =
                 await _CONSULT_SERVICES.createConsultationPayment({
-                    slot_id: slotId,
+                    slot_id: slotId?.id,
                     concern: concern,
                     medical_record_ids: medical_record_ids
 
@@ -302,10 +250,23 @@ const RazorpayScreen = ({
 
                             <View style={styles.row}>
 
-                                <Image
+                                {doctorInfo?.profile_image ? (
+                                    <Image
+                                        source={{ uri: doctorInfo?.profile_image }}
+                                        style={styles.avatar}
+                                    />
+                                ) : (
+                                    <View style={styles.avatarFallback}>
+                                        <Text style={styles.avatarLetter}>
+                                            {doctorInfo?.full_name?.charAt(0)?.toUpperCase() || ''}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {/* <Image
                                     source={Images.doctorImage}
                                     style={styles.avatar}
-                                />
+                                /> */}
 
                                 <View style={{ flex: 1 }}>
 
@@ -549,6 +510,20 @@ const styles = StyleSheet.create({
         borderRadius: 18,
 
         marginRight: 14,
+    },
+
+    avatarFallback: {
+        width: 90,
+        height: 90,
+        borderRadius: 16,
+        backgroundColor: Colors.primaryColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarLetter: {
+        fontSize: 32,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsBold,
     },
 
     doctorName: {

@@ -16,7 +16,8 @@ import { Fonts } from '../common/Fonts';
 const { width } = Dimensions.get("window");
 
 // 🔥 Responsive scaling
-const scale = width / 400;
+// const scale = width / 400;
+const scale = Math.min(width / 400, 1);
 
 const TAB_HEIGHT = 72 * scale;
 // const INNER_SIZE = 60 * scale;
@@ -54,7 +55,7 @@ const CustomeTab = (props: any) => {
     };
 
     return (
-        <View style={[styles.wrapper, { bottom: insets.bottom + 10 }]}>
+        <View style={[styles.wrapper, { bottom: insets.bottom + 0 }]}>
             <View style={styles.container}>
 
                 {/* Blur for iOS */}
@@ -62,14 +63,14 @@ const CustomeTab = (props: any) => {
                     <View
                         style={[
                             StyleSheet.absoluteFill,
-                            { backgroundColor: 'rgba(0,0,0,0.4)' },
+                            { backgroundColor: 'rgba(255,255,255,0.25)' },
                         ]}
                     />
                 ) : (
                     <View
                         style={[
                             StyleSheet.absoluteFill,
-                            { backgroundColor: 'rgba(255,255,255,0.9)' }
+                            { backgroundColor: 'rgba(255,255,255,0.25)' }
                         ]}
                     />
                 )}
@@ -96,25 +97,28 @@ const CustomeTab = (props: any) => {
                                 <Image
                                     source={getIcon(route.name)}
                                     style={{
-                                        width: 22 * scale,
-                                        height: 22 * scale,
+                                        width: 22,
+                                        height: 22,
                                         tintColor: isFocused
                                             ? Colors.primaryColor
-                                            : '#A0AAB3',
+                                            : "#A0AAB3",
                                     }}
                                 />
 
                                 <Text
-                                    style={{
-                                        fontSize: 11 * scale,
-                                        marginTop: 3,
-                                        fontFamily: isFocused
-                                            ? Fonts.PoppinsSemiBold
-                                            : Fonts.PoppinsMedium,
-                                        color: isFocused
-                                            ? Colors.primaryColor
-                                            : '#A0AAB3',
-                                    }}
+                                    numberOfLines={1}
+                                    adjustsFontSizeToFit
+                                    minimumFontScale={0.8}
+                                    ellipsizeMode="tail"
+                                    style={[
+                                        styles.tabLabel,
+                                        {
+                                            color: isFocused ? Colors.primaryColor : "#A0AAB3",
+                                            fontFamily: isFocused
+                                                ? Fonts.PoppinsSemiBold
+                                                : Fonts.PoppinsMedium,
+                                        },
+                                    ]}
                                 >
                                     {route.name}
                                 </Text>
@@ -152,63 +156,74 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
 
+    backgroundColor: 'rgba(255,255,255,0.92)',
         paddingHorizontal: 20,
     },
 
-    container: {
-        flex: 1,
+   container: {
+    flex: 1,
+    height: TAB_HEIGHT,
+    borderRadius: 999,
 
-        height: TAB_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
 
-        borderRadius: 999,
+    paddingHorizontal: 10,
+    overflow: 'hidden',
 
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+    // 🔥 Glass look without blur package
+    backgroundColor: 'rgba(255,255,255,0.92)',
 
-        paddingHorizontal: 10,
+    // Border
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
 
-        overflow: 'hidden',
+    // Android Shadow
+    elevation: 14,
 
-        backgroundColor: 'rgba(255,255,255,0.92)',
-
-        elevation: 10,
-
-        shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        shadowOffset: {
-            width: 0,
-            height: 6,
-        },
+    // iOS Shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: {
+        width: 0,
+        height: 8,
     },
+},
 
     tab: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
-
+    tabLabel: {
+        marginTop: 3,
+        fontSize: 11,
+        textAlign: "center",
+        width: "100%",
+        flexShrink: 1,
+    },
     iconWrapper: {
+        minWidth: 52,
+        minHeight: 52,
         width: INNER_SIZE,
         height: INNER_SIZE,
-
-        borderRadius: INNER_SIZE / 2,
-
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 999,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
     },
 
     activeWrapper: {
+        minWidth: 52,
+        minHeight: 52,
         width: INNER_SIZE,
         height: INNER_SIZE,
-
-        borderRadius: INNER_SIZE / 2,
-
-        backgroundColor: '#E7F1EE',
-
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 999,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
     },
     consultBtn: {
         width: CONSULT_SIZE,

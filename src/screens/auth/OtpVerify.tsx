@@ -37,7 +37,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
     const phoneNumber = props.route?.params?.phone;
     const NEW_CUSTOMER = props.route?.params?.customer;
 
-    console.log("is-new_customerrr", NEW_CUSTOMER);
+    console.log("new customer", NEW_CUSTOMER);
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -105,24 +105,24 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             setIsLoading(false);
         }
     };
-    const loadStoredOtp = async () => {
-        try {
-            const storedOtp =
-                await Utils.getData("_OTP");
+    // const loadStoredOtp = async () => {
+    //     try {
+    //         const storedOtp =
+    //             await Utils.getData("_OTP");
 
-            if (storedOtp) {
-                setOtp(
-                    storedOtp.toString().split(""),
-                );
-            }
-        } catch (error) {
-            console.log(error);
-        }
-    };
+    //         if (storedOtp) {
+    //             setOtp(
+    //                 storedOtp.toString().split(""),
+    //             );
+    //         }
+    //     } catch (error) {
+    //         console.log(error);
+    //     }
+    // };
 
-    useEffect(() => {
-        loadStoredOtp();
-    }, []);
+    // useEffect(() => {
+    //     loadStoredOtp();
+    // }, []);
 
     const LoginVerfiyOTP = async () => {
         Keyboard.dismiss();
@@ -144,6 +144,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
             console.log("sverifyyyy---otpppppp", send_data);
             const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
+            console.log("verify_otp_login_response--->", response);
 
 
             if (response?.success) {
@@ -153,7 +154,15 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                 Utils.storeData('_TOKEN', response?.data?.access);
                 Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
 
-                props.navigation.replace('HomeStack', { screen: 'Home' });
+
+                const customerOnboard = response?.data?.customer;
+
+                if (!customerOnboard || customerOnboard.customer_id == null) {
+                    props.navigation.replace('HomeStack', { screen: 'Onboarding' });
+
+                } else {
+                    props.navigation.replace('HomeStack', { screen: 'Home' });
+                }
 
             }
 
@@ -223,8 +232,8 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
             const response: any = await _AUTH_SERVICE.send_otp(send_data);
             console.log("resend_otp_response", response?.data?.otp);
-            Utils.storeData("_OTP", response?.data?.otp)
-            await loadStoredOtp();
+            // Utils.storeData("_OTP", response?.data?.otp)
+            // await loadStoredOtp();
 
             setIsLoading(false);
             if (response?.success) {

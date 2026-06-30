@@ -36,24 +36,14 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 
 const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
+
     const [selectedRecords, setSelectedRecords] =
         useState<string[]>([]);
     const { doctorDetails } = route?.params || {};
 
     const { patientsRecord, fetchPatientsRecord, } = useMedicalRecord();
 
-    // const {
-    //     selectFile,
-    //     openCamera,
-    // } = useMedicalUpload(
-    //     fetchPatientsRecord,
-    //     (recordId) => {
-    //         setSelectedRecords(prev => [
-    //             ...prev,
-    //             recordId,
-    //         ]);
-    //     },
-    // );
+
     const {
         selectFile,
         CameraUpload,
@@ -112,7 +102,7 @@ const DoctorSlot = (props: any) => {
     }, [doctorDetails?.id]);
 
     const [selectedDate, setSelectedDate] = useState(getTodayDate());
-    const [selectedSlot, setSelectedSlot] = useState('');
+    const [selectedSlot, setSelectedSlot] = useState({});
 
     const [concern, setConcern] = useState('');
 
@@ -167,7 +157,7 @@ const DoctorSlot = (props: any) => {
                 id: doctorIdParam,
                 date,
             });
-            console.log("slotresposne", resp);
+            console.log("slotresposne--->>>", resp);
             setSlotsData(resp?.data);
 
         } finally {
@@ -202,17 +192,17 @@ const DoctorSlot = (props: any) => {
     useEffect(() => {
         if (!selectedSlot && slotsData?.slots?.length) {
             const firstAvailable = slotsData.slots.find((s: any) => s.status === 'available');
-            if (firstAvailable) setSelectedSlot(firstAvailable.id);
+            if (firstAvailable) setSelectedSlot(firstAvailable);
         }
     }, [slotsData]);
 
     const handleContinue = () => {
-        console.log("selectedRecordsselectedRecords", selectedRecords)
-     
-        if (!selectedSlot) return;
+        console.log("selectedSlotselectedSlot", selectedSlot?.id)
+
+        if (!selectedSlot?.id) return;
 
         const selectedSlotObj = slotsData?.slots?.find(
-            (s: any) => String(s.id) === String(selectedSlot)
+            (s: any) => String(s.id) === String(selectedSlot?.id)
         );
 
         navigation.navigate('RazorpayScreen', {
@@ -224,7 +214,7 @@ const DoctorSlot = (props: any) => {
                 selectedSlotObj?.displayTime ||
                 selectedSlotObj?.start_time,
             concern,
-            
+
             medical_record_ids: selectedRecords,
         });
     };
@@ -274,7 +264,19 @@ const DoctorSlot = (props: any) => {
                             <View style={styles.avatarBgWrapper}>
                                 {/* <ImageBackground source={Images.BackgroundImage} style={styles.avatarBg} imageStyle={{ borderRadius: 100 }}> */}
                                 <View style={styles.avatarWrapper}>
-                                    <Image source={Images.doctorImage} style={styles.avatar} />
+                                    {doctorInfo?.profile_image ? (
+                                        <Image
+                                            source={{ uri: doctorInfo?.profile_image }}
+                                            style={styles.avatar}
+                                        />
+                                    ) : (
+                                        <View style={styles.avatarFallback}>
+                                            <Text style={styles.avatarLetter}>
+                                                {doctorInfo?.full_name?.charAt(0)?.toUpperCase() || ''}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {/* <Image source={Images.doctorImage} style={styles.avatar} /> */}
                                 </View>
                                 {/* </ImageBackground> */}
                             </View>
@@ -352,10 +354,11 @@ const DoctorSlot = (props: any) => {
 
                                                 return (
                                                     <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable}
-                                                        onPress={() => setSelectedSlot(slot.id)}
+                                                        // onPress={() => setSelectedSlot(slot.id)}
+                                                        onPress={() => setSelectedSlot(slot)}
                                                         style={[
                                                             styles.slotBtn,
-                                                            selectedSlot === slot.id && styles.activeSlotBtn,
+                                                            selectedSlot?.id === slot.id && styles.activeSlotBtn,
 
                                                             isReserved && {
                                                                 backgroundColor: '#FEF3C7',
@@ -370,7 +373,7 @@ const DoctorSlot = (props: any) => {
 
                                                     >
 
-                                                        <Text style={[styles.slotText, selectedSlot === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
+                                                        <Text style={[styles.slotText, selectedSlot?.id === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
 
                                                         {isBooked && <Text style={styles.slotStatus}>Booked</Text>}
 
@@ -440,10 +443,10 @@ const DoctorSlot = (props: any) => {
                     <View style={styles.footer}>
                         <View>
                             <Text style={styles.feeLabel}>Consult Fee</Text>
-                            <Text style={styles.price}>Rs. {slotsData?.consult_fee?.amount ?? doctorDetails?.followup_fee ?? 0}</Text>
+                            <Text style={styles.price}>Rs {selectedSlot?.amount ?? doctorDetails?.consultation_fee ?? 0}</Text>
                         </View>
 
-                        <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot || loadingSlots || groupedSlots.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={handleContinue}>
+                        <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={handleContinue}>
                             <Ionicons name="card-outline" size={18} color="#FFFFFF" />
                             <Text style={styles.payText}>{loadingSlots ? 'Loading...' : 'Continue'}</Text>
                         </TouchableOpacity>
@@ -467,6 +470,21 @@ const styles = StyleSheet.create({
 
     avatarWrapper: { width: 105, height: 105, borderRadius: 24, borderWidth: 1, overflow: 'hidden', borderColor: '#DDEBE8', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginBottom: 12, padding: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
     avatar: { width: 90, height: 90, borderRadius: 16, resizeMode: 'cover' },
+
+    avatarFallback: {
+        width: 90,
+        height: 90,
+        borderRadius: 16,
+        backgroundColor: Colors.primaryColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarLetter: {
+        fontSize: 32,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsBold,
+    },
+
     headerTitle: { fontSize: 22, color: '#1E293B', fontFamily: Fonts.PoppinsSemiBold },
     profileContainer: { alignItems: 'center', marginTop: 18 },
     doctorName: { marginTop: 10, marginBottom: -5, fontSize: 20, fontFamily: Fonts.PoppinsSemiBold, color: '#1E293B' },

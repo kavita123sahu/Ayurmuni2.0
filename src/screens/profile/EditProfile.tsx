@@ -365,31 +365,31 @@ const EditProfile = ({
 
                                         {/* IMAGE */}
 
-                                        {/* {formData?.profile_picture ? ( */}
-                                        <Image
-                                            source={{
-                                                uri: formData.profile_picture,
-                                            }}
-                                            style={styles.avatar}
-                                            onLoad={() =>
-                                                console.log('IMAGE LOADED')
-                                            }
-                                            onError={(e) =>
-                                                console.log(
-                                                    'IMAGE ERROR',
-                                                    e.nativeEvent,
-                                                )
-                                            }
-                                        />
-                                        {/* ) : (
-                                        //     <View style={styles.initialWrapper}>
-                                        //         <Text style={styles.initialText}>
-                                        //             {formData.first_name
-                                        //                 ?.charAt(0)
-                                        //                 ?.toUpperCase()}
-                                        //         </Text>
-                                        //     </View>
-                                        )} */}
+                                        {formData?.profile_picture ? (
+                                            <Image
+                                                source={{
+                                                    uri: formData.profile_picture,
+                                                }}
+                                                style={styles.avatar}
+                                                onLoad={() =>
+                                                    console.log('IMAGE LOADED')
+                                                }
+                                                onError={(e) =>
+                                                    console.log(
+                                                        'IMAGE ERROR',
+                                                        e.nativeEvent,
+                                                    )
+                                                }
+                                            />
+                                        ) : (
+                                            <View style={styles.initialWrapper}>
+                                                <Text style={styles.initialText}>
+                                                    {formData.first_name
+                                                        ?.charAt(0)
+                                                        ?.toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        )}
 
                                         {/* LOADER */}
 

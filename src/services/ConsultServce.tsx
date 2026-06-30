@@ -493,5 +493,16 @@ export const verifyConsultationPayment = async (data: object) => {
 
 
 
+export const getNotification = async () => {
+    try {
+        const response = await apiClient('notifications', {
+            method: 'GET'
+        });
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
 
 

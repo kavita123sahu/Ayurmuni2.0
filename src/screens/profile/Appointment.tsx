@@ -45,13 +45,18 @@ const AppointmentScreen = () => {
     useState<any>(null);
 
 
+
+
   const normalizedData = useMemo(() => {
     const data = AppointData || [];
 
     return data.map(item => ({
       consultation_id: item.consultation_id,
       doctorName: item.doctor?.doctor_name || "",
-      specialty: item.doctor?.doctor_specialization || "General Physician",
+      therapies: Array.isArray(item?.health_diseases)
+        ? item.health_diseases.map(disease => disease.name).join(", ")
+        : "",
+      // specialty: item.doctor?.doctor_specialization || "General Physician",
       date: item.appointment_date,
       time: item.start_time,
       status: item.appointment_status,
@@ -119,9 +124,10 @@ const AppointmentScreen = () => {
   ) => {
     console.log("appointmentId", appointmentId);
     console.log("payload", payload);
+
     const res = await handleAppointmentAction({
       appointmentId,
-      action: "reschedule",
+      action: "confirm_reschedule",
       availability: payload.availability,
       reschedule_reason:
         payload.reschedule_reason,
@@ -208,7 +214,7 @@ const AppointmentScreen = () => {
           flexGrow: 1,
         }}
         ListEmptyComponent={
-          !loading ? (
+          appointmentData.length === 0 ? (
             <EmptyState
               image={Images.starEmpty} // apni image
               title={
@@ -234,6 +240,7 @@ const AppointmentScreen = () => {
           setShowRescheduleModal(false);
           setSelectedAppointment(null);
         }}
+        isRescheduleRequest={selectedAppointment?.status.toLowerCase() === 'reschedule'}
         onSubmit={(payload) => {
           handleReschedule(
             selectedAppointment?.consultation_id,

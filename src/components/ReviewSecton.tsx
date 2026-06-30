@@ -10,14 +10,10 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
 
   console.log("reviewsalll", reviews);
   const visibleReviews = reviews?.slice(0, 3);
+console.log("vissblereviewww", visibleReviews)
 
-
-  const getInitials = (patient_name: string) => {
-    return patient_name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+  const getInitials = (name: string) => {
+    return name?.split(" ")?.map((n) => n[0])?.join("").toUpperCase();
   };
 
   const ratingData = useMemo(() => {
@@ -60,9 +56,9 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
   const MAX_VISIBLE_IMAGES = 4;
 
   const allImages = useMemo(() => {
-    const reviewImages = reviews?.flatMap((item: any) => item.image_urls || []);
+    const reviewImages = reviews?.flatMap((item: any) => item?.image_urls || []);
 
-    const mediaImages = reviews?.map((item: any) => item.media_url)
+    const mediaImages = reviews?.map((item: any) => item?.media_url ?? '')
       .filter(Boolean);
 
     return [...mediaImages, ...reviewImages];
@@ -89,14 +85,14 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
 
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={styles.avgRating}>
-            {ratingData.average}
+            {ratingData?.average}
           </Text>
 
           <Text style={styles.stars}>⭐</Text>
 
         </View>
         <Text style={styles.totalReviews}>
-          Based on the {ratingData.totalReviews.toLocaleString()} ratings by veryfied buyer
+          Based on the {ratingData?.totalReviews.toLocaleString()} ratings by veryfied buyer
         </Text>
 
       </View>
@@ -107,11 +103,11 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
           .map((item, index) => {
 
             const remaining =
-              allImages.length - MAX_VISIBLE_IMAGES;
+              allImages?.length - MAX_VISIBLE_IMAGES;
 
             const isLastVisible =
               index === MAX_VISIBLE_IMAGES - 1 &&
-              allImages.length > MAX_VISIBLE_IMAGES;
+              allImages?.length > MAX_VISIBLE_IMAGES;
 
             return (
               <TouchableOpacity
@@ -146,29 +142,29 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
       </View>
 
       {/* Reviews List */}
-      {visibleReviews.map((item) => (
+      {visibleReviews?.map((item) => (
         <View key={item.id} style={styles.reviewCard}>
           <View style={styles.reviewTop}>
 
             {/* Avatar */}
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {getInitials(item.patient_name)}
+                {getInitials(item?.name ?? 'NA')}
               </Text>
             </View>
 
             <View style={{ flex: 1, marginLeft: 10 }}>
               <View style={styles.nameRow}>
-                <Text style={styles.name}>{item.patient_name}</Text>
+                <Text style={styles.name}>{item?.name ?? ''}</Text>
                 <Text style={styles.stars}>
-                  {renderStars(item.rating)} ( {item?.rating} )
+                  {renderStars(item?.rating ?? '')} ( {item?.rating ?? ''} )
                 </Text>
               </View>
             </View>
           </View>
 
           {/* Review Text */}
-          <Text style={styles.reviewText}>{item.review}</Text>
+          <Text style={styles.reviewText}>{item?.review ?? ''}</Text>
         </View>
       ))}
 

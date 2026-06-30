@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import { topSelling } from '../../common/DataInterface';
 import { Colors } from '../../common/Colors';
+import * as _PRODUCT_SERVICES from '../../services/ProductServices';
 
 
 const ProductsScreen = () => {
@@ -48,15 +49,43 @@ const ProductsScreen = () => {
     { id: '8', name: 'Drinks', icon: categoryImage },
   ];
 
-  
+  const [productData, setProductData] = React.useState([]);
+  const [loadingProducts, setloadingProducts] = React.useState(false);
+
+  useEffect(() => {
+    fetchProducts
+  }, [])
+
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      setloadingProducts(true);
+
+      const res =
+        await _PRODUCT_SERVICES.getProduct();
+      console.log(res, "productttttttttttt");
+      setProductData(
+        res?.data?.results || [],
+      );
+
+
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setloadingProducts(false);
+    }
+  }, []);
+
+
+
   return (
 
     <SafeAreaView style={{
-      flex: 1, marginBottom: 30,
+      flex: 1,
       paddingHorizontal: 20, backgroundColor: '#FDFDFB'
     }}>
 
-        <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
+      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
 
 
       <Header
@@ -68,7 +97,7 @@ const ProductsScreen = () => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{}}
       >
 
         <SearchBar
@@ -97,7 +126,7 @@ const ProductsScreen = () => {
 
         <SectionHeader title="Top Selling Products" actionText="View all" />
 
-        <TopSellingList data={topSelling} navigation={navigation} setProductData={()=>""} />
+        <TopSellingList data={productData} navigation={navigation} setProductData={() => ""} />
 
       </ScrollView>
     </SafeAreaView>

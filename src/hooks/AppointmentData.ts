@@ -14,11 +14,6 @@ type ActionParams = {
 export const handleAppointmentAction = async ({
   appointmentId,
   action,
-  availability,
-  reschedule_reason,
-  cancellation_reason,
-  onSuccess,
-  onFinally,
 }: ActionParams) => {
   try {
     const payload: any = {
@@ -26,13 +21,20 @@ export const handleAppointmentAction = async ({
     };
 
     if (action === "reschedule") {
-      payload.availability = availability;
-      payload.reschedule_reason = reschedule_reason;
+      payload.action = "reschedule";
+      payload.availability = payload?.availability;
+      payload.reschedule_reason = payload?.reschedule_reason;
     }
 
     if (action === "cancel") {
+      payload.action = "cancel";
       payload.cancellation_reason =
-        cancellation_reason;
+        payload?.cancellation_reason;
+    }
+    else {
+      payload.action = "confirm_reschedule";
+      payload.confirmation_reason =
+        payload?.confirmation_reason;
     }
 
     const res = await appointmentActionAPI({
@@ -46,7 +48,7 @@ export const handleAppointmentAction = async ({
 
     if (res?.success) {
       showSuccessToast(message, "success");
-      onSuccess?.();
+      // onSuccess?.();
     }
 
     return res;
@@ -65,6 +67,6 @@ export const handleAppointmentAction = async ({
 
     throw error;
   } finally {
-    onFinally?.();
+    // onFinally?.();
   }
 };

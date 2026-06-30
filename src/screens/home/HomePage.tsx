@@ -55,6 +55,8 @@ const HomePage: React.FC = (props: any) => {
     productData,
     customerData,
     setProductData,
+    YogaSession,
+
 
     loadingCategories,
     loadingDoctors,
@@ -63,12 +65,11 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
-
-
-  const { AppointData, getAllAppointment, loading } = useAppointmentHistory();
+  const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
 
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
-  console.log("appointdatta", AppointData);
+
+  console.log("YogaSessionYogaSessionYogaSession", YogaSession);
 
   const normalizedData = useMemo(() => {
     if (!Array.isArray(AppointData)) {
@@ -78,9 +79,14 @@ const HomePage: React.FC = (props: any) => {
     return AppointData.map(item => ({
       consultation_id: item?.consultation_id,
       doctorName: item?.doctor?.doctor_name || "",
-      specialty:
-        item?.doctor?.doctor_specialization ||
-        "General Physician",
+      // specialty:
+      //   item?.doctor?.doctor_specialization ||
+      //   "General Physician",
+      therapies: Array.isArray(item?.rawData?.doctor?.health_diseases)
+        ? item.rawData.doctor.health_diseases
+          .map(disease => disease.name)
+          .join(", ")
+        : "",
       date: item?.appointment_date,
       time: item?.start_time,
       status: item?.appointment_status,
@@ -103,16 +109,18 @@ const HomePage: React.FC = (props: any) => {
       return dateA - dateB;
     });
   }, [normalizedData]);
+
   console.log('sortedUpcomingAppointments', sortedUpcomingAppointments)
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
       await refreshHomeData();
+      await refreshUpcoming();
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData]);
+  }, [refreshHomeData, refreshUpcoming]);
 
 
   // const data = useMemo(() => [
@@ -137,16 +145,23 @@ const HomePage: React.FC = (props: any) => {
   //       customerData?.medical_history_progress ?? 0,
   //   },
   // ], [customerData]);
-
-
-  useEffect(() => {
-    if (!customerData) return;
-    setShowPrakritiModal(
-      customerData?.prakriti_progress < 100
-    );
+  const progressPercentage = useMemo(() => {
+    if (customerData?.prakriti_progress != null) {
+      return Math.round(customerData.prakriti_progress);
+    }
+    return null;
   }, [customerData]);
+  useEffect(() => {
+    if (
+      loadingCustomer ||
+      !customerData ||
+      customerData?.prakriti_progress == null
+    ) {
+      return;
+    }
 
-
+    setShowPrakritiModal(customerData.prakriti_progress < 100);
+  }, [loadingCustomer, customerData]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -156,6 +171,24 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData();
   }, []);
 
+  const ComingSoonCard = ({ title, icon }) => (
+    <View style={styles.comingSoonCard}>
+      <View style={styles.iconContainer}>
+        <Text style={styles.icon}>{icon}</Text>
+      </View>
+
+      <Text style={styles.comingSoonTitle}>{title}</Text>
+
+      <Text style={styles.comingSoonSubtitle}>
+        We’re preparing personalized recommendations for you.
+        Stay tuned for upcoming Ayurvedic wellness features.
+      </Text>
+
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>Coming Soon</Text>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -180,6 +213,10 @@ const HomePage: React.FC = (props: any) => {
             onRefresh={onRefresh}
           />
         }
+        contentContainerStyle={{
+          paddingBottom: 110, // ya TAB_HEIGHT + 30
+        }}
+        nestedScrollEnabled
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
@@ -224,6 +261,7 @@ const HomePage: React.FC = (props: any) => {
                 <SectionHeader
                   title="Upcoming Appointments"
                   actionText="View all"
+                  onPress={() => props.navigation.navigate('Appointments')}
                 />
                 <HorizontalAppointmentSkeleton />
               </>
@@ -233,10 +271,13 @@ const HomePage: React.FC = (props: any) => {
                   title="Upcoming Appointments"
                   actionText={sortedUpcomingAppointments.length > 1
                     ? 'View all'
-                    : ''}
+                    : ''
+                  }
+                  onPress={() => props.navigation.navigate('Appointments')}
                 />
                 <FlatList
                   horizontal
+                 
                   data={sortedUpcomingAppointments}
                   keyExtractor={(item, index) =>
                     `${item?.consultation_id || index}`
@@ -326,28 +367,63 @@ const HomePage: React.FC = (props: any) => {
               </>
             ) : null}
 
+            {YogaSession.length > 0 && (
+              <>
+                <SectionHeader title="Yoga’s" actionText={YogaSession.length > 1
+                  ? 'View all'
+                  : ''} />
 
 
-            <SectionHeader title="Yoga’s" actionText="View all" />
+                <SuggestedCard data={YogaSession} navigation={props.navigation} />
+              </>)}
 
 
-            <SuggestedCard data={topSelling1} navigation={props.navigation} />
+            {YogaSession.length > 0 && (
+              <>
+                <SectionHeader title="Suggested Diet Plan" actionText={YogaSession.length > 1
+                  ? 'View all'
+                  : ''} />
 
 
-            <SectionHeader title="Suggested Diet Plan" actionText="View all" />
+                <SuggestedCard data={YogaSession} navigation={props.navigation} />
+              </>)}
 
 
-            <SuggestedCard data={topSelling2} navigation={props.navigation} />
+            {YogaSession.length > 0 && (
+              <>
+                <SectionHeader title="Panchakarma" actionText={YogaSession.length > 1
+                  ? 'View all'
+                  : ''} />
 
-            <SectionHeader title="Panchakarma" actionText="View all" />
+                <SuggestedCard data={YogaSession} navigation={props.navigation} price={true} />
+              </>)}
 
-            <SuggestedCard data={topSelling3} navigation={props.navigation} price={true} />
+            <>
+              <SectionHeader title="Suggested Diet Plan" />
+              <ComingSoonCard
+                title="Personalized Diet Plans"
+                icon="🥗"
+              />
+            </>
+
+            <>
+              <SectionHeader title="Panchakarma" />
+              <ComingSoonCard
+                title="Panchakarma Therapies"
+                icon="🌿"
+              />
+            </>
           </>
         )}
       />
       <Modal
-        visible={showPrakritiModal}
+        // visible={showPrakritiModal}
         transparent
+        visible={
+          !!customerData &&
+          !loadingCustomer &&
+          showPrakritiModal
+        }
         animationType="fade"
       >
         <View style={styles.overlay}>
@@ -414,7 +490,7 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 10
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    // paddingBottom: 100,
     backgroundColor: "#FDFDFB",
   },
   containerprakriti: {
@@ -624,6 +700,59 @@ const styles = StyleSheet.create({
   yesText: {
     color: Colors.white,
     fontFamily: Fonts.PoppinsSemiBold,
+  }, comingSoonCard: {
+    backgroundColor: '#F8FCF6',
+    marginHorizontal: 16,
+    marginBottom: 18,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D8E8D4',
+  },
+
+  iconContainer: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  icon: {
+    fontSize: 28,
+  },
+
+  comingSoonTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.primaryColor,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+
+  comingSoonSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+
+  badge: {
+    backgroundColor: Colors.primaryColor,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+
+  badgeText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
 
 });

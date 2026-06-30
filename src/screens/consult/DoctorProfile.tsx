@@ -21,7 +21,6 @@ import { getDoctorSlots } from '../../services/ConsultServce';
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { showSuccessToast } from '../../config/Key';
 import FavouriteButton from '../../components/FavouriteButton';
-import ReviewSection from '../../components/ReviewSecton';
 
 const { width } = Dimensions.get('window');
 
@@ -328,9 +327,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 {/* Profile Section */}
                 <View style={styles.profileContainer}>
                     <View style={styles.avatarWrapper}>
-                        {doctor?.profile_image?.url ? (
+                        {doctor?.profile_image ? (
                             <Image
-                                source={{ uri: doctor?.profile_image.url }}
+                                source={{ uri: doctor?.profile_image }}
                                 style={styles.avatar}
                             />
                         ) : (
@@ -408,8 +407,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 <View style={styles.priceContainer}>
                     <Text style={styles.feeText}>Consult Fee</Text>
                     <Text style={styles.price}>
-                        {doctor?.consult_fee?.formatted ||
-                            `Rs. ${doctor?.consultation_fee || 0}`}
+                        {doctor?.consultation_fee
+                        }
+
                     </Text>
                 </View>
 

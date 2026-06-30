@@ -69,9 +69,11 @@ const Badge = ({
 // ─────────────────────────────────────────────────────────────────────────────
 const ProductDetails = (props: any) => {
     const { varientID } = props?.route?.params;
-    const { ProductData, loading, ReviewAll } = useProductData(varientID);
-    const { isAdding, addToCart } = useCartActions();
 
+    console.log("varientIDvarientID", varientID)
+    const { ProductData, loading, ReviewAll } = useProductData(varientID);
+
+    const { isAdding, addToCart } = useCartActions();
 
     console.log("ReviewAllReviewAll", ReviewAll)
     const insets = useSafeAreaInsets();
@@ -107,6 +109,8 @@ const ProductDetails = (props: any) => {
 
     // ── Add to Cart: fires API with selected qty ─────────────────────────────
     const handleAddToCart = async () => {
+        console.log('selctedvarinat', selectedVariant);
+
         const success = await addToCart(selectedVariant?.id, quantity);
         if (success) {
             props.navigation.navigate('MyCart');
@@ -192,7 +196,7 @@ const ProductDetails = (props: any) => {
                         <Badge label="PREMIUM QUALITY" />
                         <View style={styles.ratingPill}>
                             <Image source={Images.star} style={styles.starIcon} />
-                            <Text style={styles.ratingText}>4.8</Text>
+                            <Text style={styles.ratingText}>{selectedVariant?.avg_rating || 0}</Text>
                         </View>
                     </View>
                     <Text style={styles.brandName}>{ProductData?.brand_name}</Text>
@@ -364,7 +368,10 @@ const ProductDetails = (props: any) => {
 
                 {/* Add to Cart — fires API with current qty */}
                 <TouchableOpacity
-                    style={[styles.addToCartBtn, isAdding && styles.addToCartBtnDisabled]}
+                    style={[
+                        styles.addToCartBtn,
+                        // (!selectedVariant?.stock || isAdding) 
+                    ]}
                     onPress={handleAddToCart}
                     activeOpacity={0.85}
                     disabled={isAdding || !selectedVariant?.stock}
@@ -375,13 +382,13 @@ const ProductDetails = (props: any) => {
                         <View style={styles.addToCartInner}>
                             <Image source={Images.shopCart} style={styles.cartIcon} />
                             <View>
-                                <Text style={styles.addToCartText}>Add to Cart</Text>
-                                {/* <Text style={styles.addToCartPrice}>₹{totalPrice.toFixed(0)}</Text> */}
+                                <Text style={styles.addToCartText}>
+                                    {selectedVariant?.stock ? "Add to Cart" : "Out of Stock"}
+                                </Text>
                             </View>
                         </View>
                     )}
                 </TouchableOpacity>
-
             </View>
         </SafeAreaView >
     );
@@ -491,7 +498,7 @@ const styles = StyleSheet.create({
         shadowColor: '#0D614E', shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
     },
-    addToCartBtnDisabled: { backgroundColor: Colors.cardBackground, shadowOpacity: 0 },
+    addToCartBtnDisabled: { backgroundColor: Colors.secondaryColor, shadowOpacity: 0 },
     addToCartInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     cartIcon: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#FFFFFF' },
     addToCartText: { fontSize: 15, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },

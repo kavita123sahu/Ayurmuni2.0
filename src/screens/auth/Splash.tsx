@@ -118,14 +118,20 @@ const Splash = (props: any) => {
       if (
         error?.response?.status === 403
       ) {
-        props.navigation.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'AccountInactiveScreen',
-            },
-          ],
-        });
+        props.navigation.replace(
+          'AuthStack',
+          {
+            screen: 'Login',
+          },
+        );
+        // props.navigation.reset({
+        //   index: 0,
+        //   routes: [
+        //     {
+        //       name: 'AccountInactiveScreen',
+        //     },
+        //   ],
+        // });
 
         return;
       }

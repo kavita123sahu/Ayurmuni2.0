@@ -26,15 +26,13 @@ export type CartItem = {
   id: string;
   quantity: number | string;
   price: number | string;
-
-  variant?: {
     variant_id?: string;
     product_name?: string;
     variant_title?: string;
     media?: {
       media_url?: string;
     }[];
-  };
+  
 };
 export const getProductData = (
   item: CartItem,
@@ -50,6 +48,8 @@ export const getProductData = (
 
   brand_name: item.variant?.brand_name || '',
 
+  variant_id:
+    item.variant?.variant_id || '',
   price: Number(
     item.variant?.selling_price ||
     item.price ||

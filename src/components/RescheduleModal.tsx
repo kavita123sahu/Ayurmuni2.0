@@ -22,6 +22,7 @@ interface Props {
 
     onSubmit: (data: {
         availability: number;
+
         reschedule_reason: string;
     }) => void;
     // slots: {
@@ -50,7 +51,7 @@ const RescheduleModal = ({
 
 
 
-    console.log("appointmentappointment-->", appointment)
+    console.log("selectedSlotselectedSlot-->", selectedSlot)
 
     const doctorInfo = React.useMemo(
         () => ({
@@ -81,9 +82,9 @@ const RescheduleModal = ({
 
             availability: selectedSlot.id,
 
-            ...(!isRescheduleRequest && {
-                reschedule_reason: reason.trim(),
-            }),
+            // ...(!isRescheduleRequest && {
+            reschedule_reason: reason.trim(),
+            // }),
         });
     };
 
@@ -122,6 +123,8 @@ const RescheduleModal = ({
         () => slotsData || [],
         [slotsData]
     );
+
+    console.log("slotListslotList", slotList)
 
     useEffect(() => {
         if (
@@ -163,14 +166,14 @@ const RescheduleModal = ({
 
                             <View style={styles.doctorCard}>
                                 <Text style={styles.doctorName}>
-                                    {doctorInfo.name}
+                                    {doctorInfo?.name}
                                 </Text>
                                 <Text style={styles.doctorSpeciality}>
-                                    {doctorInfo.specialty}
+                                    {doctorInfo?.specialty}
                                 </Text>
                                 <Text style={styles.doctorDate}>
-                                    {doctorInfo.date} at{" "}
-                                    {doctorInfo.time}
+                                    {doctorInfo?.date} at{" "}
+                                    {doctorInfo?.time}
                                 </Text>
                             </View>
 
@@ -196,39 +199,42 @@ const RescheduleModal = ({
                                 <Text style={styles.loadingText}>
                                     Fetching available slots...
                                 </Text>
-                            ) : slotList?.length > 0 ? (
-                                <View style={styles.slotContainer}>
-                                    {slotList.map((slot: any) => {
-                                        const selected =
-                                            selectedSlot?.id === slot.id;
+                            ) :
+                                slotList?.length > 0 ? (
+                                    <View style={styles.slotContainer}>
+                                        {
+                                            slotList
+                                                ?.filter((slot) => slot?.status === 'available')
+                                                .map((slot) => {
+                                                    const selected = selectedSlot?.id === slot.id;
 
-                                        return (
-                                            <TouchableOpacity
-                                                key={slot.id}
-                                                onPress={() => setSelectedSlot(slot)}
-                                                style={[
-                                                    styles.slotButton,
-                                                    selected && styles.selectedSlot,
-                                                ]}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.slotText,
-                                                        selected &&
-                                                        styles.selectedSlotText,
-                                                    ]}
-                                                >
-                                                    {slot.start_time}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            ) : (
-                                <Text style={styles.emptyText}>
-                                    No slots available
-                                </Text>
-                            )}
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={slot.id}
+                                                            onPress={() => setSelectedSlot(slot)}
+                                                            style={[
+                                                                styles.slotButton,
+                                                                selected && styles.selectedSlot,
+                                                            ]}
+                                                        >
+                                                            <Text
+                                                                style={[
+                                                                    styles.slotText,
+                                                                    selected && styles.selectedSlotText,
+                                                                ]}
+                                                            >
+                                                                {slot?.start_time}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })
+                                        }
+                                    </View>
+                                ) : (
+                                    <Text style={styles.emptyText}>
+                                        No slots available
+                                    </Text>
+                                )}
 
                             <Text style={styles.sectionTitle}>
                                 Reason

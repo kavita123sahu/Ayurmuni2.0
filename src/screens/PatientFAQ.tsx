@@ -663,16 +663,16 @@ const PatientFAQ = ({ navigation }: any) => {
 
             if (isLast) {
 
-                if (answers?.knowPrakriti !== undefined) {
-                    navigation.replace('PrakritiProfile');
-                } else {
-                    navigation.replace(
-                        'AssessmentType',
-                        {
-                            form: 'medical',
-                        },
-                    );
-                }
+                // if (answers?.knowPrakriti !== undefined) {
+                //     navigation.replace('PrakritiProfile');
+                // } else {
+                navigation.replace(
+                    'AssessmentType',
+                    {
+                        form: 'medical',
+                    },
+                );
+                // }
 
                 return;
             }

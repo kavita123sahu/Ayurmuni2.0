@@ -228,10 +228,6 @@ const MedicalRecords = (props: any) => {
         }
     };
 
-
-
-
-
     const renderItem = ({ item }: any) => (
         <MedicalRecordCard
             item={item}
@@ -430,7 +426,7 @@ const MedicalRecords = (props: any) => {
                         </View>
                     )} */}
 
-                    {selectedFiles.length > 0 && (
+                    {/* {selectedFiles.length > 0 && (
 
                         <PrimaryButton
                             title={uploading ? "Uploading..." : "Upload Selected"}
@@ -438,7 +434,7 @@ const MedicalRecords = (props: any) => {
                             backgroundColor="#0D614E"
                             textColor="#fff"
                         />
-                    )}
+                    )} */}
                 </View>
 
 
