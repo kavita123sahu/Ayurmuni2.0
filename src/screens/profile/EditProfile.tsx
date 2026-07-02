@@ -390,9 +390,7 @@ const EditProfile = ({
                                                 </Text>
                                             </View>
                                         )}
-
                                         {/* LOADER */}
-
                                         {loadingImage && (
                                             <View
                                                 style={

@@ -37,6 +37,8 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
 
+
+
     const [selectedRecords, setSelectedRecords] =
         useState<string[]>([]);
     const { doctorDetails } = route?.params || {};
@@ -54,7 +56,6 @@ const DoctorSlot = (props: any) => {
         },
     );
 
-    console.log("patientsRecordpatientsRecordpatientsRecord", selectedRecords)
 
     const [doctorDetailData, setDoctorDetailData] = useState<any>(null);
     // const [records, setRecords] = useState<any[]>([]);
@@ -102,7 +103,7 @@ const DoctorSlot = (props: any) => {
     }, [doctorDetails?.id]);
 
     const [selectedDate, setSelectedDate] = useState(getTodayDate());
-    const [selectedSlot, setSelectedSlot] = useState({});
+    const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
     const [concern, setConcern] = useState('');
 
@@ -112,6 +113,8 @@ const DoctorSlot = (props: any) => {
 
     const scrollRef = useRef<ScrollView>(null);
     const doctorIdParam = doctorDetails?.id;
+
+    console.log("doctorDetailsdoctorDetails", doctorDetails);
 
     useEffect(() => {
         if (!doctorIdParam) console.warn('Doctor ID missing in route params');
@@ -355,7 +358,10 @@ const DoctorSlot = (props: any) => {
                                                 return (
                                                     <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable}
                                                         // onPress={() => setSelectedSlot(slot.id)}
-                                                        onPress={() => setSelectedSlot(slot)}
+                                                        onPress={() => {
+                                                            console.log("slotiddddddd", slot?.id)
+                                                            setSelectedSlot(slot)
+                                                        }}
                                                         style={[
                                                             styles.slotBtn,
                                                             selectedSlot?.id === slot.id && styles.activeSlotBtn,

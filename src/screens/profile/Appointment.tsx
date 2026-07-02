@@ -30,10 +30,10 @@ import { handleAppointmentAction } from '../../hooks/AppointmentData';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 
-const AppointmentScreen = () => {
+const AppointmentScreen = (props: any) => {
 
-  const { AppointData, getAllAppointment, loading } = useAppointmentHistory();
-  const navigation = useNavigation<NavigationProp>(); // ✅ FIX
+  const { AppointData, refreshUpcoming, loading } = useAppointmentHistory();
+  // ✅ FIX
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [showRescheduleModal, setShowRescheduleModal] =
     useState(false);
@@ -43,28 +43,23 @@ const AppointmentScreen = () => {
 
   const [selectedAppointment, setSelectedAppointment] =
     useState<any>(null);
-
-
-
-
   const normalizedData = useMemo(() => {
-    const data = AppointData || [];
+    if (loading) return [];
 
-    return data.map(item => ({
+    return (AppointData ?? []).map(item => ({
       consultation_id: item.consultation_id,
       doctorName: item.doctor?.doctor_name || "",
-      therapies: Array.isArray(item?.health_diseases)
-        ? item.health_diseases.map(disease => disease.name).join(", ")
+      therapies: Array.isArray(item?.doctor?.health_diseases)
+        ? item.doctor.health_diseases.map(i => i.name).join(", ")
         : "",
-      // specialty: item.doctor?.doctor_specialization || "General Physician",
       date: item.appointment_date,
       time: item.start_time,
       status: item.appointment_status,
+      call_status: item.call_status,
       image: item.doctor?.doctor_image,
       rawData: item,
     }));
-  }, [AppointData]);
-
+  }, [AppointData, loading]);
 
   const appointmentData = useMemo(() => {
     return normalizedData.filter(item =>
@@ -74,10 +69,16 @@ const AppointmentScreen = () => {
     );
   }, [normalizedData, activeTab]);
 
+  const skeletonData = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, index) => ({
+        id: `skeleton-${index}`,
+      })),
+    [],
+  );
 
-  const listData = loading
-    ? Array.from({ length: 5 }, (_, i) => ({ id: i, skeleton: true }))
-    : appointmentData;
+
+  const listData = loading ? skeletonData : appointmentData;
 
   const TabButton = () => {
     return (
@@ -115,59 +116,97 @@ const AppointmentScreen = () => {
     )
   }
 
+
+
+
   const handleReschedule = async (
     appointmentId: string,
     payload: {
-      availability: any;
+      action: string;
+      availability: number;
       reschedule_reason: string;
+      cancellation_reason?: string;
     }
   ) => {
-    console.log("appointmentId", appointmentId);
-    console.log("payload", payload);
+    console.log("appointmentIdpayload", appointmentId);
+    console.log("payload--->>", payload);
+
+    let payloadSend: any = {
+      action: payload.action,
+    };
+
+    switch (payload.action) {
+      case "reschedule":
+        payloadSend.availability = payload.availability;
+        payloadSend.reschedule_reason = payload.reschedule_reason;
+        break;
+
+      case "confirm_reschedule":
+        payloadSend.availability = payload.availability;
+        payloadSend.reschedule_reason = payload.reschedule_reason;
+        break;
+
+      case "cancel":
+        payloadSend.cancellation_reason = payload.cancellation_reason;
+        break;
+    }
+    console.log("payloadSend--->>", payloadSend);
 
     const res = await handleAppointmentAction({
       appointmentId,
-      action: "confirm_reschedule",
-      availability: payload.availability,
-      reschedule_reason:
-        payload.reschedule_reason,
+      payload: payloadSend,
     });
     console.log("res--->>", res);
 
-
     if (res?.success) {
-      getAllAppointment?.();
-      showSuccessToast(res?.message, 'success');
+      refreshUpcoming?.();
+      setShowRescheduleModal(false);
+      showSuccessToast(res.message, "success");
+      return;
     }
-
     setShowRescheduleModal(false);
     showSuccessToast(res.message, 'error')
     setSelectedAppointment(null);
+    showSuccessToast(
+      res?.message || "You cannot reschedule multiple times",
+      "error"
+    );
   };
-
 
   const handleCancel = async (
     appointmentId: string,
-    reason: any
+    payload: {
+      action: string;
+      cancellation_reason: string;
+    }
   ) => {
     console.log("appointmentId", appointmentId);
-    console.log("reason", reason);
+    console.log("payloadcanclee", payload);
+
+    let payloadSend: any = {
+      action: payload.action,
+      cancellation_reason: payload.cancellation_reason,
+    };
+
+    console.log("payloadSendcancel--->>", payloadSend);
+
     const res = await handleAppointmentAction({
       appointmentId,
-      action: "cancel",
-      cancellation_reason: reason?.cancellation_reason || "",
+      payload: payloadSend
     });
 
     console.log("rescancel---->>", res);
-    if (res?.success) {
-      getAllAppointment?.();
-      showSuccessToast(res?.message, 'success');
-    }
-    setShowCancelModal(false);
-    showSuccessToast(res?.message, 'error')
-    setSelectedAppointment(null);
-  };
 
+    if (res?.success) {
+      refreshUpcoming?.();
+      setShowCancelModal(false);
+      setSelectedAppointment(null);
+      showSuccessToast(res?.message, "success");
+      return;
+    }
+
+    showSuccessToast(res?.message || "Something went wrong", "error");
+  };
 
 
   useEffect(() => {
@@ -182,20 +221,25 @@ const AppointmentScreen = () => {
         title="My Appointments"
         subtitle="Manage your visits "
         backIcon={Images.backIcon}
-        onBack={() => { navigation.goBack() }}
+        onBack={() => { props?.navigation.goBack() }}
       />
 
       <TabButton />
 
       <FlatList
         data={listData}
+        keyExtractor={(item, index) =>
+          loading
+            ? `skeleton-${index}`
+            : item.consultation_id
+        }
         renderItem={({ item }) =>
           loading ? (
             <AppointmentSkeletonList />
           ) : (
             <RenderAppoint
               item={item}
-              navigation={navigation}
+              navigation={props.navigation}
               isHorizontal={false}
               onReschedule={() => {
                 setSelectedAppointment(item);
@@ -208,24 +252,29 @@ const AppointmentScreen = () => {
             />
           )
         }
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        updateCellsBatchingPeriod={30}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingVertical: 20,
           flexGrow: 1,
         }}
         ListEmptyComponent={
-          appointmentData.length === 0 ? (
+          !loading && appointmentData.length === 0 ? (
             <EmptyState
-              image={Images.starEmpty} // apni image
+              image={Images.starEmpty}
               title={
-                activeTab === 'upcoming'
-                  ? 'No Upcoming Appointments'
-                  : 'No Past Appointments'
+                activeTab === "upcoming"
+                  ? "No Upcoming Appointments"
+                  : "No Past Appointments"
               }
               subtitle={
-                activeTab === 'upcoming'
-                  ? 'You have no upcoming appointments.'
-                  : 'You have no past appointments.'
+                activeTab === "upcoming"
+                  ? "You have no upcoming appointments."
+                  : "You have no past appointments."
               }
             />
           ) : null

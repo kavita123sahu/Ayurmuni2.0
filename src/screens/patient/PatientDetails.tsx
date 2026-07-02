@@ -46,7 +46,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  console.log("deleteModalVisible", deleteModalVisible);
   // ─── Custom Hooks ──────────────────────────────────────────
   const {
     patients,
@@ -149,6 +149,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
       setIsDeleting(false);
     }
   }, [navigation]);
+
 
   // ─── Loading State ─────────────────────────────────────────
   if (patientsLoading && !hasPatients) {
@@ -260,7 +261,10 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
 
         {/* Delete Account Button */}
         <View style={styles.deleteButtonContainer}>
-          <CommonButton title="Delete Account" onPress={() => setDeleteModalVisible(true)} />
+          <CommonButton title="Delete Account" onPress={() => {
+            console.log("Button Pressed");
+            setDeleteModalVisible(true)
+          }} />
         </View>
 
         {/* Version Text */}

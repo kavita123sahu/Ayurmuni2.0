@@ -92,6 +92,9 @@ const RenderAppoint = ({
 
 
     );
+
+    console.log("navigationrender", navigation);
+
     const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
         ? item.rawData.doctor.health_diseases
             .map(disease => disease.name)
@@ -124,7 +127,13 @@ const RenderAppoint = ({
                             { color: statusStyle.color },
                         ]}
                     >
-                        {item.status?.toUpperCase()}
+                        <Text>
+                            {item.status === "cancellation_requested"
+                                ? "CONFIRMED"
+                                : item.status?.toUpperCase()}
+                        </Text>
+
+                        {/* {item.status?.toUpperCase()} */}
                     </Text>
                 </View>
             </View>
@@ -275,14 +284,20 @@ const RenderAppoint = ({
 
             <AppointAction
                 status={item.status}
+                call_status={item.call_status}
                 onReschedule={onReschedule}
                 onCancel={onCancel}
                 onJoinCall={() =>
-                    navigation.navigate("VideoCall", {
-                        appointmentId: item.consultation_id,
-                        doctorId: item.doctor_id,
+                    navigation.navigate("PatientVideoCallScreen", {
+                        appointmentId: item?.consultation_id,
+                        call_status: item?.call_status,
+                        role: "patient",
+                        doctorID: item?.rawData?.doctor?.doctor_id,
+                        doctorName: item?.rawData?.doctor?.name,
+                        onExit: () => navigation.goBack(),
                     })
                 }
+
                 onViewDetails={() =>
                     navigation.navigate("DoctorSlipScreen", {
                         doctorID:

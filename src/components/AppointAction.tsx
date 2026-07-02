@@ -10,6 +10,7 @@ type Props = {
     onCancel?: () => void;
     onJoinCall?: () => void;
     onViewDetails?: () => void;
+    call_status?: string;
 };
 const AppointmentActions = ({
     status,
@@ -17,54 +18,45 @@ const AppointmentActions = ({
     onCancel,
     onJoinCall,
     onViewDetails,
+    call_status,
 }: Props) => {
-    const appointmentStatus = status.toLowerCase();
-    // const activeStatuses = [
-    //     "pending",
-    //     "confirmed",
-    //     "reschedule",
-    //     "rescheduled",
-    // ];
 
-    const closedStatuses = [
+    const appointmentStatus = status?.toLowerCase();
+
+    const showReschedule = [
+        "pending",
+        "confirmed",
+        "reschedule",
+    ].includes(appointmentStatus);
+
+    const showCancel = [
+        "pending",
+        "confirmed",
+        "reschedule",
+        "rescheduled", // ✅ Added
+    ].includes(appointmentStatus);
+
+    const showViewDetails = [
         "completed",
         "cancelled",
         "missed",
-    ];
-
-    const showButtons = ![
-        'cancelled',
-        'completed',
-        'rescheduled',
+        // "rescheduled", ❌ Remove
     ].includes(appointmentStatus);
 
-    const showReschedule =
-        status === 'pending' ||
-        status === 'missed' ||
-        status === 'reschedule';
+    const showJoinCall =  call_status === "in_progress"; // future
 
-    const showCancel =
-        status === 'pending' ||
-        status === 'confirmed';
-
-
-    const showJoinCall = false; // dynamic logic later
-
-    if (
-        !['cancelled', 'completed', 'rescheduled'].includes(
-            status,
-        )
-    ) {
+    if (showReschedule || showCancel) {
         return (
             <View style={styles.btnRow}>
-                {showReschedule && (
+                {!showJoinCall  && showReschedule  && (
                     <TouchableOpacity
                         style={styles.outlineBtn}
-                        onPress={onReschedule}>
-                        <Text style={Styles.outlineText}>
-                            {status === 'reschedule'
-                                ? 'Request To Change'
-                                : 'Reschedule'}
+                        onPress={onReschedule}
+                    >
+                        <Text style={styles.outlineText}>
+                            {appointmentStatus === "reschedule"
+                                ? "Request To Change"
+                                : "Reschedule"}
                         </Text>
                     </TouchableOpacity>
                 )}
@@ -72,7 +64,8 @@ const AppointmentActions = ({
                 {showJoinCall ? (
                     <TouchableOpacity
                         style={styles.primaryBtn}
-                        onPress={onJoinCall}>
+                        onPress={onJoinCall}
+                    >
                         <Text style={styles.primaryText}>
                             Join Call
                         </Text>
@@ -87,7 +80,8 @@ const AppointmentActions = ({
                                     marginTop: 0,
                                 },
                             ]}
-                            onPress={onCancel}>
+                            onPress={onCancel}
+                        >
                             <Text style={styles.cancelText}>
                                 Cancel
                             </Text>
@@ -97,7 +91,8 @@ const AppointmentActions = ({
             </View>
         );
     }
-    if (closedStatuses.includes(status)) {
+
+    if (showViewDetails) {
         return (
             <TouchableOpacity
                 style={styles.primaryBtn}

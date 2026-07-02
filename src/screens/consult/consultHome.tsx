@@ -1,6 +1,8 @@
 import React, {
   memo,
   useCallback,
+  useEffect,
+  useState,
 } from 'react';
 
 import {
@@ -35,6 +37,8 @@ import { Colors } from '../../common/Colors';
 import { useConsultData }
   from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
+import { DoctorCardSkeleton, HomeCategorySkeleton, TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
+import { getConsultHistory } from '../../services/ConsultServce';
 
 type NavigationProp =
   NativeStackNavigationProp<
@@ -46,6 +50,8 @@ const ConsultScreen = () => {
   const navigation =
     useNavigation<NavigationProp>();
 
+
+
   const {
     loading,
     refreshing,
@@ -55,11 +61,66 @@ const ConsultScreen = () => {
     onRefresh,
   } = useConsultData();
 
+
+  const [history, setHistory] =
+    useState([]);
+
+
+
+
   /*
     ====================================
     RECENT ITEM
     ====================================
   */
+
+
+
+  const fetchConsultHistory =
+    useCallback(
+      async (
+        payload: object,
+      ) => {
+
+        try {
+
+          setRecentLoading(true);
+
+          const response =
+            await getConsultHistory(
+              payload,
+            );
+
+          console.log(
+            'CONSULTHISTORY => ',
+            response,
+          );
+
+          setHistory(
+            response?.data?.results ||
+            [],
+          );
+
+        } catch (error) {
+
+          console.log(
+            'CONSULT HISTORY ERROR => ',
+            error,
+          );
+
+        } finally {
+
+          setRecentLoading(false);
+        }
+      },
+
+      [],
+    );
+
+
+  useEffect(() => {
+    fetchConsultHistory
+  }, [fetchConsultHistory]);
 
   console.log("topDoctorstopDoctors", topDoctors);
   const renderRecentDoctor =
@@ -85,7 +146,7 @@ const ConsultScreen = () => {
             onPressReschedule={() =>
               // navigation.navigate(
               //   'DoctorSlot',
-                
+
               // )
               navigation.navigate('DoctorSlot')
             }
@@ -145,116 +206,88 @@ const ConsultScreen = () => {
         }
       />
 
+
       <FlatList
-        data={recentDoctors}
-        keyExtractor={(item) =>
-          String(item?.id)
-        }
-
-        showsVerticalScrollIndicator={
-          false
-        }
-
-        renderItem={
-          renderRecentDoctor
-        }
-
-        ItemSeparatorComponent={() => (
-          <View
-            style={{ height: 12 }}
-          />
-        )}
-
+        data={loading ? [] : history}
+        keyExtractor={(item) => String(item?.id)}
+        renderItem={renderRecentDoctor}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[
-              Colors.primaryColor,
-            ]}
+            colors={[Colors.primaryColor]}
           />
         }
 
         ListHeaderComponent={
           <>
-
-            {/* SEARCH */}
-
             <SearchBar
               placeholder="Search doctors, concerns..."
               icon={require('../../assets/images/Search.png')}
             />
 
-            <PromoCard title="Consult with Specialists" desc="Over 50+ Medical Experts" imageLeft={Images.PlusBag} image={require('../../assets/images/doctorbanner.png')} buttontext='Book an appointment online' approved={true} arrowIcon={require('../../assets/images/arrow.png')}
-              //  onPress={() => { navigation.navigate('PatientVideoCallScreen') }}
-              showButton={true} />
-
-
-            {/* RECENT */}
+            <PromoCard
+              title="Consult with Specialists"
+              desc="Over 50+ Medical Experts"
+              imageLeft={Images.PlusBag}
+              image={require('../../assets/images/doctorbanner.png')}
+              buttontext="Book an appointment online"
+              approved
+              arrowIcon={require('../../assets/images/arrow.png')}
+              showButton
+            />
 
             <SectionHeader
               title="Recent Consultation"
               actionText="View History"
-              onPress={() =>
-                navigation.navigate(
-                  'ConsultHistory',
-                )
-              }
+              onPress={() => navigation.navigate('ConsultHistory')}
             />
 
-
+            {/* Recent Doctor Skeleton */}
+            {loading && <DoctorCardSkeleton />}
           </>
         }
 
         ListFooterComponent={
-          <>
+          loading ? (
+            <>
+              <HomeCategorySkeleton />
+              <TopDoctorsCardSkeleton />
+              <View style={{ height: 120 }} />
+            </>
+          ) : (
+            <>
+              <SectionHeader title="Consult by Concern" />
 
-            {/* CATEGORY */}
+              <CategoryList
+                data={categories}
+                navigation={navigation}
+                doctor
+              />
 
-            <SectionHeader
-              title="Consult by Concern"
-            />
+              {topDoctors?.length > 0 && (
+                <>
+                  <SectionHeader
+                    title="Top Doctors"
+                    actionText="View all"
+                    onPress={() => navigation.navigate('AllDoctors')}
+                  />
 
-            <CategoryList
-              data={categories}
-              navigation={
-                navigation
-              }
-              doctor
-            />
+                  <TopDoctorsCard
+                    data={topDoctors}
+                    navigation={navigation}
+                  />
+                </>
+              )}
 
-            {/* TOP DOCTORS */}
-
-            {topDoctors?.length > 0 && (
-              <>
-                <SectionHeader
-                  title="Top Doctors"
-                  actionText="View all"
-                  onPress={() =>
-                    navigation.navigate('AllDoctors')
-                  }
-                />
-
-                <TopDoctorsCard
-                  data={topDoctors}
-                  navigation={navigation}
-                />
-              </>
-            )}
-
-
-            <View
-              style={{
-                height: 120,
-              }}
-            />
-
-          </>
+              <View style={{ height: 120 }} />
+            </>
+          )
         }
 
-        contentContainerStyle={
-          styles.content
-        }
+        contentContainerStyle={styles.content}
       />
 
     </SafeAreaView>

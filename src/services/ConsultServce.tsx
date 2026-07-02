@@ -306,7 +306,7 @@ export const appointmentActionAPI = async ({
 }: {
     appointmentId: string;
     payload: {
-        action: "reschedule" | "cancel";
+        action: "reschedule" | "cancel" | "confirm_reschedule";
         availability?: string;
         reschedule_reason?: string;
         cancellation_reason?: string;

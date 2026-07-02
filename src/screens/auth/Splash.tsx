@@ -41,15 +41,7 @@ const Splash = (props: any) => {
 
       console.log('isCustomerisCustomer', isCustomer)
 
-      // if (result?.status === 404) {
-      //   props.navigation.replace(
-      //     'HomeStack',
-      //     {
-      //       screen: 'Onboarding',
-      //     },
-      //   );
-      //   return;
-      // }
+    
 
       if (!isCustomer) {
         props.navigation.replace(

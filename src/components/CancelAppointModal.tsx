@@ -103,6 +103,7 @@ const CancelAppointmentModal = ({
               style={styles.cancelBtn}
               onPress={() =>
                 onSubmit({
+                  action: "cancel",
                   cancellation_reason:
                     reason || selected,
                 })

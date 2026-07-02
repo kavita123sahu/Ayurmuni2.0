@@ -79,9 +79,7 @@ const HomePage: React.FC = (props: any) => {
     return AppointData.map(item => ({
       consultation_id: item?.consultation_id,
       doctorName: item?.doctor?.doctor_name || "",
-      // specialty:
-      //   item?.doctor?.doctor_specialization ||
-      //   "General Physician",
+
       therapies: Array.isArray(item?.rawData?.doctor?.health_diseases)
         ? item.rawData.doctor.health_diseases
           .map(disease => disease.name)
@@ -102,15 +100,25 @@ const HomePage: React.FC = (props: any) => {
       return [];
     }
 
-    return [...normalizedData].sort((a, b) => {
-      const dateA = new Date(a?.date || 0).getTime();
-      const dateB = new Date(b?.date || 0).getTime();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Today's date only
 
-      return dateA - dateB;
-    });
+    return normalizedData
+      .filter(item => {
+        const appointmentDate = new Date(item.date);
+        appointmentDate.setHours(0, 0, 0, 0);
+
+        return appointmentDate >= today;
+      })
+      .sort((a, b) => {
+        return (
+          new Date(a.date).getTime() -
+          new Date(b.date).getTime()
+        );
+      });
   }, [normalizedData]);
 
-  console.log('sortedUpcomingAppointments', sortedUpcomingAppointments)
+
 
   const onRefresh = useCallback(async () => {
     try {
@@ -277,7 +285,7 @@ const HomePage: React.FC = (props: any) => {
                 />
                 <FlatList
                   horizontal
-                 
+
                   data={sortedUpcomingAppointments}
                   keyExtractor={(item, index) =>
                     `${item?.consultation_id || index}`

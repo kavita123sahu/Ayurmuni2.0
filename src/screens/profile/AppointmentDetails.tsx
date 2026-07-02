@@ -68,7 +68,7 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
 
 
 
-  console.log("appointmentData--->", data);
+  console.log("appointmentDatacallsrtsst--->", data);
 
 
   return (
@@ -111,37 +111,33 @@ const DoctorDetail = ({ data, navigation, token }: Props) => {
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: 10 }}>
 
 
+      {data?.appointment?.call_status?.toLowerCase() === 'confirmed' && (
 
-        {/* <PrimaryButton title="Join Video Call" page='appoint' onPress={() => navigation.navigate('PatientVideoCallScreen', {
-          consultationId: appointmentData?.consultationId,
-          doctorName: appointmentData?.doctorName,
-        })}
-        /> */}
+        <View style={{ paddingHorizontal: 10 }}>
 
-        <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
-          const url = `https://3twgj6xg-3000.inc1.devtunnels.ms/patvideocall/${token}/${appointmentData?.consultationId}`;
+          <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
+            const url = `https://3twgj6xg-3000.inc1.devtunnels.ms/patvideocall/${token}/${appointmentData?.consultationId}`;
 
-          if (url) {
-            const supported =
-              await Linking.canOpenURL(url);
+            if (url) {
+              const supported =
+                await Linking.canOpenURL(url);
 
-            if (supported) {
-              await Linking.openURL(url);
+              if (supported) {
+                await Linking.openURL(url);
+              }
             }
-          }
-        }} />
+          }} />
 
-        <TouchableOpacity style={styles.secondaryBtn}>
-          <Text style={styles.secondaryText}>Chat with Doctor</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.secondaryBtn}>
+            <Text style={styles.secondaryText}>Chat with Doctor</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      <Text style={styles.techText}>
-        Technical Check: Test Audio & Video
-      </Text>
+
+
     </View>
   )
 }
@@ -172,6 +168,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       setDetail(res?.data);
 
     } catch (error) {
+      showSuccessToast("Something went wrong", "error");
       console.log("DETAIL ERROR", error);
     } finally {
       setLoading(false);
@@ -210,6 +207,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       date: item.appointment?.appointment_date,
       time: item?.appointment?.start_time,
       status: item?.appointment?.appointment_status,
+      call_status: item?.appointment?.call_status,
       image: item.doctor?.doctor_image,
       availability: item.availability || [],
       rawData: item,
@@ -232,19 +230,40 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const handleReschedule = async (
     appointmentId: string,
     payload: {
-      availability: number;
       action: string;
+      availability: number;
       reschedule_reason: string;
+      cancellation_reason?: string;
     }
   ) => {
-    console.log("appointmentId", appointmentId);
+    console.log("appointmentIdpayload", appointmentId);
     console.log("payload--->>", payload);
+
+    let payloadSend: any = {
+      action: payload.action,
+    };
+
+    switch (payload.action) {
+      case "reschedule":
+        payloadSend.availability = payload.availability;
+        payloadSend.reschedule_reason = payload.reschedule_reason;
+        break;
+
+      case "confirm_reschedule":
+        payloadSend.availability = payload.availability;
+        payloadSend.reschedule_reason = payload.reschedule_reason;
+        break;
+
+      case "cancel":
+        payloadSend.cancellation_reason = payload.cancellation_reason;
+        break;
+    }
+    console.log("payloadSend--->>", payloadSend);
 
     const res = await handleAppointmentAction({
       appointmentId,
-      ...payload, // previous page ka pura payload direct bhej do
+      payload: payloadSend,
     });
-
     console.log("res--->>", res);
 
     if (res?.success) {
@@ -260,27 +279,43 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     );
   };
 
+
+
   const handleCancel = async (
     appointmentId: string,
-    reason: any
+    payload: {
+      action: string;
+      cancellation_reason: string;
+    }
   ) => {
     console.log("appointmentId", appointmentId);
-    console.log("reason", reason);
+    console.log("payloadcanclee", payload);
+
+    let payloadSend: any = {
+      action: payload.action,
+      cancellation_reason: payload.cancellation_reason,
+    };
+
+    console.log("payloadSendcancel--->>", payloadSend);
+
     const res = await handleAppointmentAction({
       appointmentId,
-      action: "cancel",
-      cancellation_reason: reason?.cancellation_reason || "",
+      payload: payloadSend
     });
 
     console.log("rescancel---->>", res);
+
     if (res?.success) {
-      // fetchDetail?.();
       navigation.navigate('Appointments')
+      setShowCancelModal(false);
       showSuccessToast(res?.message, "success");
+      return;
     }
+
     setShowCancelModal(false);
-    showSuccessToast(res?.message, 'error')
+    showSuccessToast(res?.message || "Something went wrong", "error");
   };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -372,6 +407,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
             // setSelectedAppointment(null);
           }}
           onSubmit={(payload) => {
+            console.log("payload--->>>", payload);
+
             handleReschedule(
               normalizedAppointment?.consultation_id,
               payload

@@ -35,6 +35,7 @@ import {
     getConsultHistory,
 } from '../../services/ConsultServce';
 import EmptyState from '../../components/EmptyState';
+import { AppointmentSkeletonList } from '../../simmerScreen/ShimmerHook';
 
 
 // ─────────────────────────────────────────────
@@ -257,8 +258,17 @@ const ConsultHistory = (
             case 'book_again':
 
                 navigation.navigate(
-                    'DoctorSlot',
-                );
+                    'DoctorSlot', {
+                    doctorDetails: {
+                        ...item.doctor,
+                        id: item.doctor?.doctor_id,
+                        is_favorite: item.doctor?.is_favorite,
+                        total_patients: item.doctor?.total_patients,
+                        full_name: item.doctor?.doctor_name,
+                        profile_image: item.doctor?.doctor_image,
+                        designation: item.doctor?.qualification,
+                    },
+                }   );
 
                 break;
 
@@ -398,38 +408,30 @@ const ConsultHistory = (
             {/* List */}
 
 
-            {
-                filteredHistory?.length === 0 ? (
-
-                    <EmptyState
-                        title={
-                            history?.length === 0
-                                ? 'No Appointments Yet'
-                                : 'Appointment Not Found'
-                        }
-                        subtitle={
-                            history?.length === 0
-                                ? 'Your consultations will appear here.'
-                                : 'Try another doctor name.'
-                        }
-                    />
-
-                ) : (
-
-                    <FlatList
-                        data={filteredHistory}
-                        renderItem={renderItem}
-                        keyExtractor={(item) =>
-                            item.consultation_id
-                        }
-                        contentContainerStyle={
-                            styles.listContent
-                        }
-
-                        showsVerticalScrollIndicator={false}
-                    />
-                )
-            }
+            {loading ? (
+                <AppointmentSkeletonList />
+            ) : filteredHistory?.length === 0 ? (
+                <EmptyState
+                    title={
+                        history?.length === 0
+                            ? "No Appointments Yet"
+                            : "Appointment Not Found"
+                    }
+                    subtitle={
+                        history?.length === 0
+                            ? "Your consultations will appear here."
+                            : "Try another doctor name."
+                    }
+                />
+            ) : (
+                <FlatList
+                    data={filteredHistory}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.consultation_id}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
 
         </SafeAreaView>
     );

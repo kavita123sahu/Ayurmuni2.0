@@ -82,9 +82,9 @@ const RescheduleModal = ({
 
             availability: selectedSlot.id,
 
-            // ...(!isRescheduleRequest && {
-            reschedule_reason: reason.trim(),
-            // }),
+            ...(!isRescheduleRequest && {
+                reschedule_reason: reason.trim(),
+            }),
         });
     };
 
@@ -139,6 +139,8 @@ const RescheduleModal = ({
         selectedDate,
         doctorInfo?.id,
     ]);
+    const availableSlots =
+        slotList?.filter(slot => slot?.status === "available") || [];
     return (
 
         <Modal
@@ -200,34 +202,33 @@ const RescheduleModal = ({
                                     Fetching available slots...
                                 </Text>
                             ) :
-                                slotList?.length > 0 ? (
+                                availableSlots?.length > 0 ? (
                                     <View style={styles.slotContainer}>
                                         {
-                                            slotList
-                                                ?.filter((slot) => slot?.status === 'available')
-                                                .map((slot) => {
-                                                    const selected = selectedSlot?.id === slot.id;
+                                            availableSlots.map((slot) => {
+                                                const selected = selectedSlot?.id === slot.id;
 
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={slot.id}
-                                                            onPress={() => setSelectedSlot(slot)}
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={slot.id}
+                                                        onPress={() => setSelectedSlot(slot)}
+                                                        style={[
+                                                            styles.slotButton,
+                                                            selected && styles.selectedSlot,
+                                                        ]}
+                                                    >
+                                                        <Text
                                                             style={[
-                                                                styles.slotButton,
-                                                                selected && styles.selectedSlot,
+                                                                styles.slotText,
+                                                                selected && styles.selectedSlotText,
                                                             ]}
                                                         >
-                                                            <Text
-                                                                style={[
-                                                                    styles.slotText,
-                                                                    selected && styles.selectedSlotText,
-                                                                ]}
-                                                            >
-                                                                {slot?.start_time}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })
+                                                            {slot?.start_time}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+
+                                            })
                                         }
                                     </View>
                                 ) : (

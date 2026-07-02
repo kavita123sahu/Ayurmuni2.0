@@ -218,10 +218,15 @@ const NotificationsScreen = (props: any) => {
             />
 
 
-            <View style={{ paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
+          
                 <FlatList
                     data={[1]}
-
+                    contentContainerStyle={{
+                        paddingHorizontal: 16,
+                        paddingBottom: 20
+                    }}
+                    onRefresh={refreshNotifications}
+                    refreshing={loading}
                     renderItem={null}
                     ListHeaderComponent={
                         <>
@@ -231,7 +236,6 @@ const NotificationsScreen = (props: any) => {
                         </>
                     }
                 />
-            </View>
 
         </SafeAreaView>
     );
@@ -242,7 +246,7 @@ export default NotificationsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        marginBottom: 50,
+        // marginBottom: 50,
         backgroundColor: '#FDFDFB',
 
     },

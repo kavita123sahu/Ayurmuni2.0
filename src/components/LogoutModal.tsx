@@ -47,7 +47,6 @@ const CommonModal = ({
                 onPress={onClose}>
                 <Pressable style={styles.modalContainer}>
 
-                    {/* Icon */}
                     <View style={styles.iconWrapper}>
                         <Text style={styles.icon}>
                             {icon}
@@ -96,9 +95,7 @@ const CommonModal = ({
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
-
                     </View>
-
                 </Pressable>
             </Pressable>
         </Modal>
