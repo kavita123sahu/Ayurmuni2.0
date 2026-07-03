@@ -95,6 +95,7 @@ import consultHome from "../screens/consult/consultHome";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
+import ChatScreen from "../screens/profile/ChatScreen";
 
 enableScreens();
 
@@ -227,6 +228,7 @@ const HomeStack = () => {
       <Stack.Screen name="consultHome" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

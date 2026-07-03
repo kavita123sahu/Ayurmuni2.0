@@ -93,7 +93,7 @@ const RenderAppoint = ({
 
     );
 
-    console.log("navigationrender", navigation);
+    console.log("navigationrender", item);
 
     const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
         ? item.rawData.doctor.health_diseases
@@ -290,11 +290,10 @@ const RenderAppoint = ({
                 onJoinCall={() =>
                     navigation.navigate("PatientVideoCallScreen", {
                         appointmentId: item?.consultation_id,
-                        call_status: item?.call_status,
+                        // call_status: item?.call_status,
                         role: "patient",
-                        doctorID: item?.rawData?.doctor?.doctor_id,
-                        doctorName: item?.rawData?.doctor?.name,
-                        onExit: () => navigation.goBack(),
+                        otherPartyName: item?.doctorName,
+                        otherPartyImage: item?.image,
                     })
                 }
 

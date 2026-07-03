@@ -16,11 +16,15 @@ import { useCreateReview } from '../hooks/useCreateReview';
 
 type Props = {
   visible: boolean;
+  loading: boolean;
   onClose: () => void;
-  onSubmit: (rating: number, feedback: string) => void;
+  onSubmit: (data: {
+    rating: number;
+    review: string;
+  }) => void;
 };
 
-const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
+const FeedbackModal: React.FC<Props> = ({  visible, onClose, onSubmit }) => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const { loading, submitReview } = useCreateReview();
@@ -48,43 +52,21 @@ const FeedbackModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
 
 
 
-  const handleSubmit = async () => {
+ 
+  const handleSubmit = () => {
+  if (!rating) {
+    Alert.alert("Validation", "Please select rating");
+    return;
+  }
 
-    if (!rating) {
-      Alert.alert('Validation', 'Please select rating');
-      return;
-    }
+  onSubmit({
+    rating,
+    review: feedback,
+  });
 
-    const payload = {
-      appointment: "9abcf4d9-4fb2-45de-908b-f8cc922511c1",
-      rating,
-      review: feedback,
-    };
-
-    console.log("paylaoddd", payload)
-    const response = await submitReview(payload);
-    console.log("resonserevieww", response);
-    if (response.success) {
-
-      Alert.alert(
-        'Success',
-        'Review submitted successfully',
-      );
-
-      setRating(0);
-      setFeedback('');
-
-      // onSubmit?.();
-      // onClose();
-
-    } else {
-
-      Alert.alert(
-        'Error',
-        'Unable to submit review',
-      );
-    }
-  };
+  setRating(0);
+  setFeedback("");
+};
 
 
   return (

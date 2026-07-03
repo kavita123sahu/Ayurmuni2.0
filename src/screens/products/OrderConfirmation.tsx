@@ -182,15 +182,15 @@ const OrderConfirmation: React.FC = (props: any) => {
 
             </ScrollView>
 
-
-            <FeedbackModal
+            {/* <FeedbackModal
                 visible={showModal}
+                appointmentId={props.route.params?.appointmentId}
                 onClose={() => setShowModal(false)}
                 onSubmit={() => {
                     setShowModal(false);
                     // navigation.navigate('Home'); 
                 }}
-            />
+            /> */}
 
         </SafeAreaView>
     );

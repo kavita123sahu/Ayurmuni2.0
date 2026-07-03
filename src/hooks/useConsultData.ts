@@ -294,49 +294,84 @@ export const useAllDoctors = (selectedFilters: any) => {
 
 
 
+
 export const useAppointmentHistory = () => {
-
     const [loading, setLoading] = useState(false);
-    const [AppointData, setAppointData] = useState<any[]>([]);
-
+    const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    const getAllAppointment = useCallback(async () => {
-        try {
-            setLoading(true);
+    const [AppointData, setAppointData] = useState<any[]>([]);
 
-            const res = await _CONSULT_SERVICES.getConsultHistory({});
-            console.log("consulresposne", res);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
 
-            setAppointData(res?.data?.results || []);
-            setLoading(false);
+    const getAllAppointment = useCallback(
+        async (pageNo = 1, isLoadMore = false) => {
+            try {
+                if (isLoadMore) {
+                    setLoadingMore(true);
+                } else {
+                    setLoading(true);
+                }
 
-        } catch (e) {
-            console.log("ALL_DOCTOR_APPOINT_ERROR", e);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+                const res = await _CONSULT_SERVICES.getConsultHistory({
+                    page: pageNo,
+                });
 
+                console.log("consult response", res);
+
+                const results = res?.data?.results || [];
+
+                if (isLoadMore) {
+                    setAppointData(prev => [...prev, ...results]);
+                } else {
+                    setAppointData(results);
+                }
+
+                setHasMore(!!res?.data?.next);
+                setPage(pageNo);
+
+            } catch (e) {
+                console.log("ALL_DOCTOR_APPOINT_ERROR", e);
+            } finally {
+                setLoading(false);
+                setLoadingMore(false);
+            }
+        },
+        [],
+    );
+
+    const loadMore = useCallback(() => {
+        if (loadingMore || !hasMore) return;
+
+        getAllAppointment(page + 1, true);
+    }, [page, hasMore, loadingMore, getAllAppointment]);
 
     const refreshUpcoming = useCallback(async () => {
         try {
             setRefreshing(true);
+            setPage(1);
+            setHasMore(true);
 
-            await Promise.all([
-                getAllAppointment()
-            ]);
-
+            await getAllAppointment(1, false);
         } finally {
             setRefreshing(false);
         }
-    }, []);
-
-    useEffect(() => {
-        getAllAppointment();
     }, [getAllAppointment]);
 
-    return { loading, AppointData, refreshUpcoming };
+    useEffect(() => {
+        getAllAppointment(1);
+    }, [getAllAppointment]);
+
+    return {
+        loading,
+        loadingMore,
+        refreshing,
+        AppointData,
+        refreshUpcoming,
+        loadMore,
+        hasMore,
+    };
 };
 
 

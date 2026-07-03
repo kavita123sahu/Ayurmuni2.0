@@ -22,7 +22,7 @@ interface DoctorItem {
     image: any;
     name: string
     full_name: string;
-    specialized_therapies: [];
+    health_diseases: Array<{ name: string }>;
     profile_image: string;
     experience_years: string;
     rating: number;
@@ -57,13 +57,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
         );
     }, [item?.is_favorite]);
 
-    const doctorName =
-        item?.name || item?.full_name;
-
-    const specialityText =
-        Array.isArray(item?.specialized_therapies)
-            ? item.specialized_therapies.join(' • ')
-            : '';
+ 
 
     const handleWishlist = useCallback(async () => {
         const previous = isWishlisted;
@@ -144,15 +138,14 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
 
                         ]}
                     >
-                        {
-                            Array.isArray(
-                                item?.specialized_therapies,
-                            )
-                                ? item?.specialized_therapies.join(
-                                    ' • ',
-                                )
+
+                          {
+                            Array.isArray(item?.health_diseases)
+                                ? item.health_diseases.map(i => i?.name).join(", ")
                                 : ''
                         }
+
+                       
                     </Text>
 
                     {/* INFO ROW */}

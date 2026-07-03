@@ -268,7 +268,7 @@ const ConsultHistory = (
                         profile_image: item.doctor?.doctor_image,
                         designation: item.doctor?.qualification,
                     },
-                }   );
+                });
 
                 break;
 

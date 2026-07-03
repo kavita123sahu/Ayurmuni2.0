@@ -65,7 +65,7 @@ const ConsultScreen = () => {
   const [history, setHistory] =
     useState([]);
 
-
+const [recentLoading, setRecentLoading] = useState(false);
 
 
   /*

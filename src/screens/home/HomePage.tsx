@@ -407,19 +407,23 @@ const HomePage: React.FC = (props: any) => {
               </>)}
 
             <>
-              <SectionHeader title="Suggested Diet Plan" />
-              <ComingSoonCard
+            
+            {YogaSession.length ==0 && (
+                <ComingSoonCard
                 title="Personalized Diet Plans"
                 icon="🥗"
               />
+            )}
             </>
 
             <>
-              <SectionHeader title="Panchakarma" />
-              <ComingSoonCard
-                title="Panchakarma Therapies"
+            
+            {YogaSession.length ==0 && (
+                <ComingSoonCard
+                title="Panchakarma"
                 icon="🌿"
               />
+            )}
             </>
           </>
         )}

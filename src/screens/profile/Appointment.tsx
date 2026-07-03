@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
@@ -32,7 +33,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AppointmentScreen = (props: any) => {
 
-  const { AppointData, refreshUpcoming, loading } = useAppointmentHistory();
+  const { AppointData, refreshUpcoming, loading, loadMore,
+    hasMore, loadingMore, } = useAppointmentHistory();
   // ✅ FIX
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [showRescheduleModal, setShowRescheduleModal] =
@@ -279,6 +281,13 @@ const AppointmentScreen = (props: any) => {
             />
           ) : null
         }
+         onEndReached={loadMore}
+    onEndReachedThreshold={0.5}
+    ListFooterComponent={
+        loadingMore ? (
+            <ActivityIndicator size="small" color="#0D614E" />
+        ) : null
+    }
       />
 
       <RescheduleModal
@@ -318,7 +327,7 @@ const AppointmentScreen = (props: any) => {
 
 
 
-      <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('AllDoctors')}>
+      <TouchableOpacity style={styles.bookBtn} onPress={() => props?.navigation.navigate('AllDoctors')}>
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
 

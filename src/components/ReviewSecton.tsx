@@ -10,7 +10,7 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
 
   console.log("reviewsalll", reviews);
   const visibleReviews = reviews?.slice(0, 3);
-console.log("vissblereviewww", visibleReviews)
+  console.log("vissblereviewww", visibleReviews)
 
   const getInitials = (name: string) => {
     return name?.split(" ")?.map((n) => n[0])?.join("").toUpperCase();
@@ -149,13 +149,13 @@ console.log("vissblereviewww", visibleReviews)
             {/* Avatar */}
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {getInitials(item?.name ?? 'NA')}
+                {getInitials(item?.patient_name ?? '')}
               </Text>
             </View>
 
             <View style={{ flex: 1, marginLeft: 10 }}>
               <View style={styles.nameRow}>
-                <Text style={styles.name}>{item?.name ?? ''}</Text>
+                <Text style={styles.name}>{item?.patient_name ?? ''}</Text>
                 <Text style={styles.stars}>
                   {renderStars(item?.rating ?? '')} ( {item?.rating ?? ''} )
                 </Text>

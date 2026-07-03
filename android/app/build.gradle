@@ -88,6 +88,21 @@ android {
         versionName "1.0"
     }
 
+    packagingOptions {
+        pickFirst 'assets/PLACEHOLDER'
+        pickFirst '**/libc++_shared.so'
+        exclude "**/libagora-mc3-*.so"
+        exclude 'META-INF/androidx.annotation_annotation-experimental.version'
+    }
+
+     splits {
+        abi {
+            reset()
+            enable true
+            universalApk false
+            include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
+        }
+    }
   
     signingConfigs {
          release {
@@ -112,10 +127,21 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.release
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            // signingConfig signingConfigs.release
+            // minifyEnabled enableProguardInReleaseBuilds
+            // proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
+    }
+}
+
+
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.annotation:annotation-experimental:1.4.1'
     }
 }
 

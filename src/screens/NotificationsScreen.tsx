@@ -7,7 +7,8 @@ import {
     TouchableOpacity,
     Image,
     TextStyle,
-    StatusBar
+    StatusBar,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../common/Images';
@@ -183,7 +184,9 @@ const NotificationsScreen = (props: any) => {
     const {
         notifications,
         loading,
-        refreshNotifications,
+        loadingMore,
+        loadMore,
+        // refreshNotifications,
     } = useNotifications();
 
     console.log("notificationsnotifications", notifications)
@@ -218,24 +221,61 @@ const NotificationsScreen = (props: any) => {
             />
 
 
-          
-                <FlatList
-                    data={[1]}
-                    contentContainerStyle={{
-                        paddingHorizontal: 16,
-                        paddingBottom: 20
-                    }}
-                    onRefresh={refreshNotifications}
-                    refreshing={loading}
-                    renderItem={null}
-                    ListHeaderComponent={
-                        <>
-                            {renderSection('upcoming', 'UPCOMING')}
-                            {renderSection('today', 'TODAY')}
-                            {renderSection('yesterday', 'YESTERDAY')}
-                        </>
-                    }
-                />
+
+            {/* <FlatList
+                data={[1]}
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 20
+                }}
+                onRefresh={refreshNotifications}
+                refreshing={loading}
+                renderItem={null}
+                onEndReached={loadMore}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                    loadingMore ? (
+                        <ActivityIndicator size="small" color="#0D614E" />
+                    ) : null
+                }
+                ListHeaderComponent={
+                    <>
+                        {renderSection('upcoming', 'UPCOMING')}
+                        {renderSection('today', 'TODAY')}
+                        {renderSection('yesterday', 'YESTERDAY')}
+                    </>
+                }
+            /> */}
+
+            <FlatList
+                data={notifications}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                    <NotificationCard item={item} />
+                )}
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 20
+                }}
+                // onRefresh={refreshNotifications}
+                refreshing={loading}
+                onEndReached={loadMore}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                    loadingMore ? (
+                        <View style={{ paddingVertical: 10 }}>
+                            <ActivityIndicator size="small" color="#0D614E" />
+                        </View>
+                    ) : null
+                }
+                ListHeaderComponent={
+                    <>
+                        {renderSection('upcoming', 'UPCOMING')}
+                        {renderSection('today', 'TODAY')}
+                        {renderSection('yesterday', 'YESTERDAY')}
+                    </>
+                }
+            />
 
         </SafeAreaView>
     );

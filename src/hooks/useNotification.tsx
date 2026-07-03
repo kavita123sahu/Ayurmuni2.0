@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import *as _CONSULT_SERVICE from '../services/ConsultServce';
+import * as _CONSULT_SERVICE from "../services/ConsultServce";
+
 export interface NotificationItem {
     id: string;
     title: string;
@@ -30,9 +31,7 @@ const getSection = (date: string) => {
     const created = new Date(date);
     const today = new Date();
 
-    if (created.toDateString() === today.toDateString()) {
-        return "today";
-    }
+    if (created.toDateString() === today.toDateString()) return "today";
 
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
@@ -47,49 +46,88 @@ const getSection = (date: string) => {
 export const useNotifications = () => {
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
 
-    const fetchNotifications = useCallback(async () => {
-        try {
-            setLoading(true);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
 
-            const res = await _CONSULT_SERVICE.getNotification(); // apna endpoint
+    const fetchNotifications = useCallback(
+        async (pageNo = 1, isLoadMore = false) => {
+            try {
+                if (isLoadMore) {
+                    setLoadingMore(true);
+                } else {
+                    setLoading(true);
+                }
 
-            if (res?.success) {
-                const data = res.data.results.map((item: any) => ({
-                    id: item.id,
-                    title: item.title,
-                    description: item.message,
-                    time: getTimeAgo(item.created_at),
-                    icon:
-                        item.notification_type === "appointment"
-                            ? require("../assets/images/calendarNot.png")
-                            : require("../assets/images/listNot.png"),
-                    iconBg:
-                        item.notification_type === "appointment"
-                            ? "#0D614E"
-                            : "#4A90E2",
-                    type: item.notification_type,
-                    section: getSection(item.created_at),
-                    is_read: item.is_read,
-                    rawData: item,
-                }));
+                const res = await _CONSULT_SERVICE.getNotification({
+                    page: pageNo,
+                    page_size: 10,
+                    view: "list",
+                    is_read: false,
+                    notification_type: "appointment",
+                });
 
-                setNotifications(data);
+                if (res?.success) {
+                    const data = (res?.data?.results || []).map((item: any) => ({
+                        id: item.id,
+                        title: item.title,
+                        description: item.message,
+                        time: getTimeAgo(item.created_at),
+                        icon:
+                            item.notification_type === "appointment"
+                                ? require("../assets/images/calendarNot.png")
+                                : require("../assets/images/listNot.png"),
+                        iconBg:
+                            item.notification_type === "appointment"
+                                ? "#0D614E"
+                                : "#4A90E2",
+                        type: item.notification_type,
+                        section: getSection(item.created_at),
+                        is_read: item.is_read,
+                        rawData: item,
+                    }));
+
+                    if (isLoadMore) {
+                        setNotifications(prev => [...prev, ...data]);
+                    } else {
+                        setNotifications(data);
+                    }
+
+                    setPage(pageNo);
+                    setHasMore(!!res?.data?.next);
+                }
+            } catch (error) {
+                console.log("Notification Error:", error);
+            } finally {
+                setLoading(false);
+                setLoadingMore(false);
             }
-        } catch (error) {
-            console.log("Notification Error:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        },
+        []
+    );
+
+    const loadMore = useCallback(() => {
+        if (loadingMore || !hasMore) return;
+
+        fetchNotifications(page + 1, true);
+    }, [page, hasMore, loadingMore, fetchNotifications]);
+
+    const refreshNotifications = useCallback(async () => {
+        setPage(1);
+        setHasMore(true);
+        await fetchNotifications(1, false);
+    }, [fetchNotifications]);
 
     useEffect(() => {
-        fetchNotifications();
+        fetchNotifications(1);
     }, [fetchNotifications]);
 
     return {
         notifications,
         loading,
-        refreshNotifications: fetchNotifications,
+        loadingMore,
+        loadMore,
+        // refreshNotifications,
     };
 };

@@ -76,16 +76,17 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                 }
 
                 return (
-                    <TouchableOpacity onPress={() => navigation.navigate('ProductDetails',{
-                         
-                varientID:
-                  item?.variant_id,
-              
-                    })} style={[styles.card, isGrid && styles.gridCard]}>
+                    <TouchableOpacity
+                            onPress={() => navigation.navigate('YogaScreen', { item })}
+                        style={[styles.card, isGrid && styles.gridCard]}>
 
                         {/* IMAGE */}
                         <View style={styles.imageContainer}>
-                            <Image source={item.image} style={styles.image} />
+                            <Image
+                                source={{ uri: item?.thumbnail_url }}
+                                style={styles.image}
+                                resizeMode="cover"
+                            />
                         </View>
 
                         {/* CONTENT */}
@@ -93,16 +94,22 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
 
                             <View style={{ paddingRight: 40, paddingBottom: 15 }}>
                                 <Text style={styles.title}>
-                                    {item.name}
+                                    {item?.title}
                                 </Text>
 
-                                {item.subtitle && (
+                                {item?.short_description && (
                                     <Text
                                         style={styles.subtitle}
                                         numberOfLines={2}
                                         ellipsizeMode="tail"
                                     >
-                                        {item.subtitle}
+                                        {item?.short_description}
+                                    </Text>
+                                )}
+
+                                {item?.duration_minutes && (
+                                    <Text style={styles.subtitle}>
+                                        {item?.duration_minutes} mins
                                     </Text>
                                 )}
 
@@ -181,16 +188,17 @@ const styles = StyleSheet.create({
     },
 
     imageContainer: {
-        backgroundColor: '#EEF3F2',
-        height: 135,
-        borderTopRightRadius: 16,
-        borderTopLeftRadius: 16,
+        width: "100%",
+        height: 180,
+        marginTop: 12,
+        borderRadius: 16,
+        overflow: "hidden",
+        backgroundColor: "#F1F5F9",
     },
 
     image: {
-        width: '100%',
-        height: '100%',
-        // resizeMode: 'contain',
+        width: "100%",
+        height: "100%",
     },
 
     subContainer: {

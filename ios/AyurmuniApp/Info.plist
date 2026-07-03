@@ -27,6 +27,10 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
+	<key>NSCameraUsageDescription</key>
+   <string>Video call ke liye camera access chahiye</string>
+   <key>NSMicrophoneUsageDescription</key>
+   <string>Video call ke liye microphone access chahiye</string>
 	<dict>
 	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>

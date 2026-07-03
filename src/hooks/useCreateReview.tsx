@@ -11,31 +11,40 @@ export const useCreateReview = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
 
-  const submitReview = async (
-    payload: ReviewPayload,
-  ) => {
-    try {
-      setLoading(true);
-      setError(null);
+const submitReview = async ({
+  entityType,
+  appointmentId,
+  reviewData,
+}: {
+  entityType: string;
+  appointmentId: string;
+  reviewData: ReviewPayload;
+}) => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      const response = await createReview(payload);
+    const response = await createReview({
+      entityType,
+      appointmentId,
+      reviewData,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (err: any) {
-      setError(err);
+    return response; // API ka actual response return karo
+  } catch (err: any) {
+    setError(err);
 
-      return {
-        success: false,
-        error: err?.response?.data || err?.message,
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    return {
+      success: false,
+      message:
+        err?.response?.data?.message ||
+        err?.message ||
+        "Something went wrong",
+    };
+  } finally {
+    setLoading(false);
+  }
+};
   return {
     loading,
     error,

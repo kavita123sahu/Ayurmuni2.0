@@ -26,13 +26,13 @@ export type CartItem = {
   id: string;
   quantity: number | string;
   price: number | string;
-    variant_id?: string;
-    product_name?: string;
-    variant_title?: string;
-    media?: {
-      media_url?: string;
-    }[];
-  
+  variant_id?: string;
+  product_name?: string;
+  variant_title?: string;
+  media?: {
+    media_url?: string;
+  }[];
+
 };
 export const getProductData = (
   item: CartItem,
@@ -152,6 +152,7 @@ export type Appointment = {
   time: string;
   isHorizontal: boolean
   status: string;
+  
   image: string | null;
   rawData?: any;
 };
@@ -204,8 +205,8 @@ export const PRAKRITI_IMAGES: Record<string, string> = {
 export const getStatusStyle = (status: string) => {
   const styles = {
     confirmed: {
-      backgroundColor: "#10B9811A",
-      color: "#10B981",
+      backgroundColor: "#EEF4FF",
+      color: "#1048b9",
     },
     pending: {
       backgroundColor: "#FFF7ED",

@@ -352,7 +352,6 @@ const DoctorSlot = (props: any) => {
                                                 const isAvailable = status === 'available';
                                                 const isReserved = status === 'reserved';
                                                 const isBooked = status === 'booked';
-
                                                 const selectable = isAvailable;
 
                                                 return (
