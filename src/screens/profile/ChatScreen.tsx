@@ -1,49 +1,50 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// ✅ Use route params from navigation
+import { ChatContainer } from '../../chatSystem/components/chat/chatContainer';
 interface ChatScreenProps {
-  route?: {
-    params: {
-      appointmentId: string;
-      role: 'doctor' | 'patient';
-      doctorName: string;
-      patientName: string;
-      doctorAvatar?: string;
-      patientAvatar?: string;
+    route?: {
+        params: {
+            appointmentId: string;
+            role: 'doctor' | 'patient';
+            doctorName: string;
+            patientName: string;
+            doctorAvatar?: string;
+            patientAvatar?: string;
+        };
     };
-  };
 }
 
 export default function ChatScreen({ route }: ChatScreenProps) {
-  // Default values — replace with your actual data
-  const params = route?.params || {
-    appointmentId: '44a923b5-2c6d-4fed-ae53-e2e9f201f66a',
-    role: 'patient' as const,
-    doctorName: 'Dr. Priya Sharma',
-    patientName: 'Rahul Sharma',
-    doctorAvatar: 'https://example.com/doctor.jpg',
-    patientAvatar: 'https://example.com/patient.jpg',
-  };
+    // ✅ Your appointment details
+    // const params = {
+    //     appointmentId: 'a059b339-296b-42c0-8e4c-7cba0b62e4c5',
+    //     role: 'patient' as const,
+    //     doctorName: 'Dr. Mohit Beniwal',
+    //     patientName: 'Sonam Wangchu',
+    //     doctorAvatar: undefined,
+    //     patientAvatar: undefined,
+    // };
 
-  return (
-    <View style={styles.container}>
-      <ChatContainer
-        appointmentId={params.appointmentId}
-        role={params.role}
-        doctorName={params.doctorName}
-        patientName={params.patientName}
-        doctorAvatar={params.doctorAvatar}
-        patientAvatar={params.patientAvatar}
-      />
-    </View>
-  );
+   const {appointmentId, role, doctorName, patientName, doctorAvatar, patientAvatar} = route?.params || {}; 
+
+    return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <ChatContainer
+                appointmentId={appointmentId}
+                role={role}
+                doctorName={doctorName}
+                patientName={patientName}
+                doctorAvatar={doctorAvatar}
+                patientAvatar={patientAvatar}
+            />
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
 });

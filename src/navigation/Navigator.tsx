@@ -96,6 +96,7 @@ import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
 import ChatScreen from "../screens/profile/ChatScreen";
+import { ChatContainer } from "../chatSystem/components/chat/chatContainer";
 
 enableScreens();
 
@@ -229,6 +230,21 @@ const HomeStack = () => {
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+       <Stack.Screen 
+          name="ChatContainer" 
+          options={{ headerShown: false, animation: 'slide_from_right' }}
+        >
+          {(props) => (
+            <ChatContainer
+              appointmentId="a059b339-296b-42c0-8e4c-7cba0b62e4c5"
+              role="patient"
+              doctorName="Dr. Mohit Beniwal"
+              patientName="Sonam Wangchu"
+              // onBack={() => props.navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+        {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     </Stack.Navigator>
   );
 };

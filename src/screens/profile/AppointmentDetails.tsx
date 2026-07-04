@@ -966,9 +966,12 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
               style={styles.secondaryBtn}
               onPress={() => {
                 navigation.navigate('ChatScreen', {
-                  otherPartyName: data?.doctor?.doctor_name,
-                  otherPartyAvatarUrl: data?.doctor?.doctor_image,
-                  appointment_id: data?.appointment?.consultation_id,
+                  doctorName: data?.doctor?.doctor_name,
+                  doctorAvatar: data?.doctor?.doctor_image,
+                  appointmentId: data?.appointment?.consultation_id,
+                  patientName: data?.appointment?.patient?.patient_name,
+                  role: 'patient',
+                  patientAvatar: data?.appointment?.patient?.patient_image,
                 });
               }}
             >
@@ -1191,39 +1194,39 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
             </View>
 
-{appointmentStatus === 'completed' && ( 
-  <> 
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="star-outline" size={15} color={Theme.gold} />
-              <Text style={styles.sectionTitle}>Your Review</Text>
-            </View>
-
-
-            <View style={styles.card}>
-              {detail?.appointment?.review?.is_rated ? (
-                <View>
-                  <View style={styles.ratingRow}>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Ionicons
-                        key={i}
-                        name={i < (detail?.appointment?.review?.rating || 0) ? 'star' : 'star-outline'}
-                        size={18}
-                        color={Theme.gold}
-                        style={{ marginRight: 3 }}
-                      />
-                    ))}
-                  </View>
-                  <Text style={styles.reviewText}>{detail?.appointment?.review?.review}</Text>
+            {appointmentStatus === 'completed' && (
+              <>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="star-outline" size={15} color={Theme.gold} />
+                  <Text style={styles.sectionTitle}>Your Review</Text>
                 </View>
-              ) : (
-                <Pressable style={styles.emptyReviewWrap} >
-                  <Ionicons name="star-outline" size={26} color={Theme.divider} />
-                  <Text style={styles.emptyReview}>You have not submitted a review yet.</Text>
-                </Pressable>
-              )}
-            </View>
-            </>
-)}
+
+
+                <View style={styles.card}>
+                  {detail?.appointment?.review?.is_rated ? (
+                    <View>
+                      <View style={styles.ratingRow}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Ionicons
+                            key={i}
+                            name={i < (detail?.appointment?.review?.rating || 0) ? 'star' : 'star-outline'}
+                            size={18}
+                            color={Theme.gold}
+                            style={{ marginRight: 3 }}
+                          />
+                        ))}
+                      </View>
+                      <Text style={styles.reviewText}>{detail?.appointment?.review?.review}</Text>
+                    </View>
+                  ) : (
+                    <Pressable style={styles.emptyReviewWrap} >
+                      <Ionicons name="star-outline" size={26} color={Theme.divider} />
+                      <Text style={styles.emptyReview}>You have not submitted a review yet.</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </>
+            )}
 
             {showButtons && (
               <View style={{ paddingHorizontal: 16 }}>

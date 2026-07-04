@@ -1,18 +1,17 @@
-import { Platform } from 'react-native';
 import { WS_BASE } from './api';
 import { WebSocketMessage } from '../types/chat';
 
 type MessageHandler = (data: WebSocketMessage) => void;
 
 export class WebSocketService {
-    private ws: WebSocket | null = null;
-    private reconnectAttempts = 0;
-    private maxReconnectAttempts = 5;
-    private reconnectDelay = 1000;
-    private handlers: Map<string, MessageHandler[]> = new Map();
-    private isConnecting = false;
-    private pingInterval: NodeJS.Timeout | null = null;
-    private isIntentionalClose = false;
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 2000;
+  private handlers: Map<string, MessageHandler[]> = new Map();
+  private isConnecting = false;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private isIntentionalClose = false;
 
     constructor(
         private appointmentId: string,
@@ -28,26 +27,21 @@ export class WebSocketService {
         this.isConnecting = true;
         this.isIntentionalClose = false;
 
-        // Build WebSocket URL
-        const url = `${WS_BASE}/ws/communication/appointments/${this.appointmentId}/?token=${this.token}`;
-        console.log('🔌 Connecting WebSocket:', url.replace(this.token, '***'));
+    const url = `${WS_BASE}/ws/communication/appointments/${this.appointmentId}/?token=${this.token}`;
+    console.log('🔌 Connecting WebSocket:', url.replace(this.token, '***'));
 
-        try {
-            // ✅ Native WebSocket — no package needed!
-            this.ws = new WebSocket(url);
-
-            // @ts-ignore — React Native WebSocket events
-            this.ws.onopen = this.handleOpen.bind(this);
-            this.ws.onmessage = this.handleMessage.bind(this);
-            this.ws.onclose = this.handleClose.bind(this);
-            this.ws.onerror = this.handleError.bind(this);
-
-        } catch (error) {
-            console.error('❌ WebSocket connection error:', error);
-            this.isConnecting = false;
-            this.reconnect();
-        }
+    try {
+      this.ws = new WebSocket(url);
+      this.ws.onopen = this.handleOpen.bind(this);
+      this.ws.onmessage = this.handleMessage.bind(this);
+      this.ws.onclose = this.handleClose.bind(this);
+      this.ws.onerror = this.handleError.bind(this);
+    } catch (error) {
+      console.error('❌ WebSocket connection error:', error);
+      this.isConnecting = false;
+      this.reconnect();
     }
+  }
 
     private handleOpen(): void {
         console.log('✅ WebSocket connected');
@@ -57,118 +51,129 @@ export class WebSocketService {
         this.onConnect?.();
     }
 
-    private handleMessage(event: { data: string }): void {
+  private handleMessage(event: any): void {
+    try {
+      if (!event.data) {
+        console.warn('⚠️ Empty WebSocket message');
+        return;
+      }
+      
+      const data: WebSocketMessage = JSON.parse(event.data);
+      console.log('📩 WebSocket received:', data.type);
+      
+      // ✅ Route message
+      if (data.type === 'chat.connected') {
+        this.emit('connected', data);
+      } else if (data.type === 'chat.receive') {
+        this.emit('message', data);
+      } else if (data.type === 'chat.error') {
+        console.error('❌ Server error:', data.error);
+        this.emit('error', data);
+      } else if (data.type === 'chat.read') {
+        this.emit('read', data);
+      } else if (data.type === 'ping') {
+        this.sendPong();
+      } else {
+        console.log('⚠️ Unknown message type:', data.type);
+        if (data.message) {
+          this.emit('message', data);
+        }
+      }
+    } catch (error) {
+      console.error('❌ WebSocket parse error:', error);
+    }
+  }
+
+  private handleClose(event: any): void {
+    console.log(`🔌 WebSocket closed: ${event.code} - ${event.reason || 'No reason'}`);
+    this.isConnecting = false;
+    this.stopPing();
+    this.onDisconnect?.();
+
+    if (this.isIntentionalClose) return;
+    if (event.code === 1000 || event.code === 1001) {
+      console.log('👋 Normal closure');
+      return;
+    }
+    this.reconnect();
+  }
+
+  private handleError(event: any): void {
+    console.error('❌ WebSocket error:', event);
+    this.isConnecting = false;
+  }
+
+  private reconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      console.log(`🔄 Reconnecting in ${delay}ms... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      setTimeout(() => {
+        if (!this.isIntentionalClose) {
+          this.connect();
+        }
+      }, delay);
+    } else {
+      console.error('❌ Max reconnect attempts reached');
+      this.emit('error', { type: 'chat.error', error: 'Connection lost. Please refresh.' });
+    }
+  }
+
+  sendMessage(text: string): boolean {
+    if (this.isConnected()) {
+      try {
+        const payload = { type: 'chat.send', text };
+        this.ws?.send(JSON.stringify(payload));
+        console.log('📤 Sent:', payload);
+        return true;
+      } catch (error) {
+        console.error('❌ Send failed:', error);
+        return false;
+      }
+    }
+    console.warn('⚠️ WebSocket not open');
+    return false;
+  }
+
+  sendRead(messageIds?: string[]): boolean {
+    if (this.isConnected()) {
+      try {
+        const payload = { type: 'chat.read', message_ids: messageIds };
+        this.ws?.send(JSON.stringify(payload));
+        console.log('📤 Read:', payload);
+        return true;
+      } catch (error) {
+        console.error('❌ Read failed:', error);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  private sendPong(): void {
+    if (this.isConnected()) {
+      try {
+        this.ws?.send(JSON.stringify({ type: 'pong' }));
+        console.log('💓 Pong sent');
+      } catch (error) {
+        console.error('❌ Pong failed:', error);
+      }
+    }
+  }
+
+  private startPing(): void {
+    this.stopPing();
+    this.pingInterval = setInterval(() => {
+      if (this.isConnected()) {
         try {
-            const data: WebSocketMessage = JSON.parse(event.data);
-            console.log('📩 WebSocket message:', data.type);
-            this.routeMessage(data);
+          this.ws?.send(JSON.stringify({ type: 'ping' }));
+          console.log('💓 Ping sent');
         } catch (error) {
-            console.error('❌ WebSocket parse error:', error);
+          console.error('❌ Ping failed:', error);
         }
-    }
-
-    private handleClose(event: { code: number; reason: string }): void {
-        console.log(`🔌 WebSocket closed: ${event.code} - ${event.reason}`);
-        this.isConnecting = false;
-        this.stopPing();
-        this.onDisconnect?.();
-
-        // Don't reconnect if intentional close
-        if (this.isIntentionalClose) return;
-
-        // Normal closure codes
-        if (event.code === 1000 || event.code === 1001) {
-            console.log('👋 Normal closure, not reconnecting');
-            return;
-        }
-
-        this.reconnect();
-    }
-
-    private handleError(event: any): void {
-        console.error('❌ WebSocket error:', event);
-        this.isConnecting = false;
-    }
-
-    private routeMessage(data: WebSocketMessage): void {
-        switch (data.type) {
-            case 'chat.connected':
-                this.emit('connected', data);
-                break;
-            case 'chat.receive':
-                this.emit('message', data);
-                break;
-            case 'chat.error':
-                this.emit('error', data);
-                break;
-            case 'chat.read':
-                this.emit('read', data);
-                break;
-            default:
-                console.log('Unknown message type:', data.type);
-        }
-    }
-
-    private reconnect(): void {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-            console.log(`🔄 Reconnecting in ${delay}ms... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-
-            setTimeout(() => {
-                if (!this.isIntentionalClose) {
-                    this.connect();
-                }
-            }, delay);
-        } else {
-            console.error('❌ Max reconnect attempts reached');
-            this.emit('error', {
-                type: 'chat.error',
-                error: 'Connection lost. Please refresh.'
-            });
-        }
-    }
-
-    // ✅ Send message via WebSocket
-    sendMessage(text: string): boolean {
-        if (this.isConnected()) {
-            this.send(JSON.stringify({ type: 'chat.send', text }));
-            return true;
-        }
-        return false;
-    }
-
-    // ✅ Mark as read via WebSocket
-    sendRead(messageIds?: string[]): boolean {
-        if (this.isConnected()) {
-            this.send(JSON.stringify({
-                type: 'chat.read',
-                message_ids: messageIds
-            }));
-            return true;
-        }
-        return false;
-    }
-
-    // ✅ Send any data
-    private send(data: string): void {
-        if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(data);
-        } else {
-            console.warn('⚠️ WebSocket not open, message not sent');
-        }
-    }
-
-    // ✅ Heartbeat ping
-    private startPing(): void {
-        this.stopPing();
-        this.pingInterval = setInterval(() => {
-            if (this.isConnected()) {
-                // Send ping to keep connection alive
-                this.send(JSON.stringify({ type: 'ping' }));
-            }
-        }, 30000); // Every 30 seconds
-    }
+      }
+    }, 30000);
+  }
 
     private stopPing(): void {
         if (this.pingInterval) {
@@ -177,32 +182,23 @@ export class WebSocketService {
         }
     }
 
-    // ✅ Check connection status
-    isConnected(): boolean {
-        return this.ws?.readyState === WebSocket.OPEN;
-    }
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
 
-    getReadyState(): number {
-        return this.ws?.readyState ?? -1;
+  on(event: string, handler: MessageHandler): void {
+    if (!this.handlers.has(event)) {
+      this.handlers.set(event, []);
     }
+    this.handlers.get(event)!.push(handler);
+  }
 
-    // ✅ Event handling
-    on(event: string, handler: MessageHandler): void {
-        if (!this.handlers.has(event)) {
-            this.handlers.set(event, []);
-        }
-        this.handlers.get(event)!.push(handler);
+  off(event: string, handler: MessageHandler): void {
+    const handlers = this.handlers.get(event);
+    if (handlers) {
+      this.handlers.set(event, handlers.filter((h) => h !== handler));
     }
-
-    off(event: string, handler: MessageHandler): void {
-        const handlers = this.handlers.get(event);
-        if (handlers) {
-            this.handlers.set(
-                event,
-                handlers.filter((h) => h !== handler)
-            );
-        }
-    }
+  }
 
     private emit(event: string, data: WebSocketMessage): void {
         const handlers = this.handlers.get(event);
@@ -211,18 +207,15 @@ export class WebSocketService {
         }
     }
 
-    // ✅ Disconnect
-    disconnect(): void {
-        this.isIntentionalClose = true;
-        this.stopPing();
-        if (this.ws) {
-            try {
-                this.ws.close(1000, 'Normal closure');
-            } catch (e) {
-                // Ignore
-            }
-            this.ws = null;
-        }
-        this.isConnecting = false;
+  disconnect(): void {
+    this.isIntentionalClose = true;
+    this.stopPing();
+    if (this.ws) {
+      try {
+        this.ws.close(1000, 'Normal closure');
+      } catch (e) {}
+      this.ws = null;
     }
+    this.isConnecting = false;
+  }
 }

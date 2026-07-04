@@ -1,10 +1,49 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /usr/local/Cellar/android-sdk/24.3.3/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ✅ For RN 0.84+
+-keep class com.facebook.react.** { *; }
+-keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.jni.** { *; }
 
-# Add any project specific keep options here:
+# ✅ Keep native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# ✅ Keep React Native modules
+-keep class com.facebook.react.modules.** { *; }
+-keep class com.facebook.react.bridge.** { *; }
+-keep class com.facebook.react.uimanager.** { *; }
+
+# ✅ Keep custom modules
+-keep class com.ayurmuniapp.** { *; }
+
+# ✅ Keep JavaScript interfaces
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
+-keepattributes Signature
+
+# ✅ WebSocket
+-keep class org.java_websocket.** { *; }
+-keep class com.neovisionaries.ws.client.** { *; }
+
+# ✅ OkHttp
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# ✅ AndroidX
+-keep class androidx.** { *; }
+-keep interface androidx.** { *; }
+
+# ✅ Agora
+-keep class io.agora.** { *; }
+-keep class com.agora.** { *; }
+-dontwarn io.agora.**
+
+# ✅ Keep all native libraries
+-keep class **.R$* { *; }
+-keep class **.BuildConfig { *; }
+
+# ✅ Don't obfuscate for now (for debugging)
+-dontobfuscate
+-dontoptimize
