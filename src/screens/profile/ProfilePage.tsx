@@ -200,7 +200,7 @@ const ProfilePage = ({ navigation }: any) => {
                 <Text style={styles.title}>{item.title}</Text>
 
                 {/* Arrow */}
-                <Image source={Images.arrow} style={{ height: 25, width: 25 }} />
+                <Image source={Images.arrowRight} style={{ height: 25, width: 25 }} />
             </TouchableOpacity>
         );
     };

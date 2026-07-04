@@ -4,7 +4,6 @@ export const Images = {
     // backgroundFlower,approved,phoneIcon,promoIcon, organic,track,history,persnal2,Potential,Temp,Sleep,Sweating,Bowel,Appetite,Skin,BodyHair,SPrakriti
     //Prakriti2,Body,Prakriti 
     backIcon: require('../assets/images/backButton.png'),
-    arrow: require('../assets/images/arrow.png'),
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
     pdfIcon: require('../assets/images/pdfIcon.png'),
@@ -32,7 +31,6 @@ export const Images = {
     arrowRight: require('../assets/images/arrowRight.png'),
 
 
-    apple: require('../assets/images/apple.png'),
     tickIcon: require('../assets/images/tickIcon.png'),
     starIcon: require('../assets/images/starIcon.png'),
 
