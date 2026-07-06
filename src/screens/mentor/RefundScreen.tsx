@@ -20,6 +20,7 @@ import AppHeader from '../../components/AppHeader';
 import { Icons, Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
+import { MaterialCommunityIcons } from '../../common/Vector';
 
 const reasons = [
     'Product damaged',
@@ -32,7 +33,7 @@ const refundMethods = [
     {
         id: 'original',
         title: 'Original Method',
-        icon: require('../../assets/images/bank.png'),
+        icon: <MaterialCommunityIcons name='bank-outline'/>,
         subtitle: 'Refund to Visa •••• 4242 (5–7 business days)',
     },
     {

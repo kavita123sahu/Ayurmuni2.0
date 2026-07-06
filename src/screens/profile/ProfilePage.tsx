@@ -19,7 +19,6 @@ import Header from '../../components/Header';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
-import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ProfileServices from '../../services/ProfileServices';
 import { useFocusEffect } from '@react-navigation/native';

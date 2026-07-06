@@ -10,7 +10,6 @@ import TopSellingList from '../../components/TopSellingList';
 import SectionHeader from '../../components/SectionHeader';
 import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../common/Images';
-import { topSelling } from '../../common/DataInterface';
 import { Colors } from '../../common/Colors';
 import * as _PRODUCT_SERVICES from '../../services/ProductServices';
 
@@ -19,8 +18,7 @@ const ProductsScreen = () => {
 
   const navigation = useNavigation();
   const productImage = require('../../assets/images/RecentsImage.png');
-  const categoryImage = require('../../assets/images/CategiryImage.png');
-
+ 
   const recentProducts = [
     {
       id: '1',
@@ -39,14 +37,14 @@ const ProductsScreen = () => {
   ];
 
   const categories = [
-    { id: '1', name: 'Seeds', icon: categoryImage },
-    { id: '2', name: 'Grains', icon: categoryImage },
-    { id: '3', name: 'Fats & Oils', icon: categoryImage },
-    { id: '4', name: 'Drinks', icon: categoryImage },
-    { id: '5', name: 'Seeds', icon: categoryImage },
-    { id: '6', name: 'Grains', icon: categoryImage },
-    { id: '7', name: 'Fats & Oils', icon: categoryImage },
-    { id: '8', name: 'Drinks', icon: categoryImage },
+    { id: '1', name: 'Seeds', icon: undefined },
+    { id: '2', name: 'Grains', icon: undefined },
+    { id: '3', name: 'Fats & Oils', icon: undefined },
+    { id: '4', name: 'Drinks', icon: undefined },
+    { id: '5', name: 'Seeds', icon: undefined },
+    { id: '6', name: 'Grains', icon: undefined },
+    { id: '7', name: 'Fats & Oils', icon: undefined },
+    { id: '8', name: 'Drinks', icon: undefined },
   ];
 
   const [productData, setProductData] = React.useState([]);
@@ -111,7 +109,7 @@ const ProductsScreen = () => {
           tag="SUMMER SALE"
           buttontext='Shop Now'
           image={require('../../assets/images/cosmetic.png')}
-          arrowIcon={require('../../assets/images/arrow.png')}
+          arrowIcon={require('../../assets/images/arrowRight.png')}
           onPress={() => { }}
           showButton={true}
         />

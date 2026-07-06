@@ -24,7 +24,7 @@ const mealsData = [
         title: "Avocado & Poached Egg Toast",
         subtitle: "Whole grain sourdough...",
         kcal: 340,
-        image: Images.Breakfast,
+        image: undefined,
         status: "log",
     },
     {
@@ -34,7 +34,7 @@ const mealsData = [
         title: "Mediterranean Quinoa Bowl",
         subtitle: "Quinoa, chickpeas...",
         kcal: 520,
-        image: Images.Breakfast,
+        image: undefined,
         status: "done",
     },
     {
@@ -44,7 +44,7 @@ const mealsData = [
         title: "Lemon Garlic Glazed Salmon",
         subtitle: "Wild salmon, asparagus...",
         kcal: 410,
-        image: Images.Breakfast,
+        image: undefined,
         status: "log",
     },
     {
@@ -54,7 +54,7 @@ const mealsData = [
         title: "Mixed Nuts & Berries",
         subtitle: "Almonds, walnuts...",
         kcal: 185,
-        image: Images.Breakfast,
+        image: undefined,
         status: "log",
     },
     {
@@ -64,7 +64,7 @@ const mealsData = [
         title: "Mixed Nuts & Berries",
         subtitle: "Almonds, walnuts...",
         kcal: 185,
-        image: Images.Breakfast,
+        image: undefined,
         status: "log",
     },
 ];

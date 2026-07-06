@@ -134,7 +134,7 @@ const YogaScreen = (props: any) => {
             <TouchableOpacity style={styles.card1} onPress={() => props.navigation.navigate('DietScreen')}>
 
                 {/* Left Image */}
-                <Image source={Images.MentorImage} style={styles.image} />
+                <Image source={Images.doctorImage} style={styles.image} />
 
                 {/* Middle Content */}
                 <View style={styles.content}>

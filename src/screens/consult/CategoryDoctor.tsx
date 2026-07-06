@@ -127,7 +127,7 @@ const CategoryDoctor = (props: any) => {
                                 imageLeft={Images.PlusBag}
                                 image={require('../../assets/images/doctorbanner.png')}
                                 buttontext='Book an appointment online'
-                                arrowIcon={require('../../assets/images/arrow.png')}
+                                arrowIcon={require('../../assets/images/arrowRight.png')}
                                 onPress={() => { navigation.navigate('AllDoctors') }}
                                 showButton={false}
                             />

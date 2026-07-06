@@ -57,21 +57,21 @@ const OrderConfirmation: React.FC = (props: any) => {
     const orderData: OrderItemType[] = [
         {
             id: '1',
-            image: Images.Breakfast,
+            image: undefined,
             title: 'Organic Broccoli',
             subtitle: '500g · Qty: 2',
             price: 'Rs. 149.00',
         },
         {
             id: '2',
-            image:  Images.Breakfast,
+            image:  undefined,
             title: 'Red Fuji Apples',
             subtitle: '1kg · Qty: 1',
             price: 'Rs. 149.00',
         },
         {
             id: '3',
-            image: Images.Breakfast,
+            image: undefined,
             title: 'Heirloom Carrots',
             subtitle: '400g · Qty: 1',
             price: 'Rs. 149.00',

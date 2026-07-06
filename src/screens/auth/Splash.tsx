@@ -196,7 +196,7 @@ const Splash = (props: any) => {
       const token = await Utils.getData('_TOKEN');
 
       props.navigation.replace('Welcome');
-      return;
+      // return;
 
       if (!token) {
         props.navigation.replace('AuthStack', {

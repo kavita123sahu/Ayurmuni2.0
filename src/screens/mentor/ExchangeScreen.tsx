@@ -77,7 +77,7 @@ const ExchangeScreen = (props: any) => {
 
         <View style={styles.productCard}>
           <Image
-            source={require('../../assets/images/doctor.png')}
+            source={require('../../assets/images/doctorImage.png')}
             style={styles.productImg}
           />
           <View>
@@ -120,7 +120,7 @@ const ExchangeScreen = (props: any) => {
               style={{ flexDirection: 'row', marginTop: 30, justifyContent: 'space-between' }}
             >
               <Text style={styles.variantText}>NEW VARIENT</Text>
-              <Image source={require('../../assets/images/dropdowncenter.png')} style={{ height: 18, width: 9 }} />
+              {/* <Image source={require('../../assets/images/dropdowncenter.png')} style={{ height: 18, width: 9 }} /> */}
 
             </TouchableOpacity>
 

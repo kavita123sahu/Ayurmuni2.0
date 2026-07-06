@@ -93,7 +93,7 @@ const OptionCard = ({
         FALLBACK
         */
 
-        return Images.HairImage;
+        return ;
     };
 
     return (

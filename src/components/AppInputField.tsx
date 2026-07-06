@@ -12,7 +12,6 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { bloodGroupOptions, genderOptions, relationOptions } from '../common/DataInterface';
 
 
 const AppInputField = ({

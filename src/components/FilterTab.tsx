@@ -156,7 +156,16 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                                                 }
 
                                                 // SPECIALITY / EXPERIENCE
-                                                setSelectedFilters(prev => ({
+                                                // setSelectedFilters(prev => ({
+                                                //     ...prev,
+                                                //     [tab.key === "speciality"
+                                                //         ? "specialization"
+                                                //         : "experience"
+                                                //     ]: item.value,
+                                                // }));
+
+
+                                                setSelectedFilters((prev: any) => ({
                                                     ...prev,
                                                     [tab.key === "speciality"
                                                         ? "specialization"

@@ -28,7 +28,7 @@ export default function YogaSession(props: any) {
 
                 <View style={styles.videoContainer}>
                     <Image
-                        source={Images.VideoPlayer}
+                        source={Images.video}
                         style={styles.video}
                     />
                 </View>
@@ -96,7 +96,7 @@ export default function YogaSession(props: any) {
                     name="Guided by Master Elena"
                     subtitle="Clinical Yoga Specialist • 15 Years Experience"
                     description="Elena specializes in bio-mechanical alignment and mindful breathwork to optimize physical and mental resilience."
-                    image={Images.MentorImage} // apni image
+                    image={Images.doctorImage} // apni image
                     onPress={() => props.navigation.navigate('ConsultMentor')}
                 />}
                 renderItem={({ item, index }) => (

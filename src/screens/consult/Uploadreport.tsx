@@ -195,7 +195,7 @@ const PrescriptionUpload: React.FC<Props> = ({
                         }}
                     />
 
-                    <PrimaryButton onPress={() =>
+                    <PrimaryButton TextFont="800" onPress={() =>
                         setShowRecordModal(false)
                     } title='DONE' />
 

@@ -52,7 +52,7 @@ const AppointmentScreen = (props: any) => {
       consultation_id: item.consultation_id,
       doctorName: item.doctor?.doctor_name || "",
       therapies: Array.isArray(item?.doctor?.health_diseases)
-        ? item.doctor.health_diseases.map(i => i.name).join(", ")
+        ? item.doctor.health_diseases.map((i: any ) => i.name).join(", ")
         : "",
       date: item.appointment_date,
       time: item.start_time,

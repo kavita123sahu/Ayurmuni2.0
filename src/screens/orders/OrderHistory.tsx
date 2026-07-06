@@ -5,7 +5,6 @@ import OrderCard from '../../components/OrderCard';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
 import { Images } from '../../common/Images';
-import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

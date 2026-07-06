@@ -1,49 +1,58 @@
-# ✅ For RN 0.84+
--keep class com.facebook.react.** { *; }
+# React Native core
+-keep,allowobfuscation @interface com.facebook.proguard.annotations.DoNotStrip
+-keep @com.facebook.proguard.annotations.DoNotStrip class *
+-keepclassmembers class * {
+    @com.facebook.proguard.annotations.DoNotStrip *;
+}
+-keep @com.facebook.proguard.annotations.DoNotStripAny class * {
+    *;
+}
+-keep @com.facebook.jni.annotations.DoNotStrip class *
+-keepclassmembers class * {
+    @com.facebook.jni.annotations.DoNotStrip *;
+}
+-keep @com.facebook.jni.annotations.DoNotStripAny class * {
+    *;
+}
+
+-keep class * implements com.facebook.react.bridge.JavaScriptModule { *; }
+-keep class * implements com.facebook.react.bridge.NativeModule { *; }
+-keepclassmembers,includedescriptorclasses class * { native <methods>; }
+-keepclassmembers class * { @com.facebook.react.uimanager.annotations.ReactProp <methods>; }
+-keepclassmembers class * { @com.facebook.react.uimanager.annotations.ReactPropGroup <methods>; }
+
+-dontwarn com.facebook.react.**
+-keep,includedescriptorclasses class com.facebook.react.bridge.** { *; }
+-keep,includedescriptorclasses class com.facebook.react.turbomodule.core.** { *; }
+-keep,includedescriptorclasses class com.facebook.react.internal.turbomodule.core.** { *; }
 -keep class com.facebook.hermes.** { *; }
 -keep class com.facebook.jni.** { *; }
 
-# ✅ Keep native methods
--keepclasseswithmembernames class * {
-    native <methods>;
-}
-
-# ✅ Keep React Native modules
--keep class com.facebook.react.modules.** { *; }
--keep class com.facebook.react.bridge.** { *; }
--keep class com.facebook.react.uimanager.** { *; }
-
-# ✅ Keep custom modules
+# App package
 -keep class com.ayurmuniapp.** { *; }
 
-# ✅ Keep JavaScript interfaces
+# Networking
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class sun.misc.Unsafe { *; }
+
+# Agora
+-keep class io.agora.** { *; }
+-dontwarn io.agora.**
+
+# Razorpay
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-dontwarn com.razorpay.**
+
+# Reanimated / Worklets
+-keep class com.swmansion.reanimated.** { *; }
+-keep class com.swmansion.worklets.** { *; }
+
+# Fresco
+-keep public class com.facebook.imageutils.** { public *; }
+
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 -keepattributes Signature
-
-# ✅ WebSocket
--keep class org.java_websocket.** { *; }
--keep class com.neovisionaries.ws.client.** { *; }
-
-# ✅ OkHttp
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
--dontwarn okhttp3.**
--dontwarn okio.**
-
-# ✅ AndroidX
--keep class androidx.** { *; }
--keep interface androidx.** { *; }
-
-# ✅ Agora
--keep class io.agora.** { *; }
--keep class com.agora.** { *; }
--dontwarn io.agora.**
-
-# ✅ Keep all native libraries
--keep class **.R$* { *; }
--keep class **.BuildConfig { *; }
-
-# ✅ Don't obfuscate for now (for debugging)
--dontobfuscate
--dontoptimize

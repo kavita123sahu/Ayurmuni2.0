@@ -760,7 +760,6 @@ import CancelAppointmentModal from '../../components/CancelAppointModal';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
-import { doctorsData } from '../../common/DataInterface';
 import FeedbackModal from '../FeedbackModal';
 import { useCreateReview } from '../../hooks/useCreateReview';
 

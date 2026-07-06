@@ -27,7 +27,7 @@ const MentorOrder = ( props : any) => {
             subtitle: "Prescription Bundle · 1 Unit",
             price: "₹1240.00",
             qty: 1,
-            image: Images.Breakfast
+            image: undefined
         },
         address: "42-B, Sanctuary Heights, Green Valley, Near Wellness Plaza, Mumbai - 400012",
         timeline: [

@@ -45,12 +45,12 @@ import FAQScreen from "../screens/profile/FAQScreen";
 import HelpCenterScreen from "../screens/profile/HelpCenter";
 import SettingsScreen from "../screens/profile/Settings";
 import PaymentsScreen from "../screens/profile/PaymentScreen";
-import EmergencySOS from "../screens/SOS/EmergencySOS";
-import SOSPayment from "../screens/SOS/SOSPayment";
-import SOSRequest from "../screens/SOS/SOSRequest";
-import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
-import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
-import SOSConfirmed from "../screens/SOS/SOSConfirmed";
+// import EmergencySOS from "../screens/SOS/EmergencySOS";
+// import SOSPayment from "../screens/SOS/SOSPayment";
+// import SOSRequest from "../screens/SOS/SOSRequest";
+// import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
+// import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
+// import SOSConfirmed from "../screens/SOS/SOSConfirmed";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ManageAdrees from "../screens/ManageAdrees";
 import Prescription from "../screens/medicines/Prescription";
@@ -84,7 +84,6 @@ import DoctorSlipScreen from "../screens/consult/DoctorSlip";
 import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
 import NetworkError from "../screens/NetworkError";
 import AddEditAddress from "../components/AddEditAddress";
-import LocationPickerScreen from "../screens/LocationPickerScreen";
 import PrakritiProfile from "../screens/auth/PrakritiProfile";
 import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
@@ -181,11 +180,11 @@ const HomeStack = () => {
       <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="SOSPayment" component={SOSPayment} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      {/* <Stack.Screen name="SOSPayment" component={SOSPayment} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EmergencySOS" component={EmergencySOS} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SOSCancel" component={SOSCancelScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SOSConfirmed" component={SOSConfirmed} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SearchScreen" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -220,7 +219,7 @@ const HomeStack = () => {
       <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      {/* <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />

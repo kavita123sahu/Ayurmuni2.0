@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
+import { AntDesign } from '../../common/Vector'
 
 const VerifyPresciption = (props: any) => {
 
@@ -89,7 +90,8 @@ const VerifyPresciption = (props: any) => {
                             onChangeText={setPatientName}
                             style={styles.input}
                         />
-                        <Image source={Images.edit} style={styles.editIcon} />
+                        <AntDesign name='edit' size={20}  />
+                        {/* <Image source={Images.edit} style={styles.editIcon} /> */}
                     </View>
                 </View>
 
@@ -102,7 +104,9 @@ const VerifyPresciption = (props: any) => {
                             onChangeText={setDoctorName}
                             style={styles.input}
                         />
-                        <Image source={Images.edit} style={styles.editIcon} />
+                        
+                        <AntDesign name='edit' size={20}  />
+                        {/* <Image source={Images.edit} style={styles.editIcon} /> */}
                     </View>
                 </View>
 
