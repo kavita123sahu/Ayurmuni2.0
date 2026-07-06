@@ -285,7 +285,7 @@ const MainNavigator = () => {
   return (
     <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
       <Stack.Screen name="SplashStack" component={SplashStack} />
-      {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="AuthStack" component={AuthStack} />
       <Stack.Screen name="HomeStack" component={HomeStack} />
     </Stack.Navigator>
