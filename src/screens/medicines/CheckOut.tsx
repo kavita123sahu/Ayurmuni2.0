@@ -15,21 +15,21 @@ const MedicineCheckOut = (props: any) => {
             name: 'Amoxicillin',
             desc: '500mg • 20 Capsules',
             price: '$18.50',
-            icon: Images.detailimage,
+            icon: undefined,
         },
         {
             id: '2',
             name: 'Paracetamol',
             desc: '500mg • 10 Tablets',
             price: '$5.25',
-            icon: Images.detailimage,
+            icon: undefined,
         },
         {
             id: '3',
             name: 'Cough Syrup',
             desc: '100ml • Sugar Free',
             price: '$12.90',
-            icon: Images.detailimage,
+            icon: undefined,
         },
     ];
 

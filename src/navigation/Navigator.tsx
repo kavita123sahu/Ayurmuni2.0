@@ -45,12 +45,12 @@ import FAQScreen from "../screens/profile/FAQScreen";
 import HelpCenterScreen from "../screens/profile/HelpCenter";
 import SettingsScreen from "../screens/profile/Settings";
 import PaymentsScreen from "../screens/profile/PaymentScreen";
-import EmergencySOS from "../screens/SOS/EmergencySOS";
-import SOSPayment from "../screens/SOS/SOSPayment";
-import SOSRequest from "../screens/SOS/SOSRequest";
-import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
-import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
-import SOSConfirmed from "../screens/SOS/SOSConfirmed";
+// import EmergencySOS from "../screens/SOS/EmergencySOS";
+// import SOSPayment from "../screens/SOS/SOSPayment";
+// import SOSRequest from "../screens/SOS/SOSRequest";
+// import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
+// import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
+// import SOSConfirmed from "../screens/SOS/SOSConfirmed";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ManageAdrees from "../screens/ManageAdrees";
 import Prescription from "../screens/medicines/Prescription";
@@ -84,7 +84,6 @@ import DoctorSlipScreen from "../screens/consult/DoctorSlip";
 import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
 import NetworkError from "../screens/NetworkError";
 import AddEditAddress from "../components/AddEditAddress";
-import LocationPickerScreen from "../screens/LocationPickerScreen";
 import PrakritiProfile from "../screens/auth/PrakritiProfile";
 import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
@@ -95,6 +94,8 @@ import consultHome from "../screens/consult/consultHome";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
+import ChatScreen from "../screens/profile/ChatScreen";
+import { ChatContainer } from "../chatSystem/components/chat/chatContainer";
 
 enableScreens();
 
@@ -179,11 +180,11 @@ const HomeStack = () => {
       <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="SOSPayment" component={SOSPayment} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      {/* <Stack.Screen name="SOSPayment" component={SOSPayment} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EmergencySOS" component={EmergencySOS} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SOSCancel" component={SOSCancelScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SOSConfirmed" component={SOSConfirmed} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SearchScreen" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -218,7 +219,7 @@ const HomeStack = () => {
       <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      {/* <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -227,6 +228,22 @@ const HomeStack = () => {
       <Stack.Screen name="consultHome" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+       <Stack.Screen 
+          name="ChatContainer" 
+          options={{ headerShown: false, animation: 'slide_from_right' }}
+        >
+          {(props) => (
+            <ChatContainer
+              appointmentId="a059b339-296b-42c0-8e4c-7cba0b62e4c5"
+              role="patient"
+              doctorName="Dr. Mohit Beniwal"
+              patientName="Sonam Wangchu"
+              // onBack={() => props.navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+        {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     </Stack.Navigator>
   );
 };

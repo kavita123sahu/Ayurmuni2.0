@@ -159,7 +159,7 @@ export default function CheckoutScreen(props: any) {
             onPress={() => setDropdownOpen(!dropdownOpen)}
           >
             <Text style={styles.SelectedText}>{selectedPatient}</Text>
-            <Image source={Images.arrow} style={{ tintColor: '#000000', width: 20, height: 20, transform: [{ rotate: '90deg' }] }} />
+            <Image source={Images.arrowRight} style={{ tintColor: '#000000', width: 20, height: 20, transform: [{ rotate: '90deg' }] }} />
           </TouchableOpacity>
 
           {dropdownOpen &&

@@ -238,6 +238,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
                         ? 'padding'
                         : 'height'
                 }
+                
                 keyboardVerticalOffset={
                     Platform.OS === 'ios'
                         ? 20

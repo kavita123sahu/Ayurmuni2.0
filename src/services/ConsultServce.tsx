@@ -209,49 +209,30 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
 
 
 
+export const getConsultHistory = async (payload: any) => {
+  try {
+    const cleanPayload = Object.fromEntries(
+      Object.entries(payload).filter(
+        ([_, value]) =>
+          value !== undefined &&
+          value !== null &&
+          value !== '',
+      ),
+    );
 
+    const query = new URLSearchParams(cleanPayload).toString();
 
-export const getConsultHistory = async (
-    payload: object,
-) => {
+    const response = await apiClient(
+      `customers/doctors/consultation-history/?${query}`,
+      {
+        method: 'GET',
+      },
+    );
 
-    try {
-
-        const cleanPayload =
-            Object.fromEntries(
-                Object.entries(payload)
-                    .filter(
-                        ([_, value]) =>
-                            value !== undefined &&
-                            value !== null &&
-                            value !== '',
-                    ),
-            );
-
-        const query =
-            new URLSearchParams(
-                cleanPayload as any,
-            ).toString();
-
-        console.log(
-            'Final Query Paramsurllll:',
-            query,
-        );
-
-        const response =
-            await apiClient(
-                `customers/doctors/consultation-history/?${query}`,
-                {
-                    method: 'GET',
-                },
-            );
-
-        return response;
-
-    } catch (error) {
-
-        throw error;
-    }
+    return response;
+  } catch (error) {
+    throw error;
+  }
 };
 
 
@@ -493,16 +474,11 @@ export const verifyConsultationPayment = async (data: object) => {
 
 
 
-export const getNotification = async () => {
-    try {
-        const response = await apiClient('notifications', {
-            method: 'GET'
-        });
+export const getNotification = async (payload: any) => {
+    const query = new URLSearchParams(payload).toString();
 
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
-
+    return apiClient(`notifications/?${query}`, {
+        method: "GET",
+    });
+};
 

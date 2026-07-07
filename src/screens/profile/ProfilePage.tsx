@@ -19,7 +19,6 @@ import Header from '../../components/Header';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
-import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ProfileServices from '../../services/ProfileServices';
 import { useFocusEffect } from '@react-navigation/native';
@@ -200,7 +199,7 @@ const ProfilePage = ({ navigation }: any) => {
                 <Text style={styles.title}>{item.title}</Text>
 
                 {/* Arrow */}
-                <Image source={Images.arrow} style={{ height: 25, width: 25 }} />
+                <Image source={Images.arrowRight} style={{ height: 25, width: 25 }} />
             </TouchableOpacity>
         );
     };

@@ -368,7 +368,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
                 {/* Specializations Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Specializations</Text>
+                    <Text style={styles.sectionTitle}>Specializations Therapies</Text>
                     <SpecializationTags therapies={specializations} />
                 </View>
 

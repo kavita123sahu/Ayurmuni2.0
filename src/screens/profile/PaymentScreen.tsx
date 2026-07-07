@@ -49,7 +49,7 @@ const PaymentsScreen = (props: any) => {
             date: "08 Oct 2023 · 06:15 PM",
             amount: "1,250",
             status: "PAID",
-            icon: Images.shop,
+            icon: Images.shopCart,
         },
         {
             id: "3",

@@ -28,7 +28,7 @@ const NetworkError: React.FC<NetworkErrorProps> = ({ onGoBack }) => {
             </View>
 
             <ImageBackground
-                source={Images.ellipsebackground}
+                source={Images.BackgroundImage}
                 style={styles.bottomSection}>
                 <View style={styles.contentContainer}>
                     <Text style={styles.title}>No Internet Connection</Text>

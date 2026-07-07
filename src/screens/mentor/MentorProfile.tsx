@@ -170,7 +170,7 @@ const MentorProfile = (props: any) => {
                 <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor: Colors.background}}> 
                     <View style={styles.imageWrapper}>
                         <Image
-                            source={Images.MentorImage}
+                            source={Images.doctorImage}
                             style={styles.image}
                         />
 

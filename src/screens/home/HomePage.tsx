@@ -27,7 +27,7 @@ import SearchBar from '../../components/SearchBar';
 import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
 import TopSellingList from '../../components/TopSellingList';
-import { product, topSelling1, topSelling2, topSelling3 } from '../../common/DataInterface';
+import { product } from '../../common/DataInterface';
 import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
@@ -407,19 +407,23 @@ const HomePage: React.FC = (props: any) => {
               </>)}
 
             <>
-              <SectionHeader title="Suggested Diet Plan" />
-              <ComingSoonCard
+            
+            {YogaSession.length ==0 && (
+                <ComingSoonCard
                 title="Personalized Diet Plans"
                 icon="🥗"
               />
+            )}
             </>
 
             <>
-              <SectionHeader title="Panchakarma" />
-              <ComingSoonCard
-                title="Panchakarma Therapies"
+            
+            {YogaSession.length ==0 && (
+                <ComingSoonCard
+                title="Panchakarma"
                 icon="🌿"
               />
+            )}
             </>
           </>
         )}

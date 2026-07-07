@@ -9,6 +9,7 @@ import SettingItem from "../../components/SettingItem";
 import { Colors } from "../../common/Colors";
 import PrimaryButton from "../../components/PrimaryButton";
 import { Styles } from "../../common/Styles";
+import { Fontisto } from "../../common/Vector";
 
 const SettingsScreen = (props: any) => {
 
@@ -36,7 +37,7 @@ const SettingsScreen = (props: any) => {
                 {
                     title: "Push Notifications",
                     subtitle: "Alerts for appointments & news",
-                    icon: Images.bellnotification,
+                    icon:  <Fontisto name ='bell' />,
                     type: "toggle",
                     value: true,
                 },

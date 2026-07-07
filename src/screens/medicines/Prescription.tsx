@@ -6,6 +6,7 @@ import AppHeader from '../../components/AppHeader'
 import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { AntDesign } from '../../common/Vector'
 
 const Prescription = (props: any) => {
     const recentData = [
@@ -84,7 +85,8 @@ const Prescription = (props: any) => {
                         </TouchableOpacity>
                         
                         <TouchableOpacity style={styles.btn} onPress={openGallery}>
-                            <Image source={Images.galary} style={styles.btnIcon} />
+                            <AntDesign name='gallery' size={20} color='white'  />
+                            {/* <Image source={Images.galary} style={styles.btnIcon} /> */}
                             <Text style={styles.btnText}>GALLERY</Text>
                         </TouchableOpacity>
                     </View>

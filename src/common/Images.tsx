@@ -1,22 +1,16 @@
 export const Images = {
 
-    // MainIcon, logo ,wellnessIcon,Search,Mic,Linemark,TakechangeIcon,verifyLogo, loginbanner,messageIcon,googleIcon,DeleteItem,Spinner-Gradient
-    // backgroundFlower,approved,phoneIcon,promoIcon, organic,track,history,persnal2,Potential,Temp,Sleep,Sweating,Bowel,Appetite,Skin,BodyHair,SPrakriti
-    //Prakriti2,Body,Prakriti 
+    
     backIcon: require('../assets/images/backButton.png'),
-    arrow: require('../assets/images/arrow.png'),
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
     pdfIcon: require('../assets/images/pdfIcon.png'),
     Bell: require('../assets/images/bell.png'),
-    VideoPlayer: require('../assets/images/VideoPlayer.png'),
     Profile: require('../assets/images/profile.png'),
-    Breakfastbowl: require('../assets/images/Breakfastbowl.png'),
-    detailimage: require('../assets/images/Detailimage.png'),
     share: require('../assets/images/Share.png'),
     BreakDown: require('../assets/images/BreakDown.png'),
     Notes: require('../assets/images/Notes.png'),
-    ellipsebackground: require('../assets/images/ellipsebackground.png'),
+    // ellipsebackground: require('../assets/images/ellipsebackground.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),
     FinalLogo2: require('../assets/images/FinalLogo2.png'),
     login1: require('../assets/images/login/1.png'),
@@ -37,7 +31,6 @@ export const Images = {
     DebitCard: require('../assets/images/debitcard.png'),
     UPIMethod: require('../assets/images/UPIMethod.png'),
     camera: require('../assets/images/camera.png'),
-    shop: require('../assets/images/shop.png'),
     home: require('../assets/images/home.png'),
     approved: require('../assets/images/approved.png'),
     star: require('../assets/images/grade.png'),
@@ -47,7 +40,6 @@ export const Images = {
     arrowRight: require('../assets/images/arrowRight.png'),
 
 
-    apple: require('../assets/images/apple.png'),
     tickIcon: require('../assets/images/tickIcon.png'),
     starIcon: require('../assets/images/starIcon.png'),
 
@@ -57,11 +49,9 @@ export const Images = {
     uploadBgIcon: require('../assets/images/uploadBgIcon.png'),
     searchIcon2: require('../assets/images/searchIcon2.png'),
     searchBgIcon: require('../assets/images/searchBgIcon.png'),
-    brands: require('../assets/images/brands.png'),
     doc1: require('../assets/images/doc1.png'),
-    galary: require('../assets/images/galary.png'),
+    // galary: require('../assets/images/galary.png'),
     tick: require('../assets/images/tick.png'),
-    edit: require('../assets/images/edit.png'),
     Instruction: require('../assets/images/instruction.png'),
 
 
@@ -87,7 +77,6 @@ export const Images = {
     setting: require('../assets/images/setting.png'),
 
 
-    Breakfast: require('../assets/images/Breakfast.png'),
 
     Ingredient: require('../assets/images/Ingredient.png'),
 
@@ -106,48 +95,38 @@ export const Images = {
     profileEdit: require('../assets/images/profileEdit.png'),
     medical: require('../assets/images/medical.png'),
     ImageContain: require('../assets/images/imagecontain.png'),
-    QnAMain: require('../assets/images/QnAMain.png'),
-    NextArrow: require('../assets/images/NextAroow.png'),
     PlusBag: require('../assets/images/PlusBag.png'),
     shopCart: require('../assets/images/shopcart.png'),
     wishlist: require('../assets/images/wishlist.png'),
     cardiology: require('../assets/images/cardiology.png'),
-    glutenFree: require('../assets/images/glutenFree.png'),
     highFiber: require('../assets/images/highFiber.png'),
     location: require('../assets/images/location.png'),
-    visa: require('../assets/images/visa.png'),
     card: require('../assets/images/card.png'),
     flash: require('../assets/images/flash.png'),
     cash: require('../assets/images/cash.png'),
     upi: require('../assets/images/upi.png'),
     truck: require('../assets/images/truck.png'),
-    bellnotification: require('../assets/images/bellnotification.png'),
-
+   
 
     currentLocation: require('../assets/images/currentLocation.png'),
     sosIcon: require('../assets/images/sosIcon.png'),
     SOS: require('../assets/images/SOS.png'),
-    doctorSOS: require('../assets/images/doctorSOS.png'),
-    downArrow: require('../assets/images/downArrow.png'),
+   
     medicine: require('../assets/images/medicine.png'),
 
-    Doctors: require('../assets/images/Doctors.png'),
     Medicines: require('../assets/images/medicines.png'),
     products: require('../assets/images/products.png'),
     moreButton: require('../assets/images/moreButton.png'),
     flashred: require('../assets/images/flashred.png'),
-    gpay: require('../assets/images/gpay.png'),
-
+   
     dropdown: require('../assets/images/dropdown.png'),
     lock: require('../assets/images/lock.png'),
     net: require('../assets/images/net.png'),
-    paytm: require('../assets/images/paytm.png'),
     pci: require('../assets/images/pci.png'),
-    phonepay: require('../assets/images/phonepay.png'),
     ssl: require('../assets/images/ssl.png'),
     timer: require('../assets/images/timer.png'),
     rightArrow: require('../assets/images/rightArrow.png'),
-    gps: require('../assets/images/gps.png'),
+    
     tickk: require('../assets/images/tickk.png'),
     warning: require('../assets/images/warning.png'),
     doctorImage: require('../assets/images/doctorImage.png'),
@@ -166,17 +145,12 @@ export const Images = {
     Privacy: require('../assets/images/privacy.png'),
 
 
-    Yoga: require('../assets/images/Yoga.png'),
-    Diet: require('../assets/images/Diet.png'),
     Panchakarma: require('../assets/images/panchkarma.png'),
 
-
-    HairImage: require('../assets/images/HairImage.png'),
 
     yesHuman: require('../assets/images/Yes.png'),
 
     noHuman: require('../assets/images/No.png'),
-    MentorImage: require('../assets/images/MentorProfile.png'),
 
 }
 

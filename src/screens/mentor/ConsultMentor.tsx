@@ -79,7 +79,7 @@ const ServiceCard = memo(
 const MentorHeader = memo(() => (
     <View style={styles.mentorcontainer}>
         <View style={styles.row}>
-            <Image source={Images.MentorImage} style={styles.image} />
+            <Image source={Images.doctorImage} style={styles.image} />
 
             <View style={{ flex: 1 }}>
                 <Text style={styles.name}>Elena Vance</Text>

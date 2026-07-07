@@ -90,7 +90,7 @@ const MealDetails = (props: any) => {
                 >
 
                 <Image
-                    source={Images.Breakfast}
+                    source={undefined}
                     style={styles.image}
                 />
                 <View style={styles.card}>

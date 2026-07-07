@@ -65,7 +65,7 @@ const ConsultScreen = () => {
   const [history, setHistory] =
     useState([]);
 
-
+const [recentLoading, setRecentLoading] = useState(false);
 
 
   /*
@@ -235,7 +235,7 @@ const ConsultScreen = () => {
               image={require('../../assets/images/doctorbanner.png')}
               buttontext="Book an appointment online"
               approved
-              arrowIcon={require('../../assets/images/arrow.png')}
+              arrowIcon={require('../../assets/images/arrowRight.png')}
               showButton
             />
 

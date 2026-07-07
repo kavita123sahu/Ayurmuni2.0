@@ -16,6 +16,7 @@ import { Colors } from '../../common/Colors';
 import { useMedicineData } from '../../hooks/useMedicineData';
 import { RootStackParamList } from '../../../type';
 import { useHomeData } from '../../hooks/UseHomeData';
+import { AntDesign } from '../../common/Vector';
 type Item = {
     id: string;
     title: string;
@@ -34,7 +35,7 @@ const MedicineScreen = (props: any) => {
 
     const navigation = useNavigation();
     const productImage = require('../../assets/images/RecentsImage.png');
-    const categoryImage = require('../../assets/images/CategiryImage.png');
+    // const categoryImage = require('../../assets/images/CategiryImage.png');
 
     // const {
     //     loading,
@@ -136,7 +137,7 @@ const MedicineScreen = (props: any) => {
 
                 <ActionCards
                     data={dataItems}
-                    onpress={(item) => navigation.navigate(item.screen)}
+                    onpress={(item) => navigation.navigate(item?.screen)}
                 />
 
                 <SectionHeader title="Recent Orders" actionText="View History" />
@@ -155,17 +156,17 @@ const MedicineScreen = (props: any) => {
                         {
                             id: '1',
                             name: 'Baidyanath',
-                            image: Images.brands,
+                            image: <AntDesign name='brand' size={20} />,
                         },
                         {
                             id: '2',
                             name: 'Himalaya',
-                            image: Images.brands,
+                            image: <AntDesign name='brand' size={20} />,
                         },
                         {
                             id: '3',
                             name: 'Baidyanath',
-                            image: Images.brands,
+                            image: <AntDesign name='brand' size={20} />,
                         },
                     ]}
                 />

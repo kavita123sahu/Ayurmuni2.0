@@ -32,7 +32,7 @@ import { Images } from '../../common/Images';
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
 import SearchBar from '../../components/SearchBar';
-import { generateDates, formatDate } from '../../common/DataInterface';
+import { generateDates, formatDate, AVAILABILITY_OPTIONS, EXPERIENCE_OPTIONS } from '../../common/DataInterface';
 import { useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
 
@@ -51,58 +51,6 @@ const TABS = [
     },
 ];
 
-const EXPERIENCE_OPTIONS = [
-    {
-        label: '1+ Years',
-        value: '1',
-    },
-    {
-        label: '5+ Years',
-        value: '5',
-    },
-    {
-        label: '10+ Years',
-        value: '10',
-    },
-    {
-        label: '15+ Years',
-        value: '15',
-    },
-    {
-        label: '20+ Years',
-        value: '20',
-    },
-];
-const AVAILABILITY_OPTIONS = [
-    {
-        label: 'Today',
-        value: 'today',
-    },
-    {
-        label: 'Tomorrow',
-        value: 'tomorrow',
-    },
-    {
-        label: 'This Week',
-        value: 'this_week',
-    },
-    {
-        label: 'Next Week',
-        value: 'next_week',
-    },
-    {
-        label: 'This Month',
-        value: 'this_month',
-    },
-    {
-        label: 'Next Month',
-        value: 'next_month',
-    },
-    {
-        label: 'Select Date',
-        value: 'custom_date',
-    },
-];
 
 
 const AllDoctors = (props: any) => {

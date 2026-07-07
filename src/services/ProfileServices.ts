@@ -93,16 +93,32 @@ export const createDoctorReview = async (
 
 
 
-export const createReview = async (reviewData: object,) => {
-    try {
-        const response = await apiClient('reviews/reviewscreate/', {
-            method: 'POST',
-            body: JSON.stringify(reviewData)
-        });
-        return response;
-    } catch (error) {
-        throw error;
-    }
+export const createReview = async ({
+  entityType,
+  appointmentId,
+  reviewData,
+}: {
+  entityType: string;
+  appointmentId: string;
+  reviewData: {
+    rating: number;
+    review: string;
+    image_urls?: string[];
+  };
+}) => {
+  try {
+    const response = await apiClient(
+      `review/?entity_type=${entityType}&appointment_id=${appointmentId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(reviewData),
+      },
+    );
+
+    return response;
+  } catch (error) {
+    throw error;
+  }
 };
 
 

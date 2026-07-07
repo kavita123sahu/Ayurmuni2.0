@@ -29,19 +29,19 @@ const meals = [
         type: 'Breakfast',
         name: 'Berry Acai Bowl',
         kcal: 420,
-        image: Images.Breakfastbowl
+        image: undefined
     },
     {
         type: 'Lunch',
         name: 'Berry Acai Bowl',
         kcal: 420,
-        image: Images.Breakfastbowl
+        image: undefined
     },
     {
         type: 'Snacks',
         name: 'Almond & Apple',
         kcal: 420,
-        image: Images.Breakfastbowl
+        image: undefined
     },
 ];
 
