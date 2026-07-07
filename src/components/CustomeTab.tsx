@@ -130,7 +130,7 @@ const CustomeTab = (props: any) => {
 
             {/* CONSULT BUTTON */}
             <TouchableOpacity
-                onPress={() => navigation.navigate("consultHome")}
+                onPress={() => navigation.navigate("Consult")}
                 activeOpacity={0.85}
                 style={[
                     styles.consultBtn,
@@ -156,41 +156,41 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
 
-    backgroundColor: 'rgba(255,255,255,0.92)',
+        backgroundColor: 'rgba(255,255,255,0.92)',
         paddingHorizontal: 20,
     },
 
-   container: {
-    flex: 1,
-    height: TAB_HEIGHT,
-    borderRadius: 999,
+    container: {
+        flex: 1,
+        height: TAB_HEIGHT,
+        borderRadius: 999,
 
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
 
-    paddingHorizontal: 10,
-    overflow: 'hidden',
+        paddingHorizontal: 10,
+        overflow: 'hidden',
 
-    // 🔥 Glass look without blur package
-    backgroundColor: 'rgba(255,255,255,0.92)',
+        // 🔥 Glass look without blur package
+        backgroundColor: 'rgba(255,255,255,0.92)',
 
-    // Border
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.65)',
+        // Border
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.65)',
 
-    // Android Shadow
-    elevation: 14,
+        // Android Shadow
+        elevation: 14,
 
-    // iOS Shadow
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: {
-        width: 0,
-        height: 8,
+        // iOS Shadow
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 18,
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
     },
-},
 
     tab: {
         flex: 1,

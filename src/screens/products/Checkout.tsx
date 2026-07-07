@@ -272,8 +272,13 @@ const Checkout: React.FC = (props: any) => {
                 </View>
 
             </ScrollView>
+            {/* props.navigation.navigate('OrderConfirmation')} */}
 
-            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('OrderConfirmation')}>
+            <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('ConfirmScreen', {
+                charges: totalSubtotal,
+                cartItems: selectedProducts,
+                address: defaultAddress
+            })} >
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Proceed to Checkout</Text>
 
@@ -286,26 +291,19 @@ const Checkout: React.FC = (props: any) => {
 
 const Row = ({ label, value, isTotal, isFree }: any) => (
     <View style={styles.rowBetween}>
-
         <Text
-            style={[
-                styles.rowLabel,
-                isTotal && styles.totalLabel
-            ]}
+            style={[styles.rowLabel, isTotal && styles.totalLabel]}
+            numberOfLines={2}          // ← max 2 lines, wrap hoga
         >
             {label}
         </Text>
-
         <Text
-            style={[
-                styles.rowValue,
-                isTotal && styles.totalValue,
-                isFree && styles.freeText
-            ]}
+            style={[styles.rowValue, isTotal && styles.totalValue, isFree && styles.freeText]}
+            numberOfLines={1}          // ← value ek line mein
+            adjustsFontSizeToFit       // ← fit nahi hua toh font chota ho
         >
             {value}
         </Text>
-
     </View>
 );
 
@@ -563,20 +561,27 @@ const styles = StyleSheet.create({
     rowBetween: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
+        alignItems: 'flex-start',   // ← multiline text ke liye top align
+        gap: 8,                     // ← label aur value ke beech gap
+        paddingVertical: 6,
     },
 
     rowLabel: {
-        color: '#64748B',
+        flex: 1,                    // ← available space le lo
+        flexShrink: 1,              // ← zaroorat pe shrink ho
         fontSize: 14,
+        color: '#475569',
         fontFamily: Fonts.PoppinsMedium,
+        lineHeight: 20,
     },
 
     rowValue: {
-        color: '#0F172A',
+        flexShrink: 0,              // ← value kabhi shrink nahi hogi
         fontSize: 14,
+        color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
+        textAlign: 'right',
+        maxWidth: '40%',            // ← max 40% space le sakti hai
     },
 
     freeText: {
@@ -584,13 +589,12 @@ const styles = StyleSheet.create({
     },
 
     totalLabel: {
-        fontSize: 18,
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
     },
-
     totalValue: {
-        fontSize: 20,
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0D614E',
     },

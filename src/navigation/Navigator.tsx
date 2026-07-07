@@ -96,6 +96,7 @@ import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
 import ChatScreen from "../screens/profile/ChatScreen";
 import { ChatContainer } from "../chatSystem/components/chat/chatContainer";
+import ConfirmScreen from "../screens/products/ConfirmScreen";
 
 enableScreens();
 
@@ -225,25 +226,26 @@ const HomeStack = () => {
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="consultHome" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Consult" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-       {/* <Stack.Screen 
-          name="ChatContainer" 
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        >
-          {(props) => (
-            <ChatContainer
-              appointmentId="a059b339-296b-42c0-8e4c-7cba0b62e4c5"
-              role="patient"
-              doctorName="Dr. Mohit Beniwal"
-              patientName="Sonam Wangchu"
-              // onBack={() => props.navigation.goBack()}
-            />
-          )}
-        </Stack.Screen> */}
-        {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
+      <Stack.Screen name="ConfirmScreen" component={ConfirmScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen
+        name="ChatContainer"
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      >
+        {(props) => (
+          <ChatContainer
+            appointmentId="a059b339-296b-42c0-8e4c-7cba0b62e4c5"
+            role="patient"
+            doctorName="Dr. Mohit Beniwal"
+            patientName="Sonam Wangchu"
+          // onBack={() => props.navigation.goBack()}
+          />
+        )}
+      </Stack.Screen>
+      {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     </Stack.Navigator>
   );
 };

@@ -1,6 +1,6 @@
 export const Images = {
 
-    
+
     backIcon: require('../assets/images/backButton.png'),
     networkissue: require('../assets/images/networklogo.png'),
     userprofile: require('../assets/images/userprofile.png'),
@@ -106,19 +106,19 @@ export const Images = {
     cash: require('../assets/images/cash.png'),
     upi: require('../assets/images/upi.png'),
     truck: require('../assets/images/truck.png'),
-   
+
 
     currentLocation: require('../assets/images/currentLocation.png'),
     sosIcon: require('../assets/images/sosIcon.png'),
     SOS: require('../assets/images/SOS.png'),
-   
+
     medicine: require('../assets/images/medicine.png'),
 
     Medicines: require('../assets/images/medicines.png'),
     products: require('../assets/images/products.png'),
     moreButton: require('../assets/images/moreButton.png'),
     flashred: require('../assets/images/flashred.png'),
-   
+
     dropdown: require('../assets/images/dropdown.png'),
     lock: require('../assets/images/lock.png'),
     net: require('../assets/images/net.png'),
@@ -126,7 +126,7 @@ export const Images = {
     ssl: require('../assets/images/ssl.png'),
     timer: require('../assets/images/timer.png'),
     rightArrow: require('../assets/images/rightArrow.png'),
-    
+
     tickk: require('../assets/images/tickk.png'),
     warning: require('../assets/images/warning.png'),
     doctorImage: require('../assets/images/doctorImage.png'),

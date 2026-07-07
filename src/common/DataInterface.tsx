@@ -43,6 +43,38 @@ export type CartItem = {
 };
 
 
+export type OrderItem = {
+  variant_id: string | number;
+  quantity: number;
+  discount?: number;
+  shipping_charges?: number;
+  gift_wrap?: boolean;
+};
+
+export type PlaceOrderPayload = {
+  delivery_address_id: string | number;
+  payment_type: 'cod' | 'prepaid' | 'online';
+  payment_method: 'cash' | 'upi' | 'card' | 'netbanking';
+  shipping_method: 'STD' | 'EXPRESS';
+  shipping_charges: number;
+  cod_charges: number;
+  prepaid_amount: number;
+  items: OrderItem[];
+};
+
+export type PlaceOrderResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    order_id: string | number;
+    order_number?: string;
+    total_amount?: number;
+    status?: string;
+    [key: string]: any;
+  };
+};
+
+
 export const getProductData = (
   item: CartItem,
   doctorName?: string,
@@ -213,60 +245,60 @@ export const TABS =
   ];
 
 
- export  const EXPERIENCE_OPTIONS = [
-      {
-          label: '1+ Years',
-          value: '1',
-      },
-      {
-          label: '5+ Years',
-          value: '5',
-      },
-      {
-          label: '10+ Years',
-          value: '10',
-      },
-      {
-          label: '15+ Years',
-          value: '15',
-      },
-      {
-          label: '20+ Years',
-          value: '20',
-      },
-  ];
+export const EXPERIENCE_OPTIONS = [
+  {
+    label: '1+ Years',
+    value: '1',
+  },
+  {
+    label: '5+ Years',
+    value: '5',
+  },
+  {
+    label: '10+ Years',
+    value: '10',
+  },
+  {
+    label: '15+ Years',
+    value: '15',
+  },
+  {
+    label: '20+ Years',
+    value: '20',
+  },
+];
 
 
 
 export const AVAILABILITY_OPTIONS = [
-    {
-        label: 'Today',
-        value: 'today',
-    },
-    {
-        label: 'Tomorrow',
-        value: 'tomorrow',
-    },
-    {
-        label: 'This Week',
-        value: 'this_week',
-    },
-    {
-        label: 'Next Week',
-        value: 'next_week',
-    },
-    {
-        label: 'This Month',
-        value: 'this_month',
-    },
-    {
-        label: 'Next Month',
-        value: 'next_month',
-    },
-    {
-        label: 'Select Date',
-        value: 'custom_date',
-    },
+  {
+    label: 'Today',
+    value: 'today',
+  },
+  {
+    label: 'Tomorrow',
+    value: 'tomorrow',
+  },
+  {
+    label: 'This Week',
+    value: 'this_week',
+  },
+  {
+    label: 'Next Week',
+    value: 'next_week',
+  },
+  {
+    label: 'This Month',
+    value: 'this_month',
+  },
+  {
+    label: 'Next Month',
+    value: 'next_month',
+  },
+  {
+    label: 'Select Date',
+    value: 'custom_date',
+  },
 ];
 
 

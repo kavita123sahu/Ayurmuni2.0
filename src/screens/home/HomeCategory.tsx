@@ -25,7 +25,7 @@ interface Category {
 }
 
 const CATEGORY_ROUTES: Record<string, string> = {
-    doctors: 'Consult',
+    consult: 'Consult',
     medicine: 'MedicineScreen',
     products: 'ProductsScreen',
     yoga: 'YogaScreen',
