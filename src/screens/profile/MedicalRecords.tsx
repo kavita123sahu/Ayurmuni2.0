@@ -10,8 +10,8 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '../../common/Vector';
-import HomeHeader from '../../components/HomeHeader';
+import TablerIcon from '../../components/TablerIcon';
+import SelectedUploadCard from '../../components/SelectedUploadCard';
 import SearchBar from '../../components/SearchBar';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
@@ -34,21 +34,21 @@ const ALL_DATA = [
         id: '1',
         title: 'General Prescription',
         subtitle: 'Dr. Emily Stone • 12 Oct 2023',
-        icon: Images.medical,
+        iconName: 'file-medical',
         type: 'Prescriptions',
     },
     {
         id: '2',
         title: 'Blood Test Report',
         subtitle: 'City Lab Center • 05 Oct 2023',
-        icon: Images.medical,
+        iconName: 'file-medical',
         type: 'Lab Reports',
     },
     {
         id: '3',
         title: 'Covid Vaccination',
         subtitle: 'Apollo Hospital • 20 Sep 2023',
-        icon: Images.medical,
+        iconName: 'file-medical',
         type: 'Prescriptions',
     },
 ];
@@ -97,10 +97,9 @@ const MedicalRecords = (props: any) => {
         return 'IN PROGRESS';
     };
 
-    // const selectedFiles = uploadedFiles.filter(
-    //     item =>
-    //         selectedRecords.includes(item.id),
-    // );
+    const selectedRecordItems = (patientsRecord || []).filter((item: any) =>
+        selectedRecords.includes(item.id),
+    );
     const filteredData =
         activeTab === 'All Records'
             ? records
@@ -130,7 +129,7 @@ const MedicalRecords = (props: any) => {
                 <Text style={styles.subtitle}>{item.subtitle}</Text>
             </View>
 
-            <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
+            <TablerIcon name="chevron-right" size={20} color={Colors.primaryColor} />
         </TouchableOpacity>
     );
 
@@ -173,7 +172,7 @@ const MedicalRecords = (props: any) => {
             <View style={styles.labBadge}>
                 <Text style={styles.labBadgeText}>Lab</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
+            <TablerIcon name="chevron-right" size={20} color={Colors.primaryColor} />
         </TouchableOpacity>
     );
 
@@ -252,14 +251,13 @@ const MedicalRecords = (props: any) => {
             <Header
                 title="Medical Records"
                 subtitle="Manage your health documents"
-                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 
             <SearchBar
                 placeholder="Search for help topics..."
-                icon={require('../../assets/images/Search.png')}
-            />
+
+                />
 
             <TabButton />
 
@@ -290,81 +288,54 @@ const MedicalRecords = (props: any) => {
                     </View>
                 ) : (
                     <>
-                        {selectedFiles.length === 0 ? (
-                            <TouchableOpacity
-                                style={styles.uploadContainer}
-                                onPress={selectFile}
-                            >
-                                <View style={styles.uploadIcon}>
-                                    <Ionicons
-                                        name="cloud-upload-outline"
-                                        size={28}
-                                        color="#065F46"
-                                    />
-                                </View>
+                        <TouchableOpacity
+                            style={styles.uploadContainer}
+                            onPress={selectFile}
+                            activeOpacity={0.9}
+                        >
+                            <View style={styles.uploadIcon}>
+                                <TablerIcon name="upload" size={28} color="#065F46" />
+                            </View>
 
-                                <Text style={styles.uploadTitle}>
-                                    Upload Medical Record
+                            <Text style={styles.uploadTitle}>
+                                Upload Medical Record
+                            </Text>
+
+                            <Text style={styles.uploadSub}>
+                                Prescription, lab report, PDF or image
+                            </Text>
+                        </TouchableOpacity>
+
+                        {selectedRecordItems.length > 0 && (
+                            <View style={styles.selectedSection}>
+                                <Text style={styles.selectedLabel}>
+                                    Selected ({selectedRecordItems.length})
                                 </Text>
-
-                                <Text style={styles.uploadSub}>
-                                    Prescription, Lab Report, PDF or Image
-                                </Text>
-                            </TouchableOpacity>
-                        ) : (
-                            <View style={styles.uploadContainer}>
-                                <Text style={styles.uploadTitle}>
-                                    {selectedFiles.length} file(s) selected
-                                </Text>
-
-                                {selectedFiles.map(item => (
-                                    <View
-                                        key={item.id}
-                                        style={{ marginTop: 10 }}
-                                    >
-                                        <Text
-                                            style={{
-                                                color: '#065F46',
-                                            }}
-                                        >
-                                            {item.name} ({item.status})
-                                        </Text>
-
-                                        <TouchableOpacity
-                                            onPress={() =>
-                                                removeFile(item.id)
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                >
+                                    {selectedRecordItems.map((item: any) => (
+                                        <SelectedUploadCard
+                                            key={item.id}
+                                            name={item.description || 'Medical record'}
+                                            uri={item.file_url}
+                                            fileType={item.file_type}
+                                            onRemove={() =>
+                                                setSelectedRecords(prev =>
+                                                    prev.filter(id => id !== item.id),
+                                                )
                                             }
-                                        >
-                                            <Text
-                                                style={{
-                                                    color: 'red',
-                                                }}
-                                            >
-                                                Remove
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
+                                        />
+                                    ))}
+                                </ScrollView>
                             </View>
                         )}
 
-                        <View
-                            style={{
-                                marginVertical: 15,
-                                backgroundColor: '#ECFDF5',
-                                padding: 14,
-                                borderRadius: 14,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    color: '#065F46',
-                                    fontFamily:
-                                        Fonts.PoppinsMedium,
-                                }}
-                            >
-                                Selected Records:{' '}
-                                {selectedRecords?.length}
+                        <View style={styles.selectedCountBox}>
+                            <TablerIcon name="file-medical" size={18} color="#065F46" />
+                            <Text style={styles.selectedCountText}>
+                                Selected records: {selectedRecords?.length}
                             </Text>
                         </View>
                     </>
@@ -390,7 +361,7 @@ const MedicalRecords = (props: any) => {
 
                 <View style={{ paddingBottom: 40, paddingTop: 10 }}>
                     {/* <PrimaryButton title="Upload File"
-                        icon={Images.upload}
+                        iconName="upload"
                         onPress={() => console.log}
                         backgroundColor="#0D614E"
                         TextFont={Fonts.PoppinsRegular}
@@ -405,7 +376,7 @@ const MedicalRecords = (props: any) => {
                             }}>
 
                             <PrimaryButton
-                                icon={Images.upload}
+                                iconName="upload"
                                 backgroundColor="#0D614E"
                                 TextFont={Fonts.PoppinsRegular}
                                 textColor="#FFFFFF"
@@ -416,7 +387,7 @@ const MedicalRecords = (props: any) => {
                             />
 
                             <PrimaryButton
-                                icon={Images.upload}
+                                iconName="upload"
                                 backgroundColor="#0D614E"
                                 TextFont={Fonts.PoppinsRegular}
                                 textColor="#FFFFFF"
@@ -635,6 +606,32 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsRegular,
         fontSize: 12,
         color: '#64748B',
+    },
+    selectedSection: {
+        marginTop: 16,
+        paddingTop: 14,
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+    },
+    selectedLabel: {
+        fontSize: 12,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 10,
+    },
+    selectedCountBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginVertical: 15,
+        backgroundColor: '#ECFDF5',
+        padding: 14,
+        borderRadius: 14,
+    },
+    selectedCountText: {
+        color: '#065F46',
+        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 13,
     },
     addTitle: {
         fontSize: 16,

@@ -8,6 +8,7 @@ import {
 import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
 import { Images } from '../common/Images';
+import { isAuthenticated } from '../services/guestAuth';
 
 export type SlotItem = {
     id: string;
@@ -296,7 +297,7 @@ export const useAllDoctors = (selectedFilters: any) => {
 
 
 export const useAppointmentHistory = () => {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -308,6 +309,15 @@ export const useAppointmentHistory = () => {
     const getAllAppointment = useCallback(
         async (pageNo = 1, isLoadMore = false) => {
             try {
+                // Guests have no appointments; skip the authenticated call.
+                if (!(await isAuthenticated())) {
+                    setAppointData([]);
+                    setHasMore(false);
+                    setLoading(false);
+                    setLoadingMore(false);
+                    return;
+                }
+
                 if (isLoadMore) {
                     setLoadingMore(true);
                 } else {

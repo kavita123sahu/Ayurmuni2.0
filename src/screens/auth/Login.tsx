@@ -23,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService';
+import { Utils } from '../../common/Utils';
 
 /* ============================================================
    PHONE / OTP ENTRY — Figma match + animated photo marquee
@@ -56,14 +57,18 @@ const COLLAGE_HEIGHT = 520;
 const TILE_HEIGHT = 230;
 const TILE_GAP = 13;
 
-// Add as many photos as you like here — fallback keeps things
-// working even before you wire up real assets.
-const IMAGE_POOL = Array.from({ length: 14 }, (_, i) => (Images as any)[`login${i}`] ?? Images.FinalLogo);
+// Lightweight collage tiles — keep bundle small (avoid huge login assets)
+const IMAGE_POOL = [
+  Images.login1,
+  Images.login3,
+  Images.login4,
+  Images.login5,
+  Images.FinalLogo,
+];
 
-// Hardcoded shuffled columns with no duplicates at same position
-const COLUMN_LEFT = [IMAGE_POOL[1], IMAGE_POOL[2], IMAGE_POOL[3], IMAGE_POOL[4], IMAGE_POOL[5]];
-const COLUMN_CENTER = [IMAGE_POOL[6], IMAGE_POOL[7], IMAGE_POOL[8], IMAGE_POOL[9], IMAGE_POOL[10]];
-const COLUMN_RIGHT = [IMAGE_POOL[11], IMAGE_POOL[12], IMAGE_POOL[13], IMAGE_POOL[14], IMAGE_POOL[1]];
+const COLUMN_LEFT = [IMAGE_POOL[0], IMAGE_POOL[1], IMAGE_POOL[2], IMAGE_POOL[0], IMAGE_POOL[1]];
+const COLUMN_CENTER = [IMAGE_POOL[2], IMAGE_POOL[3], IMAGE_POOL[4], IMAGE_POOL[2], IMAGE_POOL[3]];
+const COLUMN_RIGHT = [IMAGE_POOL[4], IMAGE_POOL[5], IMAGE_POOL[0], IMAGE_POOL[4], IMAGE_POOL[5]];
 
 type Direction = 'up' | 'down';
 
@@ -241,7 +246,7 @@ const PhoneAuthScreen = (props: any) => {
 
       if (response?.success) {
 
-        // Utils.storeData("_OTP", OTP)
+        Utils.storeData("_OTP", OTP)
 
         showSuccessToast(
           response.message || 'OTP sent successfully',

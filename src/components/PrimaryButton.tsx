@@ -1,10 +1,11 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Fonts } from "../common/Fonts";
+import TablerIcon, { TablerIconName } from "./TablerIcon";
 
 type Props = {
   title: string;
   onPress?: () => void;
-  icon?: any; // image source
+  iconName?: TablerIconName;
   backgroundColor?: string;
   textColor?: string;
   TextFont : string;
@@ -14,7 +15,7 @@ type Props = {
 const PrimaryButton = ({
   title,
   onPress,
-  icon,
+  iconName,
   backgroundColor = "#0D614E",
   textColor = "#FFFFFF",
   TextFont,
@@ -32,8 +33,8 @@ const PrimaryButton = ({
       ]}
     >
       <View style={styles.content}>
-        {icon && (
-          <Image source={icon} style={styles.icon} tintColor={textColor} />
+        {iconName && (
+          <TablerIcon name={iconName} size={18} color={textColor} />
         )}
 
         <Text style={[styles.primaryText, { color: textColor ,  fontFamily: TextFont,}]}>
@@ -48,30 +49,18 @@ export default PrimaryButton;
 
 const styles = StyleSheet.create({
   primaryBtn: {
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    alignItems: "center",
+    height: 52,
+    borderRadius: 14,
     justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
   },
-
   content: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
   },
-
   primaryText: {
-    marginLeft: 8,
-    fontSize: 18,
-    fontFamily: Fonts.PoppinsRegular,
-    top:2
-  },
-
-  icon: {
-    width: 22,
-    height: 22,
-    resizeMode: "contain",
+    fontSize: 16,
   },
 });

@@ -630,7 +630,7 @@ const PatientVideoCallScreen: React.FC = () => {
                     >
                         {isCameraOn ? (
                             <RtcSurfaceView
-                                canvas={{ uid: 0, renderModeType: RenderModeType.RenderModeFit }}
+                                canvas={{ uid: 0, renderMode: RenderModeType.RenderModeFit }}
                                 style={styles.fillVideo}
                                 zOrderMediaOverlay={true}
                             />
@@ -663,7 +663,7 @@ const PatientVideoCallScreen: React.FC = () => {
                         onPress={handleSwapViews}
                     >
                         <RtcSurfaceView
-                            canvas={{ uid: remoteUid!, renderModeType: RenderModeType.RenderModeFit }}
+                            canvas={{ uid: remoteUid!, renderMode: RenderModeType.RenderModeFit }}
                             style={styles.fillVideo}
                         />
                         <View style={styles.nameTag}>

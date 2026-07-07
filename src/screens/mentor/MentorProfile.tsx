@@ -7,6 +7,7 @@ import { Colors } from "../../common/Colors";
 import ReviewSection from "../../components/ReviewSecton";
 import { reviews } from "../../common/DataInterface";
 import { SafeAreaView } from "react-native-safe-area-context";
+import TablerIcon from '../../components/TablerIcon';
 
 const { width } = Dimensions.get("window");
 
@@ -163,7 +164,6 @@ const MentorProfile = (props: any) => {
             <Header
                 title="Mentor Profile"
                 subtitle="Find best doctor"
-                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 
@@ -175,7 +175,7 @@ const MentorProfile = (props: any) => {
                         />
 
                         <View style={styles.badge}>
-                            <Image source={Images.approved} style={{ height: 14, width: 14, tintColor: "#0B6B57", marginRight: 4 }} />
+                            <TablerIcon name="approved" size={14} color={"#0B6B57"} />
                             <Text style={styles.badgeText}> Expert Mentor</Text>
                         </View>
                     </View>

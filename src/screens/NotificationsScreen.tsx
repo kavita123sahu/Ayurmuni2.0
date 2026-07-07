@@ -215,9 +215,8 @@ const NotificationsScreen = (props: any) => {
 
             <AppHeader
                 title="Notifications"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
-                rightIcon={"Clear All"}
+                rightLabel="Clear All"
             // ✅ FIX
             />
 
@@ -334,6 +333,7 @@ const styles = StyleSheet.create({
         height: 48,
         width: 48,
         borderRadius: 16,
+        tintColor: 'white',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,

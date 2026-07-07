@@ -49,9 +49,8 @@ const Wishlist = (props: any) => {
 
             <AppHeader
                 title="My Wishlist"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
-                // rightIcon={Images.Bell}
+                // rightIconName="bell"
                 onRightPress={() => console.log('Search clicked')}
             />
 
@@ -74,7 +73,7 @@ const Wishlist = (props: any) => {
                         <EmptyState
                             imageSize={15}
 
-                            image={Images.wishlist}
+                            iconName="heart"
                             title="Wishlist is Empty"
                             subtitle="No products added to wishlist yet."
                         />

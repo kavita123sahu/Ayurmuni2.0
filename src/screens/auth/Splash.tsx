@@ -4,6 +4,7 @@ import * as Animatable from 'react-native-animatable';
 import { useIsFocused } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import { Utils } from '../../common/Utils';
+import { isGuestUser } from '../../services/guestAuth';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICES from '../../services/AuthService';
@@ -194,14 +195,14 @@ const Splash = (props: any) => {
   const getUser = async () => {
     try {
       const token = await Utils.getData('_TOKEN');
-
-      // props.navigation.replace('Welcome');
-      // return;
+      const guest = await isGuestUser();
 
       if (!token) {
-        props.navigation.replace('AuthStack', {
-          screen: 'Login',
-        });
+        if (guest) {
+          props.navigation.replace('HomeStack', { screen: 'Home' });
+          return;
+        }
+        props.navigation.replace('Welcome');
         return;
       }
 

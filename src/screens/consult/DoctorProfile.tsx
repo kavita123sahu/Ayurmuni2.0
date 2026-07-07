@@ -19,8 +19,12 @@ import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
+import BackIconButton from '../../components/BackIconButton';
+import { requireAuth } from '../../services/guestAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { showSuccessToast } from '../../config/Key';
 import FavouriteButton from '../../components/FavouriteButton';
+import TablerIcon from '../../components/TablerIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -118,6 +122,7 @@ const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
 
 const DoctorProfile = ({ navigation, route }: any) => {
     const { doctorData } = route?.params;
+    const { isGuest } = useAuth();
 
     console.log("docororpf", doctorData);
 
@@ -272,7 +277,8 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
 
     // Handlers
-    const handleBookAppointment = useCallback(() => {
+    const handleBookAppointment = useCallback(async () => {
+        if (!(await requireAuth('Please login to book an appointment'))) return;
         if (doctorDetails) {
             navigation.navigate('DoctorSlot', { doctorDetails });
         }
@@ -293,13 +299,10 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
             {/* Header */}
             <View style={styles.headerTop}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
+                <BackIconButton
                     onPress={() => navigation.goBack()}
                     style={styles.iconBtn}
-                >
-                    <Image source={Images.backIcon} style={styles.backIcon} />
-                </TouchableOpacity>
+                />
 
                 <Text style={styles.headerTitle}>Doctor Profile</Text>
 
@@ -416,11 +419,11 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={handleBookAppointment}
-                    style={styles.bookBtn}
+                    style={[styles.bookBtn, isGuest && styles.bookBtnLocked]}
                 >
                     <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
                     <Text numberOfLines={1} style={styles.bookText}>
-                        Book Appointment
+                        {isGuest ? 'Login to Book' : 'Book Appointment'}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -696,6 +699,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 12,
+    },
+    bookBtnLocked: {
+        backgroundColor: '#64748B',
     },
     bookText: {
         marginLeft: 8,

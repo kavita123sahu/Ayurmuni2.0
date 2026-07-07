@@ -241,15 +241,14 @@ const TopCategories = (props: any) => {
       <Header
         title={categoryName}
         subtitle="Organic product"
-        backIcon={Images.backIcon}
         onBack={() => navigation.goBack()}
       />
 
       <View style={styles.flexContain}>
         <SearchBar
         placeholder="Search seeds, oils..."
-        icon={require('../../assets/images/Search.png')}
-      />
+
+        />
 
       <TopSellingList data={topSelling} header ={true} isGrid={true} setProductData={()=>""} navigation={props.navigation}  />
       

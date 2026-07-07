@@ -13,6 +13,7 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import TablerIcon from '../../components/TablerIcon';
 
 const MentorOrder = ( props : any) => {
 
@@ -45,7 +46,6 @@ const MentorOrder = ( props : any) => {
 
             <AppHeader
                 title="Order Details "
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 
@@ -54,7 +54,7 @@ const MentorOrder = ( props : any) => {
 
                 <View style={styles.statusCard}>
                     <View style={{ flexDirection: 'row', gap: 5, margin: 2 }}>
-                        <Image source={Images.tickk} style={{ height: 20, width: 20, tintColor: Colors.primaryColor, borderRadius: 20 }} />
+                        <TablerIcon name="check" size={20} color={Colors.primaryColor} />
                         <Text style={styles.statusTitle}>{orderData.status}</Text>
                     </View>
                     <Text style={styles.statusMsg}>{orderData.message}</Text>
@@ -90,7 +90,7 @@ const MentorOrder = ( props : any) => {
 
                 <View style={[styles.itemRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <Image source={Images.location} style={{ height: 20, width: 20 }} />
+                        <TablerIcon name="location" size={20} color={Colors.primaryColor} />
                         <View>
                             <Text style={[styles.sectionTitle, { marginBottom: -15 }]}>Delivery Address</Text>
                             <Text style={styles.dafultAddress}>Home • Default Address</Text>
@@ -108,12 +108,10 @@ const MentorOrder = ( props : any) => {
                             <View style={styles.timelineLeft}>
                                 <View style={{ flex: 1, alignItems: "center" }}>
 
-                                    <Image
-                                        source={Images.tickk}
-                                        style={[
-                                            styles.circle,
-                                            { tintColor: item.completed ? "#0B6E4F" : "#ccc" }
-                                        ]}
+                                    <TablerIcon
+                                        name="check"
+                                        size={20}
+                                        color={item.completed ? "#0B6E4F" : "#ccc"}
                                     />
 
                                     {index !== orderData.timeline.length - 1 && (
@@ -132,12 +130,12 @@ const MentorOrder = ( props : any) => {
                 </View>
 
                 <TouchableOpacity style={styles.outlineBtn} onPress={()=>props.navigation.navigate('RefundScreen')}>
-                    <Image source={Images.Refund} style={{ height: 9, width: 13 }} />
+                    <TablerIcon name="refund" size={9} color={Colors.primaryColor} />
                     <Text style={styles.outlineText}>Return & Refund</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.primaryBtn}>
-                    <Image source={Images.exchange} style={{ height: 12, width: 16 }} />
+                    <TablerIcon name="exchange" size={12} color={Colors.primaryColor} />
                     <Text style={styles.primaryText}>Exchange</Text>
                 </TouchableOpacity>
             </ScrollView>

@@ -11,6 +11,7 @@ import {
     styles,
 } from './styles/MedicalHistor';
 import { Images } from '../../common/Images';
+import TablerIcon from '../../components/TablerIcon';
 
 
 const OptionCard = ({
@@ -185,19 +186,7 @@ const OptionCard = ({
             >
                 {
                     active && (
-                        <Image
-                            source={
-                                Images.tick
-                            }
-                            style={{
-                                height: 15,
-                                width: 15,
-                                resizeMode:
-                                    'contain',
-                                tintColor:
-                                    '#FFFFFF',
-                            }}
-                        />
+                        <TablerIcon name="check" size={15} color="#FFFFFF" />
                     )
                 }
             </View>

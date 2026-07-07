@@ -9,6 +9,7 @@ import { Colors } from "../../common/Colors";
 import PaymentMethodCard from "../../components/PaymentCard";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import PaymentPlan from "./PaymentPlan";
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
 
 
@@ -48,26 +49,32 @@ export default function CheckoutScreen(props: any) {
     image: "https://via.placeholder.com/100",
   };
 
-  const paymentMethods = [
+  const paymentMethods: {
+    id: string;
+    title: string;
+    subtitle: string;
+    iconName: TablerIconName;
+    isActive: boolean;
+  }[] = [
     {
       id: "1",
       title: "Credit Card",
       subtitle: "**** **** **** 4290",
-      icon: Images.DebitCard,
+      iconName: 'credit-card',
       isActive: true,
     },
     {
       id: "2",
       title: "UPI ID",
       subtitle: "PhonePe, Google Pay, Paytm...",
-      icon: Images.card,
+      iconName: 'credit-card',
       isActive: false,
     },
     {
       id: "3",
       title: "EMI",
       subtitle: "Flexible monthly installments",
-      icon: Images.card,
+      iconName: 'credit-card',
       isActive: false,
     },
 
@@ -125,7 +132,7 @@ export default function CheckoutScreen(props: any) {
             <Text style={{ color: '#fff', fontSize: 14, fontFamily: Fonts.PoppinsSemiBold }}>
               Choose Plan
             </Text>
-            <Image source={Images.arrowRight} style={{ tintColor: Colors.white, marginTop: 5, marginLeft: 5, height: 20, width: 20 }} />
+            <TablerIcon name="arrow-right" size={20} color={Colors.white} />
           </TouchableOpacity>
         </View>
       </View>
@@ -139,7 +146,8 @@ export default function CheckoutScreen(props: any) {
 
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <AppHeader title="Checkout" leftIcon={Images.backIcon} onLeftPress={() => props.navigation.goBack()} />
+      <AppHeader title="Checkout"
+ onLeftPress={() => props.navigation.goBack()} />
 
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{
@@ -159,7 +167,7 @@ export default function CheckoutScreen(props: any) {
             onPress={() => setDropdownOpen(!dropdownOpen)}
           >
             <Text style={styles.SelectedText}>{selectedPatient}</Text>
-            <Image source={Images.arrowRight} style={{ tintColor: '#000000', width: 20, height: 20, transform: [{ rotate: '90deg' }] }} />
+            <TablerIcon name="chevron-down" size={20} color="#000000" />
           </TouchableOpacity>
 
           {dropdownOpen &&
@@ -186,7 +194,7 @@ export default function CheckoutScreen(props: any) {
               key={item.id}
               title={item.title}
               subtitle={item.subtitle}
-              icon={item.icon}
+              iconName={item.iconName}
               isActive={activeId === item.id}
               onPress={() => setActiveId(item.id)}
             />

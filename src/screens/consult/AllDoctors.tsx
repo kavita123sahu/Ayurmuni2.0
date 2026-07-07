@@ -25,7 +25,7 @@ import dayjs from 'dayjs';
 import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import AllDoctorCard from '../../components/AllDoctorCard';
 import { Images } from '../../common/Images';
@@ -51,6 +51,7 @@ type SelectedFilters = {
 
 
 const AllDoctors = (props: any) => {
+    const insets = useSafeAreaInsets();
     const all = props?.route?.params?.all ?? false;
 
 
@@ -287,12 +288,11 @@ const AllDoctors = (props: any) => {
                 />
 
                 <AppHeader
-                    title=""
-                    leftIcon={Images.backIcon}
+                    title="All Doctors"
                     onLeftPress={() =>
                         props.navigation.goBack()
                     }
-                    rightIcon={Images.Bell}
+                    rightIconName="bell"
                 />
 
                 <View style={{ flex: 1, paddingHorizontal: 20 }}>
@@ -303,7 +303,7 @@ const AllDoctors = (props: any) => {
                             setSearch
                         }
 
-                        icon={require('../../assets/images/Search.png')}
+
                     />
 
                     <FilterTabs
@@ -337,9 +337,10 @@ const AllDoctors = (props: any) => {
                                 false
                             }
 
-                            contentContainerStyle={
-                                styles.listContent
-                            }
+                            contentContainerStyle={[
+                                styles.listContent,
+                                { paddingBottom: insets.bottom + 24 },
+                            ]}
 
 
                             renderItem={renderDoctorItem}
@@ -359,7 +360,12 @@ const AllDoctors = (props: any) => {
                             updateCellsBatchingPeriod={50}
                             ListEmptyComponent={() => (
 
-                                <EmptyState image={Images.doctorImage} title='No doctor found' imageSize={20} />
+                                <EmptyState
+                                    image={Images.doctorImage}
+                                    title="No doctor found"
+                                    subtitle="Try adjusting your filters or search."
+                                    imageSize={48}
+                                />
                             )}
                         />}
                 </View>

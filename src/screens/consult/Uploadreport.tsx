@@ -1,462 +1,461 @@
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    FlatList,
-    Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Modal,
+  ActivityIndicator,
+  Pressable,
 } from 'react-native';
-// import DocumentPicker from 'react-native-document-picker';
-import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
+import TablerIcon from '../../components/TablerIcon';
+import SelectedUploadCard from '../../components/SelectedUploadCard';
 import PrimaryButton from '../../components/PrimaryButton';
 
-
-
 type MedicalRecord = {
-    id: string;
-    description: string;
-    file_url: string;
-    file_type: 'pdf' | 'image';
+  id: string;
+  description: string;
+  file_url: string;
+  file_type: 'pdf' | 'image' | string;
 };
 
 type Props = {
-    records?: MedicalRecord[];
-    selectedRecords?: string[];
-    onSelectRecord: React.Dispatch<
-        React.SetStateAction<string[]>
-    >;
-    CameraUpload: () => void; // only camera
-    onUpload: () => void; // existing selectFile()
+  records?: MedicalRecord[];
+  selectedRecords?: string[];
+  uploading?: boolean;
+  onSelectRecord: React.Dispatch<React.SetStateAction<string[]>>;
+  CameraUpload: () => void;
+  onUpload: () => void;
 };
 
-
 const PrescriptionUpload: React.FC<Props> = ({
-    records = [],
-    selectedRecords = [],
-    onSelectRecord,
-    onUpload,
-    CameraUpload,
+  records = [],
+  selectedRecords = [],
+  uploading = false,
+  onSelectRecord,
+  onUpload,
+  CameraUpload,
 }) => {
+  const selectedRecordData = records.filter(item =>
+    selectedRecords.includes(item.id),
+  );
 
-    console.log("onCameraprop =>", typeof CameraUpload);
-
-    const selectedRecordData = records.filter(item =>
-        selectedRecords.includes(item.id),
+  const toggleRecord = (id: string) => {
+    onSelectRecord(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
     );
-    const toggleRecord = (id: string) => {
-        onSelectRecord(prev =>
-            prev.includes(id)
-                ? prev.filter(x => x !== id)
-                : [...prev, id],
-        );
-    };
-    const [showRecordModal, setShowRecordModal] =
-        useState(false);
+  };
 
-    const [showUploadOptions, setShowUploadOptions] =
-        useState(false);
+  const removeRecord = (id: string) => {
+    onSelectRecord(prev => prev.filter(x => x !== id));
+  };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>
-                Upload Prescription
-                <Text style={styles.optional}>
-                    {' '} (optional)
-                </Text>
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [showUploadOptions, setShowUploadOptions] = useState(false);
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>
+        Upload Prescription
+        <Text style={styles.optional}> (optional)</Text>
+      </Text>
+
+      <View style={styles.uploadBox}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerIcon}>
+            <TablerIcon name="prescription" size={24} color={Colors.primaryColor} />
+          </View>
+
+          <View style={styles.headerText}>
+            <Text style={styles.uploadTitle}>Attach prescription</Text>
+            <Text style={styles.uploadSubTitle}>
+              Photo or PDF — helps your doctor prepare
             </Text>
-
-            {/* Upload Box Hamesha Dikhega */}
-            <View style={styles.uploadBox}>
-                <View style={styles.headerRow}>
-                    <Ionicons
-                        name="document-text-outline"
-                        size={30}
-                        color={Colors.primaryColor}
-                    />
-
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.uploadTitle}>
-                            Upload Prescription
-                        </Text>
-
-                        <Text style={styles.uploadSubTitle}>
-                            Upload images or PDF files
-                        </Text>
-                    </View>
-                </View>
-
-                <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={() => setShowUploadOptions(true)}
-                >
-                    <Ionicons
-                        name="cloud-upload-outline"
-                        size={18}
-                        color={Colors.primaryColor}
-                    />
-                    <Text style={styles.uploadBtnText}>
-                        Upload Prescription
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Uploaded Records */}
-                {selectedRecordData.length > 0 && (
-                    <View style={styles.filesRow}>
-                        {selectedRecordData.map(item => (
-                            <TouchableOpacity
-                                key={item.id}
-                                style={styles.fileCard}
-                                onPress={() => toggleRecord(item.id)}
-                            >
-                                <Ionicons
-                                    name={
-                                        item.file_type === 'pdf'
-                                            ? 'document'
-                                            : 'image'
-                                    }
-                                    size={35}
-                                    color={Colors.primaryColor}
-                                />
-
-                                <Text
-                                    numberOfLines={1}
-                                    style={styles.fileName}
-                                >
-                                    {item.description}
-                                </Text>
-
-                                <Ionicons
-                                    name="close-circle"
-                                    size={20}
-                                    color="red"
-                                    style={{
-                                        position: 'absolute',
-                                        top: 2,
-                                        right: 2,
-                                    }}
-                                />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                )}
-            </View>
-
-            <Modal
-                visible={showRecordModal}
-                animationType="slide"
-            >
-                <View style={{ flex: 1, padding: 16 }}>
-
-                    <Text style={styles.recordTitle}>
-                        Select Medical Records
-                    </Text>
-
-                    <FlatList
-                        data={records}
-                        keyExtractor={item => item.id}
-                        renderItem={({ item }) => {
-
-                            const selected =
-                                selectedRecords.includes(item.id);
-
-                            return (
-                                <TouchableOpacity
-                                    onPress={() =>
-                                        toggleRecord(item.id)
-                                    }
-                                    style={[
-                                        styles.recordCard,
-                                        selected &&
-                                        styles.selectedRecordCard,
-                                    ]}
-                                >
-                                    <View style={{ flex: 1 }}>
-                                        <Text>
-                                            {item.description}
-                                        </Text>
-                                    </View>
-
-                                    <Ionicons
-                                        name={
-                                            selected
-                                                ? 'checkbox'
-                                                : 'square-outline'
-                                        }
-                                        size={24}
-                                        color={
-                                            Colors.primaryColor
-                                        }
-                                    />
-                                </TouchableOpacity>
-                            );
-                        }}
-                    />
-
-                    <PrimaryButton TextFont="800" onPress={() =>
-                        setShowRecordModal(false)
-                    } title='DONE' />
-
-                </View>
-            </Modal>
-
-            <Modal
-                visible={showUploadOptions}
-                transparent
-                animationType="slide"
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-
-                        {/* Camera */}
-                        <TouchableOpacity
-                            style={styles.optionItem}
-                            onPress={() => {
-                                console.log('CAMERA CLICKED');
-                                setShowUploadOptions(false);
-
-                                setTimeout(() => {
-                                    console.log("CALLING CAMERA");
-                                    CameraUpload?.();
-                                }, 500);
-                            }}
-                        >
-                            <Ionicons
-                                name="camera-outline"
-                                size={22}
-                                color={Colors.primaryColor}
-                            />
-                            <Text style={styles.optionText}>
-                                Take Photo
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Gallery + PDF */}
-                        <TouchableOpacity
-                            style={styles.optionItem}
-                            onPress={() => {
-                                setShowUploadOptions(false);
-                                onUpload(); // selectFile()
-                            }}
-                        >
-                            <Ionicons
-                                name="cloud-upload-outline"
-                                size={22}
-                                color={Colors.primaryColor}
-                            />
-                            <Text style={styles.optionText}>
-                                Upload File
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Existing Records */}
-                        {records.length > 0 && (
-                            <TouchableOpacity
-                                style={styles.optionItem}
-                                onPress={() => {
-                                    setShowUploadOptions(false);
-                                    setShowRecordModal(true);
-                                }}
-                            >
-                                <Ionicons
-                                    name="folder-open-outline"
-                                    size={22}
-                                    color={Colors.primaryColor}
-                                />
-                                <Text style={styles.optionText}>
-                                    Select From Existing Records
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-
-                    </View>
-                </View>
-            </Modal>
-
+          </View>
         </View>
-    );
+
+        {uploading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={Colors.primaryColor} />
+            <Text style={styles.loadingText}>Uploading file...</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={() => setShowUploadOptions(true)}
+            activeOpacity={0.85}
+          >
+            <TablerIcon name="upload" size={18} color={Colors.primaryColor} />
+            <Text style={styles.uploadBtnText}>
+              {selectedRecordData.length > 0 ? 'Add another file' : 'Upload prescription'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {selectedRecordData.length > 0 && (
+          <View style={styles.selectedSection}>
+            <Text style={styles.selectedLabel}>
+              Selected ({selectedRecordData.length})
+            </Text>
+            <FlatList
+              data={selectedRecordData}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.filesRow}
+              renderItem={({ item }) => (
+                <SelectedUploadCard
+                  name={item.description || 'Prescription'}
+                  uri={item.file_url}
+                  fileType={item.file_type}
+                  onRemove={() => removeRecord(item.id)}
+                />
+              )}
+            />
+          </View>
+        )}
+      </View>
+
+      <Modal visible={showRecordModal} animationType="slide">
+        <View style={styles.recordModalContainer}>
+          <View style={styles.recordModalHeader}>
+            <Text style={styles.recordTitle}>Existing records</Text>
+            <TouchableOpacity onPress={() => setShowRecordModal(false)}>
+              <TablerIcon name="x" size={22} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={records}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            renderItem={({ item }) => {
+              const selected = selectedRecords.includes(item.id);
+              return (
+                <TouchableOpacity
+                  onPress={() => toggleRecord(item.id)}
+                  style={[
+                    styles.recordCard,
+                    selected && styles.selectedRecordCard,
+                  ]}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.recordIcon}>
+                    <TablerIcon
+                      name={item.file_type === 'pdf' ? 'file' : 'photo'}
+                      size={20}
+                      color={Colors.primaryColor}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.recordName} numberOfLines={1}>
+                      {item.description}
+                    </Text>
+                    <Text style={styles.recordType}>
+                      {item.file_type?.toUpperCase()}
+                    </Text>
+                  </View>
+                  <TablerIcon
+                    name={selected ? 'check' : 'clipboard-list'}
+                    size={22}
+                    color={selected ? Colors.primaryColor : '#CBD5E1'}
+                  />
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={styles.emptyRecords}>No saved records yet</Text>
+            }
+          />
+
+          <PrimaryButton
+            TextFont="800"
+            onPress={() => setShowRecordModal(false)}
+            title="Done"
+          />
+        </View>
+      </Modal>
+
+      <Modal visible={showUploadOptions} transparent animationType="fade">
+        <Pressable
+          style={styles.modalContainer}
+          onPress={() => setShowUploadOptions(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={e => e.stopPropagation()}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Upload prescription</Text>
+
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => {
+                setShowUploadOptions(false);
+                setTimeout(() => CameraUpload?.(), 300);
+              }}
+            >
+              <View style={styles.optionIcon}>
+                <TablerIcon name="camera" size={20} color={Colors.primaryColor} />
+              </View>
+              <View>
+                <Text style={styles.optionText}>Take photo</Text>
+                <Text style={styles.optionSub}>Use camera</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => {
+                setShowUploadOptions(false);
+                onUpload();
+              }}
+            >
+              <View style={styles.optionIcon}>
+                <TablerIcon name="photo" size={20} color={Colors.primaryColor} />
+              </View>
+              <View>
+                <Text style={styles.optionText}>Choose file</Text>
+                <Text style={styles.optionSub}>Gallery or PDF</Text>
+              </View>
+            </TouchableOpacity>
+
+            {records.length > 0 && (
+              <TouchableOpacity
+                style={[styles.optionItem, styles.optionItemLast]}
+                onPress={() => {
+                  setShowUploadOptions(false);
+                  setShowRecordModal(true);
+                }}
+              >
+                <View style={styles.optionIcon}>
+                  <TablerIcon name="file-medical" size={20} color={Colors.primaryColor} />
+                </View>
+                <View>
+                  <Text style={styles.optionText}>From my records</Text>
+                  <Text style={styles.optionSub}>Previously uploaded</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
 };
 
 export default PrescriptionUpload;
 
 const styles = StyleSheet.create({
-    container: {
-        marginTop: 15,
-    },
-
-    title: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#111',
-        marginBottom: 12,
-    },
-
-    optional: {
-        color: '#7B8AA0',
-        fontSize: 14,
-    },
-
-    uploadBox: {
-        backgroundColor: '#F8FAF9',
-        borderWidth: 1,
-        borderColor: '#DDE8E2',
-        borderRadius: 16,
-        padding: 16,
-    },
-
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    uploadTitle: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#111827',
-    },
-
-    uploadSubTitle: {
-        fontSize: 12,
-        color: '#6B7280',
-        fontFamily: Fonts.PoppinsMedium,
-        marginTop: 2,
-    },
-
-    uploadButton: {
-        marginTop: 15,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: Colors.primaryColor,
-        borderRadius: 10,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-        gap: 8,
-    },
-
-    uploadBtnText: {
-        color: Colors.primaryColor,
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    filesRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 15,
-    },
-
-    fileCard: {
-        width: 90,
-        borderRadius: 10,
-        backgroundColor: '#FFF',
-        padding: 10,
-        marginRight: 10,
-        marginBottom: 10,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-
-    selectedFileCard: {
-        borderColor: Colors.primaryColor,
-        backgroundColor: '#F0FDF4',
-    },
-
-    fileName: {
-        fontSize: 11,
-        textAlign: 'center',
-        marginTop: 6,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    fileCount: {
-        marginTop: 10,
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.4)',
-    },
-
-    modalContent: {
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 20,
-        paddingBottom: 35,
-    },
-
-    optionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
-    },
-
-    optionText: {
-        marginLeft: 12,
-        fontSize: 15,
-        color: '#111827',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    recordModalContainer: {
-        flex: 1,
-        backgroundColor: '#FFF',
-    },
-
-    recordModalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-
-    recordTitle: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#111827',
-    },
-
-    recordCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 14,
-        marginHorizontal: 16,
-        marginTop: 12,
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-
-    selectedRecordCard: {
-        borderColor: Colors.primaryColor,
-        backgroundColor: '#F0FDF4',
-    },
-
-    doneButton: {
-        backgroundColor: Colors.primaryColor,
-        margin: 16,
-        paddingVertical: 14,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-
-    doneButtonText: {
-        color: '#FFF',
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
+  container: {
+    marginTop: 15,
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  optional: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  uploadBox: {
+    backgroundColor: '#F8FAF9',
+    borderWidth: 1,
+    borderColor: '#DDE8E2',
+    borderRadius: 18,
+    padding: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  uploadTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#111827',
+  },
+  uploadSubTitle: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 2,
+  },
+  uploadButton: {
+    marginTop: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: Colors.primaryColor,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  uploadBtnText: {
+    color: Colors.primaryColor,
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  loadingRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  selectedSection: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  selectedLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  filesRow: {
+    paddingRight: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    paddingTop: 12,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  optionItemLast: {
+    borderBottomWidth: 0,
+  },
+  optionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  optionText: {
+    fontSize: 15,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  optionSub: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 2,
+  },
+  recordModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
+  recordModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  recordTitle: {
+    fontSize: 18,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#111827',
+  },
+  recordCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  selectedRecordCard: {
+    borderColor: Colors.primaryColor,
+    backgroundColor: '#F0FDF4',
+  },
+  recordIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  recordName: {
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#111827',
+  },
+  recordType: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 2,
+  },
+  emptyRecords: {
+    textAlign: 'center',
+    marginTop: 40,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+  },
 });

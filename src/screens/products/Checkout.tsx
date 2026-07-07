@@ -14,12 +14,12 @@ import {
 } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
-
-const Option = ({ selected, title, sub, onPress, icon }: any) => (
+const Option = ({ selected, title, sub, onPress, iconName }: { selected: boolean; title: string; sub?: string; onPress: () => void; iconName?: TablerIconName }) => (
     <TouchableOpacity
         style={[
             styles.option,
@@ -40,8 +40,8 @@ const Option = ({ selected, title, sub, onPress, icon }: any) => (
                 {sub && <Text style={styles.optionSub}>{sub}</Text>}
             </View>
 
-            {icon && (
-                <Image source={icon} style={styles.rightIcon} />
+            {iconName && (
+                <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
             )}
 
         </View>
@@ -85,7 +85,8 @@ const Checkout: React.FC = (props: any) => {
 
             <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
-            <AppHeader title="Checkout" leftIcon={Images.backIcon} onLeftPress={() => props.navigation.goBack()} />
+            <AppHeader title="Checkout"
+ onLeftPress={() => props.navigation.goBack()} />
 
             <ScrollView contentContainerStyle={styles.content}>
 
@@ -100,10 +101,7 @@ const Checkout: React.FC = (props: any) => {
                             <View style={styles.addressRow}>
 
                                 <View style={styles.iconBox}>
-                                    <Image
-                                        source={Images.location}
-                                        style={styles.icon}
-                                    />
+                                    <TablerIcon name="location" size={20} color={Colors.primaryColor} />
                                 </View>
 
                                 <View style={styles.addressInfo}>
@@ -149,10 +147,7 @@ const Checkout: React.FC = (props: any) => {
                             <View style={styles.emptyAddressContainer}>
 
                                 <View style={styles.emptyIconWrapper}>
-                                    <Image
-                                        source={Images.location}
-                                        style={styles.emptyLocationIcon}
-                                    />
+                                    <TablerIcon name="location" size={20} color={Colors.primaryColor} />
                                 </View>
 
                                 <Text style={styles.emptyTitle}>
@@ -187,7 +182,7 @@ const Checkout: React.FC = (props: any) => {
                     selected={deliveryMethod === 'standard'}
                     title="Standard Delivery"
                     sub="3-5 business days · Free"
-                    icon={Images.truck}
+                    iconName="truck"
                     onPress={() => setDeliveryMethod('standard')}
                 />
 
@@ -195,7 +190,7 @@ const Checkout: React.FC = (props: any) => {
                     selected={deliveryMethod === 'express'}
                     title="Express Delivery"
                     sub="Next day delivery · Rs. 50.00"
-                    icon={Images.flash}
+                    iconName="bolt"
                     onPress={() => setDeliveryMethod('express')}
                 />
 
@@ -205,7 +200,7 @@ const Checkout: React.FC = (props: any) => {
         <Option
           selected={paymentMethod === 'card'}
           title="Credit / Debit Card"
-          icon={Images.card}
+          iconName="credit-card"
           rightImage={Images.visa}
           onPress={() => setPaymentMethod('card')}
         />
@@ -213,7 +208,7 @@ const Checkout: React.FC = (props: any) => {
         <Option
           selected={paymentMethod === 'upi'}
           title="UPI Payment"
-          icon={Images.upi}
+          iconName="wallet"
           onPress={() => setPaymentMethod('upi')}
         />
 
@@ -229,7 +224,7 @@ const Checkout: React.FC = (props: any) => {
         <Option
           selected={paymentMethod === 'cod'}
           title="Cash on Delivery"
-          icon={Images.cash}
+          iconName="cash"
           onPress={() => setPaymentMethod('cod')}
         /> */}
 
@@ -282,7 +277,7 @@ const Checkout: React.FC = (props: any) => {
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Proceed to Checkout</Text>
 
-                    <Image source={Images.arrowRight} style={styles.checkoutIcon} />
+                    <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
                 </View>
             </TouchableOpacity>
         </SafeAreaView>

@@ -2,8 +2,9 @@ import { View, Text, ScrollView, FlatList, TouchableOpacity, StyleSheet, Image, 
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
-import { Images } from '../../common/Images'
 import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
+import TablerIcon from '../../components/TablerIcon';
 
 const MedicineCheckOut = (props: any) => {
 
@@ -42,7 +43,6 @@ const MedicineCheckOut = (props: any) => {
             <AppHeader
                 title="Checkout"
                 onLeftPress={()=>props.navigation.goBack()}
-                leftIcon={Images.backIcon}
             />
 
             <ScrollView
@@ -69,7 +69,7 @@ const MedicineCheckOut = (props: any) => {
 
                 <View style={styles.addressCard}>
                     <View style={styles.iconBox}>
-                        <Image source={Images.location} style={styles.icon} />
+                        <TablerIcon name="location" size={20} color={Colors.primaryColor} />
                     </View>
                     <View>
                         <Text style={styles.addressTitle}>Home</Text>
@@ -151,12 +151,12 @@ const MedicineCheckOut = (props: any) => {
                 </View>
 
                 <View style={styles.paymentCard}>
-                    <Image source={Images.card} style={styles.cardIcon} />
+                    <TablerIcon name="credit-card" size={20} color={Colors.primaryColor} />
                     <View style={{ flex: 1 }}>
                         <Text style={styles.medName}>Visa ending in 4242</Text>
                         <Text style={styles.medDesc}>Expires 12/26</Text>
                     </View>
-                    <Image source={Images.arrowRight} style={styles.arrow} />
+                    <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
                 </View>
 
                 <View style={styles.billRow}>
@@ -183,7 +183,7 @@ const MedicineCheckOut = (props: any) => {
             <TouchableOpacity style={styles.checkout} onPress={() => props.navigation.navigate('OrderStatus')}>
                 <View style={styles.checkoutRow}>
                     <Text style={styles.checkoutText}>Place Order</Text>
-                    <Image source={Images.arrowRight} style={styles.checkoutIcon} />
+                    <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
                 </View>
             </TouchableOpacity>
 

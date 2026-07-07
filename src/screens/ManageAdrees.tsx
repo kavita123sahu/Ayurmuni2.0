@@ -22,6 +22,7 @@ import { showSuccessToast } from '../config/Key';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
+import TablerIcon from '../components/TablerIcon';
 
 interface AddressItem {
     id: string;
@@ -227,10 +228,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                 <View style={styles.iconContainer}>
 
-                    <Image
-                        source={Images.home}
-                        style={styles.icon}
-                    />
+                    <TablerIcon name="home" size={20} color={Colors.primaryColor} />
 
                 </View>
 
@@ -296,10 +294,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                 {
                     isSelected && (
-                        <Image
-                            source={Images.tickIcon}
-                            style={styles.tickIcon}
-                        />
+                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
                     )
                 }
 
@@ -318,7 +313,6 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
             <AppHeader
                 title="Manage Address"
-                leftIcon={Images.backIcon}
                 onLeftPress={() =>
                     navigation.goBack()
                 }
@@ -356,14 +350,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             style={styles.locationBox}
                         >
 
-                            <Image
-                                source={
-                                    Images.currentLocation
-                                }
-                                style={
-                                    styles.locationIcon
-                                }
-                            />
+                            <TablerIcon name="current-location" size={20} color={Colors.primaryColor} />
 
                         </View>
 
@@ -402,14 +389,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                         {
                             selectedId ===
                             'current' && (
-                                <Image
-                                    source={
-                                        Images.tickIcon
-                                    }
-                                    style={
-                                        styles.tickIcon
-                                    }
-                                />
+                                <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
                             )
                         }
 
@@ -430,7 +410,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             renderAddressItem
                         }
                         ListEmptyComponent={<EmptyState
-                            image={Images.location}
+                            iconName="location"
                             imageSize={20}
                             title="No Address Found"
                             subtitle="You haven't added any address yet."

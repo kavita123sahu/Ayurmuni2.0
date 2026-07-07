@@ -17,6 +17,7 @@ import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Styles } from '../../common/Styles';
 import { Colors } from '../../common/Colors';
+import TablerIcon from '../../components/TablerIcon';
 
 
 const stepsData = [
@@ -35,9 +36,8 @@ const FAQScreen = (props: any) => {
 
       <AppHeader
         title="FAQ"
-        leftIcon={Images.backIcon}
         onLeftPress={() => props.navigation.goBack()}
-        rightIcon="search"
+        rightIconName="search"
         onRightPress={() => console.log('Search clicked')}
       />
       
@@ -49,7 +49,7 @@ const FAQScreen = (props: any) => {
 
           {/* UPDATED */}
           <View style={styles.updatedBox}>
-            <Image source={Images.clock} style={styles.clockIcon} />
+            <TablerIcon name="clock" size={20} color={Colors.primaryColor} />
             <Text style={styles.subText}>
               Updated 2 days ago • 3 min read
             </Text>
@@ -78,7 +78,7 @@ const FAQScreen = (props: any) => {
           {/* NOTE */}
           <View style={styles.noteBox}>
             <View style={styles.iconCircle}>
-              <Image source={Images.notification} style={styles.iconSize} />
+              <TablerIcon name="bell" size={20} color={Colors.primaryColor} />
             </View>
 
             <Text style={styles.noteText}>

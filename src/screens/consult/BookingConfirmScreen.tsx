@@ -24,6 +24,7 @@ import { getAppointmentShareMessage } from '../../helper/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import { createDoctorReview, createReview } from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -54,34 +55,31 @@ const shareOptions = [
     id: 1,
     title: 'WhatsApp',
     type: 'whatsapp',
-    icon: require('../../assets/images/whatsappIcon.png'),
+    iconName: 'whatsapp' as TablerIconName,
     bg: '#0D614E26',
     Color: Colors.primaryColor,
   },
-
   {
     id: 2,
     title: 'Messages',
     type: 'message',
-    icon: require('../../assets/images/chatSupport.png'),
+    iconName: 'chat-support' as TablerIconName,
     bg: '#DBEAFE',
     Color: '#2563EB',
   },
-
   {
     id: 3,
     title: 'Email',
     type: 'email',
-    icon: require('../../assets/images/email.png'),
+    iconName: 'mail' as TablerIconName,
     bg: '#FFEDD5',
     Color: '#EA580C',
   },
-
   {
     id: 4,
     title: 'Copy Link',
     type: 'copy',
-    icon: require('../../assets/images/copyIcon.png'),
+    iconName: 'share' as TablerIconName,
     bg: '#F3F4F6',
     Color: '#475569',
   },
@@ -137,20 +135,17 @@ const Badge = memo(({ appointment_status }: BadgeProps) => {
 });
 
 interface DetailRowProps {
-  icon: any;
+  iconName: TablerIconName;
   label: string;
   value: string;
 }
 
 const DetailRow = memo(
-  ({ icon, label, value }: DetailRowProps) => {
+  ({ iconName, label, value }: DetailRowProps) => {
     return (
       <View style={styles.detailRow}>
         <View style={styles.iconWrapper}>
-          <Image
-            source={icon}
-            style={styles.detailIcon}
-          />
+          <TablerIcon name={iconName} size={20} color={Colors.primaryColor} />
         </View>
 
         <View style={styles.detailContent}>
@@ -394,10 +389,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
 
         <View style={styles.successWrapper}>
           <View style={styles.successCircle}>
-            <Image
-              source={Images.tickIcon}
-              style={styles.successIcon}
-            />
+            <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
           </View>
         </View>
 
@@ -452,20 +444,20 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
 
           <View style={styles.detailsContainer}>
             <DetailRow
-              icon={Images.calender}
+              iconName="calendar"
               label="DATE"
               value={formatDate(SlotsDetail?.slot?.date)}
             />
 
             <DetailRow
-              icon={Images.clock}
+              iconName="clock"
               label="TIME"
               value={SlotsDetail?.slot?.slot_time}
             />
 
             {SlotsDetail?.slot?.concern && (
               <DetailRow
-                icon={Images.clock}
+                iconName="clock"
                 label="CONCERN"
                 value={SlotsDetail?.slot?.concern}
               />
@@ -482,10 +474,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             activeOpacity={0.8}
             style={styles.secondaryBtn}
           >
-            <Image
-              source={Images.calender}
-              style={styles.secondaryIcon}
-            />
+            <TablerIcon name="calendar" size={20} color={Colors.primaryColor} />
 
             <Text
               style={styles.secondaryText}
@@ -500,10 +489,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             onPress={openBottomSheet}
             style={styles.secondaryBtn}
           >
-            <Image
-              source={require('../../assets/images/shareIcon.png')}
-              style={styles.shareIcon}
-            />
+            <TablerIcon name="share" size={14} color={Colors.primaryColor} />
 
             <Text
               style={styles.secondaryText}
@@ -669,14 +655,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
                     }
                   >
 
-                    <Image
-                      source={
-                        Images.calender
-                      }
-                      style={
-                        styles.dateIcon
-                      }
-                    />
+                    <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
 
                     <Text
                       style={
@@ -743,17 +722,10 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
                             ]}
                           >
 
-                            <Image
-                              source={
-                                item.icon
-                              }
-                              style={[
-                                styles.optionIcon,
-                                {
-                                  tintColor:
-                                    item.Color,
-                                },
-                              ]}
+                            <TablerIcon
+                              name={item.iconName}
+                              size={22}
+                              color={item.Color}
                             />
 
                           </View>

@@ -2,84 +2,61 @@ import {
     View,
     Text,
     StyleSheet,
-    Image,
     TouchableOpacity,
     Dimensions,
-    Platform,
 } from 'react-native';
 import React from 'react';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../common/Colors';
-import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
+import TablerIcon, { TablerIconName } from './TablerIcon';
+import { useScrollHide } from '../context/ScrollHideContext';
+import { TAB_BAR_BOTTOM_OFFSET } from '../constants/layout';
 
-const { width } = Dimensions.get("window");
-
-// 🔥 Responsive scaling
-// const scale = width / 400;
+const { width } = Dimensions.get('window');
 const scale = Math.min(width / 400, 1);
 
-const TAB_HEIGHT = 72 * scale;
-// const INNER_SIZE = 60 * scale;
+const TAB_HEIGHT = 64 * scale;
 const INNER_SIZE = TAB_HEIGHT - 14;
-const CONSULT_SIZE = 68 * scale;
+const CONSULT_SIZE = 60 * scale;
+
+const TAB_ICONS: Record<string, TablerIconName> = {
+    Home: 'home',
+    Products: 'package',
+    Medicine: 'pill',
+    Profile: 'user',
+};
 
 const CustomeTab = (props: any) => {
     const { state, navigation } = props;
-
-    const insets = useSafeAreaInsets(); // ✅ SAFE AREA FIX
-
-
-    console.log("propss", props);
+    const insets = useSafeAreaInsets();
+    const { tabBarAnimatedStyle } = useScrollHide();
+    const stackNavigation = navigation.getParent?.() || navigation;
+    const bottomInset = (insets.bottom || 0) + TAB_BAR_BOTTOM_OFFSET;
 
     const visibleRoutes = state.routes.filter(
-        (route: any) => route.name !== "Consult"
+        (route: any) => route.name !== 'Consult',
     );
 
-    const isConsultActive =
-        state.routes[state.index].name === "Consult";
-
-    const getIcon = (name: string) => {
-        switch (name) {
-            case "Home":
-                return Images.home;
-            case "Products":
-                return Images.products;
-            case "Medicine":
-                return Images.medicine;
-            case "Profile":
-                return Images.Profile;
-            default:
-                return;
-        }
-    };
+    const isConsultActive = state.routes[state.index].name === 'Consult';
 
     return (
-        <View style={[styles.wrapper, { bottom: insets.bottom + 0 }]}>
+        <Animated.View
+            style={[
+                styles.wrapper,
+                { bottom: bottomInset },
+                tabBarAnimatedStyle,
+            ]}
+            pointerEvents="box-none"
+        >
             <View style={styles.container}>
-
-                {/* Blur for iOS */}
-                {Platform.OS === 'ios' ? (
-                    <View
-                        style={[
-                            StyleSheet.absoluteFill,
-                            { backgroundColor: 'rgba(255,255,255,0.25)' },
-                        ]}
-                    />
-                ) : (
-                    <View
-                        style={[
-                            StyleSheet.absoluteFill,
-                            { backgroundColor: 'rgba(255,255,255,0.25)' }
-                        ]}
-                    />
-                )}
-
                 {visibleRoutes.map((route: any) => {
                     const isFocused =
-                        state.index === state.routes.findIndex(
-                            (r: any) => r.name === route.name
-                        );
+                        state.index ===
+                        state.routes.findIndex((r: any) => r.name === route.name);
+
+                    const iconName = TAB_ICONS[route.name] ?? 'home';
 
                     return (
                         <TouchableOpacity
@@ -91,29 +68,22 @@ const CustomeTab = (props: any) => {
                             <View
                                 style={[
                                     styles.iconWrapper,
-                                    isFocused && styles.activeWrapper
+                                    isFocused && styles.activeWrapper,
                                 ]}
                             >
-                                <Image
-                                    source={getIcon(route.name)}
-                                    style={{
-                                        width: 22,
-                                        height: 22,
-                                        tintColor: isFocused
-                                            ? Colors.primaryColor
-                                            : "#A0AAB3",
-                                    }}
+                                <TablerIcon
+                                    name={iconName}
+                                    size={22}
+                                    color={isFocused ? Colors.primaryColor : '#A0AAB3'}
                                 />
-
                                 <Text
                                     numberOfLines={1}
                                     adjustsFontSizeToFit
                                     minimumFontScale={0.8}
-                                    ellipsizeMode="tail"
                                     style={[
                                         styles.tabLabel,
                                         {
-                                            color: isFocused ? Colors.primaryColor : "#A0AAB3",
+                                            color: isFocused ? Colors.primaryColor : '#A0AAB3',
                                             fontFamily: isFocused
                                                 ? Fonts.PoppinsSemiBold
                                                 : Fonts.PoppinsMedium,
@@ -128,19 +98,18 @@ const CustomeTab = (props: any) => {
                 })}
             </View>
 
-            {/* CONSULT BUTTON */}
             <TouchableOpacity
-                onPress={() => navigation.navigate("Consult")}
+                onPress={() => stackNavigation.navigate('Consult')}
                 activeOpacity={0.85}
                 style={[
                     styles.consultBtn,
-                    isConsultActive && { backgroundColor: "#0D614E" }
+                    isConsultActive && { backgroundColor: Colors.primaryColor },
                 ]}
             >
-                <Image source={Images.TabConsult} style={styles.consultIcon} />
+                <TablerIcon name="stethoscope" size={20} color="#fff" />
                 <Text style={styles.consultLabel}>Consult</Text>
             </TouchableOpacity>
-        </View>
+        </Animated.View>
     );
 };
 
@@ -151,107 +120,73 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 0,
         right: 0,
-
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-
-        backgroundColor: 'rgba(255,255,255,0.92)',
-        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 14,
+        zIndex: 100,
+        elevation: 12,
     },
-
     container: {
         flex: 1,
         height: TAB_HEIGHT,
         borderRadius: 999,
-
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-
-        paddingHorizontal: 10,
-        overflow: 'hidden',
-
-        // 🔥 Glass look without blur package
-        backgroundColor: 'rgba(255,255,255,0.92)',
-
-        // Border
+        paddingHorizontal: 6,
+        backgroundColor: 'rgba(255,255,255,0.98)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.65)',
-
-        // Android Shadow
-        elevation: 14,
-
-        // iOS Shadow
+        borderColor: 'rgba(230,236,240,0.95)',
+        elevation: 8,
         shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowRadius: 18,
-        shadowOffset: {
-            width: 0,
-            height: 8,
-        },
+        shadowOpacity: 0.1,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 4 },
     },
-
     tab: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
     tabLabel: {
-        marginTop: 3,
-        fontSize: 11,
-        textAlign: "center",
-        width: "100%",
-        flexShrink: 1,
+        marginTop: 2,
+        fontSize: 10,
+        textAlign: 'center',
+        width: '100%',
     },
     iconWrapper: {
-        minWidth: 52,
-        minHeight: 52,
+        minWidth: 48,
+        minHeight: 48,
         width: INNER_SIZE,
         height: INNER_SIZE,
-        borderRadius: 999,
-        alignItems: "center",
-        justifyContent: "center",
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
         paddingHorizontal: 4,
     },
 
     activeWrapper: {
-        minWidth: 52,
-        minHeight: 52,
-        width: INNER_SIZE,
-        height: INNER_SIZE,
-        borderRadius: 999,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 4,
+        backgroundColor: 'rgba(13, 97, 78, 0.1)',
+        borderRadius: 10,
     },
     consultBtn: {
         width: CONSULT_SIZE,
         height: CONSULT_SIZE,
         borderRadius: CONSULT_SIZE / 2,
-
-        marginLeft: 10,
-
+        marginLeft: 8,
         backgroundColor: Colors.primaryColor,
-        alignItems: "center",
-        justifyContent: "center",
-
-        elevation: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 6,
         shadowColor: Colors.primaryColor,
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
     },
-
-    consultIcon: {
-        width: 20 * scale,
-        height: 20 * scale,
-        tintColor: "#fff",
-    },
-
     consultLabel: {
-        color: "#fff",
-        fontSize: 10 * scale,
+        color: '#fff',
+        fontSize: 9 * scale,
         marginTop: 2,
         fontFamily: Fonts.PoppinsMedium,
     },

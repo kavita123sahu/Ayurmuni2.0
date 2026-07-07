@@ -1,9 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
-import { Ionicons } from "../common/Vector";
+import { View, Text, StyleSheet } from "react-native";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
-import { Images } from "../common/Images";
+import TablerIcon from "./TablerIcon";
 
 const highlightWords = ["My Appointments", "Reschedule"];
 
@@ -33,31 +32,23 @@ const StepCard = ({ title, steps }: any) => {
   return (
     <View style={styles.container}>
 
-      {/* HEADER WITH ICON */}
       <View style={styles.headerRow}>
         <View style={styles.iconBox}>
-          <Image source={Images.Instruction} style={{ height: 24, width: 24 }} />
-          {/* <Ionicons name="list-outline" size={18} color={Colors.primaryColor} /> */}
+          <TablerIcon name="instruction" size={24} color={Colors.primaryColor} />
         </View>
         <Text style={styles.header}>{title}</Text>
       </View>
 
-      {/* STEPS */}
       {steps.map((item: any, index: any) => (
         <View key={index} style={styles.stepRow}>
 
-          {/* NUMBER CIRCLE */}
           <View style={styles.circle}>
             <Text style={styles.circleText}>{index + 1}</Text>
           </View>
 
-          {/* TEXT */}
-
           <Text style={styles.stepText}>
             {renderHighlightedText(item)}
           </Text>
-
-          {/* <Text style={styles.stepText}>{item}</Text> */}
         </View>
       ))}
     </View>
@@ -68,8 +59,7 @@ export default StepCard;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#0D614E0D", // light green
-    // marginHorizontal: 16,
+    backgroundColor: "#0D614E0D",
     marginTop: 16,
     padding: 16,
     borderRadius: 16,

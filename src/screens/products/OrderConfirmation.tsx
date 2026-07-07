@@ -19,6 +19,8 @@ import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import OrderItem from '../../components/OrderItem';
 import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
+import TablerIcon from '../../components/TablerIcon';
 
 type DeliveryAddress = {
     id: string;
@@ -205,7 +207,6 @@ const OrderConfirmation: React.FC = (props: any) => {
 
             <AppHeader
                 title="Order Confirmation"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 
@@ -222,7 +223,7 @@ const OrderConfirmation: React.FC = (props: any) => {
                             { transform: [{ scale: tickScale }] },
                         ]}
                     >
-                        <Image source={Images.tickIcon} style={styles.tick} />
+                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
                     </Animated.View>
 
                     <Text style={styles.successTitle}>Order Placed Successfully!</Text>

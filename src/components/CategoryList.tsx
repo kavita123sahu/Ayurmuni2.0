@@ -47,7 +47,7 @@ const CategoryList = ({ data = [], navigation, doctor }: any) => {
       <View style={[styles.circle, { width: ITEM_SIZE - 10, height: ITEM_SIZE - 10 }]}>
         <Image
           source={
-            item?.image_url
+            item?.image_url && typeof item.image_url === 'string'
               ? { uri: item.image_url }
               : Images.cardiology
           }
@@ -65,7 +65,9 @@ const CategoryList = ({ data = [], navigation, doctor }: any) => {
     <FlatList
       horizontal
       data={data}
-      keyExtractor={(item) => item.id}
+      nestedScrollEnabled
+      scrollEnabled={data.length > 4}
+      keyExtractor={(item, index) => String(item?.id ?? index)}
       renderItem={renderItem}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}

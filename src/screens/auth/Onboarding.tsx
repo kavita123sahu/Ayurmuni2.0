@@ -31,6 +31,7 @@ import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as _PROFILE_SERVICE from '../../services/ProfileServices';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
+import TablerIcon from '../../components/TablerIcon';
 
 
 interface FormData {
@@ -437,8 +438,7 @@ const Onboarding = (props: any) => {
             >
 
                 {/* <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                    <Image
-                        source={Images.backIcon}
+                    <TablerIcon name="arrow-left" size={22} color={Colors.primaryColor}
                         style={styles.backIcon}
                     />
                 </TouchableOpacity> */}
@@ -492,10 +492,7 @@ const Onboarding = (props: any) => {
 
                                     {/* Camera Icon */}
                                     <View style={styles.smallCircle}>
-                                        <Image
-                                            source={Images.calender} // Better if you have a camera icon
-                                            style={styles.cameraImage}
-                                        />
+                                        <TablerIcon name="camera" size={20} color={Colors.primaryColor} />
                                     </View>
                                 </TouchableOpacity>
                             </View>

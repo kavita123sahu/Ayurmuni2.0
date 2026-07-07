@@ -8,15 +8,12 @@ import {
 } from "react-native";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
-import { Images } from "../common/Images";
-
-
+import TablerIcon from "./TablerIcon";
 
 interface MealProps {
     data: any;
     navigation?: any;
 }
-
 
 const MealCard = ({ data, navigation }: MealProps) => {
     return (
@@ -24,28 +21,23 @@ const MealCard = ({ data, navigation }: MealProps) => {
 
             <Image source={data?.image} style={styles.image} />
 
-            {/* Right Content */}
             <View style={styles.content}>
-                {/* Top Row */}
                 <View style={styles.topRow}>
                     <Text style={styles.type}>{data.type}</Text>
-                    <View style={{ flexDirection: 'row' }}>
-                        <Image source={Images.clock} style={{ height: 20, width: 20 }} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TablerIcon name="clock" size={20} color="#6B7280" />
                         <Text style={styles.time}>  {data.time}</Text>
                     </View>
                 </View>
 
-                {/* Title */}
                 <Text style={styles.title} numberOfLines={2}>
                     {data?.title}
                 </Text>
 
-                {/* Subtitle */}
                 <Text style={styles.subtitle} numberOfLines={1}>
                     {data?.subtitle}
                 </Text>
 
-                {/* Bottom Row */}
                 <View style={styles.bottomRow}>
                     <Text style={styles.kcal}>
                         {data?.kcal} <Text style={styles.kcalText}>KCAL</Text>
@@ -57,9 +49,8 @@ const MealCard = ({ data, navigation }: MealProps) => {
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity style={styles.doneBtn} >
-                            <Image source={Images.LogButton} style={{ height: 40, width: 40, marginBottom: 15 }} />
+                            <TablerIcon name="circle-check" size={28} color={Colors.primaryColor} />
                         </TouchableOpacity>
-
                     )}
                 </View>
             </View>
@@ -76,7 +67,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         borderWidth: 1,
         borderColor: Colors.borderColor,
-        marginBottom: 14, // 👈 spacing between cards
+        marginBottom: 14,
         overflow: "hidden",
     },
 
@@ -164,11 +155,5 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         justifyContent: "center",
         alignItems: "center",
-    },
-
-    doneText: {
-        color: Colors.primaryColor,
-        fontSize: 16,
-        fontWeight: "bold",
     },
 });

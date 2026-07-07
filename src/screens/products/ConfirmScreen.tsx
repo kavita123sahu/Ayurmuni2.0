@@ -174,7 +174,8 @@ const ConfirmScreen = ({ navigation, route }: any) => {
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
             {/* Header */}
-            <Header title='Checkout' onBack={() => navigation.goBack()} backIcon={Images.backIcon} />
+            <Header title='Checkout' onBack={() => navigation.goBack()}
+ />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 

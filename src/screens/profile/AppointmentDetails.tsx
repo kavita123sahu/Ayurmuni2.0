@@ -423,9 +423,9 @@
 
 //       <AppHeader
 //         title="Appointment Details"
-//         leftIcon={Images.backIcon}
+//
 //         onLeftPress={() => navigation.goBack()}
-//         rightIcon="search"
+//         rightIconName="search"
 //         onRightPress={() => console.log('Search clicked')}
 //       />
 
@@ -762,6 +762,7 @@ import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
 import FeedbackModal from '../FeedbackModal';
 import { useCreateReview } from '../../hooks/useCreateReview';
+import TablerIcon from '../../components/TablerIcon';
 
 // ---------------------------------------------------------------------
 // LUXURY THEME TOKENS
@@ -876,7 +877,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
     const response = await submitReview({
       entityType: 'doctor',
       appointmentId: appointmentData?.consultationId,
-      reviewData: { rating, review, image_urls: [] },
+      reviewData: { rating, review, appointment: appointmentData?.consultationId ?? '' },
     });
 
     if (response?.success) {
@@ -924,7 +925,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
         <View style={styles.dateTimeBox}>
           <View style={styles.dtItem}>
             <View style={styles.iconCircle}>
-              <Image source={Images.calender} style={Styles.IconSize} />
+              <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.label}>DATE</Text>
@@ -936,7 +937,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
           <View style={styles.dtItem}>
             <View style={styles.iconCircle}>
-              <Image source={Images.clock} style={Styles.IconSize} />
+              <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.label}>TIME</Text>
@@ -1059,7 +1060,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     payload: {
       action: string;
       availability: number;
-      reschedule_reason: string;
+      reschedule_reason?: string;
       cancellation_reason?: string;
     }
   ) => {
@@ -1119,9 +1120,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
       <AppHeader
         title="Appointment Details"
-        leftIcon={Images.backIcon}
         onLeftPress={() => navigation.goBack()}
-        rightIcon="search"
+        rightIconName="search"
         onRightPress={() => console.log('Search clicked')}
       />
 

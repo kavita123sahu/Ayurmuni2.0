@@ -16,6 +16,7 @@ import AppHeader from "../../components/AppHeader";
 import { Images } from "../../common/Images";
 import StepCard from "../../components/StepCard";
 import { SafeAreaView } from "react-native-safe-area-context";
+import TablerIcon from '../../components/TablerIcon';
 
 
 const stepsData = [
@@ -79,7 +80,6 @@ const MealDetails = (props: any) => {
 
             <AppHeader
                 title="Meal Details"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 
@@ -101,7 +101,7 @@ const MealDetails = (props: any) => {
                             <Text style={styles.tagText}>Breakfast</Text>
                         </View>
 
-                        <Image source={Images.favourite} style={{ height: 30, width: 30 }} />
+                        <TablerIcon name="heart" size={30} color={Colors.primaryColor} />
                     </View>
 
 
@@ -153,7 +153,7 @@ const MealDetails = (props: any) => {
                         <View style={{
                             flexDirection: 'row',
                         }}>
-                            <Image source={Images.prescriptionIcon} style={{ justifyContent: 'center', marginRight: 8, height: 15, width: 15 }} />
+                            <TablerIcon name="prescription" size={15} color={Colors.primaryColor} />
                             <Text style={styles.sectionTitle}>Preparation Steps</Text>
 
                         </View>

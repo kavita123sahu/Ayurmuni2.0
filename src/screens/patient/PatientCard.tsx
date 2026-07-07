@@ -11,6 +11,7 @@ import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { Feather, Ionicons } from '../../common/Vector';
 import { Images } from '../../common/Images';
+import TablerIcon from '../../components/TablerIcon';
 
 export interface Patient {
   id: string;
@@ -61,15 +62,15 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Image source={Images.editButton} style={styles.IconSize} />
+          <TablerIcon name="edit" size={20} color={Colors.primaryColor} />
           {/* <Feather  name='edit' color={Colors.primaryColor} /> */}
         </TouchableOpacity>
 
         {patient.selected ? (
-          // <View style={styles.checkCircle}>
-          <Image source={Images.verify} style={styles.IconSize} />
-          // </View>
-        ) : <Image source={Images.unverify} style={styles.IconSize} />}
+          <TablerIcon name="verify" size={22} color={Colors.primaryColor} />
+        ) : (
+          <TablerIcon name="unverify" size={22} color="#94A3B8" />
+        )}
       </View>
     </TouchableOpacity>
   );

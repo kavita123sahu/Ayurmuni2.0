@@ -17,10 +17,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import PrimaryButton from '../../components/PrimaryButton';
 import AppHeader from '../../components/AppHeader';
-import { Icons, Images } from '../../common/Images';
+import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
-import { MaterialCommunityIcons } from '../../common/Vector';
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
 const reasons = [
     'Product damaged',
@@ -33,13 +33,13 @@ const refundMethods = [
     {
         id: 'original',
         title: 'Original Method',
-        icon: <MaterialCommunityIcons name='bank-outline'/>,
+        iconName: 'credit-card' as TablerIconName,
         subtitle: 'Refund to Visa •••• 4242 (5–7 business days)',
     },
     {
         id: 'wallet',
         title: 'Wallet',
-        icon: require('../../assets/images/wallet.png'),
+        iconName: 'wallet' as TablerIconName,
         subtitle: 'Instant credit to your health fund wallet',
     },
 ];
@@ -89,7 +89,7 @@ const RefundScreen = (props: any) => {
             >
                 {/* Radio Circle */}
                 <View style={[styles.circle, selected && styles.activeCircle]}>
-                    {selected && <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFF' }} />}
+                    {selected && <TablerIcon name="check" size={15} color={'#FFFF'} />}
                 </View>
 
                 {/* Label */}
@@ -109,14 +109,10 @@ const RefundScreen = (props: any) => {
             >
 
                 <View style={{ justifyContent: 'space-between', marginBottom: 10, alignItems: 'center', flex: 1, flexDirection: 'row' }}>
-                    <Image
-                        source={item.icon}
-                        style={{ height: 20, width: 20, marginRight: 10 }}
-                        resizeMode="contain"
-                    />
+                    <TablerIcon name={item.iconName} size={20} color={Colors.primaryColor} />
 
                     <View style={[styles.circle, selected && styles.activeCircle]}>
-                        {selected && <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFF' }} />}
+                        {selected && <TablerIcon name="check" size={15} color={'#FFFF'} />}
                     </View>
                 </View>
 
@@ -133,7 +129,6 @@ const RefundScreen = (props: any) => {
 
             <AppHeader
                 title="Order Details "
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 
@@ -204,7 +199,7 @@ const RefundScreen = (props: any) => {
 
                         <PrimaryButton
                             title="Submit Refund Request"
-                            // icon={Images.shopCart}
+                            // iconName="shopping-cart"
                             onPress={() => props.navigation.navigate('ExchangeScreen')}
                             backgroundColor="#0D614E"
                             textColor="#FFFFFF"

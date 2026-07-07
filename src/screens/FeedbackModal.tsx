@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images';
+import { Colors } from '../common/Colors';
 import { useCreateReview } from '../hooks/useCreateReview';
+import TablerIcon from '../components/TablerIcon';
 
 type Props = {
   visible: boolean;
@@ -81,7 +82,7 @@ const FeedbackModal: React.FC<Props> = ({  visible, onClose, onSubmit }) => {
           ]}
         >
           <View style={styles.iconBox}>
-            <Image source={Images.starIcon} style={styles.icon} />
+            <TablerIcon name="star" size={20} color={Colors.primaryColor} />
           </View>
 
           <Text style={styles.title}>How was your experience?</Text>
@@ -93,9 +94,10 @@ const FeedbackModal: React.FC<Props> = ({  visible, onClose, onSubmit }) => {
           <View style={styles.stars}>
             {[1, 2, 3, 4, 5].map((i) => (
               <TouchableOpacity key={i} onPress={() => setRating(i)}>
-                <Image
-                  source={i <= rating ? Images.starFilled : Images.starEmpty}
-                  style={styles.starIcon}
+                <TablerIcon
+                  name={i <= rating ? 'star-filled' : 'star'}
+                  size={32}
+                  color="#F59E0B"
                 />
               </TouchableOpacity>
             ))}

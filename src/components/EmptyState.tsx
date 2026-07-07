@@ -15,26 +15,25 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Fonts } from '../common/Fonts';
+import { Colors } from '../common/Colors';
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
 interface EmptyStateProps {
-
     title?: string;
-
     subtitle?: string;
-
     image?: ImageSourcePropType;
-
+    iconName?: TablerIconName;
     style?: ViewStyle;
-
     imageSize?: number;
 }
 
 const EmptyState = ({
     title = 'No Results Found',
     subtitle = 'Try searching with another keyword.',
-    image = require('../assets/images/Search.png'),
+    image,
+    iconName = 'search',
     style,
-    imageSize = 0,
+    imageSize = 64,
 }: EmptyStateProps) => {
     return (
         <Animated.View
@@ -47,19 +46,14 @@ const EmptyState = ({
             <Animated.View
                 entering={FadeInDown.delay(150)}
             >
-
-                <Image
-                    source={image}
-                    style={[
-                        styles.image,
-                        {
-                            width: imageSize,
-                            resizeMode: 'contain',
-                            height: imageSize,
-                        },
-                    ]}
-                />
-
+                {image ? (
+                    <Image
+                        source={image}
+                        style={[styles.image, { width: imageSize * 2, height: imageSize * 2 }]}
+                    />
+                ) : iconName ? (
+                    <TablerIcon name={iconName} size={imageSize || 64} color={Colors.primaryColor} />
+                ) : null}
             </Animated.View>
 
             <Animated.Text
@@ -83,50 +77,30 @@ const EmptyState = ({
 export default EmptyState;
 
 const styles = StyleSheet.create({
-
     container: {
         flex: 1,
-
         alignItems: 'center',
         justifyContent: 'center',
-
         paddingHorizontal: 24,
-
         marginTop: 70,
     },
-
     image: {
-        // backgroundColor: Colors.onfillColor,
         borderRadius: 20,
         padding: 20,
         resizeMode: 'cover',
     },
-
     title: {
         marginTop: 20,
-
         fontSize: 20,
-
         color: '#0F172A',
-
         textAlign: 'center',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
     subtitle: {
-        // marginTop: 4,
-
         fontSize: 13,
-
         lineHeight: 22,
-
         color: '#64748B',
-
         textAlign: 'center',
-
-        fontFamily:
-            Fonts.PoppinsRegular,
+        fontFamily: Fonts.PoppinsRegular,
     },
 });

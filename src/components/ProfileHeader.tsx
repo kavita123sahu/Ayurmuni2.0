@@ -14,10 +14,9 @@ import {
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
+import TablerIcon from './TablerIcon';
 
 import DashboardCard from './DashboardCard';
-
-import { Feather } from '../common/Vector';
 import * as _PROFILE_SERVICE from '../services/ProfileServices';
 
 import { showSuccessToast } from '../config/Key';
@@ -141,20 +140,8 @@ const ProfileHeader = ({ user }: any) => {
               {/* <TouchableOpacity
                 activeOpacity={0.8}
                 style={styles.editIcon}
-                onPress={
-                  handleAddImage
-                }
               >
-
-                <Image
-                  source={
-                    Images.profileEdit
-                  }
-                  style={
-                    styles.IconSize
-                  }
-                />
-
+                <TablerIcon name="edit" size={16} color={Colors.primaryColor} />
               </TouchableOpacity> */}
 
             </View>
@@ -186,22 +173,22 @@ const ProfileHeader = ({ user }: any) => {
         {/* STATS */}
 
         {/* <View style={styles.statsRow}> */}
-          <DashboardCard
-            data={[
-              {
-                value: '02',
-                label: 'CONSULTS',
-              },
-              {
-                value: '14',
-                label: 'ORDERS',
-              },
-              {
-                value: '05',
-                label: 'REPORTS',
-              },
-            ]}
-          />
+        <DashboardCard
+          data={[
+            {
+              value: '02',
+              label: 'CONSULTS',
+            },
+            {
+              value: '14',
+              label: 'ORDERS',
+            },
+            {
+              value: '05',
+              label: 'REPORTS',
+            },
+          ]}
+        />
         {/* </View> */}
 
       </View>

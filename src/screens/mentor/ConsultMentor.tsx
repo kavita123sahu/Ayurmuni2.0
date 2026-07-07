@@ -18,6 +18,9 @@ import SectionHeader from '../../components/SectionHeader';
 import { CalenderCard } from '../../components/CalenderCard';
 import { generateDates } from '../../common/DataInterface';
 import TimeSlot from '../../components/TimeSlot';
+import TablerIcon from '../../components/TablerIcon';
+import { requireAuth } from '../../services/guestAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 
 // ✅ TYPES
@@ -56,7 +59,7 @@ const ServiceCard = memo(
                             style={[styles.card, active && styles.activeCard]}
                         >
                             <View style={{ flex: 1 }}>
-                                <Image source={Images.video} style={styles.icon} />
+                                <TablerIcon name="video" size={20} color={Colors.primaryColor} />
                                 <Text style={styles.title}>{item.title}</Text>
                             </View>
 
@@ -96,6 +99,7 @@ const MentorHeader = memo(() => (
 
 // ✅ MAIN SCREEN
 export default function ConsultMentor({ navigation }: Props) {
+    const { isGuest } = useAuth();
     const [selectedService, setSelectedService] = useState(0);
     const [selectedTime, setSelectedTime] = useState('');
 
@@ -119,7 +123,6 @@ export default function ConsultMentor({ navigation }: Props) {
 
             <AppHeader
                 title="Consult Mentor"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => navigation.goBack()}
             />
 
@@ -170,8 +173,18 @@ export default function ConsultMentor({ navigation }: Props) {
                 }
                 ListFooterComponent={
                     <SafeAreaView edges={['bottom']} style={styles.footer} >
-                        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('MentorCheckout')}>
-                            <Text style={styles.btnText}>Confirm and Pay</Text>
+                        <TouchableOpacity
+                            style={[styles.btn, isGuest && styles.btnLocked]}
+                            onPress={async () => {
+                                if (!(await requireAuth('Please login to book a mentor session'))) {
+                                    return;
+                                }
+                                navigation.navigate('MentorCheckout');
+                            }}
+                        >
+                            <Text style={styles.btnText}>
+                                {isGuest ? 'Login to Book' : 'Confirm and Pay'}
+                            </Text>
                         </TouchableOpacity>
 
                         <View style={styles.termsContainer}>
@@ -280,6 +293,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderRadius: 24,
         alignItems: 'center',
+    },
+    btnLocked: {
+        backgroundColor: '#64748B',
     },
 
 

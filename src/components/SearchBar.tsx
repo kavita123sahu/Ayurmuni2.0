@@ -8,13 +8,13 @@ import {
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 
+import TablerIcon from './TablerIcon';
+
 interface Props {
   placeholder?: string;
-  icon: ImageSourcePropType;
+  icon?: ImageSourcePropType;
   value?: string;
-  onChangeText?: (
-    text: string,
-  ) => void;
+  onChangeText?: (text: string) => void;
 }
 
 const SearchBar: React.FC<Props> = ({
@@ -26,7 +26,11 @@ const SearchBar: React.FC<Props> = ({
   return (
     <View style={styles.container}>
 
-      <Image source={icon} style={styles.icon} />
+      {icon ? (
+        <Image source={icon} style={styles.icon} />
+      ) : (
+        <TablerIcon name="search" size={20} color="#64748B" />
+      )}
 
       <TextInput
         placeholder={placeholder}

@@ -38,7 +38,8 @@ export const ReviewGalleryScreen = ({
             {/* HEADER */}
 
 
-            <AppHeader title='Customer Reviews' leftIcon={Images.backIcon} onLeftPress={() => navigation.goBack()} />
+            <AppHeader title='Customer Reviews'
+ onLeftPress={() => navigation.goBack()} />
 
             {/* COUNT */}
 
