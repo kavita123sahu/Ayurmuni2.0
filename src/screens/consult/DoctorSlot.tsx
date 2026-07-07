@@ -71,6 +71,7 @@ const DoctorSlot = (props: any) => {
             (item: any) => !item.isDisabled,
         );
     }, [monthOffset]);
+    
     const getTodayDate = () => {
         const todayEntry = DAYS.find((d: any) => d.isToday);
         if (todayEntry) return todayEntry.fullDate;

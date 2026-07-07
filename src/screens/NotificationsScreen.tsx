@@ -111,7 +111,9 @@ const SectionHeader = ({ title }: { title: string }) => (
 );
 
 const NotificationCard = ({ item }: { item: NotificationItem }) => {
-    const status = item.rawData?.data?.status;
+    const status = item?.rawData?.data?.appointment_status;
+    console.log("status", item);
+    // return 0; 
     if (item.type === "appointment") {
         return (
             <View style={styles.appointmentCard}>
@@ -152,7 +154,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
             </View>
         )
     }
-
+    
     return (
         <View style={styles.card}>
             <View style={styles.row}>
@@ -170,7 +172,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
                         {renderStyledText(item.description)}
                     </Text>
 
-                    {item.image && (
+                    {item?.image && (
                         <Image source={item.image} style={styles.image} />
                     )}
                 </View>
@@ -192,15 +194,16 @@ const NotificationsScreen = (props: any) => {
     console.log("notificationsnotifications", notifications)
 
     const renderSection = (section: string, title: string) => {
-        const data = notifications.filter(n => n.section === section);
+        const data = notifications?.filter(n => n.section === section);
         console.log("data", data)
 
-        if (data.length === 0) return null;
+        if (data?.length === 0) return null;
 
         return (
             <>
                 <SectionHeader title={title} />
-                {data.map(item => (
+                {data?.map(item => (
+                
                     <NotificationCard key={item.id} item={item} />
                 ))}
             </>
@@ -221,36 +224,11 @@ const NotificationsScreen = (props: any) => {
             />
 
 
-
-            {/* <FlatList
-                data={[1]}
-                contentContainerStyle={{
-                    paddingHorizontal: 16,
-                    paddingBottom: 20
-                }}
-                onRefresh={refreshNotifications}
-                refreshing={loading}
-                renderItem={null}
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.4}
-                ListFooterComponent={
-                    loadingMore ? (
-                        <ActivityIndicator size="small" color="#0D614E" />
-                    ) : null
-                }
-                ListHeaderComponent={
-                    <>
-                        {renderSection('upcoming', 'UPCOMING')}
-                        {renderSection('today', 'TODAY')}
-                        {renderSection('yesterday', 'YESTERDAY')}
-                    </>
-                }
-            /> */}
-
             <FlatList
                 data={notifications}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
+                   
                     <NotificationCard item={item} />
                 )}
                 contentContainerStyle={{

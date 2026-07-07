@@ -143,6 +143,7 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
           console.log('⚠️ No token or appointmentId');
           return;
         }
+        console.log('🔌 Connecting WebSocket...', { appointmentId, role, token });
 
         const ws = new WebSocketService(
           appointmentId,

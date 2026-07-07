@@ -229,7 +229,7 @@ const HomeStack = () => {
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-       <Stack.Screen 
+       {/* <Stack.Screen 
           name="ChatContainer" 
           options={{ headerShown: false, animation: 'slide_from_right' }}
         >
@@ -242,7 +242,7 @@ const HomeStack = () => {
               // onBack={() => props.navigation.goBack()}
             />
           )}
-        </Stack.Screen>
+        </Stack.Screen> */}
         {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     </Stack.Navigator>
   );

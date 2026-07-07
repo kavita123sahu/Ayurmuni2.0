@@ -195,7 +195,7 @@ const Splash = (props: any) => {
     try {
       const token = await Utils.getData('_TOKEN');
 
-      props.navigation.replace('Welcome');
+      // props.navigation.replace('Welcome');
       // return;
 
       if (!token) {
@@ -214,9 +214,10 @@ const Splash = (props: any) => {
       console.log('isCustomerisCustomer', isCustomer);
 
       if (!isCustomer) {
-        props.navigation.replace('AuthStack', {
-          screen: 'Login',
-        });
+        props.navigation.replace('Welcome');
+        // props.navigation.replace('AuthStack', {
+        //   screen: 'Login',
+        // });
         return;
       }
 

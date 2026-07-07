@@ -31,6 +31,15 @@
 @rem Set local scope for the variables with windows NT shell
 if "%OS%"=="Windows_NT" setlocal
 
+@rem Short Gradle/temp paths prevent Windows MAX_PATH failures in native builds.
+if not defined GRADLE_USER_HOME set "GRADLE_USER_HOME=C:\gcache"
+if not "%GRADLE_USER_HOME:cursor-sandbox-cache=%"=="%GRADLE_USER_HOME%" set "GRADLE_USER_HOME=C:\gcache"
+if not exist "C:\gcache" mkdir "C:\gcache" 2>nul
+if not defined ANDROID_TMP set "ANDROID_TMP=C:\atmp"
+if not exist "%ANDROID_TMP%" mkdir "%ANDROID_TMP%" 2>nul
+set "TEMP=%ANDROID_TMP%"
+set "TMP=%ANDROID_TMP%"
+
 set DIRNAME=%~dp0
 if "%DIRNAME%"=="" set DIRNAME=.
 @rem This is normally unused

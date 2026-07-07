@@ -167,7 +167,7 @@ const HomePage: React.FC = (props: any) => {
     ) {
       return;
     }
-
+console.log("customepatalriti", customerData)
     setShowPrakritiModal(customerData.prakriti_progress < 100);
   }, [loadingCustomer, customerData]);
 

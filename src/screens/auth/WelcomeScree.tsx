@@ -146,6 +146,8 @@ const AyurvedicWelcome = ({ navigation }: any) => {
     };
 
     const handleGetStarted = () => {
+        // guest if skip login 
+        //  navigation.navigate('HomeStack', { screen: 'Home' });
         Animated.sequence([
             Animated.spring(scaleAnim, { toValue: 0.95, friction: 10, tension: 40, useNativeDriver: true }),
             Animated.spring(scaleAnim, { toValue: 1, friction: 10, tension: 40, useNativeDriver: true }),

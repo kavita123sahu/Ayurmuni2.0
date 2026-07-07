@@ -5,55 +5,73 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
-import { Styles } from '../../common/Styles';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../../type';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppointmentHistory, useConsultData } from '../../hooks/useConsultData';
-import { Appointment, getStatusStyle, PAST_STATUS, UPCOMING_STATUS } from '../../common/DataInterface';
+import { useAppointmentHistory } from '../../hooks/useConsultData';
+import { PAST_STATUS, UPCOMING_STATUS } from '../../common/DataInterface';
 import EmptyState from '../../components/EmptyState';
 import RenderAppoint from '../../components/RenderAppoint';
 import { AppointmentSkeletonList } from '../../simmerScreen/ShimmerHook';
 import RescheduleModal from '../../components/RescheduleModal';
 import CancelAppointmentModal from '../../components/CancelAppointModal';
-import { appointmentActionAPI } from '../../services/ConsultServce';
 import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+// ---- TabButton bahar nikala + memo lagaya ----
+// Ab yeh sirf apne props (activeTab) change hone pe hi re-render hoga,
+// aur parent ke har render pe "naya component" ban ke remount NAHI hoga.
+const TabButton = React.memo(
+  ({
+    activeTab,
+    onChange,
+  }: {
+    activeTab: 'upcoming' | 'past';
+    onChange: (tab: 'upcoming' | 'past') => void;
+  }) => {
+    return (
+      <View style={styles.tabWrapper}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => onChange('upcoming')}>
+          <Text style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
+            Upcoming
+          </Text>
+          {activeTab === 'upcoming' && <View style={styles.indicator} />}
+        </TouchableOpacity>
 
+        <TouchableOpacity style={styles.tabItem} onPress={() => onChange('past')}>
+          <Text style={[styles.tabText, activeTab === 'past' && styles.activeTabText]}>
+            Past
+          </Text>
+          {activeTab === 'past' && <View style={styles.indicator} />}
+        </TouchableOpacity>
+      </View>
+    );
+  }
+);
 
 const AppointmentScreen = (props: any) => {
+  const { AppointData, refreshUpcoming, loading, loadMore, hasMore, loadingMore } =
+    useAppointmentHistory();
 
-  const { AppointData, refreshUpcoming, loading, loadMore,
-    hasMore, loadingMore, } = useAppointmentHistory();
-  // ✅ FIX
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [showRescheduleModal, setShowRescheduleModal] =
-    useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
-  const [showCancelModal, setShowCancelModal] =
-    useState(false);
-
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<any>(null);
+  // ---- Normalize karo sirf ek baar jab AppointData change ho ----
   const normalizedData = useMemo(() => {
     if (loading) return [];
-
-    return (AppointData ?? []).map(item => ({
+    return (AppointData ?? []).map((item: any) => ({
       consultation_id: item.consultation_id,
-      doctorName: item.doctor?.doctor_name || "",
+      doctorName: item.doctor?.doctor_name || '',
       therapies: Array.isArray(item?.doctor?.health_diseases)
-        ? item.doctor.health_diseases.map((i: any ) => i.name).join(", ")
-        : "",
+        ? item.doctor.health_diseases.map((i: any) => i.name).join(', ')
+        : '',
       date: item.appointment_date,
       time: item.start_time,
       status: item.appointment_status,
@@ -63,292 +81,198 @@ const AppointmentScreen = (props: any) => {
     }));
   }, [AppointData, loading]);
 
+  // ---- Tab switch pe API call NAHI hoti, sirf client-side filter ----
   const appointmentData = useMemo(() => {
-    return normalizedData.filter(item =>
-      activeTab === "upcoming"
+    return normalizedData.filter((item) =>
+      activeTab === 'upcoming'
         ? UPCOMING_STATUS.includes(item.status)
         : PAST_STATUS.includes(item.status)
     );
   }, [normalizedData, activeTab]);
 
   const skeletonData = useMemo(
-    () =>
-      Array.from({ length: 6 }, (_, index) => ({
-        id: `skeleton-${index}`,
-      })),
-    [],
+    () => Array.from({ length: 6 }, (_, index) => ({ id: `skeleton-${index}` })),
+    []
   );
-
 
   const listData = loading ? skeletonData : appointmentData;
 
-  const TabButton = () => {
-    return (
-      <View style={styles.tabWrapper}>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('upcoming')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'upcoming' && styles.activeTabText,
-            ]}
-          >
-            Upcoming
-          </Text>
-          {activeTab === 'upcoming' && <View style={styles.indicator} />}
-        </TouchableOpacity>
+  // ---- Tab change ka stable callback ----
+  const handleTabChange = useCallback((tab: 'upcoming' | 'past') => {
+    setActiveTab(tab);
+  }, []);
 
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('past')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'past' && styles.activeTabText,
-            ]}
-          >
-            Past
-          </Text>
-          {activeTab === 'past' && <View style={styles.indicator} />}
-        </TouchableOpacity>
-      </View>
-    )
-  }
+  // ---- Modal open handlers stable rakho ----
+  const openReschedule = useCallback((item: any) => {
+    setSelectedAppointment(item);
+    setShowRescheduleModal(true);
+  }, []);
 
+  const openCancel = useCallback((item: any) => {
+    setSelectedAppointment(item);
+    setShowCancelModal(true);
+  }, []);
 
+  const handleReschedule = useCallback(
+    async (
+      appointmentId: string,
+      payload: {
+        action: string;
+        availability: number;
+        reschedule_reason: string;
+        cancellation_reason?: string;
+      }
+    ) => {
+      let payloadSend: any = { action: payload.action };
 
+      switch (payload.action) {
+        case 'reschedule':
+        case 'confirm_reschedule':
+          payloadSend.availability = payload.availability;
+          payloadSend.reschedule_reason = payload.reschedule_reason;
+          break;
+        case 'cancel':
+          payloadSend.cancellation_reason = payload.cancellation_reason;
+          break;
+      }
 
-  const handleReschedule = async (
-    appointmentId: string,
-    payload: {
-      action: string;
-      availability: number;
-      reschedule_reason: string;
-      cancellation_reason?: string;
-    }
-  ) => {
-    console.log("appointmentIdpayload", appointmentId);
-    console.log("payload--->>", payload);
+      const res = await handleAppointmentAction({ appointmentId, payload: payloadSend });
 
-    let payloadSend: any = {
-      action: payload.action,
-    };
-
-    switch (payload.action) {
-      case "reschedule":
-        payloadSend.availability = payload.availability;
-        payloadSend.reschedule_reason = payload.reschedule_reason;
-        break;
-
-      case "confirm_reschedule":
-        payloadSend.availability = payload.availability;
-        payloadSend.reschedule_reason = payload.reschedule_reason;
-        break;
-
-      case "cancel":
-        payloadSend.cancellation_reason = payload.cancellation_reason;
-        break;
-    }
-    console.log("payloadSend--->>", payloadSend);
-
-    const res = await handleAppointmentAction({
-      appointmentId,
-      payload: payloadSend,
-    });
-    console.log("res--->>", res);
-
-    if (res?.success) {
-      refreshUpcoming?.();
+      if (res?.success) {
+        refreshUpcoming?.();
+        setShowRescheduleModal(false);
+        setSelectedAppointment(null);
+        showSuccessToast(res.message, 'success');
+        return;
+      }
       setShowRescheduleModal(false);
-      showSuccessToast(res.message, "success");
-      return;
-    }
-    setShowRescheduleModal(false);
-    showSuccessToast(res.message, 'error')
-    setSelectedAppointment(null);
-    showSuccessToast(
-      res?.message || "You cannot reschedule multiple times",
-      "error"
-    );
-  };
-
-  const handleCancel = async (
-    appointmentId: string,
-    payload: {
-      action: string;
-      cancellation_reason: string;
-    }
-  ) => {
-    console.log("appointmentId", appointmentId);
-    console.log("payloadcanclee", payload);
-
-    let payloadSend: any = {
-      action: payload.action,
-      cancellation_reason: payload.cancellation_reason,
-    };
-
-    console.log("payloadSendcancel--->>", payloadSend);
-
-    const res = await handleAppointmentAction({
-      appointmentId,
-      payload: payloadSend
-    });
-
-    console.log("rescancel---->>", res);
-
-    if (res?.success) {
-      refreshUpcoming?.();
-      setShowCancelModal(false);
       setSelectedAppointment(null);
-      showSuccessToast(res?.message, "success");
-      return;
-    }
+      showSuccessToast(res?.message || 'You cannot reschedule multiple times', 'error');
+    },
+    [refreshUpcoming]
+  );
 
-    showSuccessToast(res?.message || "Something went wrong", "error");
-  };
+  const handleCancel = useCallback(
+    async (appointmentId: string, payload: { action: string; cancellation_reason: string }) => {
+      const payloadSend: any = {
+        action: payload.action,
+        cancellation_reason: payload.cancellation_reason,
+      };
 
+      const res = await handleAppointmentAction({ appointmentId, payload: payloadSend });
 
-  useEffect(() => {
-    console.log("showRescheduleModal", showRescheduleModal);
-  }, [showRescheduleModal]);
+      if (res?.success) {
+        refreshUpcoming?.();
+        setShowCancelModal(false);
+        setSelectedAppointment(null);
+        showSuccessToast(res?.message, 'success');
+        return;
+      }
+      showSuccessToast(res?.message || 'Something went wrong', 'error');
+    },
+    [refreshUpcoming]
+  );
 
+  // ---- keyExtractor + renderItem ab stable hain, FlatList unnecessarily re-render nahi karegi ----
+  const keyExtractor = useCallback(
+    (item: any, index: number) => (loading ? `skeleton-${index}` : item.consultation_id),
+    [loading]
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) =>
+      loading ? (
+        <AppointmentSkeletonList />
+      ) : (
+        <RenderAppoint
+          item={item}
+          navigation={props.navigation}
+          isHorizontal={false}
+          onReschedule={() => openReschedule(item)}
+          onCancel={() => openCancel(item)}
+        />
+      ),
+    [loading, props.navigation, openReschedule, openCancel]
+  );
+
+  const ListEmpty = useMemo(() => {
+    if (loading || appointmentData.length > 0) return null;
+    return (
+      <EmptyState
+        image={Images.starEmpty}
+        title={activeTab === 'upcoming' ? 'No Upcoming Appointments' : 'No Past Appointments'}
+        subtitle={
+          activeTab === 'upcoming'
+            ? 'You have no upcoming appointments.'
+            : 'You have no past appointments.'
+        }
+      />
+    );
+  }, [loading, appointmentData.length, activeTab]);
 
   return (
     <SafeAreaView style={styles.container}>
-
       <Header
         title="My Appointments"
         subtitle="Manage your visits "
         backIcon={Images.backIcon}
-        onBack={() => { props?.navigation.goBack() }}
+        onBack={() => props?.navigation.goBack()}
       />
 
-      <TabButton />
+      <TabButton activeTab={activeTab} onChange={handleTabChange} />
 
       <FlatList
         data={listData}
-        keyExtractor={(item, index) =>
-          loading
-            ? `skeleton-${index}`
-            : item.consultation_id
-        }
-        renderItem={({ item }) =>
-          loading ? (
-            <AppointmentSkeletonList />
-          ) : (
-            <RenderAppoint
-              item={item}
-              navigation={props.navigation}
-              isHorizontal={false}
-              onReschedule={() => {
-                setSelectedAppointment(item);
-                setShowRescheduleModal(true);
-              }}
-              onCancel={() => {
-                setSelectedAppointment(item);
-                setShowCancelModal(true);
-              }}
-            />
-          )
-        }
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         removeClippedSubviews
         initialNumToRender={6}
         maxToRenderPerBatch={6}
         windowSize={5}
         updateCellsBatchingPeriod={30}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingVertical: 20,
-          flexGrow: 1,
-        }}
-        ListEmptyComponent={
-          !loading && appointmentData.length === 0 ? (
-            <EmptyState
-              image={Images.starEmpty}
-              title={
-                activeTab === "upcoming"
-                  ? "No Upcoming Appointments"
-                  : "No Past Appointments"
-              }
-              subtitle={
-                activeTab === "upcoming"
-                  ? "You have no upcoming appointments."
-                  : "You have no past appointments."
-              }
-            />
-          ) : null
-        }
-         onEndReached={loadMore}
-    onEndReachedThreshold={0.5}
-    ListFooterComponent={
-        loadingMore ? (
-            <ActivityIndicator size="small" color="#0D614E" />
-        ) : null
-    }
+        contentContainerStyle={{ paddingVertical: 20, flexGrow: 1 }}
+        ListEmptyComponent={ListEmpty}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#0D614E" /> : null}
       />
 
       <RescheduleModal
         visible={showRescheduleModal}
         appointment={selectedAppointment}
-        // slots={selectedAppointment}
         onClose={() => {
           setShowRescheduleModal(false);
           setSelectedAppointment(null);
         }}
-        isRescheduleRequest={selectedAppointment?.status.toLowerCase() === 'reschedule'}
+        isRescheduleRequest={selectedAppointment?.status?.toLowerCase() === 'reschedule'}
         onSubmit={(payload) => {
-          handleReschedule(
-            selectedAppointment?.consultation_id,
-            payload
-          );
-          setShowRescheduleModal(false);
+          handleReschedule(selectedAppointment?.consultation_id, payload);
         }}
       />
 
       <CancelAppointmentModal
         visible={showCancelModal}
         onClose={() => {
-
           setShowCancelModal(false);
           setSelectedAppointment(null);
         }}
         onSubmit={(payload: any) => {
-          handleCancel(
-            selectedAppointment?.consultation_id,
-            payload
-          );
-
-          setShowCancelModal(false);
+          handleCancel(selectedAppointment?.consultation_id, payload);
         }}
       />
-
-
 
       <TouchableOpacity style={styles.bookBtn} onPress={() => props?.navigation.navigate('AllDoctors')}>
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
-
-
-
-
     </SafeAreaView>
   );
 };
 
 export default AppointmentScreen;
 
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    marginBottom: 30,
-    paddingHorizontal: 20,
-    backgroundColor: '#F7F8FA',
-  },
-
+  container: { flex: 1, marginBottom: 30, paddingHorizontal: 20, backgroundColor: '#F7F8FA' },
   header: {
     fontSize: 20,
     fontFamily: Fonts.PoppinsSemiBold,
@@ -356,121 +280,11 @@ const styles = StyleSheet.create({
     marginVertical: 16,
     color: Colors.textColor || '#000',
   },
-
-  /* Tabs */
-  tabWrapper: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-
-  tabItem: {
-    flex: 1, // 🔥 equal width dono tabs ka
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    position: 'relative', // 🔥 important for indicator
-  },
-
-  tabText: {
-    fontSize: 14,
-    color: '#999',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  activeTabText: {
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  indicator: {
-    position: 'absolute',
-    bottom: 0, // 🔥 always bottom pe chipka rahega
-    left: 0,
-    right: 0, // 🔥 full width of tab
-    height: 3,
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 2,
-  },
-  icon: {
-    fontSize: 14,
-  },
-
-
-
-
-  btnRow: {
-    flexDirection: 'row',
-    marginTop: 14,
-    gap: 10,
-  },
-
-  outlineBtn: {
-    flex: 1,
-    height: 47,
-    borderWidth: 1,
-    borderColor: '#0F5B4D4D',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  outlineText: {
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 12,
-  },
-
-  primaryBtn: {
-    flex: 1,
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 10,
-    height: 47,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  primaryText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 14,
-  },
-
-  cancelBtn: {
-    marginTop: 14,
-    height: 47,
-    backgroundColor: '#F43F5E0D',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-
-  cancelText: {
-    color: '#EF4444',
-    textAlign: 'center',
-    fontSize: 14,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  bookBtn: {
-    position: 'absolute',
-
-    backgroundColor: Colors.primaryColor,
-    bottom: 20,
-    left: 20,
-    right: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-
-  bookText: {
-    color: '#fff',
-    fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 16,
-  },
+  tabWrapper: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden' },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, position: 'relative' },
+  tabText: { fontSize: 14, color: '#999', fontFamily: Fonts.PoppinsMedium },
+  activeTabText: { color: Colors.primaryColor, fontFamily: Fonts.PoppinsSemiBold },
+  indicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: Colors.primaryColor, borderRadius: 2 },
+  bookBtn: { position: 'absolute', backgroundColor: Colors.primaryColor, bottom: 20, left: 20, right: 20, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  bookText: { color: '#fff', fontFamily: Fonts.PoppinsSemiBold, fontSize: 16 },
 });
