@@ -892,6 +892,35 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
   const isLive = data?.appointment?.call_status === 'in_progress';
 
+  const isEnded = data?.appointment?.call_status === 'ended';
+
+  const today = new Date();
+
+  // Follow-up date
+  const followUpDate = data?.appointment?.follow_up?.date
+    ? new Date(data?.appointment.follow_up.date)
+    : null;
+
+  // Appointment date + 7 days
+  const appointmentDate = new Date(data?.appointment?.appointment_date);
+  const sevenDaysAfterAppointment = new Date(appointmentDate);
+  sevenDaysAfterAppointment.setDate(sevenDaysAfterAppointment.getDate() + 7);
+
+  // Chat visibility
+  const isChatVisible =
+    isLive ||
+    (isEnded &&
+      (
+        // Follow-up scheduled and not expired
+        (data?.appointment?.follow_up?.schedule &&
+          followUpDate &&
+          followUpDate >= today) ||
+
+        // No follow-up -> allow for 7 days
+        (!data?.appointment?.follow_up?.schedule &&
+          today <= sevenDaysAfterAppointment)
+      ));
+
   return (
     <View style={styles.heroCard}>
       {/* ---------- Banner ---------- */}
@@ -946,8 +975,8 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
           </View>
         </View>
 
-        {isLive && (
-          <View style={{ marginTop: 4 }}>
+        <View style={{ marginTop: 4 }}>
+          {isLive && (
             <PrimaryButton
               title="Join Video Call"
               page="appoint"
@@ -960,13 +989,14 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                 });
               }}
             />
+          )}
 
+          {isChatVisible && (
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.secondaryBtn}
               onPress={() => {
                 navigation.navigate('ChatScreen', {
-                  doctorName: data?.doctor?.doctor_name,
                   doctorAvatar: data?.doctor?.doctor_image,
                   appointmentId: data?.appointment?.consultation_id,
                   patientName: data?.appointment?.patient?.patient_name,
@@ -975,11 +1005,16 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                 });
               }}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={17} color={Theme.emerald} />
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={17}
+                color={Theme.emerald}
+              />
               <Text style={styles.secondaryText}>Chat with Doctor</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
+
       </View>
 
       <FeedbackModal

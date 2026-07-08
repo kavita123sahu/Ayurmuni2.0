@@ -268,7 +268,13 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={() =>
-                            navigation.navigate('LocationPickerScreen')
+                            navigation.navigate('LocationPickerScreen', {
+                                returnScreen: 'AddEditAddress',
+                                returnParams: {
+                                    type,
+                                    data: editData,
+                                },
+                            })
                         }
                         style={styles.locationBadge}>
 

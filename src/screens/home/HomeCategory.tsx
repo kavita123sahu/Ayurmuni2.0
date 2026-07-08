@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   tileImage: {
-    width: '100%',
-    height: '100%',
+    width: '50%',
+    height: '50%',
   },
   iconFallback: {
     flex: 1,

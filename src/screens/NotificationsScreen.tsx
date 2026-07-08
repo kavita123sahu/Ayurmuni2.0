@@ -165,6 +165,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
                         <Text style={styles.time}>{item.time}</Text>
                     </View>
 
+                    
                     <Text style={styles.desc}>
                         {renderStyledText(item.description)}
                     </Text>

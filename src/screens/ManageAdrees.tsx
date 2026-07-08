@@ -23,6 +23,7 @@ import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TablerIcon from '../components/TablerIcon';
+import { useLocation } from '../context/LocationContext';
 
 interface AddressItem {
     id: string;
@@ -40,6 +41,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
     const [selectedId, setSelectedId] = useState('current');
     const [loading, setloading] = useState(false);
     const [addressData, setAddressData] = useState<AddressItem[]>([]);
+    const { currentAddress } = useLocation();
 
     const fetchAddresses = async () => {
 
@@ -342,7 +344,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             styles.selectedCard,
                         ]}
                         onPress={() =>
-                            setSelectedId('current')
+                            navigation.navigate('LocationPickerScreen')
                         }
                     >
 
@@ -365,11 +367,15 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             <Text
                                 style={styles.addressText}
                             >
-                                Sector 22 Gurgaon Haryana
+                                {currentAddress?.formatted_address || 'Tap to select current location on map'}
                             </Text>
 
                             <Text style={styles.cityText}>
-                                Gurgaon, HR 122001
+                                {currentAddress
+                                    ? [currentAddress.city, currentAddress.state, currentAddress.zipcode]
+                                        .filter(Boolean)
+                                        .join(', ')
+                                    : 'Enable location for accurate address'}
                             </Text>
 
                             <TouchableOpacity>

@@ -76,7 +76,7 @@ const DoctorSlot = (props: any) => {
             (item: any) => !item.isDisabled,
         );
     }, [monthOffset]);
-    
+
     const getTodayDate = () => {
         const todayEntry = DAYS.find((d: any) => d.isToday);
         if (todayEntry) return todayEntry.fullDate;
@@ -240,13 +240,13 @@ const DoctorSlot = (props: any) => {
 
                 <Text style={styles.headerTitle}>Doctor Profile</Text>
 
-                <TouchableOpacity activeOpacity={0.8} style={styles.iconBtn}>
+                {/* <TouchableOpacity activeOpacity={0.8} style={styles.iconBtn}>
                     {doctorInfo?.is_favorite ?
                         <Ionicons name="heart" size={25} color={Colors.primaryColor} /> :
                         <Ionicons name="heart-outline" size={25} color="#0F172A" />
                     }
 
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
             </View>
             <KeyboardAvoidingView
@@ -477,8 +477,8 @@ const DoctorSlot = (props: any) => {
                                 {isGuest
                                     ? 'Login to Book'
                                     : loadingSlots
-                                      ? 'Loading...'
-                                      : 'Continue'}
+                                        ? 'Loading...'
+                                        : 'Continue'}
                             </Text>
                         </TouchableOpacity>
                     </View>

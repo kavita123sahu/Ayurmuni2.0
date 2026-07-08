@@ -8,14 +8,20 @@ export type RootStackParamList = {
     Signup: undefined;
     Otp: undefined;
     MentorCheckout: undefined;
+    ChatScreen: {
+    // appointmentId: string;
+    // role: 'doctor' | 'patient';
+    doctorId: string;
+    doctorName: string;
+  };
     Onboarding: undefined;
     FavDoctors: undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
     Welcome: undefined; ChatContainer: undefined;
-    ChatScreen: undefined;
+    // ChatScreen: undefined;
     PatientVideoCallScreen: undefined;
-    AddEditAddress: undefined;
+    AddEditAddress: { type?: string; data?: any; selectedLocation?: any } | undefined;
     ConfirmScreen: undefined;
     Consult: undefined;
     History: undefined;

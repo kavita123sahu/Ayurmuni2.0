@@ -134,7 +134,11 @@ const cartSlice = createSlice({
       .addCase(addToCart.fulfilled, (state, action) => {
         state.addingVariantId = null;
         const { variantId, quantity } = action.payload;
-        state.variantQuantities[variantId] = quantity;
+        if (quantity <= 0) {
+          delete state.variantQuantities[variantId];
+        } else {
+          state.variantQuantities[variantId] = quantity;
+        }
         state.itemCount = Object.values(state.variantQuantities).reduce(
           (sum, q) => sum + q,
           0,

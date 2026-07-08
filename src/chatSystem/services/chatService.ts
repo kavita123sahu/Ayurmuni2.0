@@ -12,7 +12,7 @@ export const chatService = {
         markRead?: boolean | string | 'all'
     ): Promise<{ messages: Message[]; chat_access: any; read_receipt?: any }> => {
         // const token = await AsyncStorage.getItem('access_token');
-  const token = await Utils.getData('_TOKEN');
+        const token = await Utils.getData('_TOKEN');
         let url = `${API_BASE}/communication/appointments/${appointmentId}/messages/`;
         if (markRead !== undefined) {
             const value = markRead === true ? 'true' : markRead;
@@ -42,7 +42,7 @@ export const chatService = {
         payload: SendMessagePayload
     ): Promise<{ message: Message }> => {
         // const token = await AsyncStorage.getItem('access_token');
-  const token = await Utils.getData('_TOKEN');
+        const token = await Utils.getData('_TOKEN');
         const response = await fetch(
             `${API_BASE}/communication/appointments/${appointmentId}/messages/`,
             {

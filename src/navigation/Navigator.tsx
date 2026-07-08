@@ -84,6 +84,7 @@ import DoctorSlipScreen from "../screens/consult/DoctorSlip";
 import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
 import NetworkError from "../screens/NetworkError";
 import AddEditAddress from "../components/AddEditAddress";
+import LocationPickerScreen from "../screens/LocationPickerScreen";
 import PrakritiProfile from "../screens/auth/PrakritiProfile";
 import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
@@ -94,7 +95,6 @@ import consultHome from "../screens/consult/consultHome";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
-import ChatScreen from "../screens/profile/ChatScreen";
 import { ChatContainer } from "../chatSystem/components/chat/chatContainer";
 import ConfirmScreen from "../screens/products/ConfirmScreen";
 import { ScrollHideProvider } from "../context/ScrollHideContext";
@@ -104,6 +104,7 @@ enableScreens();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
 import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
+import ChatScreen from "../screens/profile/ChatScreen";
 
 
 const TabStack = () => {
@@ -221,7 +222,7 @@ const HomeStack = () => {
       <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      {/* <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
+      <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -231,7 +232,9 @@ const HomeStack = () => {
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-       <Stack.Screen 
+
+      
+      {/* <Stack.Screen 
           name="ChatContainer" 
           options={{ headerShown: false, animation: 'slide_from_right' }}
         >
@@ -244,8 +247,9 @@ const HomeStack = () => {
               // onBack={() => props.navigation.goBack()}
             />
           )}
-        </Stack.Screen>
-        {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
+        </Stack.Screen> */}
+
+      {/* <Stack.Screen name="ChatContainer" component={ChatContainer} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     </Stack.Navigator>
   );
 };

@@ -48,11 +48,14 @@ const TILE_HEIGHT = 180;
 const TILE_GAP = 10;
 
 const IMAGE_POOL = [
-  Images.login1,
-  Images.login3,
-  Images.login4,
-  Images.login5,
-  Images.FinalLogo,
+    Images.login1,
+    Images.login2,
+    Images.login3,
+    Images.login4,
+    Images.login5,
+    Images.login6,
+    Images.login7,
+    Images.login8,
 ];
 const COLUMN_LEFT = [IMAGE_POOL[0], IMAGE_POOL[1], IMAGE_POOL[2], IMAGE_POOL[0], IMAGE_POOL[1]];
 const COLUMN_CENTER = [IMAGE_POOL[2], IMAGE_POOL[3], IMAGE_POOL[4], IMAGE_POOL[2], IMAGE_POOL[3]];

@@ -126,20 +126,31 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.4)',
     },
 
+    // sheet: {
+    //     position: 'absolute',
+    //     bottom: 0,
+    //     width: '100%',
+    //     height: height * 0.75,
+
+    //     backgroundColor: '#F8FAFC',
+    //     borderTopLeftRadius: 24,
+    //     borderTopRightRadius: 24,
+
+    //     paddingHorizontal: 16,
+    //     paddingTop: 10,
+    // },
+
     sheet: {
         position: 'absolute',
         bottom: 0,
         width: '100%',
-        height: height * 0.75,
-
-        backgroundColor: '#F8FAFC',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-
-        paddingHorizontal: 16,
-        paddingTop: 10,
-    },
-
+        height: height * 0.88,
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingTop: 12,
+    }
+    ,
     handle: {
         alignSelf: 'center',
         width: 50,
@@ -149,7 +160,7 @@ const styles = StyleSheet.create({
         // marginBottom: 5,
     },
 
-    
+
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -160,7 +171,7 @@ const styles = StyleSheet.create({
 
     title: {
         fontSize: 20,
-        fontFamily : Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
         color: '#111827',
     },
 });

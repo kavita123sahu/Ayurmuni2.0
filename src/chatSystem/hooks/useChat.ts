@@ -29,7 +29,7 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
   const loadMessages = useCallback(
     async (markRead?: boolean | string): Promise<void> => {
       if (!mountedRef.current) return;
-      
+
       console.log('📥 Loading messages...');
       setState((prev) => ({ ...prev, isLoading: true }));
       try {
@@ -68,7 +68,7 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
   const sendMessage = useCallback(
     async (text: string, attachments?: Attachment[]): Promise<void> => {
       console.log('📤 sendMessage called:', { text, attachments });
-      
+
       // Try WebSocket first
       if (wsRef.current?.isConnected()) {
         const sent = wsRef.current.sendMessage(text);
@@ -139,6 +139,7 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
       try {
         // const token = await AsyncStorage.getItem('access_token');
         const token = await Utils.getData('_TOKEN');
+        console.log('🔐 Token found:', token);
         if (!token || !appointmentId) {
           console.log('⚠️ No token or appointmentId');
           return;
@@ -216,8 +217,8 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
     setupWebSocket();
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      const isComingToForeground = 
-        appStateRef.current.match(/inactive|background/) && 
+      const isComingToForeground =
+        appStateRef.current.match(/inactive|background/) &&
         nextAppState === 'active';
 
       if (isComingToForeground) {

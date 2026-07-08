@@ -115,9 +115,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             </Text>
 
                         </View>
-
-
-
+                        
 
                         <FavouriteButton
                             isFavourite={isWishlisted}

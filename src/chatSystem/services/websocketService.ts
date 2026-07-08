@@ -27,7 +27,6 @@ export class WebSocketService {
     this.isConnecting = true;
     this.isIntentionalClose = false;
 
-    console.log("tokennnnnnnnnnn", this.token);
     const url = `${WS_BASE}/ws/communication/appointments/${this.appointmentId}/?token=${this.token}`;
  console.log("urlllll", url);
  

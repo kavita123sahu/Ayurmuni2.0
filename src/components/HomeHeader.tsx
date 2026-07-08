@@ -7,6 +7,7 @@ import {
     Image,
     Pressable,
     FlatList,
+    ScrollView,
 } from 'react-native';
 import TablerIcon from './TablerIcon';
 import CartBadge from './CartBadge';
@@ -19,6 +20,9 @@ import *as _PROFILE_SERVICES from '../services/ProfileServices';
 import CustomBottomSheet from './CustomBottomSheet';
 import { useHomeData } from '../hooks/UseHomeData';
 import { requireAuth } from '../services/guestAuth';
+import { useLocation } from '../context/LocationContext';
+import { useAppDispatch } from '../store/hooks';
+import { fetchCart } from '../store/slices/cartSlice';
 
 interface Address {
     id: string;
@@ -57,6 +61,7 @@ const HomeHeader = ({
 }: Props) => {
     const navigation = useNavigation<any>();
     const stackNavigation = navigation.getParent?.() || navigation;
+    const dispatch = useAppDispatch();
     const cartCount = useCartCount();
     const [localAddresses, setLocalAddresses] =
         useState<AddressItem[]>([]);
@@ -66,6 +71,8 @@ const HomeHeader = ({
         customerData,
         fetchCustomerData
     } = useHomeData();
+
+    const { currentAddress, loadingLocation } = useLocation();
 
 
     const savedAddresses =
@@ -81,15 +88,43 @@ const HomeHeader = ({
     );
 
     const shortAddress = useMemo(() => {
-        if (!defaultAddress?.address_line_1) {
-            return 'Select Location';
+        if (defaultAddress?.address_line_1) {
+            return `${defaultAddress.address_line_1.slice(
+                0,
+                22,
+            )}, ${defaultAddress.city}`;
         }
 
-        return `${defaultAddress.address_line_1.slice(
-            0,
-            22,
-        )}, ${defaultAddress.city}`;
-    }, [defaultAddress]);
+        if (currentAddress?.formatted_address) {
+            return currentAddress.formatted_address.slice(0, 40);
+        }
+
+        return 'Select Location';
+    }, [defaultAddress, currentAddress]);
+
+    const locationSubtext = useMemo(() => {
+        if (defaultAddress) {
+            return [defaultAddress.state, defaultAddress.zipcode]
+                .filter(Boolean)
+                .join(', ');
+        }
+        if (currentAddress) {
+            return [currentAddress.city, currentAddress.state, currentAddress.zipcode]
+                .filter(Boolean)
+                .join(', ');
+        }
+        return '';
+    }, [defaultAddress, currentAddress]);
+
+    const currentLocationPreview = useMemo(() => {
+        if (currentAddress?.formatted_address) {
+            return currentAddress.formatted_address;
+        }
+        if (loadingLocation) {
+            return 'Detecting your location...';
+        }
+        return 'Tap to use GPS location';
+    }, [currentAddress, loadingLocation]);
 
 
     const profileImage =
@@ -106,7 +141,8 @@ const HomeHeader = ({
     useFocusEffect(
         useCallback(() => {
             fetchCustomerData();
-        }, [fetchCustomerData]),
+            dispatch(fetchCart(false));
+        }, [fetchCustomerData, dispatch]),
     );
 
 
@@ -324,12 +360,7 @@ const HomeHeader = ({
                     <TouchableOpacity style={styles.locationContainer} onPress={() => setShowSheet(true)}>
 
                         <Text style={styles.locationLabel}>
-                            {
-                                [defaultAddress?.state, defaultAddress?.zipcode]
-                                    .filter(Boolean)
-                                    .join(', ') || ''
-                            }
-
+                            {locationSubtext}
                         </Text>
 
                         <View style={styles.locationRow}>
@@ -455,9 +486,24 @@ const HomeHeader = ({
 
                     <TouchableOpacity
                         activeOpacity={0.7}
-                        onPress={() => {
+                        onPress={async () => {
                             setShowSheet(false);
-                            navigation.navigate('LocationPickerScreen');
+                            if (currentAddress) {
+                                navigation.navigate('AddEditAddress', {
+                                    type: 'ADD',
+                                    selectedLocation: {
+                                        address_line_1: currentAddress.address_line_1,
+                                        address_line_2: currentAddress.address_line_2,
+                                        city: currentAddress.city,
+                                        state: currentAddress.state,
+                                        zipcode: currentAddress.zipcode,
+                                        country: currentAddress.country,
+                                        formatted_address: currentAddress.formatted_address,
+                                    },
+                                });
+                            } else {
+                                navigation.navigate('LocationPickerScreen');
+                            }
                         }}
                         style={styles.rowCard}
                     >
@@ -482,7 +528,7 @@ const HomeHeader = ({
                                     numberOfLines={2}
                                     style={styles.subText}
                                 >
-                                    Gurgaon Sector 22, Haryana 122022
+                                    {currentLocationPreview}
                                 </Text>
 
                             </View>
@@ -574,7 +620,13 @@ const HomeHeader = ({
 
                 </View>
 
-                <View style={{ flex: 1 }}>
+                {/* <View style={{ flex: 1 }}> */}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{
+                        paddingBottom: 120,
+                    }}
+                >
                     <FlatList
                         data={savedAddresses}
                         renderItem={renderSavedAddress}
@@ -587,8 +639,9 @@ const HomeHeader = ({
                         updateCellsBatchingPeriod={50}
                         showsVerticalScrollIndicator={false}
                     />
+                </ScrollView>
 
-                </View>
+                {/* </View> */}
             </CustomBottomSheet>
 
 

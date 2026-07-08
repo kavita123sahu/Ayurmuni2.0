@@ -9,7 +9,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
-    Keyboard,
 } from 'react-native';
 import { useChat } from '../../hooks/useChat';
 import { MessageBubble } from './MessageBubble';
@@ -110,6 +109,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             />
         );
     };
+
 
     const keyExtractor = (item: any) => item.id || `msg-${item.created_at}`;
 

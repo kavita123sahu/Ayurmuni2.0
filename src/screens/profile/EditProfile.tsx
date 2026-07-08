@@ -246,8 +246,8 @@ const EditProfile = ({
                 await _PROFILE_SERVICES.update_Profile(payload);
 
             console.log(
-                'STATUS',
-                res?.status,
+                'update profileeeSTATUS',
+                res,
             );
 
             console.log(

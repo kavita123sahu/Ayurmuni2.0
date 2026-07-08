@@ -64,7 +64,7 @@ const ConsultScreen = () => {
 
   const [history, setHistory] = useState<any[]>([]);
 
-const [recentLoading, setRecentLoading] = useState(false);
+  const [recentLoading, setRecentLoading] = useState(false);
 
 
   /*
@@ -223,7 +223,6 @@ const [recentLoading, setRecentLoading] = useState(false);
           <>
             <SearchBar
               placeholder="Search doctors, concerns..."
-
             />
 
             <PromoCard
