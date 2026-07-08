@@ -52,9 +52,15 @@ const C = {
   link: '#1B2B36',
 };
 
-const COLLAGE_HEIGHT = 520;
+// const COLLAGE_HEIGHT = 520;
 const TILE_HEIGHT = 230;
 const TILE_GAP = 13;
+
+const { width, height } = Dimensions.get('window');
+
+const isSmallDevice = height < 700;
+const COLLAGE_HEIGHT = height * 0.45;
+
 
 // Add as many photos as you like here — fallback keeps things
 // working even before you wire up real assets.
@@ -280,7 +286,7 @@ const PhoneAuthScreen = (props: any) => {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            style={{ flex: 1, marginBottom: -60 }}
+            style={{ flex: 1, }}
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -471,19 +477,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 5,
   },
-
   sheet: {
     flex: 1,
     backgroundColor: C.sheet,
-    borderTopLeftRadius: 50,
-    borderTopRightRadius: 50,
-    marginTop: -40,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    marginTop: -height * 0.04,
   },
+
+  // sheet: {
+  //   flex: 1,
+  //   backgroundColor: C.sheet,
+  //   borderTopLeftRadius: 50,
+  //   borderTopRightRadius: 50,
+  //   marginTop: -40,
+  // },
   sheetScroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 0,
+    paddingHorizontal: width * 0.06,
+    paddingTop: isSmallDevice ? 22 : 32,
+    paddingBottom: 30,
   },
+  // sheetScroll: {
+  //   paddingHorizontal: 24,
+  //   paddingTop: 32,
+  //   paddingBottom: 0,
+  // },
 
   // Text Carousel Styles
   carouselContainer: {
@@ -537,11 +555,17 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 22,
-    fontFamily: Fonts.PoppinsSemiBold ?? undefined,
+    fontSize: width * 0.055,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: C.headline,
-    marginBottom: 14
+    marginBottom: 14,
   },
+  // label: {
+  //   fontSize: 22,
+  //   fontFamily: Fonts.PoppinsSemiBold ?? undefined,
+  //   color: C.headline,
+  //   marginBottom: 14
+  // },
 
   inputPill: {
     flexDirection: 'row',
@@ -565,13 +589,16 @@ const styles = StyleSheet.create({
   termsLink: { color: C.link, fontFamily: Fonts.PoppinsSemiBold ?? undefined, textDecorationLine: 'underline' },
 
   cta: {
+    width: '100%',
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     backgroundColor: C.cta,
     borderRadius: 50,
-    paddingVertical: 18
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: isSmallDevice ? 25 : 40,
   },
   ctaText: {
     fontSize: 15,
