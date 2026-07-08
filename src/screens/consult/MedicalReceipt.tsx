@@ -23,6 +23,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import { Buffer } from 'buffer';
+import TablerIcon from '../../components/TablerIcon';
 const { width } = Dimensions.get('window');
 
 interface ReceiptData {
@@ -324,7 +325,6 @@ const MedicalReceipt = (props: any) => {
 
             <AppHeader
                 title="Medical Receipt"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
 
             />
@@ -336,7 +336,7 @@ const MedicalReceipt = (props: any) => {
                     <View style={styles.card}>
 
                         <View style={styles.iconBox}>
-                            <Image source={Images.PlusBag} style={{ height: 30, width: 30, tintColor: Colors.primaryColor }} />
+                            <TablerIcon name="plus-bag" size={30} color={Colors.primaryColor} />
                         </View>
 
                         <Text style={styles.title}>HealthConnect Clinic</Text>
@@ -351,7 +351,7 @@ const MedicalReceipt = (props: any) => {
 
                             <View style={{ alignItems: 'flex-end' }}>
                                 <Text style={styles.label}>Date</Text>
-                                <Text style={styles.value} numberOfLines={1}>{formatDate(receipt?.date)}</Text>
+                                <Text style={styles.value} numberOfLines={1}>{formatDate(receipt?.date ?? '')}</Text>
                             </View>
                         </View>
 
@@ -419,7 +419,7 @@ const MedicalReceipt = (props: any) => {
             </ScrollView>
 
             <TouchableOpacity style={styles.downloadBtn} onPress={downloadReceiptPDF}>
-                <Image source={Images.pdfIcon} style={{ height: 15, width: 15, tintColor: '#FFFFFF' }} />
+                <TablerIcon name="file" size={15} color={'#FFFFFF'} />
                 <Text style={styles.downloadText}> Download PDF</Text>
             </TouchableOpacity>
 

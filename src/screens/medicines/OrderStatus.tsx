@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
+import TablerIcon from '../../components/TablerIcon';
 
 interface OrderItem {
     id: string;
@@ -29,14 +31,14 @@ const orderData: OrderItem[] = [
         name: 'Amoxicillin 500mg',
         sub: '10 Capsules',
         price: '149.00',
-        image: Images.prItem,
+        image: null,
     },
     {
         id: '2',
         name: 'Paracetamol',
         sub: '20 Tablets',
         price: '149.00',
-        image: Images.prItem,
+        image: null,
     },
 
 ];
@@ -48,7 +50,11 @@ const OrderStatus: React.FC = (props : any) => {
             <View style={styles.itemRow}>
                 <View style={styles.itemLeft}>
                     <View style={styles.imageBox}>
-                        <Image source={item.image} style={styles.itemImage} />
+                        {item.image ? (
+                            <Image source={item.image} style={styles.itemImage} />
+                        ) : (
+                            <TablerIcon name="package" size={24} color={Colors.primaryColor} />
+                        )}
                     </View>
 
                     <View>
@@ -68,7 +74,8 @@ const OrderStatus: React.FC = (props : any) => {
                <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
 
-            <AppHeader title="Order Status" leftIcon={Images.backIcon} onLeftPress={()=>props.navigation.goBack()} />
+            <AppHeader title="Order Status"
+ onLeftPress={()=>props.navigation.goBack()} />
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -76,7 +83,7 @@ const OrderStatus: React.FC = (props : any) => {
             >
                 <View style={styles.successWrapper}>
                     <View style={styles.successCircle}>
-                        <Image source={Images.tickIcon} style={styles.successIcon} />
+                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
                     </View>
                 </View>
 
@@ -117,7 +124,7 @@ const OrderStatus: React.FC = (props : any) => {
                 <View style={styles.verifyBox}>
                     <View style={styles.verifyLeft}>
                         <View style={styles.clockBox}>
-                            <Image source={Images.waitClock} style={styles.clockIcon} />
+                            <TablerIcon name="clock" size={20} color={Colors.primaryColor} />
                         </View>
 
                         <View>

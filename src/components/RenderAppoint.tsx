@@ -13,6 +13,7 @@ import { Appointment, getStatusStyle } from "../common/DataInterface";
 import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
 import AppointAction from "./AppointAction";
+import TablerIcon from "./TablerIcon";
 export const DateTimeCard = ({
     item,
     isHorizontal = false,
@@ -22,10 +23,7 @@ export const DateTimeCard = ({
         return (
             <View style={styles.horizontalDateCard}>
                 <View style={styles.horizontalDateItem}>
-                    <Image
-                        source={Images.calender}
-                        style={Styles.IconSize}
-                    />
+                    <TablerIcon name="calendar" size={16} color={Colors.primaryColor} />
                     <Text style={styles.horizontalText}>
                         {item.date}
                     </Text>
@@ -34,10 +32,7 @@ export const DateTimeCard = ({
                 <View style={styles.horizontalDivider} />
 
                 <View style={styles.horizontalDateItem}>
-                    <Image
-                        source={Images.clock}
-                        style={Styles.IconSize}
-                    />
+                    <TablerIcon name="clock" size={16} color={Colors.primaryColor} />
                     <Text style={styles.horizontalText}>
                         {item.time}
                     </Text>
@@ -50,10 +45,7 @@ export const DateTimeCard = ({
         <View style={styles.infoRow}>
             <View style={styles.infoItem}>
                 <View style={styles.iconCircle}>
-                    <Image
-                        source={Images.calender}
-                        style={Styles.IconSize}
-                    />
+                    <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
                 </View>
 
                 <View>
@@ -64,10 +56,7 @@ export const DateTimeCard = ({
 
             <View style={styles.infoItem}>
                 <View style={styles.iconCircle}>
-                    <Image
-                        source={Images.clock}
-                        style={Styles.IconSize}
-                    />
+                    <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
                 </View>
 
                 <View>
@@ -97,7 +86,7 @@ const RenderAppoint = ({
 
     const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
         ? item.rawData.doctor.health_diseases
-            .map(disease => disease.name)
+            .map((disease: any) => disease.name)
             .join(", ")
         : "";
 
@@ -139,14 +128,13 @@ const RenderAppoint = ({
             </View>
 
             <View style={styles.horizontalDoctorRow}>
-                <Image
-                    source={
-                        item.image
-                            ? { uri: item.image }
-                            : Images.doctorImage
-                    }
-                    style={styles.horizontalAvatar}
-                />
+                {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.horizontalAvatar} />
+                ) : (
+                    <View style={[styles.horizontalAvatar, styles.avatarFallback]}>
+                        <TablerIcon name="user" size={20} color={Colors.primaryColor} />
+                    </View>
+                )}
 
                 <View style={{ flex: 1 }}>
                     <Text
@@ -204,14 +192,13 @@ const RenderAppoint = ({
             {/* Existing Full Card */}
             <View style={styles.contentContainer}>
                 <View style={{ flexDirection: 'row' }}>
-                    <Image
-                        source={
-                            item.image
-                                ? { uri: item.image }
-                                : Images.doctorImage
-                        }
-                        style={styles.avatar}
-                    />
+                    {item.image ? (
+                        <Image source={{ uri: item.image }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, styles.avatarFallback]}>
+                            <TablerIcon name="user" size={22} color={Colors.primaryColor} />
+                        </View>
+                    )}
                     <View style={{ flex: 1, marginLeft: 10 }}>
                         <View
                             style={{
@@ -315,12 +302,17 @@ const styles = StyleSheet.create({
     /* Card */
     card: {
         backgroundColor: Colors.white,
-        borderRadius: 20,
+        borderRadius: 18,
         padding: 14,
-        marginBottom: 16,
+        marginBottom: 14,
         borderWidth: 1,
         borderColor: Colors.borderColor,
         overflow: 'hidden',
+        shadowColor: '#0D614E',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 0,
     },
 
 
@@ -428,9 +420,9 @@ const styles = StyleSheet.create({
     },
 
     horizontalCard: {
-        width: 240,
-        padding: 10,
-        marginRight: 10,
+        width: 248,
+        padding: 12,
+        marginRight: 12,
         marginBottom: 0,
     },
 
@@ -469,7 +461,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
         backgroundColor: Colors.bgcolor,
-        borderRadius: 10,
+        borderRadius: 12,
         paddingVertical: 8,
         paddingHorizontal: 10,
     },
@@ -481,7 +473,7 @@ const styles = StyleSheet.create({
 
     horizontalText: {
         fontSize: 11,
-        marginLeft: 4,
+        marginLeft: 6,
         fontFamily: Fonts.PoppinsMedium,
     },
 
@@ -489,5 +481,10 @@ const styles = StyleSheet.create({
         width: 1,
         height: 16,
         backgroundColor: Colors.borderColor,
+    },
+    avatarFallback: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F0FAF7',
     },
 })

@@ -220,7 +220,9 @@ export const getConsultHistory = async (payload: any) => {
       ),
     );
 
-    const query = new URLSearchParams(cleanPayload).toString();
+    const query = new URLSearchParams(
+      cleanPayload as Record<string, string>,
+    ).toString();
 
     const response = await apiClient(
       `customers/doctors/consultation-history/?${query}`,

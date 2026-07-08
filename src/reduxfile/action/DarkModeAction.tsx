@@ -1,4 +1,4 @@
-import { Actions } from "../../redux copy/types/Types"
+import { Actions } from "../../reduxfile/types/Types"
 
 export const setDarkMode = (payload: any) => {
     return {

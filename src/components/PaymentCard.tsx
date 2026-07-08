@@ -1,14 +1,15 @@
 // components/PaymentMethodCard.tsx
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import { Ionicons } from '../common/Vector';
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
 interface Props {
     title: string;
     subtitle: string;
-    icon: any;
+    iconName?: TablerIconName;
     isActive?: boolean;
     onPress?: () => void;
 }
@@ -16,7 +17,7 @@ interface Props {
 const PaymentMethodCard: React.FC<Props> = ({
     title,
     subtitle,
-    icon,
+    iconName = 'credit-card',
     isActive,
     onPress,
 }) => {
@@ -24,7 +25,7 @@ const PaymentMethodCard: React.FC<Props> = ({
         <TouchableOpacity style={styles.container} onPress={onPress}>
             <View style={styles.left}>
                 <View style={styles.iconBox}>
-                    <Image source={icon} style={styles.icon} />
+                    <TablerIcon name={iconName} size={20} color={Colors.primaryColor} />
                 </View>
 
                 <View>
@@ -69,10 +70,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
-    },
-    icon: {
-        width: 20,
-        height: 20,
     },
     title: {
         fontSize: 16,

@@ -96,12 +96,14 @@ import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
 import ChatScreen from "../screens/profile/ChatScreen";
 import { ChatContainer } from "../chatSystem/components/chat/chatContainer";
+import ConfirmScreen from "../screens/products/ConfirmScreen";
+import { ScrollHideProvider } from "../context/ScrollHideContext";
 
 enableScreens();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
-const hideHeader = { headerShown: false };
+import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
 
 
 const TabStack = () => {
@@ -134,52 +136,52 @@ const TabStack = () => {
   }, [navigation, navState]);
 
   return (
-    <Tab.Navigator
-      initialRouteName="Home"
-      tabBar={(props) => <CustomeTab {...props} />}
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen name="Home" component={HomePage} />
-      <Tab.Screen name="Products" component={ProductsScreen} />
-      <Tab.Screen name="Medicine" component={MedicineScreen} />
-      <Tab.Screen name="Profile" component={ProfilePage} />
-      {/* <Tab.Screen
-        name="Consult"
-        component={ConsultHome}
-        options={{ tabBarButton: () => null }} // 👈 hide from default tab
-      /> */}
-    </Tab.Navigator>
+    <ScrollHideProvider>
+      <Tab.Navigator
+        initialRouteName="Home"
+        tabBar={(props) => <CustomeTab {...props} />}
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Tab.Screen name="Home" component={HomePage} />
+        <Tab.Screen name="Products" component={ProductsScreen} />
+        <Tab.Screen name="Medicine" component={MedicineScreen} />
+        <Tab.Screen name="Profile" component={ProfilePage} />
+      </Tab.Navigator>
+    </ScrollHideProvider>
   );
 };
 
 // 🔥 HOME STACK
 const HomeStack = () => {
   return (
-    <Stack.Navigator initialRouteName="TabStack" screenOptions={hideHeader}>
-      <Stack.Screen name="TabStack" component={TabStack} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="OrderHistory" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Appointments" component={AppointmentScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PatientDetails" component={PatientDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PatientFAQ" component={PatientFAQ} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="TermsCondition" component={TermsCondition} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="TopCategories" component={TopCategories} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ReviewPage" component={ReviewPage} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MyCart" component={MyCart} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MedicalRecords" component={MedicalRecords} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MedicineScreen" component={MedicineScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ProductsScreen" component={ProductsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="FAQScreen" component={FAQScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Navigator
+      initialRouteName="TabStack"
+      screenOptions={({ route }) => getStackScreenOptions(route.name)}
+    >
+      <Stack.Screen name="TabStack" component={TabStack} />
+      <Stack.Screen name="OrderHistory" component={OrderHistory} />
+      <Stack.Screen name="Appointments" component={AppointmentScreen} />
+      <Stack.Screen name="PatientDetails" component={PatientDetails} />
+      <Stack.Screen name="PatientFAQ" component={PatientFAQ} />
+      <Stack.Screen name="Onboarding" component={Onboarding} />
+      <Stack.Screen name="TermsCondition" component={TermsCondition} />
+      <Stack.Screen name="TopCategories" component={TopCategories} />
+      <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} />
+      <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
+      <Stack.Screen name="ProductDetails" component={ProductDetails} />
+      <Stack.Screen name="ReviewPage" component={ReviewPage} />
+      <Stack.Screen name="MyCart" component={MyCart} />
+      <Stack.Screen name="Checkout" component={Checkout} />
+      <Stack.Screen name="MedicalRecords" component={MedicalRecords} />
+      <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} />
+      <Stack.Screen name="MedicineScreen" component={MedicineScreen} />
+      <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
+      <Stack.Screen name="FAQScreen" component={FAQScreen} />
+      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} />
       {/* <Stack.Screen name="SOSPayment" component={SOSPayment} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EmergencySOS" component={EmergencySOS} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SOSCancel" component={SOSCancelScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -252,7 +254,7 @@ const HomeStack = () => {
 // 🔥 AUTH STACK
 const AuthStack = () => {
   return (
-    <Stack.Navigator initialRouteName="Login" screenOptions={hideHeader}>
+    <Stack.Navigator initialRouteName="Login" screenOptions={defaultStackOptions}>
       <Stack.Screen name="Login" component={Login} options={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -270,7 +272,7 @@ const AuthStack = () => {
 // 🔥 SPLASH STACK
 const SplashStack = () => {
   return (
-    <Stack.Navigator screenOptions={hideHeader}>
+    <Stack.Navigator screenOptions={defaultStackOptions}>
       <Stack.Screen name="Splash" component={Splash} options={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -282,7 +284,7 @@ const SplashStack = () => {
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="SplashStack" screenOptions={hideHeader}>
+    <Stack.Navigator initialRouteName="SplashStack" screenOptions={defaultStackOptions}>
       <Stack.Screen name="SplashStack" component={SplashStack} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="AuthStack" component={AuthStack} />

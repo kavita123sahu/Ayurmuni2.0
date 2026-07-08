@@ -8,111 +8,116 @@ import {
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images';
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
 type Props = {
   title: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
-  leftIcon?: any;
-  rightIcon?: any;
+  useLocalBackIcon?: boolean;
+  leftIconName?: TablerIconName;
+  rightIconName?: TablerIconName;
+  rightLabel?: string;
 };
 
 const AppHeader: React.FC<Props> = ({
   title,
   onLeftPress,
   onRightPress,
-  leftIcon,
-  rightIcon,
+  useLocalBackIcon = true,
+  leftIconName = 'arrow-left',
+  rightIconName,
+  rightLabel,
 }) => {
   return (
-
-    <View style={{ backgroundColor: '#FFFFFF' }}>
+    <View style={styles.shell}>
       <View style={styles.container}>
-
-        <TouchableOpacity onPress={onLeftPress} style={styles.iconBox}>
-          {leftIcon && (
-            <Image source={leftIcon} style={styles.icon} />
-          )}
+        <TouchableOpacity
+          onPress={onLeftPress}
+          style={styles.iconBox}
+          disabled={!onLeftPress}
+        >
+          {onLeftPress ? (
+            useLocalBackIcon ? (
+              <Image source={Images.backIcon} style={styles.backImage} />
+            ) : (
+              <TablerIcon name={leftIconName} size={22} color={Colors.primaryColor} />
+            )
+          ) : null}
         </TouchableOpacity>
 
+        <Text style={styles.title} numberOfLines={1}>
+          {title || ' '}
+        </Text>
 
-        <Text style={styles.title}>{title}</Text>
-
-        {rightIcon ? (
+        {rightLabel ? (
+          <TouchableOpacity onPress={onRightPress} style={styles.labelBox}>
+            <Text style={styles.rightLabel}>{rightLabel}</Text>
+          </TouchableOpacity>
+        ) : rightIconName ? (
           <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
-            <Image source={rightIcon} style={styles.icon} />
+            <TablerIcon name={rightIconName} size={22} color={Colors.primaryColor} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.iconBox1} />
+          <View style={styles.iconPlaceholder} />
         )}
       </View>
-
       <View style={styles.divider} />
-
     </View>
-
   );
 };
-
-//  rightIcon === "skip" ? (
-//         <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
-//           {/* <Image source={rightIcon} style={styles.icon} /> */}
-//           <Text style={{ color: 'red' }}>Skip</Text>
-//         </TouchableOpacity>
-//       ) :
 
 export default AppHeader;
 
 const styles = StyleSheet.create({
+  shell: {
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 4,
     paddingBottom: 12,
-    // backgroundColor: '#F5F8F8CC',
-    backgroundColor: '#FFFFFF',
-    marginTop: 10,
+    marginTop: 6,
   },
-
   iconBox: {
-    // width: 40,
-    // height: 40,
-    // borderRadius: 10,
-    // justifyContent: 'center',
-    // alignItems: 'center',
-
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  iconBox1: {
-    height: 40,
+  backImage: {
     width: 40,
-    borderRadius: 12,
+    height: 40,
     resizeMode: 'contain',
   },
-  icon: {
-    height: 40,
-    width: 40,
-    resizeMode: "contain",
-    // width: 50,
-    // height: 50,
-    // resizeMode: 'contain',
+  iconPlaceholder: {
+    width: 44,
+    height: 44,
   },
-
+  labelBox: {
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  rightLabel: {
+    fontSize: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
   title: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 18,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.textColor,
+    marginHorizontal: 8,
   },
-
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB', // light gray (figma type)
-    marginTop: 8,
-  }
+    backgroundColor: '#E5E7EB',
+    marginTop: 4,
+  },
 });

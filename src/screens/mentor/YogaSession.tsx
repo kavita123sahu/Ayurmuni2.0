@@ -7,6 +7,7 @@ import { Colors } from "../../common/Colors";
 import { Fonts } from "../../common/Fonts";
 import MentorCard from "../../components/MentorCard";
 import { SafeAreaView } from "react-native-safe-area-context";
+import TablerIcon from '../../components/TablerIcon';
 
 export default function YogaSession(props: any) {
 
@@ -27,10 +28,7 @@ export default function YogaSession(props: any) {
 
 
                 <View style={styles.videoContainer}>
-                    <Image
-                        source={Images.video}
-                        style={styles.video}
-                    />
+                    <TablerIcon name="video" size={20} color={Colors.primaryColor} />
                 </View>
                 <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
                     <View style={[styles.badge, { backgroundColor: '#0D614E1A' }]}>
@@ -55,14 +53,14 @@ export default function YogaSession(props: any) {
                 </Text>
 
                 <View style={styles.textInput}>
-                    <Image source={Images.Notes} style={{ height: 20, width: 20 }} />
+                    <TablerIcon name="notes" size={20} color={Colors.primaryColor} />
                     <Text style={[styles.text, { marginLeft: 10, fontSize: 14, fontFamily: Fonts.PoppinsSemiBold }]}>
                         Notes
                     </Text>
                 </View>
 
                 <View style={{ flexDirection: 'row', marginTop: 30, marginBottom: 20, alignItems: 'center' }}>
-                    <Image source={Images.BreakDown} style={{ marginRight: 8, height: 18, width: 18 }} />
+                    <TablerIcon name="breakdown" size={18} color={Colors.primaryColor} />
                     <Text style={styles.Section}>Session Breakdown</Text>
                 </View>
 
@@ -80,7 +78,6 @@ export default function YogaSession(props: any) {
 
             <AppHeader
                 title="Yoga Session"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 

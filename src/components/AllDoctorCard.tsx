@@ -12,6 +12,7 @@ import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Ionicons } from '../common/Vector';
 import { Images } from '../common/Images';
+import TablerIcon from './TablerIcon';
 import *as _CONSULT_SERVICES from '../services/ConsultServce';
 import FavouriteButton from './FavouriteButton';
 import { showSuccessToast } from '../config/Key';
@@ -191,7 +192,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     disabled={!isAvailable}
                     onPress={() => onChatPress?.(item)}
                 >
-                    <Image source={Images.ChatSupport} style={{ tintColor: '#64748B', height: 24, width: 24, resizeMode: 'contain' }} />
+                    <TablerIcon name="chat-support" size={24} color="#64748B" />
                 </TouchableOpacity>
 
                 {/* Consult Button */}
@@ -201,7 +202,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     onPress={() => onPress?.(item)}
                     activeOpacity={0.8}
                 >
-                    <Image source={Images.consult} style={{ height: 24, width: 24, resizeMode: 'contain', tintColor: Colors.white }} />
+                    <TablerIcon name="consult" size={24} color={Colors.white} />
                     <Text style={[styles.consultText,]}>
                         Consult Now
                     </Text>
@@ -221,10 +222,16 @@ const styles = StyleSheet.create({
 
     card: {
         borderRadius: 18,
-        padding: 12,
+        padding: 14,
+        marginBottom: 2,
         borderWidth: 1,
-        borderColor: '#EEF2F6',
+        borderColor: '#E8EDF2',
         backgroundColor: '#FFF',
+        shadowColor: '#0D614E',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
     },
 
     imageWrapper: {

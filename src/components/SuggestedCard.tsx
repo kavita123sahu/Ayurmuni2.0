@@ -10,6 +10,7 @@ import {
 import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
+import TablerIcon from './TablerIcon';
 
 interface Props {
     data: any[];
@@ -124,8 +125,8 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                                 style={styles.cartBtn}
                                 onPress={() => navigation.navigate('MyCart')}
                             >
-                                <Image source={require('../assets/images/CartFrame.png')} style={styles.cartFrame} />
-                                <Image source={require('../assets/images/arrowRight.png')} style={styles.cartIcon} />
+                                <TablerIcon name="shopping-cart" size={22} color="#0D614E" />
+                                <TablerIcon name="arrow-right" size={18} color="#0D614E" />
                             </TouchableOpacity>
 
                         </View>

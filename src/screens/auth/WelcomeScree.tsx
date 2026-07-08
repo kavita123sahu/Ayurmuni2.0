@@ -15,6 +15,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
+import { enableGuestMode } from '../../services/guestAuth';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -62,10 +63,10 @@ const COLORS = {
 const OVERLAY_GRADIENT = ['rgba(6,44,34,0.90)', 'rgba(10,74,58,0.82)', 'rgba(26,122,98,0.72)'];
 
 // Swap these for your real photos.
-const POLAROID_A = Images.login2 ?? Images.FinalLogo; // e.g. yoga pose
-const POLAROID_B = Images.login3 ?? Images.FinalLogo; // e.g. herbs / spices
-const POLAROID_C = Images.login4 ?? Images.FinalLogo; // e.g. telehealth / doctor
-const BACKDROP_IMAGE = Images.login1 ?? Images.FinalLogo; // full-bleed background photo
+const POLAROID_A = Images.login3 ?? Images.FinalLogo;
+const POLAROID_B = Images.login4 ?? Images.FinalLogo;
+const POLAROID_C = Images.login5 ?? Images.FinalLogo;
+const BACKDROP_IMAGE = Images.login1 ?? Images.FinalLogo;
 
 const AyurvedicWelcome = ({ navigation }: any) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -146,14 +147,17 @@ const AyurvedicWelcome = ({ navigation }: any) => {
     };
 
     const handleGetStarted = () => {
-        // guest if skip login 
-        //  navigation.navigate('HomeStack', { screen: 'Home' });
         Animated.sequence([
             Animated.spring(scaleAnim, { toValue: 0.95, friction: 10, tension: 40, useNativeDriver: true }),
             Animated.spring(scaleAnim, { toValue: 1, friction: 10, tension: 40, useNativeDriver: true }),
         ]).start(() => {
             navigation.navigate('AuthStack', { screen: 'Login' });
         });
+    };
+
+    const handleSkipAsGuest = async () => {
+        await enableGuestMode();
+        navigation.replace('HomeStack', { screen: 'Home' });
     };
 
     const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
@@ -287,8 +291,8 @@ const AyurvedicWelcome = ({ navigation }: any) => {
                         </LinearGradient>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.skipButton} onPress={handleGetStarted}>
-                        <Text style={styles.skipText}>Skip to Login</Text>
+                    <TouchableOpacity style={styles.skipButton} onPress={handleSkipAsGuest}>
+                        <Text style={styles.skipText}>Skip & Explore as Guest</Text>
                     </TouchableOpacity>
                 </Animated.View>
 

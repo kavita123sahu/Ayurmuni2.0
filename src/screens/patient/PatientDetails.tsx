@@ -28,6 +28,7 @@ import { showSuccessToast } from '../../config/Key';
 import { usePatientData } from '../../hooks/usePatientData';
 import * as PROFILE_SERVICES from '../../services/ProfileServices';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import TablerIcon from '../../components/TablerIcon';
 
 interface UserInterface {
   first_name: string;
@@ -159,7 +160,6 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
         <Header
           title="Patient Details"
           subtitle="Manage family profiles"
-          backIcon={Images.backIcon}
           onBack={() => navigation.goBack()}
         />
         <LoadingSpinner message="Loading patients..." />
@@ -176,7 +176,6 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
         <Header
           title="Patient Details"
           subtitle="Manage family profiles"
-          backIcon={Images.backIcon}
           onBack={() => navigation.goBack()}
         />
       </View>
@@ -232,7 +231,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
             )}
             ListEmptyComponent={
               <EmptyState
-                image={Images.patient}
+                iconName="users"
                 title="No Patients Added"
                 subtitle="Add your first patient to get started."
               />
@@ -248,7 +247,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
         {/* Info Box */}
         <View style={styles.infoBox}>
           <View style={styles.iconCircle}>
-            <Image source={Images.notification} style={styles.iconSize} />
+            <TablerIcon name="bell" size={20} color={Colors.primaryColor} />
           </View>
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>Switching Patients</Text>

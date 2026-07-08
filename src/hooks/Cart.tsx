@@ -1,109 +1,75 @@
-import { useCallback, useEffect, useState } from "react";
-import * as _CART_SERVICES from '../services/CartService';
+import { useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchCart, addToCart, selectCartCount } from '../store/slices/cartSlice';
+import { showSuccessToast } from '../config/Key';
+import { requireAuth } from '../services/guestAuth';
 
 export const useAllCartData = () => {
+  const dispatch = useAppDispatch();
+  const cart = useAppSelector(state => state.cart);
 
-    const [loading, setLoading] =
-        useState(true);
+  const fetchAllData = useCallback(
+    async (force = true) => {
+      await dispatch(fetchCart(force));
+    },
+    [dispatch],
+  );
 
-    const [refreshing, setRefreshing] =
-        useState(false);
+  const onRefresh = useCallback(() => {
+    fetchAllData(true);
+  }, [fetchAllData]);
 
-    const [CartData, setCartData] =
-        useState<any>({});
-
-    const [favDoctor, setFavDoctors] =
-        useState<any[]>([]);
-
-    const fetchAllData =
-        useCallback(async () => {
-
-            try {
-
-                setLoading(true);
-
-                const [
-                    CartList,
-                ] = await Promise.all([
-                    // _CONSULT_SERVICES.getConsultCategory(),
-                    _CART_SERVICES.getAllCart(),
-                ]);
-
-                console.log('ALLcartlist DATA ==>', CartList?.data);
-
-                setCartData(
-                    CartList?.data || {},
-                );
-
-            } catch (error) {
-
-                console.log(
-                    'CONSULT API ERROR ===>',
-                    error,
-                );
-
-            } finally {
-
-                setLoading(false);
-                setRefreshing(false);
-
-            }
-        }, []);
-
-    useEffect(() => {
-        fetchAllData();
-    }, []);
-
-    const onRefresh =
-        useCallback(() => {
-
-            setRefreshing(true);
-
-            fetchAllData();
-
-        }, [fetchAllData]);
-
-    return {
-        loading,
-        refreshing,
-        CartData,
-        favDoctor,
-        fetchAllData,
-        onRefresh,
-    };
+  return {
+    loading: cart.loading,
+    refreshing: cart.loading,
+    CartData: cart.cartData,
+    favDoctor: [],
+    fetchAllData,
+    onRefresh,
+    itemCount: cart.itemCount,
+  };
 };
 
-
-
 type UseCartActionsReturn = {
-    isAdding: boolean;
-    addToCart: (variantId: string | number, quantity: number) => Promise<boolean>;
+  isAdding: boolean;
+  addToCart: (variantId: string | number, quantity: number) => Promise<boolean>;
+  cartCount: number;
 };
 
 export const useCartActions = (): UseCartActionsReturn => {
-    const [isAdding, setIsAdding] = useState(false);
+  const dispatch = useAppDispatch();
+  const cart = useAppSelector(state => state.cart);
+  const cartCount = useAppSelector(selectCartCount);
 
-    const addToCart = useCallback(
-        async (variantId: string | number, quantity: number): Promise<boolean> => {
-            if (!variantId || isAdding) return false;
-            console.log("variiiiiiii", variantId, quantity)
-            setIsAdding(true);
-            try {
-                const response = await _CART_SERVICES.AddupdateCart({
-                    variant_id: variantId,
-                    quantity,                  // whatever qty user selected
-                });
-                console.log("rasonsecardd", response)
-                return response?.success ?? false;
-            } catch (error) {
-                console.error('[CART ERROR]', error);
-                return false;
-            } finally {
-                setIsAdding(false);
-            }
-        },
-        [isAdding],
-    );
+  const addToCartFn = useCallback(
+    async (variantId: string | number, quantity: number): Promise<boolean> => {
+      if (!variantId) return false;
+      if (!(await requireAuth('Please login to add items to cart'))) {
+        return false;
+      }
 
-    return { isAdding, addToCart };
+      const result = await dispatch(addToCart({ variantId, quantity }));
+      if (addToCart.rejected.match(result) && result.payload === 'LOGIN_REQUIRED') {
+        return false;
+      }
+      if (addToCart.fulfilled.match(result)) {
+        showSuccessToast(result.payload.message || 'Added to cart', 'success');
+        dispatch(fetchCart(true));
+        return true;
+      }
+      return false;
+    },
+    [dispatch],
+  );
+
+  return {
+    isAdding: !!cart.addingVariantId,
+    addToCart: addToCartFn,
+    cartCount,
+  };
 };
+
+export const useCartCount = () => useAppSelector(selectCartCount);
+
+export const useVariantCartQuantity = (variantId: string | number) =>
+  useAppSelector(state => state.cart.variantQuantities[String(variantId)] ?? 0);

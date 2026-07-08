@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import PaymentMethodCard from '../../components/PaymentCard';
 import TransactionCard from '../../components/TransactionCard';
-import { Images } from '../../common/Images';
 import AppHeader from '../../components/AppHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SectionHeader from '../../components/SectionHeader';
 import PrimaryButton from '../../components/PrimaryButton';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
+import { TablerIconName } from '../../components/TablerIcon';
 import Header from '../../components/Header';
 import { AntDesign } from '../../common/Vector';
 
@@ -17,31 +17,44 @@ import { AntDesign } from '../../common/Vector';
 const PaymentsScreen = (props: any) => {
     const [activeId, setActiveId] = useState("1");
 
-    const paymentMethods = [
+    const paymentMethods: {
+        id: string;
+        title: string;
+        subtitle: string;
+        iconName: TablerIconName;
+        isActive: boolean;
+    }[] = [
         {
             id: "1",
             title: "HDFC Bank Debit Card",
             subtitle: "**** **** **** 4290",
-            icon: Images.DebitCard,
+            iconName: 'credit-card',
             isActive: true,
         },
         {
             id: "2",
             title: "Google Pay / PhonePe",
             subtitle: "arjun.06@okaxis",
-            icon: Images.UPIMethod,
+            iconName: 'wallet',
             isActive: false,
         },
     ];
 
-    const transactionData = [
+    const transactionData: {
+        id: string;
+        name: string;
+        date: string;
+        amount: string;
+        status: string;
+        iconName: TablerIconName;
+    }[] = [
         {
             id: "1",
             name: "Dr. Sarah Johnson",
             date: "12 Oct 2023 · 10:30 AM",
             amount: "800",
             status: "PAID",
-            icon: Images.userprofile,
+            iconName: 'user',
         },
         {
             id: "2",
@@ -49,7 +62,7 @@ const PaymentsScreen = (props: any) => {
             date: "08 Oct 2023 · 06:15 PM",
             amount: "1,250",
             status: "PAID",
-            icon: Images.shopCart,
+            iconName: 'shopping-cart',
         },
         {
             id: "3",
@@ -57,7 +70,7 @@ const PaymentsScreen = (props: any) => {
             date: "05 Oct 2023 · 09:00 AM",
             amount: "2,400",
             status: "REFUNDED",
-            icon: Images.upload,
+            iconName: 'upload',
         },
     ];
 
@@ -69,7 +82,6 @@ const PaymentsScreen = (props: any) => {
             <Header
                 title="Payments"
                 subtitle="Manage Your Transaction"
-                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 
@@ -84,7 +96,7 @@ const PaymentsScreen = (props: any) => {
                         key={item.id}
                         title={item.title}
                         subtitle={item.subtitle}
-                        icon={item.icon}
+                        iconName={item.iconName}
                         isActive={activeId === item.id}
                         onPress={() => setActiveId(item.id)}
                     />
@@ -99,7 +111,7 @@ const PaymentsScreen = (props: any) => {
                         name={item.name}
                         date={item.date}
                         amount={item.amount}
-                        icon={item.icon}
+                        iconName={item.iconName}
                         status={item.status}
                     />
                 ))}
@@ -108,7 +120,7 @@ const PaymentsScreen = (props: any) => {
 
                     <PrimaryButton
                         title="Pay Now"
-                        icon={Images.approved}
+                        iconName="approved"
                         backgroundColor={Colors.primaryColor}
                         textColor={Colors.white}
                         TextFont={Fonts.PoppinsMedium}

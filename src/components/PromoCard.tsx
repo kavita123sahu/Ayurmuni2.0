@@ -9,19 +9,21 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
 interface Props {
   onPress?: () => void;
-  image: ImageSourcePropType;
+  image?: ImageSourcePropType;
   arrowIcon?: ImageSourcePropType;
+  arrowIconName?: TablerIconName;
   buttontext?: string;
   title: string;
   desc: string;
   tag?: string;
   approved?: boolean;
   imageLeft?: ImageSourcePropType;
+  imageLeftIconName?: TablerIconName;
   showButton?: boolean;
 }
 
@@ -29,9 +31,11 @@ const PromoCard: React.FC<Props> = ({
   onPress,
   image,
   arrowIcon,
+  arrowIconName = 'arrow-right',
   title,
   desc,
   imageLeft,
+  imageLeftIconName,
   buttontext,
   tag,
   approved = false,
@@ -43,11 +47,15 @@ const PromoCard: React.FC<Props> = ({
       {/* ROW */}
       <View style={styles.row}>
 
-        {imageLeft && (
+        {imageLeft ? (
           <View style={styles.imageWrapper}>
             <Image source={imageLeft} style={styles.imageleft} />
           </View>
-        )}
+        ) : imageLeftIconName ? (
+          <View style={styles.imageWrapper}>
+            <TablerIcon name={imageLeftIconName} size={40} color={Colors.primaryColor} />
+          </View>
+        ) : null}
 
         <View style={styles.content}>
 
@@ -60,7 +68,7 @@ const PromoCard: React.FC<Props> = ({
 
           <Text style={styles.title}>{title}</Text>
           <View style={{ flexDirection: 'row', gap: 5 }}>
-            {approved && <Image source={Images.approved} style={{ tintColor: '#64748B', height: 15, width: 15, }} />}
+            {approved && <TablerIcon name="approved" size={15} color="#64748B" />}
 
             <Text style={styles.desc}>{desc}</Text>
 
@@ -68,7 +76,13 @@ const PromoCard: React.FC<Props> = ({
 
         </View>
 
-        <Image source={image} style={styles.image} />
+        {image ? (
+          <Image source={image} style={styles.image} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <TablerIcon name="package" size={36} color={Colors.primaryColor} />
+          </View>
+        )}
       </View>
 
       {/* 👇 CONDITIONALLY SHOW */}
@@ -78,7 +92,11 @@ const PromoCard: React.FC<Props> = ({
 
           <TouchableOpacity style={styles.btnRow} onPress={onPress}>
             <Text style={styles.btnText}>{buttontext}</Text>
-            {arrowIcon && <Image source={arrowIcon} style={styles.arrow} />}
+            {arrowIcon ? (
+              <Image source={arrowIcon} style={styles.arrow} />
+            ) : (
+              <TablerIcon name={arrowIconName} size={24} color="#0D614E" />
+            )}
           </TouchableOpacity>
 
         </>
@@ -133,6 +151,15 @@ const styles = StyleSheet.create({
     width: 80,
     height: 75,
     resizeMode: 'contain',
+  },
+
+  imagePlaceholder: {
+    width: 80,
+    height: 75,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0D614E0D',
+    borderRadius: 12,
   },
 
   tagContainer: {

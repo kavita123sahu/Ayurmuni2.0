@@ -62,8 +62,7 @@ const ConsultScreen = () => {
   } = useConsultData();
 
 
-  const [history, setHistory] =
-    useState([]);
+  const [history, setHistory] = useState<any[]>([]);
 
 const [recentLoading, setRecentLoading] = useState(false);
 
@@ -200,7 +199,6 @@ const [recentLoading, setRecentLoading] = useState(false);
       <Header
         title="Doctors Consultation"
         subtitle="Find best doctor"
-        backIcon={Images.backIcon}
         onBack={() =>
           navigation.goBack()
         }
@@ -225,17 +223,16 @@ const [recentLoading, setRecentLoading] = useState(false);
           <>
             <SearchBar
               placeholder="Search doctors, concerns..."
-              icon={require('../../assets/images/Search.png')}
+
             />
 
             <PromoCard
               title="Consult with Specialists"
               desc="Over 50+ Medical Experts"
-              imageLeft={Images.PlusBag}
+              imageLeftIconName="plus-bag"
               image={require('../../assets/images/doctorbanner.png')}
               buttontext="Book an appointment online"
               approved
-              arrowIcon={require('../../assets/images/arrowRight.png')}
               showButton
             />
 

@@ -77,9 +77,9 @@ export const useNotifications = () => {
                         time: getTimeAgo(item.created_at),
                         icon:
                             item.notification_type === "appointment"
-                            ?  <Entypo name ='calendar-check-2/' size={20} />
-                                 
-                                : <Fontisto  name='nav-icon-list-a' size={20} color='black'/>,
+                                ? <Entypo name='calendar-check-2' size={20} />
+
+                                : <Fontisto name='list' size={20} color='black' />,
                         iconBg:
                             item.notification_type === "appointment"
                                 ? "#0D614E"

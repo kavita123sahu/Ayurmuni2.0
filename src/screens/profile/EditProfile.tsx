@@ -21,6 +21,7 @@ import {
 } from 'react-native-safe-area-context';
 import * as  _PROFILE_SERVICES from '../../services/ProfileServices';
 
+import TablerIcon from '../../components/TablerIcon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
@@ -307,9 +308,7 @@ const EditProfile = ({
 
             <AppHeader
                 title="Edit Profile"
-                leftIcon={
-                    Images.backIcon
-                }
+                // leftIcon={ }
                 onLeftPress={() =>
                     navigation.goBack()
                 }
@@ -421,6 +420,8 @@ const EditProfile = ({
                                                     styles.IconSize
                                                 }
                                             />
+
+                                            {/* <TablerIcon name="edit" size={24} color={Colors.primaryColor} /> */}
 
                                         </TouchableOpacity>
 

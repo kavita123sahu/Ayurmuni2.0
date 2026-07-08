@@ -112,21 +112,18 @@ const SectionHeader = ({ title }: { title: string }) => (
 
 const NotificationCard = ({ item }: { item: NotificationItem }) => {
     const status = item?.rawData?.data?.appointment_status;
-    console.log("status", item);
-    // return 0; 
+
     if (item.type === "appointment") {
         return (
             <View style={styles.appointmentCard}>
                 <View style={styles.row}>
                     <View style={[styles.iconBox, { backgroundColor: item.iconBg }]}>
-                        <Image source={item.icon} style={styles.icon} />
+                        {item.icon}
                     </View>
 
                     <View style={{ flex: 1 }}>
                         <View style={styles.rowBetween}>
-
                             <Text style={styles.title}>{item.title}</Text>
-
                             <View style={styles.timeBadge}>
                                 <Text style={styles.timeGreen}>{item.time}</Text>
                             </View>
@@ -152,14 +149,14 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
                     </View>
                 </View>
             </View>
-        )
+        );
     }
-    
+
     return (
         <View style={styles.card}>
             <View style={styles.row}>
                 <View style={[styles.iconBox, { backgroundColor: item.iconBg + '20' }]}>
-                    <Image source={item.icon} style={styles.icon} />
+                    {item.icon}
                 </View>
 
                 <View style={{ flex: 1 }}>
@@ -178,6 +175,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
                 </View>
             </View>
         </View>
+
     );
 };
 
@@ -203,7 +201,7 @@ const NotificationsScreen = (props: any) => {
             <>
                 <SectionHeader title={title} />
                 {data?.map(item => (
-                
+
                     <NotificationCard key={item.id} item={item} />
                 ))}
             </>
@@ -217,9 +215,8 @@ const NotificationsScreen = (props: any) => {
 
             <AppHeader
                 title="Notifications"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
-                rightIcon={"Clear All"}
+                rightLabel="Clear All"
             // ✅ FIX
             />
 
@@ -228,7 +225,7 @@ const NotificationsScreen = (props: any) => {
                 data={notifications}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
-                   
+
                     <NotificationCard item={item} />
                 )}
                 contentContainerStyle={{
@@ -336,6 +333,7 @@ const styles = StyleSheet.create({
         height: 48,
         width: 48,
         borderRadius: 16,
+        tintColor: 'white',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,

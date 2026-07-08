@@ -17,6 +17,7 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { Styles } from '../../common/Styles';
 import { Ionicons } from '../../common/Vector';
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -85,20 +86,17 @@ const Badge = memo(({ status }: BadgeProps) => {
 });
 
 interface DetailRowProps {
-  icon: any;
+  iconName: TablerIconName;
   label: string;
   value: string;
 }
 
 const DetailRow = memo(
-  ({ icon, label, value }: DetailRowProps) => {
+  ({ iconName, label, value }: DetailRowProps) => {
     return (
       <View style={styles.detailRow}>
         <View style={styles.iconWrapper}>
-          <Image
-            source={icon}
-            style={styles.detailIcon}
-          />
+          <TablerIcon name={iconName} size={20} color={Colors.primaryColor} />
         </View>
 
         <View style={styles.detailContent}>
@@ -140,10 +138,7 @@ const AddCalendar = ({
 
         <View style={styles.successWrapper}>
           <View style={styles.successCircle}>
-            <Image
-              source={Images.tickIcon}
-              style={styles.successIcon}
-            />
+            <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
           </View>
         </View>
 
@@ -195,19 +190,19 @@ const AddCalendar = ({
 
           <View style={styles.detailsContainer}>
             <DetailRow
-              icon={Images.calender}
+              iconName="calendar"
               label="DATE"
               value="Tuesday, Oct 24, 2023"
             />
 
             <DetailRow
-              icon={Images.clock}
+              iconName="clock"
               label="TIME"
               value="09:30 AM - 10:00 AM"
             />
 
             <DetailRow
-              icon={Images.clock}
+              iconName="clock"
               label="CONCERN"
               value="Related to heart"
             />
@@ -224,10 +219,7 @@ const AddCalendar = ({
     style={styles.secondaryBtn}
   >
     <View style={styles.leftContent}>
-      <Image
-        source={Images.calender}
-        style={styles.secondaryIcon}
-      />
+      <TablerIcon name="calendar" size={20} color={Colors.primaryColor} />
 
       <Text
         style={styles.secondaryText}
@@ -238,10 +230,7 @@ const AddCalendar = ({
       </Text>
     </View>
 
-    <Image
-      source={Images.arrowRight}
-      style={styles.arrowIcon}
-    />
+    <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
   </TouchableOpacity>
 
   {/* OUTLOOK */}
@@ -251,10 +240,7 @@ const AddCalendar = ({
     style={styles.secondaryBtn}
   >
     <View style={styles.leftContent}>
-      <Image
-        source={require('../../assets/images/shareIcon.png')}
-        style={styles.shareIcon}
-      />
+      <TablerIcon name="share" size={22} color={Colors.primaryColor} />
 
       <Text
         style={styles.secondaryText}
@@ -265,10 +251,7 @@ const AddCalendar = ({
       </Text>
     </View>
 
-    <Image
-      source={Images.arrowRight}
-      style={styles.arrowIcon}
-    />
+    <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
   </TouchableOpacity>
 </View>
 

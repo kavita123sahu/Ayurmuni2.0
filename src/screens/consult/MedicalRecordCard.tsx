@@ -6,11 +6,11 @@ import {
   StyleSheet,
   Linking,
 } from 'react-native';
-import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import CommonButton from '../../components/CommonButton';
+import TablerIcon from '../../components/TablerIcon';
 import CommonModal from '../../components/LogoutModal';
+
 interface Props {
   item: any;
   selected: boolean;
@@ -21,73 +21,46 @@ interface Props {
 
 const MedicalRecordCard = ({
   item,
-  selected,
   onSelect,
   onPreview,
   onDelete,
 }: Props) => {
-
   const [deleteModal, setDeleteModal] = React.useState(false);
+
   return (
-
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       onPress={onSelect}
-      style={[
-        styles.card,
-        // selected && styles.selectedCard,
-      ]}>
-
-      {/* Left */}
-
-
-      {/* File Icon */}
+      style={styles.card}
+    >
       <View style={styles.fileIcon}>
-        <Ionicons
-          name={
-            item.file_type === 'pdf'
-              ? 'document-text'
-              : 'image'
-          }
+        <TablerIcon
+          name={item.file_type === 'pdf' ? 'file' : 'photo'}
           size={20}
           color={Colors.primaryColor}
         />
       </View>
 
-      {/* Details */}
       <View style={styles.content}>
-        <Text
-          numberOfLines={1}
-          style={styles.title}>
+        <Text numberOfLines={1} style={styles.title}>
           {item.description}
         </Text>
-
         <Text style={styles.subTitle}>
-          {item.file_type?.toUpperCase()}
+          {item.file_type?.toUpperCase() || 'FILE'}
         </Text>
       </View>
 
-      {/* Right Actions */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          onPress={() =>
-            Linking.openURL(item.file_url)
-          }>
-          <Ionicons
-            name="eye-outline"
-            size={20}
-            color="#64748B"
-          />
+        <TouchableOpacity onPress={onPreview} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TablerIcon name="eye" size={20} color="#64748B" />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => setDeleteModal(true)}
-          style={{ marginLeft: 12 }}>
-          <Ionicons
-            name="trash-bin-outline"
-            size={20}
-            color="#EF4444"
-          />
+          style={{ marginLeft: 14 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <TablerIcon name="trash" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
 
@@ -95,12 +68,14 @@ const MedicalRecordCard = ({
         visible={deleteModal}
         icon="🗑️"
         title="Delete Record"
-        subtitle="Are you sure want to delete , this record?"
+        subtitle="Are you sure you want to delete this record?"
         cancelText="Cancel"
         confirmText="Delete"
-        // loading={isDeleting}
         onClose={() => setDeleteModal(false)}
-        onConfirm={onDelete}
+        onConfirm={() => {
+          setDeleteModal(false);
+          onDelete();
+        }}
       />
     </TouchableOpacity>
   );
@@ -115,17 +90,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-
-  selectedCard: {
-    borderColor: Colors.primaryColor,
-    backgroundColor: '#F0FDF4',
-  },
-
   fileIcon: {
     width: 42,
     height: 42,
@@ -133,27 +102,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: 4,
   },
-
   content: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 12,
   },
-
   title: {
     fontSize: 14,
     color: '#111827',
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
-
   subTitle: {
     fontSize: 11,
     color: '#6B7280',
     marginTop: 2,
     fontFamily: Fonts.PoppinsRegular,
   },
-
   actions: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -114,7 +114,6 @@ const ReviewPage = (props: any) => {
             <AppHeader
                 // title="Foxtail millet (Kangni)"
                 title={"Reviews"}
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 

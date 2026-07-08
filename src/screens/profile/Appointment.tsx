@@ -12,7 +12,7 @@ import { Colors } from '../../common/Colors';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppointmentHistory } from '../../hooks/useConsultData';
 import { PAST_STATUS, UPCOMING_STATUS } from '../../common/DataInterface';
 import EmptyState from '../../components/EmptyState';
@@ -55,6 +55,7 @@ const TabButton = React.memo(
 );
 
 const AppointmentScreen = (props: any) => {
+  const insets = useSafeAreaInsets();
   const { AppointData, refreshUpcoming, loading, loadMore, hasMore, loadingMore } =
     useAppointmentHistory();
 
@@ -90,12 +91,7 @@ const AppointmentScreen = (props: any) => {
     );
   }, [normalizedData, activeTab]);
 
-  const skeletonData = useMemo(
-    () => Array.from({ length: 6 }, (_, index) => ({ id: `skeleton-${index}` })),
-    []
-  );
-
-  const listData = loading ? skeletonData : appointmentData;
+  const listData = loading ? [{ id: 'appointment-skeleton' }] : appointmentData;
 
   // ---- Tab change ka stable callback ----
   const handleTabChange = useCallback((tab: 'upcoming' | 'past') => {
@@ -117,15 +113,16 @@ const AppointmentScreen = (props: any) => {
     async (
       appointmentId: string,
       payload: {
-        action: string;
+        action?: string;
         availability: number;
-        reschedule_reason: string;
+        reschedule_reason?: string;
         cancellation_reason?: string;
       }
     ) => {
-      let payloadSend: any = { action: payload.action };
+      const action = payload.action || 'reschedule';
+      let payloadSend: any = { action };
 
-      switch (payload.action) {
+      switch (action) {
         case 'reschedule':
         case 'confirm_reschedule':
           payloadSend.availability = payload.availability;
@@ -175,7 +172,7 @@ const AppointmentScreen = (props: any) => {
 
   // ---- keyExtractor + renderItem ab stable hain, FlatList unnecessarily re-render nahi karegi ----
   const keyExtractor = useCallback(
-    (item: any, index: number) => (loading ? `skeleton-${index}` : item.consultation_id),
+    (item: any, index: number) => (loading ? item.id : item.consultation_id || String(index)),
     [loading]
   );
 
@@ -199,7 +196,7 @@ const AppointmentScreen = (props: any) => {
     if (loading || appointmentData.length > 0) return null;
     return (
       <EmptyState
-        image={Images.starEmpty}
+        iconName="star"
         title={activeTab === 'upcoming' ? 'No Upcoming Appointments' : 'No Past Appointments'}
         subtitle={
           activeTab === 'upcoming'
@@ -215,7 +212,6 @@ const AppointmentScreen = (props: any) => {
       <Header
         title="My Appointments"
         subtitle="Manage your visits "
-        backIcon={Images.backIcon}
         onBack={() => props?.navigation.goBack()}
       />
 
@@ -231,7 +227,10 @@ const AppointmentScreen = (props: any) => {
         windowSize={5}
         updateCellsBatchingPeriod={30}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 20, flexGrow: 1 }}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
         ListEmptyComponent={ListEmpty}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
@@ -262,7 +261,10 @@ const AppointmentScreen = (props: any) => {
         }}
       />
 
-      <TouchableOpacity style={styles.bookBtn} onPress={() => props?.navigation.navigate('AllDoctors')}>
+      <TouchableOpacity
+        style={[styles.bookBtn, { bottom: insets.bottom + 16 }]}
+        onPress={() => props?.navigation.navigate('AllDoctors')}
+      >
         <Text style={styles.bookText}>+ Book New Appointment</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -272,7 +274,7 @@ const AppointmentScreen = (props: any) => {
 export default AppointmentScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, marginBottom: 30, paddingHorizontal: 20, backgroundColor: '#F7F8FA' },
+  container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#F7F8FA' },
   header: {
     fontSize: 20,
     fontFamily: Fonts.PoppinsSemiBold,
@@ -280,11 +282,39 @@ const styles = StyleSheet.create({
     marginVertical: 16,
     color: Colors.textColor || '#000',
   },
-  tabWrapper: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden' },
+  tabWrapper: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EEF2F6',
+    marginTop: 4,
+  },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, position: 'relative' },
   tabText: { fontSize: 14, color: '#999', fontFamily: Fonts.PoppinsMedium },
   activeTabText: { color: Colors.primaryColor, fontFamily: Fonts.PoppinsSemiBold },
   indicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: Colors.primaryColor, borderRadius: 2 },
-  bookBtn: { position: 'absolute', backgroundColor: Colors.primaryColor, bottom: 20, left: 20, right: 20, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  listContent: {
+    paddingTop: 16,
+    paddingBottom: 96,
+    flexGrow: 1,
+  },
+  bookBtn: {
+    position: 'absolute',
+    backgroundColor: Colors.primaryColor,
+    left: 0,
+    right: 0,
+    paddingVertical: 16,
+    minHeight: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#0D614E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
   bookText: { color: '#fff', fontFamily: Fonts.PoppinsSemiBold, fontSize: 16 },
 });

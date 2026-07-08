@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
 } from "react-native";
-import { Images } from "../common/Images";
 import { Fonts } from "../common/Fonts";
+import { Colors } from "../common/Colors";
+import TablerIcon from "./TablerIcon";
 
 type HeaderProps = {
   title: string;
@@ -18,15 +18,10 @@ const SOSHeader: React.FC<HeaderProps> = ({ title, onBackPress }) => {
   return (
     <View style={styles.container}>
       
-      {/* Back Button (fixed icon inside) */}
       <TouchableOpacity style={styles.backBtn} onPress={onBackPress}>
-        <Image
-          source={Images.backIcon} 
-          style={styles.icon}
-        />
+        <TablerIcon name="arrow-left" size={22} color={Colors.primaryColor} />
       </TouchableOpacity>
 
-      {/* Dynamic Title */}
       <Text style={styles.title}>{title}</Text>
 
     </View>
@@ -52,12 +47,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEEEEE",
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  icon: {
-    height: 40,
-    width: 40,
-    resizeMode: "contain",
   },
 
   title: {

@@ -4,15 +4,13 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    Switch,
-    Image,
 } from "react-native";
 import { Ionicons } from "../common/Vector";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
-import { Images } from "../common/Images";
 import { Styles } from "../common/Styles";
 import CustomToggle from "./CustomToggle";
+import TablerIcon, { TablerIconName } from "./TablerIcon";
 
 const SettingItem = ({ item, onToggle, props }: any) => {
 
@@ -40,7 +38,11 @@ const SettingItem = ({ item, onToggle, props }: any) => {
 
             {/* LEFT ICON */}
             <View style={styles.iconBox}>
-                <Image source={item.icon} style={Styles.IconSize} />
+                {item.icon ? (
+                    item.icon
+                ) : item.iconName ? (
+                    <TablerIcon name={item.iconName as TablerIconName} size={20} color={Colors.primaryColor} />
+                ) : null}
             </View>
 
             {/* TEXT */}
@@ -59,12 +61,6 @@ const SettingItem = ({ item, onToggle, props }: any) => {
                     value={enabled}
                     onToggle={() => setEnabled(!enabled)}
                 />
-                // <Switch
-                //     value={item.value}
-                //     onValueChange={onToggle}
-                //     trackColor={{ false: "#E5E7EB", true: Colors.primaryColor }}
-                //     thumbColor="#fff"
-                // />
             )}
         </TouchableOpacity>
     );

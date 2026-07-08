@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, StatusBar,
 import React, { useEffect, useState } from 'react'
 import { Fonts } from '../../common/Fonts'
 import AppInputField from '../../components/AppInputField'
+import TablerIcon from '../../components/TablerIcon'
 import { Images } from '../../common/Images'
 import AppHeader from '../../components/AppHeader'
 import SectionHeader from '../../components/SectionHeader'
@@ -384,9 +385,8 @@ export default function AddEditPatientDetail(props: any) {
                         : 'Add Patient'
                 }
                 // title="Patient Details"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
-                rightIcon="search"
+                rightIconName="search"
                 onRightPress={() => console.log('Search clicked')}
             />
 
@@ -410,7 +410,7 @@ export default function AddEditPatientDetail(props: any) {
                                 dob: text,
                             }))
                         }
-                        rightIcon={Images.calender}
+                        rightIconName="calendar"
                     />
 
 
@@ -418,7 +418,7 @@ export default function AddEditPatientDetail(props: any) {
                         label="Gender *"
                         value={formData.gender}
                         placeholder="Select Gender"
-                        rightIcon={Images.dropdown}
+                        rightIconName="chevron-down"
                         options={GENDER_OPTIONS}
                         onSelect={(item: any) =>
                             setFormData(prev => ({
@@ -435,7 +435,7 @@ export default function AddEditPatientDetail(props: any) {
                             label="Blood Group *"
                             value={formData.bloodG}
                             placeholder="Blood Group"
-                            rightIcon={Images.dropdown}
+                            rightIconName="chevron-down"
                             containerStyle={{
                                 flex: 1,
                                 marginRight: 8,
@@ -453,7 +453,7 @@ export default function AddEditPatientDetail(props: any) {
                             label="Relation *"
                             value={formData.relation}
                             placeholder="Select Relation"
-                            rightIcon={Images.dropdown}
+                            rightIconName="chevron-down"
                             containerStyle={{
                                 flex: 1,
                                 marginLeft: 8,
@@ -517,7 +517,7 @@ export default function AddEditPatientDetail(props: any) {
                                 ),
                             }))
                         }
-                        rightIcon={Images.Phone}
+                        rightIconName="phone"
 
 
 
@@ -529,13 +529,13 @@ export default function AddEditPatientDetail(props: any) {
                         value={formData.email}
 
                         onChangeText={(text: any) => setFormData(prev => ({ ...prev, email: text }))}
-                        rightIcon={Images.Email}
+                        rightIconName="mail"
                     />
 
                     <View style={styles.EmergencyView}>
 
                         <View style={styles.container}>
-                            <Image source={Images.logout} style={Styles.IconSize} tintColor={'#F43F5E'} />
+                            <TablerIcon name="logout" size={20} color="#F43F5E" />
                             <Text style={styles.title}>Emergency Contact</Text>
                         </View>
 
@@ -551,7 +551,7 @@ export default function AddEditPatientDetail(props: any) {
                             label="Emergency Relation"
                             value={formData.emergencyRelation}
                             placeholder="Select Relation"
-                            rightIcon={Images.dropdown}
+                            rightIconName="chevron-down"
                             options={RELATION_OPTIONS}
                             onSelect={(item: any) =>
                                 setFormData(prev => ({
@@ -566,7 +566,7 @@ export default function AddEditPatientDetail(props: any) {
                             label="Emergency Phone"
                             keyboardType="number-pad"
                             placeholder="+1 (555) 000-0000"
-                            rightIcon={Images.Phone}
+                            rightIconName="phone"
                             maxLength={10}
                             value={formData.EmergencyNO}
                             onChangeText={(text: any) =>
@@ -608,7 +608,7 @@ export default function AddEditPatientDetail(props: any) {
                                 valid: text,
                             }))
                         }
-                        rightIcon={Images.calender}
+                        rightIconName="calendar"
                     />
 
 
@@ -622,7 +622,7 @@ export default function AddEditPatientDetail(props: any) {
 
                         <BottomButton
                             title="Cancel"
-                            icon={Images.shopCart}
+                            iconName="shopping-cart"
                             onPress={() => props.navigation.goBack()}
                             backgroundColor="#FFFFFF"
                             borderColor={Colors.borderColor}

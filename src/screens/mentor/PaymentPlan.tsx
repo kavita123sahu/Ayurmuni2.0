@@ -5,6 +5,7 @@ import { Images } from "../../common/Images";
 import { Fonts } from "../../common/Fonts";
 import { Colors } from "../../common/Colors";
 import { SafeAreaView } from "react-native-safe-area-context";
+import TablerIcon from '../../components/TablerIcon';
 
 const PaymentPlan = ({ onClose, navigation }: any) => {
     const [selected, setSelected] = useState("3");
@@ -22,7 +23,8 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
 
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-            <AppHeader title="Payment Plan" leftIcon={Images.backIcon} onLeftPress={onClose} />
+            <AppHeader title="Payment Plan"
+ onLeftPress={onClose} />
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, flexGrow: 1, backgroundColor: '#FDFDFB', paddingBottom: 30 }}>
 
@@ -30,7 +32,7 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
                 <Text style={styles.amount}>Rs. 1699.00</Text>
 
                 <View style={styles.badgeContainer}>
-                    <Image source={Images.approved} style={{ tintColor: Colors.primaryColor, height: 15, width: 15 }} />
+                    <TablerIcon name="approved" size={15} color={Colors.primaryColor} />
                     <Text style={styles.badgeText}>SECURE MEDICAL TRANSACTION</Text>
                 </View>
 
@@ -86,7 +88,7 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
                                     </View>
 
                                     <View style={styles.tick}>
-                                        <Image source={Images.tick} style={{ tintColor: '#FFFFFF', height: 12, width: 12 }} />
+                                        <TablerIcon name="check" size={12} color={'#FFFFFF'} />
                                     </View>
                                 </View>
                             )}
@@ -95,7 +97,7 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
                 })}
 
                 <TouchableOpacity style={styles.conversion}>
-                    <Image source={Images.lock} style={{ marginBottom: 25, height: 20, width: 20 }} />
+                    <TablerIcon name="lock" size={20} color={Colors.primaryColor} />
                     <Text style={{ color: "#0D614E", fontSize: 12, fontFamily: Fonts.PoppinsMedium }}>Your payment plan is encrypted. EMI conversion
                         might take up to 3-4 working days depending on
                         your bank's policy.</Text>

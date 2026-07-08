@@ -33,16 +33,26 @@ import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import HomeCategory from './HomeCategory';
 import SuggestedCard from '../../components/SuggestedCard';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
+import { useScrollHide } from '../../context/ScrollHideContext';
+import {
+  getHomeHeaderTotalHeight,
+  getScreenBottomPadding,
+} from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
 import { useAppointmentHistory } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
+import { useAuth } from '../../hooks/useAuth';
+import { requireAuth, navigateToLogin } from '../../services/guestAuth';
+import TablerIcon from '../../components/TablerIcon';
 
 
 const { width } = Dimensions.get('window');
+let prakritiModalShownThisSession = false;
 
 const HomePage: React.FC = (props: any) => {
 
@@ -65,7 +75,12 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
+  const { isGuest } = useAuth();
   const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
+  const insets = useSafeAreaInsets();
+  const { onScroll, headerContentAnimatedStyle } = useScrollHide();
+  const headerTotalHeight = getHomeHeaderTotalHeight(insets);
+  const bottomPadding = getScreenBottomPadding(insets);
 
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
 
@@ -82,7 +97,7 @@ const HomePage: React.FC = (props: any) => {
 
       therapies: Array.isArray(item?.rawData?.doctor?.health_diseases)
         ? item.rawData.doctor.health_diseases
-          .map(disease => disease.name)
+          .map((disease: any) => disease.name)
           .join(", ")
         : "",
       date: item?.appointment_date,
@@ -161,15 +176,19 @@ const HomePage: React.FC = (props: any) => {
   }, [customerData]);
   useEffect(() => {
     if (
+      isGuest ||
       loadingCustomer ||
+      prakritiModalShownThisSession ||
       !customerData ||
-      customerData?.prakriti_progress == null
+      customerData?.prakriti_progress == null ||
+      customerData.prakriti_progress >= 100
     ) {
       return;
     }
-console.log("customepatalriti", customerData)
-    setShowPrakritiModal(customerData.prakriti_progress < 100);
-  }, [loadingCustomer, customerData]);
+
+    prakritiModalShownThisSession = true;
+    setShowPrakritiModal(true);
+  }, [isGuest, loadingCustomer, customerData]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -179,7 +198,7 @@ console.log("customepatalriti", customerData)
     refreshHomeData();
   }, []);
 
-  const ComingSoonCard = ({ title, icon }) => (
+  const ComingSoonCard = ({ title, icon }: { title: string; icon: string }) => (
     <View style={styles.comingSoonCard}>
       <View style={styles.iconContainer}>
         <Text style={styles.icon}>{icon}</Text>
@@ -199,22 +218,29 @@ console.log("customepatalriti", customerData)
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar
-        backgroundColor={Colors.primaryColor}
-        barStyle="dark-content"
-      />
+    <View style={styles.container}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
-
-      <HomeHeader
-        progress1={Math.round(customerData?.prakriti_progress || 0)}
-        progress2={Math.round(customerData?.medical_history_progress || 0)}
-      />
-
+      <View
+        style={[
+          styles.headerShell,
+          { paddingTop: insets.top, height: headerTotalHeight },
+        ]}
+      >
+        <Animated.View style={headerContentAnimatedStyle}>
+          <HomeHeader
+            progress1={Math.round(customerData?.prakriti_progress || 0)}
+            progress2={Math.round(customerData?.medical_history_progress || 0)}
+          />
+        </Animated.View>
+      </View>
 
       <FlatList
         data={[1]}
         keyExtractor={() => 'home'}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        style={styles.list}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -222,17 +248,13 @@ console.log("customepatalriti", customerData)
           />
         }
         contentContainerStyle={{
-          paddingBottom: 110, // ya TAB_HEIGHT + 30
+          paddingTop: headerTotalHeight + 8,
+          paddingBottom: bottomPadding,
         }}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <>
-            <SearchBar
-              placeholder="Search doctors, medicine and products..."
-              icon={require('../../assets/images/Search.png')}
-            />
-          </>
+          <SearchBar placeholder="Search doctors, medicine and products..." />
         }
         renderItem={() => (
           <>
@@ -264,12 +286,16 @@ console.log("customepatalriti", customerData)
             )}
 
 
-            {loading ? (
+            {(loading && !isGuest) ? (
               <>
                 <SectionHeader
                   title="Upcoming Appointments"
                   actionText="View all"
-                  onPress={() => props.navigation.navigate('Appointments')}
+                  onPress={async () => {
+                    if (await requireAuth('Please login to view appointments')) {
+                      props.navigation.navigate('Appointments');
+                    }
+                  }}
                 />
                 <HorizontalAppointmentSkeleton />
               </>
@@ -281,7 +307,11 @@ console.log("customepatalriti", customerData)
                     ? 'View all'
                     : ''
                   }
-                  onPress={() => props.navigation.navigate('Appointments')}
+                  onPress={async () => {
+                    if (await requireAuth('Please login to view appointments')) {
+                      props.navigation.navigate('Appointments');
+                    }
+                  }}
                 />
                 <FlatList
                   horizontal
@@ -300,6 +330,28 @@ console.log("customepatalriti", customerData)
                   )}
                   showsHorizontalScrollIndicator={false}
                 />
+              </>
+            ) : isGuest ? (
+              <>
+                <SectionHeader title="Upcoming Appointments" />
+                <TouchableOpacity
+                  style={styles.guestApptCard}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    navigateToLogin('Login to view and book your appointments')
+                  }
+                >
+                  <View style={styles.guestApptIcon}>
+                    <TablerIcon name="calendar" size={22} color={Colors.primaryColor} />
+                  </View>
+                  <View style={styles.guestApptText}>
+                    <Text style={styles.guestApptTitle}>Login to manage appointments</Text>
+                    <Text style={styles.guestApptSub}>
+                      Browse doctors now — book after you sign in
+                    </Text>
+                  </View>
+                  <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
+                </TouchableOpacity>
               </>
             ) : null}
 
@@ -328,8 +380,8 @@ console.log("customepatalriti", customerData)
               images={product.images}
               itemWidth={width - 80}
               itemHeight={150}
-              DynamicResize='contain'
-
+              DynamicResize="contain"
+              autoSlide
             />
 
 
@@ -349,6 +401,7 @@ console.log("customepatalriti", customerData)
                     data={productData}
                     navigation={props.navigation}
                     setProductData={setProductData}
+                    nested
                   />
                 )}
               </>
@@ -371,6 +424,7 @@ console.log("customepatalriti", customerData)
                   data={productData}
                   navigation={props.navigation}
                   setProductData={setProductData}
+                  nested
                 />
               </>
             ) : null}
@@ -488,7 +542,7 @@ console.log("customepatalriti", customerData)
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
 
   );
 };
@@ -496,14 +550,30 @@ console.log("customepatalriti", customerData)
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1,
-    // // paddingBottom: 50,
-    // backgroundColor: '#FDFDFB',
-    // paddingHorizontal: 10
+    flex: 1,
+    backgroundColor: '#FDFDFB',
+  },
+  list: {
     flex: 1,
     paddingHorizontal: 20,
-    // paddingBottom: 100,
-    backgroundColor: "#FDFDFB",
+  },
+  headerShell: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 4,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
   },
   containerprakriti: {
     flexDirection: 'row',
@@ -712,7 +782,42 @@ const styles = StyleSheet.create({
   yesText: {
     color: Colors.white,
     fontFamily: Fonts.PoppinsSemiBold,
-  }, comingSoonCard: {
+  },
+  guestApptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 12,
+  },
+  guestApptIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#E8F3F1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guestApptText: {
+    flex: 1,
+  },
+  guestApptTitle: {
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+  },
+  guestApptSub: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  comingSoonCard: {
     backgroundColor: '#F8FCF6',
     marginHorizontal: 16,
     marginBottom: 18,

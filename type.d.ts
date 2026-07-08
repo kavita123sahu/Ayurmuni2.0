@@ -12,10 +12,12 @@ export type RootStackParamList = {
     FavDoctors: undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
-    Welcome: undefined;ChatContainer: undefined;
+    Welcome: undefined; ChatContainer: undefined;
     ChatScreen: undefined;
     PatientVideoCallScreen: undefined;
     AddEditAddress: undefined;
+    ConfirmScreen: undefined;
+    Consult: undefined;
     History: undefined;
     LocationPickerScreen: undefined;
     MultipleDoctorSlip: undefined;

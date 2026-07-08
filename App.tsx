@@ -2,13 +2,14 @@ import React, { useEffect } from 'react'
 import { Provider } from 'react-redux'
 import Navigator from './src/navigation/Navigator'
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
-import { store } from './src/reduxfile/Store';
+import { store } from './src/store/store';
+import AppDataInitializer from './src/components/AppDataInitializer';
 import { Fonts } from './src/common/Fonts';
 
 
-// console.log = () => { };
-// console.warn = () => { };
-// console.error = () => { };
+console.log = () => { };
+console.warn = () => { };
+console.error = () => { };
 
 
 const toastConfig = {
@@ -72,6 +73,7 @@ const App = () => {
   return (
 
     <Provider store={store} >
+      <AppDataInitializer />
       <Navigator />
       <Toast config={toastConfig} />
     </Provider>

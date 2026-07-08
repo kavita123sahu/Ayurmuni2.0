@@ -21,9 +21,9 @@ interface Props {
     onClose: () => void;
 
     onSubmit: (data: {
+        action: string;
         availability: number;
-
-        reschedule_reason: string;
+        reschedule_reason?: string;
     }) => void;
     // slots: {
     //     id: number;
@@ -43,7 +43,9 @@ const RescheduleModal = ({
 }: Props) => {
     const [selectedSlot, setSelectedSlot] = useState<any>(null);
     const [reason, setReason] = useState("");
-    const [slotsData, setSlotsData] = useState([]);
+    const [slotsData, setSlotsData] = useState<
+        { id: number; start_time: string; status?: string }[]
+    >([]);
     const [showCalendar, setShowCalendar] = useState(false);
     const [loadingSlots, setLoadingSlots] =
         useState(false);

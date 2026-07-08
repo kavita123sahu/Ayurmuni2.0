@@ -23,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService';
+import { Utils } from '../../common/Utils';
 
 /* ============================================================
    PHONE / OTP ENTRY — Figma match + animated photo marquee
@@ -247,7 +248,7 @@ const PhoneAuthScreen = (props: any) => {
 
       if (response?.success) {
 
-        // Utils.storeData("_OTP", OTP)
+        Utils.storeData("_OTP", OTP)
 
         showSuccessToast(
           response.message || 'OTP sent successfully',
