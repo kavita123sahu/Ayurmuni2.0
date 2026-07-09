@@ -5,7 +5,7 @@ import {
     TouchableOpacity,
     Image,
 } from 'react-native';
-import { Images } from '../common/Images';
+import TablerIcon from './TablerIcon';
 
 const MyProductCard = ({
     item,
@@ -28,7 +28,6 @@ const MyProductCard = ({
 
             <View style={styles.productTopRow}>
 
-                {/* Left */}
                 <View style={styles.leftWrapper}>
                     <TouchableOpacity
                         activeOpacity={0.8}
@@ -38,14 +37,7 @@ const MyProductCard = ({
                             isSelected && styles.checkboxActive,
                         ]}>
                         {isSelected && (
-                            <Image
-                                source={Images.tick}
-                                style={{
-                                    width: 12,
-                                    height: 12,
-                                    tintColor: '#FFF',
-                                }}
-                            />
+                            <TablerIcon name="check" size={12} color="#FFF" />
                         )}
                     </TouchableOpacity>
 
@@ -57,7 +49,6 @@ const MyProductCard = ({
                     />
                 </View>
 
-                {/* Center */}
                 <View style={{ flex: 1 }}>
                     <Text style={styles.name}>
                         {item.name}
@@ -82,7 +73,6 @@ const MyProductCard = ({
                     )}
                 </View>
 
-                {/* Quantity */}
                 <View style={styles.qtyBox}>
                     <TouchableOpacity
                         style={styles.qtyBtn}

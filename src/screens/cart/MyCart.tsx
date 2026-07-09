@@ -19,27 +19,40 @@ import {
     TextInput,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
-
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
-import * as _CART_SERVICES from '../../services/CartService';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAllCartData } from '../../hooks/Cart';
+import { useAppDispatch } from '../../store/hooks';
+import { addToCart, fetchCart, setVariantQuantity } from '../../store/slices/cartSlice';
 import { getProductData, ProductItem, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
+import TablerIcon from '../../components/TablerIcon';
+import { navigateToLogin } from '../../services/guestAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 
 
 
 const MyCart = ({ navigation }: any) => {
 
+    const { isGuest, isLoggedIn } = useAuth();
+    const dispatch = useAppDispatch();
+
     const { CartData, loading, fetchAllData } =
         useAllCartData();
+
+    useFocusEffect(
+        useCallback(() => {
+            if (isLoggedIn) {
+                fetchAllData(true);
+            }
+        }, [fetchAllData, isLoggedIn]),
+    );
 
     const insets = useSafeAreaInsets();
     const [sections, setSections] =
@@ -61,7 +74,7 @@ const MyCart = ({ navigation }: any) => {
                 id: 'cart',
                 title: 'My Cart',
                 type: 'cart',
-                items: CartData.my_cart.items.map(getProductData),
+                items: CartData.my_cart.items.map((item: any) => getProductData(item)),
             });
         }
 
@@ -167,23 +180,21 @@ const MyCart = ({ navigation }: any) => {
             variantId: string,
             action: 'plus' | 'minus',
         ) => {
-
-            let newQty = 1;
-            let oldQty = 1;
-
             const selectedItem = sections
                 .flatMap(s => s.items)
                 .find(i => i.variant_id === variantId);
 
             if (!selectedItem) return;
 
-            oldQty = selectedItem.quantity;
+            const oldQty = selectedItem.quantity;
+            const newQty =
+                action === 'minus' && oldQty === 1
+                    ? 0
+                    : action === 'plus'
+                        ? oldQty + 1
+                        : oldQty - 1;
 
-            // Remove item if qty is 1 and user presses minus
-            if (
-                action === 'minus' &&
-                selectedItem.quantity === 1
-            ) {
+            if (newQty === 0) {
                 setSections(prev =>
                     prev.map(section => ({
                         ...section,
@@ -192,45 +203,31 @@ const MyCart = ({ navigation }: any) => {
                         ),
                     })),
                 );
-
-                try {
-                    await _CART_SERVICES.AddupdateCart({
-                        variant_id: variantId,
-                        quantity: 0,
-                    });
-                } catch (error) {
-                    fetchAllData(); // reload cart
-                }
-
-                return;
+            } else {
+                setSections(prev =>
+                    prev.map(section => ({
+                        ...section,
+                        items: section.items.map(item =>
+                            item.variant_id === variantId
+                                ? { ...item, quantity: newQty }
+                                : item,
+                        ),
+                    })),
+                );
             }
 
-            newQty =
-                action === 'plus'
-                    ? oldQty + 1
-                    : oldQty - 1;
+            dispatch(setVariantQuantity({ variantId, quantity: newQty }));
 
-            setSections(prev =>
-                prev.map(section => ({
-                    ...section,
-                    items: section.items.map(item =>
-                        item.variant_id === variantId
-                            ? { ...item, quantity: newQty }
-                            : item,
-                    ),
-                })),
+            const result = await dispatch(
+                addToCart({ variantId, quantity: newQty }),
             );
 
-            try {
-                await _CART_SERVICES.AddupdateCart({
-                    variant_id: variantId,
-                    quantity: newQty,
-                });
-            } catch (error) {
+            if (addToCart.rejected.match(result)) {
+                await dispatch(fetchCart(true));
                 fetchAllData();
             }
         },
-        [sections],
+        [sections, dispatch, fetchAllData],
     );
 
     const selectedProducts =
@@ -314,22 +311,37 @@ const MyCart = ({ navigation }: any) => {
 
             <AppHeader
                 title="My Cart"
-                leftIcon={
-                    Images.backIcon
-                }
                 onLeftPress={() =>
                     navigation.goBack()
                 }
             />
 
-            {loading ? (
+            {isGuest ? (
+                <View style={styles.emptyContainer}>
+                    <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
+
+                    <Text style={styles.emptyTitle}>
+                        Login to use your cart
+                    </Text>
+
+                    <Text style={styles.emptySubTitle}>
+                        Sign in to add products, save items and place orders.
+                    </Text>
+
+                    <TouchableOpacity
+                        style={styles.shopNowBtn}
+                        onPress={() => navigateToLogin()}
+                    >
+                        <Text style={styles.shopNowText}>
+                            Login / Sign Up
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            ) : loading ? (
                 <MyProductCardSkeleton />
             ) : sections.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <Image
-                        source={Images.shopCart} // ya koi cart icon
-                        style={styles.emptyImage}
-                    />
+                    <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
 
                     <Text style={styles.emptyTitle}>
                         Your Cart is Empty
@@ -438,14 +450,7 @@ const MyCart = ({ navigation }: any) => {
                                                 styles.checkboxActive,
                                             ]}>
                                             {isSectionSelected && (
-                                                <Image
-                                                    source={Images.tick}
-                                                    style={{
-                                                        height: 15,
-                                                        width: 15,
-                                                        tintColor: '#FFF',
-                                                    }}
-                                                />
+                                                <TablerIcon name="check" size={15} color={'#FFF'} />
                                             )}
                                         </TouchableOpacity>
                                     </View>

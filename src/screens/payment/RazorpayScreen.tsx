@@ -42,6 +42,7 @@ import {
 import { Ionicons } from '../../common/Vector';
 import { openRazorpayPayment } from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
+import BackIconButton from '../../components/BackIconButton';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 
@@ -218,15 +219,7 @@ const RazorpayScreen = ({
                         {/* {
                     !paymentProcessing && ( */}
 
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <Image
-                                source={Images.backIcon}
-                                style={styles.backIcon}
-                            />
-                        </TouchableOpacity>
+                        <BackIconButton onPress={() => navigation.goBack()} />
                         {/* )
                 } */}
 

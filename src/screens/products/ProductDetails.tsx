@@ -16,11 +16,14 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { reviews } from '../../common/DataInterface';
 import { useCartActions } from '../../hooks/Cart';
+import { requireAuth } from '../../services/guestAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { showSuccessToast } from '../../config/Key';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import { handleShareAction, handleShareProduct } from '../../hooks/DownloadFuction';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
+import TablerIcon from '../../components/TablerIcon';
 
 // ── Small reusable pieces ─────────────────────────────────────────────────────
 const Divider = () => <View style={styles.divider} />;
@@ -74,6 +77,7 @@ const ProductDetails = (props: any) => {
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
 
     const { isAdding, addToCart } = useCartActions();
+    const { isGuest } = useAuth();
 
     console.log("ReviewAllReviewAll", ReviewAll)
     const insets = useSafeAreaInsets();
@@ -109,14 +113,16 @@ const ProductDetails = (props: any) => {
 
     // ── Add to Cart: fires API with selected qty ─────────────────────────────
     const handleAddToCart = async () => {
-        console.log('selctedvarinat', selectedVariant);
+        // Guests can browse product details freely; login is prompted only here.
+        if (!(await requireAuth('Please login to add items to cart'))) {
+            return;
+        }
 
         const success = await addToCart(selectedVariant?.id, quantity);
         if (success) {
             props.navigation.navigate('MyCart');
-        }
-        else {
-            showSuccessToast("try again to add into cart", 'error')
+        } else {
+            showSuccessToast('Try again to add into cart', 'error');
         }
     };
 
@@ -147,7 +153,6 @@ const ProductDetails = (props: any) => {
             >
                 <AppHeader
                     title="Product Details"
-                    leftIcon={Images.backIcon}
                     onLeftPress={() =>
                         props.navigation.goBack()
                     }
@@ -164,8 +169,7 @@ const ProductDetails = (props: any) => {
 
             <AppHeader
                 title="Product Details"
-                leftIcon={Images.backIcon}
-                rightIcon={Images.share}
+                rightIconName="share"
                 onLeftPress={() =>
                     props.navigation.goBack()
                 }
@@ -187,7 +191,7 @@ const ProductDetails = (props: any) => {
                 <Detailimages
                     itemHeight={300}
                     DynamicResize="contain"
-                    images={selectedVariant?.media?.length ? selectedVariant.media : [Images.detailimage]}
+                    images={selectedVariant?.media?.length ? selectedVariant.media : []}
                 />
 
                 {/* 2. Title */}
@@ -195,7 +199,7 @@ const ProductDetails = (props: any) => {
                     <View style={styles.topRow}>
                         <Badge label="PREMIUM QUALITY" />
                         <View style={styles.ratingPill}>
-                            <Image source={Images.star} style={styles.starIcon} />
+                            <TablerIcon name="star" size={20} color={Colors.primaryColor} />
                             <Text style={styles.ratingText}>{selectedVariant?.avg_rating || 0}</Text>
                         </View>
                     </View>
@@ -312,7 +316,7 @@ const ProductDetails = (props: any) => {
                 {/* 11. Nutrition */}
                 <Card>
                     <View style={styles.nutritionHeader}>
-                        <Image source={Images.nutritionIcon} style={styles.nutritionIcon} />
+                        <TablerIcon name="ingredient" size={20} color={Colors.primaryColor} />
                         <SectionHeader title="Nutritional Facts" />
                     </View>
                     {nutritionData.map((item, i) => (
@@ -357,7 +361,7 @@ const ProductDetails = (props: any) => {
 
                 {/* Wishlist */}
                 {/* <TouchableOpacity style={styles.wishlistBtn} activeOpacity={0.75}>
-                    <Image source={Images.wishlist} style={styles.wishlistIcon} />
+                    <TablerIcon name="heart" size={20} color={Colors.primaryColor} />
                 </TouchableOpacity> */}
 
                 {/* Qty indicator */}
@@ -370,20 +374,24 @@ const ProductDetails = (props: any) => {
                 <TouchableOpacity
                     style={[
                         styles.addToCartBtn,
-                        // (!selectedVariant?.stock || isAdding) 
+                        isGuest && styles.addToCartBtnLocked,
                     ]}
                     onPress={handleAddToCart}
                     activeOpacity={0.85}
-                    disabled={isAdding || !selectedVariant?.stock}
+                    disabled={isAdding || (!isGuest && !selectedVariant?.stock)}
                 >
                     {isAdding ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                         <View style={styles.addToCartInner}>
-                            <Image source={Images.shopCart} style={styles.cartIcon} />
+                            <TablerIcon name="shopping-cart" size={20} color={isGuest ? '#64748B' : Colors.primaryColor} />
                             <View>
-                                <Text style={styles.addToCartText}>
-                                    {selectedVariant?.stock ? "Add to Cart" : "Out of Stock"}
+                                <Text style={[styles.addToCartText, isGuest && styles.addToCartTextLocked]}>
+                                    {isGuest
+                                        ? 'Login to Add to Cart'
+                                        : selectedVariant?.stock
+                                          ? 'Add to Cart'
+                                          : 'Out of Stock'}
                                 </Text>
                             </View>
                         </View>
@@ -498,9 +506,17 @@ const styles = StyleSheet.create({
         shadowColor: '#0D614E', shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
     },
+    addToCartBtnLocked: {
+        backgroundColor: '#F1F5F9',
+        shadowOpacity: 0,
+        elevation: 0,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
     addToCartBtnDisabled: { backgroundColor: Colors.secondaryColor, shadowOpacity: 0 },
     addToCartInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     cartIcon: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#FFFFFF' },
     addToCartText: { fontSize: 15, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },
+    addToCartTextLocked: { color: '#64748B', fontSize: 13 },
     addToCartPrice: { fontSize: 12, fontFamily: Fonts.PoppinsMedium, color: '#6c9180' },
 });

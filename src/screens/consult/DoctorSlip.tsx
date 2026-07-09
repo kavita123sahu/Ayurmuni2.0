@@ -33,7 +33,7 @@ const { width } = Dimensions.get('window');
 
 interface MedicineItem {
     id: number;
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: string;
     description: string;
     days: string;
     timing: string;
@@ -303,7 +303,7 @@ const FooterButton = memo(
         title: string;
         onPress?: () => void;
         isPrimary?: boolean;
-        icon?: keyof typeof Ionicons.glyphMap;
+        icon?: string;
     }) => {
         return (
             <TouchableOpacity
@@ -414,7 +414,6 @@ const DoctorSlipScreen = (props: any) => {
                 <Header
                     title="Doctor Slip"
                     subtitle="Find best advice for your health"
-                    backIcon={Images.backIcon}
                     onBack={() => props?.navigation.goBack()}
                 />
 
@@ -444,8 +443,7 @@ const DoctorSlipScreen = (props: any) => {
 
                                 <View style={styles.signRow}>
                                     <Image
-                                        source={Images.approved}
-                                        style={styles.signIcon}
+                                        /* icon:approved */
                                         resizeMode="contain"
                                     />
 
@@ -476,8 +474,7 @@ const DoctorSlipScreen = (props: any) => {
                             <View style={styles.guidelineCard}>
                                 <View style={styles.guidelineHeader}>
                                     <Image
-                                        source={Images.notification}
-                                        style={styles.guidelineIcon}
+                                        /* icon:bell */
                                         resizeMode="contain"
                                     />
 
@@ -510,8 +507,7 @@ const DoctorSlipScreen = (props: any) => {
 
                                 <View style={styles.authenticatedRow}>
                                     <Image
-                                        source={Images.approved}
-                                        style={styles.footerApprovedIcon}
+                                        /* icon:approved */
                                         resizeMode="contain"
                                     />
 

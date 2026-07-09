@@ -9,13 +9,12 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
-    SafeAreaView,
-    Keyboard,
 } from 'react-native';
 import { useChat } from '../../hooks/useChat';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { ChatHeader } from './ChatHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface ChatContainerProps {
     appointmentId: string;
@@ -111,6 +110,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         );
     };
 
+
     const keyExtractor = (item: any) => item.id || `msg-${item.created_at}`;
 
     const renderEmpty = () => (
@@ -142,7 +142,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 avatar={isDoctor ? patientAvatar : doctorAvatar}
                 isOnline={isConnected}
                 role={participantRole}
-                // onBack={onBack}
+            // onBack={onBack}
             />
 
             {/* ✅ Messages + Input */}

@@ -13,22 +13,25 @@ export class WebSocketService {
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private isIntentionalClose = false;
 
-    constructor(
-        private appointmentId: string,
-        private token: string,
-        private onConnect?: () => void,
-        private onDisconnect?: () => void
-    ) { }
+  constructor(
+    private appointmentId: string,
+    private token: string,
+    private onConnect?: () => void,
+    private onDisconnect?: () => void
+  ) { }
 
-    connect(): void {
-        if (this.isConnecting) return;
-        if (this.ws?.readyState === WebSocket.OPEN) return;
+  connect(): void {
+    if (this.isConnecting) return;
+    if (this.ws?.readyState === WebSocket.OPEN) return;
 
-        this.isConnecting = true;
-        this.isIntentionalClose = false;
+    this.isConnecting = true;
+    this.isIntentionalClose = false;
 
     const url = `${WS_BASE}/ws/communication/appointments/${this.appointmentId}/?token=${this.token}`;
-    console.log('🔌 Connecting WebSocket:', url.replace(this.token, '***'));
+ console.log("urlllll", url);
+ 
+
+    // console.log('🔌 Connecting WebSocket:', url.replace(this.token, '***'));
 
     try {
       this.ws = new WebSocket(url);
@@ -43,13 +46,13 @@ export class WebSocketService {
     }
   }
 
-    private handleOpen(): void {
-        console.log('✅ WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.isConnecting = false;
-        this.startPing();
-        this.onConnect?.();
-    }
+  private handleOpen(): void {
+    console.log('✅ WebSocket connected');
+    this.reconnectAttempts = 0;
+    this.isConnecting = false;
+    this.startPing();
+    this.onConnect?.();
+  }
 
   private handleMessage(event: any): void {
     try {
@@ -57,10 +60,10 @@ export class WebSocketService {
         console.warn('⚠️ Empty WebSocket message');
         return;
       }
-      
+
       const data: WebSocketMessage = JSON.parse(event.data);
       console.log('📩 WebSocket received:', data.type);
-      
+
       // ✅ Route message
       if (data.type === 'chat.connected') {
         this.emit('connected', data);
@@ -83,6 +86,7 @@ export class WebSocketService {
       console.error('❌ WebSocket parse error:', error);
     }
   }
+
 
   private handleClose(event: any): void {
     console.log(`🔌 WebSocket closed: ${event.code} - ${event.reason || 'No reason'}`);
@@ -175,12 +179,12 @@ export class WebSocketService {
     }, 30000);
   }
 
-    private stopPing(): void {
-        if (this.pingInterval) {
-            clearInterval(this.pingInterval);
-            this.pingInterval = null;
-        }
+  private stopPing(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
+  }
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
@@ -200,12 +204,12 @@ export class WebSocketService {
     }
   }
 
-    private emit(event: string, data: WebSocketMessage): void {
-        const handlers = this.handlers.get(event);
-        if (handlers) {
-            handlers.forEach((handler) => handler(data));
-        }
+  private emit(event: string, data: WebSocketMessage): void {
+    const handlers = this.handlers.get(event);
+    if (handlers) {
+      handlers.forEach((handler) => handler(data));
     }
+  }
 
   disconnect(): void {
     this.isIntentionalClose = true;
@@ -213,7 +217,7 @@ export class WebSocketService {
     if (this.ws) {
       try {
         this.ws.close(1000, 'Normal closure');
-      } catch (e) {}
+      } catch (e) { }
       this.ws = null;
     }
     this.isConnecting = false;

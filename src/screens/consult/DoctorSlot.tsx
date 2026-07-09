@@ -14,7 +14,6 @@ import {
     KeyboardAvoidingView,
     RefreshControl,
 } from 'react-native';
-import { Ionicons } from '../../common/Vector';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
@@ -27,6 +26,10 @@ import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
 import { pick } from '@react-native-documents/picker';
 import PrescriptionUpload from './Uploadreport';
 import { launchCamera } from 'react-native-image-picker';
+import { Ionicons } from '../../common/Vector';
+import TablerIcon from '../../components/TablerIcon';
+import { requireAuth } from '../../services/guestAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -36,6 +39,7 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 
 const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
+    const { isGuest } = useAuth();
 
 
 
@@ -49,6 +53,7 @@ const DoctorSlot = (props: any) => {
     const {
         selectFile,
         CameraUpload,
+        uploading,
     } = useMedicalUpload(
         fetchPatientsRecord,
         (recordId) => {
@@ -71,6 +76,7 @@ const DoctorSlot = (props: any) => {
             (item: any) => !item.isDisabled,
         );
     }, [monthOffset]);
+
     const getTodayDate = () => {
         const todayEntry = DAYS.find((d: any) => d.isToday);
         if (todayEntry) return todayEntry.fullDate;
@@ -199,7 +205,8 @@ const DoctorSlot = (props: any) => {
         }
     }, [slotsData]);
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
+        if (!(await requireAuth('Please login to book a consultation'))) return;
         console.log("selectedSlotselectedSlot", selectedSlot?.id)
 
         if (!selectedSlot?.id) return;
@@ -228,18 +235,18 @@ const DoctorSlot = (props: any) => {
 
             <View style={styles.headerTop}>
                 <TouchableOpacity onPress={() => { navigation.goBack(); }} style={styles.iconBtn}>
-                    <Image source={Images.backIcon} style={{ height: 40, width: 40 }} />
+                    <Image source={Images.backIcon} style={styles.backIcon} />
                 </TouchableOpacity>
 
                 <Text style={styles.headerTitle}>Doctor Profile</Text>
 
-                <TouchableOpacity activeOpacity={0.8} style={styles.iconBtn}>
+                {/* <TouchableOpacity activeOpacity={0.8} style={styles.iconBtn}>
                     {doctorInfo?.is_favorite ?
                         <Ionicons name="heart" size={25} color={Colors.primaryColor} /> :
                         <Ionicons name="heart-outline" size={25} color="#0F172A" />
                     }
 
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
             </View>
             <KeyboardAvoidingView
@@ -437,6 +444,7 @@ const DoctorSlot = (props: any) => {
                         <PrescriptionUpload
                             records={patientsRecord}
                             selectedRecords={selectedRecords}
+                            uploading={uploading}
                             onSelectRecord={setSelectedRecords}
                             onUpload={selectFile}
                             CameraUpload={CameraUpload}
@@ -451,9 +459,27 @@ const DoctorSlot = (props: any) => {
                             <Text style={styles.price}>Rs {selectedSlot?.amount ?? doctorDetails?.consultation_fee ?? 0}</Text>
                         </View>
 
-                        <TouchableOpacity activeOpacity={0.85} disabled={loadingSlots || groupedSlots.length === 0} style={[styles.payBtn, (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && { opacity: 0.5, backgroundColor: '#CBD5E1' }]} onPress={handleContinue}>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            disabled={!isGuest && (loadingSlots || groupedSlots.length === 0)}
+                            style={[
+                                styles.payBtn,
+                                isGuest && styles.payBtnLocked,
+                                !isGuest && (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && {
+                                    opacity: 0.5,
+                                    backgroundColor: '#CBD5E1',
+                                },
+                            ]}
+                            onPress={handleContinue}
+                        >
                             <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-                            <Text style={styles.payText}>{loadingSlots ? 'Loading...' : 'Continue'}</Text>
+                            <Text style={styles.payText}>
+                                {isGuest
+                                    ? 'Login to Book'
+                                    : loadingSlots
+                                        ? 'Loading...'
+                                        : 'Continue'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -471,6 +497,7 @@ const styles = StyleSheet.create({
     headerContainer: { backgroundColor: '#0D614E0D', borderBottomLeftRadius: 56, borderBottomRightRadius: 56, paddingHorizontal: 20, paddingBottom: 28 },
     headerTop: { flexDirection: 'row', paddingHorizontal: 20, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'space-between', minHeight: 50 },
     iconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+    backIcon: { width: 36, height: 36, resizeMode: 'contain' },
     avatarBgWrapper: { justifyContent: 'center', alignItems: 'center', marginBottom: -10 },
 
     avatarWrapper: { width: 105, height: 105, borderRadius: 24, borderWidth: 1, overflow: 'hidden', borderColor: '#DDEBE8', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginBottom: 12, padding: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
@@ -576,5 +603,6 @@ const styles = StyleSheet.create({
     feeLabel: { fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: '#94A3B8' },
     price: { fontSize: 28, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor },
     payBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryColor, height: 56, paddingHorizontal: 36, borderRadius: 18, flex: 1 },
+    payBtnLocked: { backgroundColor: '#64748B' },
     payText: { marginLeft: 8, fontSize: 16, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },
 });

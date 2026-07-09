@@ -47,7 +47,7 @@ export const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.primaryColor,
+        // backgroundColor: Colors.background,
         justifyContent: 'space-between',
     },
 

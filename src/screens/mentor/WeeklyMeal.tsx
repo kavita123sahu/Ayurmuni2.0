@@ -16,6 +16,7 @@ import { CalenderCard } from '../../components/CalenderCard';
 import { generateDates } from '../../common/DataInterface';
 import SectionHeader from '../../components/SectionHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import TablerIcon from '../../components/TablerIcon';
 
 const days = [
     { day: 'Mon', date: 12 },
@@ -130,7 +131,6 @@ const WeeklyMeal = (props: any) => {
 
             <AppHeader
                 title="Meal Details"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
             />
 
@@ -189,7 +189,7 @@ const WeeklyMeal = (props: any) => {
 
 
             <TouchableOpacity style={styles.button} onPress={() => props.navigation.navigate('YogaSession')}>
-                <Image source={Images.Spoon} style={{ height: 16, width: 16, tintColor: '#ffff', marginRight: 10 }} />
+                <TablerIcon name="spoon" size={16} color={'#ffff'} />
                 <Text style={styles.buttonText}>Smart Auto-Fill Week</Text>
             </TouchableOpacity>
 

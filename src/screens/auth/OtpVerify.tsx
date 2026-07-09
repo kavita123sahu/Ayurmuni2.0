@@ -21,6 +21,7 @@ import { Colors } from '../../common/Colors';
 import { ApiResponse, showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService'
 import { Utils } from '../../common/Utils';
+import { onLoginSuccess } from '../../services/guestAuth';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -46,12 +47,19 @@ const COLLAGE_HEIGHT = 500; // Reduced height for OTP screen
 const TILE_HEIGHT = 180;
 const TILE_GAP = 10;
 
-const IMAGE_POOL = Array.from({ length: 6 }, (_, i) => (Images as any)[`login${i}`] ?? Images.FinalLogo);
-
-// Hardcoded shuffled columns with no duplicates at same position
-const COLUMN_LEFT = [IMAGE_POOL[2], IMAGE_POOL[5], IMAGE_POOL[1], IMAGE_POOL[4], IMAGE_POOL[3]];
-const COLUMN_CENTER = [IMAGE_POOL[4], IMAGE_POOL[2], IMAGE_POOL[3], IMAGE_POOL[5], IMAGE_POOL[1]];
-const COLUMN_RIGHT = [IMAGE_POOL[1], IMAGE_POOL[3], IMAGE_POOL[5], IMAGE_POOL[2], IMAGE_POOL[4]];
+const IMAGE_POOL = [
+    Images.login1,
+    Images.login2,
+    Images.login3,
+    Images.login4,
+    Images.login5,
+    Images.login6,
+    Images.login7,
+    Images.login8,
+];
+const COLUMN_LEFT = [IMAGE_POOL[0], IMAGE_POOL[1], IMAGE_POOL[2], IMAGE_POOL[0], IMAGE_POOL[1]];
+const COLUMN_CENTER = [IMAGE_POOL[2], IMAGE_POOL[3], IMAGE_POOL[4], IMAGE_POOL[2], IMAGE_POOL[3]];
+const COLUMN_RIGHT = [IMAGE_POOL[1], IMAGE_POOL[3], IMAGE_POOL[4], IMAGE_POOL[0], IMAGE_POOL[2]];
 
 type Direction = 'up' | 'down';
 
@@ -164,6 +172,25 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
         }, [])
     );
 
+    const loadStoredOtp = async () => {
+        try {
+            const storedOtp =
+                await Utils.getData("_OTP");
+
+            if (storedOtp) {
+                setOtp(
+                    storedOtp.toString().split(""),
+                );
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    useEffect(() => {
+        loadStoredOtp();
+    }, []);
+
     // Shake animation for error
     const shake = () => {
         shakeAnim.setValue(0);
@@ -212,6 +239,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             console.log("verify_otp_response--->", response);
 
             if (response?.success) {
+                await onLoginSuccess();
                 Utils.storeData('_USER_ID', response?.data?.user_id);
                 Utils.storeData('_TOKEN', response?.data?.access);
                 Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
@@ -261,6 +289,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             if (response?.success) {
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
 
+                await onLoginSuccess();
                 Utils.storeData('_USER_ID', response?.data?.user_id);
                 Utils.storeData('_TOKEN', response?.data?.access);
                 Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
@@ -343,6 +372,8 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
 
             const response: any = await _AUTH_SERVICE.send_otp(send_data);
             console.log("resend_otp_response", response?.data?.otp);
+            Utils.storeData("_OTP", response?.data?.otp)
+            await loadStoredOtp();
 
             setIsLoading(false);
             if (response?.success) {

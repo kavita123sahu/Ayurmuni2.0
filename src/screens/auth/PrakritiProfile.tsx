@@ -17,6 +17,8 @@ import { Styles } from '../../common/Styles';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { PrakritiProfileSkeleton } from '../../simmerScreen/ShimmerHook';
 import { Feather } from '../../common/Vector';
+import BackIconButton from '../../components/BackIconButton';
+import TablerIcon from '../../components/TablerIcon';
 
 
 const { width } = Dimensions.get('window');
@@ -199,14 +201,12 @@ const PrakritiProfile = (props: any) => {
       <StatusBar barStyle={'dark-content'} backgroundColor={Colors.primaryColor} />
       {/* ===== HEADER ===== */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => props.navigation.goBack()}>
-          <Image source={Images.backIcon} style={{ height: 40, width: 40 }} />
-        </TouchableOpacity>
+        <BackIconButton onPress={() => props.navigation.goBack()} style={styles.iconBtn} />
 
         <Text style={styles.headerTitle}>Prakriti Analysis</Text>
 
         <TouchableOpacity style={styles.iconBtn}>
-          <Image source={Images.share} style={{ height: 40, width: 40 }} />
+          <TablerIcon name="share" size={22} color={Colors.primaryColor} />
         </TouchableOpacity>
       </View>
 

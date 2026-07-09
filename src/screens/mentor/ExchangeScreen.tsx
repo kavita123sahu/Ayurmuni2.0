@@ -14,6 +14,7 @@ import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
+import TablerIcon from '../../components/TablerIcon';
 
 const reasons = [
   'Wrong size/variant',
@@ -52,7 +53,7 @@ const ExchangeScreen = (props: any) => {
 
       <Text style={styles.radioText}>{label}</Text>
       <View style={[styles.radiocircle, selected && styles.activeCircle]}>
-        {selected && <Image source={Images.tick} style={{ height: 15, width: 15, tintColor: '#FFFF' }} />}
+        {selected && <TablerIcon name="check" size={15} color={'#FFFF'} />}
       </View>
       {/* <View style={[styles.dot, selected && styles.dotActive]} /> */}
     </TouchableOpacity>
@@ -65,7 +66,6 @@ const ExchangeScreen = (props: any) => {
 
       <AppHeader
         title="Order Details "
-        leftIcon={Images.backIcon}
         onLeftPress={() => props.navigation.goBack()}
       />
 
@@ -129,7 +129,7 @@ const ExchangeScreen = (props: any) => {
               <Text style={styles.dropdownText}>
                 500mg - 30 Pack (Even Exchange)
               </Text>
-              <Image source={Images.dropdown} style={{ height: 20, width: 20 }} />
+              <TablerIcon name="chevron-down" size={20} color={Colors.primaryColor} />
             </TouchableOpacity>
 
           </View>

@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { Images } from '../common/Images';
+import TablerIcon from './TablerIcon';
 import { useNavigation } from '@react-navigation/native';
 
 type Props = {
@@ -22,7 +22,7 @@ const OrderCard: React.FC<Props> = ({
   amount,
 }) => {
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const isDelivered = status === 'DELIVERED';
   
 
@@ -31,7 +31,7 @@ const OrderCard: React.FC<Props> = ({
       {/* Top Row */}
       <View style={styles.topRow}>
         <View style={styles.iconBox}>
-          <Image source={Images.orders} style={styles.icon} />
+          <TablerIcon name="receipt" size={20} color="#1B5E54" />
         </View>
 
         <View style={{ flex: 1 }}>
@@ -104,12 +104,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
-  },
-
-  icon: {
-    width: 20,
-    height: 20,
-    tintColor: '#1B5E54',
   },
 
   title: {

@@ -1,17 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, StatusBar } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
-import { Images } from "../../common/Images";
 import SearchBar from "../../components/SearchBar";
 import { Ionicons } from "../../common/Vector";
 import DynamicGrid from "../../components/DynamicGrid";
 import { Colors } from "../../common/Colors";
 import SectionHeader from "../../components/SectionHeader";
 import { Fonts } from "../../common/Fonts";
-import { Styles } from "../../common/Styles";
 import FAQItem from "../../components/FAQItem";
-
+import TablerIcon, { TablerIconName } from "../../components/TablerIcon";
 
 const HelpCenterScreen = (props: any) => {
 
@@ -38,40 +36,22 @@ const HelpCenterScreen = (props: any) => {
     ];
 
     const categoryData = [
-        {
-            id: "1",
-            title: "Appointments",
-            icon: Images.calender,
-        },
-        {
-            id: "2",
-            title: "Orders",
-            icon: Images.orders,
-        },
-        {
-            id: "3",
-            title: "Records",
-            icon: Images.report,
-        },
-         {
-            id: "4",
-            title: "Payments",
-            icon: Images.card,
-        },
-
+        { id: "1", title: "Appointments", iconName: 'calendar' as TablerIconName },
+        { id: "2", title: "Orders", iconName: 'receipt' as TablerIconName },
+        { id: "3", title: "Records", iconName: 'report' as TablerIconName },
+        { id: "4", title: "Payments", iconName: 'credit-card' as TablerIconName },
     ];
 
-    const CategoryCard = ({ title, icon }: any) => {
+    const CategoryCard = ({ title, iconName }: { title: string; iconName: TablerIconName }) => {
         return (
             <View style={styles.card}>
                 <View style={{backgroundColor: '#0D614E0D', padding:10, justifyContent:'center',alignItems:'center', borderRadius:10}}>
-                    <Image source={icon} style={styles.icon} tintColor={Colors.primaryColor} />
+                    <TablerIcon name={iconName} size={24} color={Colors.primaryColor} />
                 </View>
                 <Text style={styles.text}>{title}</Text>
             </View>
         );
     };
-
 
     const HelpSection = () => {
         return (
@@ -89,7 +69,7 @@ const HelpCenterScreen = (props: any) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.chatBtn}>
-                        <Image source={Images.ChatSupport} style={Styles.IconSize} tintColor={Colors.primaryColor} />
+                        <TablerIcon name="chat-support" size={18} color={Colors.primaryColor} />
                         <Text style={styles.chatText}>Chat Support</Text>
                     </TouchableOpacity>
                 </View>
@@ -104,9 +84,8 @@ const HelpCenterScreen = (props: any) => {
 
             <AppHeader
                 title="Help Center"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
-                rightIcon="search"
+                rightIconName="search"
                 onRightPress={() => console.log('Search clicked')}
             />
 
@@ -115,9 +94,7 @@ const HelpCenterScreen = (props: any) => {
 
                     <SearchBar
                         placeholder="Search for reports, doctors..."
-                        icon={require('../../assets/images/Search.png')} />
-
-
+                        />
 
                     <SectionHeader title="Categories" />
 
@@ -125,7 +102,7 @@ const HelpCenterScreen = (props: any) => {
                         data={categoryData}
                         columns={2}
                         renderItem={(item) => (
-                            <CategoryCard title={item.title} icon={item.icon} />
+                            <CategoryCard title={item.title} iconName={item.iconName} />
                         )}
                     />
 
@@ -161,13 +138,6 @@ const styles = StyleSheet.create({
     content: {
         padding: 20,
     },
-    section: {
-        marginTop: 20,
-        marginBottom: 10,
-        fontSize: 14,
-        fontWeight: "600",
-    },
-
     container1: {
         backgroundColor: "#F1F5F9",
         padding: 16,
@@ -205,7 +175,6 @@ const styles = StyleSheet.create({
         color: "#fff",
         marginLeft: 6,
         fontFamily: Fonts.PoppinsMedium
-
     },
     chatBtn: {
         flex: 1,
@@ -217,18 +186,15 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         justifyContent: "center",
         alignItems: "center",
+        gap: 6,
     },
     chatText: {
         marginLeft: 6,
         color: "#065F46",
-
         fontFamily: Fonts.PoppinsMedium
     },
-    grid: {
-        flexDirection: "row",
-    },
     card: {
-        flex: 1, // ✅ IMPORTANT
+        flex: 1,
         backgroundColor: "#ffffff",
         borderRadius: 14,
         paddingVertical: 16,
@@ -237,13 +203,6 @@ const styles = StyleSheet.create({
         borderColor: Colors.borderColor,
         alignItems: 'center',
         justifyContent: "center",
-    },
-    icon: {
-        height: 24,
-        width: 24,
-       
-       
-        // marginBottom: 8,
     },
     text: {
         fontSize: 13,

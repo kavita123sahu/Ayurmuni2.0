@@ -26,7 +26,14 @@ export default function ChatScreen({ route }: ChatScreenProps) {
     //     patientAvatar: undefined,
     // };
 
-   const {appointmentId, role, doctorName, patientName, doctorAvatar, patientAvatar} = route?.params || {}; 
+    const {
+        appointmentId = '',
+        role = 'patient' as const,
+        doctorName = '',
+        patientName = '',
+        doctorAvatar,
+        patientAvatar,
+    } = route?.params || {};
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>

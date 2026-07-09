@@ -11,15 +11,20 @@ import { Product } from '../types';
 import { Fonts } from '../common/Fonts';
 
 interface Props {
-  data: Product[];
+  data?: Product[];
 }
 
-const RecentProductsList: React.FC<Props> = ({ data }) => {
+const RecentProductsList: React.FC<Props> = ({ data = [] }) => {
+  const safeData = Array.isArray(data) ? data : [];
+
+  if (safeData.length === 0) return null;
+
   return (
     <FlatList
-      data={data}
+      data={safeData}
       scrollEnabled={false}
-      keyExtractor={(item) => item.id}
+      nestedScrollEnabled
+      keyExtractor={(item, index) => String(item?.id ?? index)}
       renderItem={({ item }) => (
         <View style={styles.card}>
 
@@ -57,7 +62,7 @@ const RecentProductsList: React.FC<Props> = ({ data }) => {
   );
 };
 
-export default RecentProductsList;
+export default React.memo(RecentProductsList);
 
 const styles = StyleSheet.create({
   card: {

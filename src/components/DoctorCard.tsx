@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { Images } from "../common/Images";
 import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
+import TablerIcon from '../components/TablerIcon';
 
 
 type DoctorCardProps = {
@@ -58,7 +59,7 @@ export default function DoctorCard({
                     <Text style={styles.speciality}>{data.speciality}</Text>
 
                     <View style={{ flexDirection: 'row' }}>
-                        <Image source={Images.clock} style={{ height: 15, tintColor: '#10B981', width: 15, marginTop: 2, marginRight: 5 }} />
+                        <TablerIcon name="clock" size={15} color={'#10B981'} />
                         <Text style={styles.meta}>
                             {data.exp} Yrs • ⭐ {data.rating}
                         </Text>

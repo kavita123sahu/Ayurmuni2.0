@@ -423,9 +423,9 @@
 
 //       <AppHeader
 //         title="Appointment Details"
-//         leftIcon={Images.backIcon}
+//
 //         onLeftPress={() => navigation.goBack()}
-//         rightIcon="search"
+//         rightIconName="search"
 //         onRightPress={() => console.log('Search clicked')}
 //       />
 
@@ -762,6 +762,7 @@ import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
 import FeedbackModal from '../FeedbackModal';
 import { useCreateReview } from '../../hooks/useCreateReview';
+import TablerIcon from '../../components/TablerIcon';
 
 // ---------------------------------------------------------------------
 // LUXURY THEME TOKENS
@@ -876,7 +877,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
     const response = await submitReview({
       entityType: 'doctor',
       appointmentId: appointmentData?.consultationId,
-      reviewData: { rating, review, image_urls: [] },
+      reviewData: { rating, review, appointment: appointmentData?.consultationId ?? '' },
     });
 
     if (response?.success) {
@@ -890,6 +891,35 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
   };
 
   const isLive = data?.appointment?.call_status === 'in_progress';
+
+  const isEnded = data?.appointment?.call_status === 'ended';
+
+  const today = new Date();
+
+  // Follow-up date
+  const followUpDate = data?.appointment?.follow_up?.date
+    ? new Date(data?.appointment.follow_up.date)
+    : null;
+
+  // Appointment date + 7 days
+  const appointmentDate = new Date(data?.appointment?.appointment_date);
+  const sevenDaysAfterAppointment = new Date(appointmentDate);
+  sevenDaysAfterAppointment.setDate(sevenDaysAfterAppointment.getDate() + 7);
+
+  // Chat visibility
+  const isChatVisible =
+    isLive ||
+    (isEnded &&
+      (
+        // Follow-up scheduled and not expired
+        (data?.appointment?.follow_up?.schedule &&
+          followUpDate &&
+          followUpDate >= today) ||
+
+        // No follow-up -> allow for 7 days
+        (!data?.appointment?.follow_up?.schedule &&
+          today <= sevenDaysAfterAppointment)
+      ));
 
   return (
     <View style={styles.heroCard}>
@@ -924,7 +954,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
         <View style={styles.dateTimeBox}>
           <View style={styles.dtItem}>
             <View style={styles.iconCircle}>
-              <Image source={Images.calender} style={Styles.IconSize} />
+              <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.label}>DATE</Text>
@@ -936,7 +966,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
           <View style={styles.dtItem}>
             <View style={styles.iconCircle}>
-              <Image source={Images.clock} style={Styles.IconSize} />
+              <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.label}>TIME</Text>
@@ -945,8 +975,8 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
           </View>
         </View>
 
-        {isLive && (
-          <View style={{ marginTop: 4 }}>
+        <View style={{ marginTop: 4 }}>
+          {isLive && (
             <PrimaryButton
               title="Join Video Call"
               page="appoint"
@@ -959,13 +989,14 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                 });
               }}
             />
+          )}
 
+          {isChatVisible && (
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.secondaryBtn}
               onPress={() => {
                 navigation.navigate('ChatScreen', {
-                  doctorName: data?.doctor?.doctor_name,
                   doctorAvatar: data?.doctor?.doctor_image,
                   appointmentId: data?.appointment?.consultation_id,
                   patientName: data?.appointment?.patient?.patient_name,
@@ -974,11 +1005,16 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                 });
               }}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={17} color={Theme.emerald} />
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={17}
+                color={Theme.emerald}
+              />
               <Text style={styles.secondaryText}>Chat with Doctor</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
+
       </View>
 
       <FeedbackModal
@@ -1059,7 +1095,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     payload: {
       action: string;
       availability: number;
-      reschedule_reason: string;
+      reschedule_reason?: string;
       cancellation_reason?: string;
     }
   ) => {
@@ -1119,9 +1155,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
       <AppHeader
         title="Appointment Details"
-        leftIcon={Images.backIcon}
         onLeftPress={() => navigation.goBack()}
-        rightIcon="search"
+        rightIconName="search"
         onRightPress={() => console.log('Search clicked')}
       />
 

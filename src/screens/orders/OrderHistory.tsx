@@ -66,14 +66,13 @@ const OrderHistory = (props: any) => {
             <Header
                 title="Order History"
                 subtitle="Track your medicines & labs"
-                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 
             <SearchBar
                 placeholder="Search order id..."
-                icon={require('../../assets/images/Search.png')}
-            />
+
+                />
 
 
             <FlatList

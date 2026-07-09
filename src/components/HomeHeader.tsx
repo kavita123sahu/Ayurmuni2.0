@@ -7,16 +7,22 @@ import {
     Image,
     Pressable,
     FlatList,
+    ScrollView,
 } from 'react-native';
-import { Feather } from '../common/Vector';
+import TablerIcon from './TablerIcon';
+import CartBadge from './CartBadge';
+import { useCartCount } from '../hooks/Cart';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { Images } from '../common/Images';
 import *as _PROFILE_SERVICES from '../services/ProfileServices';
 import CustomBottomSheet from './CustomBottomSheet';
 import { useHomeData } from '../hooks/UseHomeData';
+import { requireAuth } from '../services/guestAuth';
+import { useLocation } from '../context/LocationContext';
+import { useAppDispatch } from '../store/hooks';
+import { fetchCart } from '../store/slices/cartSlice';
 
 interface Address {
     id: string;
@@ -54,6 +60,9 @@ const HomeHeader = ({
     progress2 = 0,
 }: Props) => {
     const navigation = useNavigation<any>();
+    const stackNavigation = navigation.getParent?.() || navigation;
+    const dispatch = useAppDispatch();
+    const cartCount = useCartCount();
     const [localAddresses, setLocalAddresses] =
         useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
@@ -62,6 +71,8 @@ const HomeHeader = ({
         customerData,
         fetchCustomerData
     } = useHomeData();
+
+    const { currentAddress, loadingLocation } = useLocation();
 
 
     const savedAddresses =
@@ -77,15 +88,43 @@ const HomeHeader = ({
     );
 
     const shortAddress = useMemo(() => {
-        if (!defaultAddress?.address_line_1) {
-            return 'Select Location';
+        if (defaultAddress?.address_line_1) {
+            return `${defaultAddress.address_line_1.slice(
+                0,
+                22,
+            )}, ${defaultAddress.city}`;
         }
 
-        return `${defaultAddress.address_line_1.slice(
-            0,
-            22,
-        )}, ${defaultAddress.city}`;
-    }, [defaultAddress]);
+        if (currentAddress?.formatted_address) {
+            return currentAddress.formatted_address.slice(0, 40);
+        }
+
+        return 'Select Location';
+    }, [defaultAddress, currentAddress]);
+
+    const locationSubtext = useMemo(() => {
+        if (defaultAddress) {
+            return [defaultAddress.state, defaultAddress.zipcode]
+                .filter(Boolean)
+                .join(', ');
+        }
+        if (currentAddress) {
+            return [currentAddress.city, currentAddress.state, currentAddress.zipcode]
+                .filter(Boolean)
+                .join(', ');
+        }
+        return '';
+    }, [defaultAddress, currentAddress]);
+
+    const currentLocationPreview = useMemo(() => {
+        if (currentAddress?.formatted_address) {
+            return currentAddress.formatted_address;
+        }
+        if (loadingLocation) {
+            return 'Detecting your location...';
+        }
+        return 'Tap to use GPS location';
+    }, [currentAddress, loadingLocation]);
 
 
     const profileImage =
@@ -102,7 +141,8 @@ const HomeHeader = ({
     useFocusEffect(
         useCallback(() => {
             fetchCustomerData();
-        }, [fetchCustomerData]),
+            dispatch(fetchCart(false));
+        }, [fetchCustomerData, dispatch]),
     );
 
 
@@ -218,7 +258,7 @@ const HomeHeader = ({
                                 item?.address_type === 'home' ||
                                     item?.address_type === 'other' ? (
 
-                                    <Feather
+                                    <TablerIcon
                                         name="home"
                                         size={20}
                                         color={Colors.primaryColor}
@@ -226,7 +266,7 @@ const HomeHeader = ({
 
                                 ) : (
 
-                                    <Feather
+                                    <TablerIcon
                                         name="briefcase"
                                         size={20}
                                         color={Colors.primaryColor}
@@ -320,12 +360,7 @@ const HomeHeader = ({
                     <TouchableOpacity style={styles.locationContainer} onPress={() => setShowSheet(true)}>
 
                         <Text style={styles.locationLabel}>
-                            {
-                                [defaultAddress?.state, defaultAddress?.zipcode]
-                                    .filter(Boolean)
-                                    .join(', ') || ''
-                            }
-
+                            {locationSubtext}
                         </Text>
 
                         <View style={styles.locationRow}>
@@ -340,7 +375,7 @@ const HomeHeader = ({
 
                             {/* ICON WRAPPER */}
                             <View style={styles.iconWrapper}>
-                                <Feather
+                                <TablerIcon
                                     name="chevron-down"
                                     size={16}
                                     color="#111827"
@@ -358,21 +393,26 @@ const HomeHeader = ({
                     {/* <TouchableOpacity
                         onPress={() => navigation.navigate('EmergencySOS')}
                     >
-                        <Image source={Images.SOS} style={{ height: 40, width: 40 }} />
+                        <TablerIcon name="alert-circle" size={24} color="#F43F5E" />
                     </TouchableOpacity> */}
 
                     <TouchableOpacity
                         style={styles.bellButton}
-                        onPress={() => navigation.navigate('MyCart')}
+                        onPress={() => stackNavigation.navigate('MyCart')}
                     >
-                        <Image source={Images.shopCart} style={{ height: 20, tintColor: Colors.primaryColor, width: 20 }} />
+                        <TablerIcon name="shopping-cart" size={20} color={Colors.primaryColor} />
+                        <CartBadge count={cartCount} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.bellButton}
-                        onPress={() => navigation.navigate('Notifications')}
+                        onPress={async () => {
+                            if (await requireAuth('Please login to view notifications')) {
+                                stackNavigation.navigate('Notifications');
+                            }
+                        }}
                     >
-                        <Feather name="bell" size={20} color="#000" />
+                        <TablerIcon name="bell" size={20} color="#000" />
                         <View style={styles.dot} />
                     </TouchableOpacity>
 
@@ -446,9 +486,24 @@ const HomeHeader = ({
 
                     <TouchableOpacity
                         activeOpacity={0.7}
-                        onPress={() => {
+                        onPress={async () => {
                             setShowSheet(false);
-                            navigation.navigate('LocationPickerScreen');
+                            if (currentAddress) {
+                                navigation.navigate('AddEditAddress', {
+                                    type: 'ADD',
+                                    selectedLocation: {
+                                        address_line_1: currentAddress.address_line_1,
+                                        address_line_2: currentAddress.address_line_2,
+                                        city: currentAddress.city,
+                                        state: currentAddress.state,
+                                        zipcode: currentAddress.zipcode,
+                                        country: currentAddress.country,
+                                        formatted_address: currentAddress.formatted_address,
+                                    },
+                                });
+                            } else {
+                                navigation.navigate('LocationPickerScreen');
+                            }
                         }}
                         style={styles.rowCard}
                     >
@@ -456,7 +511,7 @@ const HomeHeader = ({
                         <View style={styles.leftRow}>
 
                             <View style={styles.currentLocationIcon}>
-                                <Feather
+                                <TablerIcon
                                     name="crosshair"
                                     size={20}
                                     color={Colors.primaryColor}
@@ -473,14 +528,14 @@ const HomeHeader = ({
                                     numberOfLines={2}
                                     style={styles.subText}
                                 >
-                                    Gurgaon Sector 22, Haryana 122022
+                                    {currentLocationPreview}
                                 </Text>
 
                             </View>
 
                         </View>
 
-                        <Feather
+                        <TablerIcon
                             name="chevron-right"
                             size={20}
                             color="#98A2B3"
@@ -512,7 +567,7 @@ const HomeHeader = ({
                         <Pressable style={styles.leftRow} >
 
                             <View style={styles.plusWrapper}>
-                                <Feather
+                                <TablerIcon
                                     name="plus"
                                     size={20}
                                     color={Colors.primaryColor}
@@ -525,7 +580,7 @@ const HomeHeader = ({
 
                         </Pressable>
 
-                        <Feather
+                        <TablerIcon
                             name="chevron-right"
                             size={20}
                             color="#98A2B3"
@@ -565,7 +620,13 @@ const HomeHeader = ({
 
                 </View>
 
-                <View style={{ flex: 1 }}>
+                {/* <View style={{ flex: 1 }}> */}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{
+                        paddingBottom: 120,
+                    }}
+                >
                     <FlatList
                         data={savedAddresses}
                         renderItem={renderSavedAddress}
@@ -578,8 +639,9 @@ const HomeHeader = ({
                         updateCellsBatchingPeriod={50}
                         showsVerticalScrollIndicator={false}
                     />
+                </ScrollView>
 
-                </View>
+                {/* </View> */}
             </CustomBottomSheet>
 
 
@@ -593,9 +655,9 @@ export default React.memo(HomeHeader);
 const styles = StyleSheet.create({
 
     container: {
-        paddingVertical: 12,
+        paddingVertical: 10,
         backgroundColor: '#fff',
-        paddingHorizontal: 5, // important for responsiveness
+        paddingHorizontal: 0,
     },
     profileImage: {
         width: '100%',
@@ -715,13 +777,13 @@ const styles = StyleSheet.create({
     rightIcons: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
     },
 
     bellButton: {
-        height: 40,
-        width: 40,
-        borderRadius: 12,
+        height: 38,
+        width: 38,
+        borderRadius: 11,
         borderWidth: 1,
         borderColor: Colors.borderColor,
         justifyContent: 'center',

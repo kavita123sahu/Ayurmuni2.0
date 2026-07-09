@@ -157,11 +157,6 @@ const MultipleDoctorSlip = ({
                     <View style={styles.medicineLeft}>
                         <View style={styles.iconWrapper}>
                             <Image source={{ uri: item?.medicine_image }} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
-                            <Ionicons
-                                name={Images.Medicines}
-                                size={18}
-                                color={Colors.primaryColor}
-                            />
                         </View>
 
                         <View style={styles.medicineInfo}>
@@ -208,7 +203,6 @@ const MultipleDoctorSlip = ({
             <Header
                 title="Doctor Slip"
                 subtitle="Find best advice for your health"
-                backIcon={Images.backIcon}
                 onBack={() => navigation.goBack()}
             />
 

@@ -228,16 +228,11 @@ const PatientFAQ = ({ navigation }: any) => {
                 const formattedQuestions =
                     questions.map((item: any) => ({
                         id: item?.id,
-
                         key: String(item?.id),
-
                         question: item?.question,
-
                         answer_type: item?.answer_type,
-
                         choices: item?.choices || [],
                     }));
-
                 /*
                     PREFILLED ANSWERS
                 */

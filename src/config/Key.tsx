@@ -3,10 +3,7 @@ import { Fonts } from "../common/Fonts";
 import { Platform } from "react-native";
 
 export const BaseUrl = {
-    url: 'https://clikshop.co.in/api/v1/',
-    urlV3: 'https://clikshop.co.in/api/v3/',
-    base: 'https://clikshop.co.in/',
-    base_url: "https://ayurmuni-backend.onrender.com/"
+    base_url: "https://ayurmuni.aimantra.info/"
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/
     // https://6057-203-110-81-106.ngrok-free.app/
@@ -15,6 +12,7 @@ export const BaseUrl = {
     //"https://ayurmunistaging.aimantra.info"
     // https://scarce-derby-voice.ngrok-free.dev
 };
+
 
 
 export const Method = {
@@ -31,6 +29,12 @@ export const ZUGOKey = {
 }
 
 export const APP_ID = 'YOUR_AGORA_APP_ID';
+
+/** Google Maps SDK key (Android/iOS native maps) */
+export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';
+
+/** Google Places / Geocoding API key */
+export const GOOGLE_PLACES_API_KEY = 'AIzaSyClCQ_htPKkUayS7yWuY9kNj54gIQSnXiE';
 
 export interface ApiResponse {
     status_code: number;
@@ -65,20 +69,3 @@ export const showSuccessToast = (
     });
 };
 
-
-const formatDate = (
-    dateString: string,
-) => {
-
-    return new Date(
-        dateString,
-    ).toLocaleDateString(
-        'en-US',
-        {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-        },
-    );
-};  

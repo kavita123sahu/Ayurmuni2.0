@@ -1,15 +1,16 @@
 // components/TransactionCard.tsx
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
 interface Props {
     name: string;
     date: string;
     amount: string;
     status: string;
-    icon: any;
+    iconName?: TablerIconName;
 }
 
 const TransactionCard: React.FC<Props> = ({
@@ -17,16 +18,16 @@ const TransactionCard: React.FC<Props> = ({
     date,
     amount,
     status,
-    icon,
+    iconName = 'receipt',
 }) => {
     const getStatusColor = (status: string) => {
         switch (status) {
             case "PAID":
-                return "#16A34A"; // green
+                return "#16A34A";
             case "REFUNDED":
-                return "#DC2626"; // red
+                return "#DC2626";
             case "PENDING":
-                return "#F59E0B"; // yellow
+                return "#F59E0B";
             default:
                 return "#6B7280";
         }
@@ -35,7 +36,7 @@ const TransactionCard: React.FC<Props> = ({
         <View style={styles.container}>
             <View style={styles.left}>
                 <View style={styles.iconBox}>
-                    <Image source={icon} style={styles.icon} />
+                    <TablerIcon name={iconName} size={20} color={Colors.primaryColor} />
                 </View>
 
                 <View>
@@ -45,7 +46,7 @@ const TransactionCard: React.FC<Props> = ({
             </View>
 
             <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.amount}>Rs. {amount}</Text>
+                <Text style={styles.amount}>₹ {amount}</Text>
                 <Text style={[styles.status, { color: getStatusColor(status) }]}>
                     {status}
                 </Text>
@@ -58,8 +59,8 @@ export default TransactionCard;
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#ffffff',
-        padding: 14,
+        backgroundColor: '#ffff',
+        padding: 16,
         borderRadius: 14,
         flexDirection: 'row',
         borderWidth: 1,
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
     left: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     iconBox: {
         width: 40,
@@ -81,10 +83,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 12,
     },
-    icon: {
-        width: 20,
-        height: 20,
-    },
     name: {
         fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
@@ -94,16 +92,15 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: Colors.subTextColor,
         fontFamily: Fonts.PoppinsRegular,
-
     },
     amount: {
         fontSize: 14,
-        color: Colors.textColor,
         fontFamily: Fonts.PoppinsSemiBold,
+        color: Colors.textColor,
     },
     status: {
-        fontSize: 12,
+        fontSize: 11,
         fontFamily: Fonts.PoppinsMedium,
-
+        marginTop: 2,
     },
 });

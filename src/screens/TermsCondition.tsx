@@ -16,6 +16,7 @@ import { Fonts } from '../common/Fonts';
 import { showSuccessToast } from '../config/Key';
 import { Images } from '../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import TablerIcon from '../components/TablerIcon';
 
 const { height } = Dimensions.get('window');
 
@@ -47,7 +48,7 @@ const TermsCondition = (props: any) => {
       {/* HEADER */}
       <View style={styles.header}>
         {/* <TouchableOpacity onPress={() => props.navigation.goBack()}>
-          <Image source={Images.backIcon} style={styles.backIcon} />
+          <TablerIcon name="arrow-left" size={22} color={Colors.primaryColor} style={styles.backIcon} />
         </TouchableOpacity> */}
       </View>
 

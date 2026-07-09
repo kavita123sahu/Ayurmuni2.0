@@ -182,7 +182,6 @@ const DietScreen = (props: any) => {
             <Header
                 title="Diet"
                 subtitle="Track your medical journey"
-                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 

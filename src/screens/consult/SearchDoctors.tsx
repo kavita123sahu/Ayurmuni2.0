@@ -608,11 +608,10 @@ const AllDoctors = (props: any) => {
 
             <AppHeader
                 title=""
-                leftIcon={Images.backIcon}
                 onLeftPress={() =>
                     props.navigation.goBack()
                 }
-                rightIcon={Images.Bell}
+                rightIconName="bell"
             />
 
 
@@ -663,8 +662,8 @@ const AllDoctors = (props: any) => {
                                         setSearch
                                     }
 
-                                    icon={require('../../assets/images/Search.png')}
-                                />
+
+                                    />
 
                                 {/* FILTER TAB */}
 

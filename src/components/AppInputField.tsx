@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Modal,
   FlatList,
@@ -12,65 +11,31 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
 const AppInputField = ({
   label,
   placeholder,
-  leftIcon,
-  rightIcon,
+  leftIconName,
+  rightIconName,
   value,
   options = [],
   onSelect,
   onChangeText,
   containerStyle,
 }: any) => {
-
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-
-  const isDropdownField =
-    options.length > 0;
-
-  const [dropdownVisible, setDropdownVisible] =
-    useState(false);
-
-  const [dropdownOptions, setDropdownOptions] =
-    useState<any[]>([]);
-
-  const [dropdownTitle, setDropdownTitle] =
-    useState('');
+  const isDropdownField = options.length > 0;
+  const [dropdownVisible, setDropdownVisible] = useState(false);
 
   const isDateField =
     label?.toLowerCase() === 'date of birth' ||
     label?.toLowerCase() === 'valid thru';
 
-  const isGenderField =
-    label === 'Gender';
-
-  const isBloodGroupField =
-    label === 'Blood Group';
-
-  const isRelationField =
-    label === 'Relation';
-
-  const isEmergencyRelationField =
-    label === 'Emergency Relation';
-
-
-
-  // 📅 format date
   const formatDate = (date: Date) => {
-
-    const day = String(
-      date.getDate(),
-    ).padStart(2, '0');
-
-    const month = String(
-      date.getMonth() + 1,
-    ).padStart(2, '0');
-
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-
     return `${year}-${month}-${day}`;
   };
 
@@ -79,35 +44,13 @@ const AppInputField = ({
     setDatePickerVisibility(false);
   };
 
-  // ✍️ typing handler (DOB only)
-  const handleChange = (text: string) => {
-    if (isDateField) {
-      let cleaned = text.replace(/\D/g, '');
-      let formatted = cleaned;
-
-      if (cleaned.length > 2 && cleaned.length <= 4) {
-        formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-      } else if (cleaned.length > 4) {
-        formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-      }
-
-      onChangeText(formatted);
-    } else {
-      onChangeText(text);
-    }
-  };
-
-  // 👇 press handler
   const handlePress = () => {
-
     if (isDateField) {
       setDatePickerVisibility(true);
       return;
     }
-
     if (isDropdownField) {
       setDropdownVisible(true);
-      return;
     }
   };
 
@@ -115,201 +58,123 @@ const AppInputField = ({
     <View style={[styles.wrapper, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={handlePress}
-      >
+      <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
         <View style={styles.inputContainer}>
-          {leftIcon && (
-            <Image source={leftIcon} style={styles.leftIcon} />
+          {leftIconName && (
+            <TablerIcon
+              name={leftIconName as TablerIconName}
+              size={18}
+              color="#64748B"
+            />
           )}
 
           <TextInput
             value={value}
             placeholder={placeholder}
-            editable={
-              !isDateField &&
-              !isDropdownField
-            }
+            editable={!isDateField && !isDropdownField}
             onChangeText={onChangeText}
             style={styles.input}
           />
 
-          {rightIcon && (
-            <Image source={rightIcon} style={styles.rightIcon} />
+          {rightIconName && (
+            <TablerIcon
+              name={rightIconName as TablerIconName}
+              size={18}
+              color="#64748B"
+            />
           )}
         </View>
       </TouchableOpacity>
 
-      {/* 📅 DATE PICKER */}
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
         mode="date"
         onConfirm={handleConfirm}
-        onCancel={() =>
-          setDatePickerVisibility(false)
-        }
-        maximumDate={
-          label === 'Date of Birth'
-            ? new Date()
-            : undefined
-        }
-        minimumDate={
-          label === 'Valid Thru'
-            ? new Date()
-            : undefined
-        }
+        onCancel={() => setDatePickerVisibility(false)}
+        maximumDate={label === 'Date of Birth' ? new Date() : undefined}
+        minimumDate={label === 'Valid Thru' ? new Date() : undefined}
       />
 
-     <Modal
-  visible={dropdownVisible}
-  transparent
-  animationType="fade"
->
-  <TouchableOpacity
-    style={styles.modalOverlay}
-    activeOpacity={1}
-    onPress={() =>
-      setDropdownVisible(false)
-    }
-  >
-    <View style={styles.modalBox}>
-
-      <FlatList
-        data={options}
-        keyExtractor={item =>
-          item.value
-        }
-        renderItem={({ item }) => (
-
-          <TouchableOpacity
-            style={styles.option}
-            onPress={() => {
-
-              onSelect?.(item);
-
-              onChangeText?.(
-                item.value,
-              );
-
-              setDropdownVisible(
-                false,
-              );
-            }}
-          >
-            <Text>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-
-        )}
-      />
-
-    </View>
-  </TouchableOpacity>
-</Modal>
+      <Modal visible={dropdownVisible} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View style={styles.dropdownBox}>
+            <FlatList
+              data={options}
+              keyExtractor={(item, i) => String(item?.value ?? i)}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.optionRow}
+                  onPress={() => {
+                    onSelect?.(item.value);
+                    onChangeText?.(item.label);
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.optionText}>{item.label}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
 
 export default AppInputField;
 
-
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
-    paddingHorizontal: 4,
-    width: '100%',
+    marginBottom: 14,
   },
-
   label: {
-    fontSize: 14,
-    color: '#475569',
+    fontSize: 13,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsMedium,
     marginBottom: 6,
-    fontFamily: Fonts.PoppinsSemiBold,
   },
-
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: '#E5E7EB',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    height: 53,
+    paddingHorizontal: 12,
+    height: 50,
+    backgroundColor: '#FFF',
+    gap: 8,
   },
-
   input: {
     flex: 1,
     fontSize: 14,
-    color: Colors.black,
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsRegular,
+    color: Colors.textColor,
+    paddingVertical: 0,
   },
-
-  leftIcon: {
-    width: 18,
-    height: 18,
-    marginRight: 8,
-    tintColor: '#9CA3AF',
-  },
-
-  rightIcon: {
-    width: 18,
-    height: 18,
-    marginLeft: 8,
-    tintColor: '#94A3B8',
-  },
-
-  // 🔥 MODAL STYLES
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    padding: 24,
   },
-  modalBox: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+  dropdownBox: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    maxHeight: 280,
   },
-
-  modalTitle: {
-    fontSize: 16,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#1E293B',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-
-  option: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  optionRow: {
     paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-
-  selectedOption: {
-    backgroundColor: '#0D614E1A', // light green bg
-  },
-
   optionText: {
-    fontSize: 15,
-    color: '#1E293B',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  selectedText: {
-    color: '#0D614E',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  tickIcon: {
-    width: 18,
-    height: 18,
-    tintColor: '#0D614E',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsRegular,
+    color: Colors.textColor,
   },
 });

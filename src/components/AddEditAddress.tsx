@@ -22,25 +22,25 @@ import * as _PROFILE_SERVICES from '../services/ProfileServices';
 
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images';
 import { showSuccessToast } from '../config/Key';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
+import TablerIcon, { TablerIconName } from './TablerIcon';
 
-const ADDRESS_TYPES = [
+const ADDRESS_TYPES: { label: string; value: string; iconName: TablerIconName }[] = [
     {
         label: 'Home',
         value: 'home',
-        icon: Images.home,
+        iconName: 'home',
     },
     {
         label: 'Office',
         value: 'office',
-        icon: Images.office,
+        iconName: 'office',
     },
     {
         label: 'Other',
         value: 'others',
-        icon: Images.location,
+        iconName: 'location',
     },
 ];
 
@@ -252,7 +252,6 @@ const AddEditAddress = ({ navigation, route }: any) => {
                             ? 'Edit Address'
                             : 'Add Address'
                     }
-                    leftIcon={Images.backIcon}
                     onLeftPress={() =>
                         navigation.goBack()
                     }
@@ -269,14 +268,17 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={() =>
-                            navigation.navigate('LocationPickerScreen')
+                            navigation.navigate('LocationPickerScreen', {
+                                returnScreen: 'AddEditAddress',
+                                returnParams: {
+                                    type,
+                                    data: editData,
+                                },
+                            })
                         }
                         style={styles.locationBadge}>
 
-                        <Image
-                            source={Images.currentLocation}
-                            style={styles.badgeIcon}
-                        />
+                        <TablerIcon name="current-location" size={20} color={Colors.primaryColor} />
 
                         <Text style={styles.badgeText}>
                             Current Location
@@ -316,16 +318,14 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                         ]}
                                     >
 
-                                        <Image
-                                            source={item.icon}
-                                            style={[
-                                                styles.typeIcon,
-
-                                                isSelected && {
-                                                    tintColor:
-                                                        Colors.primaryColor,
-                                                },
-                                            ]}
+                                        <TablerIcon
+                                            name={item.iconName}
+                                            size={18}
+                                            color={
+                                                isSelected
+                                                    ? Colors.primaryColor
+                                                    : '#6B7280'
+                                            }
                                         />
 
                                         <Text

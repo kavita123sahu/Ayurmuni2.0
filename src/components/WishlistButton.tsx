@@ -1,11 +1,6 @@
 import React, { useRef } from 'react';
-import {
-  TouchableOpacity,
-  Animated,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { Ionicons } from '../common/Vector';
+import { TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import TablerIcon from './TablerIcon';
 import { Colors } from '../common/Colors';
 
 interface WishlistButtonProps {
@@ -13,10 +8,7 @@ interface WishlistButtonProps {
   onPress: () => void;
 }
 
-const WishlistButton = ({
-  isWishlisted,
-  onPress,
-}: WishlistButtonProps) => {
+const WishlistButton = ({ isWishlisted, onPress }: WishlistButtonProps) => {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
@@ -31,7 +23,6 @@ const WishlistButton = ({
         useNativeDriver: true,
       }),
     ]).start();
-
     onPress?.();
   };
 
@@ -41,26 +32,12 @@ const WishlistButton = ({
       onPress={handlePress}
       style={styles.container}
     >
-      <Animated.View
-        style={[
-          styles.iconWrapper,
-          {
-            transform: [{ scale }],
-          },
-        ]}
-      >
-        <Ionicons
-          name={
-            isWishlisted
-              ? 'heart'
-              : 'heart-outline'
-          }
-          size={16}
-          color={
-            isWishlisted
-              ? Colors.primaryColor
-              : '#666'
-          }
+      <Animated.View style={[styles.iconWrapper, { transform: [{ scale }] }]}>
+        <TablerIcon
+          name={isWishlisted ? 'heart-filled' : 'heart'}
+          size={15}
+          color={isWishlisted ? Colors.primaryColor : '#94A3B8'}
+          strokeWidth={2}
         />
       </Animated.View>
     </TouchableOpacity>
@@ -72,27 +49,21 @@ export default WishlistButton;
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 6,
+    right: 6,
     zIndex: 99,
   },
-
   iconWrapper: {
     width: 26,
     height: 26,
-    borderRadius: 17,
+    borderRadius: 13,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-
-    elevation: 1,
-
-    // shadowColor: '#000',
-    // shadowOffset: {
-    //   width: 0,
-    //   height: 2,
-    // },
-    // shadowOpacity: 0.15,
-    // shadowRadius: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
 });

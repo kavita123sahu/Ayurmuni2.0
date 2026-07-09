@@ -84,11 +84,10 @@ const AllFavDoctors = (props: any) => {
 
             <AppHeader
                 title="Favourite Doctor"
-                leftIcon={Images.backIcon}
                 onLeftPress={() =>
                     props.navigation.goBack()
                 }
-                rightIcon={Images.Bell}
+                rightIconName="bell"
             />
 
 
@@ -139,8 +138,8 @@ const AllFavDoctors = (props: any) => {
                                         setSearch
                                     }
 
-                                    icon={require('../../assets/images/Search.png')}
-                                />
+
+                                    />
                             </>
                         }
 

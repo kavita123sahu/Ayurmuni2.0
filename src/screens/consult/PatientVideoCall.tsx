@@ -27,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialIcons } from '../../common/Vector';
 import { Utils } from '../../common/Utils';
+import { BaseUrl } from '../../config/Key';
 
 // ─────────────────────────────────────────────────────────
 // 👉 Apna actual API base URL yahan daal
@@ -36,7 +37,7 @@ const API_BASE_URL = 'https://aghast-cognition-earflap.ngrok-free.dev';
 // 👉 Agar endpoint pattern alag hai (jaise /consultations/ instead of /appointments/),
 // bas ye function badal de — baaki sab code isi se URLs banata hai
 const callUrl = (appointmentId: string, action: string) =>
-    `${API_BASE_URL}/doctors/appointments/${appointmentId}/call/${action}/`;
+    `${BaseUrl?.base_url}doctors/appointments/${appointmentId}/call/${action}/`;
 
 // ─────────────────────────────────────────────────────────
 // Auth helper — assume Bearer token AsyncStorage me stored hai
@@ -630,7 +631,7 @@ const PatientVideoCallScreen: React.FC = () => {
                     >
                         {isCameraOn ? (
                             <RtcSurfaceView
-                                canvas={{ uid: 0, renderModeType: RenderModeType.RenderModeFit }}
+                                canvas={{ uid: 0, renderMode: RenderModeType.RenderModeFit }}
                                 style={styles.fillVideo}
                                 zOrderMediaOverlay={true}
                             />
@@ -663,7 +664,7 @@ const PatientVideoCallScreen: React.FC = () => {
                         onPress={handleSwapViews}
                     >
                         <RtcSurfaceView
-                            canvas={{ uid: remoteUid!, renderModeType: RenderModeType.RenderModeFit }}
+                            canvas={{ uid: remoteUid!, renderMode: RenderModeType.RenderModeFit }}
                             style={styles.fillVideo}
                         />
                         <View style={styles.nameTag}>

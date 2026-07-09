@@ -262,11 +262,11 @@ const ConsultHistory = (
                     doctorDetails: {
                         ...item.doctor,
                         id: item.doctor?.doctor_id,
-                        is_favorite: item.doctor?.is_favorite,
-                        total_patients: item.doctor?.total_patients,
+                        is_favorite: (item.doctor as any)?.is_favorite,
+                        total_patients: (item.doctor as any)?.total_patients,
                         full_name: item.doctor?.doctor_name,
                         profile_image: item.doctor?.doctor_image,
-                        designation: item.doctor?.qualification,
+                        designation: (item.doctor as any)?.qualification,
                     },
                 });
 
@@ -337,9 +337,6 @@ const ConsultHistory = (
             <Header
                 title="Consultation History"
                 subtitle="Track your medical journey"
-                backIcon={
-                    Images.backIcon
-                }
                 onBack={() =>
                     props.navigation.goBack()
                 }
@@ -347,7 +344,6 @@ const ConsultHistory = (
 
             <SearchBar
                 placeholder="Search doctors..."
-                icon={require('../../assets/images/Search.png')}
                 value={searchText}
                 onChangeText={setSearchText}
             />

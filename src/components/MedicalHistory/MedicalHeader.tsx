@@ -33,7 +33,7 @@ const Header = ({
                 <Ionicons
                     name="chevron-back"
                     size={scale(20)}
-                    color={COLORS.primary}
+                    // color={COLORS.primary}
                 />
             </TouchableOpacity>
 

@@ -1,9 +1,12 @@
 import React, { useEffect } from 'react'
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux'
 import Navigator from './src/navigation/Navigator'
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
-import { store } from './src/reduxfile/Store';
+import { store } from './src/store/store';
+import AppDataInitializer from './src/components/AppDataInitializer';
 import { Fonts } from './src/common/Fonts';
+import { LocationProvider } from './src/context/LocationContext';
 
 
 // console.log = () => { };
@@ -71,11 +74,17 @@ const App = () => {
 
   return (
 
-    <Provider store={store} >
-      <Navigator />
-      <Toast config={toastConfig} />
-    </Provider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Provider store={store} >
+        <LocationProvider>
+          <AppDataInitializer />
+          <Navigator />
+          <Toast config={toastConfig} />
+        </LocationProvider>
+      </Provider>
+    </GestureHandlerRootView>
   )
 }
+
 
 export default App

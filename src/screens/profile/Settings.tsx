@@ -3,7 +3,6 @@ import { View, Text, ScrollView, StyleSheet, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Fonts } from "../../common/Fonts";
-import { Images } from "../../common/Images";
 import AppHeader from "../../components/AppHeader";
 import SettingItem from "../../components/SettingItem";
 import { Colors } from "../../common/Colors";
@@ -20,13 +19,13 @@ const SettingsScreen = (props: any) => {
                 {
                     title: "Edit Profile",
                     subtitle: "Name, email, phone number",
-                    icon: Images.user,
+                    iconName: 'user',
                     type: "arrow",
                 },
                 {
                     title: "Change Password",
                     subtitle: "Update your security credentials",
-                    icon: Images.Password,
+                    iconName: 'lock',
                     type: "arrow",
                 },
             ],
@@ -44,7 +43,7 @@ const SettingsScreen = (props: any) => {
                 {
                     title: "Email Updates",
                     subtitle: "Monthly reports and newsletters",
-                    icon: Images.Email,
+                    iconName: 'mail',
                     type: "toggle",
                     value: false,
                 },
@@ -56,14 +55,14 @@ const SettingsScreen = (props: any) => {
                 {
                     title: "Biometric Lock",
                     subtitle: "Use FaceID or Fingerprint",
-                    icon: Images.Biometric,
+                    iconName: 'shield',
                     type: "toggle",
                     value: true,
                 },
                 {
                     title: "Privacy Policy",
                     subtitle: "How we handle your medical data",
-                    icon: Images.Privacy,
+                    iconName: 'shield',
                     type: "arrow",
                 },
             ],
@@ -74,13 +73,13 @@ const SettingsScreen = (props: any) => {
                 {
                     title: "Help Center",
                     subtitle: "FAQs and contact information",
-                    icon: Images.HelpCenter,
+                    iconName: 'help',
                     type: "arrow",
                 },
                 {
                     title: "About",
                     subtitle: "App version 2.4.0",
-                    icon: Images.notification,
+                    iconName: 'bell',
                     type: "arrow",
                 },
             ],
@@ -95,9 +94,8 @@ const SettingsScreen = (props: any) => {
 
             <AppHeader
                 title="Settings"
-                leftIcon={Images.backIcon}
                 onLeftPress={() => props.navigation.goBack()}
-                rightIcon="search"
+                rightIconName="search"
                 onRightPress={() => console.log('Search clicked')}
             />
             <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: '#FDFDFB' }}>
@@ -123,7 +121,7 @@ const SettingsScreen = (props: any) => {
                     <View style={{ marginTop: 40, marginBottom: 40 }}>
                         <PrimaryButton
                             title="Sign Out"
-                            icon={Images.logout}
+                            iconName="logout"
                             backgroundColor="#FEF2F2"
                             textColor={Colors.errorColor}
                             TextFont={Fonts.PoppinsMedium

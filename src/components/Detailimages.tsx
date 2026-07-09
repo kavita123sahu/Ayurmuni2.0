@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   FlatList,
@@ -6,14 +6,13 @@ import {
   Dimensions,
   StyleSheet,
   Animated,
+  ImageSourcePropType,
 } from 'react-native';
-import { Colors } from '../common/Colors';
 
 const { width } = Dimensions.get('window');
 
-const DEFAULT_WIDTH = width * 0.84;
-const DEFAULT_HEIGHT = 240;
 const SPACING = 12;
+const AUTO_SLIDE_MS = 4000;
 
 type Props = {
   images: any[];
@@ -21,6 +20,7 @@ type Props = {
   itemHeight?: number;
   showIndicator?: boolean;
   DynamicResize?: 'cover' | 'contain';
+  autoSlide?: boolean;
 };
 
 const Detailimages: React.FC<Props> = ({
@@ -29,123 +29,108 @@ const Detailimages: React.FC<Props> = ({
   itemHeight,
   DynamicResize = 'cover',
   showIndicator = true,
+  autoSlide = true,
 }) => {
-
-  const DEFAULT_WIDTH = width;
-  const DEFAULT_HEIGHT = 320;
-
-  const finalWidth = itemWidth ?? DEFAULT_WIDTH;
-  const finalHeight = itemHeight ?? DEFAULT_HEIGHT;
-
+  const finalWidth = itemWidth ?? width;
+  const finalHeight = itemHeight ?? 320;
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
-
   const [activeIndex, setActiveIndex] = useState(0);
+  const slideSize = finalWidth + SPACING;
 
-  if (!images || images.length === 0) return null;
+  const safeImages = Array.isArray(images)
+    ? images.filter(Boolean)
+    : [];
 
-  const SIDE_GAP = (width - finalWidth) / 2;
+  const getImageSource = useCallback((item: any): ImageSourcePropType | null => {
+    if (!item) return null;
+    if (typeof item === 'number') return item;
+    if (typeof item === 'string' && item.length > 0) return { uri: item };
+    if (item?.uri) return item;
+    const uri =
+      item?.media_url || item?.image_url || item?.image || item?.url;
+    return uri ? { uri: String(uri) } : null;
+  }, []);
 
- const getImageSource = (item: any) => {
-  if (!item) return null;
+  useEffect(() => {
+    if (!autoSlide || safeImages.length <= 1) return;
 
-  // Local image require(...)
-  if (typeof item === 'number') {
-    return item;
-  }
+    const timer = setInterval(() => {
+      setActiveIndex(prev => {
+        const next = (prev + 1) % safeImages.length;
+        flatListRef.current?.scrollToOffset({
+          offset: next * slideSize,
+          animated: true,
+        });
+        return next;
+      });
+    }, AUTO_SLIDE_MS);
 
-  // URL string
-  if (typeof item === 'string') {
-    return { uri: item };
-  }
+    return () => clearInterval(timer);
+  }, [autoSlide, safeImages.length, slideSize]);
 
-  // Remote image object
-  if (item?.uri) {
-    return item;
-  }
-
-  return {
-    uri:
-      item?.media_url ||
-      item?.image_url ||
-      item?.image ||
-      item?.url,
-  };
-};
-
+  if (safeImages.length === 0) return null;
 
   return (
     <View>
       <FlatList
         ref={flatListRef}
-        data={images}
+        data={safeImages}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(_, index) => index.toString()}
-
-        // ✅ SNAP
-        snapToInterval={finalWidth + SPACING}
+        keyExtractor={(_, index) => `banner-${index}`}
+        snapToInterval={slideSize}
         snapToAlignment="start"
-        decelerationRate={0.98}
-        disableIntervalMomentum={true}
-
+        decelerationRate="fast"
+        disableIntervalMomentum
         bounces={false}
-
-        // ✅ START LEFT + LAST FIX
-        contentContainerStyle={{
-          paddingLeft: 0,
-          paddingRight: SIDE_GAP,
-        }}
-
-        onMomentumScrollEnd={(e) => {
+        contentContainerStyle={{ paddingRight: SPACING }}
+        onMomentumScrollEnd={e => {
           const index = Math.round(
-            e.nativeEvent.contentOffset.x / (finalWidth + SPACING)
+            e.nativeEvent.contentOffset.x / slideSize,
           );
-          setActiveIndex(index);
+          setActiveIndex(Math.min(index, safeImages.length - 1));
         }}
-
-        // ✅ SMOOTH ANIMATION DRIVER
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
+          { useNativeDriver: false },
         )}
-
         scrollEventThrottle={16}
-
-        renderItem={({ item, index }) => (
-          <View
-            style={{
-              marginLeft: index === 0 ? 0 : SPACING,
-              width: finalWidth,
-              height: finalHeight,
-              backgroundColor: '#fff',
-              borderRadius: 24,
-              overflow: 'hidden',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <Image
-              source={getImageSource(item)}
-              style={{
-                width: '100%',
-                height: '100%',
-              }}
-              resizeMode={DynamicResize}
-            />
-          </View>
-        )}
+        renderItem={({ item, index }) => {
+          const source = getImageSource(item);
+          return (
+            <View
+              style={[
+                styles.slide,
+                {
+                  marginLeft: index === 0 ? 0 : SPACING,
+                  width: finalWidth,
+                  height: finalHeight,
+                },
+              ]}
+            >
+              {source ? (
+                <Image
+                  source={source}
+                  style={styles.image}
+                  resizeMode={DynamicResize}
+                />
+              ) : (
+                <View style={styles.placeholder} />
+              )}
+            </View>
+          );
+        }}
       />
 
-      {/* 🔥 SMOOTH INDICATOR */}
-      {showIndicator && (
+      {showIndicator && safeImages.length > 1 && (
         <View style={styles.indicatorContainer}>
-          {images.map((_, index) => {
+          {safeImages.map((_, index) => {
             const inputRange = [
-              (index - 1) * (finalWidth + SPACING),
-              index * (finalWidth + SPACING),
-              (index + 1) * (finalWidth + SPACING),
+              (index - 1) * slideSize,
+              index * slideSize,
+              (index + 1) * slideSize,
             ];
 
             const widthAnim = scrollX.interpolate({
@@ -156,25 +141,20 @@ const Detailimages: React.FC<Props> = ({
 
             const opacityAnim = scrollX.interpolate({
               inputRange,
-              outputRange: [0.3, 1, 0.3],
-              extrapolate: 'clamp',
-            });
-
-            const colorAnim = scrollX.interpolate({
-              inputRange,
-              outputRange: ['#A0C4B8', '#0D614E', '#A0C4B8'],
+              outputRange: [0.35, 1, 0.35],
               extrapolate: 'clamp',
             });
 
             return (
               <Animated.View
-                key={index}
+                key={`dot-${index}`}
                 style={[
                   styles.dot,
                   {
                     width: widthAnim,
                     opacity: opacityAnim,
-                    backgroundColor: colorAnim,
+                    backgroundColor:
+                      index === activeIndex ? '#0D614E' : '#A0C4B8',
                   },
                 ]}
               />
@@ -189,12 +169,26 @@ const Detailimages: React.FC<Props> = ({
 export default React.memo(Detailimages);
 
 const styles = StyleSheet.create({
+  slide: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EEF2F6',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholder: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+  },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 10,
   },
-
   dot: {
     height: 6,
     borderRadius: 3,

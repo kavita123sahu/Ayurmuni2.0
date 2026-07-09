@@ -183,14 +183,13 @@ const YogaScreen = (props: any) => {
             <Header
                 title="Yoga"
                 subtitle="Find best doctor"
-                backIcon={Images.backIcon}
                 onBack={() => { props.navigation.goBack() }}
             />
 
             <SearchBar
                 placeholder="Search doctors, concerns..."
-                icon={require('../../assets/images/Search.png')}
-            />
+
+                />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
 
