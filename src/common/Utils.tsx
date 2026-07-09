@@ -1,8 +1,26 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import EventEmitter from "react-native/Libraries/vendor/emitter/EventEmitter";
 
+type EventListener = (...args: unknown[]) => void;
 
+class SimpleEventEmitter {
+  private listeners = new Map<string, Set<EventListener>>();
 
+  addListener(event: string, listener: EventListener) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(listener);
+    return {
+      remove: () => {
+        this.listeners.get(event)?.delete(listener);
+      },
+    };
+  }
+
+  emit(event: string, ...args: unknown[]) {
+    this.listeners.get(event)?.forEach(listener => listener(...args));
+  }
+}
 export const Utils = {
 
     async storeData(key: any, value: any) {
@@ -75,7 +93,7 @@ export const Utils = {
 
 
 
-export const AddressEvents = new EventEmitter();
+export const AddressEvents = new SimpleEventEmitter();
 
 export const ADDRESS_UPDATED =
     'ADDRESS_UPDATED';

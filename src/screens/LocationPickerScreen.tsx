@@ -10,11 +10,12 @@ import {
   Platform,
   Keyboard,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
 import AppHeader from '../components/AppHeader';
-import StaticMapPicker from '../components/StaticMapPicker';
+import InteractiveMapPicker from '../components/InteractiveMapPicker';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon from '../components/TablerIcon';
@@ -31,7 +32,7 @@ import {
   showLocationPermissionAlert,
 } from '../services/locationService';
 import { useDebounce } from '../hooks/useDebaunce';
-import { showSuccessToast } from '../config/Key';
+import { useLocation } from '../context/LocationContext';
 
 type RouteParams = {
   returnScreen?: string;
@@ -42,10 +43,15 @@ const LocationPickerScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const params = (route.params || {}) as RouteParams;
+  const { currentAddress, refreshCurrentLocation, setDeliveryLocation } = useLocation();
 
-  const [marker, setMarker] = useState<Coordinates>(getDefaultRegion());
-  const [address, setAddress] = useState<ParsedAddress | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [marker, setMarker] = useState<Coordinates>(
+    currentAddress
+      ? { latitude: currentAddress.latitude, longitude: currentAddress.longitude }
+      : getDefaultRegion(),
+  );
+  const [address, setAddress] = useState<ParsedAddress | null>(currentAddress);
+  const [loading, setLoading] = useState(!currentAddress);
   const [geocoding, setGeocoding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -60,14 +66,13 @@ const LocationPickerScreen = () => {
     try {
       const parsed = await reverseGeocode(coords);
       setAddress(parsed);
-      setMarker({
-        latitude: parsed.latitude,
-        longitude: parsed.longitude,
-      });
+      setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
     } catch (error: any) {
-      console.log('REVERSE_GEOCODE_ERROR', error);
       setMarker(coords);
-      setLocationError('Could not fetch address. Try moving the pin or search.');
+      setLocationError(
+        error?.message ||
+          'Could not fetch address. Try search or move the map.',
+      );
     } finally {
       setGeocoding(false);
     }
@@ -79,42 +84,41 @@ const LocationPickerScreen = () => {
     try {
       const granted = await requestLocationPermission();
       if (!granted) {
-        setLocationError('Location permission denied. Enable it in settings.');
+        setLocationError('Enable location permission in settings.');
         showLocationPermissionAlert();
         return;
       }
-
       const coords = await getCurrentPosition();
       await updateLocation(coords);
-      showSuccessToast('Current location detected', 'success');
     } catch (error: any) {
-      console.log('INIT_LOCATION_ERROR', error);
-      const code = error?.code;
-      const fallback = getDefaultRegion();
-      setMarker(fallback);
-      try {
-        await updateLocation(fallback);
-      } catch {
-        // keep map usable even if geocode fails
-      }
-      if (code === 1) {
-        setLocationError('Location permission denied. Search or drag the map to pick address.');
-        showLocationPermissionAlert();
-      } else if (code === 2) {
-        setLocationError('GPS unavailable. Turn on location or search for your area.');
-      } else if (code === 3) {
-        setLocationError('GPS timed out. Map loaded — search or tap My Location to retry.');
+      const refreshed = await refreshCurrentLocation();
+      if (refreshed) {
+        setMarker({ latitude: refreshed.latitude, longitude: refreshed.longitude });
+        setAddress(refreshed);
       } else {
-        setLocationError('Could not detect GPS. Search or drag the map to select address.');
+        const code = error?.code;
+        if (code === 3) {
+          setLocationError('GPS slow — move map or search your area.');
+        } else if (code === 1) {
+          setLocationError('Permission denied. Search or enable GPS.');
+        } else {
+          setLocationError('GPS unavailable. Search or drag map to select.');
+        }
       }
     } finally {
       setLoading(false);
     }
-  }, [updateLocation]);
+  }, [updateLocation, refreshCurrentLocation]);
 
   useEffect(() => {
+    if (currentAddress) {
+      setMarker({ latitude: currentAddress.latitude, longitude: currentAddress.longitude });
+      setAddress(currentAddress);
+      setLoading(false);
+      return;
+    }
     loadCurrentLocation();
-  }, [loadCurrentLocation]);
+  }, [currentAddress, loadCurrentLocation]);
 
   useEffect(() => {
     const runSearch = async () => {
@@ -126,8 +130,7 @@ const LocationPickerScreen = () => {
       try {
         const results = await searchPlaces(debouncedQuery);
         setSuggestions(results);
-      } catch (error) {
-        console.log('PLACES_SEARCH_ERROR', error);
+      } catch {
         setSuggestions([]);
       } finally {
         setSearching(false);
@@ -135,12 +138,6 @@ const LocationPickerScreen = () => {
     };
     runSearch();
   }, [debouncedQuery]);
-
-  const handleMapCenterChange = (coords: Coordinates) => {
-    updateLocation(coords);
-    Keyboard.dismiss();
-    setSuggestions([]);
-  };
 
   const handleSelectSuggestion = async (item: PlaceSuggestion) => {
     Keyboard.dismiss();
@@ -150,21 +147,17 @@ const LocationPickerScreen = () => {
     try {
       const parsed = await getPlaceDetails(item.place_id);
       setAddress(parsed);
-      setMarker({
-        latitude: parsed.latitude,
-        longitude: parsed.longitude,
-      });
-    } catch (error) {
-      console.log('PLACE_DETAILS_ERROR', error);
+      setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
+    } catch {
       Alert.alert('Error', 'Could not load this place. Please try again.');
     } finally {
       setGeocoding(false);
     }
   };
 
-  const handleConfirm = () => {
+  const handleContinue = async () => {
     if (!address) {
-      Alert.alert('Select location', 'Please wait for address to load or pick a place on the map.');
+      Alert.alert('Select location', 'Move the map or search to pick your address.');
       return;
     }
 
@@ -180,55 +173,48 @@ const LocationPickerScreen = () => {
       formatted_address: address.formatted_address,
     };
 
+    await setDeliveryLocation(address);
+
     if (params.returnScreen) {
       navigation.dispatch(
         CommonActions.navigate({
           name: params.returnScreen,
-          params: {
-            ...params.returnParams,
-            selectedLocation,
-          },
+          params: { ...params.returnParams, selectedLocation },
           merge: true,
         }),
       );
       return;
     }
 
-    navigation.navigate('AddEditAddress', {
-      type: 'ADD',
-      selectedLocation,
-    });
+    navigation.navigate('AddEditAddress', { type: 'ADD', selectedLocation });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader
-        title="Select Location"
-        onLeftPress={() => navigation.goBack()}
-      />
+      <AppHeader title="Pin Your Location" onLeftPress={() => navigation.goBack()} />
 
-      <View style={styles.searchWrap}>
-        <TablerIcon name="search" size={18} color="#64748B" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search for area, street, landmark..."
-          placeholderTextColor="#94A3B8"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searching && (
-          <ActivityIndicator size="small" color={Colors.primaryColor} />
-        )}
-      </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scroll}
+      >
+        <View style={styles.searchWrap}>
+          <TablerIcon name="search" size={18} color="#64748B" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search area, street, landmark..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searching && <ActivityIndicator size="small" color={Colors.primaryColor} />}
+        </View>
 
-      {suggestions.length > 0 && (
-        <View style={styles.suggestionsBox}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={item => item.place_id}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
+        {suggestions.length > 0 && (
+          <View style={styles.suggestionsBox}>
+            {suggestions.map(item => (
               <TouchableOpacity
+                key={item.place_id}
                 style={styles.suggestionItem}
                 onPress={() => handleSelectSuggestion(item)}
               >
@@ -240,15 +226,13 @@ const LocationPickerScreen = () => {
                   )}
                 </View>
               </TouchableOpacity>
-            )}
-          />
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      <View style={styles.mapSection}>
-        <StaticMapPicker
+        <InteractiveMapPicker
           center={marker}
-          onCenterChange={handleMapCenterChange}
+          onCenterChange={updateLocation}
           loading={loading}
         />
 
@@ -257,38 +241,36 @@ const LocationPickerScreen = () => {
           onPress={loadCurrentLocation}
           disabled={loading}
         >
-          <TablerIcon name="current-location" size={22} color={Colors.primaryColor} />
-          <Text style={styles.recenterText}>My Location</Text>
+          <TablerIcon name="current-location" size={20} color={Colors.primaryColor} />
+          <Text style={styles.recenterText}>Use my current location</Text>
         </TouchableOpacity>
 
-        <Text style={styles.dragHint}>Drag map to adjust pin position</Text>
-      </View>
+        <Text style={styles.hint}>Move the map — pin stays at center</Text>
 
-      {!!locationError && (
-        <Text style={styles.errorText}>{locationError}</Text>
-      )}
+        {!!locationError && <Text style={styles.errorText}>{locationError}</Text>}
 
-      <View style={styles.addressCard}>
-        {geocoding ? (
-          <ActivityIndicator color={Colors.primaryColor} />
-        ) : (
-          <>
-            <TablerIcon name="map-pin" size={20} color={Colors.primaryColor} />
-            <Text style={styles.addressText} numberOfLines={3}>
-              {address?.formatted_address ||
-                'Move the map or tap My Location to detect address'}
-            </Text>
-          </>
-        )}
-      </View>
+        <View style={styles.addressCard}>
+          {geocoding ? (
+            <ActivityIndicator color={Colors.primaryColor} />
+          ) : (
+            <>
+              <TablerIcon name="map-pin" size={20} color={Colors.primaryColor} />
+              <Text style={styles.addressText} numberOfLines={4}>
+                {address?.formatted_address || 'Move map or search to detect address'}
+              </Text>
+            </>
+          )}
+        </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.confirmBtn, (!address || geocoding) && styles.confirmDisabled]}
+          style={[styles.continueBtn, (!address || geocoding) && styles.btnDisabled]}
           disabled={!address || geocoding}
-          onPress={handleConfirm}
+          onPress={handleContinue}
         >
-          <Text style={styles.confirmText}>Confirm Location</Text>
+          <Text style={styles.continueText}>Continue</Text>
+          <TablerIcon name="arrow-right" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -298,19 +280,16 @@ const LocationPickerScreen = () => {
 export default LocationPickerScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { paddingHorizontal: 16, paddingBottom: 16 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     paddingHorizontal: 14,
     height: 48,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     gap: 8,
@@ -323,22 +302,12 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   suggestionsBox: {
-    marginHorizontal: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    maxHeight: 180,
-    marginBottom: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-      android: { elevation: 4 },
-    }),
+    marginBottom: 10,
+    overflow: 'hidden',
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -348,9 +317,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  suggestionText: {
-    flex: 1,
-  },
+  suggestionText: { flex: 1 },
   suggestionMain: {
     fontSize: 14,
     fontFamily: Fonts.PoppinsMedium,
@@ -362,18 +329,12 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
-  mapSection: {
-    flex: 1,
-    marginHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   recenterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
     marginTop: 12,
-    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
@@ -385,31 +346,31 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
   },
-  dragHint: {
-    marginTop: 8,
+  hint: {
+    textAlign: 'center',
     fontSize: 12,
     fontFamily: Fonts.PoppinsRegular,
     color: '#94A3B8',
+    marginTop: 6,
   },
   errorText: {
-    marginHorizontal: 16,
-    marginBottom: 4,
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
     color: '#DC2626',
     textAlign: 'center',
+    marginTop: 6,
   },
   addressCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
-    margin: 16,
+    marginTop: 14,
     padding: 14,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    minHeight: 56,
+    minHeight: 60,
   },
   addressText: {
     flex: 1,
@@ -425,17 +386,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  confirmBtn: {
-    height: 52,
+  continueBtn: {
+    height: 54,
     borderRadius: 16,
     backgroundColor: Colors.primaryColor,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
   },
-  confirmDisabled: {
-    opacity: 0.5,
-  },
-  confirmText: {
+  btnDisabled: { opacity: 0.5 },
+  continueText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,

@@ -1,6 +1,9 @@
 import { Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
-import { GOOGLE_PLACES_API_KEY } from '../config/Key';
+import {
+  GOOGLE_MAPS_API_KEY,
+  GOOGLE_PLACES_API_KEY,
+} from '../config/Key';
 
 export type Coordinates = {
   latitude: number;
@@ -26,12 +29,66 @@ export type PlaceSuggestion = {
   secondary_text: string;
 };
 
+export type GeocodeApiStatus = {
+  ok: boolean;
+  provider: 'google' | 'nominatim' | 'none';
+  message?: string;
+};
+
+const GOOGLE_KEYS = [
+  GOOGLE_PLACES_API_KEY,
+  GOOGLE_MAPS_API_KEY,
+].filter(Boolean);
+
 const DEFAULT_REGION: Coordinates = {
   latitude: 28.4595,
   longitude: 77.0266,
 };
 
 export const getDefaultRegion = () => DEFAULT_REGION;
+
+export const getGoogleApiSetupHint = (status?: string, errorMessage?: string) => {
+  if (status === 'REQUEST_DENIED') {
+    if (errorMessage?.toLowerCase().includes('billing')) {
+      return 'Enable billing on Google Cloud Console for your API keys.';
+    }
+    return 'Enable Geocoding API, Places API, and Maps JavaScript API for your keys.';
+  }
+  if (status === 'OVER_QUERY_LIMIT') {
+    return 'Google API quota exceeded. Try again later.';
+  }
+  return errorMessage || 'Google location API unavailable.';
+};
+
+const fetchGoogleJson = async (url: string) => {
+  const response = await fetch(url);
+  return response.json();
+};
+
+const tryGoogleRequest = async (buildUrl: (key: string) => string) => {
+  let lastError = 'Google API unavailable';
+
+  for (const key of GOOGLE_KEYS) {
+    try {
+      const data = await fetchGoogleJson(buildUrl(key));
+      if (
+        data.status === 'OK' ||
+        data.status === 'ZERO_RESULTS' ||
+        data.results?.length ||
+        data.result ||
+        data.predictions
+      ) {
+        return { data, key };
+      }
+      lastError = getGoogleApiSetupHint(data.status, data.error_message);
+      console.log('GOOGLE_API_STATUS', data.status, data.error_message);
+    } catch (error: any) {
+      lastError = error?.message || lastError;
+    }
+  }
+
+  throw new Error(lastError);
+};
 
 export const requestLocationPermission = async (): Promise<boolean> => {
   if (Platform.OS === 'ios') {
@@ -207,29 +264,109 @@ const parseAddressComponents = (
   };
 };
 
-export const reverseGeocode = async (
+const reverseGeocodeNominatim = async (
   coords: Coordinates,
 ): Promise<ParsedAddress> => {
   const url =
-    `https://maps.googleapis.com/maps/api/geocode/json` +
-    `?latlng=${coords.latitude},${coords.longitude}` +
-    `&key=${GOOGLE_PLACES_API_KEY}`;
+    `https://nominatim.openstreetmap.org/reverse` +
+    `?format=json&lat=${coords.latitude}&lon=${coords.longitude}` +
+    `&addressdetails=1`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'AyurmuniApp/1.0',
+      Accept: 'application/json',
+    },
+  });
   const data = await response.json();
 
-  if (data.status !== 'OK' || !data.results?.length) {
-    throw new Error(
-      data.error_message || 'Unable to fetch address for this location',
-    );
+  if (!data?.address) {
+    throw new Error('Could not resolve address for this pin.');
   }
 
-  const result = data.results[0];
-  return parseAddressComponents(
-    result.address_components,
-    result.formatted_address,
-    coords,
-  );
+  const addr = data.address;
+  const city =
+    addr.city ||
+    addr.town ||
+    addr.village ||
+    addr.suburb ||
+    addr.county ||
+    '';
+  const state = addr.state || '';
+  const zipcode = addr.postcode || '';
+  const line1 =
+    [addr.house_number, addr.road, addr.neighbourhood, addr.suburb]
+      .filter(Boolean)
+      .join(', ') ||
+    data.display_name?.split(',')[0] ||
+    '';
+
+  return {
+    address_line_1: line1,
+    address_line_2: addr.suburb || '',
+    city,
+    state,
+    zipcode,
+    country: addr.country || 'India',
+    formatted_address: data.display_name || `${line1}, ${city}`,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+  };
+};
+
+export const reverseGeocode = async (
+  coords: Coordinates,
+): Promise<ParsedAddress> => {
+  try {
+    const { data } = await tryGoogleRequest(
+      key =>
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${key}`,
+    );
+
+    if (data.status !== 'OK' || !data.results?.length) {
+      throw new Error(
+        getGoogleApiSetupHint(data.status, data.error_message),
+      );
+    }
+
+    const result = data.results[0];
+    return parseAddressComponents(
+      result.address_components,
+      result.formatted_address,
+      coords,
+    );
+  } catch (googleError) {
+    console.log('GOOGLE_REVERSE_GEOCODE_FALLBACK', googleError);
+    return reverseGeocodeNominatim(coords);
+  }
+};
+
+export const geocodePincode = async (
+  pincode: string,
+): Promise<ParsedAddress | null> => {
+  const cleaned = pincode.replace(/[^0-9]/g, '');
+  if (cleaned.length < 6) return null;
+
+  try {
+    const { data } = await tryGoogleRequest(
+      key =>
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleaned)}&components=country:IN&key=${key}`,
+    );
+
+    if (data.status !== 'OK' || !data.results?.length) {
+      return null;
+    }
+
+    const result = data.results[0];
+    const { lat, lng } = result.geometry.location;
+    return parseAddressComponents(
+      result.address_components,
+      result.formatted_address,
+      { latitude: lat, longitude: lng },
+    );
+  } catch {
+    return null;
+  }
 };
 
 export const searchPlaces = async (
@@ -237,17 +374,13 @@ export const searchPlaces = async (
 ): Promise<PlaceSuggestion[]> => {
   if (!query.trim()) return [];
 
-  const url =
-    `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-    `?input=${encodeURIComponent(query)}` +
-    `&components=country:in` +
-    `&key=${GOOGLE_PLACES_API_KEY}`;
-
-  const response = await fetch(url);
-  const data = await response.json();
+  const { data } = await tryGoogleRequest(
+    key =>
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:in&key=${key}`,
+  );
 
   if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    throw new Error(data.error_message || 'Places search failed');
+    throw new Error(getGoogleApiSetupHint(data.status, data.error_message));
   }
 
   return (data.predictions || []).map((p: any) => ({
@@ -261,17 +394,13 @@ export const searchPlaces = async (
 export const getPlaceDetails = async (
   placeId: string,
 ): Promise<ParsedAddress> => {
-  const url =
-    `https://maps.googleapis.com/maps/api/place/details/json` +
-    `?place_id=${placeId}` +
-    `&fields=address_component,formatted_address,geometry` +
-    `&key=${GOOGLE_PLACES_API_KEY}`;
-
-  const response = await fetch(url);
-  const data = await response.json();
+  const { data } = await tryGoogleRequest(
+    key =>
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=address_component,formatted_address,geometry&key=${key}`,
+  );
 
   if (data.status !== 'OK' || !data.result) {
-    throw new Error(data.error_message || 'Unable to fetch place details');
+    throw new Error(getGoogleApiSetupHint(data.status, data.error_message));
   }
 
   const { lat, lng } = data.result.geometry.location;
@@ -306,4 +435,35 @@ export const fetchCurrentAddress = async (): Promise<ParsedAddress | null> => {
     console.log('FETCH_CURRENT_ADDRESS_ERROR', error);
     return null;
   }
+};
+
+type SavedAddressInput = {
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  country?: string;
+};
+
+export const savedAddressToParsed = (
+  item: SavedAddressInput,
+): ParsedAddress => {
+  const line1 = item.address_line_1 || '';
+  const city = item.city || '';
+  const state = item.state || '';
+  const zip = item.zipcode || '';
+  const formatted = [line1, city, state, zip].filter(Boolean).join(', ');
+
+  return {
+    address_line_1: line1,
+    address_line_2: item.address_line_2 || '',
+    city,
+    state,
+    zipcode: zip,
+    country: item.country || 'India',
+    formatted_address: formatted || line1 || city || 'Saved address',
+    latitude: 0,
+    longitude: 0,
+  };
 };

@@ -78,13 +78,20 @@ const HomePage: React.FC = (props: any) => {
   const { isGuest } = useAuth();
   const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
   const insets = useSafeAreaInsets();
-  const { onScroll, headerContentAnimatedStyle } = useScrollHide();
+  const {
+    onScroll,
+    headerContentAnimatedStyle,
+    searchBarAnimatedStyle,
+    headerShellAnimatedStyle,
+  } = useScrollHide();
   const headerTotalHeight = getHomeHeaderTotalHeight(insets);
   const bottomPadding = getScreenBottomPadding(insets);
 
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
 
-  console.log("YogaSessionYogaSessionYogaSession", YogaSession);
+  const handleSearchPress = useCallback(() => {
+    props.navigation.navigate('ProductsScreen');
+  }, [props.navigation]);
 
   const normalizedData = useMemo(() => {
     if (!Array.isArray(AppointData)) {
@@ -107,8 +114,6 @@ const HomePage: React.FC = (props: any) => {
       rawData: item,
     }));
   }, [AppointData]);
-
-  console.log("normalizedData", normalizedData)
 
   const sortedUpcomingAppointments = useMemo(() => {
     if (!Array.isArray(normalizedData)) {
@@ -221,10 +226,11 @@ const HomePage: React.FC = (props: any) => {
     <View style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
-      <View
+      <Animated.View
         style={[
           styles.headerShell,
-          { paddingTop: insets.top, height: headerTotalHeight },
+          { paddingTop: insets.top, paddingHorizontal: 16 },
+          headerShellAnimatedStyle,
         ]}
       >
         <Animated.View style={headerContentAnimatedStyle}>
@@ -233,7 +239,15 @@ const HomePage: React.FC = (props: any) => {
             progress2={Math.round(customerData?.medical_history_progress || 0)}
           />
         </Animated.View>
-      </View>
+
+        <Animated.View style={[styles.searchDock, searchBarAnimatedStyle]}>
+          <SearchBar
+            placeholder="Search doctors, medicine and products..."
+            onPress={handleSearchPress}
+            compact
+          />
+        </Animated.View>
+      </Animated.View>
 
       <FlatList
         data={[1]}
@@ -245,6 +259,8 @@ const HomePage: React.FC = (props: any) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
+            tintColor={Colors.primaryColor}
+            colors={[Colors.primaryColor]}
           />
         }
         contentContainerStyle={{
@@ -253,11 +269,9 @@ const HomePage: React.FC = (props: any) => {
         }}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <SearchBar placeholder="Search doctors, medicine and products..." />
-        }
+        removeClippedSubviews
         renderItem={() => (
-          <>
+          <View style={styles.sections}>
 
             {/* <View style={styles.containerprakriti}>
               {data.map((item, index) => (
@@ -279,11 +293,18 @@ const HomePage: React.FC = (props: any) => {
             </View> */}
 
             {loadingCategories ? (
-
               <HomeCategorySkeleton />
             ) : (
               <HomeCategory data={categories} navigation={props.navigation} />
             )}
+
+            <Detailimages
+              images={product.images}
+              itemWidth={width - 40}
+              itemHeight={156}
+              DynamicResize="contain"
+              autoSlide
+            />
 
 
             {(loading && !isGuest) ? (
@@ -371,19 +392,6 @@ const HomePage: React.FC = (props: any) => {
               </>
 
             )}
-
-
-
-
-
-            <Detailimages
-              images={product.images}
-              itemWidth={width - 80}
-              itemHeight={150}
-              DynamicResize="contain"
-              autoSlide
-            />
-
 
             {productData?.length > 0 && (
               <>
@@ -479,7 +487,7 @@ const HomePage: React.FC = (props: any) => {
               />
             )}
             </>
-          </>
+          </View>
         )}
       />
       <Modal
@@ -551,11 +559,14 @@ const HomePage: React.FC = (props: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FDFDFB',
+    backgroundColor: Colors.background,
   },
   list: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  sections: {
+    gap: 4,
   },
   headerShell: {
     position: 'absolute',
@@ -564,16 +575,19 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 20,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.borderColor,
+    shadowColor: '#0D614E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
     overflow: 'hidden',
     justifyContent: 'flex-end',
+    paddingBottom: 6,
+  },
+  searchDock: {
+    width: '100%',
   },
   containerprakriti: {
     flexDirection: 'row',

@@ -114,7 +114,6 @@ export const chatService = {
         if (!response.ok) {
             throw new Error('Token refresh failed');
         }
-
         const data = await response.json();
         return data;
     },

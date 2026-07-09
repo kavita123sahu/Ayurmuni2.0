@@ -5,9 +5,6 @@ import {
     StyleSheet,
     TouchableOpacity,
     Image,
-    Pressable,
-    FlatList,
-    ScrollView,
 } from 'react-native';
 import TablerIcon from './TablerIcon';
 import CartBadge from './CartBadge';
@@ -17,10 +14,11 @@ import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import *as _PROFILE_SERVICES from '../services/ProfileServices';
-import CustomBottomSheet from './CustomBottomSheet';
+import LocationBottomSheet from './LocationBottomSheet';
 import { useHomeData } from '../hooks/UseHomeData';
 import { requireAuth } from '../services/guestAuth';
 import { useLocation } from '../context/LocationContext';
+import { savedAddressToParsed } from '../services/locationService';
 import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
 
@@ -72,7 +70,9 @@ const HomeHeader = ({
         fetchCustomerData
     } = useHomeData();
 
-    const { currentAddress, loadingLocation } = useLocation();
+    const { currentAddress, deliveryLocation, loadingLocation, setDeliveryLocation } = useLocation();
+
+    console.log("curentlocationnnnn", currentAddress, deliveryLocation, loadingLocation)
 
 
     const savedAddresses =
@@ -87,45 +87,41 @@ const HomeHeader = ({
         [savedAddresses],
     );
 
+
+    const activeLocation = useMemo(() => {
+        return currentAddress
+            ?? savedAddressToParsed(defaultAddress!)
+            ?? deliveryLocation
+            ?? null;
+    }, [currentAddress, defaultAddress, deliveryLocation]);
+    // const activeLocation = useMemo(() => {
+    //     if (deliveryLocation) {
+    //         return deliveryLocation;
+    //     }
+    //     if (defaultAddress) {
+    //         return savedAddressToParsed(defaultAddress);
+    //     }
+    //     return currentAddress;
+    // }, [deliveryLocation, defaultAddress, currentAddress]);
+
     const shortAddress = useMemo(() => {
-        if (defaultAddress?.address_line_1) {
-            return `${defaultAddress.address_line_1.slice(
-                0,
-                22,
-            )}, ${defaultAddress.city}`;
+        if (loadingLocation && !activeLocation) {
+            return 'Detecting location...';
         }
+        if (!activeLocation) {
+            return 'Select location';
+        }
+        const area =
+            activeLocation.city ||
+            activeLocation.address_line_1?.split(',')[0] ||
+            activeLocation.formatted_address;
+        const suffix = activeLocation.state ? `, ${activeLocation.state}` : '';
+        return `${area}${suffix}`.slice(0, 44);
+    }, [activeLocation, loadingLocation]);
 
-        if (currentAddress?.formatted_address) {
-            return currentAddress.formatted_address.slice(0, 40);
-        }
 
-        return 'Select Location';
-    }, [defaultAddress, currentAddress]);
 
-    const locationSubtext = useMemo(() => {
-        if (defaultAddress) {
-            return [defaultAddress.state, defaultAddress.zipcode]
-                .filter(Boolean)
-                .join(', ');
-        }
-        if (currentAddress) {
-            return [currentAddress.city, currentAddress.state, currentAddress.zipcode]
-                .filter(Boolean)
-                .join(', ');
-        }
-        return '';
-    }, [defaultAddress, currentAddress]);
-
-    const currentLocationPreview = useMemo(() => {
-        if (currentAddress?.formatted_address) {
-            return currentAddress.formatted_address;
-        }
-        if (loadingLocation) {
-            return 'Detecting your location...';
-        }
-        return 'Tap to use GPS location';
-    }, [currentAddress, loadingLocation]);
-
+    const locationSubtext = 'Deliver to';
 
     const profileImage =
         customerData?.profile_picture || '';
@@ -202,6 +198,7 @@ const HomeHeader = ({
                         res?.status === 200
                     ) {
                         setShowSheet(false);
+                        await setDeliveryLocation(savedAddressToParsed(item));
 
                         await fetchCustomerData();
 
@@ -221,103 +218,10 @@ const HomeHeader = ({
                     );
                 }
             }, [
-            fetchCustomerData]);
+            fetchCustomerData, setDeliveryLocation]);
 
 
 
-    const renderSavedAddress =
-        useCallback(
-            ({ item }: {
-                item: AddressItem;
-            }) => {
-
-                const fullAddress =
-                    `${item?.address_line_1 || ''}, ${item?.city || ''}, ${item?.state || ''} ${item?.zipcode || ''}`;
-
-                const isSelected =
-                    item?.is_default;
-
-                return (
-
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() =>
-                            UpdateDefaultAddress(item)
-                        }
-                        style={[
-                            styles.savedCard,
-                            isSelected && styles.activeSavedCard,
-                        ]}
-                    >
-
-                        {/* LEFT ICON */}
-
-                        <View style={styles.homeBox}>
-
-                            {
-                                item?.address_type === 'home' ||
-                                    item?.address_type === 'other' ? (
-
-                                    <TablerIcon
-                                        name="home"
-                                        size={20}
-                                        color={Colors.primaryColor}
-                                    />
-
-                                ) : (
-
-                                    <TablerIcon
-                                        name="briefcase"
-                                        size={20}
-                                        color={Colors.primaryColor}
-                                    />
-
-                                )
-                            }
-
-
-                        </View>
-
-                        {/* CONTENT */}
-
-                        <View style={styles.savedContent}>
-
-                            <Text style={styles.homeTitle}>
-                                {item?.address_type_name ?? ''}
-                            </Text>
-
-                            <Text
-                                style={styles.savedAddress}
-                                numberOfLines={2}
-                            >
-                                {fullAddress}
-                            </Text>
-
-                        </View>
-
-                        {/* RIGHT */}
-
-                        <View
-                            style={[
-                                styles.radioOuter,
-                                isSelected && styles.radioOuterActive,
-                            ]}
-                        >
-                            {
-                                isSelected && (
-                                    <View style={styles.radioInner} />
-                                )
-                            }
-                        </View>
-
-                    </TouchableOpacity>
-                );
-            }, [UpdateDefaultAddress]);
-
-    const keyExtractor = useCallback(
-        (item: AddressItem) => item.id,
-        [],
-    );
     const isCompleted =
         progress1 === 100 &&
         progress2 === 100;
@@ -476,173 +380,19 @@ const HomeHeader = ({
                 </View>)} */}
 
 
-            <CustomBottomSheet
-
+            <LocationBottomSheet
                 visible={showSheet}
                 onClose={() => setShowSheet(false)}
-            >
-
-                <View style={styles.bigCard}>
-
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={async () => {
-                            setShowSheet(false);
-                            if (currentAddress) {
-                                navigation.navigate('AddEditAddress', {
-                                    type: 'ADD',
-                                    selectedLocation: {
-                                        address_line_1: currentAddress.address_line_1,
-                                        address_line_2: currentAddress.address_line_2,
-                                        city: currentAddress.city,
-                                        state: currentAddress.state,
-                                        zipcode: currentAddress.zipcode,
-                                        country: currentAddress.country,
-                                        formatted_address: currentAddress.formatted_address,
-                                    },
-                                });
-                            } else {
-                                navigation.navigate('LocationPickerScreen');
-                            }
-                        }}
-                        style={styles.rowCard}
-                    >
-
-                        <View style={styles.leftRow}>
-
-                            <View style={styles.currentLocationIcon}>
-                                <TablerIcon
-                                    name="crosshair"
-                                    size={20}
-                                    color={Colors.primaryColor}
-                                />
-                            </View>
-
-                            <View style={styles.textContainer}>
-
-                                <Text style={styles.greenTitle}>
-                                    Use current location
-                                </Text>
-
-                                <Text
-                                    numberOfLines={2}
-                                    style={styles.subText}
-                                >
-                                    {currentLocationPreview}
-                                </Text>
-
-                            </View>
-
-                        </View>
-
-                        <TablerIcon
-                            name="chevron-right"
-                            size={20}
-                            color="#98A2B3"
-                        />
-
-                    </TouchableOpacity>
-
-                    {/* DIVIDER */}
-                    <View style={styles.divider} />
-
-                    {/* ADD ADDRESS */}
-
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => {
-                            setShowSheet(false);
-
-                            setTimeout(() => {
-                                navigation.navigate(
-                                    'AddEditAddress',
-                                    { type: 'ADD' },
-                                );
-                            }, 300);
-                        }}
-                        // onPress={() => navigation.navigate('AddEditAddress', { type: 'ADD' })}
-                        style={styles.rowCard}
-                    >
-
-                        <Pressable style={styles.leftRow} >
-
-                            <View style={styles.plusWrapper}>
-                                <TablerIcon
-                                    name="plus"
-                                    size={20}
-                                    color={Colors.primaryColor}
-                                />
-                            </View>
-
-                            <Text style={styles.greenTitle}>
-                                Add New Address
-                            </Text>
-
-                        </Pressable>
-
-                        <TablerIcon
-                            name="chevron-right"
-                            size={20}
-                            color="#98A2B3"
-                        />
-
-                    </TouchableOpacity>
-
-                </View>
-
-                {/* SAVED ADDRESS */}
-
-                <View style={styles.savedHeader}>
-
-                    <Text style={styles.savedTitle}>
-                        Saved Addresses
-                    </Text>
-
-                    {
-                        addressCount > 2 && (
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={() => {
-                                    setShowSheet(false);
-
-                                    navigation.navigate('ManageAdrees')
-
-                                }}
-                            >
-
-                                <Text style={styles.viewAllText}>
-                                    View All
-                                </Text>
-
-                            </TouchableOpacity>
-                        )
-                    }
-
-                </View>
-
-                {/* <View style={{ flex: 1 }}> */}
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{
-                        paddingBottom: 120,
-                    }}
-                >
-                    <FlatList
-                        data={savedAddresses}
-                        renderItem={renderSavedAddress}
-                        keyExtractor={keyExtractor}
-                        removeClippedSubviews
-                        initialNumToRender={5}
-                        nestedScrollEnabled
-                        maxToRenderPerBatch={5}
-                        windowSize={5}
-                        updateCellsBatchingPeriod={50}
-                        showsVerticalScrollIndicator={false}
-                    />
-                </ScrollView>
-
-                {/* </View> */}
-            </CustomBottomSheet>
+                currentAddress={currentAddress}
+                loadingLocation={loadingLocation}
+                savedAddresses={savedAddresses}
+                addressCount={addressCount}
+                onSelectAddress={UpdateDefaultAddress}
+                onViewAll={() => {
+                    setShowSheet(false);
+                    stackNavigation.navigate('ManageAdrees');
+                }}
+            />
 
 
         </View>
@@ -736,12 +486,12 @@ const styles = StyleSheet.create({
     },
 
     locationLabel: {
-        fontSize: 12,
-        lineHeight: 16,
-        color: '#6B7280',
-        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 11,
+        lineHeight: 14,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
         marginBottom: 2,
-
+        letterSpacing: 0.2,
         flexShrink: 1,
     },
 
@@ -755,13 +505,11 @@ const styles = StyleSheet.create({
     },
 
     locationText: {
-        fontSize: 14,
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
-        color: '#111827',
-
-        maxWidth: '92%', // ⭐ device ke according adjust
+        color: '#0F172A',
+        maxWidth: '92%',
         flexShrink: 1,
-
         marginRight: 2,
     },
 

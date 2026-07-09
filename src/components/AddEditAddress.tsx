@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import {
     View,
@@ -25,6 +25,7 @@ import { Fonts } from '../common/Fonts';
 import { showSuccessToast } from '../config/Key';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import TablerIcon, { TablerIconName } from './TablerIcon';
+import { geocodePincode } from '../services/locationService';
 
 const ADDRESS_TYPES: { label: string; value: string; iconName: TablerIconName }[] = [
     {
@@ -85,6 +86,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
             editData?.state || '',
         );
 
+    const [pincodeLoading, setPincodeLoading] = useState(false);
+
     const isDisabled =
         !address1 ||
         !city ||
@@ -101,6 +104,34 @@ const AddEditAddress = ({ navigation, route }: any) => {
             setZip(selectedLocation.zipcode || '');
         }
     }, [selectedLocation]);
+
+    useEffect(() => {
+        const lookupPincode = async () => {
+            if (zip.length !== 6 || isEdit) return;
+            setPincodeLoading(true);
+            try {
+                const result = await geocodePincode(zip);
+                if (result) {
+                    if (!city) setCity(result.city || '');
+                    if (!stateValue) setStateValue(result.state || '');
+                    if (!address1) setAddress1(result.address_line_1 || '');
+                }
+            } finally {
+                setPincodeLoading(false);
+            }
+        };
+
+        const timer = setTimeout(lookupPincode, 500);
+        return () => clearTimeout(timer);
+    }, [zip, isEdit, city, stateValue, address1]);
+
+    const locationPreview = useMemo(() => {
+        if (selectedLocation?.formatted_address) {
+            return selectedLocation.formatted_address;
+        }
+        const parts = [address1, city, stateValue, zip].filter(Boolean);
+        return parts.length > 0 ? parts.join(', ') : 'Pin your location on the map';
+    }, [selectedLocation, address1, city, stateValue, zip]);
 
     const handleSubmit = async () => {
 
@@ -263,28 +294,46 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     contentContainerStyle={styles.content}
                 >
 
-                    {/* LOCATION */}
+                    {/* LOCATION OPTIONS */}
+                    <View style={styles.locationActions}>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() =>
+                                navigation.navigate('LocationPickerScreen', {
+                                    returnScreen: 'AddEditAddress',
+                                    returnParams: { type, data: editData },
+                                })
+                            }
+                            style={styles.locationBadge}
+                        >
+                            <TablerIcon name="map-pin" size={18} color={Colors.primaryColor} />
+                            <Text style={styles.badgeText}>Pick on map</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() =>
-                            navigation.navigate('LocationPickerScreen', {
-                                returnScreen: 'AddEditAddress',
-                                returnParams: {
-                                    type,
-                                    data: editData,
-                                },
-                            })
-                        }
-                        style={styles.locationBadge}>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() =>
+                                navigation.navigate('LocationPickerScreen', {
+                                    returnScreen: 'AddEditAddress',
+                                    returnParams: { type, data: editData },
+                                    useGps: true,
+                                })
+                            }
+                            style={styles.locationBadgeAlt}
+                        >
+                            <TablerIcon name="current-location" size={18} color={Colors.primaryColor} />
+                            <Text style={styles.badgeText}>Use GPS</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                        <TablerIcon name="current-location" size={20} color={Colors.primaryColor} />
-
-                        <Text style={styles.badgeText}>
-                            Current Location
-                        </Text>
-
-                    </TouchableOpacity>
+                    {!!selectedLocation && (
+                        <View style={styles.locationCard}>
+                            <Text style={styles.locationCardTitle}>Selected location</Text>
+                            <Text style={styles.locationPreview} numberOfLines={3}>
+                                {locationPreview}
+                            </Text>
+                        </View>
+                    )}
 
                     {/* ADDRESS TYPE */}
 
@@ -405,19 +454,24 @@ const AddEditAddress = ({ navigation, route }: any) => {
                             <TextInput
                                 value={zip}
                                 onChangeText={(text) => {
-                                    // ONLY NUMBERS ALLOWED
                                     const cleanedText =
                                         text.replace(/[^0-9]/g, '');
 
                                     setZip(cleanedText);
                                 }}
-                                // onChangeText={setZip}
                                 maxLength={6}
                                 keyboardType="number-pad"
                                 placeholder="122001"
                                 placeholderTextColor="#98A2B3"
                                 style={styles.input}
                             />
+                            {pincodeLoading && (
+                                <ActivityIndicator
+                                    size="small"
+                                    color={Colors.primaryColor}
+                                    style={styles.pinLoader}
+                                />
+                            )}
 
                         </View>
 
@@ -505,36 +559,64 @@ const styles = StyleSheet.create({
         paddingBottom: 120,
     },
 
+    locationActions: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 16,
+    },
     locationBadge: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-
+        justifyContent: 'center',
+        gap: 8,
         backgroundColor: Colors.BGIcon,
-
-        paddingHorizontal: 16,
         paddingVertical: 12,
-
-        borderRadius: 18,
-
-        alignSelf: 'flex-start',
-
-        marginBottom: 28,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#D4ECE5',
     },
-
-    badgeIcon: {
-        height: 20,
-        width: 20,
-        resizeMode: 'contain',
+    locationBadgeAlt: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
-
     badgeText: {
-        marginLeft: 8,
-
         color: Colors.primaryColor,
-
-        fontSize: 14,
-
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
+    },
+    locationCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 12,
+        marginBottom: 20,
+    },
+    locationCardTitle: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#64748B',
+        marginBottom: 4,
+    },
+    locationPreview: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#334155',
+        lineHeight: 20,
+    },
+    pinLoader: {
+        position: 'absolute',
+        right: 12,
+        top: 38,
     },
 
     label: {

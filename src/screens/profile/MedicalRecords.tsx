@@ -98,7 +98,7 @@ const MedicalRecords = (props: any) => {
     };
 
     const selectedRecordItems = (patientsRecord || []).filter((item: any) =>
-        selectedRecords.includes(item.id),
+        selectedRecords?.includes(item.id),
     );
     const filteredData =
         activeTab === 'All Records'
@@ -306,16 +306,16 @@ const MedicalRecords = (props: any) => {
                             </Text>
                         </TouchableOpacity>
 
-                        {selectedRecordItems.length > 0 && (
+                        {selectedRecordItems?.length > 0 && (
                             <View style={styles.selectedSection}>
                                 <Text style={styles.selectedLabel}>
-                                    Selected ({selectedRecordItems.length})
+                                    Selected ({selectedRecordItems?.length})
                                 </Text>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
                                 >
-                                    {selectedRecordItems.map((item: any) => (
+                                    {selectedRecordItems?.map((item: any) => (
                                         <SelectedUploadCard
                                             key={item.id}
                                             name={item.description || 'Medical record'}
