@@ -5,9 +5,11 @@ import {
   StyleSheet,
   Image,
   ImageSourcePropType,
+  TouchableOpacity,
+  ViewStyle,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
-
+import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 
 interface Props {
@@ -15,6 +17,9 @@ interface Props {
   icon?: ImageSourcePropType;
   value?: string;
   onChangeText?: (text: string) => void;
+  onPress?: () => void;
+  compact?: boolean;
+  containerStyle?: ViewStyle;
 }
 
 const SearchBar: React.FC<Props> = ({
@@ -22,25 +27,49 @@ const SearchBar: React.FC<Props> = ({
   icon,
   value,
   onChangeText,
+  onPress,
+  compact = false,
+  containerStyle,
 }) => {
-  return (
-    <View style={styles.container}>
-
+  const content = (
+    <View
+      style={[
+        styles.container,
+        compact && styles.compact,
+        containerStyle,
+      ]}
+    >
       {icon ? (
         <Image source={icon} style={styles.icon} />
       ) : (
-        <TablerIcon name="search" size={20} color="#64748B" />
+        <TablerIcon name="search" size={compact ? 18 : 20} color="#64748B" />
       )}
 
       <TextInput
         placeholder={placeholder}
-        placeholderTextColor="#64748B"
-        style={styles.input}
+        placeholderTextColor="#94A3B8"
+        style={[styles.input, compact && styles.inputCompact]}
         value={value}
         onChangeText={onChangeText}
+        editable={!onPress}
+        pointerEvents={onPress ? 'none' : 'auto'}
       />
+
+      <View style={styles.trailing}>
+        <TablerIcon name="filter" size={16} color={Colors.primaryColor} />
+      </View>
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 };
 
 export default React.memo(SearchBar);
@@ -49,32 +78,49 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    // marginHorizontal: 16,
-    marginVertical: 5,
+    marginVertical: 4,
     paddingHorizontal: 14,
-    height: 55,
+    height: 52,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E8EDF2',
+    shadowColor: Colors.primaryColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 10,
   },
-
+  compact: {
+    height: 46,
+    borderRadius: 12,
+    marginVertical: 0,
+  },
   icon: {
     width: 18,
     height: 18,
-    marginRight: 8,
     resizeMode: 'contain',
   },
-
   input: {
     flex: 1,
     fontSize: 14,
-
     minWidth: 0,
     fontFamily: Fonts.PoppinsRegular,
     color: '#0F172A',
-    paddingVertical: 0, // 👈 important
+    paddingVertical: 0,
     includeFontPadding: false,
+  },
+  inputCompact: {
+    fontSize: 13,
+  },
+  trailing: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.BGIcon,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

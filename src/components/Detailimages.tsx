@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -8,11 +8,12 @@ import {
   Animated,
   ImageSourcePropType,
 } from 'react-native';
+import { Colors } from '../common/Colors';
 
 const { width } = Dimensions.get('window');
 
-const SPACING = 12;
-const AUTO_SLIDE_MS = 4000;
+const SPACING = 10;
+const AUTO_SLIDE_MS = 4500;
 
 type Props = {
   images: any[];
@@ -31,17 +32,18 @@ const Detailimages: React.FC<Props> = ({
   showIndicator = true,
   autoSlide = true,
 }) => {
-  const finalWidth = itemWidth ?? width;
-  const finalHeight = itemHeight ?? 320;
+  const finalWidth = itemWidth ?? width - 40;
+  const finalHeight = itemHeight ?? 156;
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const slideSize = finalWidth + SPACING;
 
-  const safeImages = Array.isArray(images)
-    ? images.filter(Boolean)
-    : [];
+  const safeImages = useMemo(
+    () => (Array.isArray(images) ? images.filter(Boolean) : []),
+    [images],
+  );
 
   const getImageSource = useCallback((item: any): ImageSourcePropType | null => {
     if (!item) return null;
@@ -73,7 +75,7 @@ const Detailimages: React.FC<Props> = ({
   if (safeImages.length === 0) return null;
 
   return (
-    <View>
+    <View style={styles.wrapper}>
       <FlatList
         ref={flatListRef}
         data={safeImages}
@@ -85,7 +87,8 @@ const Detailimages: React.FC<Props> = ({
         decelerationRate="fast"
         disableIntervalMomentum
         bounces={false}
-        contentContainerStyle={{ paddingRight: SPACING }}
+        removeClippedSubviews
+        contentContainerStyle={styles.listContent}
         onMomentumScrollEnd={e => {
           const index = Math.round(
             e.nativeEvent.contentOffset.x / slideSize,
@@ -154,7 +157,7 @@ const Detailimages: React.FC<Props> = ({
                     width: widthAnim,
                     opacity: opacityAnim,
                     backgroundColor:
-                      index === activeIndex ? '#0D614E' : '#A0C4B8',
+                      index === activeIndex ? Colors.primaryColor : '#C5D9D2',
                   },
                 ]}
               />
@@ -169,12 +172,24 @@ const Detailimages: React.FC<Props> = ({
 export default React.memo(Detailimages);
 
 const styles = StyleSheet.create({
+  wrapper: {
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  listContent: {
+    paddingRight: SPACING,
+  },
   slide: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#EEF2F6',
+    borderColor: '#E8EDF2',
+    shadowColor: '#0D614E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   image: {
     width: '100%',

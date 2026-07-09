@@ -123,7 +123,28 @@ export class WebSocketService {
     }
   }
 
+  // sendMessage(text: string): boolean {
+  //   if (this.isConnected()) {
+  //     try {
+  //       const payload = { type: 'chat.send', text };
+  //       this.ws?.send(JSON.stringify(payload));
+  //       console.log('📤 Sent:', payload);
+  //       return true;
+  //     } catch (error) {
+  //       console.error('❌ Send failed:', error);
+  //       return false;
+  //     }
+  //   }
+  //   console.warn('⚠️ WebSocket not open');
+  //   return false;
+  // }
+
   sendMessage(text: string): boolean {
+    // ✅ GUARD: khaali text WS pe kabhi mat bhejo — backend chat.error return karta hai
+    if (!text || !text.trim()) {
+      console.warn('⚠️ Empty text — WebSocket se nahi bhejenge');
+      return false;
+    }
     if (this.isConnected()) {
       try {
         const payload = { type: 'chat.send', text };

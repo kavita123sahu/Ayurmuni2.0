@@ -16,13 +16,16 @@ import {
 import LocationPermissionModal from '../components/LocationPermissionModal';
 
 const LOCATION_PROMPT_KEY = '@ayurmuni_location_prompt_shown';
+const DELIVERY_LOCATION_KEY = '@ayurmuni_delivery_location';
 
 type LocationContextType = {
   currentAddress: ParsedAddress | null;
+  deliveryLocation: ParsedAddress | null;
   loadingLocation: boolean;
   locationEnabled: boolean;
   refreshCurrentLocation: () => Promise<ParsedAddress | null>;
   requestPermission: () => Promise<boolean>;
+  setDeliveryLocation: (address: ParsedAddress | null) => Promise<void>;
 };
 
 const LocationContext = createContext<LocationContextType | null>(null);
@@ -32,9 +35,30 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [currentAddress, setCurrentAddress] =
     useState<ParsedAddress | null>(null);
+  const [deliveryLocation, setDeliveryLocationState] =
+    useState<ParsedAddress | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+
+  const setDeliveryLocation = useCallback(
+    async (address: ParsedAddress | null) => {
+      setDeliveryLocationState(address);
+      try {
+        if (address) {
+          await AsyncStorage.setItem(
+            DELIVERY_LOCATION_KEY,
+            JSON.stringify(address),
+          );
+        } else {
+          await AsyncStorage.removeItem(DELIVERY_LOCATION_KEY);
+        }
+      } catch (error) {
+        console.log('DELIVERY_LOCATION_SAVE_ERROR', error);
+      }
+    },
+    [],
+  );
 
   const fetchLocationFromGps = useCallback(async () => {
     setLoadingLocation(true);
@@ -43,6 +67,12 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
       const address = await reverseGeocode(coords);
       setCurrentAddress(address);
       setLocationEnabled(true);
+
+      const savedDelivery = await AsyncStorage.getItem(DELIVERY_LOCATION_KEY);
+      if (!savedDelivery) {
+        await setDeliveryLocation(address);
+      }
+
       return address;
     } catch (error) {
       console.log('GPS_FETCH_ERROR', error);
@@ -50,7 +80,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoadingLocation(false);
     }
-  }, []);
+  }, [setDeliveryLocation]);
 
   const refreshCurrentLocation = useCallback(async () => {
     const hasPermission =
@@ -74,10 +104,18 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const init = async () => {
+      try {
+        const savedDelivery = await AsyncStorage.getItem(DELIVERY_LOCATION_KEY);
+        if (savedDelivery) {
+          setDeliveryLocationState(JSON.parse(savedDelivery));
+        }
+      } catch {
+        // ignore corrupt cache
+      }
+
       const prompted = await AsyncStorage.getItem(LOCATION_PROMPT_KEY);
       if (!prompted) {
         setShowPermissionModal(true);
-        await AsyncStorage.setItem(LOCATION_PROMPT_KEY, 'true');
         return;
       }
 
@@ -93,21 +131,25 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleAllowLocation = async () => {
     setShowPermissionModal(false);
+    await AsyncStorage.setItem(LOCATION_PROMPT_KEY, 'true');
     await requestPermission();
   };
 
-  const handleDenyLocation = () => {
+  const handleDenyLocation = async () => {
     setShowPermissionModal(false);
+    await AsyncStorage.setItem(LOCATION_PROMPT_KEY, 'true');
   };
 
   return (
     <LocationContext.Provider
       value={{
         currentAddress,
+        deliveryLocation,
         loadingLocation,
         locationEnabled,
         refreshCurrentLocation,
         requestPermission,
+        setDeliveryLocation,
       }}
     >
       {children}
@@ -125,10 +167,12 @@ export const useLocation = () => {
   if (!ctx) {
     return {
       currentAddress: null,
+      deliveryLocation: null,
       loadingLocation: false,
       locationEnabled: false,
       refreshCurrentLocation: async () => null,
       requestPermission: async () => false,
+      setDeliveryLocation: async () => { },
     };
   }
   return ctx;

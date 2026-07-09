@@ -18,12 +18,17 @@ export const CARD_PADDING = 14;
 export const CARD_RADIUS = 16;
 
 export const HOME_HEADER_CONTENT_HEIGHT = 64;
+export const HOME_SEARCH_BAR_HEIGHT = 52;
+export const HOME_HEADER_SEARCH_GAP = 6;
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_SIDE_GAP = 12;
 export const TAB_BAR_BOTTOM_OFFSET = 10;
 
 export const getHomeHeaderTotalHeight = (insets: EdgeInsets) =>
-  HOME_HEADER_CONTENT_HEIGHT + (insets.top || 0);
+  HOME_HEADER_CONTENT_HEIGHT +
+  HOME_SEARCH_BAR_HEIGHT +
+  HOME_HEADER_SEARCH_GAP +
+  (insets.top || 0);
 
 export const getTabBarTotalHeight = (insets: EdgeInsets) =>
   TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + (insets.bottom || 0) + 8;

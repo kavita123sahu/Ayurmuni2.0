@@ -1,1 +1,17 @@
-{}
+{
+  "ignore_dirs": [
+    "android/app/build",
+    "android/app/.cxx",
+    "android/build",
+    "android/.gradle",
+    "android/.cxx",
+    "ios/build",
+    "ios/Pods",
+    "ios/DerivedData",
+    ".git",
+    ".metro-cache",
+    "node_modules",
+    "coverage",
+    ".idea"
+  ]
+}

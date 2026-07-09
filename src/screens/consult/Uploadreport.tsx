@@ -39,8 +39,8 @@ const PrescriptionUpload: React.FC<Props> = ({
   onUpload,
   CameraUpload,
 }) => {
-  const selectedRecordData = records.filter(item =>
-    selectedRecords.includes(item.id),
+  const selectedRecordData = records?.filter(item =>
+    selectedRecords?.includes(item.id),
   );
 
   const toggleRecord = (id: string) => {
@@ -90,15 +90,15 @@ const PrescriptionUpload: React.FC<Props> = ({
           >
             <TablerIcon name="upload" size={18} color={Colors.primaryColor} />
             <Text style={styles.uploadBtnText}>
-              {selectedRecordData.length > 0 ? 'Add another file' : 'Upload prescription'}
+              {selectedRecordData?.length > 0 ? 'Add another file' : 'Upload prescription'}
             </Text>
           </TouchableOpacity>
         )}
 
-        {selectedRecordData.length > 0 && (
+        {selectedRecordData?.length > 0 && (
           <View style={styles.selectedSection}>
             <Text style={styles.selectedLabel}>
-              Selected ({selectedRecordData.length})
+              Selected ({selectedRecordData?.length})
             </Text>
             <FlatList
               data={selectedRecordData}
@@ -133,7 +133,7 @@ const PrescriptionUpload: React.FC<Props> = ({
             keyExtractor={item => item.id}
             contentContainerStyle={{ paddingBottom: 24 }}
             renderItem={({ item }) => {
-              const selected = selectedRecords.includes(item.id);
+              const selected = selectedRecords?.includes(item.id);
               return (
                 <TouchableOpacity
                   onPress={() => toggleRecord(item.id)}
