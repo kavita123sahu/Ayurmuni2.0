@@ -198,12 +198,12 @@ const Splash = (props: any) => {
       props.navigation.replace('Welcome');
       // return;
 
-      if (!token) {
-        props.navigation.replace('AuthStack', {
-          screen: 'Login',
-        });
-        return;
-      }
+      // if (!token) {
+      //   props.navigation.replace('AuthStack', {
+      //     screen: 'Login',
+      //   });
+      //   return;
+      // }
 
       const result: any = await _PROFILE_SERVICES.user_profile();
 
