@@ -559,7 +559,11 @@ const Onboarding = (props: any) => {
                                     </TouchableOpacity>
                                 ))}
 
-                            </View>
+                            </View>  
+
+                             <Text style={styles.errorText}>{errors.gender}</Text>
+
+                     
 
                             {/* DOB */}
                             <Text style={styles.label}>Date of Birth *</Text>

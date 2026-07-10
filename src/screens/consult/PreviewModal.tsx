@@ -48,7 +48,6 @@ const PreviewModal = ({
                             size={80}
                             color="#fff"
                         />
-
                         <Text
                             style={{
                                 color: '#fff',

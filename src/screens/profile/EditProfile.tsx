@@ -256,6 +256,7 @@ const EditProfile = ({
             );
 
             if (res?.success) {
+                Utils.storeData('_USER_INFO', res?.data || {});
 
                 showSuccessToast(
                     'Profile updated successfully',
@@ -603,7 +604,7 @@ const EditProfile = ({
                                     [
                                         'male',
                                         'female',
-                                        'other',
+                                        'others',
                                     ].map(
                                         (
                                             item,

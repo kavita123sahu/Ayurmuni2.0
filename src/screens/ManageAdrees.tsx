@@ -65,7 +65,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 );
 
                 const defaultAddress =
-                    addresses.find((item: any) => item.is_default
+                    addresses.find((item: any) => item?.is_default
                     );
 
                 if (defaultAddress) {
@@ -119,7 +119,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
         try {
 
             // UI instant update
-            setSelectedId(item.id);
+            setSelectedId(item?.id);
 
             const payload = {
                 is_default: true,
@@ -132,7 +132,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
             const res: any =
                 await _PROFILE_SERVICES.UpdateAddresses(
-                    item.id,
+                    item?.id,
                     payload,
                 );
 
@@ -207,7 +207,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
     }) => {
 
         const isSelected =
-            selectedId === item.id;
+            selectedId === item?.id;
 
 
         console.log("itemitemitemaddresss", item)
@@ -239,18 +239,18 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 <View style={styles.cardContent}>
 
                     <Text style={styles.cardTitle}>
-                        {formatTitle(item.address_type)}
+                        {formatTitle(item?.address_type)}
                     </Text>
 
                     <Text
                         style={styles.addressText}
                         numberOfLines={2}
                     >
-                        {item.address_line_1}, {item.address_line_2}
+                        {item?.address_line_1}, {item?.address_line_2}
                     </Text>
 
                     <Text style={styles.cityText}>
-                        {item.city}
+                        {item?.city}
                     </Text>
 
                     <View style={styles.actionRow}>
@@ -278,7 +278,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={{ marginLeft: 10, backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
-                            onPress={() => DeleteAddresses(item.id)}
+                            onPress={() => DeleteAddresses(item?.id)}
                             activeOpacity={0.7}
                         >
 
@@ -410,7 +410,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                     <FlatList
                         data={addressData}
                         keyExtractor={(item) =>
-                            item.id
+                            item?.id
                         }
                         renderItem={
                             renderAddressItem

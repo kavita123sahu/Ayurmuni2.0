@@ -261,6 +261,7 @@ const HomePage: React.FC = (props: any) => {
             onRefresh={onRefresh}
             tintColor={Colors.primaryColor}
             colors={[Colors.primaryColor]}
+            progressViewOffset={headerTotalHeight}
           />
         }
         contentContainerStyle={{
@@ -469,23 +470,23 @@ const HomePage: React.FC = (props: any) => {
               </>)}
 
             <>
-            
-            {YogaSession.length ==0 && (
+
+              {YogaSession.length == 0 && (
                 <ComingSoonCard
-                title="Personalized Diet Plans"
-                icon="🥗"
-              />
-            )}
+                  title="Personalized Diet Plans"
+                  icon="🥗"
+                />
+              )}
             </>
 
             <>
-            
-            {YogaSession.length ==0 && (
+
+              {YogaSession.length == 0 && (
                 <ComingSoonCard
-                title="Panchakarma"
-                icon="🌿"
-              />
-            )}
+                  title="Panchakarma"
+                  icon="🌿"
+                />
+              )}
             </>
           </View>
         )}

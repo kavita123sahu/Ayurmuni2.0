@@ -1,6 +1,5 @@
 import { View, Text, Image, StyleSheet, StatusBar, Dimensions, Animated, Easing } from 'react-native';
 import React, { useEffect, useRef } from 'react';
-import * as Animatable from 'react-native-animatable';
 import { useIsFocused } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import { Utils } from '../../common/Utils';

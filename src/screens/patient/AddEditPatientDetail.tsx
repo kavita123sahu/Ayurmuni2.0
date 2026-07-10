@@ -401,7 +401,7 @@ export default function AddEditPatientDetail(props: any) {
                     <AppInputField label="Full Name *" placeholder="John Doe" value={formData.fullname} onChangeText={(text: any) => setFormData(prev => ({ ...prev, fullname: text }))} />
 
                     <AppInputField
-                        label="Date of Birth"
+                        label="Date of Birth *" 
                         placeholder="YYYY-MM-DD"
                         value={formData.dob}
                         onChangeText={(text: any) =>
@@ -413,8 +413,22 @@ export default function AddEditPatientDetail(props: any) {
                         rightIconName="calendar"
                     />
 
-
                     <AppInputField
+                        label="Gender *"
+                        value={formData.gender}     // display text
+                        placeholder="Select Gender"
+                        rightIconName="chevron-down"
+                        options={GENDER_OPTIONS}
+                        onSelect={(value: any) =>
+                            setFormData(prev => ({ ...prev, gender: value }))
+                        }
+                        onChangeText={(label: string) =>
+                            setFormData(prev => ({ ...prev, genderLabel: label }))
+                        }
+                    />
+
+
+                    {/* <AppInputField
                         label="Gender *"
                         value={formData.gender}
                         placeholder="Select Gender"
@@ -426,7 +440,7 @@ export default function AddEditPatientDetail(props: any) {
                                 gender: item.value,
                             }))
                         }
-                    />
+                    /> */}
 
 
                     <View style={styles.row}>

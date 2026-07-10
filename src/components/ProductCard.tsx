@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     lineHeight: 16,
-    height: 32,
+    // height: 32,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
   },

@@ -88,23 +88,24 @@ const HomeHeader = ({
     );
 
 
-    const activeLocation = useMemo(() => {
-        return currentAddress
-            ?? savedAddressToParsed(defaultAddress!)
-            ?? deliveryLocation
-            ?? null;
-    }, [currentAddress, defaultAddress, deliveryLocation]);
     // const activeLocation = useMemo(() => {
-    //     if (deliveryLocation) {
-    //         return deliveryLocation;
-    //     }
-    //     if (defaultAddress) {
-    //         return savedAddressToParsed(defaultAddress);
-    //     }
-    //     return currentAddress;
-    // }, [deliveryLocation, defaultAddress, currentAddress]);
+    //     return currentAddress
+    //         ?? savedAddressToParsed(defaultAddress!)
+    //         ?? deliveryLocation
+    //         ?? null;
+    // }, [currentAddress, defaultAddress, deliveryLocation]);
+    const activeLocation = useMemo(() => {
+        if (deliveryLocation) {
+            return deliveryLocation;
+        }
+        if (defaultAddress) {
+            return savedAddressToParsed(defaultAddress);
+        }
+        return currentAddress;
+    }, [deliveryLocation, defaultAddress, currentAddress]);
 
     const shortAddress = useMemo(() => {
+        console.log("adresssloationnn", activeLocation);
         if (loadingLocation && !activeLocation) {
             return 'Detecting location...';
         }
@@ -112,9 +113,9 @@ const HomeHeader = ({
             return 'Select location';
         }
         const area =
-            activeLocation.city ||
-            activeLocation.address_line_1?.split(',')[0] ||
-            activeLocation.formatted_address;
+            activeLocation.formatted_address || activeLocation.city ||
+            activeLocation.address_line_1
+            ;
         const suffix = activeLocation.state ? `, ${activeLocation.state}` : '';
         return `${area}${suffix}`.slice(0, 44);
     }, [activeLocation, loadingLocation]);

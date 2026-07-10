@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     View,
     Text,
@@ -19,6 +19,9 @@ import CommonModal from '../../components/LogoutModal';
 import { SECTION_GAP } from '../../constants/layout';
 import { useAuth } from '../../hooks/useAuth';
 import { clearGuestMode, navigateToLogin } from '../../services/guestAuth';
+import { useFocusEffect } from '@react-navigation/native';
+
+
 
 type MenuEntry = {
     id: number;
@@ -46,16 +49,21 @@ const ProfilePage = ({ navigation }: any) => {
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [user, setUser] = useState(null);
 
-    useEffect(() => {
-        const loadUser = async () => {
-            const CustomerInfo = await Utils.getData('_USER_INFO');
-            if (CustomerInfo) {
-                setUser(CustomerInfo);
-            }
-            fetchUserData();
-        };
-        loadUser();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            const loadUser = async () => {
+                const CustomerInfo = await Utils.getData('_USER_INFO');
+
+                if (CustomerInfo) {
+                    setUser(CustomerInfo);
+                }
+
+                await fetchUserData();
+            };
+
+            loadUser();
+        }, [])
+    );
 
     const fetchUserData = async () => {
         try {
@@ -63,6 +71,7 @@ const ProfilePage = ({ navigation }: any) => {
             const CustomerInfo = await Utils.getData('_USER_INFO');
             if (!token) return;
             const res: any = await ProfileServices.user_profile();
+            console.log('USERPROFILE =>', res?.data);
             setUser(CustomerInfo || res?.data);
         } catch (error) {
             console.log('Profile Error:', error);
@@ -80,7 +89,7 @@ const ProfilePage = ({ navigation }: any) => {
         { id: 6, title: 'Favourite Doctor', icon: 'heart', guestLocked: true },
         { id: 7, title: 'Wishlist', icon: 'heart-filled', guestLocked: true },
         { id: 8, title: 'Mentor', icon: 'school', guestLocked: false },
-        { id: 9, title: 'MyCart', icon: 'shopping-cart', guestLocked: true },
+        { id: 9, title: 'Cart', icon: 'shopping-cart', guestLocked: true },
         { id: 10, title: 'Analysis', icon: 'chart-pie', guestLocked: true },
     ];
 

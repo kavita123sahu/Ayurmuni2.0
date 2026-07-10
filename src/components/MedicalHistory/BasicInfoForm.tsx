@@ -136,7 +136,7 @@ const BasicInfoSection = ({
       {/* ================= AGE ================= */}
 
       <InputCard
-        label="Age"
+        label="Age *"
         placeholder="Enter your age"
         value={
           selectedAnswers?.[

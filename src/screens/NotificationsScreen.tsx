@@ -165,7 +165,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
                         <Text style={styles.time}>{item.time}</Text>
                     </View>
 
-                    
+
                     <Text style={styles.desc}>
                         {renderStyledText(item.description)}
                     </Text>
@@ -217,10 +217,9 @@ const NotificationsScreen = (props: any) => {
             <AppHeader
                 title="Notifications"
                 onLeftPress={() => props.navigation.goBack()}
-                rightLabel="Clear All"
+            // rightLabel="Clear All"
             // ✅ FIX
             />
-
 
             <FlatList
                 data={notifications}

@@ -63,9 +63,8 @@ const Wishlist = (props: any) => {
                     ) : wishlistData?.length > 0 ? (
                         <TopSellingList
                             data={wishlistData}
-                            fav={false}
+                            // fav={false}
                             isGrid={true}
-                          
                             navigation={props.navigation}
                             setProductData={() => setWishlistData}
                         />

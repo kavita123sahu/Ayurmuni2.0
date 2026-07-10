@@ -176,25 +176,25 @@ const LocationBottomSheet: React.FC<Props> = ({
         </View>
       ) : (
         savedAddresses.map(item => {
-          const fullAddress = `${item.address_line_1 || ''}, ${item.city || ''}, ${item.state || ''} ${item.zipcode || ''}`;
-          const isSelected = item.is_default;
+          const fullAddress = `${item?.address_line_1 || ''}, ${item?.city || ''}, ${item?.state || ''} ${item?.zipcode || ''}`;
+          const isSelected = item?.is_default;
           return (
             <TouchableOpacity
-              key={item.id}
+              key={item?.id}
               style={[styles.savedCard, isSelected && styles.savedCardActive]}
               activeOpacity={0.8}
               onPress={() => onSelectAddress(item)}
             >
               <View style={styles.savedIcon}>
                 <TablerIcon
-                  name={item.address_type === 'office' ? 'briefcase' : 'home'}
+                  name={item?.address_type === 'office' ? 'briefcase' : 'home'}
                   size={20}
                   color={Colors.primaryColor}
                 />
               </View>
               <View style={styles.savedInfo}>
                 <Text style={styles.savedName}>
-                  {item.address_type_name || item.address_type}
+                  {item?.address_type_name || item?.address_type}
                 </Text>
                 <Text style={styles.savedAddr} numberOfLines={2}>
                   {fullAddress}

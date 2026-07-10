@@ -7,21 +7,16 @@ export const getAppointmentShareMessage = ({
     hospitalName,
 }: any) => {
 
-    return `
-🏥 Appointment Details
+    return `🏥 *Appointment Confirmation*
 
-👨‍⚕️ Doctor:${doctorName || '-'}
+👨‍⚕️ Doctor: ${doctorName || '-'}
+🩺 Speciality: ${specialization || '-'}
+🏥 Clinic/Hospital: ${hospitalName || '-'}
 
-🩺 Speciality:${specialization || '-'}
+📅 Date: ${date || '-'}
+⏰ Time: ${time || '-'}
+📍 Status: ${status || 'Confirmed'}
 
-📅 Date:${date || '-'}
-
-⏰ Time:${time || '-'}
-
-📍 Status:${status || 'Confirmed'}
-
-🏥 Hospital:${hospitalName || '-'}
-
-Shared via Ayurmuni App
-`;
+Thank you for choosing Ayurmuni 🌿
+Shared via Ayurmuni App`;
 };

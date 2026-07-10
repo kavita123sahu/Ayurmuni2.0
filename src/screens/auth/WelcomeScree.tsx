@@ -156,8 +156,8 @@ const AyurvedicWelcome = ({ navigation }: any) => {
     };
 
     const handleSkipAsGuest = async () => {
-        // await enableGuestMode();
-        navigation.replace('AuthStack', { screen: 'Login' });
+        await enableGuestMode();
+        navigation.replace('HomeStack', { screen: 'Home' });
     };
 
     const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });

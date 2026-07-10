@@ -29,11 +29,6 @@ export type PlaceSuggestion = {
   secondary_text: string;
 };
 
-export type GeocodeApiStatus = {
-  ok: boolean;
-  provider: 'google' | 'nominatim' | 'none';
-  message?: string;
-};
 
 const GOOGLE_KEYS = [
   GOOGLE_PLACES_API_KEY,
@@ -146,13 +141,25 @@ export const openLocationSettings = () => {
   }
 };
 
+
 const readPosition = (
   highAccuracy: boolean,
   timeout: number,
+  maxAccuracyMeters?: number,
 ): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
     Geolocation.getCurrentPosition(
       position => {
+        const accuracy = position.coords.accuracy;
+        console.log('GPS_FIX', { accuracy, highAccuracy });
+        if (
+          maxAccuracyMeters != null &&
+          accuracy != null &&
+          accuracy > maxAccuracyMeters
+        ) {
+          reject(new Error(`Low accuracy fix (${accuracy}m)`));
+          return;
+        }
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -165,59 +172,107 @@ const readPosition = (
       {
         enableHighAccuracy: highAccuracy,
         timeout,
-        maximumAge: 15000,
-      },
-    );
-  });
-
-const watchPositionOnce = (timeout: number): Promise<Coordinates> =>
-  new Promise((resolve, reject) => {
-    let watchId: number | null = null;
-
-    const timer = setTimeout(() => {
-      if (watchId != null) {
-        Geolocation.clearWatch(watchId);
-      }
-      reject(new Error('Location watch timed out'));
-    }, timeout);
-
-    watchId = Geolocation.watchPosition(
-      position => {
-        clearTimeout(timer);
-        if (watchId != null) {
-          Geolocation.clearWatch(watchId);
-        }
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      error => {
-        clearTimeout(timer);
-        if (watchId != null) {
-          Geolocation.clearWatch(watchId);
-        }
-        reject(error);
-      },
-      {
-        enableHighAccuracy: false,
-        distanceFilter: 0,
-        maximumAge: 15000,
+        maximumAge: 0, // stale cache mat lo — sector jitne small area mein 15s purani fix bhi galat de sakti hai
       },
     );
   });
 
 export const getCurrentPosition = async (): Promise<Coordinates> => {
   try {
-    return await readPosition(false, 30000);
+    // seedha high-accuracy (GPS chip) try karo, network-triangulation nahi
+    return await readPosition(true, 20000, 100); // 100m se zyada error wali fix reject
   } catch {
     try {
-      return await readPosition(true, 45000);
+      return await readPosition(true, 30000); // accuracy check hata do agar timeout ho raha
     } catch {
       return watchPositionOnce(30000);
     }
   }
 };
+
+const watchPositionOnce = (timeout: number): Promise<Coordinates> =>
+  new Promise((resolve, reject) => {
+    let watchId: number | null = null;
+    let best: Coordinates | null = null;
+    let bestAccuracy = Infinity;
+
+    const timer = setTimeout(() => {
+      if (watchId != null) {
+        Geolocation.clearWatch(watchId);
+      }
+      if (best) {
+        resolve(best);
+        return;
+      }
+      reject(new Error('Location watch timed out'));
+    }, timeout);
+
+    watchId = Geolocation.watchPosition(
+      position => {
+        const accuracy = position.coords.accuracy ?? Infinity;
+        if (accuracy < bestAccuracy) {
+          bestAccuracy = accuracy;
+          best = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+        }
+        if (accuracy <= 50) {
+          clearTimeout(timer);
+          if (watchId != null) {
+            Geolocation.clearWatch(watchId);
+          }
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        }
+      },
+      error => {
+        clearTimeout(timer);
+        if (watchId != null) {
+          Geolocation.clearWatch(watchId);
+        }
+        if (best) {
+          resolve(best);
+          return;
+        }
+        reject(error);
+      },
+      {
+        enableHighAccuracy: true,
+        distanceFilter: 0,
+        maximumAge: 0,
+      },
+    );
+  });
+
+const scoreGeocodeResult = (result: any): number => {
+  let score = 0;
+  const types: string[] = result?.types || [];
+  const locType = result?.geometry?.location_type;
+
+  if (locType === 'ROOFTOP') score += 120;
+  else if (locType === 'RANGE_INTERPOLATED') score += 90;
+  else if (locType === 'GEOMETRIC_CENTER') score += 40;
+
+  if (types.includes('street_address')) score += 70;
+  if (types.includes('premise')) score += 60;
+  if (types.includes('subpremise')) score += 55;
+  if (types.includes('neighborhood')) score += 35;
+  if (types.includes('sublocality')) score += 30;
+  if (types.includes('sublocality_level_1')) score += 32;
+
+  const hasPostal = result?.address_components?.some((c: any) =>
+    c.types?.includes('postal_code'),
+  );
+  if (hasPostal) score += 25;
+
+  return score;
+};
+
+const pickBestGeocodeResult = (results: any[]) =>
+  [...results].sort((a, b) => scoreGeocodeResult(b) - scoreGeocodeResult(a))[0];
 
 const parseAddressComponents = (
   components: any[],
@@ -234,6 +289,7 @@ const parseAddressComponents = (
   const route = get('route');
   const sublocality =
     get('sublocality_level_1') ||
+    get('sublocality_level_2') ||
     get('sublocality') ||
     get('neighborhood');
   const city =
@@ -270,7 +326,7 @@ const reverseGeocodeNominatim = async (
   const url =
     `https://nominatim.openstreetmap.org/reverse` +
     `?format=json&lat=${coords.latitude}&lon=${coords.longitude}` +
-    `&addressdetails=1`;
+    `&addressdetails=1&zoom=18`;
 
   const response = await fetch(url, {
     headers: {
@@ -320,7 +376,7 @@ export const reverseGeocode = async (
   try {
     const { data } = await tryGoogleRequest(
       key =>
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${key}`,
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&language=en&region=in&key=${key}`,
     );
 
     if (data.status !== 'OK' || !data.results?.length) {
@@ -329,7 +385,7 @@ export const reverseGeocode = async (
       );
     }
 
-    const result = data.results[0];
+    const result = pickBestGeocodeResult(data.results);
     return parseAddressComponents(
       result.address_components,
       result.formatted_address,
@@ -350,14 +406,15 @@ export const geocodePincode = async (
   try {
     const { data } = await tryGoogleRequest(
       key =>
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleaned)}&components=country:IN&key=${key}`,
+        `https://maps.googleapis.com/maps/api/geocode/json?components=postal_code:${cleaned}|country:IN&language=en&region=in&key=${key}`,
     );
 
     if (data.status !== 'OK' || !data.results?.length) {
       return null;
     }
 
-    const result = data.results[0];
+    const result = pickBestGeocodeResult(data.results);
+
     const { lat, lng } = result.geometry.location;
     return parseAddressComponents(
       result.address_components,
@@ -449,19 +506,19 @@ type SavedAddressInput = {
 export const savedAddressToParsed = (
   item: SavedAddressInput,
 ): ParsedAddress => {
-  const line1 = item.address_line_1 || '';
-  const city = item.city || '';
-  const state = item.state || '';
-  const zip = item.zipcode || '';
+  const line1 = item?.address_line_1 || '';
+  const city = item?.city || '';
+  const state = item?.state || '';
+  const zip = item?.zipcode || '';
   const formatted = [line1, city, state, zip].filter(Boolean).join(', ');
 
   return {
     address_line_1: line1,
-    address_line_2: item.address_line_2 || '',
+    address_line_2: item?.address_line_2 || '',
     city,
     state,
     zipcode: zip,
-    country: item.country || 'India',
+    country: item?.country || 'India',
     formatted_address: formatted || line1 || city || 'Saved address',
     latitude: 0,
     longitude: 0,

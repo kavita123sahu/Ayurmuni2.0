@@ -13,8 +13,6 @@ export const BaseUrl = {
     // https://scarce-derby-voice.ngrok-free.dev
 };
 
-
-
 export const Method = {
     GET: 'GET',
     POST: 'POST',

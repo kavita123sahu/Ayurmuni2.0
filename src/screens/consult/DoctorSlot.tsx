@@ -30,6 +30,7 @@ import { Ionicons } from '../../common/Vector';
 import TablerIcon from '../../components/TablerIcon';
 import { requireAuth } from '../../services/guestAuth';
 import { useAuth } from '../../hooks/useAuth';
+import UploadRecordModal from '../../components/UploadRecordModal';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -38,22 +39,27 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 
 
 const DoctorSlot = (props: any) => {
+
     const { route, navigation } = props;
     const { isGuest } = useAuth();
 
-
-
     const [selectedRecords, setSelectedRecords] =
         useState<string[]>([]);
+
     const { doctorDetails } = route?.params || {};
 
     const { patientsRecord, fetchPatientsRecord, } = useMedicalRecord();
 
-
     const {
         selectFile,
         CameraUpload,
+        removeFile,
+        pickedFile,
         uploading,
+
+        modalVisible,
+        submitRecord,
+        closeUploadModal,
     } = useMedicalUpload(
         fetchPatientsRecord,
         (recordId) => {
@@ -483,6 +489,15 @@ const DoctorSlot = (props: any) => {
                         </TouchableOpacity>
                     </View>
 
+
+                    <UploadRecordModal
+                        visible={modalVisible}
+                        file={pickedFile}
+                        uploading={uploading}
+                        onClose={closeUploadModal}
+                        onSubmit={submitRecord}
+                    />
+
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -529,7 +544,6 @@ const styles = StyleSheet.create({
     section: { marginTop: 24, paddingHorizontal: 20 },
     rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     sectionTitle: { fontSize: 18, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
-
 
     recordTitle: {
         fontSize: 16,

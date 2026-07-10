@@ -29,7 +29,7 @@ const AppInputField = ({
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
   const isDateField =
-    label?.toLowerCase() === 'date of birth' ||
+    label?.toLowerCase() === 'date of birth' || 
     label?.toLowerCase() === 'valid thru';
 
   const formatDate = (date: Date) => {
@@ -91,7 +91,7 @@ const AppInputField = ({
         mode="date"
         onConfirm={handleConfirm}
         onCancel={() => setDatePickerVisibility(false)}
-        maximumDate={label === 'Date of Birth' ? new Date() : undefined}
+        maximumDate={label === 'Date of Birth *' ? new Date() : undefined}
         minimumDate={label === 'Valid Thru' ? new Date() : undefined}
       />
 
@@ -151,7 +151,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
+
     color: Colors.textColor,
     paddingVertical: 0,
   },

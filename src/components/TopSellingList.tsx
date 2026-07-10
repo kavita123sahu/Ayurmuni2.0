@@ -131,20 +131,20 @@ const TopSellingList: React.FC<Props> = ({
       return (
         <View style={!isGrid ? styles.horizontalWrap : undefined}>
           <ProductCard
-          item={item}
-          variant={isGrid ? 'grid' : 'horizontal'}
-          cartQty={cartQty}
-          isAdding={addingVariantId === variantId}
-          showWishlist={fav}
-          actionsLocked={isGuest}
-          onPress={() =>
-            stackNav.navigate('ProductDetails', { varientID: item?.variant_id })
-          }
-          onAdd={() => handleCartUpdate(item, cartQty + 1)}
-          onIncrement={() => handleCartUpdate(item, cartQty + 1)}
-          onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
-          onWishlist={() => handleWishlist(item)}
-        />
+            item={item}
+            variant={isGrid ? 'grid' : 'horizontal'}
+            cartQty={cartQty}
+            isAdding={addingVariantId === variantId}
+            showWishlist={fav}
+            actionsLocked={isGuest}
+            onPress={() =>
+              stackNav.navigate('ProductDetails', { varientID: item?.variant_id })
+            }
+            onAdd={() => handleCartUpdate(item, cartQty + 1)}
+            onIncrement={() => handleCartUpdate(item, cartQty + 1)}
+            onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
+            onWishlist={() => handleWishlist(item)}
+          />
         </View>
       );
     },

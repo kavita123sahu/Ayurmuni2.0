@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
   Pressable,
+  Dimensions,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -16,6 +17,7 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
+const { width } = Dimensions.get('window');
 const ITEM_WIDTH = 76;
 const TILE_SIZE = 68;
 
@@ -81,6 +83,7 @@ const CategoryTile = ({
           </View>
         )}
       </Animated.View>
+      
       <Text numberOfLines={2} style={styles.label}>
         {item.name}
       </Text>
@@ -112,7 +115,6 @@ const HomeCategory = ({ data = [], navigation }: any) => {
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.sectionTitle}>Shop by category</Text>
       <FlatList
         horizontal
         data={data}
@@ -140,25 +142,12 @@ export default React.memo(HomeCategory);
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginTop: 4,
-    marginBottom: 6,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    marginTop: 12,
+    marginBottom: 4,
   },
   container: {
-    paddingRight: 12,
-    paddingHorizontal: 4,
+    paddingRight: 16,
+    paddingVertical: 4,
   },
   item: {
     width: ITEM_WIDTH,
@@ -169,12 +158,17 @@ const styles = StyleSheet.create({
     width: TILE_SIZE,
     height: TILE_SIZE,
     borderRadius: 16,
-    backgroundColor: Colors.BGIcon,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderColor: '#D8ECE6',
+    borderColor: '#E8EDF2',
+    shadowColor: '#0D614E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   tileImage: {
     width: '50%',
@@ -184,7 +178,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.BGIcon,
+    backgroundColor: '#F0FAF7',
   },
   label: {
     marginTop: 7,

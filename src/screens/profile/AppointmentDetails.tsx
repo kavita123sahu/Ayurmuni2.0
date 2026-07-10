@@ -1219,14 +1219,19 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               </View>
             </View>
 
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="document-text-outline" size={15} color={Theme.gold} />
-              <Text style={styles.sectionTitle}>Reason for Visit</Text>
-            </View>
-            <View style={styles.card}>
-              <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} />
-              <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
-            </View>
+
+            {detail?.appointment?.concern && (
+              <>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="document-text-outline" size={15} color={Theme.gold} />
+                  <Text style={styles.sectionTitle}>Reason for Visit</Text>
+                </View>
+
+                <View style={styles.card}>
+                  <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} />
+                  <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
+                </View>
+              </>)}
 
             {appointmentStatus === 'completed' && (
               <>
