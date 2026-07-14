@@ -45,7 +45,7 @@ type NavigationProp =
     RootStackParamList
   >;
 
-const ConsultScreen = () => {
+const ConsultHome = () => {
 
   const navigation =
     useNavigation<NavigationProp>();
@@ -291,7 +291,7 @@ const ConsultScreen = () => {
 };
 
 export default memo(
-  ConsultScreen,
+  ConsultHome,
 );
 
 const styles = StyleSheet.create({

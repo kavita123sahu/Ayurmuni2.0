@@ -31,6 +31,7 @@ import { product } from '../../common/DataInterface';
 import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useLocation } from '../../context/LocationContext';
 import HomeCategory from './HomeCategory';
 import SuggestedCard from '../../components/SuggestedCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,6 +77,7 @@ const HomePage: React.FC = (props: any) => {
   } = useHomeData();
 
   const { isGuest } = useAuth();
+  const { promptLocationOnHome } = useLocation();
   const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
   const insets = useSafeAreaInsets();
   const {
@@ -92,6 +94,15 @@ const HomePage: React.FC = (props: any) => {
   const handleSearchPress = useCallback(() => {
     props.navigation.navigate('ProductsScreen');
   }, [props.navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(() => {
+        promptLocationOnHome();
+      }, 600);
+      return () => clearTimeout(timer);
+    }, [promptLocationOnHome]),
+  );
 
   const normalizedData = useMemo(() => {
     if (!Array.isArray(AppointData)) {

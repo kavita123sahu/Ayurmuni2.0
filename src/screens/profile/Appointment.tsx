@@ -309,6 +309,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 14,
     alignItems: 'center',
+    marginHorizontal: 20,
     justifyContent: 'center',
     elevation: 4,
     shadowColor: '#0D614E',

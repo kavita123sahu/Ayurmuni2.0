@@ -11,7 +11,6 @@ import {
     ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
 import { useNotifications } from '../hooks/useNotification';

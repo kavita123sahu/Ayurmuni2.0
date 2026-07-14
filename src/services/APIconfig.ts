@@ -104,6 +104,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
         const accessToken = data?.data?.access;
         const newRefreshToken = data?.data?.refresh;
 
+        console.log('accessTokenaccessTokenaccessToken',accessToken)
+
         if (!accessToken) {
             return null;
         }

@@ -95,29 +95,6 @@ export const getTopDoctor = async () => {
 }
 
 
-export const getDoctorSlip = async (DoctorID: string) => {
-    try {
-        const response = await apiClient(`customers/doctor-slip/?doctor_id=${DoctorID}`, {
-            method: 'GET'
-        });
-
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
-
-
-export const fetchAgoraToken = async (consultationId: string) => {
-    try {
-        const response = await apiClient(`doctors/appointments/${consultationId}/call/token/`, {
-            method: 'POST'
-        });
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
 
 export const ToggleFavDoctor = async (doctorID: string, method: 'POST') => {
     try {
@@ -131,16 +108,6 @@ export const ToggleFavDoctor = async (doctorID: string, method: 'POST') => {
     }
 }
 
-export const AllFavDoctor = async () => {
-    try {
-        const response = await apiClient('favorites/doctors/', {
-            method: 'GET'
-        });
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
 
 export const AllDoctorData = async () => {
     try {
@@ -154,18 +121,6 @@ export const AllDoctorData = async () => {
 }
 
 
-
-export const getDoctorSpecialities = async () => {
-    try {
-        const response = await apiClient('customers/topdoctors/', {
-            method: 'GET'
-        });
-
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
 export const getMedicalReceipt = async (appointmentId: string) => {
     try {
         const response = await apiClient(`customers/doctors/consultation-receipt/?consultation_id=${appointmentId}`, {
@@ -208,7 +163,6 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
 }
 
 
-
 export const getConsultHistory = async (payload: any) => {
   try {
     const cleanPayload = Object.fromEntries(
@@ -236,7 +190,6 @@ export const getConsultHistory = async (payload: any) => {
     throw error;
   }
 };
-
 
 
 export const getDoctorSlots = async (
@@ -283,6 +236,8 @@ export const getDoctorSlots = async (
         throw error;
     }
 };
+
+
 export const appointmentActionAPI = async ({
     appointmentId,
     payload,
@@ -309,6 +264,7 @@ export const appointmentActionAPI = async ({
         throw error;
     }
 };
+
 
 export const getFilterTopDoctor = async (
     payload: object,
@@ -377,74 +333,6 @@ export const getConsultCategory = async () => {
     })
 }
 
-export const getPatient = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            console.log(BaseUrl.base_url + 'healthcare/patient/')
-
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/patient/', fetchParameter);
-            let response = await serverResponse.json();
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-export const getBookingOrder = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            console.log(BaseUrl.base_url + '/healthcare/appointments/consultations-with-orders/')
-
-            let serverResponse = await fetch(BaseUrl.base_url + '/healthcare/appointments/consultations-with-orders/', fetchParameter);
-            let response = await serverResponse.json();
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-export const addPatient = async (data: Object) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            console.log('Add Patient Fetch Params:', BaseUrl.base_url + 'ecom/patient/', fetchParameter);
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/patient/', fetchParameter);
-            resolve(serverResponse);
-        }
-
-        catch (error) {
-            reject(error);
-        }
-    })
-}
 
 
 export const createConsultationPayment = async (data: object) => {
@@ -473,7 +361,6 @@ export const verifyConsultationPayment = async (data: object) => {
         throw error;
     }
 }
-
 
 
 export const getNotification = async (payload: any) => {

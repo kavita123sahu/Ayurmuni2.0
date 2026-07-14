@@ -173,7 +173,6 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
     useEffect(() => {
 
-        // INITIAL API HIT
         fetchAddresses();
 
         const refreshAddress = () => {

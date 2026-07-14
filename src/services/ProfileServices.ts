@@ -1,5 +1,4 @@
-import { Utils } from "../common/Utils";
-import { BaseUrl, Method } from "../config/Key";
+
 import { apiClient } from "./APIconfig";
 
 
@@ -15,15 +14,6 @@ export const update_Profile = async (data: any) => {
         throw error;
     }
 }
-
-// export const user_profile = async () => {
-//     return apiClient(
-//         'customers/profile/',
-//         {
-//             method: 'GET',
-//         },
-//     );
-// };
 
 
 export const user_profile = async () => {
@@ -92,11 +82,11 @@ export const createDoctorReview = async (
 };
 
 
-
 export const createReview = async ({
   entityType,
   appointmentId,
   reviewData,
+  method = 'POST',
 }: {
   entityType: string;
   appointmentId: string;
@@ -104,23 +94,22 @@ export const createReview = async ({
     rating: number;
     review: string;
     image_urls?: string[];
+    appointment?: string;
   };
+  method?: 'POST' | 'PATCH';
 }) => {
   try {
-    const response = await apiClient(
+    return await apiClient(
       `review/?entity_type=${entityType}&appointment_id=${appointmentId}`,
       {
-        method: 'POST',
+        method,
         body: JSON.stringify(reviewData),
       },
     );
-
-    return response;
   } catch (error) {
     throw error;
   }
 };
-
 
 
 

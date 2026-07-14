@@ -71,6 +71,7 @@ export const getAllMedicalRecord = async () => {
         const response = await apiClient('customers/medical-records/', {
             method: 'GET',
         });
+        console.log("responsemedicalrecord", response);
         return response;
     } catch (error) {
         throw error;

@@ -26,7 +26,7 @@ import OrderCard from '../../components/OrderCard';
 import MedicalRecordCard from '../consult/MedicalRecordCard';
 import PreviewModal from '../consult/PreviewModal';
 import { useMedicalRecord, useMedicalUpload, usePatientData } from '../../hooks/usePatientData';
-import { AddMedicalRecord, deleteMedicalRecord } from '../../services/PatientServices';
+import { deleteMedicalRecord } from '../../services/PatientServices';
 
 
 const MedicalRecords = (props: any) => {
@@ -37,18 +37,9 @@ const MedicalRecords = (props: any) => {
         fetchPatientsRecord,
     } = useMedicalRecord();
 
-
     console.log("patientsRecordpatientsRecord", patientsRecord);
 
-    // const {
-    //     selectedFiles,
-    //     uploading,
-    //     selectFile,
-    //     submitFiles,
-    //     removeFile,
-    // } = useMedicalUpload(fetchPatientsRecord,);
-    const [uploading, setUploading] = useState(false);
-    const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+
 
     const TAB_TYPE_MAP: Record<string, string | null> = {
         'All Records': null,
@@ -61,7 +52,7 @@ const MedicalRecords = (props: any) => {
         CameraUpload,
         removeFile,
         pickedFile,
-
+        uploading,
         modalVisible,
         submitRecord,
         closeUploadModal,
@@ -72,6 +63,7 @@ const MedicalRecords = (props: any) => {
         },
     );
     console.log("patientsRecordpatientsRecord", patientsRecord);
+
     const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
     const [previewVisible, setPreviewVisible] = useState(false);
     const [previewUrl, setPreviewUrl] = useState('');
@@ -121,6 +113,7 @@ const MedicalRecords = (props: any) => {
             </View>
         )
     }
+
     const toggleRecord = (id: string) => {
         setSelectedRecords(prev =>
             prev.includes(id)

@@ -31,7 +31,7 @@ export const RELATION_OPTIONS = [
     { label: 'Father', value: 'Father' },
     { label: 'Mother', value: 'Mother' },
     { label: 'Child', value: 'Child' },
-    { label: 'Other', value: 'Other' },
+    { label: 'Other', value: 'Others' },
 ];
 
 export const BLOOD_GROUP_OPTIONS = [
@@ -77,6 +77,8 @@ export default function AddEditPatientDetail(props: any) {
             policyNO: '',
             valid: '',
         });
+
+    const isSelf = formData.relation?.toLowerCase() === 'self';
 
     const nameParts =
         formData.fullname.trim().split(' ');
@@ -279,7 +281,7 @@ export default function AddEditPatientDetail(props: any) {
             profile_picture: formData.profilePicture,
 
             emergency_contact_name: formData.contactName,
-            emergency_contact_relation: formData.emergencyRelation,
+            emergency_contact_relation: formData.emergencyRelation.toLowerCase(),
             emergency_contact_phone: formData.EmergencyNO,
 
             insurance_provider: formData.insurance,
@@ -401,7 +403,7 @@ export default function AddEditPatientDetail(props: any) {
                     <AppInputField label="Full Name *" placeholder="John Doe" value={formData.fullname} onChangeText={(text: any) => setFormData(prev => ({ ...prev, fullname: text }))} />
 
                     <AppInputField
-                        label="Date of Birth *" 
+                        label="Date of Birth *"
                         placeholder="YYYY-MM-DD"
                         value={formData.dob}
                         onChangeText={(text: any) =>
@@ -445,7 +447,7 @@ export default function AddEditPatientDetail(props: any) {
 
                     <View style={styles.row}>
 
-                        <AppInputField
+                        {/* <AppInputField
                             label="Blood Group *"
                             value={formData.bloodG}
                             placeholder="Blood Group"
@@ -461,6 +463,19 @@ export default function AddEditPatientDetail(props: any) {
                                     bloodG: item.value,
                                 }))
                             }
+                        /> */}
+                        <AppInputField
+                            label="Blood Group *"
+                            value={formData.bloodG}
+                            placeholder="Blood Group"
+                            rightIconName="chevron-down"
+                            options={BLOOD_GROUP_OPTIONS}
+                            onSelect={(value: string) =>
+                                setFormData(prev => ({
+                                    ...prev,
+                                    bloodG: value,
+                                }))
+                            }
                         />
 
                         <AppInputField
@@ -472,13 +487,22 @@ export default function AddEditPatientDetail(props: any) {
                                 flex: 1,
                                 marginLeft: 8,
                             }}
+
                             options={RELATION_OPTIONS}
-                            onSelect={(item: any) =>
+                            // options={RELATION_OPTIONS}
+                            disabled={formData.relation?.toLowerCase() === 'self'}
+                            onSelect={(value: string) =>
                                 setFormData(prev => ({
                                     ...prev,
-                                    relation: item.value,
+                                    relation: value,
                                 }))
                             }
+                        // onSelect={(item: any) =>
+                        //     setFormData(prev => ({
+                        //         ...prev,
+                        //         relation: item.value,
+                        //     }))
+                        // }
                         />
 
                     </View>
@@ -567,11 +591,10 @@ export default function AddEditPatientDetail(props: any) {
                             placeholder="Select Relation"
                             rightIconName="chevron-down"
                             options={RELATION_OPTIONS}
-                            onSelect={(item: any) =>
+                            onSelect={(value: string) =>
                                 setFormData(prev => ({
                                     ...prev,
-                                    emergencyRelation:
-                                        item.value,
+                                    emergencyRelation: value,
                                 }))
                             }
                         />

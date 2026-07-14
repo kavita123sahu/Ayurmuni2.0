@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +27,7 @@ type LocationContextType = {
   refreshCurrentLocation: () => Promise<ParsedAddress | null>;
   requestPermission: () => Promise<boolean>;
   setDeliveryLocation: (address: ParsedAddress | null) => Promise<void>;
+  promptLocationOnHome: () => void;
 };
 
 const LocationContext = createContext<LocationContextType | null>(null);
@@ -40,6 +42,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const homePromptChecked = useRef(false);
 
   const setDeliveryLocation = useCallback(
     async (address: ParsedAddress | null) => {
@@ -102,6 +105,28 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
     return granted;
   }, [fetchLocationFromGps]);
 
+  /** Blinkit-style: ask only after user reaches Home, not on splash. */
+  const promptLocationOnHome = useCallback(async () => {
+    if (homePromptChecked.current) {
+      return;
+    }
+    homePromptChecked.current = true;
+
+    const prompted = await AsyncStorage.getItem(LOCATION_PROMPT_KEY);
+    if (prompted) {
+      const granted = await checkLocationPermission();
+      if (granted) {
+        setLocationEnabled(true);
+        if (!currentAddress) {
+          fetchLocationFromGps();
+        }
+      }
+      return;
+    }
+
+    setShowPermissionModal(true);
+  }, [currentAddress, fetchLocationFromGps]);
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -111,12 +136,6 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       } catch {
         // ignore corrupt cache
-      }
-
-      const prompted = await AsyncStorage.getItem(LOCATION_PROMPT_KEY);
-      if (!prompted) {
-        setShowPermissionModal(true);
-        return;
       }
 
       const granted = await checkLocationPermission();
@@ -150,6 +169,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
         refreshCurrentLocation,
         requestPermission,
         setDeliveryLocation,
+        promptLocationOnHome,
       }}
     >
       {children}
@@ -172,7 +192,8 @@ export const useLocation = () => {
       locationEnabled: false,
       refreshCurrentLocation: async () => null,
       requestPermission: async () => false,
-      setDeliveryLocation: async () => { },
+      setDeliveryLocation: async () => {},
+      promptLocationOnHome: () => {},
     };
   }
   return ctx;

@@ -26,6 +26,7 @@ import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
 import { useAuth } from '../../hooks/useAuth';
+import { Images } from '../../common/Images';
 
 const ProductsScreen = () => {
   const navigation = useNavigation<any>();
@@ -127,7 +128,7 @@ const ProductsScreen = () => {
         tag="SUMMER SALE"
         buttontext="Shop Now"
         showButton
-        onPress={() => {}}
+        onPress={() => { }}
       />
       <SectionHeader title="Top Selling Products" actionText="View all" />
     </View>
@@ -139,6 +140,8 @@ const ProductsScreen = () => {
 
       <Header
         title="Products"
+        backIcon={Images.backIcon}
+        onBack={navigation.goBack()}
         subtitle="Choose best product"
       />
 
@@ -176,16 +179,17 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FDFDFB',
+    paddingHorizontal: 20
   },
   headerContent: {
     paddingHorizontal: 20,
   },
   listContent: {
-    paddingHorizontal: 14,
+    // paddingHorizontal: 14,
   },
   columnWrap: {
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
+    // paddingHorizontal: 6,
   },
   cardWrap: {
     width: GRID_CARD_WIDTH,

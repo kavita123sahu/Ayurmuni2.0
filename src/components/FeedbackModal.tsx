@@ -12,25 +12,51 @@ import {
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { useCreateReview } from '../hooks/useCreateReview';
 import TablerIcon from '../components/TablerIcon';
 
 type Props = {
   visible: boolean;
   loading: boolean;
+  isEdit?: boolean;
+  initialRating?: number;
+  initialReview?: string;
+  initialImages?: string[];
   onClose: () => void;
   onSubmit: (data: {
     rating: number;
     review: string;
+    images: string[];
   }) => void;
 };
-
-const FeedbackModal: React.FC<Props> = ({  visible, onClose, onSubmit }) => {
-  const [rating, setRating] = useState(0);
-  const [feedback, setFeedback] = useState('');
-  const { loading, submitReview } = useCreateReview();
+const FeedbackModal: React.FC<Props> = ({
+  visible,
+  loading,
+  isEdit = false,
+  initialRating = 0,
+  initialReview = '',
+  initialImages = [],
+  onClose,
+  onSubmit,
+}) => {
+  const [rating, setRating] = useState(initialRating);
+  const [feedback, setFeedback] = useState(initialReview);
+  const [images, setImages] = useState<string[]>(initialImages);
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+
+
+  useEffect(() => {
+    if (visible) {
+      setRating(initialRating);
+      setFeedback(initialReview);
+      setImages(initialImages);
+    }
+  }, [
+    visible,
+    initialRating,
+    initialReview,
+    initialImages,
+  ]);
 
   useEffect(() => {
     if (visible) {
@@ -53,21 +79,23 @@ const FeedbackModal: React.FC<Props> = ({  visible, onClose, onSubmit }) => {
 
 
 
- 
+
   const handleSubmit = () => {
-  if (!rating) {
-    Alert.alert("Validation", "Please select rating");
-    return;
-  }
+    if (!rating) {
+      Alert.alert("Validation", "Please select rating");
+      return;
+    }
 
-  onSubmit({
-    rating,
-    review: feedback,
-  });
+    onSubmit({
+      rating,
+      review: feedback,
+      images,
+    });
 
-  setRating(0);
-  setFeedback("");
-};
+    setRating(0);
+    setFeedback('');
+    setImages([]);
+  };
 
 
   return (
@@ -118,7 +146,13 @@ const FeedbackModal: React.FC<Props> = ({  visible, onClose, onSubmit }) => {
             disabled={loading}
           >
             <Text style={styles.submitText}>
-              {loading ? 'Submitting...' : 'Submit'}
+              {loading
+                ? isEdit
+                  ? 'Updating...'
+                  : 'Submitting...'
+                : isEdit
+                  ? 'Update Review'
+                  : 'Submit Review'}
             </Text>
           </TouchableOpacity>
 

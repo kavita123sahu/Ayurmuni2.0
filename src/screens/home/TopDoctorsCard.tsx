@@ -91,7 +91,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
           <View style={styles.footer}>
             <View style={styles.ratingPill}>
               <TablerIcon name="star" size={14} color="#F59E0B" />
-              <Text style={styles.rating}>{item.ranking_score || '4.8'}</Text>
+              <Text style={styles.rating}>{item.ranking_score || ''}</Text>
               <Text style={styles.reviewCount}>
                 ({item.total_reviews || '0'})
               </Text>

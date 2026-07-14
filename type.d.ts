@@ -90,7 +90,7 @@ export type RootStackParamList = {
     SearchScreen: undefined;
     OrderStatus: undefined;
     MedicineCheckOut: undefined;
-    consultHome: undefined;
+    ConsultHome: undefined;
     MedicalHistory: undefined;
     AssessmentType: undefined;
 };
@@ -107,7 +107,7 @@ export type RootBottomParamList = {
     Products: undefined;
     Profile: undefined;
     Consult: undefined;
-    consultHome: undefined;
+    ConsultHome: undefined;
     Mentor: undefined;
 };
 

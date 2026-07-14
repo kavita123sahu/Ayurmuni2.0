@@ -98,6 +98,26 @@ const RazorpayScreen = ({
 
     }, [slotId]);
 
+
+    useFocusEffect(
+        React.useCallback(() => {
+            if (!isVerifyingPayment) return;
+
+            const onBackPress = () => true; // Back block
+
+            BackHandler.addEventListener(
+                'hardwareBackPress',
+                onBackPress,
+            );
+
+            return () =>
+                BackHandler.removeEventListener(
+                    'hardwareBackPress',
+                    onBackPress,
+                );
+        }, [isVerifyingPayment]),
+    );
+
     /* -------------------------------------------------------------------------- */
     /*                              PAYMENT HANDLER                               */
     /* -------------------------------------------------------------------------- */
@@ -180,12 +200,41 @@ const RazorpayScreen = ({
                         showSuccessToast('Payment verification failed', 'error');
                     }
                 })
-                .catch(async () => {
-                    setIsVerifyingPayment(false);
+                // .catch(async () => {
+                //     setIsVerifyingPayment(false);
+                //     showSuccessToast('Payment cancelled', 'error');
+                //     paymentStartedRef.current = false;
 
-                    showSuccessToast('Payment cancelled', 'error');
+                // });
+                .catch(async (error: any) => {
+                    setIsVerifyingPayment(false);
                     paymentStartedRef.current = false;
 
+                    console.log("Razorpay Error:", error);
+
+                    // Payment cancel / exit
+                    if (
+                        error?.code === RazorpayCheckout.PAYMENT_CANCELLED ||
+                        error?.description?.toLowerCase().includes('cancel') ||
+                        error?.description?.toLowerCase().includes('dismiss') ||
+                        error?.description?.toLowerCase().includes('exit')
+                    ) {
+                        // Clear reserved slot if needed
+                        try {
+                            await Utils.storeData(STORAGE_KEY, null);
+                        } catch (e) {
+                            console.log(e);
+                        }
+
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'HomeScreen' }],
+                        });
+
+                        return;
+                    }
+
+                    showSuccessToast('Payment Failed', 'error');
                 });
         } catch (error) {
             setIsVerifyingPayment(false);
@@ -219,7 +268,15 @@ const RazorpayScreen = ({
                         {/* {
                     !paymentProcessing && ( */}
 
-                        <BackIconButton onPress={() => navigation.goBack()} />
+                        <BackIconButton
+                            disabled={isVerifyingPayment}
+                            onPress={() => {
+                                if (isVerifyingPayment) return;
+                                navigation.goBack();
+                            }}
+                        />
+
+                        {/* <BackIconButton onPress={() => navigation.goBack()} /> */}
                         {/* )
                 } */}
 
@@ -244,10 +301,12 @@ const RazorpayScreen = ({
                             <View style={styles.row}>
 
                                 {doctorInfo?.profile_image ? (
-                                    <Image
-                                        source={{ uri: doctorInfo?.profile_image }}
-                                        style={styles.avatar}
-                                    />
+                                    <View style={[styles.avatarFallback, { backgroundColor: Colors.bgcolor }]}>
+                                        <Image
+                                            source={{ uri: doctorInfo?.profile_image }}
+                                            style={styles.avatar}
+                                        />
+                                    </View>
                                 ) : (
                                     <View style={styles.avatarFallback}>
                                         <Text style={styles.avatarLetter}>
@@ -406,8 +465,9 @@ const RazorpayScreen = ({
 
             <Modal
                 visible={isVerifyingPayment}
-                animationType="fade"
                 transparent={false}
+                animationType="fade"
+                onRequestClose={() => { }}
             >
                 <SafeAreaView style={styles.verificationScreen}>
                     <View style={styles.verificationContent}>
@@ -422,7 +482,11 @@ const RazorpayScreen = ({
                         </Text>
 
                         <Text style={styles.verificationSubtitle}>
-                            Please wait while we confirm your transaction.
+                            Payment is being verified.
+                            {"\n"}
+                            Please do not press Back or close the app.
+                            {"\n"}
+                            This may take a few seconds.
                         </Text>
 
                         <View style={styles.verificationInfo}>
@@ -501,8 +565,6 @@ const styles = StyleSheet.create({
         height: 70,
 
         borderRadius: 18,
-
-        marginRight: 14,
     },
 
     avatarFallback: {
@@ -511,6 +573,8 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         backgroundColor: Colors.primaryColor,
         justifyContent: 'center',
+
+        marginRight: 15,
         alignItems: 'center',
     },
     avatarLetter: {

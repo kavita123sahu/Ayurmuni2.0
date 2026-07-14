@@ -86,7 +86,7 @@ const Checkout: React.FC = (props: any) => {
             <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
 
             <AppHeader title="Checkout"
- onLeftPress={() => props.navigation.goBack()} />
+                onLeftPress={() => props.navigation.goBack()} />
 
             <ScrollView contentContainerStyle={styles.content}>
 

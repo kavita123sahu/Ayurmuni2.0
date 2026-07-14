@@ -321,6 +321,7 @@ import { useChat } from '../../hooks/useChat';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { ChatHeader } from './ChatHeader';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const THEME = '#0D614E';
@@ -343,9 +344,17 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         sendMessage, markAsRead, chatAccess, loadMessages,
     } = useChat(appointmentId, role);
 
+
     const flatListRef = useRef<FlatList>(null);
     const [isAtBottom, setIsAtBottom] = useState(true);
     const markedReadRef = useRef<Set<string>>(new Set()); // ✅ dedupe — dobara mark-read spam na ho
+
+
+    useFocusEffect(
+        React.useCallback(() => {
+            loadMessages();
+        }, [])
+    );
 
     useEffect(() => {
         const unread = messages.filter(
@@ -379,9 +388,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     const renderMessage = ({ item }: { item: any }) => {
         const isOwn = item.sender_role === participantRole;
-        const senderName = item.sender_name || (isOwn
-            ? (participantRole === 'doctor' ? doctorName : patientName)
-            : (participantRole === 'doctor' ? patientName : doctorName));
+        const senderName = item.doctorName;
         return <MessageBubble message={item} isOwn={isOwn} senderName={senderName || 'Unknown'} />;
     };
 

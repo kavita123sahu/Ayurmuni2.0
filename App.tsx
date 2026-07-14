@@ -9,9 +9,9 @@ import { Fonts } from './src/common/Fonts';
 import { LocationProvider } from './src/context/LocationContext';
 
 
-console.log = () => { };
-console.warn = () => { };
-console.error = () => { };
+// console.log = () => { };
+// console.warn = () => { };
+// console.error = () => { };
 
 
 const toastConfig = {
@@ -85,6 +85,5 @@ const App = () => {
     </GestureHandlerRootView>
   )
 }
-
 
 export default App

@@ -389,7 +389,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
 
         <View style={styles.successWrapper}>
           <View style={styles.successCircle}>
-            <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+            <TablerIcon name="tick-icon" size={120} color={Colors.primaryColor} />
           </View>
         </View>
 

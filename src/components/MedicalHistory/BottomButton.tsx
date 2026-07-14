@@ -17,7 +17,8 @@ import { scale } from '../../common/Colors';
 const BottomButton = ({
   loading,
   onPress,
-  disabled
+  disabled,
+  title = 'Next',
 }: any) => {
 
   return (
@@ -40,7 +41,7 @@ const BottomButton = ({
         ) : (
           <>
             <Text numberOfLines={1} style={styles.nextText}>
-              Next
+              {title}
             </Text>
 
             <Ionicons

@@ -401,6 +401,7 @@ const styles = StyleSheet.create({
   },
   recordModalContainer: {
     flex: 1,
+    paddingHorizontal:15,
     backgroundColor: '#FFF',
   },
   recordModalHeader: {

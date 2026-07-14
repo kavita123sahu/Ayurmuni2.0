@@ -1,10 +1,8 @@
-import { use } from "react";
-import { Utils } from "../common/Utils";
-import { BaseUrl, Method } from "../config/Key";
+
 import { apiClient } from "./APIconfig";
 
-export const GetQuestionOptions = async (data: any) => {
 
+export const GetQuestionOptions = async (data: any) => {
     try {
         const response = await apiClient('customers/questionnaires/questions/list/', {
             method: 'POST',
@@ -15,6 +13,7 @@ export const GetQuestionOptions = async (data: any) => {
         throw error;
     }
 }
+
 
 
 export const KnowPrakritiSubmit = async (data: Object) => {

@@ -9,18 +9,12 @@ import {
 } from "@react-navigation/native";
 import {
   BackHandler,
-  Dimensions,
-  Image,
   ToastAndroid,
-  View,
 } from "react-native";
 import Login from "../screens/auth/Login";
 import OtpVerify from "../screens/auth/OtpVerify";
 import Splash from "../screens/auth/Splash";
-
-
 import HomePage from "../screens/home/HomePage";
-// import ConsultHome from "../screens/consult/ConsultHome";
 import ProfilePage from "../screens/profile/ProfilePage";
 import { useNetworkStatus } from "../hooks/useDebaunce";
 import CustomeTab from "../components/CustomeTab";
@@ -91,12 +85,10 @@ import EditProfile from "../screens/profile/EditProfile";
 import RazorpayScreen from "../screens/payment/RazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
-import consultHome from "../screens/consult/consultHome";
+import ConsultHome from "../screens/consult/ConsultHome";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
-import { ChatContainer } from "../chatSystem/components/chat/chatContainer";
-import ConfirmScreen from "../screens/products/ConfirmScreen";
 import { ScrollHideProvider } from "../context/ScrollHideContext";
 
 enableScreens();
@@ -105,6 +97,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
 import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
 import ChatScreen from "../screens/profile/ChatScreen";
+import ConfirmScreen from "../screens/products/ConfirmScreen";
 
 
 const TabStack = () => {
@@ -228,12 +221,13 @@ const HomeStack = () => {
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="consultHome" component={consultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="Consult" component={ConsultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ConfirmScreen" component={ConfirmScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
 
-      
+
       {/* <Stack.Screen 
           name="ChatContainer" 
           options={{ headerShown: false, animation: 'slide_from_right' }}

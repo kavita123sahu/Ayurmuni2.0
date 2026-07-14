@@ -1,4 +1,6 @@
+import { Platform } from "react-native";
 import { Images } from "./Images";
+import { Colors } from "./Colors";
 
 
 export interface ProductItem {
@@ -211,12 +213,12 @@ export const getStatusStyle = (status: string) => {
       color: "#6B7280",
     },
     reschedule: {
-      backgroundColor: "#DBEAFE",
-      color: "#2563EB",
+      backgroundColor: "#FEE2E2",
+      color: "#fff3cd",
     },
     rescheduled: {
-      backgroundColor: "#DBEAFE",
-      color: "#2563EB",
+      backgroundColor: "#FEE2E2",
+      color: "#f7f8f5",
     },
   };
 
@@ -476,6 +478,37 @@ export const generateFutureDates = (
 };
 
 
+
+export const Theme = {
+  bg: '#FAF8F3',
+  cardBg: '#FFFFFF',
+  cardBorder: '#EFE6D8',
+  gold: '#B8933F',
+  goldSoft: '#F4E9D3',
+  emerald: Colors?.primaryColor || '#0A8F5A',
+  emeraldSoft: '#E8F3EC',
+  danger: Colors?.errorColor || '#D64545',
+  dangerSoft: '#FBEAEA',
+  ink: '#1F2A24',
+  subInk: '#8A8578',
+  divider: '#F0EBE0',
+};
+
+export const shadow = (strength: 'sm' | 'md' | 'lg' = 'md') => {
+  const map = {
+    sm: { h: 4, opacity: 0.06, radius: 8, elevation: 3 },
+    md: { h: 8, opacity: 0.1, radius: 16, elevation: 6 },
+    lg: { h: 14, opacity: 0.14, radius: 26, elevation: 12 },
+  } as const;
+  const cfg = map[strength];
+  return {
+    shadowColor: '#1F2A24',
+    shadowOffset: { width: 0, height: cfg.h },
+    shadowOpacity: cfg.opacity,
+    shadowRadius: cfg.radius,
+    elevation: Platform.OS === 'android' ? cfg.elevation : 0,
+  };
+};
 
 
 

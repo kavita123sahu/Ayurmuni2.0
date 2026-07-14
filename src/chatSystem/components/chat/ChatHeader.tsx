@@ -202,6 +202,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
   const navigation = useNavigation();
   const handleBack = () => (onBack ? onBack() : navigation.goBack());
 
+  console.log("headerrrrrrrrr", title,avatar)
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />

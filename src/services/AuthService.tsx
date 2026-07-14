@@ -47,22 +47,6 @@ export const onBoarding = async (data: any) => {
 };
 
 
-export const refreshAccessToken = async (data: any) => {
-
-    try {
-        const response = await apiClient('user/token/refresh/', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
-
-        console.log("useryokeke", response);
-
-        return response;
-    } catch (error) {
-        throw error;
-    }
-};
-
 export const verify_otp = async (data: Object) => {
     try {
         const response = await apiClient('user/customer/register/', {

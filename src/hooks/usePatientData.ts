@@ -6,6 +6,12 @@ import {
 import * as _PATIENT_SERVICES from '../services/PatientServices';
 import { Utils } from '../common/Utils';
 import *as _PROFILE_SERVICES from '../services/ProfileServices';
+import { pick } from '@react-native-documents/picker';
+import { AddMedicalRecord } from '../services/PatientServices';
+import {
+    launchCamera,
+} from 'react-native-image-picker';
+
 
 export const usePatientData = () => {
 
@@ -200,6 +206,7 @@ export const uploadImage = async (
     );
 
     formData.append('dir', dir);
+    console.log('_PROFILE_SERVICES.UploadProfilePhoto =>', _PROFILE_SERVICES.UploadProfilePhoto);
 
     const response =
         await _PROFILE_SERVICES.UploadProfilePhoto(
@@ -211,22 +218,6 @@ export const uploadImage = async (
 
 
 
-
-import { pick } from '@react-native-documents/picker';
-import { AddMedicalRecord } from '../services/PatientServices';
-import {
-    launchCamera,
-} from 'react-native-image-picker';
-import { Alert } from 'react-native';
-
-type FileItem = {
-    id: string;
-    name: string;
-    uri: string;
-    type: string;
-    status?: 'pending' | 'uploading' | 'uploaded' | 'error';
-    file_url?: string;
-};
 
 export const useMedicalRecord = () => {
 
@@ -248,7 +239,7 @@ export const useMedicalRecord = () => {
 
                 const response = await _PATIENT_SERVICES.getAllMedicalRecord();
 
-                console.log('patinerecordsss', response);
+                console.log('patinerecordsssfetchhh', response);
 
                 const data = response?.data || [];
 
@@ -302,6 +293,7 @@ export const useMedicalUpload = (
     fetchPatientsRecord?: () => void,
     onRecordSelected?: (recordId: string) => void,
 ) => {
+    console.log("fetchpatienreocud, onrecorded", fetchPatientsRecord, onRecordSelected);
 
     const [uploading, setUploading] = useState(false);
     const [pickedFile, setPickedFile] = useState<any>(null);
@@ -367,6 +359,8 @@ export const useMedicalUpload = (
             } as any);
             formData.append('dir', 'customer_avatar');
 
+            console.log('_PROFILE_SERVICES.UploadProfilePhoto2222 =>', _PROFILE_SERVICES.UploadProfilePhoto);
+
             const uploadResponse = await _PROFILE_SERVICES.UploadProfilePhoto(formData);
             const fileUrl = uploadResponse?.data?.url;
 
@@ -397,6 +391,7 @@ export const useMedicalUpload = (
             setUploading(false);
         }
     };
+
     const closeUploadModal = () => {
         if (uploading) return;
         setModalVisible(false);

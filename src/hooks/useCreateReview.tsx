@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { createReview } from '../services/ProfileServices';
 
 interface ReviewPayload {
-  appointment: string;
   rating: number;
   review: string;
+  appointment?: string;
+  image_urls?: string[];
 }
 
 export const useCreateReview = () => {
@@ -12,13 +13,15 @@ export const useCreateReview = () => {
   const [error, setError] = useState<any>(null);
 
 const submitReview = async ({
-  entityType,
+ entityType,
   appointmentId,
   reviewData,
+  method = 'POST',
 }: {
   entityType: string;
   appointmentId: string;
   reviewData: ReviewPayload;
+  method?: 'POST' | 'PATCH';
 }) => {
   try {
     setLoading(true);
@@ -28,6 +31,7 @@ const submitReview = async ({
       entityType,
       appointmentId,
       reviewData,
+      method
     });
 
     return response; // API ka actual response return karo
@@ -45,6 +49,8 @@ const submitReview = async ({
     setLoading(false);
   }
 };
+
+
   return {
     loading,
     error,

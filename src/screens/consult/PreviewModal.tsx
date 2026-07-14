@@ -16,7 +16,7 @@ const PreviewModal = ({
     onClose,
 }: any) => {
 
-    console.log("recordrecord", record)
+    console.log(record,'recordrecord-->')
     return (
         <Modal
             visible={visible}
@@ -35,13 +35,13 @@ const PreviewModal = ({
                     />
                 </TouchableOpacity>
 
-                {record?.file_type === 'image' ? (
+                {/* {record?.file_type === 'image' ? (
                     <Image
                         source={{ uri: imageUrl }}
                         style={styles.previewImage}
                         resizeMode="contain"
                     />
-                ) : (
+                ) : ( */}
                     <View style={{ alignItems: 'center' }}>
                         <Ionicons
                             name="document-text"
@@ -58,7 +58,7 @@ const PreviewModal = ({
 
                         <TouchableOpacity
                             onPress={() =>
-                                Linking.openURL(record?.file_url)
+                                Linking.openURL(imageUrl)
                             }>
                             <Text
                                 style={{
@@ -69,7 +69,7 @@ const PreviewModal = ({
                             </Text>
                         </TouchableOpacity>
                     </View>
-                )}
+                {/* )} */}
             </View>
         </Modal>
     );

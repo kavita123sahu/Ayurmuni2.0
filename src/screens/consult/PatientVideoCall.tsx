@@ -31,8 +31,6 @@ import { BaseUrl } from '../../config/Key';
 
 // ─────────────────────────────────────────────────────────
 // 👉 Apna actual API base URL yahan daal
-// ─────────────────────────────────────────────────────────
-const API_BASE_URL = 'https://aghast-cognition-earflap.ngrok-free.dev';
 
 // 👉 Agar endpoint pattern alag hai (jaise /consultations/ instead of /appointments/),
 // bas ye function badal de — baaki sab code isi se URLs banata hai
@@ -159,7 +157,7 @@ async function apiPostCallEvent(appointmentId: string, event: 'joined' | 'left',
 
 async function apiEndCall(appointmentId: string) {
     const headers = await getAuthHeaders();
-    await apiFetch(callUrl(appointmentId, 'end'), { method: 'POST', headers, body: '{}' });
+    await apiFetch(callUrl(appointmentId, 'left'), { method: 'POST', headers, body: '{}' });
 }
 
 // ─────────────────────────────────────────────────────────
@@ -489,7 +487,8 @@ const PatientVideoCallScreen: React.FC = () => {
             console.log('[Agora] leaveChannel error:', e);
         }
         setIsJoined(false);
-        navigation.goBack();
+        navigation.navigate('Appointments')
+        // navigation.goBack();
     };
 
     const handleRetry = () => {
