@@ -40,7 +40,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const MyCart = ({ navigation }: any) => {
 
-    const { isGuest, isLoggedIn } = useAuth();
+    const { isLoggedIn } = useAuth();
     const dispatch = useAppDispatch();
 
     const { CartData, loading, fetchAllData } =
@@ -306,7 +306,7 @@ const MyCart = ({ navigation }: any) => {
 
             <StatusBar
                 barStyle="dark-content"
-                backgroundColor="#F8FAF8"
+                backgroundColor="#FFFFFF"
             />
 
             <AppHeader
@@ -316,7 +316,7 @@ const MyCart = ({ navigation }: any) => {
                 }
             />
 
-            {isGuest ? (
+            {!isLoggedIn ? (
                 <View style={styles.emptyContainer}>
                     <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
 
@@ -369,7 +369,7 @@ const MyCart = ({ navigation }: any) => {
                         }
                         contentContainerStyle={{
                             paddingBottom: 180,
-                            paddingHorizontal: 20,
+                            // paddingHorizontal: 20,
                         }}
                     >
 
@@ -645,6 +645,8 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
+
+        paddingHorizontal: 20,
         backgroundColor: '#F8FAF8',
     },
 

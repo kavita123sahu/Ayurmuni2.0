@@ -20,7 +20,6 @@ import { updateProductItem } from '../store/slices/homeSlice';
 import { showSuccessToast } from '../config/Key';
 import { useScrollHide } from '../context/ScrollHideContext';
 import { requireAuth } from '../services/guestAuth';
-import { useAuth } from '../hooks/useAuth';
 
 interface Props {
   data: any[];
@@ -49,7 +48,6 @@ const TopSellingList: React.FC<Props> = ({
   const variantQuantities = useAppSelector(state => state.cart.variantQuantities);
   const addingVariantId = useAppSelector(state => state.cart.addingVariantId);
   const { onScroll: hideOnScroll } = useScrollHide();
-  const { isGuest } = useAuth();
   const stackNav = navigation?.getParent?.() || navigation;
 
   const safeData = Array.isArray(data) ? data : [];
@@ -94,9 +92,18 @@ const TopSellingList: React.FC<Props> = ({
   );
 
   const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const oldValue = item?.is_wishlist_item;
+  async (item: any, isWishlistScreen = false) => {
+    if (!(await requireAuth('Please login to save wishlist items'))) return;
+
+    const oldValue = item?.is_wishlist_item;
+
+    if (isWishlistScreen) {
+      // Remove from wishlist screen
+      setProductData(prev =>
+        prev.filter(product => product.variant_id !== item.variant_id),
+      );
+    } else {
+      // Toggle heart on other screens
       setProductData(prev =>
         prev.map(product =>
           product.variant_id === item.variant_id
@@ -104,9 +111,16 @@ const TopSellingList: React.FC<Props> = ({
             : product,
         ),
       );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
+    }
+
+    try {
+      await TogglewishlistProduct(item.variant_id, 'POST');
+    } catch (error) {
+      if (isWishlistScreen) {
+        // Restore removed item
+        setProductData(prev => [item, ...prev]);
+      } else {
+        // Restore previous state
         setProductData(prev =>
           prev.map(product =>
             product.variant_id === item.variant_id
@@ -115,9 +129,35 @@ const TopSellingList: React.FC<Props> = ({
           ),
         );
       }
-    },
-    [setProductData],
-  );
+    }
+  },
+  [setProductData],
+);
+  // const handleWishlist = useCallback(
+  //   async (item: any) => {
+  //     if (!(await requireAuth('Please login to save wishlist items'))) return;
+  //     const oldValue = item?.is_wishlist_item;
+  //     setProductData(prev =>
+  //       prev.map(product =>
+  //         product.variant_id === item.variant_id
+  //           ? { ...product, is_wishlist_item: !oldValue }
+  //           : product,
+  //       ),
+  //     );
+  //     try {
+  //       await TogglewishlistProduct(item.variant_id, 'POST');
+  //     } catch {
+  //       setProductData(prev =>
+  //         prev.map(product =>
+  //           product.variant_id === item.variant_id
+  //             ? { ...product, is_wishlist_item: oldValue }
+  //             : product,
+  //         ),
+  //       );
+  //     }
+  //   },
+  //   [setProductData],
+  // );
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -136,7 +176,6 @@ const TopSellingList: React.FC<Props> = ({
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             showWishlist={fav}
-            actionsLocked={isGuest}
             onPress={() =>
               stackNav.navigate('ProductDetails', { varientID: item?.variant_id })
             }
@@ -157,7 +196,6 @@ const TopSellingList: React.FC<Props> = ({
       addingVariantId,
       handleCartUpdate,
       handleWishlist,
-      isGuest,
     ],
   );
 

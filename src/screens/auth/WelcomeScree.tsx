@@ -15,7 +15,6 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
-import { enableGuestMode } from '../../services/guestAuth';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -155,11 +154,6 @@ const AyurvedicWelcome = ({ navigation }: any) => {
         });
     };
 
-    const handleSkipAsGuest = async () => {
-        await enableGuestMode();
-        navigation.replace('HomeStack', { screen: 'Home' });
-    };
-
     const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
     const float1 = floatAnim1.interpolate({ inputRange: [0, 1], outputRange: [0, -25] });
     const float2 = floatAnim2.interpolate({ inputRange: [0, 1], outputRange: [0, 25] });
@@ -291,9 +285,6 @@ const AyurvedicWelcome = ({ navigation }: any) => {
                         </LinearGradient>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.skipButton} onPress={handleSkipAsGuest}>
-                        <Text style={styles.skipText}>Skip & Explore as Guest</Text>
-                    </TouchableOpacity>
                 </Animated.View>
 
                 {/* Bottom Decorative */}

@@ -17,6 +17,7 @@ import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
 import TablerIcon from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
+import { safeGoBack } from '../../navigation/navigationUtils';
 
 type ActionItem = {
   id: string;
@@ -104,7 +105,7 @@ const MedicineScreen = (props: any) => {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-      <Header title="Medicine Store" backIcon={Images.backIcon} onBack={props.navigation.goBack()} subtitle="Health & Wellness" />
+      <Header title="Medicine Store" backIcon={Images.backIcon} onBack={() => safeGoBack(props.navigation)} subtitle="Health & Wellness" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

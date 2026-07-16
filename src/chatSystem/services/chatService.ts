@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Utils } from '../../common/Utils';
 
-// ✅ Pure fetch — no axios needed!
 export const chatService = {
     // GET messages
     getMessages: async (

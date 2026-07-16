@@ -84,7 +84,7 @@ export const getAllDoctor = async (payload: object) => {
 
 export const getTopDoctor = async () => {
     try {
-        const response = await apiClient('customers/topdoctors/', {
+        const response = await apiClient('customers/doctors/', {
             method: 'GET'
         });
 
@@ -164,31 +164,31 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
 
 
 export const getConsultHistory = async (payload: any) => {
-  try {
-    const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(
-        ([_, value]) =>
-          value !== undefined &&
-          value !== null &&
-          value !== '',
-      ),
-    );
+    try {
+        const cleanPayload = Object.fromEntries(
+            Object.entries(payload).filter(
+                ([_, value]) =>
+                    value !== undefined &&
+                    value !== null &&
+                    value !== '',
+            ),
+        );
 
-    const query = new URLSearchParams(
-      cleanPayload as Record<string, string>,
-    ).toString();
+        const query = new URLSearchParams(
+            cleanPayload as Record<string, string>,
+        ).toString();
 
-    const response = await apiClient(
-      `customers/doctors/consultation-history/?${query}`,
-      {
-        method: 'GET',
-      },
-    );
+        const response = await apiClient(
+            `customers/doctors/consultation-history/?${query}`,
+            {
+                method: 'GET',
+            },
+        );
 
-    return response;
-  } catch (error) {
-    throw error;
-  }
+        return response;
+    } catch (error) {
+        throw error;
+    }
 };
 
 

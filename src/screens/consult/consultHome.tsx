@@ -2,6 +2,7 @@ import React, {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 
@@ -39,6 +40,7 @@ import { useConsultData }
 import PromoCard from '../../components/PromoCard';
 import { DoctorCardSkeleton, HomeCategorySkeleton, TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getConsultHistory } from '../../services/ConsultServce';
+import EmptyState from '../../components/EmptyState';
 
 type NavigationProp =
   NativeStackNavigationProp<
@@ -63,16 +65,8 @@ const ConsultHome = () => {
 
 
   const [history, setHistory] = useState<any[]>([]);
-
+  const [search, setSearch] = useState('')
   const [recentLoading, setRecentLoading] = useState(false);
-
-
-  /*
-    ====================================
-    RECENT ITEM
-    ====================================
-  */
-
 
 
   const fetchConsultHistory =
@@ -121,7 +115,6 @@ const ConsultHome = () => {
     fetchConsultHistory
   }, [fetchConsultHistory]);
 
-  console.log("topDoctorstopDoctors", topDoctors);
   const renderRecentDoctor =
     useCallback(
       ({ item }: any) => {
@@ -155,32 +148,35 @@ const ConsultHome = () => {
       [navigation],
     );
 
-  /*
-    ====================================
-    LOADER
-    ====================================
-  */
-
-  // if (loading) {
-
-  //   return (
-  //     <SafeAreaView
-  //       style={styles.loaderContainer}
-  //     >
-  //       <ActivityIndicator
-  //         size="large"
-  //         color={Colors.primaryColor}
-  //       />
-  //     </SafeAreaView>
-  //   );
-  // }
+  const filteredDoctors = useMemo(() => {
+    let list = [...topDoctors];
+    if (!search?.trim()) {
+      // Search empty -> poori list
+      return topDoctors;
+    }
 
 
-  /*
-    ====================================
-    MAIN
-    ====================================
-  */
+    // Search
+    if (search?.trim()) {
+      const keyword = search?.toLowerCase();
+
+      list = list.filter((doctor) => {
+        const name = doctor?.full_name?.toLowerCase() || '';
+        const specialization =
+          doctor?.qualification?.toLowerCase() || '';
+
+        return (
+          name.includes(keyword) ||
+          specialization.includes(keyword)
+        );
+      });
+    }
+
+
+
+    return list;
+  }, [topDoctors, search,]);
+
 
   return (
     <SafeAreaView
@@ -206,7 +202,7 @@ const ConsultHome = () => {
 
 
       <FlatList
-        data={loading ? [] : history}
+        data={loading ? [] : recentDoctors}
         keyExtractor={(item) => String(item?.id)}
         renderItem={renderRecentDoctor}
         showsVerticalScrollIndicator={false}
@@ -221,7 +217,10 @@ const ConsultHome = () => {
 
         ListHeaderComponent={
           <>
+
             <SearchBar
+              value={search}
+              onChangeText={setSearch}
               placeholder="Search doctors, concerns..."
             />
 
@@ -245,6 +244,15 @@ const ConsultHome = () => {
             {loading && <DoctorCardSkeleton />}
           </>
         }
+        ListEmptyComponent={() => (
+
+          <EmptyState
+            image={Images.doctorImage}
+            title="No doctor found"
+            subtitle="Try adjusting your filters or search."
+            imageSize={48}
+          />
+        )}
 
         ListFooterComponent={
           loading ? (
@@ -272,7 +280,7 @@ const ConsultHome = () => {
                   />
 
                   <TopDoctorsCard
-                    data={topDoctors}
+                    data={filteredDoctors}
                     navigation={navigation}
                   />
                 </>

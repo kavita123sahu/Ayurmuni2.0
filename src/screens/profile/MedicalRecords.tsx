@@ -15,7 +15,6 @@ import SelectedUploadCard from '../../components/SelectedUploadCard';
 import SearchBar from '../../components/SearchBar';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
-import { pick } from '@react-native-documents/picker';
 import UploadRecordModal from '../../components/UploadRecordModal';
 import { Fonts } from '../../common/Fonts';
 import SectionHeader from '../../components/SectionHeader';

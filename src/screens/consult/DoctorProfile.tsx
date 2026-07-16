@@ -21,7 +21,6 @@ import { getDoctorSlots } from '../../services/ConsultServce';
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import BackIconButton from '../../components/BackIconButton';
 import { requireAuth } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
 import { showSuccessToast } from '../../config/Key';
 import FavouriteButton from '../../components/FavouriteButton';
 import TablerIcon from '../../components/TablerIcon';
@@ -122,7 +121,6 @@ const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
 
 const DoctorProfile = ({ navigation, route }: any) => {
     const { doctorData } = route?.params;
-    const { isGuest } = useAuth();
 
     console.log("docororpf", doctorData);
 
@@ -419,11 +417,11 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={handleBookAppointment}
-                    style={[styles.bookBtn, isGuest && styles.bookBtnLocked]}
+                    style={styles.bookBtn}
                 >
                     <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
                     <Text numberOfLines={1} style={styles.bookText}>
-                        {isGuest ? 'Login to Book' : 'Book Appointment'}
+                        Book Appointment
                     </Text>
                 </TouchableOpacity>
             </View>

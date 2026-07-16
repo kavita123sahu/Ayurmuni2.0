@@ -134,14 +134,16 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
         if (savedDelivery) {
           setDeliveryLocationState(JSON.parse(savedDelivery));
         }
+
+        const granted = await checkLocationPermission();
+        if (granted) {
+          setLocationEnabled(true);
+          if (!savedDelivery) {
+            fetchLocationFromGps();
+          }
+        }
       } catch {
         // ignore corrupt cache
-      }
-
-      const granted = await checkLocationPermission();
-      if (granted) {
-        setLocationEnabled(true);
-        fetchLocationFromGps();
       }
     };
 

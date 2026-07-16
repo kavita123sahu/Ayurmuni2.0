@@ -258,10 +258,13 @@ export const useAllDoctors = (selectedFilters: any) => {
     const [loading, setLoading] = useState(false);
     const [doctorData, setDoctorData] = useState<any[]>([]);
 
+
+
+    
+
     const getAllDoctors = useCallback(async () => {
         try {
             setLoading(true);
-
 
             const payload = {
                 specialization: selectedFilters.speciality || '',

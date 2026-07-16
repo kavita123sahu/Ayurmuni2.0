@@ -36,14 +36,35 @@ const AllFavDoctors = (props: any) => {
         useState('');
 
 
-    const { favDoctor, loading } = useConsultData();
+    const { favDoctor, onRefresh, loading } = useConsultData();
 
-    console.log('favDoctorfavDoctor', favDoctor)
+    console.log('favDoctorfavDoctor', favDoctor);
 
-    const favouriteDoctors =
-        favDoctor?.filter(
-            item => item?.is_favorite === true,
-        ) || [];
+
+    const filteredDoctors = useMemo(() => {
+        // ✅ Pehle sirf favourite doctors
+        let list = favDoctor.filter(item => item?.is_favorite);
+
+        // ✅ Fir unhi favourites me search
+        if (search.trim()) {
+            const keyword = search.trim().toLowerCase();
+
+            list = list.filter((doctor) => {
+                const name = doctor?.full_name?.toLowerCase() || '';
+                const qualification = doctor?.qualification?.toLowerCase() || '';
+
+                return (
+                    name.includes(keyword) ||
+                    qualification.includes(keyword)
+                );
+            });
+        }
+
+        return list;
+
+
+
+    }, [favDoctor, search]);
 
 
     const renderDoctorItem =
@@ -79,6 +100,9 @@ const AllFavDoctors = (props: any) => {
                 barStyle={'dark-content'}
                 backgroundColor={
                     Colors.white
+
+
+
                 }
             />
 
@@ -87,7 +111,8 @@ const AllFavDoctors = (props: any) => {
                 onLeftPress={() =>
                     props.navigation.goBack()
                 }
-                rightIconName="bell"
+            // rightIconName="bell"
+            // onRightPress={()=>}
             />
 
 
@@ -110,11 +135,14 @@ const AllFavDoctors = (props: any) => {
 
                 )
                     : (<FlatList
-                        data={favouriteDoctors}
+                        data={filteredDoctors
+
+                        }
                         keyExtractor={(item) =>
                             String(item?.id)
                         }
 
+                        // onRefresh={onRefresh}
                         showsVerticalScrollIndicator={
                             false
                         }
@@ -139,7 +167,7 @@ const AllFavDoctors = (props: any) => {
                                     }
 
 
-                                    />
+                                />
                             </>
                         }
 

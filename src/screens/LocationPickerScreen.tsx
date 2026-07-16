@@ -33,6 +33,7 @@ import {
 } from '../services/locationService';
 import { useDebounce } from '../hooks/useDebaunce';
 import { useLocation } from '../context/LocationContext';
+import { safeGoBack } from '../navigation/navigationUtils';
 
 type RouteParams = {
   returnScreen?: string;
@@ -43,15 +44,23 @@ const LocationPickerScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const params = (route.params || {}) as RouteParams;
-  const { currentAddress, refreshCurrentLocation, setDeliveryLocation } = useLocation();
+  const { currentAddress, deliveryLocation, refreshCurrentLocation, setDeliveryLocation } = useLocation();
+
+  const initialCoords =
+    currentAddress ||
+    (deliveryLocation?.latitude && deliveryLocation?.longitude
+      ? deliveryLocation
+      : null);
 
   const [marker, setMarker] = useState<Coordinates>(
-    currentAddress
-      ? { latitude: currentAddress.latitude, longitude: currentAddress.longitude }
+    initialCoords
+      ? { latitude: initialCoords.latitude, longitude: initialCoords.longitude }
       : getDefaultRegion(),
   );
-  const [address, setAddress] = useState<ParsedAddress | null>(currentAddress);
-  const [loading, setLoading] = useState(!currentAddress);
+  const [address, setAddress] = useState<ParsedAddress | null>(
+    currentAddress || deliveryLocation,
+  );
+  const [loading, setLoading] = useState(!initialCoords);
   const [geocoding, setGeocoding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -71,7 +80,7 @@ const LocationPickerScreen = () => {
       setMarker(coords);
       setLocationError(
         error?.message ||
-          'Could not fetch address. Try search or move the map.',
+        'Could not fetch address. Try search or move the map.',
       );
     } finally {
       setGeocoding(false);
@@ -111,14 +120,13 @@ const LocationPickerScreen = () => {
   }, [updateLocation, refreshCurrentLocation]);
 
   useEffect(() => {
-    if (currentAddress) {
-      setMarker({ latitude: currentAddress.latitude, longitude: currentAddress.longitude });
-      setAddress(currentAddress);
+    if (initialCoords) {
       setLoading(false);
+      loadCurrentLocation();
       return;
     }
     loadCurrentLocation();
-  }, [currentAddress, loadCurrentLocation]);
+  }, []);
 
   useEffect(() => {
     const runSearch = async () => {
@@ -191,7 +199,7 @@ const LocationPickerScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Pin Your Location" onLeftPress={() => navigation.goBack()} />
+      <AppHeader title="Pin Your Location" onLeftPress={() => safeGoBack(navigation)} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

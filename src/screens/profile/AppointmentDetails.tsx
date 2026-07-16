@@ -423,8 +423,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       <AppHeader
         title="Appointment Details"
         onLeftPress={() => navigation.goBack()}
-        rightIconName="search"
-        onRightPress={() => console.log('Search clicked')}
+      // rightIconName="search"
+      // onRightPress={() => console.log('Search clicked')}
       />
 
       <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: Theme.bg }}>

@@ -297,11 +297,12 @@ export const AVAILABILITY_OPTIONS = [
     label: 'Next Month',
     value: 'next_month',
   },
-  {
-    label: 'Select Date',
-    value: 'custom_date',
-  },
+  // {
+  //   label: 'Select Date',
+  //   value: 'custom_date',
+  // },
 ];
+
 
 
 export const reviews = [

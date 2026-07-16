@@ -47,7 +47,6 @@ import RenderAppoint from '../../components/RenderAppoint';
 import { useAppointmentHistory } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
-import { useAuth } from '../../hooks/useAuth';
 import { requireAuth, navigateToLogin } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
 
@@ -76,7 +75,7 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
-  const { isGuest } = useAuth();
+  console.log("YogaSessionYogaSession", YogaSession)
   const { promptLocationOnHome } = useLocation();
   const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
   const insets = useSafeAreaInsets();
@@ -192,7 +191,6 @@ const HomePage: React.FC = (props: any) => {
   }, [customerData]);
   useEffect(() => {
     if (
-      isGuest ||
       loadingCustomer ||
       prakritiModalShownThisSession ||
       !customerData ||
@@ -204,7 +202,7 @@ const HomePage: React.FC = (props: any) => {
 
     prakritiModalShownThisSession = true;
     setShowPrakritiModal(true);
-  }, [isGuest, loadingCustomer, customerData]);
+  }, [loadingCustomer, customerData]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -319,7 +317,7 @@ const HomePage: React.FC = (props: any) => {
             />
 
 
-            {(loading && !isGuest) ? (
+            {loading ? (
               <>
                 <SectionHeader
                   title="Upcoming Appointments"
@@ -363,28 +361,6 @@ const HomePage: React.FC = (props: any) => {
                   )}
                   showsHorizontalScrollIndicator={false}
                 />
-              </>
-            ) : isGuest ? (
-              <>
-                <SectionHeader title="Upcoming Appointments" />
-                <TouchableOpacity
-                  style={styles.guestApptCard}
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    navigateToLogin('Login to view and book your appointments')
-                  }
-                >
-                  <View style={styles.guestApptIcon}>
-                    <TablerIcon name="calendar" size={22} color={Colors.primaryColor} />
-                  </View>
-                  <View style={styles.guestApptText}>
-                    <Text style={styles.guestApptTitle}>Login to manage appointments</Text>
-                    <Text style={styles.guestApptSub}>
-                      Browse doctors now — book after you sign in
-                    </Text>
-                  </View>
-                  <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
-                </TouchableOpacity>
               </>
             ) : null}
 
@@ -446,21 +422,490 @@ const HomePage: React.FC = (props: any) => {
                   setProductData={setProductData}
                   nested
                 />
+
+
               </>
             ) : null}
 
             {YogaSession.length > 0 && (
               <>
-                <SectionHeader title="Yoga’s" actionText={YogaSession.length > 1
+                <SectionHeader title="Yoga’s" onPress={() => props.navigation.navigate('YogaScreen')} actionText={YogaSession.length > 1
                   ? 'View all'
                   : ''} />
-
 
                 <SuggestedCard data={YogaSession} navigation={props.navigation} />
               </>)}
 
 
-            {YogaSession.length > 0 && (
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            {/* {YogaSession.length > 0 && (
               <>
                 <SectionHeader title="Suggested Diet Plan" actionText={YogaSession.length > 1
                   ? 'View all'
@@ -468,17 +913,17 @@ const HomePage: React.FC = (props: any) => {
 
 
                 <SuggestedCard data={YogaSession} navigation={props.navigation} />
-              </>)}
+              </>)} */}
 
 
-            {YogaSession.length > 0 && (
+            {/* {YogaSession.length > 0 && (
               <>
                 <SectionHeader title="Panchakarma" actionText={YogaSession.length > 1
                   ? 'View all'
                   : ''} />
 
                 <SuggestedCard data={YogaSession} navigation={props.navigation} price={true} />
-              </>)}
+              </>)} */}
 
             <>
 
@@ -492,12 +937,12 @@ const HomePage: React.FC = (props: any) => {
 
             <>
 
-              {YogaSession.length == 0 && (
-                <ComingSoonCard
-                  title="Panchakarma"
-                  icon="🌿"
-                />
-              )}
+              {/* {YogaSession.length == 0 && ( */}
+              <ComingSoonCard
+                title="Panchakarma"
+                icon="🌿"
+              />
+              {/* )} */}
             </>
           </View>
         )}

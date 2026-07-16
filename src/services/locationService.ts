@@ -146,12 +146,12 @@ const readPosition = (
   highAccuracy: boolean,
   timeout: number,
   maxAccuracyMeters?: number,
+  maximumAge = 0,
 ): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
     Geolocation.getCurrentPosition(
       position => {
         const accuracy = position.coords.accuracy;
-        console.log('GPS_FIX', { accuracy, highAccuracy });
         if (
           maxAccuracyMeters != null &&
           accuracy != null &&
@@ -165,28 +165,27 @@ const readPosition = (
           longitude: position.coords.longitude,
         });
       },
-      error => {
-        console.log('GPS_ERROR', error);
-        reject(error);
-      },
+      error => reject(error),
       {
         enableHighAccuracy: highAccuracy,
         timeout,
-        maximumAge: 0, // stale cache mat lo — sector jitne small area mein 15s purani fix bhi galat de sakti hai
+        maximumAge,
       },
     );
   });
 
+/** Fast cached fix first, then high-accuracy GPS. */
 export const getCurrentPosition = async (): Promise<Coordinates> => {
   try {
-    // seedha high-accuracy (GPS chip) try karo, network-triangulation nahi
-    return await readPosition(true, 20000, 100); // 100m se zyada error wali fix reject
+    return await readPosition(false, 4000, undefined, 120000);
   } catch {
-    try {
-      return await readPosition(true, 30000); // accuracy check hata do agar timeout ho raha
-    } catch {
-      return watchPositionOnce(30000);
-    }
+    // continue
+  }
+
+  try {
+    return await readPosition(true, 12000, 200);
+  } catch {
+    return watchPositionOnce(15000);
   }
 };
 
@@ -242,7 +241,7 @@ const watchPositionOnce = (timeout: number): Promise<Coordinates> =>
       {
         enableHighAccuracy: true,
         distanceFilter: 0,
-        maximumAge: 0,
+        maximumAge: 10000,
       },
     );
   });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { showSuccessToast } from '../../config/Key';
+import { safeGoBack } from '../../navigation/navigationUtils';
 import { QUESTIONNAIRE_SETUP, QuestionnaireMode } from './configs';
 import {
   buildPrakritiAnswers,
@@ -218,7 +218,7 @@ export const useQuestionnaireFlow = (
 
   const handleBack = useCallback(() => {
     if (step === 0) {
-      navigation.goBack();
+      safeGoBack(navigation);
       return;
     }
     setStep(prev => prev - 1);

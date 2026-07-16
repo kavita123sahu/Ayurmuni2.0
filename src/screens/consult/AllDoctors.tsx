@@ -76,12 +76,15 @@ const AllDoctors = (props: any) => {
     const [tempToDate, setTempToDate] = useState<Date | null>(null);
     const [calendarStep, setCalendarStep] = useState<'from' | 'to'>('from');
     const [selectedDateLabel, setSelectedDateLabel] = useState('');
+    const [searchText, setSearchText] = useState('');
 
     const { categories } = useConsultData();
-
+    console.log("FILTERS IN API CALL =>", selectedFilters)
     const apiFilters = useMemo(() => ({
+
         specialization: selectedFilters.specialization || '',
         experience: selectedFilters.experience || '',
+        date: selectedFilters.date_range || '',
         from_date: selectedFilters.from_date || '',
         to_date: selectedFilters.to_date || '',
     }), [selectedFilters]);
@@ -92,6 +95,36 @@ const AllDoctors = (props: any) => {
         loading,
         doctorData,
     } = useAllDoctors(debouncedFilters);
+
+
+    const filteredDoctors = useMemo(() => {
+        let list = [...doctorData];
+        if (!searchText?.trim()) {
+            // Search empty -> poori list
+            return doctorData;
+        }
+
+
+        // Search
+        if (searchText?.trim()) {
+            const keyword = searchText?.toLowerCase();
+
+            list = list.filter((doctor) => {
+                const name = doctor?.full_name?.toLowerCase() || '';
+                const specialization =
+                    doctor?.qualification?.toLowerCase() || '';
+
+                return (
+                    name.includes(keyword) ||
+                    specialization.includes(keyword)
+                );
+            });
+        }
+
+
+
+        return list;
+    }, [doctorData, searchText,]);
 
     console.log('doctorDatadoctorData', doctorData)
     const handleTabPress = (tab: string | null) => {
@@ -263,6 +296,7 @@ const AllDoctors = (props: any) => {
                     onPress={() =>
                         handleDoctorPress(item)
                     }
+                // refrsh={props?.route?.params?.refrsh}
                 />
 
             ),
@@ -288,19 +322,23 @@ const AllDoctors = (props: any) => {
                 />
 
                 <AppHeader
+
+
                     title="All Doctors"
+                    leftIconName='arrow-left'
                     onLeftPress={() =>
                         props.navigation.goBack()
                     }
+                    onRightPress={() => props.navigation.navigate('NotificationsScreen')}
                     rightIconName="bell"
                 />
 
                 <View style={{ flex: 1, paddingHorizontal: 20 }}>
                     <SearchBar
                         placeholder="Search doctors..."
-                        value={search}
+                        value={searchText}
                         onChangeText={
-                            setSearch
+                            setSearchText
                         }
 
 
@@ -327,7 +365,7 @@ const AllDoctors = (props: any) => {
                         <DoctorCardSkeleton />
 
                         : <FlatList
-                            data={doctorData}
+                            data={filteredDoctors}
 
                             keyExtractor={(item) =>
                                 String(item?.id)

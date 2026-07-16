@@ -58,7 +58,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
         );
     }, [item?.is_favorite]);
 
- 
+
 
     const handleWishlist = useCallback(async () => {
         const previous = isWishlisted;
@@ -72,7 +72,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     'POST',
                 );
 
-                console.log("resposneeeewisglist", response)
+            console.log("resposneeeewisglist", response)
             if (!response?.success) {
                 setIsWishlisted(previous);
             }
@@ -115,7 +115,7 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                             </Text>
 
                         </View>
-                        
+
 
                         <FavouriteButton
                             isFavourite={isWishlisted}
@@ -138,13 +138,13 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                         ]}
                     >
 
-                          {
+                        {
                             Array.isArray(item?.health_diseases)
                                 ? item.health_diseases.map(i => i?.name).join(", ")
                                 : ''
                         }
 
-                       
+
                     </Text>
 
                     {/* INFO ROW */}

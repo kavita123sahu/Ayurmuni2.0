@@ -25,8 +25,8 @@ import { TogglewishlistProduct } from '../../services/ProductServices';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
 import { Images } from '../../common/Images';
+import { safeGoBack } from '../../navigation/navigationUtils';
 
 const ProductsScreen = () => {
   const navigation = useNavigation<any>();
@@ -38,7 +38,6 @@ const ProductsScreen = () => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
-  const { isGuest } = useAuth();
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -97,7 +96,6 @@ const ProductsScreen = () => {
             variant="grid"
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
-            actionsLocked={isGuest}
             onPress={() =>
               stackNav.navigate('ProductDetails', { varientID: item.variant_id })
             }
@@ -115,7 +113,6 @@ const ProductsScreen = () => {
       stackNav,
       handleCartUpdate,
       handleWishlist,
-      isGuest,
     ],
   );
 
@@ -136,12 +133,13 @@ const ProductsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
         title="Products"
         backIcon={Images.backIcon}
-        onBack={navigation.goBack()}
+        onBack={() => safeGoBack(navigation)}
         subtitle="Choose best product"
       />
 
@@ -182,7 +180,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20
   },
   headerContent: {
-    paddingHorizontal: 20,
+    // paddingHorizontal: 20,
   },
   listContent: {
     // paddingHorizontal: 14,

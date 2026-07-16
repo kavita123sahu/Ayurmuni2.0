@@ -17,7 +17,6 @@ import { Fonts } from '../../common/Fonts';
 import { reviews } from '../../common/DataInterface';
 import { useCartActions } from '../../hooks/Cart';
 import { requireAuth } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
 import { showSuccessToast } from '../../config/Key';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
@@ -77,7 +76,6 @@ const ProductDetails = (props: any) => {
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
 
     const { isAdding, addToCart } = useCartActions();
-    const { isGuest } = useAuth();
 
     console.log("ReviewAllReviewAll", ReviewAll)
     const insets = useSafeAreaInsets();
@@ -372,26 +370,21 @@ const ProductDetails = (props: any) => {
 
                 {/* Add to Cart — fires API with current qty */}
                 <TouchableOpacity
-                    style={[
-                        styles.addToCartBtn,
-                        isGuest && styles.addToCartBtnLocked,
-                    ]}
+                    style={styles.addToCartBtn}
                     onPress={handleAddToCart}
                     activeOpacity={0.85}
-                    disabled={isAdding || (!isGuest && !selectedVariant?.stock)}
+                    disabled={isAdding || !selectedVariant?.stock}
                 >
                     {isAdding ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                         <View style={styles.addToCartInner}>
-                            <TablerIcon name="shopping-cart" size={20} color={isGuest ? '#64748B' : Colors.primaryColor} />
+                            <TablerIcon name="shopping-cart" size={20} color={Colors.primaryColor} />
                             <View>
-                                <Text style={[styles.addToCartText, isGuest && styles.addToCartTextLocked]}>
-                                    {isGuest
-                                        ? 'Login to Add to Cart'
-                                        : selectedVariant?.stock
-                                          ? 'Add to Cart'
-                                          : 'Out of Stock'}
+                                <Text style={styles.addToCartText}>
+                                    {selectedVariant?.stock
+                                      ? 'Add to Cart'
+                                      : 'Out of Stock'}
                                 </Text>
                             </View>
                         </View>

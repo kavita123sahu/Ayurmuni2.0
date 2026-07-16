@@ -78,7 +78,7 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
 
                 return (
                     <TouchableOpacity
-                            onPress={() => navigation.navigate('YogaScreen', { item })}
+                        onPress={() => navigation.navigate('YogaScreen', { item })}
                         style={[styles.card, isGrid && styles.gridCard]}>
 
                         {/* IMAGE */}
@@ -93,27 +93,45 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                         {/* CONTENT */}
                         <View style={styles.subContainer}>
 
-                            <View style={{ paddingRight: 40, paddingBottom: 15 }}>
-                                <Text style={styles.title}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
                                     {item?.title}
                                 </Text>
 
                                 {item?.short_description && (
                                     <Text
                                         style={styles.subtitle}
-                                        numberOfLines={2}
+                                        numberOfLines={3}
                                         ellipsizeMode="tail"
                                     >
                                         {item?.short_description}
                                     </Text>
                                 )}
 
-                                {item?.duration_minutes && (
-                                    <Text style={styles.subtitle}>
-                                        {item?.duration_minutes} mins
-                                    </Text>
-                                )}
 
+                                <View style={styles.infoRow}>
+                                    <View style={styles.badge}>
+                                        <TablerIcon
+                                            name='approved'
+                                            size={14}
+                                            color="#0D614E"
+                                        />
+                                        <Text style={styles.badgeText}>
+                                            {item?.difficulty}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.badge}>
+                                        <TablerIcon
+                                            name="clock"
+                                            size={14}
+                                            color="#0D614E"
+                                        />
+                                        <Text style={styles.badgeText}>
+                                            {item?.duration_minutes} min
+                                        </Text>
+                                    </View>
+                                </View>
                                 {price && (
                                     <View style={styles.priceContainer}>
                                         <Text style={styles.price}>Rs. {item.price}</Text>
@@ -121,13 +139,13 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                                 )}
                             </View>
 
-                            <TouchableOpacity
+                            {/* <TouchableOpacity
                                 style={styles.cartBtn}
                                 onPress={() => navigation.navigate('MyCart')}
                             >
                                 <TablerIcon name="shopping-cart" size={22} color="#0D614E" />
                                 <TablerIcon name="arrow-right" size={18} color="#0D614E" />
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
 
                         </View>
                     </TouchableOpacity>
@@ -164,9 +182,14 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
 
 export default React.memo(SuggestedCard);
 
+import { Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2;
+
 const styles = StyleSheet.create({
     card: {
-        width: 160,
+        width: CARD_WIDTH,
         backgroundColor: '#FAFAFA',
         borderRadius: 16,
         marginRight: 14,
@@ -179,7 +202,8 @@ const styles = StyleSheet.create({
     },
 
     gridCard: {
-        width: '48%',
+        // width: '48%',
+        width: CARD_WIDTH,
         marginRight: 0,
     },
 
@@ -189,12 +213,16 @@ const styles = StyleSheet.create({
     },
 
     imageContainer: {
-        width: "100%",
-        height: 180,
-        marginTop: 12,
-        borderRadius: 16,
-        overflow: "hidden",
+        // width: "100%",
+        // height: 180,
+        // marginTop: 12,
+        // borderRadius: 16,
+        // overflow: "hidden",
         backgroundColor: "#F1F5F9",
+        width: '100%',
+        aspectRatio: 1,
+        borderRadius: 16,
+        overflow: 'hidden',
     },
 
     image: {
@@ -203,21 +231,22 @@ const styles = StyleSheet.create({
     },
 
     subContainer: {
-        margin: 6,
         flex: 1,
-        justifyContent: 'space-between',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
     },
 
     title: {
         fontSize: 16,
-        flexWrap: 'wrap',
+        lineHeight: 22,
         fontFamily: Fonts.PoppinsSemiBold,
-        color: '#1E293B',
+        color: "#1E293B",
     },
 
     subtitle: {
         fontSize: 12,
         color: '#64748B',
+        lineHeight: 18,
 
         fontFamily: Fonts.PoppinsMedium,
     },
@@ -240,23 +269,43 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
 
+    // badge: {
+    //     position: 'absolute',
+    //     top: 0,
+    //     left: 0,
+    //     borderTopLeftRadius: 16,
+    //     borderBottomRightRadius: 16,
+    //     backgroundColor: '#F0BE27',
+    //     paddingHorizontal: 10,
+    //     paddingVertical: 4,
+    //     zIndex: 10,
+    // },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginTop: 8,
+        gap: 8, // RN 0.71+ supported
+    },
+
     badge: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        borderTopLeftRadius: 16,
-        borderBottomRightRadius: 16,
-        backgroundColor: '#F0BE27',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 18,
         paddingHorizontal: 10,
-        paddingVertical: 4,
-        zIndex: 10,
+        paddingVertical: 6,
     },
 
     badgeText: {
-        fontSize: 10,
-        color: '#FFFFFF',
+        marginLeft: 4,
+        fontSize: 11,
+        color: '#475569',
         fontFamily: Fonts.PoppinsMedium,
     },
+
 
     cartBtn: {
         position: 'absolute',

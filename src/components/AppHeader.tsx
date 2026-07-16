@@ -72,7 +72,7 @@ export default AppHeader;
 
 const styles = StyleSheet.create({
   shell: {
-    backgroundColor: '#FFFFFF',
+    // backgroundColor: '#FFFFFF',
   },
   container: {
     flexDirection: 'row',

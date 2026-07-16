@@ -1,192 +1,11 @@
-// import React from 'react';
-// import {
-//   View,
-//   Text,
-//   Image,
-//   TouchableOpacity,
-//   StyleSheet,
-//   Platform,
-//   StatusBar,
-// } from 'react-native';
-// import { useNavigation } from '@react-navigation/native';
 
-// interface ChatHeaderProps {
-//   title: string;
-//   avatar?: string;
-//   isOnline: boolean;
-//   role: 'doctor' | 'patient';
-//   onBack?: () => void;
-// }
-
-// export const ChatHeader: React.FC<ChatHeaderProps> = ({
-//   title,
-//   avatar,
-//   isOnline,
-//   role,
-//   onBack,
-// }) => {
-//   const navigation = useNavigation();
-
-//   const handleBack = () => {
-//     if (onBack) {
-//       onBack();
-//     } else {
-//       navigation.goBack();
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-//       <View style={styles.leftContainer}>
-//         {/* ✅ Back Button */}
-//         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
-//           <Text style={styles.backIcon}>‹</Text>
-//         </TouchableOpacity>
-
-//         {/* ✅ Avatar */}
-//         <View style={styles.avatarContainer}>
-//           {avatar ? (
-//             <Image source={{ uri: avatar }} style={styles.avatar} />
-//           ) : (
-//             <View style={[styles.avatar, styles.avatarPlaceholder]}>
-//               <Text style={styles.avatarText}>
-//                 {title?.charAt(0)?.toUpperCase() || '?'}
-//               </Text>
-//             </View>
-//           )}
-//           <View
-//             style={[
-//               styles.statusDot,
-//               isOnline ? styles.statusOnline : styles.statusOffline,
-//             ]}
-//           />
-//         </View>
-
-//         {/* ✅ Title */}
-//         <View style={styles.titleContainer}>
-//           <Text style={styles.title} numberOfLines={1}>
-//             {title || 'Unknown'}
-//           </Text>
-//           <Text style={styles.subtitle}>
-//             {isOnline ? '🟢 Online' : '⚪ Offline'} • {role === 'doctor' ? 'Doctor' : 'Patient'}
-//           </Text>
-//         </View>
-//       </View>
-
-//       {/* ✅ Menu Button */}
-//       <TouchableOpacity style={styles.moreButton} activeOpacity={0.7}>
-//         <Text style={styles.moreIcon}>⋯</Text>
-//       </TouchableOpacity>
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     justifyContent: 'space-between',
-//     paddingHorizontal: 12,
-//     paddingVertical: 12,
-//     backgroundColor: '#FFFFFF',
-//     borderBottomWidth: 1,
-//     borderBottomColor: '#E5E7EB',
-//     ...Platform.select({
-//       ios: {
-//         paddingTop: 48,
-//       },
-//       android: {
-//         paddingTop: 12,
-//       },
-//     }),
-//     elevation: 2,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowOpacity: 0.05,
-//     shadowRadius: 2,
-//   },
-//   leftContainer: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     flex: 1,
-//   },
-//   backButton: {
-//     padding: 6,
-//     marginRight: 4,
-//     borderRadius: 8,
-//   },
-//   backIcon: {
-//     fontSize: 36,
-//     color: '#3B82F6',
-//     fontWeight: '300',
-//     includeFontPadding: false,
-//   },
-//   avatarContainer: {
-//     position: 'relative',
-//     marginRight: 12,
-//   },
-//   avatar: {
-//     width: 44,
-//     height: 44,
-//     borderRadius: 22,
-//     backgroundColor: '#E5E7EB',
-//   },
-//   avatarPlaceholder: {
-//     backgroundColor: '#3B82F6',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   avatarText: {
-//     color: '#FFFFFF',
-//     fontSize: 18,
-//     fontWeight: '600',
-//   },
-//   statusDot: {
-//     position: 'absolute',
-//     bottom: 0,
-//     right: 0,
-//     width: 14,
-//     height: 14,
-//     borderRadius: 7,
-//     borderWidth: 2.5,
-//     borderColor: '#FFFFFF',
-//   },
-//   statusOnline: {
-//     backgroundColor: '#22C55E',
-//   },
-//   statusOffline: {
-//     backgroundColor: '#9CA3AF',
-//   },
-//   titleContainer: {
-//     flex: 1,
-//   },
-//   title: {
-//     fontSize: 17,
-//     fontWeight: '600',
-//     color: '#1F2937',
-//   },
-//   subtitle: {
-//     fontSize: 12,
-//     color: '#6B7280',
-//     marginTop: 1,
-//   },
-//   moreButton: {
-//     padding: 8,
-//     borderRadius: 8,
-//   },
-//   moreIcon: {
-//     fontSize: 22,
-//     color: '#6B7280',
-//     fontWeight: '600',
-//   },
-// });
 
 
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Images } from '../../../common/Images';
+// import logo from '../../../assets/images//backButton.png';
 
 interface ChatHeaderProps {
   title: string;
@@ -202,13 +21,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
   const navigation = useNavigation();
   const handleBack = () => (onBack ? onBack() : navigation.goBack());
 
-  console.log("headerrrrrrrrr", title,avatar)
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.leftContainer}>
+
         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
-          <Text style={styles.backIcon}>‹</Text>
+          {/* <Text style={styles.backIcon}>‹</Text> */}
+          <Image source={Images.backIcon} style={styles.backImage} />
         </TouchableOpacity>
 
         <View style={styles.avatarContainer}>
@@ -230,9 +50,9 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
         </View>
       </View>
 
-      <TouchableOpacity style={styles.moreButton} activeOpacity={0.7}>
+      {/* <TouchableOpacity style={styles.moreButton} activeOpacity={0.7}>
         <Text style={styles.moreIcon}>⋯</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
@@ -247,7 +67,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-    ...Platform.select({ ios: { paddingTop: 48 }, android: { paddingTop: 12 } }),
+    // ...Platform.select({ ios: { paddingTop: 48 }, android: { paddingTop: 12 } }),
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -258,6 +78,11 @@ const styles = StyleSheet.create({
   backButton: { padding: 6, marginRight: 4, borderRadius: 8 },
   backIcon: { fontSize: 32, color: THEME, fontWeight: '300', includeFontPadding: false },
   avatarContainer: { position: 'relative', marginRight: 12 },
+  backImage: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5E7EB' },
   avatarPlaceholder: { backgroundColor: THEME, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },

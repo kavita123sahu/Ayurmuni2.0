@@ -17,8 +17,6 @@ import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import * as ProfileServices from '../../services/ProfileServices';
 import CommonModal from '../../components/LogoutModal';
 import { SECTION_GAP } from '../../constants/layout';
-import { useAuth } from '../../hooks/useAuth';
-import { clearGuestMode, navigateToLogin } from '../../services/guestAuth';
 import { useFocusEffect } from '@react-navigation/native';
 
 
@@ -27,7 +25,6 @@ type MenuEntry = {
     id: number;
     title: string;
     icon: TablerIconName;
-    guestLocked?: boolean;
 };
 
 type ExploreItem = {
@@ -40,11 +37,8 @@ type ExploreItem = {
     onPress: () => void;
 };
 
-const GUEST_BROWSABLE_MENU = new Set(['FAQ', 'Mentor']);
-
 const ProfilePage = ({ navigation }: any) => {
     const stackNav = navigation.getParent?.() || navigation;
-    const { isGuest, refresh } = useAuth();
 
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [user, setUser] = useState(null);
@@ -81,22 +75,22 @@ const ProfilePage = ({ navigation }: any) => {
     const logout = () => setLogoutVisible(true);
 
     const accountMenu: MenuEntry[] = [
-        { id: 1, title: 'Patient Details', icon: 'users', guestLocked: true },
-        { id: 2, title: 'Saved Address', icon: 'map-pin', guestLocked: true },
-        { id: 3, title: 'My Appointments', icon: 'calendar', guestLocked: true },
-        { id: 4, title: 'Order History', icon: 'receipt', guestLocked: true },
-        { id: 5, title: 'Medical Records', icon: 'file-medical', guestLocked: true },
-        { id: 6, title: 'Favourite Doctor', icon: 'heart', guestLocked: true },
-        { id: 7, title: 'Wishlist', icon: 'heart-filled', guestLocked: true },
-        { id: 8, title: 'Mentor', icon: 'school', guestLocked: false },
-        { id: 9, title: 'Cart', icon: 'shopping-cart', guestLocked: true },
-        { id: 10, title: 'Analysis', icon: 'chart-pie', guestLocked: true },
+        { id: 1, title: 'Patient Details', icon: 'users' },
+        { id: 2, title: 'Saved Address', icon: 'map-pin' },
+        { id: 3, title: 'My Appointments', icon: 'calendar' },
+        { id: 4, title: 'Order History', icon: 'receipt' },
+        { id: 5, title: 'Medical Records', icon: 'file-medical' },
+        { id: 6, title: 'Favourite Doctor', icon: 'heart' },
+        { id: 7, title: 'Wishlist', icon: 'heart-filled' },
+        { id: 8, title: 'Mentor', icon: 'school' },
+        { id: 9, title: 'Cart', icon: 'shopping-cart' },
+        { id: 10, title: 'Analysis', icon: 'chart-pie' },
     ];
 
     const preferenceMenu: MenuEntry[] = [
-        { id: 6, title: 'Payments', icon: 'credit-card', guestLocked: true },
-        { id: 7, title: 'Settings', icon: 'settings', guestLocked: true },
-        { id: 8, title: 'FAQ', icon: 'help', guestLocked: false },
+        { id: 6, title: 'Payments', icon: 'credit-card' },
+        { id: 7, title: 'Settings', icon: 'settings' },
+        { id: 8, title: 'FAQ', icon: 'help' },
     ];
 
     const exploreItems: ExploreItem[] = [
@@ -156,15 +150,7 @@ const ProfilePage = ({ navigation }: any) => {
         },
     ];
 
-    const handleNavigation = async (item: MenuEntry) => {
-        if (isGuest && item.guestLocked) {
-            navigateToLogin(`Please login to access ${item.title}`);
-            return;
-        }
-        if (isGuest && !GUEST_BROWSABLE_MENU.has(item.title)) {
-            navigateToLogin(`Please login to access ${item.title}`);
-            return;
-        }
+    const handleNavigation = (item: MenuEntry) => {
         switch (item.title) {
             case 'Patient Details':
                 stackNav.navigate('PatientDetails');
@@ -190,7 +176,7 @@ const ProfilePage = ({ navigation }: any) => {
             case 'Mentor':
                 stackNav.navigate('Mentor');
                 break;
-            case 'MyCart':
+            case 'Cart':
                 stackNav.navigate('MyCart');
                 break;
             case 'Payments':
@@ -216,48 +202,19 @@ const ProfilePage = ({ navigation }: any) => {
         navigation.replace('Welcome');
     };
 
-    const handleGuestLogin = () => {
-        navigateToLogin('Create an account to unlock cart, bookings & more');
-    };
-
-    const handleExitGuest = async () => {
-        await clearGuestMode();
-        await refresh();
-        navigation.replace('Welcome');
-    };
-
-    const MenuItem = ({ item }: { item: MenuEntry }) => {
-        const locked = isGuest && !!item.guestLocked;
-        const iconColor = locked ? '#94A3B8' : '#1B5E54';
-
-        return (
+    const MenuItem = ({ item }: { item: MenuEntry }) => (
             <TouchableOpacity
-                style={[styles.card, locked && styles.cardLocked]}
+                style={styles.card}
                 activeOpacity={0.7}
                 onPress={() => handleNavigation(item)}
             >
-                <View
-                    style={[
-                        styles.iconContainer,
-                        { backgroundColor: locked ? '#F8FAFC' : '#E8F3F1' },
-                    ]}
-                >
-                    <TablerIcon name={item.icon} size={22} color={iconColor} />
+                <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
+                    <TablerIcon name={item.icon} size={22} color="#1B5E54" />
                 </View>
-                <Text style={[styles.menuTitle, locked && styles.menuTitleLocked]}>
-                    {item.title}
-                </Text>
-                {locked ? (
-                    <View style={styles.lockPill}>
-                        <TablerIcon name="lock" size={12} color="#64748B" />
-                        <Text style={styles.lockText}>Login</Text>
-                    </View>
-                ) : (
-                    <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
-                )}
+                <Text style={styles.menuTitle}>{item.title}</Text>
+                <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
             </TouchableOpacity>
         );
-    };
 
     const Section = ({ title, children }: any) => (
         <View style={styles.wrapper}>
@@ -265,96 +222,6 @@ const ProfilePage = ({ navigation }: any) => {
             <View>{children}</View>
         </View>
     );
-
-    const GuestHero = () => (
-        <View style={styles.guestHero}>
-            <View style={styles.guestHeroTop}>
-                <View style={styles.guestAvatar}>
-                    <TablerIcon name="user" size={36} color={Colors.primaryColor} />
-                </View>
-                <View style={styles.guestBadge}>
-                    <TablerIcon name="eye" size={12} color="#0D614E" />
-                    <Text style={styles.guestBadgeText}>Guest Mode</Text>
-                </View>
-            </View>
-
-            <Text style={styles.guestHeroTitle}>Explore Ayurmuni freely</Text>
-            <Text style={styles.guestHeroSubtitle}>
-                Browse doctors, medicines, products, yoga, diet plans & panchakarma.
-                Login only when you want to cart, book, or save items.
-            </Text>
-
-            <View style={styles.guestPerks}>
-                {['Browse all content', 'View doctor profiles', 'See prices & details'].map(
-                    perk => (
-                        <View key={perk} style={styles.perkRow}>
-                            <TablerIcon name="check" size={14} color="#0D614E" />
-                            <Text style={styles.perkText}>{perk}</Text>
-                        </View>
-                    ),
-                )}
-            </View>
-
-            <PrimaryButton
-                title="Login / Sign Up"
-                iconName="arrow-right"
-                TextFont={Fonts.PoppinsSemiBold}
-                backgroundColor={Colors.primaryColor}
-                textColor={Colors.white}
-                onPress={handleGuestLogin}
-            />
-
-            <TouchableOpacity style={styles.exitGuestBtn} onPress={handleExitGuest}>
-                <Text style={styles.exitGuestText}>Back to Welcome</Text>
-            </TouchableOpacity>
-        </View>
-    );
-
-    const ExploreGrid = () => (
-        <View style={styles.exploreSection}>
-            <Text style={styles.exploreTitle}>Start Exploring</Text>
-            <View style={styles.exploreGrid}>
-                {exploreItems.map(item => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={styles.exploreCard}
-                        activeOpacity={0.8}
-                        onPress={item.onPress}
-                    >
-                        <View style={[styles.exploreIconWrap, { backgroundColor: item.bg }]}>
-                            <TablerIcon name={item.icon} size={22} color={item.color} />
-                        </View>
-                        <Text style={styles.exploreCardTitle}>{item.title}</Text>
-                        <Text style={styles.exploreCardSub}>{item.subtitle}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-        </View>
-    );
-
-    if (isGuest) {
-        return (
-            <ScreenShell withTabBar scroll contentStyle={styles.shellContent}>
-                <Header title="Profile" subtitle="Guest explorer" />
-                <GuestHero />
-                <ExploreGrid />
-
-                <Section title="Account">
-                    {accountMenu.map(item => (
-                        <MenuItem key={item.id} item={item} />
-                    ))}
-                </Section>
-
-                <Section title="Preference">
-                    {preferenceMenu.map(item => (
-                        <MenuItem key={item.id} item={item} />
-                    ))}
-                </Section>
-
-                <Text style={styles.version}>APP VERSION 1.2</Text>
-            </ScreenShell>
-        );
-    }
 
     return (
         <ScreenShell withTabBar scroll contentStyle={styles.shellContent}>

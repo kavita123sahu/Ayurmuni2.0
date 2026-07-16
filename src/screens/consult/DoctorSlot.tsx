@@ -23,14 +23,13 @@ import { generateFutureDates, } from '../../common/DataInterface';
 import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
-import { pick } from '@react-native-documents/picker';
 import PrescriptionUpload from './Uploadreport';
 import { launchCamera } from 'react-native-image-picker';
 import { Ionicons } from '../../common/Vector';
 import TablerIcon from '../../components/TablerIcon';
 import { requireAuth } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
 import UploadRecordModal from '../../components/UploadRecordModal';
+import AppHeader from '../../components/AppHeader';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -41,7 +40,6 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 const DoctorSlot = (props: any) => {
 
     const { route, navigation } = props;
-    const { isGuest } = useAuth();
 
     const [selectedRecords, setSelectedRecords] =
         useState<string[]>([]);
@@ -239,7 +237,7 @@ const DoctorSlot = (props: any) => {
         <SafeAreaView style={styles.container}>
             <StatusBar backgroundColor={Colors.background} barStyle="dark-content" />
 
-            <View style={styles.headerTop}>
+            {/* <View style={styles.headerTop}>
                 <TouchableOpacity onPress={() => { navigation.goBack(); }} style={styles.iconBtn}>
                     <Image source={Images.backIcon} style={styles.backIcon} />
                 </TouchableOpacity>
@@ -254,7 +252,17 @@ const DoctorSlot = (props: any) => {
 
                 </TouchableOpacity> */}
 
-            </View>
+
+            <AppHeader
+                title="Doctor Profile"
+                leftIconName='arrow-left'
+                onLeftPress={() =>
+                    props.navigation.goBack()
+                }
+            // onRightPress={() => props.navigation.navigate('NotificationsScreen')}
+            // rightIconName={doctorInfo?.is_favorite ? "heart" : "heart-outline"}
+            />
+
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={
@@ -467,11 +475,10 @@ const DoctorSlot = (props: any) => {
 
                         <TouchableOpacity
                             activeOpacity={0.85}
-                            disabled={!isGuest && (loadingSlots || groupedSlots.length === 0)}
+                            disabled={loadingSlots || groupedSlots.length === 0}
                             style={[
                                 styles.payBtn,
-                                isGuest && styles.payBtnLocked,
-                                !isGuest && (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && {
+                                (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && {
                                     opacity: 0.5,
                                     backgroundColor: '#CBD5E1',
                                 },
@@ -480,11 +487,7 @@ const DoctorSlot = (props: any) => {
                         >
                             <Ionicons name="card-outline" size={18} color="#FFFFFF" />
                             <Text style={styles.payText}>
-                                {isGuest
-                                    ? 'Login to Book'
-                                    : loadingSlots
-                                        ? 'Loading...'
-                                        : 'Continue'}
+                                {loadingSlots ? 'Loading...' : 'Continue'}
                             </Text>
                         </TouchableOpacity>
                     </View>
