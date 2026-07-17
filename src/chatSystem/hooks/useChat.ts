@@ -290,6 +290,7 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
       }
       try {
         const data = await chatService.getMessages(appointmentId, markRead);
+        console.log('datadatadata',data)
         if (mountedRef.current) {
           hasLoadedOnceRef.current = true;
           setState((prev) => ({

@@ -28,7 +28,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 }) => {
     const {
         messages, isLoading, isConnected, error, participantRole,
-        sendMessage, markAsRead, chatAccess, loadMessages,
+        sendMessage, markAsRead, chatAccess, loadMessages, followUpActive
     } = useChat(appointmentId, role);
 
 
@@ -136,7 +136,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     const canSend = chatAccess?.can_send ?? true;
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
             <ChatHeader
@@ -147,9 +147,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             />
 
             <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+                style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={0}
             >
                 {/* <FlatList
                     ref={flatListRef}
@@ -178,16 +177,49 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                     data={messages}
                     renderItem={renderMessage}
                     keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.messageList}
-                    keyboardDismissMode="on-drag"
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        paddingHorizontal: 12,
+                        paddingTop: 8,
+                        paddingBottom: 16,
+                    }}
                     keyboardShouldPersistTaps="handled"
-                    onContentSizeChange={() =>
-                        flatListRef.current?.scrollToEnd({ animated: true })
-                    }
+                    keyboardDismissMode="interactive"
+                // // contentContainerStyle={styles.messageList}
+                // keyboardDismissMode="on-drag"
+                // contentContainerStyle={{
+                //     flexGrow: 1,
+                //     paddingHorizontal: 12,
+                //     paddingTop: 8,
+                //     paddingBottom: 10,
+                // }}
+                //    onContentSizeChange={() => isAtBottom && flatListRef.current?.scrollToEnd({ animated: true })}
+                // onScrollBeginDrag={() => setIsAtBottom(false)}
+                // onMomentumScrollEnd={(e) => {
+                //     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                //     setIsAtBottom(contentOffset.y + layoutMeasurement.height >= contentSize.height - 20);
+                // }}
+                // style={{flex:1}}
+                // showsVerticalScrollIndicator={false}
+                // initialNumToRender={20}
+                // maxToRenderPerBatch={30}
+                // windowSize={10}
+                // keyboardShouldPersistTaps="handled"
+                // onContentSizeChange={() =>
+                //     flatListRef.current?.scrollToEnd({ animated: true })
+                // }
                 />
 
-
-                <MessageInput onSend={handleSend} isConnected={isConnected} isDisabled={!canSend} />
+                <View
+                    style={{
+                        backgroundColor: '#fff',
+                        borderTopWidth: 1,
+                        borderTopColor: '#E5E7EB',
+                    }}
+                >
+                    <MessageInput onSend={handleSend} isConnected={isConnected} isDisabled={!followUpActive} />
+                </View>
 
                 {error && (
                     <View style={styles.errorToast}>

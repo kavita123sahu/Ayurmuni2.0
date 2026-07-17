@@ -37,7 +37,7 @@ export default function ChatScreen({ route }: ChatScreenProps) {
 
     console.log("chatscreeenn", appointmentId, role, doctorName, patientName, doctorAvatar, patientAvatar)
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} >
             <ChatContainer
                 appointmentId={appointmentId}
                 role={role}

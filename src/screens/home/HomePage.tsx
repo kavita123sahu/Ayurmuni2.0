@@ -283,25 +283,6 @@ const HomePage: React.FC = (props: any) => {
         renderItem={() => (
           <View style={styles.sections}>
 
-            {/* <View style={styles.containerprakriti}>
-              {data.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.cardWrapper}
-                  onPress={() => props.navigation.navigate(item.screen, {
-                    update: true
-                  }
-                  )}
-                >
-                  <PrakritiCard
-                    title={item.title}
-                    status={item.status}
-                    progress={Math.round(item.progress)}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View> */}
-
             {loadingCategories ? (
               <HomeCategorySkeleton />
             ) : (

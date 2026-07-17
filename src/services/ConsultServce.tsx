@@ -162,6 +162,21 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
     }
 }
 
+export const RecentConsultHistory = async () => {
+    try {
+      
+        const response = await apiClient(
+            'customers/doctors/consultation-history/',
+            {
+                method: 'GET',
+            },
+        );
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
 
 export const getConsultHistory = async (payload: any) => {
     try {

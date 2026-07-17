@@ -98,23 +98,20 @@ const RazorpayScreen = ({
 
     }, [slotId]);
 
-
     useFocusEffect(
         React.useCallback(() => {
             if (!isVerifyingPayment) return;
 
-            const onBackPress = () => true; // Back block
+            const onBackPress = () => true;
 
-            BackHandler.addEventListener(
+            const subscription = BackHandler.addEventListener(
                 'hardwareBackPress',
                 onBackPress,
             );
 
-            return () =>
-                BackHandler.removeEventListener(
-                    'hardwareBackPress',
-                    onBackPress,
-                );
+            return () => {
+                subscription.remove();
+            };
         }, [isVerifyingPayment]),
     );
 
@@ -176,7 +173,7 @@ const RazorpayScreen = ({
                     const SlotsDetail = verifyResponse?.data;
                     if (verifyResponse?.success) {
                         setIsVerifyingPayment(false);
-
+                        console.log("yessssssssssssss")
                         showSuccessToast('Payment Successful', 'success');
                         // Clear local reservation after successful payment
                         try {
@@ -196,6 +193,7 @@ const RazorpayScreen = ({
                         //     selectedTime,
                         // }
                     } else {
+                        console.log("noooooooooooooooo")
                         setIsVerifyingPayment(false);
                         showSuccessToast('Payment verification failed', 'error');
                     }

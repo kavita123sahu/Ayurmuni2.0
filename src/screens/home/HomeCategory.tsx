@@ -36,7 +36,7 @@ const CATEGORY_ICONS: Record<string, TablerIconName> = {
 };
 
 const CATEGORY_ROUTES: Record<string, string> = {
-  consult: 'Consult',
+  consult: 'ConsultScreen',
   medicine: 'MedicineScreen',
   products: 'ProductsScreen',
   yoga: 'YogaScreen',

@@ -3,12 +3,16 @@ import {
     View,
     Text,
     StyleSheet,
-    SafeAreaView,
     ScrollView,
     TouchableOpacity,
     Image,
     Dimensions,
+    Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '../../components/AppHeader';
+import { Images } from '../../common/Images';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -30,65 +34,63 @@ const Fonts = {
     regular: 'Poppins-Regular',
 };
 
-const PrescriptionDetail = () => {
+const handleCall = (phoneNumber?: string) => {
+    if (!phoneNumber) return;
+
+    Linking.openURL(`tel:${phoneNumber}`).catch(err =>
+        console.log('Call Error:', err),
+    );
+};
+
+const PrescriptionDetail = (props: any) => {
+
+    const insets = useSafeAreaInsets();
+    const { PrisData, doctorData } = props.route.params;
+
+    console.log("PrisDataPrisData", props)
     return (
         <SafeAreaView style={styles.container}>
+            <AppHeader title='Prescription History' leftIconName='arrow-left' onLeftPress={() => props.navigation.goBack()} />
+
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={
-                    styles.scrollContent
-                }
+                contentContainerStyle={{
+                    paddingBottom: insets.bottom + 100
+                }}
             >
-                {/* HEADER */}
-
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={styles.backBtn}
-                    >
-                        <Text style={styles.backText}>
-                            ‹
-                        </Text>
-                    </TouchableOpacity>
-
-                    <Text style={styles.headerTitle}>
-                        Prescription History
-                    </Text>
-
-                    <View style={styles.emptyView} />
-                </View>
-
-                {/* MAIN CARD */}
-
                 <View style={styles.card}>
                     {/* PATIENT INFO */}
 
                     <View style={styles.patientRow}>
-                        <Image
+                        {/* <Image
                             source={{
                                 uri: 'https://i.pravatar.cc/150?img=32',
                             }}
                             style={styles.avatar}
-                        />
-
+                        /> */}
+                        <View style={styles.initialAvatar}>
+                            <Text style={styles.initialText}>
+                                {PrisData?.patient?.patient_name?.charAt(0)?.toUpperCase() || ''}
+                            </Text>
+                        </View>
                         <View style={styles.patientContent}>
                             <Text
                                 numberOfLines={1}
                                 style={styles.patientName}
                             >
-                                Katherine Sterling
+                                {PrisData?.patient?.patient_name ?? ''}
                             </Text>
 
                             <Text
                                 style={styles.patientSubText}
                             >
-                                Gastro Specialist
+                                Gender : {PrisData?.patient?.gender ?? ''}
                             </Text>
 
                             <Text
                                 style={styles.patientSubText}
                             >
-                                Oct 12, 2025
+                                Age : {PrisData?.patient?.age ?? ''}
                             </Text>
                         </View>
                     </View>
@@ -99,64 +101,47 @@ const PrescriptionDetail = () => {
                         Primary Medications
                     </Text>
 
-                    <View style={styles.separator} />
+                    {PrisData?.prescription?.items?.map((medicine: any) => (
+                        <View key={medicine.id}>
+                            <View style={styles.separator} />
 
-                    <View>
-                        <Text style={styles.medicineName}>
-                            Amoxicillin 500mg
-                        </Text>
-
-                        <Text
-                            style={styles.medicineDesc}
-                        >
-                            Broad-spectrum penicillin
-                            antibiotic
-                        </Text>
-                    </View>
-
-                    {/* SCHEDULE */}
-
-                    <View style={styles.scheduleCard}>
-                        <Text
-                            style={styles.scheduleTitle}
-                        >
-                            Treatment Schedule
-                        </Text>
-
-                        <View
-                            style={styles.scheduleRow}
-                        >
-                            <View style={styles.scheduleItem}>
-                                <Text
-                                    style={styles.scheduleIcon}
-                                >
-                                    🕒
+                            {/* Medicine */}
+                            <View>
+                                <Text style={styles.medicineName}>
+                                    {medicine?.medicine_name}
                                 </Text>
 
-                                <Text
-                                    style={styles.scheduleText}
-                                >
-                                    1 capsule, 3x daily
+                                <Text style={styles.medicineDesc}>
+                                    {medicine?.instruction || 'No instruction available'}
                                 </Text>
                             </View>
 
-                            <View
-                                style={styles.scheduleItem}
-                            >
-                                <Text
-                                    style={styles.scheduleIcon}
-                                >
-                                    📅
+                            {/* Schedule */}
+                            <View style={styles.scheduleCard}>
+                                <Text style={styles.scheduleTitle}>
+                                    Treatment Schedule
                                 </Text>
 
-                                <Text
-                                    style={styles.scheduleText}
-                                >
-                                    7 Days course
-                                </Text>
+                                <View style={styles.scheduleRow}>
+                                    <View style={styles.scheduleItem}>
+                                        <Text style={styles.scheduleIcon}>🕒</Text>
+
+                                        <Text style={styles.scheduleText}>
+                                            {medicine?.dosage || '-'} times • {medicine?.frequency || '-'} daily
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.scheduleItem}>
+                                        <Text style={styles.scheduleIcon}>📅</Text>
+
+                                        <Text style={styles.scheduleText}>
+                                            {medicine?.duration || '-'}Days course
+                                        </Text>
+                                    </View>
+                                </View>
                             </View>
                         </View>
-                    </View>
+                    ))}
 
                     {/* INSTRUCTIONS */}
 
@@ -174,8 +159,7 @@ const PrescriptionDetail = () => {
                         <Text
                             style={styles.instructionText}
                         >
-                            Take after food with
-                            plenty of water.
+                            {PrisData?.prescription?.diagnosis_advice}
                         </Text>
                     </View>
 
@@ -187,8 +171,7 @@ const PrescriptionDetail = () => {
                         <Text
                             style={styles.instructionText}
                         >
-                            Finish the full course
-                            even if symptoms improve.
+                            {PrisData?.prescription?.history_of_past_illness}
                         </Text>
                     </View>
 
@@ -214,10 +197,7 @@ const PrescriptionDetail = () => {
                         <Text
                             style={styles.successDesc}
                         >
-                            Avoid alcohol during
-                            treatment. Important:
-                            if rash develops,
-                            emergency services.
+                            {PrisData?.prescription?.clinical_notes}
                         </Text>
                     </View>
 
@@ -232,7 +212,7 @@ const PrescriptionDetail = () => {
                     <View style={styles.doctorRow}>
                         <Image
                             source={{
-                                uri: 'https://i.pravatar.cc/150?img=12',
+                                uri: doctorData?.doctor_image,
                             }}
                             style={styles.doctorImage}
                         />
@@ -242,28 +222,28 @@ const PrescriptionDetail = () => {
                                 numberOfLines={1}
                                 style={styles.doctorName}
                             >
-                                Dr. Emily Stone
+                                {doctorData?.doctor_name ?? ''}
                             </Text>
 
                             <Text
                                 style={styles.doctorSpeciality}
                             >
-                                General Practitioner
+                                {doctorData?.doctor_specialization ?? ''}
                             </Text>
                         </View>
                     </View>
 
                     <View style={styles.doctorInfo}>
                         <Text style={styles.infoText}>
-                            📍 City General Hospital
+                            📍 {doctorData?.city} {doctorData?.state}
                         </Text>
 
                         <Text style={styles.infoText}>
-                            📞 +1 (555) 123-456
+                            📞 {doctorData?.registration_number}
                         </Text>
 
                         <Text style={styles.infoText}>
-                            ✉ support@hospital.med
+                            ✉ {doctorData?.email}
                         </Text>
                     </View>
 
@@ -275,7 +255,7 @@ const PrescriptionDetail = () => {
 
                     <View style={styles.separator} />
 
-                    <View style={styles.statusRow}>
+                    {/* <View style={styles.statusRow}>
                         <View
                             style={styles.activeBadge}
                         >
@@ -294,7 +274,7 @@ const PrescriptionDetail = () => {
                             Started Oct 12 •
                             Completes Oct 19
                         </Text>
-                    </View>
+                    </View> */}
 
                     {/* HELP CARD */}
 
@@ -313,11 +293,10 @@ const PrescriptionDetail = () => {
 
                         <TouchableOpacity
                             activeOpacity={0.8}
+                            onPress={() => handleCall(doctorData?.registration_number ?? '')}
                             style={styles.contactBtn}
                         >
-                            <Text
-                                style={styles.contactText}
-                            >
+                            <Text style={styles.contactText}>
                                 Contact Now
                             </Text>
                         </TouchableOpacity>
@@ -342,7 +321,11 @@ const PrescriptionDetail = () => {
 
             {/* BOTTOM BUTTONS */}
 
-            <View style={styles.bottomContainer}>
+            <View style={[styles.bottomContainer, {
+
+                paddingBottom: Math.max(insets.bottom, 16)
+            }
+            ]}>
                 <TouchableOpacity
                     activeOpacity={0.8}
                     style={styles.shareBtn}
@@ -451,7 +434,21 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         marginRight: 14,
     },
+    initialAvatar: {
+        width: 70,
+        height: 70,
+        marginRight:10,
+        borderRadius: 20,
+        backgroundColor: '#0D614E',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 
+    initialText: {
+        color: '#FFFFFF',
+        fontSize: 20,
+        fontWeight: '700',
+    },
     patientContent: {
         flex: 1,
         minWidth: 0,
@@ -774,19 +771,29 @@ const styles = StyleSheet.create({
 
     bottomContainer: {
         position: 'absolute',
-        bottom: 0,
         left: 0,
         right: 0,
+        bottom: 0, // ❌ 20 mat rakho
+
         flexDirection: 'row',
-        backgroundColor:
-            COLORS.white,
+
+        backgroundColor: COLORS.white,
+
         paddingHorizontal: 16,
         paddingTop: 14,
-        paddingBottom: 24,
-        gap: 12,
+
         borderTopWidth: 1,
-        borderTopColor:
-            COLORS.border,
+        borderTopColor: COLORS.border,
+
+        elevation: 8,
+
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: -2,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
     },
 
     shareBtn: {

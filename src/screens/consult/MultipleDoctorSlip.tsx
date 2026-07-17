@@ -16,6 +16,7 @@ import { Colors } from '../../common/Colors';
 import SectionHeader from '../../components/SectionHeader';
 import { AppText, PatientDetails } from './DoctorSlip';
 import { Ionicons } from '../../common/Vector';
+import TablerIcon from '../../components/TablerIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -81,20 +82,29 @@ const MultipleDoctorSlip = ({
             (item: any) =>
                 item?.prescription?.items || []
         ) || [];
+
+    const ConsultaionList = consultation?.consultations.slice(0, 3) ?? []
+
+
     console.log("consultation----?", navigation, consultation);
 
     const renderConsultationCard = (item: any) => {
-        const isGreen = item.type === 'green';
-        const isBlue = item.type === 'blue';
+
+        console.log("item?.type", item);
+        const isGreen = item.appointment_status === 'completed';
+        const isBlue = item.appointment_status === 'confirmed';
 
         return (
-            <View style={styles.consultationCard}>
+            <TouchableOpacity style={styles.consultationCard} onPress={() => navigation.navigate('PrescriptionDetail', {
+                PrisData: item,
+                doctorData: consultation?.doctor
+            })} >
                 <View style={styles.consultationTop}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.consultDate}>{item.date}</Text>
+                        <Text style={styles.consultDate}>{item?.appointment_date}</Text>
 
                         <Text style={styles.consultTitle}>
-                            {item.title}
+                            {item?.prescription?.diagnosis_advice}
                         </Text>
                     </View>
 
@@ -122,7 +132,7 @@ const MultipleDoctorSlip = ({
                                 },
                             ]}
                         >
-                            {item.progress}
+                            {item.progress ?? '30%'}
                         </Text>
 
                         <Text
@@ -137,15 +147,28 @@ const MultipleDoctorSlip = ({
                                 },
                             ]}
                         >
-                            Improvement
+                            {isGreen ? 'completed' : 'in-progress'}
                         </Text>
                     </View>
                 </View>
 
                 <Text style={styles.consultDesc}>
-                    {item.desc}
+                    {item?.prescription?.symptom_description}
                 </Text>
-            </View>
+                <View style={styles.bottomRow}>
+                    <Text style={styles.viewText}>
+                        View Prescription
+                    </Text>
+
+                    <View style={styles.arrowButton}>
+                        <TablerIcon
+                            name="arrow-right"
+                            size={18}
+                            color="#FFFFFF"
+                        />
+                    </View>
+                </View>
+            </TouchableOpacity>
         );
     };
 
@@ -173,22 +196,25 @@ const MultipleDoctorSlip = ({
                     </View>
 
                     <View style={styles.timeWrapper}>
-                        <AppText
+                        {/* <AppText
                             text={item?.frequency}
                             style={styles.timeText}
-                        />
-                        <AppText
+                        /> */}
+                        <Text style={styles.timeText}> {item?.frequency} frequency </Text>
+                        <Text style={styles.timeText}> {item?.dosage} dosage </Text>
+                        {/* <AppText
                             text={item?.dosage}
                             style={styles.timeText}
-                        />
+                        /> */}
                     </View>
                 </View>
 
                 <View style={styles.bottomRow}>
-                    <AppText
+                    {/* <AppText
                         text={item?.duration}
                         style={styles.daysText}
-                    />
+                    /> */}
+                    <Text style={styles.timeText}> {item?.duration} duration </Text>
                 </View>
             </View>
         );
@@ -230,22 +256,29 @@ const MultipleDoctorSlip = ({
 
                 {/* CONSULTATION */}
 
-                <SectionHeader title='Consultation History' actionText='View All' />
+                <SectionHeader title='Consultation History' />
 
 
                 <View style={styles.timelineWrapper}>
 
                     <View style={styles.trackLine} />
 
-                    {consultationData.map((item, index) => (
-                        <View key={index} style={styles.timelineItem}>
+                    {ConsultaionList?.map((item: any, index: number) => {
+                        if (!item) return null;
 
-                            <View style={[styles.dot, item.isCurrent && styles.dotActive]} />
+                        return (
+                            <View key={item.consultation_id ?? index} style={styles.timelineItem}>
+                                <View
+                                    style={[
+                                        styles.dot,
+                                        item.isCurrent && styles.dotActive,
+                                    ]}
+                                />
 
-                            {renderConsultationCard(item)}
-
-                        </View>
-                    ))}
+                                {renderConsultationCard(item)}
+                            </View>
+                        );
+                    })}
                 </View>
 
 
@@ -507,6 +540,20 @@ const styles = StyleSheet.create({
     },
 
 
+    viewText: {
+        fontSize: 13,
+        color: COLORS.primary,
+        fontFamily: Fonts.semiBold,
+    },
+
+    arrowButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     /* SECTION */
 
     sectionRow: {

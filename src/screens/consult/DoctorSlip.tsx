@@ -82,9 +82,11 @@ export const AppText = memo(
         text,
         style,
         numberOfLines,
+        subtext
     }: {
         text: string;
         style?: any;
+        subtext?: string
         numberOfLines?: number;
     }) => {
         return (
@@ -237,22 +239,27 @@ export const MedicineCard = memo(
                     </View>
 
                     <View style={styles.timeWrapper}>
-                        <AppText
+                        {/* <AppText
                             text={frequency}
+                            subtext={'frequency'}
                             style={styles.timeText}
-                        />
-                        <AppText
+                        /> */}
+                        <Text style={styles.timeText}> {frequency} frequency </Text>
+                        <Text style={styles.timeText}> {dosage} dosage </Text>
+                        {/* <AppText
                             text={dosage}
                             style={styles.timeText}
-                        />
+                        /> */}
                     </View>
                 </View>
 
                 <View style={styles.bottomRow}>
-                    <AppText
+                        <Text style={styles.daysText}> {dosage} dosage </Text>
+                    {/* <AppText
                         text={duration}
+                        subtext='duration'
                         style={styles.daysText}
-                    />
+                    /> */}
                 </View>
             </View>
         );
@@ -367,7 +374,7 @@ const DoctorSlipScreen = (props: any) => {
 
     const insets = useSafeAreaInsets();
 
-     const renderMedicine = useCallback(
+    const renderMedicine = useCallback(
         ({ item }: { item: MedicineItem }) => {
             return <MedicineCard {...item} />;
         },

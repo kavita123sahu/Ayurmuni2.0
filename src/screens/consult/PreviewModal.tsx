@@ -16,7 +16,7 @@ const PreviewModal = ({
     onClose,
 }: any) => {
 
-    console.log(record,'recordrecord-->')
+    console.log(imageUrl, 'imageUrlimageUrlimageUrlimageUrl-->')
     return (
         <Modal
             visible={visible}
@@ -35,41 +35,41 @@ const PreviewModal = ({
                     />
                 </TouchableOpacity>
 
-                {/* {record?.file_type === 'image' ? (
-                    <Image
-                        source={{ uri: imageUrl }}
-                        style={styles.previewImage}
-                        resizeMode="contain"
+                {/* {/* {record?.file_type === 'image' ? ( */}
+                <Image
+                    source={{ uri: imageUrl }}
+                    style={styles.previewImage}
+                    resizeMode="contain"
+                />
+
+                <View style={{ alignItems: 'center' }}>
+                    <Ionicons
+                        name="document-text"
+                        size={80}
+                        color="#fff"
                     />
-                ) : ( */}
-                    <View style={{ alignItems: 'center' }}>
-                        <Ionicons
-                            name="document-text"
-                            size={80}
-                            color="#fff"
-                        />
+                    <Text
+                        style={{
+                            color: '#fff',
+                            marginTop: 10,
+                        }}>
+                        PDF Preview
+                    </Text>
+
+                    <TouchableOpacity
+                        onPress={() =>
+                            Linking.openURL(imageUrl)
+                        }>
                         <Text
                             style={{
-                                color: '#fff',
-                                marginTop: 10,
+                                color: '#10B981',
+                                marginTop: 15,
                             }}>
-                            PDF Preview
+                            Open PDF
                         </Text>
+                    </TouchableOpacity>
+                </View>
 
-                        <TouchableOpacity
-                            onPress={() =>
-                                Linking.openURL(imageUrl)
-                            }>
-                            <Text
-                                style={{
-                                    color: '#10B981',
-                                    marginTop: 15,
-                                }}>
-                                Open PDF
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                {/* )} */}
             </View>
         </Modal>
     );

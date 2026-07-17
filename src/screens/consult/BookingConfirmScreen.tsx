@@ -173,47 +173,8 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
   const { SlotsDetail } = route?.params || {};
 
 
-  const [showModal, setShowModal] = useState(false);
-
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     setShowModal(true);
-  //   }, 5000);
-
-  //   return () => clearTimeout(timer);
-  // }, []);
-
-
+console.log("slotdetailsssssssssssss", SlotsDetail);
   const [visible, setVisible] = useState(false);
-
-  // Disable hardware back button and gesture back to prevent leaving this
-  // confirmation screen except via explicit buttons (Home or Share).
-  // useEffect(() => {
-  //   const onHardwareBack = () => {
-
-  //     if (!showModal) {
-  //       setShowModal(true);
-  //       return true; // back action stop
-  //     }
-
-  //     return true;
-  //   };
-
-  //   const backHandler = BackHandler.addEventListener(
-  //     'hardwareBackPress',
-  //     onHardwareBack,
-  //   );
-  //   return () => backHandler.remove();
-  // }, [showModal]);
-
-
-  useLayoutEffect(() => {
-    try {
-      navigation.setOptions && navigation.setOptions({ headerLeft: () => null, gestureEnabled: false });
-    } catch (e) {
-      // ignore if navigator doesn't support these options
-    }
-  }, [navigation]);
 
 
 
@@ -263,66 +224,6 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     };
   }, [navigation]);
 
-
-  const submitDoctorReview = async (data: {
-    rating: number;
-    review: string;
-    tags: string[];
-
-  }) => {
-    try {
-      const payload = {
-        rating: data.rating,
-        review: data.review,
-        tags: data.tags,
-      };
-
-      const response = await createDoctorReview(
-        {
-          entity_type: 'doctor',
-          appointment_id: SlotsDetail?.appointment_id,
-        },
-        payload,
-      );
-
-      console.log(
-        'Review Response =>',
-        response,
-      );
-
-      if (response?.success) {
-        showSuccessToast(
-          response?.message ||
-          'Review submitted successfully',
-          'success',
-        );
-
-        // setShowModal(false); // Sirf success pe close
-        return true;
-      }
-
-      showSuccessToast(
-        response?.message ||
-        'Failed to submit review',
-        'error',
-      );
-
-      return false;
-    } catch (error: any) {
-      console.log(
-        'Review Error =>',
-        error,
-      );
-
-      showSuccessToast(
-        error?.message ||
-        'Something went wrong',
-        'error',
-      );
-
-      return false;
-    }
-  };
 
   const onPressShareOption = async (
     type: string,

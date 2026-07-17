@@ -175,7 +175,7 @@ const ConfirmScreen = ({ navigation, route }: any) => {
 
             {/* Header */}
             <Header title='Checkout' onBack={() => navigation.goBack()}
- />
+            />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
 
     // Sticky bar
     stickyBar: {
-        position: 'absolute', bottom: 0, left: 0, right: 0,
+        position: 'absolute', bottom: 10, left: 0, right: 0,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 20,
         backgroundColor: '#FFFFFF',

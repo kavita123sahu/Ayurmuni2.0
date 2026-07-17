@@ -9,6 +9,7 @@ import {
     Image,
     ScrollView,
     ActivityIndicator,
+    Linking,
 } from 'react-native';
 import TablerIcon from '../../components/TablerIcon';
 import SelectedUploadCard from '../../components/SelectedUploadCard';
@@ -21,7 +22,6 @@ import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import OrderCard from '../../components/OrderCard';
 import MedicalRecordCard from '../consult/MedicalRecordCard';
 import PreviewModal from '../consult/PreviewModal';
 import { useMedicalRecord, useMedicalUpload, usePatientData } from '../../hooks/usePatientData';
@@ -148,7 +148,8 @@ const MedicalRecords = (props: any) => {
             }
             onPreview={() => {
                 setPreviewUrl(item?.file_url);
-                setPreviewVisible(true);
+                // setPreviewVisible(true);
+                Linking.openURL(item?.file_url)
             }}
             onDelete={() =>
                 deleteRecord(item?.id)

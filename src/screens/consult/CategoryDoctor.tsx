@@ -14,6 +14,8 @@ import { Colors } from '../../common/Colors';
 import AllDoctorCard from '../../components/AllDoctorCard';
 import { Fonts } from '../../common/Fonts';
 import { useConsultData } from '../../hooks/useConsultData';
+import { TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
+import EmptyState from '../../components/EmptyState';
 
 const CategoryDoctor = (props: any) => {
 
@@ -47,38 +49,38 @@ const CategoryDoctor = (props: any) => {
     console.log('topDoctorstopDoctors------->', topDoctors);
 
 
-    if (loading) {
-        return (
-            <SafeAreaView style={{ flex: 1 }}>
+    // if (loading) {
+    //     return (
+    //         <SafeAreaView style={{ flex: 1 }}>
 
-                <View
-                    style={{
-                        flex: 1,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}
-                >
-                    <ActivityIndicator
-                        size="large"
-                        color={Colors.primaryColor}
-                    />
+    //             <View
+    //                 style={{
+    //                     flex: 1,
+    //                     justifyContent: 'center',
+    //                     alignItems: 'center',
+    //                 }}
+    //             >
+    //                 <ActivityIndicator
+    //                     size="large"
+    //                     color={Colors.primaryColor}
+    //                 />
 
-                    <Text
-                        style={{
-                            marginTop: 10,
-                            fontSize: 14,
-                            fontFamily: Fonts.PoppinsMedium,
-                            color: '#64748B',
-                        }}
-                    >
-                        Loading doctors...
-                    </Text>
+    //                 <Text
+    //                     style={{
+    //                         marginTop: 10,
+    //                         fontSize: 14,
+    //                         fontFamily: Fonts.PoppinsMedium,
+    //                         color: '#64748B',
+    //                     }}
+    //                 >
+    //                     Loading doctors...
+    //                 </Text>
 
-                </View>
+    //             </View>
 
-            </SafeAreaView>
-        );
-    }
+    //         </SafeAreaView>
+    //     );
+    // }
 
     const displayData =
         showAll
@@ -144,11 +146,27 @@ const CategoryDoctor = (props: any) => {
 
                             <AllDoctorCard
                                 item={item}
-                                onPress={(doc: any) => props.navigation.navigate('DoctorProfile', { doctorId: doc?.id })}
+
+                                onPress={(doc: any) => props.navigation.navigate(
+                                    'DoctorProfile',
+                                    { doctorData: item },
+                                )}
                             // onPress={(doc: any) => props.navigation.navigate('DoctorProfile')}
                             />
                         );
                     }}
+
+                    ListEmptyComponent={
+                        loading ? (
+                            <TopDoctorsCardSkeleton />
+                        ) : (
+                            <EmptyState
+                                image={Images.doctorImage}
+                                title="No doctor found"
+                                subtitle="Try adjusting your filters."
+                            />
+                        )
+                    }
 
                     ListFooterComponent={
                         topDoctors.length > 2 ? (

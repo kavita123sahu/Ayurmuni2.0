@@ -63,7 +63,7 @@ export const useConsultData = () => {
 
                 ]);
 
-                console.log('ALL DOCTOR DATA ==>', AllfavDoctor);
+                console.log('ALLtopDoctorResDOCTOR DATA ==>', topDoctorRes);
 
                 setRecentDoctors(doctorRecent);
 
@@ -74,7 +74,7 @@ export const useConsultData = () => {
                 );
 
                 setTopDoctors(
-                    topDoctorRes?.data || [],
+                    topDoctorRes?.data?.results || [],
                 );
 
             } catch (error) {
@@ -260,7 +260,7 @@ export const useAllDoctors = (selectedFilters: any) => {
 
 
 
-    
+
 
     const getAllDoctors = useCallback(async () => {
         try {

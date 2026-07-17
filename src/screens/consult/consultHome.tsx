@@ -39,7 +39,7 @@ import { useConsultData }
   from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
 import { DoctorCardSkeleton, HomeCategorySkeleton, TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
-import { getConsultHistory } from '../../services/ConsultServce';
+import { getConsultHistory, RecentConsultHistory } from '../../services/ConsultServce';
 import EmptyState from '../../components/EmptyState';
 
 type NavigationProp =
@@ -64,10 +64,11 @@ const ConsultHome = () => {
   } = useConsultData();
 
 
+  console.log("topDoctorstopDoctorstopDoctors", topDoctors);
+
   const [history, setHistory] = useState<any[]>([]);
   const [search, setSearch] = useState('')
   const [recentLoading, setRecentLoading] = useState(false);
-
 
   const fetchConsultHistory =
     useCallback(
@@ -80,19 +81,18 @@ const ConsultHome = () => {
           setRecentLoading(true);
 
           const response =
-            await getConsultHistory(
-              payload,
-            );
+            await RecentConsultHistory();
 
           console.log(
             'CONSULTHISTORY => ',
-            response,
+            response?.data?.results,
           );
+          setHistory((response?.data?.results || []).slice(0, 3));
 
-          setHistory(
-            response?.data?.results ||
-            [],
-          );
+          // setHistory(
+          //   response?.data?.results ||
+          //   [],
+          // );
 
         } catch (error) {
 
@@ -110,9 +110,8 @@ const ConsultHome = () => {
       [],
     );
 
-
   useEffect(() => {
-    fetchConsultHistory
+    fetchConsultHistory({});
   }, [fetchConsultHistory]);
 
   const renderRecentDoctor =
@@ -121,26 +120,41 @@ const ConsultHome = () => {
 
         return (
           <RecentDoctors
-            // image={{
-            //   uri: item?.image,
-            // }}
-            image={item?.image}
-            name={item?.name}
+            image={{
+              uri: item?.doctor?.doctor_image,
+            }}
+            // image={item?.doctor?.doctor_image}
+            name={item?.doctor?.doctor_name}
             speciality={
-              item?.speciality
+              item?.doctor?.doctor_designation
+
             }
             date={item?.date}
             onPressReceipt={() =>
               navigation.navigate(
-                'MedicalReceipt',
+                'MedicalReceipt', {
+                consultationId: item?.consultation_id
+              }
               )
             }
-            onPressReschedule={() =>
-              // navigation.navigate(
-              //   'DoctorSlot',
 
-              // )
-              navigation.navigate('DoctorSlot')
+
+            onPressReschedule={() =>
+              navigation.navigate(
+                'DoctorSlot', {
+                // doctorDetails: item
+                doctorDetails: {
+                  ...item.doctor,
+                  id: item.doctor?.doctor_id,
+                  is_favorite: (item.doctor as any)?.is_favorite,
+                  total_patients: (item.doctor as any)?.total_patients,
+                  full_name: item.doctor?.doctor_name,
+                  profile_image: item.doctor?.doctor_image,
+                  designation: (item.doctor as any)?.qualification,
+                },
+              }
+              )
+
             }
           />
         );
@@ -148,40 +162,39 @@ const ConsultHome = () => {
       [navigation],
     );
 
-  const filteredDoctors = useMemo(() => {
-    let list = [...topDoctors];
-    if (!search?.trim()) {
-      // Search empty -> poori list
-      return topDoctors;
-    }
+  // const filteredDoctors = useMemo(() => {
+  //   let list = [...topDoctors];
+  //   if (!search?.trim()) {
+  //     // Search empty -> poori list
+  //     return topDoctors;
+  //   }
 
 
-    // Search
-    if (search?.trim()) {
-      const keyword = search?.toLowerCase();
+  //   // Search
+  //   if (search?.trim()) {
+  //     const keyword = search?.toLowerCase();
 
-      list = list.filter((doctor) => {
-        const name = doctor?.full_name?.toLowerCase() || '';
-        const specialization =
-          doctor?.qualification?.toLowerCase() || '';
+  //     list = list.filter((doctor) => {
+  //       const name = doctor?.full_name?.toLowerCase() || '';
+  //       const specialization =
+  //         doctor?.qualification?.toLowerCase() || '';
 
-        return (
-          name.includes(keyword) ||
-          specialization.includes(keyword)
-        );
-      });
-    }
+  //       return (
+  //         name.includes(keyword) ||
+  //         specialization.includes(keyword)
+  //       );
+  //     });
+  //   }
 
 
 
-    return list;
-  }, [topDoctors, search,]);
+  //   return list;
+  // }, [topDoctors, search,]);
 
 
   return (
     <SafeAreaView
-      style={styles.container}
-    >
+      style={styles.container}>
 
       <StatusBar
         barStyle="dark-content"
@@ -202,7 +215,7 @@ const ConsultHome = () => {
 
 
       <FlatList
-        data={loading ? [] : recentDoctors}
+        data={history}
         keyExtractor={(item) => String(item?.id)}
         renderItem={renderRecentDoctor}
         showsVerticalScrollIndicator={false}
@@ -280,7 +293,7 @@ const ConsultHome = () => {
                   />
 
                   <TopDoctorsCard
-                    data={filteredDoctors}
+                    data={topDoctors}
                     navigation={navigation}
                   />
                 </>

@@ -64,6 +64,7 @@ export const LIST_STACK_SCREENS = new Set([
   'TermsCondition',
   'Profile',
   'Consult',
+  'BookingConfrimScreen',
   'MedicineScreen',
   'ProductsScreen',
   'AllFavDoctors',

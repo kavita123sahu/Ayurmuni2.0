@@ -9,11 +9,12 @@ export type RootStackParamList = {
     Otp: undefined;
     MentorCheckout: undefined;
     ChatScreen: {
-    // appointmentId: string;
-    // role: 'doctor' | 'patient';
-    doctorId: string;
-    doctorName: string;
-  };
+        // appointmentId: string;
+        // role: 'doctor' | 'patient';
+        doctorId: string;
+        doctorName: string;
+    };
+    ConsultScreen: undefined;
     Onboarding: undefined;
     FavDoctors: undefined;
     AppointmentDetails: undefined;
@@ -29,7 +30,10 @@ export type RootStackParamList = {
     MultipleDoctorSlip: undefined;
     PrescriptionDetail: undefined;
     AuthStack: undefined;
-    DoctorSlot: undefined;
+    // DoctorSlot: undefined;
+    DoctorSlot: {
+        doctorDetails: string;
+    };
     DoctorProfile: undefined;
     AddCalendar: undefined;
     SplashStack: undefined;
@@ -41,7 +45,10 @@ export type RootStackParamList = {
     OtpVerify: undefined;
     EditProfile: undefined;
     WeeklyMeal: WeeklyMeal;
-    MedicalReceipt: undefined;
+    // MedicalReceipt: undefined;
+    MedicalReceipt:{
+        consultationId : string
+    }
     AllDoctors: undefined;
     CategoryDoctor: undefined;
     Splash: undefined;
@@ -107,7 +114,7 @@ export type RootBottomParamList = {
     Products: undefined;
     Profile: undefined;
     Consult: undefined;
-    ConsultHome: undefined;
+    // ConsultScreen: undefined;
     Mentor: undefined;
 };
 

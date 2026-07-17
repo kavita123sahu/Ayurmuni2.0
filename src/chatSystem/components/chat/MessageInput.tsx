@@ -15,6 +15,7 @@ import { launchImageLibrary, Asset } from 'react-native-image-picker';
 import { chatService } from '../../services/chatService';
 import { Attachment } from '../../types/chat';
 import { AntDesign, MaterialIcons } from '../../../common/Vector';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MessageInputProps {
   onSend: (text: string, attachments?: Attachment[]) => void;
@@ -35,6 +36,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [pickedAsset, setPickedAsset] = useState<Asset | null>(null);
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+const insets = useSafeAreaInsets();
 
   const canInteract = !isDisabled && isConnected && !isSending;
 
@@ -95,7 +98,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const hasContent = !!text.trim() || !!pickedAsset;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container,{
+  paddingBottom: Math.max(insets.bottom, 10)}]}>
       {/* ✅ Selected image preview — WhatsApp style */}
       {pickedAsset && (
         <View style={styles.previewRow}>
@@ -163,7 +167,6 @@ const styles = StyleSheet.create({
   backgroundColor: '#FFFFFF',
   paddingHorizontal: 12,
   paddingTop: 8,
-  paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   borderTopWidth: 1,
   borderTopColor: '#E5E7EB',
 },

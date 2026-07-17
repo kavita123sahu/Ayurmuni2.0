@@ -99,7 +99,7 @@ const CustomeTab = (props: any) => {
             </View>
 
             <TouchableOpacity
-                onPress={() => stackNavigation.navigate('Consult')}
+                onPress={() => stackNavigation.navigate('ConsultScreen')}
                 activeOpacity={0.85}
                 style={[
                     styles.consultBtn,
