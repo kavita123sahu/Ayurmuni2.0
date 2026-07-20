@@ -47,6 +47,7 @@ const PrakritiProfile = (props: any) => {
     },
   });
   const [loading, setLoading] = React.useState(true);
+  const [hasPrakriti, setHasPrakriti] = React.useState(false);
 
   console.log("propssss", props)
 
@@ -68,6 +69,8 @@ const PrakritiProfile = (props: any) => {
       );
 
       if (response?.success) {
+        setHasPrakriti(true);
+
         const apiData = response?.data;
 
         console.log("resposnesucess", response)
@@ -177,8 +180,13 @@ const PrakritiProfile = (props: any) => {
           formattedData,
         );
       }
+      else {
+        setHasPrakriti(false);
+      }
+
     } catch (error) {
       console.log(error);
+      setHasPrakriti(false);
       console.log(
         'prakriti-error',
         error,
@@ -198,7 +206,7 @@ const PrakritiProfile = (props: any) => {
   return (
     <SafeAreaView style={styles.container}>
 
-      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.primaryColor} />
+      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
       {/* ===== HEADER ===== */}
       <View style={styles.header}>
         <BackIconButton onPress={() => props.navigation.goBack()} style={styles.iconBtn} />
@@ -215,170 +223,233 @@ const PrakritiProfile = (props: any) => {
         contentContainerStyle={styles.scrollContent}
       >
         {loading ? <PrakritiProfileSkeleton /> :
+          !hasPrakriti ? (
+            <View style={styles.emptyContainer}>
 
-          (<>
-            <View style={styles.topSection}>
-              <Text style={styles.completedText}>
-                PRAKRITI ANALYSIS COMPLETE
+              <View style={styles.emptyIconWrap}>
+                <Image source={Images.FinalLogo} style={{ height: 80, width: 80, tintColor: Colors.primaryColor }} />
+                {/* <Text style={styles.emptyIcon}>🌿</Text> */}
+              </View>
+
+              <Text style={styles.emptyTitle}>
+                No Prakriti Assessment Yet
               </Text>
 
-              <Text style={styles.mainTitle}>
-                {analysisData?.dominantType || 'Your Prakriti Type'}
+              <Text style={styles.emptyDescription}>
+                Complete a short Ayurvedic assessment to discover your unique body constitution and receive personalized health recommendations.
               </Text>
 
-              <Text style={styles.subtitle}>
-                Your unique Ayurvedic soul-print, Priya.
-              </Text>
+              <View style={styles.featureCard}>
+                <View style={styles.featureRow}>
+                  <TablerIcon
+                    name='spoon'
+                    size={18}
+                    color={Colors.primaryColor}
+                  />
+                  <Text style={styles.featureText}>
+                    Personalized Analysis
+                  </Text>
+                </View>
+
+                <View style={styles.featureRow}>
+                  <TablerIcon
+                    name="briefcase"
+                    size={18}
+                    color={Colors.primaryColor}
+                  />
+                  <Text style={styles.featureText}>
+                    Diet Recommendations
+                  </Text>
+                </View>
+
+                <View style={styles.featureRow}>
+                  <TablerIcon
+                    name="heart"
+                    size={18}
+                    color={Colors.primaryColor}
+                  />
+                  <Text style={styles.featureText}>
+                    Lifestyle Guidance
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.startBtn}
+                onPress={() => props.navigation.navigate('PatientFAQ')}
+              >
+                <Text style={styles.startBtnText}>
+                  Start Assessment
+                </Text>
+              </TouchableOpacity>
+
             </View>
+          ) :
 
-            {/* ===== DOSHA CARD ===== */}
-            <View style={styles.doshaCard}>
-              {analysisData.doshas.map((item: any) => (
-                <View key={item.id} style={styles.doshaItem}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      {
-                        borderColor: item.color,
-                      },
-                    ]}
-                  >
-                    <Text
+            (<>
+              <View style={styles.topSection}>
+                <Text style={styles.completedText}>
+                  PRAKRITI ANALYSIS COMPLETE
+                </Text>
+
+                <Text style={styles.mainTitle}>
+                  {analysisData?.dominantType || 'Your Prakriti Type'}
+                </Text>
+
+                <Text style={styles.subtitle}>
+                  Your unique Ayurvedic soul-print, Priya.
+                </Text>
+              </View>
+
+              {/* ===== DOSHA CARD ===== */}
+              <View style={styles.doshaCard}>
+                {analysisData.doshas.map((item: any) => (
+                  <View key={item.id} style={styles.doshaItem}>
+                    <View
                       style={[
-                        styles.doshaIcon,
+                        styles.iconCircle,
                         {
-                          color: item.color,
+                          borderColor: item.color,
                         },
                       ]}
                     >
-                      {item.icon}
+                      <Text
+                        style={[
+                          styles.doshaIcon,
+                          {
+                            color: item.color,
+                          },
+                        ]}
+                      >
+                        {item.icon}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.doshaName}>{item.name}</Text>
+
+                    <Text style={styles.doshaPercent}>
+                      {item.percentage}%
                     </Text>
                   </View>
+                ))}
+              </View>
 
-                  <Text style={styles.doshaName}>{item.name}</Text>
+              {/* ===== CORE ESSENCE ===== */}
+              <View style={styles.essenceCard}>
+                <Text style={styles.smallHeading}>CORE ESSENCE</Text>
 
-                  <Text style={styles.doshaPercent}>
-                    {item.percentage}%
+                <Text style={styles.essenceTitle}>
+                  {analysisData.coreEssence.title}
+                </Text>
+
+                <Text style={styles.essenceDescription}>
+                  {analysisData.coreEssence.description}
+                </Text>
+              </View>
+
+              {/* ===== GUIDELINES ===== */}
+              <View style={styles.guidelineHeader}>
+                <Text style={styles.guidelineTitle}>
+                  Lifestyle Guidelines
+                </Text>
+
+                <Text style={styles.personalizedText}>
+                  Personalized
+                </Text>
+              </View>
+
+              {/* ===== DO CARD ===== */}
+              <GuidelineCard
+                title="Daily Rituals (Do's)"
+                color={Colors.primaryColor}
+                icon={require('../../assets/images/check-icon.png')}
+                image={require('../../assets/images/bullettick.png')}
+                data={analysisData.lifestyleGuidelines.doList}
+              />
+
+              {/* ===== DONT CARD ===== */}
+              <GuidelineCard
+                title="To Avoid (Don'ts)"
+                color="#EA580C"
+                image={require('../../assets/images/crosstick.png')}
+                icon={require('../../assets/images/DontIcon.png')}
+                data={analysisData.lifestyleGuidelines.dontList}
+              />
+
+
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: Colors.primaryColor,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginHorizontal: 20,
+                  marginTop: 20,
+                }}
+                onPress={handleGoHome}
+
+              >
+                <Text
+                  style={{
+                    color: '#FFF',
+                    fontSize: 16,
+                    fontFamily: Fonts.PoppinsSemiBold,
+                  }}
+                >
+                  Go to Home
+                </Text>
+              </TouchableOpacity>
+
+
+              <View style={styles.pendingCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingTitle}>
+                    Complete Your Health Profile
+                  </Text>
+
+                  <Text style={styles.pendingSubTitle}>
+                    Prakriti Assessment & Medical History are pending.
                   </Text>
                 </View>
-              ))}
-            </View>
 
-            {/* ===== CORE ESSENCE ===== */}
-            <View style={styles.essenceCard}>
-              <Text style={styles.smallHeading}>CORE ESSENCE</Text>
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() =>
+                      props.navigation.navigate('PatientFAQ')
+                    }
+                  >
+                    <Feather
+                      name="edit-2"
+                      size={14}
+                      color={Colors.primaryColor}
+                    />
+                    <Text style={styles.actionText}>
+                      Prakriti
+                    </Text>
+                  </TouchableOpacity>
 
-              <Text style={styles.essenceTitle}>
-                {analysisData.coreEssence.title}
-              </Text>
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() =>
+                      props.navigation.navigate('MedicalHistory')
+                    }
+                  >
+                    <Feather
+                      name="edit-2"
+                      size={14}
+                      color={Colors.primaryColor}
+                    />
+                    <Text style={styles.actionText}>
+                      Medical
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>   </>)}
 
-              <Text style={styles.essenceDescription}>
-                {analysisData.coreEssence.description}
-              </Text>
-            </View>
-
-            {/* ===== GUIDELINES ===== */}
-            <View style={styles.guidelineHeader}>
-              <Text style={styles.guidelineTitle}>
-                Lifestyle Guidelines
-              </Text>
-
-              <Text style={styles.personalizedText}>
-                Personalized
-              </Text>
-            </View>
-
-            {/* ===== DO CARD ===== */}
-            <GuidelineCard
-              title="Daily Rituals (Do's)"
-              color={Colors.primaryColor}
-              icon={require('../../assets/images/check-icon.png')}
-              image={require('../../assets/images/bullettick.png')}
-              data={analysisData.lifestyleGuidelines.doList}
-            />
-
-            {/* ===== DONT CARD ===== */}
-            <GuidelineCard
-              title="To Avoid (Don'ts)"
-              color="#EA580C"
-              image={require('../../assets/images/crosstick.png')}
-              icon={require('../../assets/images/DontIcon.png')}
-              data={analysisData.lifestyleGuidelines.dontList}
-            />
-          </>)}
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={{
-            backgroundColor: Colors.primaryColor,
-            paddingVertical: 14,
-            borderRadius: 12,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginHorizontal: 20,
-            marginTop: 20,
-          }}
-          onPress={handleGoHome}
-
-        >
-          <Text
-            style={{
-              color: '#FFF',
-              fontSize: 16,
-              fontFamily: Fonts.PoppinsSemiBold,
-            }}
-          >
-            Go to Home
-          </Text>
-        </TouchableOpacity>
-
-        {/* {analysisData?.dominantType && ( */}
-        <View style={styles.pendingCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.pendingTitle}>
-              Complete Your Health Profile
-            </Text>
-
-            <Text style={styles.pendingSubTitle}>
-              Prakriti Assessment & Medical History are pending.
-            </Text>
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() =>
-                props.navigation.navigate('PatientFAQ')
-              }
-            >
-              <Feather
-                name="edit-2"
-                size={14}
-                color={Colors.primaryColor}
-              />
-              <Text style={styles.actionText}>
-                Prakriti
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() =>
-                props.navigation.navigate('MedicalHistory')
-              }
-            >
-              <Feather
-                name="edit-2"
-                size={14}
-                color={Colors.primaryColor}
-              />
-              <Text style={styles.actionText}>
-                Medical
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        {/* )} */}
 
       </ScrollView>
     </SafeAreaView>
@@ -456,16 +527,19 @@ const GuidelineCard = React.memo(
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.background
+    // backgroundColor: '#F5F5F5',
   },
 
   scrollContent: {
     paddingBottom: 40,
+    backgroundColor: Colors.white
   },
 
   // ===== HEADER =====
   header: {
-    backgroundColor: '#0B7358',
+
+    backgroundColor: Colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -492,15 +566,95 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#FFFFFF',
+    color: '#000000',
   },
 
+
+  //EMPTY CONATINER 
+  emptyContainer: {
+    // margin: 20,
+    // // backgroundColor: '#FFFFFF',
+    // borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    // elevation: 4,
+    // shadowColor: '#000',
+    // shadowOpacity: 0.08,
+    // shadowRadius: 10,
+  },
+
+  emptyIconWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#E8F8F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  emptyIcon: {
+    fontSize: 42,
+  },
+
+  emptyTitle: {
+    marginTop: 18,
+    fontSize: 24,
+    color: '#1F2937',
+    fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+  },
+
+  emptyDescription: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  featureCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    marginTop: 24,
+    padding: 18,
+  },
+
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+
+  featureText: {
+    marginLeft: 12,
+    fontSize: 15,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+  startBtn: {
+    marginTop: 28,
+    width: '100%',
+    backgroundColor: Colors.primaryColor,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+
+  startBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   // ===== TOP SECTION =====
   topSection: {
     backgroundColor: '#0B7358',
     paddingHorizontal: 20,
     // paddingBottom: 80,
     paddingTop: 30,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingBottom: 120
   },
 

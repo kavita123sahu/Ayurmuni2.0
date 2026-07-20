@@ -4,14 +4,25 @@ import { Entypo, Fontisto } from "../common/Vector";
 
 export interface NotificationItem {
     id: string;
+
     title: string;
+
     description: string;
+
     time: string;
-    icon: any;
+
+    createdAt: string;
+
+    icon: React.ReactNode;
+
     iconBg: string;
+
     type: string;
+
     section: string;
+
     is_read: boolean;
+
     rawData: any;
 }
 
@@ -52,6 +63,13 @@ export const useNotifications = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
+const [filter, setFilter] =
+    useState<"all" | "read" | "unread">("all");
+
+const [typeFilter, setTypeFilter] =
+    useState<string>("all");
+
+
     const fetchNotifications = useCallback(
         async (pageNo = 1, isLoadMore = false) => {
             try {
@@ -63,32 +81,57 @@ export const useNotifications = () => {
 
                 const res = await _CONSULT_SERVICE.getNotification({
                     page: pageNo,
-                    page_size: 10,
+                    // page_size: 10,
                     view: "list",
                     is_read: false,
                     notification_type: "appointment",
                 });
 
                 if (res?.success) {
-                    const data = (res?.data?.results || []).map((item: any) => ({
-                        id: item.id,
-                        title: item.title,
-                        description: item.message,
-                        time: getTimeAgo(item.created_at),
-                        icon:
-                            item.notification_type === "appointment"
-                                ? <Entypo name='calendar-check-2' size={20} />
+                 const data: NotificationItem[] =
+(res?.data?.results || []).map((item:any)=>({
 
-                                : <Fontisto name='list' size={20} color='black' />,
-                        iconBg:
-                            item.notification_type === "appointment"
-                                ? "#0D614E"
-                                : "#4A90E2",
-                        type: item.notification_type,
-                        section: getSection(item.created_at),
-                        is_read: item.is_read,
-                        rawData: item,
-                    }));
+    id:item.id,
+
+    title:item.title,
+
+    description:item.message,
+
+    createdAt:item.created_at,
+
+    time:getTimeAgo(item.created_at),
+
+    is_read:item.is_read,
+
+    type:item.notification_type,
+
+    section:getSection(item.created_at),
+
+    icon:
+        item.notification_type==="appointment"
+        ?
+        <Entypo
+            name="calendar"
+            size={18}
+            color="#fff"
+        />
+        :
+        <Fontisto
+            name="bell"
+            size={16}
+            color="#fff"
+        />,
+
+    iconBg:
+        item.notification_type==="appointment"
+        ?
+        "#0D614E"
+        :
+        "#64748B",
+
+    rawData:item
+
+}));
 
                     if (isLoadMore) {
                         setNotifications(prev => [...prev, ...data]);
@@ -108,6 +151,93 @@ export const useNotifications = () => {
         },
         []
     );
+    const unreadCount = notifications.filter(
+    x=>!x.is_read
+).length;
+
+    const filteredNotifications = notifications.filter(item=>{
+
+    const readPass=
+
+        filter==="all"
+
+        ||
+
+        (filter==="read" && item.is_read)
+
+        ||
+
+        (filter==="unread" && !item.is_read);
+
+    const typePass=
+
+        typeFilter==="all"
+
+        ||
+
+        item.type===typeFilter;
+
+    return readPass && typePass;
+
+});
+
+const markAsRead = async(id:string)=>{
+
+    try{
+
+        // await API
+
+        setNotifications(prev=>
+
+            prev.map(item=>
+
+                item.id===id
+
+                ?
+
+                {
+                    ...item,
+
+                    is_read:true
+                }
+
+                :
+
+                item
+
+            )
+
+        );
+
+    }
+
+    catch(e){}
+
+}
+
+const markAllRead=()=>{
+
+    setNotifications(prev=>
+
+        prev.map(item=>
+
+            ({
+                ...item,
+
+                is_read:true
+            })
+
+        )
+
+    );
+
+}
+
+const clearNotifications=()=>{
+
+    setNotifications([]);
+
+}
 
     const loadMore = useCallback(() => {
         if (loadingMore || !hasMore) return;
@@ -126,10 +256,30 @@ export const useNotifications = () => {
     }, [fetchNotifications]);
 
     return {
-        notifications,
-        loading,
-        loadingMore,
-        loadMore,
-        // refreshNotifications,
+        notifications:filteredNotifications,
+
+    loading,
+
+    loadingMore,
+
+    unreadCount,
+
+    filter,
+
+    typeFilter,
+
+    setFilter,
+
+    setTypeFilter,
+
+    loadMore,
+
+    refreshNotifications,
+
+    markAsRead,
+
+    markAllRead,
+
+    clearNotifications
     };
 };

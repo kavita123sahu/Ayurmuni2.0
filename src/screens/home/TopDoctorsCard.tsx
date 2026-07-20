@@ -12,9 +12,11 @@ import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../../components/TablerIcon';
 
+
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = Math.min(width * 0.66, 270);
-const CARD_HEIGHT = 196;
+
+const CARD_WIDTH = width * 0.55; // 75% of screen width
+const CARD_HEIGHT = CARD_WIDTH * 0.72;
 
 interface Doctor {
   id: string;
@@ -145,26 +147,35 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    marginRight: 12,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: '#E8EEF3',
     overflow: 'hidden',
   },
   accentBar: {
+    // position: 'absolute',
+    // top: 0,
+    // left: -1,
+    // right: -1,
+    // height: 2,
+    // backgroundColor: Colors.primaryColor,
+    // opacity: 0.85,
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 2, // Increase if you want it more visible
     backgroundColor: Colors.primaryColor,
-    opacity: 0.85,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingHorizontal: 14,
     paddingTop: 16,
-    height: 50,   //118
+    height: 30,   //118
   },
 
   doctorImageWrapper: {

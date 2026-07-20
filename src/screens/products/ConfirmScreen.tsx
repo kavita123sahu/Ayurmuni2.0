@@ -171,9 +171,11 @@ const ConfirmScreen = ({ navigation, route }: any) => {
 
     return (
         <SafeAreaView style={styles.safe}>
+
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
             {/* Header */}
+
             <Header title='Checkout' onBack={() => navigation.goBack()}
             />
 

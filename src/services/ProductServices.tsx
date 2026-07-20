@@ -5,6 +5,7 @@ export const getProduct = async () => {
         const response = await apiClient('customers/products/', {
             method: 'GET'
         });
+        console.log(response,"resposneprouctcc");
         return response;
     } catch (error) {
         throw error;

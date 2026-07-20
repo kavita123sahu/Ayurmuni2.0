@@ -217,7 +217,7 @@ const MedicalRecords = (props: any) => {
                             </Text>
                         </TouchableOpacity>
 
-                        {selectedRecordItems?.length > 0 && (
+                        {/* {selectedRecordItems?.length > 0 && (
                             <View style={styles.selectedSection}>
                                 <Text style={styles.selectedLabel}>
                                     Selected ({selectedRecordItems?.length})
@@ -241,14 +241,9 @@ const MedicalRecords = (props: any) => {
                                     ))}
                                 </ScrollView>
                             </View>
-                        )}
+                        )} */}
 
-                        {/* <View style={styles.selectedCountBox}>
-                            <TablerIcon name="file-medical" size={18} color="#065F46" />
-                            <Text style={styles.selectedCountText}>
-                                Selected records: {selectedRecords?.length}
-                            </Text>
-                        </View> */}
+
                     </>
                 )}
 
