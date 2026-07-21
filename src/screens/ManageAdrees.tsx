@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -24,11 +24,13 @@ import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TablerIcon from '../components/TablerIcon';
 import { useLocation } from '../context/LocationContext';
+import { savedAddressToParsed } from '../services/locationService';
 
 interface AddressItem {
     id: string;
     title: string;
     address: string;
+    is_default: boolean;
     city: string;
     address_line_1: string;
     address_line_2: string;
@@ -38,10 +40,14 @@ interface AddressItem {
 
 const ManageAddress: React.FC<any> = ({ navigation }) => {
 
+
+
+    const { currentAddress, deliveryLocation, loadingLocation, setDeliveryLocation } = useLocation();
+
     const [selectedId, setSelectedId] = useState('current');
     const [loading, setloading] = useState(false);
     const [addressData, setAddressData] = useState<AddressItem[]>([]);
-    const { currentAddress } = useLocation();
+    // const { currentAddress } = useLocation();
 
     const fetchAddresses = async () => {
 
@@ -114,56 +120,58 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
     };
 
-    const UpdateDefaultAddress = async (item: AddressItem) => {
+    const UpdateDefaultAddress = useCallback(
+        async (item: AddressItem) => {
+            if (item?.is_default) {
+                return;
+            }
 
-        try {
+            const previousAddresses = [...addressData];
+            const previousSelectedId = selectedId;
 
-            // UI instant update
-            setSelectedId(item?.id);
-
-            const payload = {
-                is_default: true,
-            };
-
-            console.log(
-                'DEFAULT_ADDRESS_PAYLOAD',
-                payload,
+            // Optimistic local update
+            setAddressData(prev =>
+                prev.map(address => ({
+                    ...address,
+                    is_default: address.id === item.id,
+                })),
             );
 
-            const res: any =
-                await _PROFILE_SERVICES.UpdateAddresses(
+            setSelectedId(item?.id);
+
+            try {
+                const payload = {
+                    is_default: true,
+                };
+
+                console.log('DEFAULT_ADDRESS_PAYLOAD', payload);
+
+                const res: any = await _PROFILE_SERVICES.UpdateAddresses(
                     item?.id,
                     payload,
                 );
 
-            console.log(
-                'DEFAULT_ADDRESS_RESPONSE',
-                res,
-            );
+                console.log('DEFAULT_ADDRESS_RESPONSE', res);
 
-            if (res?.success) {
+                if (res?.success || res?.status === 200) {
+                    await setDeliveryLocation(savedAddressToParsed(item));
 
+                    AddressEvents.emit(ADDRESS_UPDATED, res?.data ?? res);
 
-                AddressEvents.emit(
-                    ADDRESS_UPDATED,
-                    res.data,
-                );
-                showSuccessToast(
-                    'Default address updated',
-                    'success',
-                );
+                    showSuccessToast('Default address updated', 'success');
 
-                fetchAddresses();
+                    // fetchAddresses();
+                } else {
+                    throw new Error('Failed to update default address');
+                }
+            } catch (error) {
+                setAddressData(previousAddresses);
+                setSelectedId(previousSelectedId);
+                console.log('DEFAULT_ADDRESS_ERROR', error);
             }
-
-        } catch (error) {
-
-            console.log(
-                'DEFAULT_ADDRESS_ERROR',
-                error,
-            );
-        }
-    };
+        },
+        [addressData, selectedId, fetchAddresses, setDeliveryLocation],
+    );
 
 
     const formatTitle = (text: string) => {

@@ -230,6 +230,9 @@ export const useMedicalRecord = () => {
     const [patientsRecord, setPatientRecord] =
         useState<any[]>([]);
 
+    const [patientsList, setPatientList] =
+        useState<any[]>([]);
+
     const fetchPatientsRecord =
         useCallback(async () => {
 
@@ -262,11 +265,47 @@ export const useMedicalRecord = () => {
 
         }, []);
 
+
+    const fetchPatientData =
+        useCallback(async () => {
+
+            try {
+
+                setLoading(true);
+
+                const response = await _PATIENT_SERVICES.getPatientList();
+                const data = response?.data?.results || [];
+                const activePatient = data.find(
+                    (item: any) => item.is_active_profile === true
+                );
+
+                console.log("activepatienttt", activePatient);
+
+                setPatientList(activePatient || null);
+
+
+            } catch (error) {
+
+                console.log(
+                    'PATIENT LIST ERROR ===>',
+                    error,
+                );
+
+            } finally {
+
+                setLoading(false);
+                setRefreshing(false);
+
+            }
+
+        }, []);
+
     useEffect(() => {
 
         fetchPatientsRecord();
+        fetchPatientData();
 
-    }, [fetchPatientsRecord]);
+    }, [fetchPatientsRecord, fetchPatientData]);
 
     const onRefresh =
         useCallback(() => {
@@ -283,6 +322,7 @@ export const useMedicalRecord = () => {
         loading,
         refreshing,
         patientsRecord,
+        patientsList,
         fetchPatientsRecord,
         onRefresh,
     };

@@ -68,7 +68,7 @@ const AppointmentScreen = (props: any) => {
   const normalizedData = useMemo(() => {
     if (loading) return [];
     return (AppointData ?? []).map((item: any) => ({
-      consultation_id: item.consultation_id,
+      consultation_id: item?.consultation_id,
       doctorName: item.doctor?.doctor_name || '',
       therapies: Array.isArray(item?.doctor?.health_diseases)
         ? item.doctor.health_diseases.map((i: any) => i.name).join(', ')

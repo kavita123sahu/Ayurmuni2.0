@@ -36,13 +36,14 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
 
 
   console.log('patient_card_patient', patient);
+
   return (
     <TouchableOpacity
       style={[styles.item, patient.selected && styles.itemSelected]}
       onPress={() => onSelect(patient.id)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: patient?.profile_picture || 'https://i.pravatar.cc/100?img=5' }}  style={styles.avatar} />
+      <Image source={{ uri: patient?.profile_picture || 'https://i.pravatar.cc/100?img=5' }} style={styles.avatar} />
 
       <View style={styles.info}>
         <Text style={[styles.name, { marginBottom: -4 }]}>{full_name}</Text>
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 50,
-   
+
     resizeMode: 'contain',
     height: 50,
     borderRadius: 10,

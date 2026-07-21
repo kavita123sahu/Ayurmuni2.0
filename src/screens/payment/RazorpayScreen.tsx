@@ -43,6 +43,7 @@ import { Ionicons } from '../../common/Vector';
 import { openRazorpayPayment } from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
 import BackIconButton from '../../components/BackIconButton';
+import { formatTo12Hour } from '../../common/DataInterface';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 
@@ -61,16 +62,14 @@ const RazorpayScreen = ({
         slotId,
         date,
         concern,
+        patientsList,
         selectedTime, medical_record_ids
     } = route?.params || {};
 
 
-
     console.log("doctorInfodoctorInfodoctorInfo",
-        slotId,
-        date,
-        concern,
-        selectedTime, doctorInfo, medical_record_ids, "medical_record_ids")
+        patientsList,
+    )
 
 
 
@@ -244,6 +243,22 @@ const RazorpayScreen = ({
             paymentStartedRef.current = false;
         }
     };
+    const CommonLabelText = ({
+        label,
+        value,
+    }: {
+        label: string;
+        value: string;
+    }) => {
+        return (
+            <View style={styles.infoRow}>
+                <Text style={styles.label}>{label}</Text>
+
+                <Text style={styles.label}>{value}</Text>
+            </View>
+        );
+    };
+
 
     /* -------------------------------------------------------------------------- */
     /*                                   RENDER                                   */
@@ -350,7 +365,7 @@ const RazorpayScreen = ({
                                 </Text>
 
                                 <Text style={styles.value}>
-                                    {selectedTime}
+                                    {formatTo12Hour(selectedTime)}
                                 </Text>
                             </View>
 
@@ -364,6 +379,24 @@ const RazorpayScreen = ({
                                     </Text>
                                 </View>
                             ) : null}
+
+                            <View style={styles.divider} />
+
+
+                            <Text style={styles.label1}>
+                                Patient Detail
+                            </Text>
+
+                            <CommonLabelText label="Name" value={patientsList?.first_name + ' ' + patientsList?.last_name} />
+
+
+                            <CommonLabelText label="Mobile" value={patientsList?.phone_number} />
+
+
+                            <CommonLabelText label="Relation" value={patientsList?.relation} />
+
+
+
 
                         </View>
 
@@ -613,6 +646,12 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    label1: {
+        fontSize: 16,
+        color: '#0000',
+        marginBottom: 5,
         fontFamily: Fonts.PoppinsMedium,
     },
 

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   BackHandler,
   Platform,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
@@ -28,6 +29,7 @@ import { Utils } from '../../common/Utils';
 import FeedbackModal from '../../components/FeedbackModal';
 import { useCreateReview } from '../../hooks/useCreateReview';
 import TablerIcon from '../../components/TablerIcon';
+import { isChatVisibleForAppointment } from '../../chatSystem/utils/chatAccessUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 
 const PrimaryButton = ({
@@ -75,34 +77,12 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
   const isLive = data?.appointment?.call_status === 'in_progress';
 
-  const isEnded = data?.appointment?.call_status === 'ended';
-
-  const today = new Date();
-
-  // Follow-up date
-  const followUpDate = data?.appointment?.follow_up?.date
-    ? new Date(data?.appointment.follow_up.date)
-    : null;
-
-  // Appointment date + 7 days
-  const appointmentDate = new Date(data?.appointment?.appointment_date);
-  const sevenDaysAfterAppointment = new Date(appointmentDate);
-  sevenDaysAfterAppointment.setDate(sevenDaysAfterAppointment.getDate() + 7);
-
-  // Chat visibility
-  const isChatVisible =
-    isLive ||
-    (isEnded &&
-      (
-        // Follow-up scheduled and not expired
-        (data?.appointment?.follow_up?.schedule &&
-          followUpDate &&
-          followUpDate >= today) ||
-
-        // No follow-up -> allow for 7 days
-        (!data?.appointment?.follow_up?.schedule &&
-          today <= sevenDaysAfterAppointment)
-      ));
+  const isChatVisible = isChatVisibleForAppointment({
+    call_status: data?.appointment?.call_status,
+    appointment_status: data?.appointment?.appointment_status,
+    appointment_date: data?.appointment?.appointment_date,
+    follow_up: data?.appointment?.follow_up,
+  });
 
   return (
     <View style={styles.heroCard}>
@@ -188,14 +168,9 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                   patientName: data?.appointment?.patient?.patient_name,
                   patientAvatar: data?.appointment?.patient?.patient_image,
                   appointmentId: data?.appointment?.consultation_id,
+                  role: 'patient',
+                  appointmentDate: data?.appointment?.appointment_date,
                 });
-                // navigation.navigate('ChatScreen', {
-                //   doctorAvatar: data?.doctor?.doctor_image,
-                //   appointmentId: data?.appointment?.consultation_id,
-                //   patientName: data?.appointment?.patient?.patient_name,
-                //   role: 'patient',
-                //   patientAvatar: data?.appointment?.patient?.patient_image,
-                // });
               }}
             >
               <Ionicons
@@ -218,6 +193,8 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const { consultation_id } = route.params;
 
+  console.log("consultionidddddd", consultation_id);
+
   const [loading1, setLoading] = React.useState(true);
   const [detail, setDetail] = React.useState<any>(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
@@ -228,6 +205,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
   const [isEditReview, setIsEditReview] = useState(false);
 
+
+  const [refreshing, setRefreshing] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const { loading, submitReview } = useCreateReview();
@@ -300,6 +279,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     try {
       setLoading(true);
       const res = await _CONSULT_SERVICE.getAppointmentDetail(consultation_id);
+      console.log("appointmnetstaaa", res)
       setDetail(res?.data);
     } catch (error) {
       showSuccessToast('Something went wrong', 'error');
@@ -416,6 +396,18 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     showSuccessToast(res?.message || 'Something went wrong', 'error');
   };
 
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchDetail?.();
+    } catch (error) {
+      console.log('REFRESH_ERROR', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchDetail]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
@@ -427,7 +419,14 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       // onRightPress={() => console.log('Search clicked')}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: Theme.bg }}>
+      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: Theme.bg }} refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#0D614E']}
+          tintColor="#0D614E"
+        />
+      }>
         {loading1 ? (
           <AppointmentDetailSkeleton />
         ) : (

@@ -2,7 +2,7 @@
 
 
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../../common/Images';
 // import logo from '../../../assets/images//backButton.png';
@@ -23,7 +23,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.leftContainer}>
 
         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
@@ -58,22 +57,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
 };
 
 const styles = StyleSheet.create({
-  // container: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'space-between',
-  //   paddingHorizontal: 12,
-  //   paddingVertical: 12,
-  //   backgroundColor: '#FFFFFF',
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: '#E5E7EB',
-  //   // ...Platform.select({ ios: { paddingTop: 48 }, android: { paddingTop: 12 } }),
-  //   elevation: 2,
-  //   shadowColor: '#000',
-  //   shadowOffset: { width: 0, height: 1 },
-  //   shadowOpacity: 0.05,
-  //   shadowRadius: 2,
-  // },
+ 
   container: {
     minHeight: 64,
     paddingVertical: 10,

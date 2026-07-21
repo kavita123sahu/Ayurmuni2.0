@@ -223,15 +223,6 @@ const HomeHeader = ({
 
 
 
-    const isCompleted =
-        progress1 === 100 &&
-        progress2 === 100;
-
-    const shouldShowCard = (
-        progress1 === 100 &&
-        progress2 !== 100
-    );
-
     return (
         <View style={styles.container}>
             <View style={styles.topRow}>
@@ -295,11 +286,6 @@ const HomeHeader = ({
                 {/* RIGHT */}
                 <View style={styles.rightIcons}>
 
-                    {/* <TouchableOpacity
-                        onPress={() => navigation.navigate('EmergencySOS')}
-                    >
-                        <TablerIcon name="alert-circle" size={24} color="#F43F5E" />
-                    </TouchableOpacity> */}
 
                     <TouchableOpacity
                         style={styles.bellButton}
@@ -324,61 +310,6 @@ const HomeHeader = ({
                 </View>
 
             </View>
-
-            {/* {shouldShowCard && (
-                <View style={[styles.profileCompletionCard, {
-                    backgroundColor: isCompleted
-                        ? '#ECFDF3'
-                        : '#FEF3F2',
-                    borderColor: isCompleted
-                        ? '#ABEFC6'
-                        : '#FDA29B',
-                },]}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.profileTitle, {
-                            color: isCompleted
-                                ? '#027A48'
-                                : '#B42318',
-                        },]}>
-                            {progress1 === 100 ? 'Prakriti Assessment Complete ✅' : 'Prakriti Assessment pending'}
-                        </Text>
-
-                        <Text
-                            numberOfLines={1}
-                            style={[
-                                styles.profileSubtitle,
-                                {
-                                    color: isCompleted
-                                        ? '#039855'
-                                        : '#D92D20',
-                                },
-                            ]}
-                        >
-                            Prakriti {progress1}% • Medical History {progress2}%
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity
-                        onPress={() =>
-                            navigation.navigate(
-                                progress1 < 100
-                                    ? 'PatientFAQ'
-                                    : 'MedicalHistory',
-                            )
-                        }
-                        style={styles.editButton}
-                    >
-                        <Feather
-                            name="edit-2"
-                            size={12}
-                            color={
-                                isCompleted
-                                    ? Colors.primaryColor
-                                    : '#D92D20'
-                            }
-                        />
-                    </TouchableOpacity>
-                </View>)} */}
 
 
             <LocationBottomSheet

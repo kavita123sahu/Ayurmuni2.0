@@ -17,6 +17,7 @@ import {
   RefreshControl,
   Modal,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
@@ -77,7 +78,9 @@ const HomePage: React.FC = (props: any) => {
 
   console.log("YogaSessionYogaSession", YogaSession)
   const { promptLocationOnHome } = useLocation();
-  const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
+  const { AppointData, refreshUpcoming, loadMore, prefetchUntil, loading, loadingMore, hasMore } =
+    useAppointmentHistory();
+  const homePrefetchDoneRef = useRef(false);
   const insets = useSafeAreaInsets();
   const {
     onScroll,
@@ -125,6 +128,43 @@ const HomePage: React.FC = (props: any) => {
     }));
   }, [AppointData]);
 
+  const hasUpcomingAppointments = useCallback((items: any[]) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return items.some(item => {
+      const appointmentDate = new Date(item?.appointment_date);
+      if (Number.isNaN(appointmentDate.getTime())) {
+        return false;
+      }
+      appointmentDate.setHours(0, 0, 0, 0);
+      return appointmentDate >= today;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (loading || homePrefetchDoneRef.current) {
+      return;
+    }
+
+    if (AppointData.length === 0) {
+      homePrefetchDoneRef.current = true;
+      return;
+    }
+
+    if (hasUpcomingAppointments(AppointData) || !hasMore) {
+      homePrefetchDoneRef.current = true;
+      return;
+    }
+
+    homePrefetchDoneRef.current = true;
+    prefetchUntil(hasUpcomingAppointments, 10);
+  }, [loading, AppointData, hasMore, hasUpcomingAppointments, prefetchUntil]);
+
   const sortedUpcomingAppointments = useMemo(() => {
     if (!Array.isArray(normalizedData)) {
       return [];
@@ -153,6 +193,7 @@ const HomePage: React.FC = (props: any) => {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
+      homePrefetchDoneRef.current = false;
       await refreshHomeData();
       await refreshUpcoming();
     } finally {
@@ -327,7 +368,6 @@ const HomePage: React.FC = (props: any) => {
                 />
                 <FlatList
                   horizontal
-
                   data={sortedUpcomingAppointments}
                   keyExtractor={(item, index) =>
                     `${item?.consultation_id || index}`
@@ -341,6 +381,19 @@ const HomePage: React.FC = (props: any) => {
                     />
                   )}
                   showsHorizontalScrollIndicator={false}
+                  onEndReached={() => {
+                    if (hasMore && !loadingMore) {
+                      loadMore();
+                    }
+                  }}
+                  onEndReachedThreshold={0.5}
+                  ListFooterComponent={
+                    loadingMore ? (
+                      <View style={styles.appointmentLoadMore}>
+                        <ActivityIndicator size="small" color={Colors.primaryColor} />
+                      </View>
+                    ) : null
+                  }
                 />
               </>
             ) : null}
@@ -536,6 +589,12 @@ const styles = StyleSheet.create({
   },
   sections: {
     gap: 4,
+  },
+  appointmentLoadMore: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    minWidth: 48,
   },
   headerShell: {
     position: 'absolute',

@@ -197,7 +197,7 @@ const ProductDetails = (props: any) => {
                     <View style={styles.topRow}>
                         <Badge label="PREMIUM QUALITY" />
                         <View style={styles.ratingPill}>
-                            <TablerIcon name="star" size={20} color={Colors.primaryColor} />
+                            <TablerIcon name="star" size={20} color={Colors.white} />
                             <Text style={styles.ratingText}>{selectedVariant?.avg_rating || 0}</Text>
                         </View>
                     </View>
@@ -383,8 +383,8 @@ const ProductDetails = (props: any) => {
                             <View>
                                 <Text style={styles.addToCartText}>
                                     {selectedVariant?.stock
-                                      ? 'Add to Cart'
-                                      : 'Out of Stock'}
+                                        ? 'Add to Cart'
+                                        : 'Out of Stock'}
                                 </Text>
                             </View>
                         </View>

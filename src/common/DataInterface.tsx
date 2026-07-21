@@ -213,11 +213,11 @@ export const getStatusStyle = (status: string) => {
       color: "#6B7280",
     },
     reschedule: {
-      backgroundColor: "#FEE2E2",
+      backgroundColor: "#e9b712",
       color: "#fff3cd",
     },
     rescheduled: {
-      backgroundColor: "#FEE2E2",
+      backgroundColor: "#e9b712",
       color: "#f7f8f5",
     },
   };
@@ -339,6 +339,22 @@ export const generateDates = (daysBefore = 3, daysAfter = 10) => {
   }
 
   return dates;
+};
+
+
+export const formatTo12Hour = (time24: string) => {
+  if (!time24) return '';
+
+  const [hoursStr, minutesStr] = time24.split(':');
+  let hours = parseInt(hoursStr, 10);
+  const minutes = minutesStr;
+
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${meridiem}`;
 };
 
 export const formatDate = (
@@ -477,8 +493,6 @@ export const generateFutureDates = (
 
   return dates;
 };
-
-
 
 export const Theme = {
   bg: '#FAF8F3',

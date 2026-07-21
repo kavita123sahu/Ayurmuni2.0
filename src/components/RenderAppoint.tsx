@@ -75,12 +75,19 @@ const RenderAppoint = ({
     isHorizontal = false,
     onCancel,
 }: any) => {
-    const statusStyle = useMemo(
-        () => getStatusStyle(item.status),
-        [item.status]
 
 
-    );
+      const statusStyle = useMemo(
+        () => getStatusStyle(item?.status),
+        [item])
+
+
+    // const statusStyle = useMemo(
+    //     () => getStatusStyle(item.status),
+    //     [item.status]
+
+
+    // );
 
     console.log("navigationrender", item);
 

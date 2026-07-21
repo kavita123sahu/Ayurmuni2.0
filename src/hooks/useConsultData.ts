@@ -309,19 +309,30 @@ export const useAppointmentHistory = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
+    const pageRef = useRef(1);
+    const hasMoreRef = useRef(true);
+    const loadingMoreRef = useRef(false);
+    const appointDataRef = useRef<any[]>([]);
+
     const getAllAppointment = useCallback(
         async (pageNo = 1, isLoadMore = false) => {
             try {
-                // Guests have no appointments; skip the authenticated call.
                 if (!(await isAuthenticated())) {
                     setAppointData([]);
+                    appointDataRef.current = [];
                     setHasMore(false);
+                    hasMoreRef.current = false;
                     setLoading(false);
                     setLoadingMore(false);
+                    loadingMoreRef.current = false;
                     return;
                 }
 
                 if (isLoadMore) {
+                    if (loadingMoreRef.current || !hasMoreRef.current) {
+                        return appointDataRef.current;
+                    }
+                    loadingMoreRef.current = true;
                     setLoadingMore(true);
                 } else {
                     setLoading(true);
@@ -330,43 +341,73 @@ export const useAppointmentHistory = () => {
                 const res = await _CONSULT_SERVICES.getConsultHistory({
                     page: pageNo,
                 });
-
-                console.log("consult response", res);
+                console.log("APPOINTMENT_HISTORY_DATA", res?.data);
 
                 const results = res?.data?.results || [];
+                const nextExists = !!res?.data?.next;
 
-                if (isLoadMore) {
-                    setAppointData(prev => [...prev, ...results]);
-                } else {
-                    setAppointData(results);
-                }
+                setAppointData(prev => {
+                    const merged = isLoadMore ? [...prev, ...results] : results;
+                    appointDataRef.current = merged;
+                    return merged;
+                });
 
-                setHasMore(!!res?.data?.next);
+                pageRef.current = pageNo;
+                hasMoreRef.current = nextExists;
+                setHasMore(nextExists);
                 setPage(pageNo);
 
+                return appointDataRef.current;
             } catch (e) {
                 console.log("ALL_DOCTOR_APPOINT_ERROR", e);
+                return appointDataRef.current;
             } finally {
                 setLoading(false);
                 setLoadingMore(false);
+                loadingMoreRef.current = false;
             }
         },
         [],
     );
 
     const loadMore = useCallback(() => {
-        if (loadingMore || !hasMore) return;
+        if (loadingMoreRef.current || !hasMoreRef.current) {
+            return;
+        }
+        getAllAppointment(pageRef.current + 1, true);
+    }, [getAllAppointment]);
 
-        getAllAppointment(page + 1, true);
-    }, [page, hasMore, loadingMore, getAllAppointment]);
+    const prefetchUntil = useCallback(
+        async (
+            shouldStop: (items: any[]) => boolean,
+            maxPages = 10,
+        ) => {
+            let attempts = 0;
+
+            while (
+                hasMoreRef.current &&
+                attempts < maxPages &&
+                !shouldStop(appointDataRef.current)
+            ) {
+                attempts += 1;
+                await getAllAppointment(pageRef.current + 1, true);
+            }
+
+            return appointDataRef.current;
+        },
+        [getAllAppointment],
+    );
 
     const refreshUpcoming = useCallback(async () => {
         try {
             setRefreshing(true);
+            pageRef.current = 1;
+            hasMoreRef.current = true;
             setPage(1);
             setHasMore(true);
-
             await getAllAppointment(1, false);
+        } catch (e) {
+            console.log("REFRESH_APPOINTMENT_ERROR", e);
         } finally {
             setRefreshing(false);
         }
@@ -383,6 +424,7 @@ export const useAppointmentHistory = () => {
         AppointData,
         refreshUpcoming,
         loadMore,
+        prefetchUntil,
         hasMore,
     };
 };

@@ -8,8 +8,10 @@ import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { ChatHeader } from './ChatHeader';
 import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Message } from '../../types/chat';
+import { getChatDisabledReason } from '../../utils/chatAccessUtils';
+import { Colors } from '../../../common/Colors';
 
 const THEME = '#0D614E';
 
@@ -20,27 +22,31 @@ interface ChatContainerProps {
     patientName?: string;
     doctorAvatar?: string;
     patientAvatar?: string;
+    appointmentDate?: string;
 }
 
 export const ChatContainer: React.FC<ChatContainerProps> = ({
     appointmentId, role, doctorName = 'Doctor', patientName = 'Patient',
-    doctorAvatar, patientAvatar,
+    doctorAvatar, patientAvatar, appointmentDate,
 }) => {
+    const insets = useSafeAreaInsets();
     const {
         messages, isLoading, isConnected, error, participantRole,
-        sendMessage, markAsRead, chatAccess, loadMessages, followUpActive
-    } = useChat(appointmentId, role);
-
+        sendMessage, markAsRead, chatAccess, loadMessages, isChatEnabled,
+    } = useChat(appointmentId, role, appointmentDate);
 
     const flatListRef = useRef<FlatList>(null);
-    const [isAtBottom, setIsAtBottom] = useState(true);
-    const markedReadRef = useRef<Set<string>>(new Set()); // ✅ dedupe — dobara mark-read spam na ho
+    const [isAtBottom] = useState(true);
+    const markedReadRef = useRef<Set<string>>(new Set());
 
+    const inputPlaceholder = isChatEnabled
+        ? 'Type a message...'
+        : getChatDisabledReason(chatAccess, appointmentDate) || 'Chat is closed';
 
     useFocusEffect(
         React.useCallback(() => {
             loadMessages();
-        }, [])
+        }, [loadMessages])
     );
 
     useEffect(() => {
@@ -65,18 +71,19 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             const t = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 200);
             return () => clearTimeout(t);
         }
-    }, [isLoading]);
+    }, [isLoading, messages.length]);
 
     const handleSend = (text: string, attachments?: any[]) => {
+        if (!isChatEnabled) {
+            return;
+        }
         if (text?.trim() || (attachments && attachments.length > 0)) {
             sendMessage(text, attachments);
         }
     };
 
+    const formatDate = (date: string) => new Date(date).toDateString();
 
-    const formatDate = (date: string) => {
-        return new Date(date).toDateString();
-    };
     const renderMessage = ({
         item,
         index,
@@ -85,7 +92,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         index: number;
     }) => {
         const prev = index > 0 ? messages[index - 1] : undefined;
-
         const showDate =
             !prev ||
             formatDate(item.created_at) !== formatDate(prev.created_at);
@@ -108,117 +114,71 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             </>
         );
     };
-    // const renderMessage = ({ item }: { item: any }) => {
-    //     const isOwn = item.sender_role === participantRole;
-    //     const senderName = item.doctorName;
-    //     return <MessageBubble message={item} isOwn={isOwn} senderName={senderName || 'Unknown'} />;
-    // };
-
-    const keyExtractor = (item: any) => item.id || `msg-${item.created_at}`;
-
-    const renderEmpty = () => (
-        <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>💬 No messages yet</Text>
-            <Text style={styles.emptySubText}>Start the conversation!</Text>
-        </View>
-    );
 
     if (isLoading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={THEME} />
-                <Text style={styles.loadingText}>Loading messages...</Text>
-            </View>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={THEME} />
+                    <Text style={styles.loadingText}>Loading messages...</Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
     const isDoctor = participantRole === 'doctor';
-    const canSend = chatAccess?.can_send ?? true;
+    const keyboardOffset = Platform.OS === 'ios' ? insets.top : 0;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-            <ChatHeader
-                title={isDoctor ? patientName : doctorName}
-                avatar={isDoctor ? patientAvatar : doctorAvatar}
-                isOnline={isConnected}
-                role={participantRole}
-            />
+            <View style={styles.headerWrap}>
+                <ChatHeader
+                    title={isDoctor ? patientName : doctorName}
+                    avatar={isDoctor ? patientAvatar : doctorAvatar}
+                    isOnline={isConnected}
+                    role={participantRole}
+                />
+            </View>
 
             <KeyboardAvoidingView
-                style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={0}
+                style={styles.keyboardView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+                keyboardVerticalOffset={keyboardOffset}
             >
-                {/* <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    renderItem={renderMessage}
-                    keyExtractor={keyExtractor}
-                    contentContainerStyle={styles.messageList}
-                    ListEmptyComponent={renderEmpty}
-                    onContentSizeChange={() => isAtBottom && flatListRef.current?.scrollToEnd({ animated: true })}
-                    onScrollBeginDrag={() => setIsAtBottom(false)}
-                    onMomentumScrollEnd={(e) => {
-                        const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                        setIsAtBottom(contentOffset.y + layoutMeasurement.height >= contentSize.height - 20);
-                    }}
-                    style={{flex:1}}
-                    showsVerticalScrollIndicator={false}
-                    initialNumToRender={20}
-                    maxToRenderPerBatch={30}
-                    windowSize={10}
-                    keyboardDismissMode="on-drag"
-                    keyboardShouldPersistTaps="handled"
-                /> */}
-
                 <FlatList
                     ref={flatListRef}
                     data={messages}
                     renderItem={renderMessage}
                     keyExtractor={(item) => item.id}
-                    style={{ flex: 1 }}
-                    contentContainerStyle={{
-                        flexGrow: 1,
-                        paddingHorizontal: 12,
-                        paddingTop: 8,
-                        paddingBottom: 16,
-                    }}
+                    style={styles.messageList}
+                    contentContainerStyle={styles.messageListContent}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
-                // // contentContainerStyle={styles.messageList}
-                // keyboardDismissMode="on-drag"
-                // contentContainerStyle={{
-                //     flexGrow: 1,
-                //     paddingHorizontal: 12,
-                //     paddingTop: 8,
-                //     paddingBottom: 10,
-                // }}
-                //    onContentSizeChange={() => isAtBottom && flatListRef.current?.scrollToEnd({ animated: true })}
-                // onScrollBeginDrag={() => setIsAtBottom(false)}
-                // onMomentumScrollEnd={(e) => {
-                //     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                //     setIsAtBottom(contentOffset.y + layoutMeasurement.height >= contentSize.height - 20);
-                // }}
-                // style={{flex:1}}
-                // showsVerticalScrollIndicator={false}
-                // initialNumToRender={20}
-                // maxToRenderPerBatch={30}
-                // windowSize={10}
-                // keyboardShouldPersistTaps="handled"
-                // onContentSizeChange={() =>
-                //     flatListRef.current?.scrollToEnd({ animated: true })
-                // }
+                    automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                    onContentSizeChange={() => {
+                        if (messages.length > 0) {
+                            flatListRef.current?.scrollToEnd({ animated: true });
+                        }
+                    }}
                 />
 
-                <View
-                    style={{
-                        backgroundColor: '#fff',
-                        borderTopWidth: 1,
-                        borderTopColor: '#E5E7EB',
-                    }}
-                >
-                    <MessageInput onSend={handleSend} isConnected={isConnected} isDisabled={!followUpActive} />
+                {!isChatEnabled && (
+                    <View style={styles.disabledBanner}>
+                        <Text style={styles.disabledBannerText}>
+                            {inputPlaceholder}
+                        </Text>
+                    </View>
+                )}
+
+                <View style={styles.inputWrap}>
+                    <MessageInput
+                        onSend={handleSend}
+                        isConnected={isConnected}
+                        isDisabled={!isChatEnabled}
+                        placeholder={inputPlaceholder}
+                    />
                 </View>
 
                 {error && (
@@ -235,20 +195,25 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F1EA' },
+    container: { flex: 1, backgroundColor: Colors.background },
+    headerWrap: {
+        zIndex: 10,
+        // backgroundColor: '',
+    },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
     loadingText: { marginTop: 12, fontSize: 14, color: '#6B7280' },
-    keyboardView: { flex: 1 },
-    messageList: {
+    keyboardView: { flex: 1, backgroundColor: Colors.background },
+    messageList: { flex: 1 },
+    messageListContent: {
+        flexGrow: 1,
         paddingHorizontal: 12,
         paddingTop: 8,
-        paddingBottom: 10,
+        paddingBottom: 8,
     },
     dateSeparator: {
         alignItems: 'center',
         marginVertical: 10,
     },
-
     dateText: {
         backgroundColor: '#E5E7EB',
         color: '#374151',
@@ -257,9 +222,23 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 12,
     },
-    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
-    emptyText: { fontSize: 18, color: '#9CA3AF', fontWeight: '500' },
-    emptySubText: { fontSize: 14, color: '#D1D5DB', marginTop: 4 },
+    disabledBanner: {
+        backgroundColor: '#FEF3C7',
+        borderTopWidth: 1,
+        borderTopColor: '#FDE68A',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+    },
+    disabledBannerText: {
+        color: '#92400E',
+        fontSize: 12,
+        textAlign: 'center',
+    },
+    inputWrap: {
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+    },
     errorToast: {
         position: 'absolute', bottom: 80, left: 16, right: 16,
         backgroundColor: '#EF4444', paddingHorizontal: 16, paddingVertical: 12,

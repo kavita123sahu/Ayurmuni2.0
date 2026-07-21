@@ -258,8 +258,13 @@ import { chatService } from '../services/chatService';
 import { WebSocketService } from '../services/websocketService';
 import { Message, ChatState, SendMessagePayload, WebSocketMessage, Attachment } from '../types/chat';
 import { Utils } from '../../common/Utils';
+import { isChatEnabled, getChatDisabledReason } from '../utils/chatAccessUtils';
 
-export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
+export function useChat(
+  appointmentId: string,
+  role: 'doctor' | 'patient',
+  appointmentDate?: string | null,
+) {
   const [state, setState] = useState<ChatState>({
     appointmentId,
     messages: [],
@@ -278,6 +283,12 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
   const loadMessagesRef = useRef<((markRead?: boolean | string) => Promise<void>) | null>(null);
   const hasLoadedOnceRef = useRef(false);
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatAccessRef = useRef(state.chatAccess);
+  chatAccessRef.current = state.chatAccess;
+  const appointmentDateRef = useRef(appointmentDate);
+  appointmentDateRef.current = appointmentDate;
+
+  const isChatEnabledFlag = isChatEnabled(state.chatAccess, appointmentDate);
 
   // ✅ Load messages — sirf pehli baar full loading dikhao, uske baad silently refresh
   const loadMessages = useCallback(
@@ -339,6 +350,11 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
       const hasAttachments = !!attachments && attachments.length > 0;
 
       if (!trimmedText && !hasAttachments) return;
+
+      if (!isChatEnabled(chatAccessRef.current, appointmentDateRef.current ?? undefined)) {
+        showTransientError(getChatDisabledReason(chatAccessRef.current, appointmentDateRef.current ?? undefined));
+        return;
+      }
 
       const tempId = `temp-${Date.now()}`;
       const tempMessage: Message = {
@@ -506,5 +522,6 @@ export function useChat(appointmentId: string, role: 'doctor' | 'patient') {
     sendMessage,
     markAsRead,
     isConnected: state.isConnected,
+    isChatEnabled: isChatEnabledFlag,
   };
 }

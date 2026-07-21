@@ -19,7 +19,7 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
-import { generateFutureDates, } from '../../common/DataInterface';
+import { formatDate, generateFutureDates, } from '../../common/DataInterface';
 import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
@@ -30,6 +30,7 @@ import TablerIcon from '../../components/TablerIcon';
 import { requireAuth } from '../../services/guestAuth';
 import UploadRecordModal from '../../components/UploadRecordModal';
 import AppHeader from '../../components/AppHeader';
+import { formatMessageTime } from '../../chatSystem/utils/dateFormatter';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -46,7 +47,7 @@ const DoctorSlot = (props: any) => {
 
     const { doctorDetails } = route?.params || {};
 
-    const { patientsRecord, fetchPatientsRecord, } = useMedicalRecord();
+    const { patientsRecord, patientsList, fetchPatientsRecord, } = useMedicalRecord();
 
     const {
         selectFile,
@@ -65,12 +66,9 @@ const DoctorSlot = (props: any) => {
         },
     );
 
-
     const [doctorDetailData, setDoctorDetailData] = useState<any>(null);
-    // const [records, setRecords] = useState<any[]>([]);
     const doctorInfo = useMemo(() => doctorDetails, [doctorDetails]);
-    const [prescriptionFiles, setPrescriptionFiles] = useState([]);
-    console.log("dcorsolotdata", doctorDetails);
+    console.log("patientsListpatientsListpatientsList", patientsList);
 
 
     const [monthOffset, setMonthOffset] = useState(0);
@@ -104,6 +102,7 @@ const DoctorSlot = (props: any) => {
                 setDoctorDetailData(res?.data
                 );
             }
+
         } catch (error) {
             console.log(
                 'DOCTOR DETAILS ERROR =>',
@@ -227,8 +226,9 @@ const DoctorSlot = (props: any) => {
             selectedTime:
                 selectedSlotObj?.displayTime ||
                 selectedSlotObj?.start_time,
+            //    formatMessageTime( ),
             concern,
-
+            patientsList,
             medical_record_ids: selectedRecords,
         });
     };

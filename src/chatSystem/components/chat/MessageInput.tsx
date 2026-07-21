@@ -39,7 +39,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
 const insets = useSafeAreaInsets();
 
-  const canInteract = !isDisabled && isConnected && !isSending;
+  const canInteract = !isDisabled && !isSending;
 
   // ✅ Sirf pick karo, upload/send abhi mat karo — preview dikhao
   const handlePickImage = async () => {
@@ -164,12 +164,10 @@ const insets = useSafeAreaInsets();
 
 const styles = StyleSheet.create({
   container: {
-  backgroundColor: '#FFFFFF',
-  paddingHorizontal: 12,
-  paddingTop: 8,
-  borderTopWidth: 1,
-  borderTopColor: '#E5E7EB',
-},
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
   // container: {
   //   backgroundColor: '#FFFFFF',
   //   borderTopWidth: 1,

@@ -164,7 +164,7 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
 
 export const RecentConsultHistory = async () => {
     try {
-      
+
         const response = await apiClient(
             'customers/doctors/consultation-history/',
             {
