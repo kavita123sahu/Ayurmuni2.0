@@ -19,9 +19,10 @@ interface Props {
     header?: boolean;
     navigation: any
     ListHeaderComponent?: React.ReactNode;
+    home?: boolean;
 }
 
-const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, header = false, navigation }) => {
+const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, header = false, navigation, home = false }) => {
     console.log("dataypggaaa-->", data);
 
     const [showAll, setShowAll] = useState(false);
@@ -58,9 +59,10 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
             numColumns={isGrid ? 2 : 1}
             ListHeaderComponent={header ? <ListHeaderComponent /> : undefined}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-                paddingBottom: 20,
-            }}
+            contentContainerStyle={[
+                styles.listContent,
+                home && styles.listContentHome,
+            ]}
 
             columnWrapperStyle={
                 isGrid
@@ -188,6 +190,13 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
 const styles = StyleSheet.create({
+    listContent: {
+        paddingBottom: 20,
+    },
+    listContentHome: {
+        paddingBottom: 0,
+        paddingRight: 4,
+    },
     card: {
         width: CARD_WIDTH,
         backgroundColor: '#FAFAFA',

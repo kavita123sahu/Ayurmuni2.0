@@ -9,6 +9,7 @@ import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
 import { Images } from '../common/Images';
 import { isAuthenticated } from '../services/guestAuth';
+import { filterUpcomingAppointments } from '../utils/appointmentUtils';
 
 export type SlotItem = {
     id: string;
@@ -250,43 +251,59 @@ export const groupSlotsByTime = (
     );
 };
 
-export const useAllDoctors = (selectedFilters: any) => {
+export type DoctorListFilters = {
+    specialization?: string;
+    experience?: string;
+    from_date?: string;
+    to_date?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+    suggested?: boolean;
+};
 
-
-    console.log("selectedfilerpayload", selectedFilters);
-
+export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
     const [loading, setLoading] = useState(false);
     const [doctorData, setDoctorData] = useState<any[]>([]);
-
-
-
-
+    const requestIdRef = useRef(0);
 
     const getAllDoctors = useCallback(async () => {
+        const reqId = ++requestIdRef.current;
         try {
             setLoading(true);
 
-            const payload = {
-                specialization: selectedFilters.speciality || '',
+            const payload: DoctorListFilters = {
+                specialization: selectedFilters.specialization || '',
                 experience: selectedFilters.experience || '',
-                from_date: selectedFilters.availabilityFrom || '',
-                to_date: selectedFilters.availabilityTo || '',
+                from_date: selectedFilters.from_date || '',
+                to_date: selectedFilters.to_date || '',
+                search: selectedFilters.search?.trim() || '',
+                page: selectedFilters.page ?? 1,
+                page_size: selectedFilters.page_size ?? 20,
             };
-            console.log("payloadddddddddddd", payload);
 
             const res = await _CONSULT_SERVICES.getFilterTopDoctor(payload);
 
+            if (reqId !== requestIdRef.current) return;
+
             setDoctorData(res?.data?.results || []);
         } catch (e) {
-            console.log("ALL_DOCTOR_ERROR", e);
+            if (reqId !== requestIdRef.current) return;
+            console.log('ALL_DOCTOR_ERROR', e);
+            setDoctorData([]);
         } finally {
-            setLoading(false);
+            if (reqId === requestIdRef.current) {
+                setLoading(false);
+            }
         }
     }, [
-        selectedFilters?.speciality?.id,
-        selectedFilters?.availabilityFrom,
-        selectedFilters?.availabilityTo,
-        selectedFilters?.experience,
+        selectedFilters.specialization,
+        selectedFilters.experience,
+        selectedFilters.from_date,
+        selectedFilters.to_date,
+        selectedFilters.search,
+        selectedFilters.page,
+        selectedFilters.page_size,
     ]);
 
     useEffect(() => {
@@ -298,6 +315,56 @@ export const useAllDoctors = (selectedFilters: any) => {
 
 
 
+
+const HOME_UPCOMING_LIMIT = 5;
+
+/** Lightweight fetch for home — upcoming only, no pagination. */
+export const useUpcomingAppointmentsPreview = (limit = HOME_UPCOMING_LIMIT) => {
+    const [loading, setLoading] = useState(true);
+    const [appointments, setAppointments] = useState<any[]>([]);
+
+    const fetchPreview = useCallback(async (options?: { silent?: boolean }) => {
+        try {
+            if (!(await isAuthenticated())) {
+                setAppointments([]);
+                return;
+            }
+
+            if (!options?.silent) {
+                setLoading(true);
+            }
+
+            const res = await _CONSULT_SERVICES.getConsultHistory({
+                page: 1,
+                page_size: limit,
+                appointment_status: 'upcoming',
+            });
+
+            const results = res?.data?.results || [];
+            setAppointments(filterUpcomingAppointments(results, limit));
+        } catch (e) {
+            console.log('UPCOMING_PREVIEW_ERROR', e);
+            setAppointments([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [limit]);
+
+    useEffect(() => {
+        fetchPreview();
+    }, [fetchPreview]);
+
+    const refreshPreview = useCallback(
+        () => fetchPreview({ silent: true }),
+        [fetchPreview],
+    );
+
+    return {
+        loading,
+        appointments,
+        refreshPreview,
+    };
+};
 
 export const useAppointmentHistory = () => {
     const [loading, setLoading] = useState(true);
@@ -377,27 +444,6 @@ export const useAppointmentHistory = () => {
         getAllAppointment(pageRef.current + 1, true);
     }, [getAllAppointment]);
 
-    const prefetchUntil = useCallback(
-        async (
-            shouldStop: (items: any[]) => boolean,
-            maxPages = 10,
-        ) => {
-            let attempts = 0;
-
-            while (
-                hasMoreRef.current &&
-                attempts < maxPages &&
-                !shouldStop(appointDataRef.current)
-            ) {
-                attempts += 1;
-                await getAllAppointment(pageRef.current + 1, true);
-            }
-
-            return appointDataRef.current;
-        },
-        [getAllAppointment],
-    );
-
     const refreshUpcoming = useCallback(async () => {
         try {
             setRefreshing(true);
@@ -424,7 +470,6 @@ export const useAppointmentHistory = () => {
         AppointData,
         refreshUpcoming,
         loadMore,
-        prefetchUntil,
         hasMore,
     };
 };

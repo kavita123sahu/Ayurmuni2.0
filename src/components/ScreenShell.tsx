@@ -22,6 +22,8 @@ type ScreenShellProps = {
   withTabBar?: boolean;
   /** Use ScrollView wrapper */
   scroll?: boolean;
+  /** Renders above scroll content; only children scroll */
+  fixedHeader?: React.ReactNode;
   scrollProps?: ScrollViewProps;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
@@ -34,6 +36,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
   children,
   withTabBar = false,
   scroll = false,
+  fixedHeader,
   scrollProps,
   style,
   contentStyle,
@@ -47,7 +50,29 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
     ? getScreenBottomPadding(insets)
     : getDetailBottomPadding(insets);
 
-  const inner = scroll ? (
+  const inner = fixedHeader ? (
+    <View
+      style={[
+        styles.content,
+        { paddingBottom, paddingHorizontal: paddingH },
+        contentStyle,
+      ]}
+    >
+      {fixedHeader}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.flex}
+        {...scrollProps}
+        contentContainerStyle={[
+          styles.scrollContent,
+          scrollProps?.contentContainerStyle,
+        ]}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  ) : scroll ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
@@ -91,6 +116,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flex: 1,
+  },
+  flex: {
     flex: 1,
   },
   scrollContent: {

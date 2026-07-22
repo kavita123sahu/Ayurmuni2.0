@@ -11,7 +11,7 @@ import {
     RefreshControl,
     Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Ionicons } from '../../common/Vector';
 import { Images } from '../../common/Images';
@@ -121,6 +121,8 @@ const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
 
 const DoctorProfile = ({ navigation, route }: any) => {
     const { doctorData } = route?.params;
+    const insets = useSafeAreaInsets();
+    const footerBottomPad = Math.max(insets.bottom, 12);
 
     console.log("docororpf", doctorData);
 
@@ -314,6 +316,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
             {/* Scrollable Content */}
             <ScrollView
+                style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
@@ -404,7 +407,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
             </ScrollView>
 
             {/* Footer */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
                 <View style={styles.priceContainer}>
                     <Text style={styles.feeText}>Consult Fee</Text>
                     <Text style={styles.price}>
@@ -436,8 +439,11 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
+    scrollView: {
+        flex: 1,
+    },
     scrollContent: {
-        paddingBottom: 30,
+        paddingBottom: 16,
     },
     headerTop: {
         flexDirection: 'row',
@@ -470,9 +476,9 @@ const styles = StyleSheet.create({
     },
     profileContainer: {
         alignItems: 'center',
-        marginTop: 12,
-        paddingTop: 30,
-        paddingBottom: 35,
+        marginTop: 8,
+        paddingTop: 20,
+        paddingBottom: 24,
         borderBottomLeftRadius: 35,
         borderBottomRightRadius: 35,
         overflow: 'hidden',
@@ -670,9 +676,11 @@ const styles = StyleSheet.create({
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 34,
-        marginHorizontal: 20,
-        marginBottom: 20,
+        paddingTop: 12,
+        paddingHorizontal: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        backgroundColor: '#FFFFFF',
     },
     priceContainer: {
         marginRight: 16,

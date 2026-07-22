@@ -1,14 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, StyleSheet, StatusBar } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
-import PromoCard from '../../components/PromoCard';
-import SectionHeader from '../../components/SectionHeader';
 import TopSellingList from '../../components/TopSellingList';
-import { Images } from '../../common/Images';
-import { Styles } from '../../common/Styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 
@@ -17,9 +13,14 @@ const TopCategories = (props: any) => {
   const route = useRoute<any>();
 
   const navigation = useNavigation<any>();
+  const stackNav = navigation.getParent?.() || navigation;
 
   const { categoryName } = route.params;
   const productImage = require('../../assets/images/RecentsImage.png');
+
+  const handleSearchPress = useCallback(() => {
+    stackNav.navigate('SearchScreen');
+  }, [stackNav]);
 
 
    const topSelling = [
@@ -247,7 +248,7 @@ const TopCategories = (props: any) => {
       <View style={styles.flexContain}>
         <SearchBar
         placeholder="Search seeds, oils..."
-
+        onPress={handleSearchPress}
         />
 
       <TopSellingList data={topSelling} header ={true} isGrid={true} setProductData={()=>""} navigation={props.navigation}  />

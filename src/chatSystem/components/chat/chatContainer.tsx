@@ -10,7 +10,7 @@ import { ChatHeader } from './ChatHeader';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Message } from '../../types/chat';
-import { getChatDisabledReason } from '../../utils/chatAccessUtils';
+import { getChatDisabledReason, AppointmentChatLike } from '../../utils/chatAccessUtils';
 import { Colors } from '../../../common/Colors';
 
 const THEME = '#0D614E';
@@ -23,17 +23,18 @@ interface ChatContainerProps {
     doctorAvatar?: string;
     patientAvatar?: string;
     appointmentDate?: string;
+    appointmentContext?: AppointmentChatLike;
 }
 
 export const ChatContainer: React.FC<ChatContainerProps> = ({
     appointmentId, role, doctorName = 'Doctor', patientName = 'Patient',
-    doctorAvatar, patientAvatar, appointmentDate,
+    doctorAvatar, patientAvatar, appointmentDate, appointmentContext,
 }) => {
     const insets = useSafeAreaInsets();
     const {
         messages, isLoading, isConnected, error, participantRole,
         sendMessage, markAsRead, chatAccess, loadMessages, isChatEnabled,
-    } = useChat(appointmentId, role, appointmentDate);
+    } = useChat(appointmentId, role, appointmentDate, appointmentContext);
 
     const flatListRef = useRef<FlatList>(null);
     const [isAtBottom] = useState(true);
@@ -153,10 +154,21 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                     renderItem={renderMessage}
                     keyExtractor={(item) => item.id}
                     style={styles.messageList}
-                    contentContainerStyle={styles.messageListContent}
+                    contentContainerStyle={[
+                        styles.messageListContent,
+                        messages.length === 0 && styles.emptyListContent,
+                    ]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                     automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyTitle}>No messages yet</Text>
+                            <Text style={styles.emptySubtitle}>
+                                Previous messages will appear here. You can read chat history anytime.
+                            </Text>
+                        </View>
+                    }
                     onContentSizeChange={() => {
                         if (messages.length > 0) {
                             flatListRef.current?.scrollToEnd({ animated: true });
@@ -209,6 +221,27 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingTop: 8,
         paddingBottom: 8,
+    },
+    emptyListContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+    },
+    emptyState: {
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 40,
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 6,
+    },
+    emptySubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 18,
     },
     dateSeparator: {
         alignItems: 'center',

@@ -42,22 +42,27 @@ const parseDate = (value?: string | null) => {
 
 const normalize = (value?: string) => value?.trim().toLowerCase() ?? '';
 
-/** Shared chat window rules for UI + send guard. */
-export function isChatEnabled(
+/** Client-side rules for whether the user can send messages. */
+export function isChatSendEnabled(
   access: ChatAccessLike | null | undefined,
   appointmentDate?: string | null,
+  fallback?: AppointmentChatLike | null,
 ): boolean {
-  if (!access) {
+  const merged: ChatAccessLike = {
+    call_status: access?.call_status ?? fallback?.call_status,
+    appointment_status: access?.appointment_status ?? fallback?.appointment_status,
+    follow_up_active: access?.follow_up_active,
+    follow_up: access?.follow_up ?? fallback?.follow_up,
+  };
+
+  if (!access && !fallback) {
     return false;
   }
 
-  if (typeof access.can_send === 'boolean') {
-    return access.can_send;
-  }
-
-  const callStatus = normalize(access.call_status);
-  const appointmentStatus = normalize(access.appointment_status);
+  const callStatus = normalize(merged.call_status);
+  const appointmentStatus = normalize(merged.appointment_status);
   const today = startOfDay(new Date());
+  const resolvedDate = appointmentDate ?? fallback?.appointment_date ?? null;
 
   if (callStatus === 'in_progress') {
     return true;
@@ -67,7 +72,7 @@ export function isChatEnabled(
     return true;
   }
 
-  if (access.follow_up_active) {
+  if (merged.follow_up_active) {
     return true;
   }
 
@@ -79,13 +84,13 @@ export function isChatEnabled(
     appointmentStatus === 'completed' || callStatus === 'ended';
 
   if (isCompleted) {
-    const followUp = access.follow_up;
+    const followUp = merged.follow_up;
     if (followUp?.schedule && followUp.date) {
       const followUpDay = parseDate(followUp.date);
       return !!followUpDay && followUpDay >= today;
     }
 
-    const apptDay = parseDate(appointmentDate);
+    const apptDay = parseDate(resolvedDate);
     if (apptDay) {
       const cutoff = new Date(apptDay);
       cutoff.setDate(cutoff.getDate() + DEFAULT_CHAT_DAYS);
@@ -98,22 +103,20 @@ export function isChatEnabled(
   return false;
 }
 
+/** @deprecated Use isChatSendEnabled — kept for compatibility. */
+export function isChatEnabled(
+  access: ChatAccessLike | null | undefined,
+  appointmentDate?: string | null,
+  fallback?: AppointmentChatLike | null,
+): boolean {
+  return isChatSendEnabled(access, appointmentDate, fallback);
+}
+
+/** Chat entry is always available when an appointment exists; read history anytime. */
 export function isChatVisibleForAppointment(
   appointment: AppointmentChatLike | null | undefined,
 ): boolean {
-  if (!appointment) {
-    return false;
-  }
-
-  return isChatEnabled(
-    {
-      call_status: appointment.call_status,
-      appointment_status: appointment.appointment_status,
-      follow_up_active: false,
-      follow_up: appointment.follow_up,
-    },
-    appointment.appointment_date,
-  );
+  return !!appointment;
 }
 
 export function getChatDisabledReason(

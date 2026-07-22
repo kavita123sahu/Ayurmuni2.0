@@ -1,13 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, StatusBar, ScrollView } from 'react-native';
-import { Fonts } from '../../common/Fonts';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, FlatList, StatusBar } from 'react-native';
 import OrderCard from '../../components/OrderCard';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
-import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useDebounce } from '../../hooks/useDebaunce';
+import { matchesSearch } from '../../utils/searchUtils';
 
 const DATA = [
     {
@@ -56,6 +55,17 @@ const formatStatus = (status: string): 'DELIVERED' | 'IN PROGRESS' => {
 };
 
 const OrderHistory = (props: any) => {
+    const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebounce(searchText, 400);
+
+    const filteredOrders = useMemo(() => {
+        const q = debouncedSearch.trim();
+        if (!q) return DATA;
+
+        return DATA.filter((item) =>
+            matchesSearch(q, item.title, item.id, item.status, item.date),
+        );
+    }, [debouncedSearch]);
 
     return (
 
@@ -70,45 +80,39 @@ const OrderHistory = (props: any) => {
             />
 
             <SearchBar
-                placeholder="Search order id..."
-
-                />
+                placeholder="Search order id or title..."
+                value={searchText}
+                onChangeText={setSearchText}
+            />
 
 
             <FlatList
-                data={DATA}
+                data={filteredOrders}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <OrderCard
-                    title={item.title}
-                    id={item.id}
-                    status={formatStatus(item.status)} // ✅ FIX
-                    date={item.date}
-                    amount={item.amount}
-                />}
+                renderItem={({ item }) => (
+                    <OrderCard
+                        title={item.title}
+                        id={item.id}
+                        status={formatStatus(item.status)}
+                        date={item.date}
+                        amount={item.amount}
+                    />
+                )}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
                     paddingBottom: 100,
                 }}
             />
-
         </SafeAreaView>
     );
 };
 
 export default OrderHistory;
 
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
         backgroundColor: Colors.background,
-    },
-
-    title: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 12,
-        color: '#111827',
     },
 });

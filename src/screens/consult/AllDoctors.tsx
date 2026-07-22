@@ -1,8 +1,6 @@
 import React, {
     useCallback,
-    useEffect,
     useMemo,
-    useRef,
     useState,
 } from 'react';
 
@@ -55,12 +53,7 @@ const AllDoctors = (props: any) => {
     const all = props?.route?.params?.all ?? false;
 
 
-    const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<string | null>(null);
-
-    useEffect(() => {
-        console.log("PARENT ACTIVE TAB CHANGED =>", activeTab);
-    }, [activeTab]);
 
     const [selectedFilters, setSelectedFilters] =
         useState<SelectedFilters>({
@@ -79,69 +72,30 @@ const AllDoctors = (props: any) => {
     const [searchText, setSearchText] = useState('');
 
     const { categories } = useConsultData();
-    console.log("FILTERS IN API CALL =>", selectedFilters)
-    const apiFilters = useMemo(() => ({
 
-        specialization: selectedFilters.specialization || '',
-        experience: selectedFilters.experience || '',
-        date: selectedFilters.date_range || '',
-        from_date: selectedFilters.from_date || '',
-        to_date: selectedFilters.to_date || '',
-    }), [selectedFilters]);
+    const debouncedSearch = useDebounce(searchText, 400);
 
-    const debouncedFilters = useDebounce(apiFilters, 500);
+    const apiFilters = useMemo(
+        () => ({
+            specialization: selectedFilters.specialization || '',
+            experience: selectedFilters.experience || '',
+            from_date: selectedFilters.from_date || '',
+            to_date: selectedFilters.to_date || '',
+            search: debouncedSearch.trim(),
+        }),
+        [
+            selectedFilters.specialization,
+            selectedFilters.experience,
+            selectedFilters.from_date,
+            selectedFilters.to_date,
+            debouncedSearch,
+        ],
+    );
 
-    const {
-        loading,
-        doctorData,
-    } = useAllDoctors(debouncedFilters);
-
-
-    const filteredDoctors = useMemo(() => {
-        let list = [...doctorData];
-        if (!searchText?.trim()) {
-            // Search empty -> poori list
-            return doctorData;
-        }
-
-
-        // Search
-        if (searchText?.trim()) {
-            const keyword = searchText?.toLowerCase();
-
-            list = list.filter((doctor) => {
-                const name = doctor?.full_name?.toLowerCase() || '';
-                const specialization =
-                    doctor?.qualification?.toLowerCase() || '';
-
-                return (
-                    name.includes(keyword) ||
-                    specialization.includes(keyword)
-                );
-            });
-        }
-
-
-
-        return list;
-    }, [doctorData, searchText,]);
-
-    console.log('doctorDatadoctorData', doctorData)
+    const { loading, doctorData } = useAllDoctors(apiFilters);
     const handleTabPress = (tab: string | null) => {
-        console.log("CLICKED =>", tab);
-
-        setActiveTab(prev => {
-            const next = prev === tab ? null : tab;
-
-            console.log("PREV =>", prev);
-            console.log("NEXT =>", next);
-
-            return next;
-        });
+        setActiveTab(prev => (prev === tab ? null : tab));
     };
-
-
-    console.log("RENDER activeTab =>", activeTab);
     const FILTER_OPTIONS = useMemo(() => ({
         speciality: categories.map((c: any) => ({
             label: c.name,
@@ -365,7 +319,7 @@ const AllDoctors = (props: any) => {
                         <DoctorCardSkeleton />
 
                         : <FlatList
-                            data={filteredDoctors}
+                            data={doctorData}
 
                             keyExtractor={(item) =>
                                 String(item?.id)

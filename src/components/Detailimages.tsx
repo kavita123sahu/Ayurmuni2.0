@@ -22,6 +22,8 @@ type Props = {
   showIndicator?: boolean;
   DynamicResize?: 'cover' | 'contain';
   autoSlide?: boolean;
+  /** Removes outer vertical margin when embedded in HomePage sections */
+  embedded?: boolean;
 };
 
 const Detailimages: React.FC<Props> = ({
@@ -31,6 +33,7 @@ const Detailimages: React.FC<Props> = ({
   DynamicResize = 'cover',
   showIndicator = true,
   autoSlide = true,
+  embedded = false,
 }) => {
   const finalWidth = itemWidth ?? width - 40;
   const finalHeight = itemHeight ?? 156;
@@ -75,7 +78,7 @@ const Detailimages: React.FC<Props> = ({
   if (safeImages.length === 0) return null;
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, embedded && styles.wrapperEmbedded]}>
       <FlatList
         ref={flatListRef}
         data={safeImages}
@@ -175,6 +178,10 @@ const styles = StyleSheet.create({
   wrapper: {
     marginTop: 6,
     marginBottom: 10,
+  },
+  wrapperEmbedded: {
+    marginTop: 0,
+    marginBottom: 0,
   },
   listContent: {
     paddingRight: SPACING,

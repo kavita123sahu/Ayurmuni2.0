@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -26,10 +26,14 @@ import MedicalRecordCard from '../consult/MedicalRecordCard';
 import PreviewModal from '../consult/PreviewModal';
 import { useMedicalRecord, useMedicalUpload, usePatientData } from '../../hooks/usePatientData';
 import { deleteMedicalRecord } from '../../services/PatientServices';
+import { useDebounce } from '../../hooks/useDebaunce';
+import { matchesSearch } from '../../utils/searchUtils';
 
 
 const MedicalRecords = (props: any) => {
     const [activeTab, setActiveTab] = useState('All Records');
+    const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebounce(searchText, 400);
 
     const {
         patientsRecord,
@@ -74,12 +78,27 @@ const MedicalRecords = (props: any) => {
 
     const filteredRecords = React.useMemo(() => {
         const targetType = TAB_TYPE_MAP[activeTab];
-        if (!targetType) return patientsRecord || [];
+        let list = patientsRecord || [];
 
-        return (patientsRecord || []).filter(
-            (item: any) => item?.medical_record_type === targetType,
+        if (targetType) {
+            list = list.filter(
+                (item: any) => item?.medical_record_type === targetType,
+            );
+        }
+
+        const q = debouncedSearch.trim();
+        if (!q) return list;
+
+        return list.filter((item: any) =>
+            matchesSearch(
+                q,
+                item?.title,
+                item?.description,
+                item?.medical_record_type,
+                item?.file_name,
+            ),
         );
-    }, [patientsRecord, activeTab]);
+    }, [patientsRecord, activeTab, debouncedSearch]);
 
 
     const selectedRecordItems = (filteredRecords || []).filter((item: any) =>
@@ -166,8 +185,9 @@ const MedicalRecords = (props: any) => {
             />
 
             <SearchBar
-                placeholder="Search for help topics..."
-
+                placeholder="Search records by title or type..."
+                value={searchText}
+                onChangeText={setSearchText}
             />
 
             <TabButton />

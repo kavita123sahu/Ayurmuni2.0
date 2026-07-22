@@ -258,12 +258,13 @@ import { chatService } from '../services/chatService';
 import { WebSocketService } from '../services/websocketService';
 import { Message, ChatState, SendMessagePayload, WebSocketMessage, Attachment } from '../types/chat';
 import { Utils } from '../../common/Utils';
-import { isChatEnabled, getChatDisabledReason } from '../utils/chatAccessUtils';
+import { isChatSendEnabled, getChatDisabledReason, AppointmentChatLike } from '../utils/chatAccessUtils';
 
 export function useChat(
   appointmentId: string,
   role: 'doctor' | 'patient',
   appointmentDate?: string | null,
+  appointmentContext?: AppointmentChatLike | null,
 ) {
   const [state, setState] = useState<ChatState>({
     appointmentId,
@@ -287,8 +288,14 @@ export function useChat(
   chatAccessRef.current = state.chatAccess;
   const appointmentDateRef = useRef(appointmentDate);
   appointmentDateRef.current = appointmentDate;
+  const appointmentContextRef = useRef(appointmentContext);
+  appointmentContextRef.current = appointmentContext;
 
-  const isChatEnabledFlag = isChatEnabled(state.chatAccess, appointmentDate);
+  const isChatEnabledFlag = isChatSendEnabled(
+    state.chatAccess,
+    appointmentDate,
+    appointmentContext,
+  );
 
   // ✅ Load messages — sirf pehli baar full loading dikhao, uske baad silently refresh
   const loadMessages = useCallback(
@@ -351,8 +358,15 @@ export function useChat(
 
       if (!trimmedText && !hasAttachments) return;
 
-      if (!isChatEnabled(chatAccessRef.current, appointmentDateRef.current ?? undefined)) {
-        showTransientError(getChatDisabledReason(chatAccessRef.current, appointmentDateRef.current ?? undefined));
+      if (!isChatSendEnabled(
+        chatAccessRef.current,
+        appointmentDateRef.current ?? undefined,
+        appointmentContextRef.current ?? undefined,
+      )) {
+        showTransientError(getChatDisabledReason(
+          chatAccessRef.current,
+          appointmentDateRef.current ?? undefined,
+        ));
         return;
       }
 

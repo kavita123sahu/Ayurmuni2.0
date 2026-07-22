@@ -7,19 +7,35 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  PixelRatio,
 } from 'react-native';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../../components/TablerIcon';
 
-
 const { width } = Dimensions.get('window');
 
-const CARD_WIDTH = width * 0.55; // 75% of screen width
-const CARD_HEIGHT = CARD_WIDTH * 0.72;
+// ---- Responsive helpers -----------------------------------------------
+// Base design was done on a 375pt-wide screen (standard iPhone reference).
+const BASE_WIDTH = 375;
+const scale = (size: number) => (width / BASE_WIDTH) * size;
+
+// Clamp font scaling so text doesn't blow up on tablets or shrink too much
+// on tiny devices.
+const normalize = (size: number) => {
+  const newSize = scale(size);
+  return Math.round(PixelRatio.roundToNearestPixel(newSize));
+};
+
+// Card sizing: ~46% of screen width so ~2.2 cards are visible per row —
+// smaller, tighter cards than a half-screen card.
+const CARD_WIDTH = Math.min(width * 0.46, 190);
+const CARD_PADDING = scale(10);
+const AVATAR_SIZE = scale(46);
 
 interface Doctor {
   id: string;
+  average_rating?: string;
   full_name: string;
   health_diseases: [];
   experience: string;
@@ -50,65 +66,64 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
           activeOpacity={0.88}
           onPress={openProfile}
         >
-          <View style={styles.accentBar} />
-
+          {/* Top row: avatar on the left, rating fills the empty space on the right */}
           <View style={styles.topRow}>
-
-            <View style={styles.doctorImageWrapper}>
-              {item?.profile_image ? (
-                <Image
-                  source={{ uri: item.profile_image }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {(item?.first_name?.charAt(0) || 'D').toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              {item?.has_availability && (
-                <View style={styles.onlineDot} />
-              )}
-            </View>
-
-            <View style={styles.info}>
-              <Text numberOfLines={1} style={styles.name}>
-                {item.full_name || item.name}
-              </Text>
-              <Text numberOfLines={2} style={styles.specialization}>
-                {therapies?.split(',').slice(0, 2).join(', ') || 'Ayurveda Specialist'}
-              </Text>
-
-              <View style={styles.expRow}>
-                <TablerIcon name="briefcase" size={13} color="#64748B" />
-                <Text style={styles.exp}>
-                  {item?.experience_years || '—'} Yrs Exp
-                </Text>
+            <View style={styles.avatarOuter}>
+              <View style={styles.doctorImageWrapper}>
+                {item?.profile_image ? (
+                  <Image
+                    source={{ uri: item.profile_image }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>
+                      {(item?.first_name?.charAt(0) || '').toUpperCase()}
+                    </Text>
+                  </View>
+                )}
               </View>
+              {item?.has_availability && <View style={styles.onlineDot} />}
             </View>
 
+            <View style={styles.ratingBadge}>
+              <TablerIcon name="star" size={normalize(12)} color="#F59E0B" />
+              <Text style={styles.rating}>
+                {item?.average_rating != null ? item.average_rating : 0}
+
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.footer}>
-            <View style={styles.ratingPill}>
-              <TablerIcon name="star" size={14} color="#F59E0B" />
-              <Text style={styles.rating}>{item.ranking_score || ''}</Text>
-              <Text style={styles.reviewCount}>
-                ({item.total_reviews || '0'})
+          {/* Name & specialization */}
+          <Text numberOfLines={1} style={styles.name}>
+            {item.full_name || item.name}
+          </Text>
+          <Text numberOfLines={1} style={styles.specialization}>
+            {therapies?.split(',').slice(0, 1).join(', ') ||
+              'Ayurveda Specialist'}
+          </Text>
+
+          <View style={styles.expRow}>
+            <View style={styles.expLeft}>
+              <TablerIcon name="clock" size={normalize(11)} color="#64748B" />
+              <Text style={styles.exp}>
+                {item?.experience_years || '—'} Yrs Exp
               </Text>
             </View>
 
             <TouchableOpacity
-              style={styles.bookPill}
+              style={styles.iconButton}
               activeOpacity={0.85}
               onPress={openProfile}
             >
-              <Text style={styles.bookText}>Book</Text>
-              <TablerIcon name="calendar" size={14} color="#fff" />
+              <TablerIcon
+                name="stethoscope"
+                size={normalize(15)}
+                color="#fff"
+              />
             </TouchableOpacity>
           </View>
-
         </TouchableOpacity>
       );
     },
@@ -127,8 +142,8 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
       maxToRenderPerBatch={3}
       windowSize={5}
       getItemLayout={(_, index) => ({
-        length: CARD_WIDTH + 12,
-        offset: (CARD_WIDTH + 12) * index,
+        length: CARD_WIDTH + scale(12),
+        offset: (CARD_WIDTH + scale(12)) * index,
         index,
       })}
     />
@@ -139,161 +154,126 @@ export default React.memo(TopDoctorsCard);
 
 const styles = StyleSheet.create({
   container: {
-    paddingRight: 10,
-    paddingBottom: 14,
+    paddingHorizontal: scale(2),
+    paddingRight: scale(6),
+    paddingVertical: scale(4),
   },
   card: {
     width: CARD_WIDTH,
-    height: CARD_HEIGHT,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginRight: 10,
+    borderRadius: scale(16),
+    marginRight: scale(8),
     borderWidth: 1,
     borderColor: '#E8EEF3',
-    overflow: 'hidden',
-  },
-  accentBar: {
-    // position: 'absolute',
-    // top: 0,
-    // left: -1,
-    // right: -1,
-    // height: 2,
-    // backgroundColor: Colors.primaryColor,
-    // opacity: 0.85,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2, // Increase if you want it more visible
-    backgroundColor: Colors.primaryColor,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-
+    padding: CARD_PADDING,
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 14,
-    paddingTop: 16,
-    height: 30,   //118
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: scale(8),
   },
-
+  avatarOuter: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+  },
   doctorImageWrapper: {
-    width: 62,
-    height: 62,
-    borderRadius: 18,
-    overflow: 'visible',
-    marginRight: 12,
+    width: '100%',
+    height: '100%',
+    borderRadius: scale(16),
+    overflow: 'hidden',
     backgroundColor: '#F0FAF7',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#E2F3EE',
   },
   onlineDot: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    bottom: -scale(1),
+    right: -scale(1),
+    width: scale(11),
+    height: scale(11),
+    borderRadius: scale(6),
     backgroundColor: '#22C55E',
-    borderWidth: 2,
+    borderWidth: scale(2),
     borderColor: '#FFFFFF',
   },
   avatarPlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    borderRadius: scale(16),
     backgroundColor: Colors.primaryColor,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     color: '#FFF',
-    fontSize: 22,
+    fontSize: normalize(12),
     fontFamily: Fonts.PoppinsSemiBold,
   },
   avatar: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
-  },
-  info: {
-    flex: 1,
-    height: 90,
-    justifyContent: 'flex-start',
   },
   name: {
-    fontSize: 15,
+    fontSize: normalize(12),
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
-    lineHeight: 20,
+    lineHeight: normalize(17),
   },
   specialization: {
-    marginTop: 4,
-    minHeight: 32,
-    fontSize: 11,
-    lineHeight: 16,
+    marginTop: scale(1),
+    fontSize: normalize(10),
+    lineHeight: normalize(14),
     color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
   },
   expRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 6,
+    justifyContent: 'space-between',
+    marginTop: scale(4),
+  },
+  expLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
   },
   exp: {
-    fontSize: 11,
+    fontSize: normalize(10.5),
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 50,
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    backgroundColor: '#FAFCFB',
+    gap: scale(3),
   },
-  ratingPill: {
+  ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: scale(3),
     backgroundColor: '#FFFBEB',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: scale(7),
+    paddingVertical: scale(3),
+    borderRadius: 10,
   },
   rating: {
-    fontSize: 12,
-    color: '#B45309',
+    fontSize: normalize(11.5),
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   reviewCount: {
-    fontSize: 10,
+    fontSize: normalize(9.5),
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
+    fontWeight: 'normal',
   },
-  bookPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  iconButton: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(9),
     backgroundColor: Colors.primaryColor,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 999,
-    minWidth: 96,
     justifyContent: 'center',
-  },
-  bookText: {
-    color: '#fff',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
+    alignItems: 'center',
   },
 });

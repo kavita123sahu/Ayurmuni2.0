@@ -1,82 +1,82 @@
 import React from 'react';
 import { View } from 'react-native';
-import {
-  IconShoppingCart,
-  IconBell,
-  IconChevronDown,
-  IconChevronRight,
-  IconChevronLeft,
-  IconChevronUp,
-  IconHome,
-  IconPackage,
-  IconPill,
-  IconUser,
-  IconStethoscope,
-  IconPlus,
-  IconMinus,
-  IconStar,
-  IconStarFilled,
-  IconHeart,
-  IconHeartFilled,
-  IconSearch,
-  IconMapPin,
-  IconCrosshair,
-  IconArrowLeft,
-  IconArrowRight,
-  IconEdit,
-  IconX,
-  IconCheck,
-  IconTrash,
-  IconFilter,
-  IconShare,
-  IconClock,
-  IconCalendar,
-  IconPhone,
-  IconMessage,
-  IconLocation,
-  IconBriefcase,
-  IconUsers,
-  IconClipboardList,
-  IconReceipt,
-  IconStethoscope as IconFileMedical,
-  IconSchool,
-  IconChartPie,
-  IconCreditCard,
-  IconSettings,
-  IconHelp,
-  IconLogout,
-  IconBuildingStore,
-  IconTruck,
-  IconPhoto,
-  IconVideo,
-  IconUpload,
-  IconDownload,
-  IconEye,
-  IconLock,
-  IconMail,
-  IconAlertCircle,
-  IconBuilding,
-  IconCash,
-  IconBolt,
-  IconCamera,
-  IconFile,
-  IconCircleCheck,
-  IconReport,
-  IconNotes,
-  IconListDetails,
-  IconRefresh,
-  IconArrowsExchange,
-  IconCurrentLocation,
-  IconBrandWhatsapp,
-  IconMicrophone,
-  IconCertificate,
-  IconShieldCheck,
-  IconWallet,
-  IconHistory,
-  IconMoodSmile,
-  IconMoodSad,
-} from '@tabler/icons-react-native';
+// Direct icon imports — avoid barrel `@tabler/icons-react-native` (12k+ files, EMFILE on Windows).
+import IconShoppingCart from '@tabler/icons-react-native/IconShoppingCart';
+import IconBell from '@tabler/icons-react-native/IconBell';
+import IconChevronDown from '@tabler/icons-react-native/IconChevronDown';
+import IconChevronRight from '@tabler/icons-react-native/IconChevronRight';
+import IconChevronLeft from '@tabler/icons-react-native/IconChevronLeft';
+import IconChevronUp from '@tabler/icons-react-native/IconChevronUp';
+import IconHome from '@tabler/icons-react-native/IconHome';
+import IconPackage from '@tabler/icons-react-native/IconPackage';
+import IconPill from '@tabler/icons-react-native/IconPill';
+import IconUser from '@tabler/icons-react-native/IconUser';
+import IconStethoscope from '@tabler/icons-react-native/IconStethoscope';
+import IconPlus from '@tabler/icons-react-native/IconPlus';
+import IconMinus from '@tabler/icons-react-native/IconMinus';
+import IconStar from '@tabler/icons-react-native/IconStar';
+import IconStarFilled from '@tabler/icons-react-native/IconStarFilled';
+import IconHeart from '@tabler/icons-react-native/IconHeart';
+import IconHeartFilled from '@tabler/icons-react-native/IconHeartFilled';
+import IconSearch from '@tabler/icons-react-native/IconSearch';
+import IconMapPin from '@tabler/icons-react-native/IconMapPin';
+import IconCrosshair from '@tabler/icons-react-native/IconCrosshair';
+import IconArrowLeft from '@tabler/icons-react-native/IconArrowLeft';
+import IconArrowRight from '@tabler/icons-react-native/IconArrowRight';
+import IconEdit from '@tabler/icons-react-native/IconEdit';
+import IconX from '@tabler/icons-react-native/IconX';
+import IconCheck from '@tabler/icons-react-native/IconCheck';
+import IconTrash from '@tabler/icons-react-native/IconTrash';
+import IconFilter from '@tabler/icons-react-native/IconFilter';
+import IconShare from '@tabler/icons-react-native/IconShare';
+import IconClock from '@tabler/icons-react-native/IconClock';
+import IconCalendar from '@tabler/icons-react-native/IconCalendar';
+import IconPhone from '@tabler/icons-react-native/IconPhone';
+import IconMessage from '@tabler/icons-react-native/IconMessage';
+import IconLocation from '@tabler/icons-react-native/IconLocation';
+import IconBriefcase from '@tabler/icons-react-native/IconBriefcase';
+import IconUsers from '@tabler/icons-react-native/IconUsers';
+import IconClipboardList from '@tabler/icons-react-native/IconClipboardList';
+import IconReceipt from '@tabler/icons-react-native/IconReceipt';
+import IconSchool from '@tabler/icons-react-native/IconSchool';
+import IconChartPie from '@tabler/icons-react-native/IconChartPie';
+import IconCreditCard from '@tabler/icons-react-native/IconCreditCard';
+import IconSettings from '@tabler/icons-react-native/IconSettings';
+import IconHelp from '@tabler/icons-react-native/IconHelp';
+import IconLogout from '@tabler/icons-react-native/IconLogout';
+import IconBuildingStore from '@tabler/icons-react-native/IconBuildingStore';
+import IconTruck from '@tabler/icons-react-native/IconTruck';
+import IconPhoto from '@tabler/icons-react-native/IconPhoto';
+import IconVideo from '@tabler/icons-react-native/IconVideo';
+import IconUpload from '@tabler/icons-react-native/IconUpload';
+import IconDownload from '@tabler/icons-react-native/IconDownload';
+import IconEye from '@tabler/icons-react-native/IconEye';
+import IconLock from '@tabler/icons-react-native/IconLock';
+import IconMail from '@tabler/icons-react-native/IconMail';
+import IconAlertCircle from '@tabler/icons-react-native/IconAlertCircle';
+import IconBuilding from '@tabler/icons-react-native/IconBuilding';
+import IconCash from '@tabler/icons-react-native/IconCash';
+import IconBolt from '@tabler/icons-react-native/IconBolt';
+import IconCamera from '@tabler/icons-react-native/IconCamera';
+import IconFile from '@tabler/icons-react-native/IconFile';
+import IconCircleCheck from '@tabler/icons-react-native/IconCircleCheck';
+import IconReport from '@tabler/icons-react-native/IconReport';
+import IconNotes from '@tabler/icons-react-native/IconNotes';
+import IconListDetails from '@tabler/icons-react-native/IconListDetails';
+import IconRefresh from '@tabler/icons-react-native/IconRefresh';
+import IconArrowsExchange from '@tabler/icons-react-native/IconArrowsExchange';
+import IconCurrentLocation from '@tabler/icons-react-native/IconCurrentLocation';
+import IconBrandWhatsapp from '@tabler/icons-react-native/IconBrandWhatsapp';
+import IconMicrophone from '@tabler/icons-react-native/IconMicrophone';
+import IconCertificate from '@tabler/icons-react-native/IconCertificate';
+import IconShieldCheck from '@tabler/icons-react-native/IconShieldCheck';
+import IconWallet from '@tabler/icons-react-native/IconWallet';
+import IconHistory from '@tabler/icons-react-native/IconHistory';
+import IconMoodSmile from '@tabler/icons-react-native/IconMoodSmile';
+import IconMoodSad from '@tabler/icons-react-native/IconMoodSad';
 import { Colors } from '../common/Colors';
+
+const IconFileMedical = IconStethoscope;
 
 const ICON_MAP = {
   'shopping-cart': IconShoppingCart,

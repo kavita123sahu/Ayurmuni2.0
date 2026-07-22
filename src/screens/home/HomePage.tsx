@@ -17,7 +17,6 @@ import {
   RefreshControl,
   Modal,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
@@ -41,11 +40,13 @@ import { useScrollHide } from '../../context/ScrollHideContext';
 import {
   getHomeHeaderTotalHeight,
   getScreenBottomPadding,
+  HOME_SECTION_GAP,
+  SCREEN_PADDING_H,
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
-import { useAppointmentHistory } from '../../hooks/useConsultData';
+import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { requireAuth, navigateToLogin } from '../../services/guestAuth';
@@ -76,12 +77,11 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
-  console.log("YogaSessionYogaSession", YogaSession)
   const { promptLocationOnHome } = useLocation();
-  const { AppointData, refreshUpcoming, loadMore, prefetchUntil, loading, loadingMore, hasMore } =
-    useAppointmentHistory();
-  const homePrefetchDoneRef = useRef(false);
+  const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
+    useUpcomingAppointmentsPreview();
   const insets = useSafeAreaInsets();
+
   const {
     onScroll,
     headerContentAnimatedStyle,
@@ -94,7 +94,8 @@ const HomePage: React.FC = (props: any) => {
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
 
   const handleSearchPress = useCallback(() => {
-    props.navigation.navigate('ProductsScreen');
+    const stackNav = props.navigation.getParent?.() || props.navigation;
+    stackNav.navigate('SearchScreen');
   }, [props.navigation]);
 
   useFocusEffect(
@@ -106,130 +107,23 @@ const HomePage: React.FC = (props: any) => {
     }, [promptLocationOnHome]),
   );
 
-  const normalizedData = useMemo(() => {
-    if (!Array.isArray(AppointData)) {
-      return [];
-    }
-
-    return AppointData.map(item => ({
-      consultation_id: item?.consultation_id,
-      doctorName: item?.doctor?.doctor_name || "",
-
-      therapies: Array.isArray(item?.rawData?.doctor?.health_diseases)
-        ? item.rawData.doctor.health_diseases
-          .map((disease: any) => disease.name)
-          .join(", ")
-        : "",
-      date: item?.appointment_date,
-      time: item?.start_time,
-      status: item?.appointment_status,
-      image: item?.doctor?.doctor_image,
-      rawData: item,
-    }));
-  }, [AppointData]);
-
-  const hasUpcomingAppointments = useCallback((items: any[]) => {
-    if (!Array.isArray(items) || items.length === 0) {
-      return false;
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return items.some(item => {
-      const appointmentDate = new Date(item?.appointment_date);
-      if (Number.isNaN(appointmentDate.getTime())) {
-        return false;
-      }
-      appointmentDate.setHours(0, 0, 0, 0);
-      return appointmentDate >= today;
-    });
-  }, []);
-
-  useEffect(() => {
-    if (loading || homePrefetchDoneRef.current) {
-      return;
-    }
-
-    if (AppointData.length === 0) {
-      homePrefetchDoneRef.current = true;
-      return;
-    }
-
-    if (hasUpcomingAppointments(AppointData) || !hasMore) {
-      homePrefetchDoneRef.current = true;
-      return;
-    }
-
-    homePrefetchDoneRef.current = true;
-    prefetchUntil(hasUpcomingAppointments, 10);
-  }, [loading, AppointData, hasMore, hasUpcomingAppointments, prefetchUntil]);
-
-  const sortedUpcomingAppointments = useMemo(() => {
-    if (!Array.isArray(normalizedData)) {
-      return [];
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Today's date only
-
-    return normalizedData
-      .filter(item => {
-        const appointmentDate = new Date(item.date);
-        appointmentDate.setHours(0, 0, 0, 0);
-
-        return appointmentDate >= today;
-      })
-      .sort((a, b) => {
-        return (
-          new Date(a.date).getTime() -
-          new Date(b.date).getTime()
-        );
-      });
-  }, [normalizedData]);
+  const sortedUpcomingAppointments = useMemo(
+    () => upcomingAppointments,
+    [upcomingAppointments],
+  );
 
 
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      homePrefetchDoneRef.current = false;
-      await refreshHomeData();
-      await refreshUpcoming();
+      await Promise.all([refreshHomeData(), refreshPreview()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshUpcoming]);
+  }, [refreshHomeData, refreshPreview]);
 
 
-  // const data = useMemo(() => [
-  //   {
-  //     title: 'Prakriti',
-  //     status:
-  //       customerData?.prakriti_progress === 100
-  //         ? 'Profile Complete'
-  //         : 'Profile Pending',
-  //     screen: 'PatientFAQ',
-  //     progress: customerData?.prakriti_progress ?? 0,
-  //   },
-
-  //   {
-  //     title: 'Medical History',
-  //     status:
-  //       customerData?.medical_history_progress === 100
-  //         ? 'Profile Complete'
-  //         : 'Profile Pending',
-  //     screen: 'MedicalHistory',
-  //     progress:
-  //       customerData?.medical_history_progress ?? 0,
-  //   },
-  // ], [customerData]);
-  const progressPercentage = useMemo(() => {
-    if (customerData?.prakriti_progress != null) {
-      return Math.round(customerData.prakriti_progress);
-    }
-    return null;
-  }, [customerData]);
   useEffect(() => {
     if (
       loadingCustomer ||
@@ -259,15 +153,16 @@ const HomePage: React.FC = (props: any) => {
         <Text style={styles.icon}>{icon}</Text>
       </View>
 
-      <Text style={styles.comingSoonTitle}>{title}</Text>
+      <View style={styles.comingSoonTextWrap}>
+        <Text style={styles.comingSoonTitle}>{title}</Text>
 
-      <Text style={styles.comingSoonSubtitle}>
-        We’re preparing personalized recommendations for you.
-        Stay tuned for upcoming Ayurvedic wellness features.
-      </Text>
+        <Text style={styles.comingSoonSubtitle} numberOfLines={2}>
+          We’re preparing personalized recommendations for you.
+        </Text>
 
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>Coming Soon</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Coming Soon</Text>
+        </View>
       </View>
     </View>
   );
@@ -279,7 +174,7 @@ const HomePage: React.FC = (props: any) => {
       <Animated.View
         style={[
           styles.headerShell,
-          { paddingTop: insets.top, paddingHorizontal: 16 },
+          { paddingTop: insets.top, paddingHorizontal: SCREEN_PADDING_H },
           headerShellAnimatedStyle,
         ]}
       >
@@ -323,42 +218,33 @@ const HomePage: React.FC = (props: any) => {
         removeClippedSubviews
         renderItem={() => (
           <View style={styles.sections}>
+            <View style={styles.homeSection}>
+              {loadingCategories ? (
+                <HomeCategorySkeleton />
+              ) : (
+                <HomeCategory data={categories} navigation={props.navigation} />
+              )}
+            </View>
 
-            {loadingCategories ? (
-              <HomeCategorySkeleton />
-            ) : (
-              <HomeCategory data={categories} navigation={props.navigation} />
-            )}
-
+            {/* <View style={styles.homeSection}> */}
             <Detailimages
               images={product.images}
-              itemWidth={width - 40}
+              itemWidth={width - SCREEN_PADDING_H * 2}
               itemHeight={156}
               DynamicResize="contain"
               autoSlide
+              embedded
             />
+            {/* </View> */}
 
 
-            {loading ? (
-              <>
+            {(loadingAppointments || sortedUpcomingAppointments.length > 0) && (
+              <View style={styles.homeSection}>
                 <SectionHeader
+                  home
                   title="Upcoming Appointments"
-                  actionText="View all"
-                  onPress={async () => {
-                    if (await requireAuth('Please login to view appointments')) {
-                      props.navigation.navigate('Appointments');
-                    }
-                  }}
-                />
-                <HorizontalAppointmentSkeleton />
-              </>
-            ) : sortedUpcomingAppointments?.length > 0 ? (
-              <>
-                <SectionHeader
-                  title="Upcoming Appointments"
-                  actionText={sortedUpcomingAppointments.length > 1
-                    ? 'View all'
-                    : ''
+                  actionText={
+                    !loadingAppointments && sortedUpcomingAppointments.length > 1 ? 'View all' : ''
                   }
                   onPress={async () => {
                     if (await requireAuth('Please login to view appointments')) {
@@ -366,64 +252,58 @@ const HomePage: React.FC = (props: any) => {
                     }
                   }}
                 />
-                <FlatList
-                  horizontal
-                  data={sortedUpcomingAppointments}
-                  keyExtractor={(item, index) =>
-                    `${item?.consultation_id || index}`
-                  }
-                  contentContainerStyle={{ marginBottom: 15 }}
-                  renderItem={({ item }) => (
-                    <RenderAppoint
-                      item={item}
-                      navigation={props.navigation}
-                      isHorizontal
-                    />
-                  )}
-                  showsHorizontalScrollIndicator={false}
-                  onEndReached={() => {
-                    if (hasMore && !loadingMore) {
-                      loadMore();
+                {loadingAppointments ? (
+                  <HorizontalAppointmentSkeleton />
+                ) : (
+                  <FlatList
+                    horizontal
+                    data={sortedUpcomingAppointments}
+                    keyExtractor={(item, index) =>
+                      `${item?.consultation_id || index}`
                     }
-                  }}
-                  onEndReachedThreshold={0.5}
-                  ListFooterComponent={
-                    loadingMore ? (
-                      <View style={styles.appointmentLoadMore}>
-                        <ActivityIndicator size="small" color={Colors.primaryColor} />
-                      </View>
-                    ) : null
-                  }
-                />
-              </>
-            ) : null}
-
-            <SectionHeader title="Suggested Doctors" actionText={SuggestDoctor.length > 1
-              ? 'View all'
-              : ''} onPress={() => props.navigation.navigate('AllDoctors', {
-                all: true
-              })} />
-
-            {loadingDoctors ? (
-              <TopDoctorsCardSkeleton />
-            ) : (
-              <>
-
-                <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
-
-              </>
-
+                    contentContainerStyle={styles.horizontalList}
+                    renderItem={({ item }) => (
+                      <RenderAppoint
+                        item={item}
+                        navigation={props.navigation}
+                        isHorizontal
+                      />
+                    )}
+                    showsHorizontalScrollIndicator={false}
+                  />
+                )}
+              </View>
             )}
 
-            {productData?.length > 0 && (
-              <>
-                <SectionHeader
-                  title="Suggested Medicines"
-                  actionText={productData.length > 1
-                    ? 'View all'
-                    : ''}
+            <View style={styles.homeSection}>
+              <SectionHeader
+                home
+                title="Suggested Doctors"
+                actionText={SuggestDoctor.length > 1 ? 'View all' : ''}
+                onPress={() =>
+                  props.navigation.navigate('AllDoctors', {
+                    all: true,
+                  })
+                }
+              />
+              {loadingDoctors ? (
+                <TopDoctorsCardSkeleton />
+              ) : (
+                <TopDoctorsCard
+                  data={SuggestDoctor}
+                  navigation={props.navigation}
+                  home
                 />
+              )}
+            </View>
 
+            {productData?.length > 0 && (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Suggested Medicines"
+                  actionText={productData.length > 1 ? 'View all' : ''}
+                />
                 {loadingProducts ? (
                   <TopSellingListSkeleton />
                 ) : (
@@ -432,83 +312,34 @@ const HomePage: React.FC = (props: any) => {
                     navigation={props.navigation}
                     setProductData={setProductData}
                     nested
+                    home
                   />
                 )}
-              </>
+              </View>
             )}
 
-
-
-            {loadingProducts ? (
-              <TopSellingListSkeleton />
-            ) : productData.length > 0 ? (
-              <>
-                <SectionHeader
-                  title="Suggested Products"
-                  actionText={productData.length > 1
-                    ? 'View all'
-                    : ''}
-                />
-
-                <TopSellingList
-                  data={productData}
-                  navigation={props.navigation}
-                  setProductData={setProductData}
-                  nested
-                />
-
-
-              </>
-            ) : null}
-
             {YogaSession.length > 0 && (
-              <>
-                <SectionHeader title="Yoga’s" onPress={() => props.navigation.navigate('YogaScreen')} actionText={YogaSession.length > 1
-                  ? 'View all'
-                  : ''} />
-
-                <SuggestedCard data={YogaSession} navigation={props.navigation} />
-              </>)}
-
-            {/* {YogaSession.length > 0 && (
-              <>
-                <SectionHeader title="Suggested Diet Plan" actionText={YogaSession.length > 1
-                  ? 'View all'
-                  : ''} />
-
-
-                <SuggestedCard data={YogaSession} navigation={props.navigation} />
-              </>)} */}
-
-
-            {/* {YogaSession.length > 0 && (
-              <>
-                <SectionHeader title="Panchakarma" actionText={YogaSession.length > 1
-                  ? 'View all'
-                  : ''} />
-
-                <SuggestedCard data={YogaSession} navigation={props.navigation} price={true} />
-              </>)} */}
-
-            <>
-
-              {YogaSession.length == 0 && (
-                <ComingSoonCard
-                  title="Personalized Diet Plans"
-                  icon="🥗"
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Yoga's"
+                  actionText={YogaSession.length > 1 ? 'View all' : ''}
+                  onPress={() => props.navigation.navigate('YogaScreen')}
                 />
+                <SuggestedCard
+                  data={YogaSession}
+                  navigation={props.navigation}
+                  home
+                />
+              </View>
+            )}
+
+            <View style={[styles.homeSection, styles.comingSoonGroup]}>
+              {YogaSession.length === 0 && (
+                <ComingSoonCard title="Personalized Diet Plans" icon="🥗" />
               )}
-            </>
-
-            <>
-
-              {/* {YogaSession.length == 0 && ( */}
-              <ComingSoonCard
-                title="Panchakarma"
-                icon="🌿"
-              />
-              {/* )} */}
-            </>
+              <ComingSoonCard title="Panchakarma" icon="🌿" />
+            </View>
           </View>
         )}
       />
@@ -585,10 +416,20 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_PADDING_H,
   },
   sections: {
-    gap: 4,
+    gap: HOME_SECTION_GAP,
+    paddingBottom: 8,
+  },
+  homeSection: {
+    width: '100%',
+  },
+  horizontalList: {
+    paddingRight: 4,
+  },
+  comingSoonGroup: {
+    gap: 12,
   },
   appointmentLoadMore: {
     justifyContent: 'center',
@@ -861,58 +702,55 @@ const styles = StyleSheet.create({
   },
   comingSoonCard: {
     backgroundColor: '#F8FCF6',
-    marginHorizontal: 16,
-    marginBottom: 18,
-    borderRadius: 16,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#D8E8D4',
   },
-
   iconContainer: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: 12,
   },
-
   icon: {
-    fontSize: 28,
+    fontSize: 20,
   },
-
+  comingSoonTextWrap: {
+    flex: 1,
+  },
   comingSoonTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 2,
   },
-
   comingSoonSubtitle: {
-    fontSize: 13,
+    fontSize: 11.5,
     color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 15,
+    fontFamily: Fonts.PoppinsRegular,
   },
-
   badge: {
+    alignSelf: 'flex-start',
     backgroundColor: Colors.primaryColor,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 20,
+    marginTop: 6,
   },
-
   badgeText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 10,
   },
+
 
 });
 

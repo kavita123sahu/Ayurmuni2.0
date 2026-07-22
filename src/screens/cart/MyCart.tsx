@@ -67,10 +67,10 @@ const MyCart = ({ navigation }: any) => {
     console.log('CartDataCartData', CartData);
 
     const mappedSections = useMemo<SectionType[]>(() => {
-        const sections: SectionType[] = [];
+        const next: SectionType[] = [];
 
         if (CartData?.my_cart?.items?.length) {
-            sections.push({
+            next.push({
                 id: 'cart',
                 title: 'My Cart',
                 type: 'cart',
@@ -79,7 +79,7 @@ const MyCart = ({ navigation }: any) => {
         }
 
         if (CartData?.prescription_cart?.items?.length) {
-            sections.push({
+            next.push({
                 id: 'prescribed',
                 title: 'Prescribed Medicines',
                 type: 'prescribed',
@@ -95,29 +95,35 @@ const MyCart = ({ navigation }: any) => {
             });
         }
 
-        return sections;
+        return next;
     }, [CartData]);
+
+    const cartItemCount = useMemo(
+        () => sections.reduce((count, section) => count + section.items.length, 0),
+        [sections],
+    );
+
+    const hasCartItems = cartItemCount > 0;
 
 
     useEffect(() => {
-
         setSections(mappedSections);
     }, [mappedSections]);
 
     useEffect(() => {
-        if (
-            sections.length &&
-            selectedItems.length === 0
-        ) {
+        if (!hasCartItems) {
+            setSelectedItems([]);
+            return;
+        }
+
+        if (selectedItems.length === 0) {
             setSelectedItems(
                 sections.flatMap(section =>
-                    section.items.map(
-                        item => item.id,
-                    ),
+                    section.items.map(item => item.id),
                 ),
             );
         }
-    }, [sections]);
+    }, [sections, hasCartItems]);
 
     const toggleSectionSelection =
         useCallback(
@@ -196,12 +202,14 @@ const MyCart = ({ navigation }: any) => {
 
             if (newQty === 0) {
                 setSections(prev =>
-                    prev.map(section => ({
-                        ...section,
-                        items: section.items.filter(
-                            item => item.variant_id !== variantId,
-                        ),
-                    })),
+                    prev
+                        .map(section => ({
+                            ...section,
+                            items: section.items.filter(
+                                item => item.variant_id !== variantId,
+                            ),
+                        }))
+                        .filter(section => section.items.length > 0),
                 );
             } else {
                 setSections(prev =>
@@ -273,13 +281,32 @@ const MyCart = ({ navigation }: any) => {
         Math.round(Number(CartData?.my_cart?.subtotal || 0) +
             Number(CartData?.prescription_cart?.subtotal || 0));
 
+    const cartSection = sections.find(item => item.type === 'cart');
+    const prescribedSection = sections.find(item => item.type === 'prescribed');
+    const showTabs =
+        (cartSection?.items.length ?? 0) > 0 &&
+        (prescribedSection?.items.length ?? 0) > 0;
+
     const currentSection = sections.find(
         item =>
             item.type ===
-            (activeTab === 'cart'
-                ? 'cart'
-                : 'prescribed'),
+            (activeTab === 'cart' ? 'cart' : 'prescribed'),
     );
+
+    useEffect(() => {
+        if (!hasCartItems) {
+            return;
+        }
+
+        if (activeTab === 'cart' && !cartSection?.items.length && prescribedSection?.items.length) {
+            setActiveTab('prescribed');
+            return;
+        }
+
+        if (activeTab === 'prescribed' && !prescribedSection?.items.length && cartSection?.items.length) {
+            setActiveTab('cart');
+        }
+    }, [activeTab, cartSection, prescribedSection, hasCartItems]);
 
     const handleCheckout = () => {
 
@@ -299,9 +326,12 @@ const MyCart = ({ navigation }: any) => {
     };
 
 
+    const footerBottomPad = Math.max(insets.bottom, 12);
+
     return (
         <SafeAreaView
             style={styles.container}
+            edges={['top', 'left', 'right']}
         >
 
             <StatusBar
@@ -339,7 +369,7 @@ const MyCart = ({ navigation }: any) => {
                 </View>
             ) : loading ? (
                 <MyProductCardSkeleton />
-            ) : sections.length === 0 ? (
+            ) : !hasCartItems ? (
                 <View style={styles.emptyContainer}>
                     <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
 
@@ -362,46 +392,46 @@ const MyCart = ({ navigation }: any) => {
                 </View>
             ) : (
                 <>
-                    (
                     <ScrollView
-                        showsVerticalScrollIndicator={
-                            false
-                        }
-                        contentContainerStyle={{
-                            paddingBottom: 180,
-                            // paddingHorizontal: 20,
-                        }}
+                        style={styles.scrollView}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingBottom: 16 },
+                        ]}
                     >
 
-                        <View style={styles.tabContainer}>
-                            <TouchableOpacity
-                                style={styles.tabBtn}
-                                onPress={() => setActiveTab('cart')}>
-                                <Text
-                                    style={[
-                                        styles.tabText,
-                                        activeTab === 'cart' &&
-                                        styles.activeTabText,
-                                    ]}>
-                                    My Cart
-                                </Text>
-                            </TouchableOpacity>
+                        {showTabs ? (
+                            <View style={styles.tabContainer}>
+                                <TouchableOpacity
+                                    style={styles.tabBtn}
+                                    onPress={() => setActiveTab('cart')}>
+                                    <Text
+                                        style={[
+                                            styles.tabText,
+                                            activeTab === 'cart' &&
+                                            styles.activeTabText,
+                                        ]}>
+                                        My Cart
+                                    </Text>
+                                </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.tabBtn}
-                                onPress={() =>
-                                    setActiveTab('prescribed')
-                                }>
-                                <Text
-                                    style={[
-                                        styles.tabText,
-                                        activeTab === 'prescribed' &&
-                                        styles.activeTabText,
-                                    ]}>
-                                    Prescribed
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                                <TouchableOpacity
+                                    style={styles.tabBtn}
+                                    onPress={() =>
+                                        setActiveTab('prescribed')
+                                    }>
+                                    <Text
+                                        style={[
+                                            styles.tabText,
+                                            activeTab === 'prescribed' &&
+                                            styles.activeTabText,
+                                        ]}>
+                                        Prescribed
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : null}
 
 
                         <View style={styles.infoCard}>
@@ -414,7 +444,7 @@ const MyCart = ({ navigation }: any) => {
                             </Text>
                         </View>
 
-                        {currentSection && (() => {
+                        {currentSection?.items.length ? (() => {
 
                             const sectionIds =
                                 currentSection.items.map(
@@ -475,7 +505,7 @@ const MyCart = ({ navigation }: any) => {
                                     ))}
                                 </View>
                             );
-                        })()}
+                        })() : null}
 
 
 
@@ -503,7 +533,6 @@ const MyCart = ({ navigation }: any) => {
                             </View>
 
                         </View>
-                        {/* BILL */}
 
                         <View style={styles.billBox}>
 
@@ -555,42 +584,40 @@ const MyCart = ({ navigation }: any) => {
 
                     </ScrollView>
 
-                    <TouchableOpacity
-                        activeOpacity={0.9}
-                        disabled={
-                            selectedProducts.length ===
-                            0
-                        }
-                        onPress={handleCheckout}
-                        style={[
-                            styles.checkoutBtn,
-                            {
-                                bottom: insets.bottom > 0
-                                    ? insets.bottom : 10,
-                            },
-                        ]}
-                    >
-
-                        <Text
-                            style={
-                                styles.checkoutText} >
-                            Proceed To Checkout
-                        </Text>
-
-                        <View
-                            style={{
-                                minWidth: 70,
-                                alignItems: 'flex-end',
-                            }}
+                    <View style={[styles.checkoutFooter, { paddingBottom: footerBottomPad }]}>
+                        <TouchableOpacity
+                            activeOpacity={0.9}
+                            disabled={
+                                selectedProducts.length ===
+                                0
+                            }
+                            onPress={handleCheckout}
+                            style={[
+                                styles.checkoutBtn,
+                                selectedProducts.length === 0 && styles.checkoutBtnDisabled,
+                            ]}
                         >
 
-                            <Text style={styles.checkoutPrice}>
-                                Rs. {Math.round(total)}
+                            <Text
+                                style={
+                                    styles.checkoutText} >
+                                Proceed To Checkout
                             </Text>
 
-                        </View>
-                    </TouchableOpacity>
-                    )
+                            <View
+                                style={{
+                                    minWidth: 70,
+                                    alignItems: 'flex-end',
+                                }}
+                            >
+
+                                <Text style={styles.checkoutPrice}>
+                                    Rs. {Math.round(total)}
+                                </Text>
+
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </>
             )}
 
@@ -645,9 +672,16 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-
         paddingHorizontal: 20,
         backgroundColor: '#F8FAF8',
+    },
+
+    scrollView: {
+        flex: 1,
+    },
+
+    scrollContent: {
+        flexGrow: 1,
     },
 
     size: {
@@ -1038,19 +1072,25 @@ const styles = StyleSheet.create({
         marginVertical: 12,
     },
 
+    checkoutFooter: {
+        paddingTop: 12,
+        backgroundColor: '#F8FAF8',
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+    },
+
     checkoutBtn: {
-        position: 'absolute',
-        left: 20,
-        right: 20,
-        bottom: 20,
         height: 62,
         borderRadius: 18,
         backgroundColor: '#0D614E',
         flexDirection: 'row',
-        justifyContent:
-            'space-between',
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
+    },
+
+    checkoutBtnDisabled: {
+        opacity: 0.5,
     },
 
     checkoutText: {

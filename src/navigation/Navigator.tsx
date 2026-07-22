@@ -27,6 +27,7 @@ import Onboarding from "../screens/auth/Onboarding";
 import PatientFAQ from "../screens/PatientFAQ";
 import OrderHistory from "../screens/orders/OrderHistory";
 import ProductsScreen from "../screens/products/ProductsScreen";
+import ProductSearchScreen from "../screens/products/ProductSearchScreen";
 import TopCategories from "../screens/products/TopCategories";
 import ProductDetails from "../screens/products/ProductDetails";
 import ReviewPage from "../screens/products/ReviewPage";
@@ -182,7 +183,7 @@ const HomeStack = () => {
       <Stack.Screen name="SOSConfirmed" component={SOSConfirmed} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="SearchScreen" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
       <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ChatContainer } from '../../chatSystem/components/chat/chatContainer';
+import { AppointmentChatLike } from '../../chatSystem/utils/chatAccessUtils';
 
 interface ChatScreenProps {
     route?: {
@@ -12,6 +13,7 @@ interface ChatScreenProps {
             doctorAvatar?: string;
             patientAvatar?: string;
             appointmentDate?: string;
+            chatContext?: AppointmentChatLike;
         };
     };
 }
@@ -25,6 +27,7 @@ export default function ChatScreen({ route }: ChatScreenProps) {
         doctorAvatar,
         patientAvatar,
         appointmentDate,
+        chatContext,
     } = route?.params || {};
 
     return (
@@ -37,6 +40,7 @@ export default function ChatScreen({ route }: ChatScreenProps) {
                 doctorAvatar={doctorAvatar}
                 patientAvatar={patientAvatar}
                 appointmentDate={appointmentDate}
+                appointmentContext={chatContext}
             />
         </View>
     );

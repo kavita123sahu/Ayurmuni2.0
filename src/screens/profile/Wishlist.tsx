@@ -1,100 +1,85 @@
-import { View, Text, StyleSheet, StatusBar } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { Images } from '../../common/Images'
-import AppHeader from '../../components/AppHeader'
-import TopSellingList from '../../components/TopSellingList'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Colors } from '../../common/Colors'
-import { useHomeData } from '../../hooks/UseHomeData'
-import { WishlistSkeleton } from '../../simmerScreen/ShimmerHook'
-import EmptyState from '../../components/EmptyState'
-import *as _PRODUCT_SERVICES from '../../services/ProductServices'
+import { View, StyleSheet, StatusBar } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import AppHeader from '../../components/AppHeader';
+import TopSellingList from '../../components/TopSellingList';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { WishlistSkeleton } from '../../simmerScreen/ShimmerHook';
+import EmptyState from '../../components/EmptyState';
+import * as _PRODUCT_SERVICES from '../../services/ProductServices';
+
 const Wishlist = (props: any) => {
+  const [wishlistData, setWishlistData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
+  const fetchWishlist = useCallback(async () => {
+    try {
+      setLoading(true);
 
+      const res = await _PRODUCT_SERVICES.getProduct();
+      const data = res?.data?.results || [];
+      const wishlistItems = data
+        .filter((item: any) => item?.is_wishlist_item === true)
+        .map((item: any) => ({ ...item, is_wishlist_item: true }));
 
-    const [wishlistData, setWishlistData] = useState([]);
-    const [loading, setLoading] = useState(false);
+      setWishlistData(wishlistItems);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const fetchWishlist = async () => {
-        try {
-            setLoading(true);
+  useEffect(() => {
+    fetchWishlist();
+  }, [fetchWishlist]);
 
-            const res = await _PRODUCT_SERVICES.getProduct();
-            console.log("resporduct", res);
+  const hasItems = wishlistData.length > 0;
 
-            const Data = res?.data?.results || [];
-            const wishlistItems = Data.filter((item: any) => item?.is_wishlist_item === true);
-            console.log("wishlistItems", wishlistItems);
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-            setWishlistData(wishlistItems);
+      <AppHeader
+        title="My Wishlist"
+        onLeftPress={() => props.navigation.goBack()}
+      />
 
-        } catch (error) {
-            console.log(error);
-        } finally {
-            setLoading(false);
-        }
-    };
+      <View style={styles.content}>
+        {loading ? (
+          <WishlistSkeleton />
+        ) : hasItems ? (
+          <TopSellingList
+            data={wishlistData}
+            fav
+            isGrid
+            isWishlistScreen
+            navigation={props.navigation}
+            setProductData={setWishlistData}
+          />
+        ) : (
+          <EmptyState
+            imageSize={15}
+            iconName="heart"
+            title="Wishlist is Empty"
+            subtitle="No products added to wishlist yet."
+          />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
 
-    useEffect(() => {
-        fetchWishlist();
-    }, []);
-
-    return (
-
-
-        <SafeAreaView style={styles.container}>
-
-            <StatusBar barStyle={'dark-content'} backgroundColor={'#FFFFFF'} />
-
-            <AppHeader
-                title="My Wishlist"
-                onLeftPress={() => props.navigation.goBack()}
-                // rightIconName="bell"
-                onRightPress={() => console.log('Search clicked')}
-            />
-
-
-            <View style={{ flex: 1, paddingTop: 20, paddingHorizontal: 15, backgroundColor: '#FDFDFB' }}>
-
-                {
-                    loading ? (
-                        <WishlistSkeleton />
-                    ) : wishlistData?.length > 0 ? (
-                        <TopSellingList
-                            data={wishlistData}
-                            // fav={false}
-                            isGrid={true}
-                            navigation={props.navigation}
-                            setProductData={() => setWishlistData}
-                        />
-                    ) : (
-                        <EmptyState
-                            imageSize={15}
-
-                            iconName="heart"
-                            title="Wishlist is Empty"
-                            subtitle="No products added to wishlist yet."
-                        />
-                    )
-                }
-
-            </View>
-
-
-        </SafeAreaView>
-
-    )
-}
-
-export default Wishlist
-
+export default Wishlist;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        // padding: 16,
-        backgroundColor: '#FFFFFF',
-        // paddingBottom: 100
-    }
-})
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+    paddingTop: 20,
+    paddingHorizontal: 15,
+    backgroundColor: '#FDFDFB',
+  },
+});

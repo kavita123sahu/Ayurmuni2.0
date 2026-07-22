@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    FlatList,
+    SectionList,
     TouchableOpacity,
     Image,
     StatusBar,
@@ -16,37 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
-import { useNotifications } from '../hooks/useNotification';
-
-/* ------------------------------------------------------------------ */
-/*  TYPES                                                              */
-/* ------------------------------------------------------------------ */
-
-interface NotificationItem {
-    id: string;
-    title: string;
-    description: string;
-    time: string;
-    icon: any;
-    iconBg: string;
-    image?: any;
-    type: string;
-    section: string;
-
-    // ---- New API-aligned fields ----
-    isRead?: boolean;
-    isNew?: boolean;
-    notificationType?: string;          // e.g. "New Appointment"
-    eventType?: string;                 // e.g. "follow_up.day_reminder"
-    appointmentStatus?: 'pending' | 'completed' | 'cancelled' | string;
-    patientName?: string;
-    doctorName?: string;
-    reason?: string;
-    appointmentId?: string;
-    createdAt?: string;                 // ISO date string
-
-    rawData?: any;
-}
+import { useNotifications, NotificationItem } from '../hooks/useNotification';
 
 /* ------------------------------------------------------------------ */
 /*  TEXT HIGHLIGHTING HELPER (unchanged behaviour)                     */
@@ -264,7 +234,7 @@ const NotificationCard = ({
     onQuickMarkRead: (item: NotificationItem) => void;
 }) => {
     const status = item.appointmentStatus ?? item?.rawData?.data?.appointment_status;
-    const isUnread = item.isRead === false || (item.isRead === undefined && !item?.rawData?.is_read);
+    const isUnread = !item.isRead;
 
     const appointmentDate = item?.rawData?.data?.appointment_date ?? item?.rawData?.data?.date;
     const consultationType = item?.rawData?.data?.consultation_type ?? item?.rawData?.data?.mode;
@@ -280,21 +250,22 @@ const NotificationCard = ({
                     </View>
 
                     <View style={{ flex: 1 }}>
-                        {/* Top row: title + badges (left) — time + quick mark-read (right) */}
                         <View style={styles.cardTopRow}>
                             <View style={styles.cardTopLeft}>
-                                <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+                                <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
                                 <View style={styles.badgeRow}>
-                                    {item.isNew && (
+                                    {item.isNew && isUnread && (
                                         <View style={styles.newBadge}>
                                             <Text style={styles.newBadgeText}>New</Text>
                                         </View>
                                     )}
-                                    {item.notificationType && (
+                                    {item.notificationType ? (
                                         <View style={styles.typeBadge}>
-                                            <Text style={styles.typeBadgeText} numberOfLines={1}>{item.notificationType}</Text>
+                                            <Text style={styles.typeBadgeText} numberOfLines={1}>
+                                                {item.notificationType}
+                                            </Text>
                                         </View>
-                                    )}
+                                    ) : null}
                                     <View style={[styles.statusBadge, isUnread ? styles.statusUnread : styles.statusRead]}>
                                         <View style={[styles.statusDot, isUnread ? styles.dotUnread : styles.dotRead]} />
                                         <Text style={[styles.statusBadgeText, isUnread ? styles.statusUnreadText : styles.statusReadText]}>
@@ -309,7 +280,7 @@ const NotificationCard = ({
                                     <Text style={styles.clockIcon}>🕐</Text>
                                     <Text style={styles.time}>{item.time}</Text>
                                 </View>
-                                {isUnread && (
+                                {isUnread ? (
                                     <TouchableOpacity
                                         style={styles.quickReadBtn}
                                         onPress={() => onQuickMarkRead(item)}
@@ -317,17 +288,17 @@ const NotificationCard = ({
                                     >
                                         <Text style={styles.quickReadIcon}>✓</Text>
                                     </TouchableOpacity>
-                                )}
+                                ) : null}
                             </View>
                         </View>
 
-                        <Text style={styles.desc}>{renderStyledText(item.description)}</Text>
+                        {renderStyledText(item.description)}
 
-                        {item.eventType && (
+                        {item.eventType ? (
                             <View style={styles.eventTypeBadge}>
                                 <Text style={styles.eventTypeText}>{item.eventType}</Text>
                             </View>
-                        )}
+                        ) : null}
 
                         {/* Meta row: patient, appointment date, consultation type */}
                         {(item.patientName || appointmentDate || consultationType) && (
@@ -348,7 +319,9 @@ const NotificationCard = ({
                             <Text style={styles.infoText}>🩺  {item.doctorName}</Text>
                         )}
 
-                        {item?.image && <Image source={item.image} style={styles.image} />}
+                        {item?.rawData?.image ? (
+                            <Image source={item.rawData.image} style={styles.image} />
+                        ) : null}
 
                         {status && (
                             <View style={styles.buttonRow}>
@@ -393,12 +366,12 @@ const NotificationDetailModal = ({
     onMarkRead: (item: NotificationItem) => void;
     onViewAppointment: (item: NotificationItem) => void;
 }) => {
-    if (!item) return null;
-
-    const { width } = useWindowDimensions();
+    const { width, height } = useWindowDimensions();
     const isSmallDevice = width < 360;
 
-    const isUnread = item.isRead === false || (item.isRead === undefined && !item?.rawData?.is_read);
+    if (!item) return null;
+
+    const isUnread = !item.isRead;
     const patient = item.patientName ?? item?.rawData?.data?.patient_name;
     const doctor = item.doctorName ?? item?.rawData?.data?.doctor_name;
     const reason = item.reason ?? item?.rawData?.data?.reason;
@@ -406,105 +379,114 @@ const NotificationDetailModal = ({
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <Pressable style={styles.modalOverlay} onPress={onClose}>
-                <Pressable style={styles.modalCard} onPress={() => { }}>
-                    <View style={styles.modalHeaderRow}>
-                        <View style={styles.modalHeaderLeft}>
-                            <View style={styles.modalIconBox}>
-                                <Text style={styles.summaryIconGlyph}>🔔</Text>
-                            </View>
-                            <View>
-                                <Text style={styles.modalTitle}>{item.title}</Text>
-                                <View style={styles.modalMetaRow}>
-                                    <Text style={styles.modalMetaText}>{item.createdAt ?? item.time}</Text>
-                                    <View style={[styles.statusBadge, isUnread ? styles.statusUnread : styles.statusRead]}>
-                                        <View style={[styles.statusDot, isUnread ? styles.dotUnread : styles.dotRead]} />
-                                        <Text style={[styles.statusBadgeText, isUnread ? styles.statusUnreadText : styles.statusReadText]}>
-                                            {isUnread ? 'Unread' : 'Read'}
-                                        </Text>
+                <Pressable
+                    style={[styles.modalCard, { maxHeight: height * 0.85 }]}
+                    onPress={() => { }}
+                >
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        bounces={false}
+                        contentContainerStyle={styles.modalScrollContent}
+                    >
+                        <View style={styles.modalHeaderRow}>
+                            <View style={styles.modalHeaderLeft}>
+                                <View style={styles.modalIconBox}>
+                                    <Text style={styles.summaryIconGlyph}>🔔</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.modalTitle}>{item.title}</Text>
+                                    <View style={styles.modalMetaRow}>
+                                        <Text style={styles.modalMetaText}>{item.time}</Text>
+                                        <View style={[styles.statusBadge, isUnread ? styles.statusUnread : styles.statusRead]}>
+                                            <View style={[styles.statusDot, isUnread ? styles.dotUnread : styles.dotRead]} />
+                                            <Text style={[styles.statusBadgeText, isUnread ? styles.statusUnreadText : styles.statusReadText]}>
+                                                {isUnread ? 'Unread' : 'Read'}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
                             </View>
-                        </View>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text style={styles.modalCloseIcon}>✕</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.modalDivider} />
-
-                    {isUnread && (
-                        <View style={styles.modalUnreadBanner}>
-                            <Text style={styles.modalUnreadTitle}>🔔  This notification is unread</Text>
-                            <Text style={styles.modalUnreadSubtitle}>Mark as read to remove this status</Text>
-                        </View>
-                    )}
-
-                    <Text style={styles.modalSectionLabel}>💬  Message</Text>
-                    <View style={styles.modalBox}>
-                        <Text style={styles.modalBoxText}>{item.description}</Text>
-                    </View>
-
-                    {item.eventType && (
-                        <>
-                            <Text style={styles.modalSectionLabel}>ⓘ  Event Type</Text>
-                            <View style={styles.modalTag}>
-                                <Text style={styles.modalTagText}>{item.eventType}</Text>
-                            </View>
-                        </>
-                    )}
-
-                    {(patient || doctor || reason) && (
-                        <>
-                            <Text style={styles.modalSectionLabel}>📄  Details</Text>
-                            <View style={styles.modalDetailsBox}>
-                                {patient && (
-                                    <View style={styles.modalDetailRow}>
-                                        <Text style={styles.modalDetailLabel}>👤  Patient:</Text>
-                                        <Text style={styles.modalDetailValue}>{patient}</Text>
-                                    </View>
-                                )}
-                                {doctor && (
-                                    <View style={styles.modalDetailRow}>
-                                        <Text style={styles.modalDetailLabel}>🩺  Doctor:</Text>
-                                        <Text style={styles.modalDetailValue}>{doctor}</Text>
-                                    </View>
-                                )}
-                                {reason && (
-                                    <View style={styles.modalDetailRow}>
-                                        <Text style={styles.modalDetailLabel}>⚠️  Reason:</Text>
-                                        <Text style={styles.modalDetailValue}>{reason}</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </>
-                    )}
-
-                    <View style={[styles.modalButtonRow, isSmallDevice && styles.modalButtonRowCompact]}>
-                        {item.appointmentId && (
-                            <TouchableOpacity
-                                style={[styles.modalViewBtn, isSmallDevice && styles.actionBtnFull]}
-                                onPress={() => onViewAppointment(item)}
-                            >
-                                <Text style={styles.modalViewBtnText} numberOfLines={1}>⤴  View Appointment</Text>
+                            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Text style={styles.modalCloseIcon}>✕</Text>
                             </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                            style={[
-                                styles.modalMarkBtn,
-                                !isUnread && styles.modalMarkBtnDisabled,
-                                isSmallDevice && styles.actionBtnFull,
-                            ]}
-                            disabled={!isUnread}
-                            onPress={() => onMarkRead(item)}
-                        >
-                            <Text
-                                style={[styles.modalMarkBtnText, !isUnread && styles.modalMarkBtnTextDisabled]}
-                                numberOfLines={1}
+                        </View>
+
+                        <View style={styles.modalDivider} />
+
+                        {isUnread ? (
+                            <View style={styles.modalUnreadBanner}>
+                                <Text style={styles.modalUnreadTitle}>🔔  This notification is unread</Text>
+                                <Text style={styles.modalUnreadSubtitle}>Mark as read to update its status</Text>
+                            </View>
+                        ) : null}
+
+                        <Text style={styles.modalSectionLabel}>💬  Message</Text>
+                        <View style={styles.modalBox}>
+                            <Text style={styles.modalBoxText}>{item.description}</Text>
+                        </View>
+
+                        {item.eventType ? (
+                            <>
+                                <Text style={styles.modalSectionLabel}>ⓘ  Event</Text>
+                                <View style={styles.modalTag}>
+                                    <Text style={styles.modalTagText}>{item.eventType}</Text>
+                                </View>
+                            </>
+                        ) : null}
+
+                        {(patient || doctor || reason) ? (
+                            <>
+                                <Text style={styles.modalSectionLabel}>📄  Details</Text>
+                                <View style={styles.modalDetailsBox}>
+                                    {patient ? (
+                                        <View style={styles.modalDetailRow}>
+                                            <Text style={styles.modalDetailLabel}>👤  Patient</Text>
+                                            <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{patient}</Text>
+                                        </View>
+                                    ) : null}
+                                    {doctor ? (
+                                        <View style={styles.modalDetailRow}>
+                                            <Text style={styles.modalDetailLabel}>🩺  Doctor</Text>
+                                            <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{doctor}</Text>
+                                        </View>
+                                    ) : null}
+                                    {reason ? (
+                                        <View style={styles.modalDetailRow}>
+                                            <Text style={styles.modalDetailLabel}>⚠️  Reason</Text>
+                                            <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{reason}</Text>
+                                        </View>
+                                    ) : null}
+                                </View>
+                            </>
+                        ) : null}
+
+                        <View style={[styles.modalButtonRow, isSmallDevice && styles.modalButtonRowCompact]}>
+                            {item.appointmentId ? (
+                                <TouchableOpacity
+                                    style={[styles.modalViewBtn, isSmallDevice && styles.actionBtnFull]}
+                                    onPress={() => onViewAppointment(item)}
+                                >
+                                    <Text style={styles.modalViewBtnText} numberOfLines={1}>⤴  View Appointment</Text>
+                                </TouchableOpacity>
+                            ) : null}
+                            <TouchableOpacity
+                                style={[
+                                    styles.modalMarkBtn,
+                                    !isUnread && styles.modalMarkBtnDisabled,
+                                    isSmallDevice && styles.actionBtnFull,
+                                ]}
+                                disabled={!isUnread}
+                                onPress={() => onMarkRead(item)}
                             >
-                                ✓  {isUnread ? 'Mark as Read' : 'Already Read'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                                <Text
+                                    style={[styles.modalMarkBtnText, !isUnread && styles.modalMarkBtnTextDisabled]}
+                                    numberOfLines={1}
+                                >
+                                    ✓  {isUnread ? 'Mark as Read' : 'Already Read'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
                 </Pressable>
             </Pressable>
         </Modal>
@@ -515,52 +497,50 @@ const NotificationDetailModal = ({
 /*  EMPTY STATE                                                        */
 /* ------------------------------------------------------------------ */
 
-const EmptyState = () => (
-    <View style={styles.emptyState}>
-        <View style={styles.emptyIconCircle}>
-            <Text style={styles.emptyIconGlyph}>🔔</Text>
+const EmptyState = ({ filter }: { filter: 'all' | 'unread' | 'read' }) => {
+    const copy =
+        filter === 'unread'
+            ? {
+                title: 'No unread notifications',
+                subtitle: 'You have read everything. New alerts will appear here.',
+            }
+            : filter === 'read'
+                ? {
+                    title: 'No read notifications',
+                    subtitle: 'Notifications you mark as read will show up here.',
+                }
+                : {
+                    title: 'No notifications yet',
+                    subtitle: "You're all caught up. New updates will show up here.",
+                };
+
+    return (
+        <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+                <Text style={styles.emptyIconGlyph}>🔔</Text>
+            </View>
+            <Text style={styles.emptyTitle}>{copy.title}</Text>
+            <Text style={styles.emptySubtitle}>{copy.subtitle}</Text>
         </View>
-        <Text style={styles.emptyTitle}>No notifications yet</Text>
-        <Text style={styles.emptySubtitle}>
-            You're all caught up. New updates will show up here.
-        </Text>
-    </View>
-);
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  MAIN SCREEN                                                        */
 /* ------------------------------------------------------------------ */
 
 const NotificationsScreen = (props: any) => {
-    // const {
-    //     notifications,
-    //     loading,
-    //     loadingMore,
-    //     loadMore,
-    //     unreadCount,
-    //     filter,
-    //     typeFilter,
-    //     setFilter,
-    //     setTypeFilter,
-    //     markAsRead,
-    //     markAllRead,
-    //     clearNotifications,
-    //     refreshNotifications,
-    // } = useNotifications();
-
     const {
         notifications,
         loading,
         loadingMore,
+        refreshing,
         loadMore,
         unreadCount,
-
         filter,
         typeFilter,
-
         setFilter,
         setTypeFilter,
-
         markAsRead,
         markAllRead,
         clearNotifications,
@@ -584,10 +564,17 @@ const NotificationsScreen = (props: any) => {
     };
 
     const handleMarkRead = async (item: NotificationItem) => {
+        setSelectedItem(prev =>
+            prev && prev.id === item.id
+                ? { ...prev, isRead: true, isNew: false, rawData: { ...prev.rawData, is_read: true } }
+                : prev,
+        );
+
         await markAsRead?.(item.id);
-        setSelectedItem(prev => (prev ? { ...prev, isRead: true } : prev));
-        // keep the currently applied filter (e.g. is_read=true&notification_type=appointment) in sync
-        refreshNotifications?.();
+
+        if (filter === 'unread') {
+            closeDetail();
+        }
     };
 
     const handleMarkAllRead = () => {
@@ -605,22 +592,27 @@ const NotificationsScreen = (props: any) => {
         });
     };
 
-    const renderSection = (section: string, title: string) => {
-        const data = notifications?.filter((n: NotificationItem) => n.section === section);
-        if (!data || data.length === 0) return null;
+    const sections = useMemo(() => {
+        const sectionOrder = [
+            { key: 'upcoming', title: 'UPCOMING' },
+            { key: 'today', title: 'TODAY' },
+            { key: 'yesterday', title: 'YESTERDAY' },
+            { key: 'older', title: 'OLDER' },
+        ];
 
-        return (
-            <>
-                <SectionHeader title={title} />
-                {data.map((item: NotificationItem) => (
-                    <NotificationCard key={item.id} item={item} onPress={openDetail} onQuickMarkRead={handleMarkRead} />
-                ))}
-            </>
-        );
-    };
+        return sectionOrder
+            .map(section => ({
+                title: section.title,
+                data: (notifications ?? []).filter(
+                    (n: NotificationItem) =>
+                        n.section === section.key && n.title && n.description,
+                ),
+            }))
+            .filter(section => section.data.length > 0);
+    }, [notifications]);
 
     const total = notifications?.length ?? 0;
-    const unread = unreadCount ?? notifications?.filter((n: NotificationItem) => n.isRead === false).length ?? 0;
+    const unread = unreadCount ?? 0;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -628,49 +620,58 @@ const NotificationsScreen = (props: any) => {
 
             <AppHeader title="Notifications" onLeftPress={() => props.navigation.goBack()} />
 
-            <FlatList
-                data={notifications}
+            <SectionList
+                sections={sections}
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => <NotificationCard item={item} onPress={openDetail} onQuickMarkRead={handleMarkRead} />}
+                renderItem={({ item }) => (
+                    <NotificationCard
+                        item={item}
+                        onPress={openDetail}
+                        onQuickMarkRead={handleMarkRead}
+                    />
+                )}
+                renderSectionHeader={({ section: { title } }) => (
+                    <SectionHeader title={title} />
+                )}
+                stickySectionHeadersEnabled={false}
                 contentContainerStyle={{
                     paddingHorizontal: isSmallDevice ? 12 : 16,
                     paddingBottom: 24,
                     flexGrow: 1,
                 }}
                 onRefresh={refreshNotifications}
-                refreshing={loading}
+                refreshing={refreshing}
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
-                ListEmptyComponent={!loading ? <EmptyState /> : null}
+                ListEmptyComponent={
+                    !loading && !refreshing ? <EmptyState filter={filter} /> : null
+                }
                 ListFooterComponent={
                     loadingMore ? (
                         <View style={{ paddingVertical: 10 }}>
+                            <ActivityIndicator size="small" color="#0D614E" />
+                        </View>
+                    ) : loading && notifications.length === 0 ? (
+                        <View style={{ paddingVertical: 40 }}>
                             <ActivityIndicator size="small" color="#0D614E" />
                         </View>
                     ) : null
                 }
                 ListHeaderComponent={
                     <>
-                        {/* <SummaryCard
+                        <SummaryCard
                             total={total}
                             unread={unread}
                             onMarkAllRead={handleMarkAllRead}
                             onClearAll={handleClearAll}
                             isSmallDevice={isSmallDevice}
-                        /> */}
+                        />
                         <FilterTabs
                             activeFilter={filter}
                             onChangeFilter={setFilter}
                             activeType={typeFilter}
                             onChangeType={setTypeFilter}
                         />
-                        {total > 0 && (
-                            <>
-                                {renderSection('upcoming', 'UPCOMING')}
-                                {renderSection('today', 'TODAY')}
-                                {renderSection('yesterday', 'YESTERDAY')}
-                            </>
-                        )}
                     </>
                 }
             />
@@ -1182,9 +1183,12 @@ const styles = StyleSheet.create({
     modalCard: {
         backgroundColor: '#fff',
         borderRadius: 20,
-        padding: 20,
         width: '100%',
         maxWidth: 420,
+        overflow: 'hidden',
+    },
+    modalScrollContent: {
+        padding: 20,
     },
     modalHeaderRow: {
         flexDirection: 'row',
@@ -1291,17 +1295,24 @@ const styles = StyleSheet.create({
     modalDetailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        gap: 12,
     },
     modalDetailLabel: {
         fontSize: 13,
         color: '#64748B',
         fontFamily: Fonts.PoppinsRegular,
+        flexShrink: 0,
     },
     modalDetailValue: {
         fontSize: 13,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
+        flex: 1,
+        textAlign: 'right',
+    },
+    modalDetailValueWrap: {
+        flexWrap: 'wrap',
     },
     modalButtonRow: {
         flexDirection: 'row',

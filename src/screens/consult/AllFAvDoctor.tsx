@@ -26,6 +26,7 @@ import * as _CONSULT_SERVICES
 import SearchBar from '../../components/SearchBar';
 import { useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
+import { useDebounce } from '../../hooks/useDebaunce';
 
 
 const AllFavDoctors = (props: any) => {
@@ -35,19 +36,15 @@ const AllFavDoctors = (props: any) => {
     const [search, setSearch] =
         useState('');
 
+    const debouncedSearch = useDebounce(search, 400);
 
     const { favDoctor, onRefresh, loading } = useConsultData();
 
-    console.log('favDoctorfavDoctor', favDoctor);
-
-
     const filteredDoctors = useMemo(() => {
-        // ✅ Pehle sirf favourite doctors
         let list = favDoctor.filter(item => item?.is_favorite);
 
-        // ✅ Fir unhi favourites me search
-        if (search.trim()) {
-            const keyword = search.trim().toLowerCase();
+        if (debouncedSearch.trim()) {
+            const keyword = debouncedSearch.trim().toLowerCase();
 
             list = list.filter((doctor) => {
                 const name = doctor?.full_name?.toLowerCase() || '';
@@ -61,10 +58,7 @@ const AllFavDoctors = (props: any) => {
         }
 
         return list;
-
-
-
-    }, [favDoctor, search]);
+    }, [favDoctor, debouncedSearch]);
 
 
     const renderDoctorItem =

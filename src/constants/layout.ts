@@ -11,6 +11,12 @@ export const SCREEN_PADDING_H = 20;
 /** Standard vertical gap between sections */
 export const SECTION_GAP = 18;
 
+/** Home screen: gap between major blocks (categories, banner, doctors, etc.) */
+export const HOME_SECTION_GAP = 20;
+
+/** Home screen: space below section titles before list content */
+export const HOME_SECTION_HEADER_MB = 12;
+
 /** Inner card padding */
 export const CARD_PADDING = 14;
 

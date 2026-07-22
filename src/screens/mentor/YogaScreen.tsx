@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, FlatList, Image, StatusBar } from 'react-native';
 import SectionHeader from '../../components/SectionHeader';
 import SearchBar from '../../components/SearchBar';
@@ -9,6 +9,8 @@ import { Ionicons } from '../../common/Vector';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDebounce } from '../../hooks/useDebaunce';
+import { matchesSearch } from '../../utils/searchUtils';
 
 const DATA = [
     {
@@ -97,6 +99,43 @@ type Dataprops = {
     level: string;
 }
 const YogaScreen = (props: any) => {
+    const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebounce(searchText, 400);
+
+    const filteredPractice = useMemo(() => {
+        const q = debouncedSearch.trim();
+        if (!q) return DATA;
+        return DATA.filter((item) =>
+            matchesSearch(q, item.title, item.subtitle, item.type),
+        );
+    }, [debouncedSearch]);
+
+    const filteredStyles = useMemo(() => {
+        const q = debouncedSearch.trim();
+        if (!q) return STYLES_DATA;
+        return STYLES_DATA.filter((item) =>
+            matchesSearch(q, item.title, item.subtitle),
+        );
+    }, [debouncedSearch]);
+
+    const filteredMentors = useMemo(() => {
+        const q = debouncedSearch.trim();
+        if (!q) return MENTORS;
+        return MENTORS.filter((item) =>
+            matchesSearch(q, item.name, item.role),
+        );
+    }, [debouncedSearch]);
+
+    const showFeatured = useMemo(() => {
+        const q = debouncedSearch.trim();
+        if (!q) return true;
+        return matchesSearch(
+            q,
+            featuredData.title,
+            featuredData.desc,
+            featuredData.level,
+        );
+    }, [debouncedSearch]);
 
     const FeaturedCard = ({ title, desc, duration, level }: Dataprops) => {
         console.log('FeaturedCard data:', { title, desc, duration, level });
@@ -187,51 +226,66 @@ const YogaScreen = (props: any) => {
             />
 
             <SearchBar
-                placeholder="Search doctors, concerns..."
-
-                />
+                placeholder="Search sessions, styles, mentors..."
+                value={searchText}
+                onChangeText={setSearchText}
+            />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
 
-                <FeaturedCard {...featuredData} />
+                {showFeatured && <FeaturedCard {...featuredData} />}
 
-                <SectionHeader title="Continue Practicing" actionText="View History" />
+                {filteredPractice.length > 0 && (
+                    <>
+                        <SectionHeader title="Continue Practicing" actionText="View History" />
 
-                <FlatList
-                    data={DATA}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderItem}
-                    showsVerticalScrollIndicator={false}
-                />
-
-                <SectionHeader title="Explore Styles" />
-
-                <FlatList
-                    data={STYLES_DATA}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item, index }) => (
-                        <StyleCard
-                            data={item}
-                            index={index}
+                        <FlatList
+                            data={filteredPractice}
+                            keyExtractor={(item) => item.id}
+                            renderItem={renderItem}
+                            showsVerticalScrollIndicator={false}
+                            scrollEnabled={false}
                         />
-                    )}
-                    scrollEnabled={false} // because inside ScrollView
-                />
+                    </>
+                )}
 
-                <SectionHeader title="Expert Mentors" />
+                {filteredStyles.length > 0 && (
+                    <>
+                        <SectionHeader title="Explore Styles" />
 
-                <FlatList
-                    data={MENTORS}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item, index }) => (
-                        <MentorCard
-                            data={item}
-                            isActive={index === 0} // first selected
+                        <FlatList
+                            data={filteredStyles}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item, index }) => (
+                                <StyleCard
+                                    data={item}
+                                    index={index}
+                                />
+                            )}
+                            scrollEnabled={false}
                         />
-                    )}
-                />
+                    </>
+                )}
+
+                {filteredMentors.length > 0 && (
+                    <>
+                        <SectionHeader title="Expert Mentors" />
+
+                        <FlatList
+                            data={filteredMentors}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item, index }) => (
+                                <MentorCard
+                                    data={item}
+                                    isActive={index === 0}
+                                />
+                            )}
+                            scrollEnabled={false}
+                        />
+                    </>
+                )}
 
             </ScrollView>
         </SafeAreaView>

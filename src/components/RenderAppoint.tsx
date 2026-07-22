@@ -14,6 +14,7 @@ import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
 import AppointAction from "./AppointAction";
 import TablerIcon from "./TablerIcon";
+import { resolveAppointmentLookupId } from "../utils/appointmentUtils";
 export const DateTimeCard = ({
     item,
     isHorizontal = false,
@@ -77,7 +78,7 @@ const RenderAppoint = ({
 }: any) => {
 
 
-      const statusStyle = useMemo(
+    const statusStyle = useMemo(
         () => getStatusStyle(item?.status),
         [item])
 
@@ -98,14 +99,21 @@ const RenderAppoint = ({
         : "";
 
     console.log("therapiestherapies", therapies)
+
+    const openAppointmentDetails = () => {
+        const lookupId = resolveAppointmentLookupId(item);
+        if (!lookupId) {
+            return;
+        }
+        navigation.navigate("AppointmentDetails", {
+            consultation_id: item?.consultation_id,
+        });
+    };
+
     return isHorizontal ? (
         <TouchableOpacity
             style={[styles.card, styles.horizontalCard]}
-            onPress={() =>
-                navigation.navigate("AppointmentDetails", {
-                    consultation_id: item?.consultation_id,
-                })
-            }
+            onPress={openAppointmentDetails}
         >
             <View style={styles.horizontalTop}>
                 <View
@@ -190,11 +198,7 @@ const RenderAppoint = ({
     ) : (
         <TouchableOpacity
             style={styles.card}
-            onPress={() =>
-                navigation.navigate("AppointmentDetails", {
-                    consultation_id: item?.consultation_id,
-                })
-            }
+            onPress={openAppointmentDetails}
         >
             {/* Existing Full Card */}
             <View style={styles.contentContainer}>
@@ -283,20 +287,14 @@ const RenderAppoint = ({
                 onCancel={onCancel}
                 onJoinCall={() =>
                     navigation.navigate("PatientVideoCallScreen", {
-                        appointmentId: item?.consultation_id,
-                        // call_status: item?.call_status,
+                        appointmentId: resolveAppointmentLookupId(item),
                         role: "patient",
                         otherPartyName: item?.doctorName,
                         otherPartyImage: item?.image,
                     })
                 }
 
-                onViewDetails={() =>
-                    navigation.navigate("DoctorSlipScreen", {
-                        doctorID:
-                            item?.rawData?.doctor?.doctor_id,
-                    })
-                }
+                onViewDetails={openAppointmentDetails}
             />
         </TouchableOpacity>
     );

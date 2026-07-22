@@ -41,6 +41,8 @@ import PromoCard from '../../components/PromoCard';
 import { DoctorCardSkeleton, HomeCategorySkeleton, TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getConsultHistory, RecentConsultHistory } from '../../services/ConsultServce';
 import EmptyState from '../../components/EmptyState';
+import { useDebounce } from '../../hooks/useDebaunce';
+import { matchesSearch } from '../../utils/searchUtils';
 
 type NavigationProp =
   NativeStackNavigationProp<
@@ -67,8 +69,35 @@ const ConsultHome = () => {
   console.log("topDoctorstopDoctorstopDoctors", topDoctors);
 
   const [history, setHistory] = useState<any[]>([]);
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [recentLoading, setRecentLoading] = useState(false);
+
+  const filteredHistory = useMemo(() => {
+    const q = debouncedSearch.trim();
+    if (!q) return history;
+    return history.filter((item: any) =>
+      matchesSearch(
+        q,
+        item?.doctor?.doctor_name,
+        item?.concern,
+        item?.status,
+      ),
+    );
+  }, [history, debouncedSearch]);
+
+  const filteredTopDoctors = useMemo(() => {
+    const q = debouncedSearch.trim();
+    if (!q) return topDoctors;
+    return topDoctors.filter((doctor: any) =>
+      matchesSearch(
+        q,
+        doctor?.full_name,
+        doctor?.qualification,
+        doctor?.specialization_name,
+      ),
+    );
+  }, [topDoctors, debouncedSearch]);
 
   const fetchConsultHistory =
     useCallback(
@@ -215,7 +244,7 @@ const ConsultHome = () => {
 
 
       <FlatList
-        data={history}
+        data={filteredHistory}
         keyExtractor={(item) => String(item?.id)}
         renderItem={renderRecentDoctor}
         showsVerticalScrollIndicator={false}
@@ -284,7 +313,7 @@ const ConsultHome = () => {
                 doctor
               />
 
-              {topDoctors?.length > 0 && (
+              {filteredTopDoctors?.length > 0 && (
                 <>
                   <SectionHeader
                     title="Top Doctors"
@@ -293,7 +322,7 @@ const ConsultHome = () => {
                   />
 
                   <TopDoctorsCard
-                    data={topDoctors}
+                    data={filteredTopDoctors}
                     navigation={navigation}
                   />
                 </>

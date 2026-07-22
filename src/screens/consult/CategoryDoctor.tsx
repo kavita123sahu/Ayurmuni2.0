@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+    View,
+    StyleSheet,
+    StatusBar,
+    FlatList,
+    TouchableOpacity,
+    Text,
+} from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Header from '../../components/Header';
@@ -7,98 +14,60 @@ import SearchBar from '../../components/SearchBar';
 import PromoCard from '../../components/PromoCard';
 import SectionHeader from '../../components/SectionHeader';
 import { Images } from '../../common/Images';
-import { Styles } from '../../common/Styles';
-import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import AllDoctorCard from '../../components/AllDoctorCard';
 import { Fonts } from '../../common/Fonts';
-import { useConsultData } from '../../hooks/useConsultData';
+import { useAllDoctors } from '../../hooks/useConsultData';
 import { TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import EmptyState from '../../components/EmptyState';
+import { useDebounce } from '../../hooks/useDebaunce';
 
 const CategoryDoctor = (props: any) => {
-
     const route = useRoute<any>();
-
     const navigation = useNavigation<any>();
     const [showAll, setShowAll] = useState(false);
-    // const [loading, setLoading] = useState(false);
+    const [searchText, setSearchText] = useState('');
 
-    // const { categoryName } = route.params;
+    const { categoryName, categoryId } = route.params || {};
+    const debouncedSearch = useDebounce(searchText, 400);
 
-    const {
-        refreshing,
-        categories,
-        topDoctors,
-        recentDoctors,
-        onRefresh,
-        loading
-    } = useConsultData();
+    const apiFilters = useMemo(
+        () => ({
+            specialization: categoryId || '',
+            search: debouncedSearch.trim(),
+            page_size: 50,
+        }),
+        [categoryId, debouncedSearch],
+    );
 
-    const {
-        categoryName,
-        categoryId,
-        prakriti,
-        speciality,
-    } = route.params || {};
+    const { loading, doctorData } = useAllDoctors(apiFilters);
 
-    const productImage = require('../../assets/images/RecentsImage.png');
+    const displayDoctors = useMemo(
+        () => (showAll ? doctorData : doctorData.slice(0, 2)),
+        [doctorData, showAll],
+    );
 
-
-    console.log('topDoctorstopDoctors------->', topDoctors);
-
-
-    // if (loading) {
-    //     return (
-    //         <SafeAreaView style={{ flex: 1 }}>
-
-    //             <View
-    //                 style={{
-    //                     flex: 1,
-    //                     justifyContent: 'center',
-    //                     alignItems: 'center',
-    //                 }}
-    //             >
-    //                 <ActivityIndicator
-    //                     size="large"
-    //                     color={Colors.primaryColor}
-    //                 />
-
-    //                 <Text
-    //                     style={{
-    //                         marginTop: 10,
-    //                         fontSize: 14,
-    //                         fontFamily: Fonts.PoppinsMedium,
-    //                         color: '#64748B',
-    //                     }}
-    //                 >
-    //                     Loading doctors...
-    //                 </Text>
-
-    //             </View>
-
-    //         </SafeAreaView>
-    //     );
-    // }
-
-    const displayData =
-        showAll
-            ? topDoctors
-            : topDoctors.slice(0, 2);
-
-    // const formattedData =
-    //     displayData.length % 2 !== 0
-    //         ? [...displayData, { id: 'empty', empty: true }]
-    //         : displayData;
+    const handleDoctorPress = useCallback(
+        (item: any) => {
+            props.navigation.navigate('DoctorProfile', { doctorData: item });
+        },
+        [props.navigation],
+    );
 
     return (
-        <SafeAreaView style={{
-            flex: 1, marginBottom: 30,
-            paddingHorizontal: 20, backgroundColor: '#FDFDFB'
-        }}>
-
-            <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
+        <SafeAreaView
+            style={{
+                flex: 1,
+                marginBottom: 30,
+                paddingHorizontal: 20,
+                backgroundColor: '#FDFDFB',
+            }}
+        >
+            <StatusBar
+                barStyle={'dark-content'}
+                backgroundColor={Colors.background}
+            />
 
             <Header
                 title={categoryName}
@@ -107,55 +76,34 @@ const CategoryDoctor = (props: any) => {
             />
 
             <View style={styles.flexContain}>
-
                 <FlatList
-                    data={topDoctors}
-                    keyExtractor={(item) => item.id}
+                    data={displayDoctors}
+                    keyExtractor={item => String(item.id)}
                     showsVerticalScrollIndicator={false}
                     ListHeaderComponent={
                         <>
                             <SearchBar
-                                // value={search}
-                                // onChangeText={
-                                //     setSearch
-                                // }
-                                placeholder="Search doctor name or experience..."
-
+                                value={searchText}
+                                onChangeText={setSearchText}
+                                placeholder="Search doctor name or qualification..."
                             />
                             <PromoCard
                                 title="Consult with Specialists"
                                 desc="Over 50+ Medical Experts"
                                 imageLeftIconName="plus-bag"
                                 image={require('../../assets/images/doctorbanner.png')}
-                                buttontext='Book an appointment online'
+                                buttontext="Book an appointment online"
                                 showButton={false}
                             />
                             <SectionHeader title="Top Doctors" />
-
-
                         </>
                     }
-
-                    renderItem={({ item }) => {
-                        // ✅ Empty placeholder — kuch render mat karo
-                        if (item.empty) {
-                            return <View style={{ flex: 1, marginHorizontal: 6 }} />;
-                        }
-
-                        return (
-
-                            <AllDoctorCard
-                                item={item}
-
-                                onPress={(doc: any) => props.navigation.navigate(
-                                    'DoctorProfile',
-                                    { doctorData: item },
-                                )}
-                            // onPress={(doc: any) => props.navigation.navigate('DoctorProfile')}
-                            />
-                        );
-                    }}
-
+                    renderItem={({ item }) => (
+                        <AllDoctorCard
+                            item={item}
+                            onPress={() => handleDoctorPress(item)}
+                        />
+                    )}
                     ListEmptyComponent={
                         loading ? (
                             <TopDoctorsCardSkeleton />
@@ -163,44 +111,28 @@ const CategoryDoctor = (props: any) => {
                             <EmptyState
                                 image={Images.doctorImage}
                                 title="No doctor found"
-                                subtitle="Try adjusting your filters."
+                                subtitle="Try a different search or category."
                             />
                         )
                     }
-
                     ListFooterComponent={
-                        topDoctors.length > 2 ? (
+                        doctorData.length > 2 ? (
                             <View style={styles.footerContainer}>
-
                                 {!showAll && (
                                     <TouchableOpacity
                                         style={styles.discoverBtn}
-                                        onPress={() =>
-                                            setShowAll(true)
-                                        }
+                                        onPress={() => setShowAll(true)}
                                     >
-                                        <Text
-                                            style={
-                                                styles.discoverText
-                                            }
-                                        >
+                                        <Text style={styles.discoverText}>
                                             Discover More
                                         </Text>
                                     </TouchableOpacity>
                                 )}
 
-                                <Text
-                                    style={styles.countText}
-                                >
-                                    Showing {
-                                        showAll
-                                            ? topDoctors.length
-                                            : 2
-                                    } of {
-                                        topDoctors.length
-                                    } items
+                                <Text style={styles.countText}>
+                                    Showing {showAll ? doctorData.length : 2} of{' '}
+                                    {doctorData.length} items
                                 </Text>
-
                             </View>
                         ) : null
                     }
@@ -212,36 +144,31 @@ const CategoryDoctor = (props: any) => {
 
 export default CategoryDoctor;
 
-
 const styles = StyleSheet.create({
     flexContain: {
         flex: 1,
-
     },
-
     footerContainer: {
         alignItems: 'center',
         marginTop: 20,
         marginBottom: 10,
     },
-
     discoverBtn: {
         backgroundColor: '#0D614E',
         paddingVertical: 12,
         paddingHorizontal: 28,
         borderRadius: 12,
     },
-
     discoverText: {
         color: '#FFFFFF',
-        fontSize: 14, fontFamily: Fonts.PoppinsMedium,
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsMedium,
     },
-
     countText: {
         marginTop: 8,
         fontSize: 12,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsRegular,
-        marginBottom: 40
+        marginBottom: 40,
     },
-})
+});

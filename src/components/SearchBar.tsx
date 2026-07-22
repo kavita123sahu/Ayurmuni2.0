@@ -20,6 +20,10 @@ interface Props {
   onPress?: () => void;
   compact?: boolean;
   containerStyle?: ViewStyle;
+  showFilterIcon?: boolean;
+  autoFocus?: boolean;
+  onFilterPress?: () => void;
+  filterActive?: boolean;
 }
 
 const SearchBar: React.FC<Props> = ({
@@ -30,6 +34,10 @@ const SearchBar: React.FC<Props> = ({
   onPress,
   compact = false,
   containerStyle,
+  showFilterIcon = false,
+  autoFocus = false,
+  onFilterPress,
+  filterActive = false,
 }) => {
   const content = (
     <View
@@ -53,11 +61,20 @@ const SearchBar: React.FC<Props> = ({
         onChangeText={onChangeText}
         editable={!onPress}
         pointerEvents={onPress ? 'none' : 'auto'}
+        autoFocus={autoFocus}
+        returnKeyType="search"
       />
 
-      <View style={styles.trailing}>
-        <TablerIcon name="filter" size={16} color={Colors.primaryColor} />
-      </View>
+      {showFilterIcon ? (
+        <TouchableOpacity
+          style={[styles.trailing, filterActive && styles.trailingActive]}
+          onPress={onFilterPress}
+          activeOpacity={0.85}
+          disabled={!onFilterPress}
+        >
+          <TablerIcon name="filter" size={16} color={Colors.primaryColor} />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 
@@ -122,5 +139,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.BGIcon,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  trailingActive: {
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: Colors.primaryColor,
   },
 });

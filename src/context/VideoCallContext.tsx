@@ -240,7 +240,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const hasPermission = await requestCallPermissions();
       if (!hasPermission) {
-        setErrorMsg('Camera/Mic permission denied — Settings me jaake allow karo.');
+        setErrorMsg('Camera/Mic permission denied — Settings allow camera.');
         return;
       }
 
@@ -265,7 +265,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!cached || cached.expiresAt <= now) {
         const tokenRes = await apiGetCallToken(appointmentId);
         if (!tokenRes?.token || !tokenRes?.channel) {
-          throw new Error('Token response me token/channel missing hai.');
+          throw new Error('Token response me token/channel is missing.');
         }
         tokenInfo = buildTokenInfo(tokenRes);
         tokenInfoRef.current = tokenInfo;

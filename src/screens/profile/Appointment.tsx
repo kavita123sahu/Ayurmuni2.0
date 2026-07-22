@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import RescheduleModal from '../../components/RescheduleModal';
 import CancelAppointmentModal from '../../components/CancelAppointModal';
 import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
+import { normalizeAppointmentListItem, resolveAppointmentLookupId } from '../../utils/appointmentUtils';
 
 // ---- TabButton bahar nikala + memo lagaya ----
 // Ab yeh sirf apne props (activeTab) change hone pe hi re-render hoga,
@@ -63,23 +64,13 @@ const AppointmentScreen = (props: any) => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const prefetchAttemptsRef = useRef(0);
+  const MAX_TAB_PREFETCH = 10;
 
   // ---- Normalize karo sirf ek baar jab AppointData change ho ----
   const normalizedData = useMemo(() => {
     if (loading) return [];
-    return (AppointData ?? []).map((item: any) => ({
-      consultation_id: item?.consultation_id,
-      doctorName: item.doctor?.doctor_name || '',
-      therapies: Array.isArray(item?.doctor?.health_diseases)
-        ? item.doctor.health_diseases.map((i: any) => i.name).join(', ')
-        : '',
-      date: item.appointment_date,
-      time: item.start_time,
-      status: item.appointment_status,
-      call_status: item.call_status,
-      image: item.doctor?.doctor_image,
-      rawData: item,
-    }));
+    return (AppointData ?? []).map((item: any) => normalizeAppointmentListItem(item));
   }, [AppointData, loading]);
 
   // ---- Tab switch pe API call NAHI hoti, sirf client-side filter ----
@@ -92,6 +83,41 @@ const AppointmentScreen = (props: any) => {
   }, [normalizedData, activeTab]);
 
   const listData = loading ? [{ id: 'appointment-skeleton' }] : appointmentData;
+
+  // Load more when the active tab has no matches yet (e.g. upcoming on page 2+).
+  useEffect(() => {
+    if (loading || loadingMore || !hasMore) {
+      return;
+    }
+
+    if (appointmentData.length > 0) {
+      prefetchAttemptsRef.current = 0;
+      return;
+    }
+
+    if ((AppointData ?? []).length === 0) {
+      return;
+    }
+
+    if (prefetchAttemptsRef.current >= MAX_TAB_PREFETCH) {
+      return;
+    }
+
+    prefetchAttemptsRef.current += 1;
+    loadMore();
+  }, [
+    loading,
+    loadingMore,
+    hasMore,
+    appointmentData.length,
+    AppointData,
+    activeTab,
+    loadMore,
+  ]);
+
+  useEffect(() => {
+    prefetchAttemptsRef.current = 0;
+  }, [activeTab]);
 
   // ---- Tab change ka stable callback ----
   const handleTabChange = useCallback((tab: 'upcoming' | 'past') => {

@@ -25,11 +25,13 @@ interface Props {
   data: any[];
   isGrid?: boolean;
   fav?: boolean;
+  isWishlistScreen?: boolean;
   setProductData: React.Dispatch<React.SetStateAction<any[]>>;
   header?: boolean;
   navigation: any;
   nested?: boolean;
   onExternalScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  home?: boolean;
 }
 
 const SPACING = 12;
@@ -37,12 +39,14 @@ const SPACING = 12;
 const TopSellingList: React.FC<Props> = ({
   data,
   fav = true,
+  isWishlistScreen = false,
   setProductData,
   isGrid = false,
   header = false,
   navigation,
   nested = false,
   onExternalScroll,
+  home = false,
 }) => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(state => state.cart.variantQuantities);
@@ -92,72 +96,62 @@ const TopSellingList: React.FC<Props> = ({
   );
 
   const handleWishlist = useCallback(
-  async (item: any, isWishlistScreen = false) => {
-    if (!(await requireAuth('Please login to save wishlist items'))) return;
+    async (item: any) => {
+      if (!(await requireAuth('Please login to save wishlist items'))) return;
 
-    const oldValue = item?.is_wishlist_item;
+      const oldValue = item?.is_wishlist_item;
+      const variantId = String(item?.variant_id);
 
-    if (isWishlistScreen) {
-      // Remove from wishlist screen
-      setProductData(prev =>
-        prev.filter(product => product.variant_id !== item.variant_id),
-      );
-    } else {
-      // Toggle heart on other screens
-      setProductData(prev =>
-        prev.map(product =>
-          product.variant_id === item.variant_id
-            ? { ...product, is_wishlist_item: !oldValue }
-            : product,
-        ),
-      );
-    }
-
-    try {
-      await TogglewishlistProduct(item.variant_id, 'POST');
-    } catch (error) {
       if (isWishlistScreen) {
-        // Restore removed item
-        setProductData(prev => [item, ...prev]);
+        setProductData(prev =>
+          prev.filter(product => product.variant_id !== item.variant_id),
+        );
       } else {
-        // Restore previous state
         setProductData(prev =>
           prev.map(product =>
             product.variant_id === item.variant_id
-              ? { ...product, is_wishlist_item: oldValue }
+              ? { ...product, is_wishlist_item: !oldValue }
               : product,
           ),
         );
       }
-    }
-  },
-  [setProductData],
-);
-  // const handleWishlist = useCallback(
-  //   async (item: any) => {
-  //     if (!(await requireAuth('Please login to save wishlist items'))) return;
-  //     const oldValue = item?.is_wishlist_item;
-  //     setProductData(prev =>
-  //       prev.map(product =>
-  //         product.variant_id === item.variant_id
-  //           ? { ...product, is_wishlist_item: !oldValue }
-  //           : product,
-  //       ),
-  //     );
-  //     try {
-  //       await TogglewishlistProduct(item.variant_id, 'POST');
-  //     } catch {
-  //       setProductData(prev =>
-  //         prev.map(product =>
-  //           product.variant_id === item.variant_id
-  //             ? { ...product, is_wishlist_item: oldValue }
-  //             : product,
-  //         ),
-  //       );
-  //     }
-  //   },
-  //   [setProductData],
-  // );
+
+      dispatch(
+        updateProductItem({
+          variantId,
+          updates: { is_wishlist_item: !oldValue },
+        }),
+      );
+
+      try {
+        await TogglewishlistProduct(item.variant_id, 'POST');
+      } catch {
+        if (isWishlistScreen) {
+          setProductData(prev => {
+            const exists = prev.some(p => p.variant_id === item.variant_id);
+            if (exists) return prev;
+            return [{ ...item, is_wishlist_item: true }, ...prev];
+          });
+        } else {
+          setProductData(prev =>
+            prev.map(product =>
+              product.variant_id === item.variant_id
+                ? { ...product, is_wishlist_item: oldValue }
+                : product,
+            ),
+          );
+        }
+
+        dispatch(
+          updateProductItem({
+            variantId,
+            updates: { is_wishlist_item: oldValue },
+          }),
+        );
+      }
+    },
+    [setProductData, isWishlistScreen, dispatch],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -169,7 +163,7 @@ const TopSellingList: React.FC<Props> = ({
       const cartQty = variantQuantities[variantId] ?? item?.quantity ?? 0;
 
       return (
-        <View style={!isGrid ? styles.horizontalWrap : undefined}>
+        <View style={!isGrid ? [styles.horizontalWrap, home && styles.horizontalWrapHome] : undefined}>
           <ProductCard
             item={item}
             variant={isGrid ? 'grid' : 'horizontal'}
@@ -196,6 +190,8 @@ const TopSellingList: React.FC<Props> = ({
       addingVariantId,
       handleCartUpdate,
       handleWishlist,
+      home,
+      isWishlistScreen,
     ],
   );
 
@@ -229,6 +225,7 @@ const TopSellingList: React.FC<Props> = ({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={[
         styles.listContent,
+        home && styles.listContentHome,
         isGrid && styles.gridContent,
       ]}
       columnWrapperStyle={
@@ -263,11 +260,17 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 20,
   },
+  listContentHome: {
+    paddingBottom: 0,
+  },
   gridContent: {
     paddingHorizontal: 4,
   },
   horizontalWrap: {
     marginLeft: 8,
+  },
+  horizontalWrapHome: {
+    marginLeft: 0,
   },
   emptyCard: {
     width: '48%',

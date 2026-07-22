@@ -14,7 +14,7 @@ import {
     KeyboardAvoidingView,
     RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
@@ -41,6 +41,8 @@ const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.12);
 const DoctorSlot = (props: any) => {
 
     const { route, navigation } = props;
+    const insets = useSafeAreaInsets();
+    const footerBottomPad = Math.max(insets.bottom, 12);
 
     const [selectedRecords, setSelectedRecords] =
         useState<string[]>([]);
@@ -282,7 +284,6 @@ const DoctorSlot = (props: any) => {
                         />
                     }
                 >
-
                     <View style={styles.headerContainer}>
                         <View style={styles.profileContainer}>
                             <View style={styles.avatarBgWrapper}>
@@ -466,33 +467,6 @@ const DoctorSlot = (props: any) => {
 
                     </View>
 
-
-                    <View style={styles.footer}>
-                        <View>
-                            <Text style={styles.feeLabel}>Consult Fee</Text>
-                            <Text style={styles.price}>Rs {selectedSlot?.amount ?? doctorDetails?.consultation_fee ?? 0}</Text>
-                        </View>
-
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            disabled={loadingSlots || groupedSlots.length === 0}
-                            style={[
-                                styles.payBtn,
-                                (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && {
-                                    opacity: 0.5,
-                                    backgroundColor: '#CBD5E1',
-                                },
-                            ]}
-                            onPress={handleContinue}
-                        >
-                            <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-                            <Text style={styles.payText}>
-                                {loadingSlots ? 'Loading...' : 'Continue'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-
                     <UploadRecordModal
                         visible={modalVisible}
                         file={pickedFile}
@@ -502,6 +476,31 @@ const DoctorSlot = (props: any) => {
                     />
 
                 </ScrollView>
+
+                <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
+                    <View>
+                        <Text style={styles.feeLabel}>Consult Fee</Text>
+                        <Text style={styles.price}>Rs {selectedSlot?.amount ?? doctorDetails?.consultation_fee ?? 0}</Text>
+                    </View>
+
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        disabled={loadingSlots || groupedSlots.length === 0}
+                        style={[
+                            styles.payBtn,
+                            (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && {
+                                opacity: 0.5,
+                                backgroundColor: '#CBD5E1',
+                            },
+                        ]}
+                        onPress={handleContinue}
+                    >
+                        <Ionicons name="card-outline" size={18} color="#FFFFFF" />
+                        <Text style={styles.payText}>
+                            {loadingSlots ? 'Loading...' : 'Continue'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -511,8 +510,8 @@ export default DoctorSlot;
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
-    scrollContent: { paddingBottom: 40, backgroundColor: '#FFFFFF' },
-    headerContainer: { backgroundColor: '#0D614E0D', borderBottomLeftRadius: 56, borderBottomRightRadius: 56, paddingHorizontal: 20, paddingBottom: 28 },
+    scrollContent: { paddingBottom: 16, backgroundColor: '#FFFFFF' },
+    headerContainer: { backgroundColor: '#0D614E0D', borderBottomLeftRadius: 56, borderBottomRightRadius: 56, paddingHorizontal: 20, paddingBottom: 22 },
     headerTop: { flexDirection: 'row', paddingHorizontal: 20, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'space-between', minHeight: 50 },
     iconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
     backIcon: { width: 36, height: 36, resizeMode: 'contain' },
@@ -536,7 +535,7 @@ const styles = StyleSheet.create({
     },
 
     headerTitle: { fontSize: 22, color: '#1E293B', fontFamily: Fonts.PoppinsSemiBold },
-    profileContainer: { alignItems: 'center', marginTop: 18 },
+    profileContainer: { alignItems: 'center', marginTop: 14 },
     doctorName: { marginTop: 10, marginBottom: -5, fontSize: 20, fontFamily: Fonts.PoppinsSemiBold, color: '#1E293B' },
     speciality: { fontSize: 14, color: Colors.primaryColor, fontFamily: Fonts.PoppinsMedium },
     statsContainer: { flexDirection: 'row', marginTop: 22, marginHorizontal: 20, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
@@ -616,7 +615,16 @@ const styles = StyleSheet.create({
     emptyTitle: { marginTop: 10, fontSize: 16, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
     slotStatus: { marginTop: 3, fontSize: 11, color: '#64748B', fontFamily: Fonts.PoppinsMedium },
     input: { marginTop: 14, height: 120, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 16, fontFamily: Fonts.PoppinsMedium, fontSize: 14, color: '#1E293B' },
-    footer: { marginTop: 28, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    footer: {
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        backgroundColor: '#FFFFFF',
+    },
     feeLabel: { fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: '#94A3B8' },
     price: { fontSize: 28, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor },
     payBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryColor, height: 56, paddingHorizontal: 36, borderRadius: 18, flex: 1 },

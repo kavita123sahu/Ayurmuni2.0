@@ -142,12 +142,12 @@ export default React.memo(HomeCategory);
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginTop: 12,
-    marginBottom: 4,
+    marginTop: 0,
+    marginBottom: 0,
   },
   container: {
-    paddingRight: 16,
-    paddingVertical: 4,
+    paddingRight: 4,
+    paddingVertical: 0,
   },
   item: {
     width: ITEM_WIDTH,

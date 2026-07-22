@@ -38,6 +38,10 @@ const MedicineScreen = (props: any) => {
 
   const productImage = require('../../assets/images/RecentsImage.png');
 
+  const handleSearchPress = useCallback(() => {
+    stackNav.navigate('SearchScreen');
+  }, [stackNav]);
+
   const recentProducts = useMemo(
     () => [
       {
@@ -115,7 +119,10 @@ const MedicineScreen = (props: any) => {
         ]}
         nestedScrollEnabled
       >
-        <SearchBar placeholder="Search seeds, oils..." />
+        <SearchBar
+          placeholder="Search seeds, oils..."
+          onPress={handleSearchPress}
+        />
 
         <ActionCards data={actionItems} onpress={handleActionPress} />
 

@@ -4,6 +4,7 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
+    ScrollView,
 } from 'react-native';
 
 import ProfileHeader from '../../components/ProfileHeader';
@@ -203,18 +204,18 @@ const ProfilePage = ({ navigation }: any) => {
     };
 
     const MenuItem = ({ item }: { item: MenuEntry }) => (
-            <TouchableOpacity
-                style={styles.card}
-                activeOpacity={0.7}
-                onPress={() => handleNavigation(item)}
-            >
-                <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
-                    <TablerIcon name={item.icon} size={22} color="#1B5E54" />
-                </View>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
-            </TouchableOpacity>
-        );
+        <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            onPress={() => handleNavigation(item)}
+        >
+            <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
+                <TablerIcon name={item.icon} size={22} color="#1B5E54" />
+            </View>
+            <Text style={styles.menuTitle}>{item.title}</Text>
+            <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
+        </TouchableOpacity>
+    );
 
     const Section = ({ title, children }: any) => (
         <View style={styles.wrapper}>
@@ -224,28 +225,43 @@ const ProfilePage = ({ navigation }: any) => {
     );
 
     return (
-        <ScreenShell withTabBar scroll contentStyle={styles.shellContent}>
-            <Header title="Profile" subtitle="Manage your account" />
-            <ProfileHeader user={user} />
+        <>
+            <ScreenShell withTabBar contentStyle={styles.shellContent}>
+                <Header title="Profile" subtitle="Manage your account" />
 
-            <Section title="Account">
-                {accountMenu.map((item) => (
-                    <MenuItem key={item.id} item={item} />
-                ))}
-            </Section>
+                <ScrollView
+                    style={styles.scrollArea}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                >
 
-            <Section title="Preference">
-                {preferenceMenu.map((item) => (
-                    <MenuItem key={item.id} item={item} />
-                ))}
-            </Section>
+                    <ProfileHeader user={user} />
 
-            <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
-                <TablerIcon name="logout" size={20} color={Colors.errorColor} />
-                <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
+                    <Section title="Account">
+                        {accountMenu.map((item) => (
+                            <MenuItem key={item.id} item={item} />
+                        ))}
+                    </Section>
 
-            <Text style={styles.version}>APP VERSION 1.2</Text>
+                    <Section title="Preference">
+                        {preferenceMenu.map((item) => (
+                            <MenuItem key={item.id} item={item} />
+                        ))}
+                    </Section>
+
+                    <TouchableOpacity
+                        style={styles.logoutBtn}
+                        onPress={logout}
+                        activeOpacity={0.8}
+                    >
+                        <TablerIcon name="logout" size={20} color={Colors.errorColor} />
+                        <Text style={styles.logoutText}>Logout</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.version}>APP VERSION 1.2</Text>
+                </ScrollView>
+            </ScreenShell>
 
             {logoutVisible && (
                 <CommonModal
@@ -259,7 +275,7 @@ const ProfilePage = ({ navigation }: any) => {
                     onConfirm={handleLogout}
                 />
             )}
-        </ScreenShell>
+        </>
     );
 };
 
@@ -267,7 +283,15 @@ export default ProfilePage;
 
 const styles = StyleSheet.create({
     shellContent: {
+        flex: 1,
         paddingTop: 0,
+    },
+    scrollArea: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingTop: 4,
     },
     wrapper: {
         marginTop: SECTION_GAP,

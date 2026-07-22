@@ -29,7 +29,7 @@ import { Utils } from '../../common/Utils';
 import FeedbackModal from '../../components/FeedbackModal';
 import { useCreateReview } from '../../hooks/useCreateReview';
 import TablerIcon from '../../components/TablerIcon';
-import { isChatVisibleForAppointment } from '../../chatSystem/utils/chatAccessUtils';
+import { resolveAppointmentLookupId } from '../../utils/appointmentUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 
 const PrimaryButton = ({
@@ -69,7 +69,13 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
   const appointmentData = {
     doctorName: data?.doctor?.doctor_name || '',
     doctor_image: data?.doctor?.doctor_image || '',
-    consultationId: data?.appointment?.consultation_id,
+    consultationId: resolveAppointmentLookupId({
+      rawData: data,
+      appointment: data?.appointment,
+      consultation_id: data?.appointment?.consultation_id,
+      appointment_id: data?.appointment?.appointment_id,
+      id: data?.appointment?.id,
+    }),
     patientName: data?.appointment?.patient?.patient_name || '',
     patientAvatar: data?.appointment?.patient?.patient_image || ''
 
@@ -77,12 +83,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
   const isLive = data?.appointment?.call_status === 'in_progress';
 
-  const isChatVisible = isChatVisibleForAppointment({
-    call_status: data?.appointment?.call_status,
-    appointment_status: data?.appointment?.appointment_status,
-    appointment_date: data?.appointment?.appointment_date,
-    follow_up: data?.appointment?.follow_up,
-  });
+  const canOpenChat = !!appointmentData.consultationId;
 
   return (
     <View style={styles.heroCard}>
@@ -157,7 +158,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
             />
           )}
 
-          {isChatVisible && (
+          {canOpenChat && (
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.secondaryBtn}
@@ -167,9 +168,15 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                   doctorAvatar: data?.doctor?.doctor_image,
                   patientName: data?.appointment?.patient?.patient_name,
                   patientAvatar: data?.appointment?.patient?.patient_image,
-                  appointmentId: data?.appointment?.consultation_id,
+                  appointmentId: appointmentData.consultationId,
                   role: 'patient',
                   appointmentDate: data?.appointment?.appointment_date,
+                  chatContext: {
+                    call_status: data?.appointment?.call_status,
+                    appointment_status: data?.appointment?.appointment_status,
+                    appointment_date: data?.appointment?.appointment_date,
+                    follow_up: data?.appointment?.follow_up,
+                  },
                 });
               }}
             >
@@ -191,7 +198,12 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 };
 
 const AppointmentDetailScreen = ({ route, navigation }: any) => {
-  const { consultation_id } = route.params;
+  const routeConsultationId =
+    route.params?.consultation_id || route.params?.appointment_id;
+  const consultation_id = resolveAppointmentLookupId({
+    consultation_id: routeConsultationId,
+    ...route.params,
+  });
 
   console.log("consultionidddddd", consultation_id);
 
@@ -276,11 +288,22 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   };
 
   const fetchDetail = async () => {
+    // if (!consultation_id) {
+    //   showSuccessToast('Appointment id missing', 'error');
+    //   setLoading(false);
+    //   return;
+    // }
+
     try {
       setLoading(true);
       const res = await _CONSULT_SERVICE.getAppointmentDetail(consultation_id);
-      console.log("appointmnetstaaa", res)
-      setDetail(res?.data);
+      console.log("apponitdetaillss", res);
+      if (!res?.success) {
+        showSuccessToast(res?.message || 'Appointment not found', 'error');
+        setDetail(null);
+        return;
+      }
+      setDetail(res?.data ?? null);
     } catch (error) {
       showSuccessToast('Something went wrong', 'error');
     } finally {
@@ -295,13 +318,18 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     };
     init();
     fetchDetail();
-  }, []);
+  }, [consultation_id]);
 
   const normalizedAppointment = useMemo(() => {
     if (!detail?.appointment) return null;
     const item = detail;
     return {
-      consultation_id: consultation_id,
+      consultation_id:
+        resolveAppointmentLookupId({
+          consultation_id: item?.appointment?.consultation_id || consultation_id,
+          appointment: item?.appointment,
+          rawData: item,
+        }) || consultation_id,
       doctorName: item.doctor?.doctor_name || '',
       specialty: item.doctor?.doctor_specialization || 'General Physician',
       date: item.appointment?.appointment_date,
@@ -312,7 +340,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       availability: item.availability || [],
       rawData: item,
     };
-  }, [detail]);
+  }, [detail, consultation_id]);
 
   const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
 

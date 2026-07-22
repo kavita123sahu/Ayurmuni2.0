@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   StatusBar,
@@ -9,14 +9,12 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
-import PromoCard from '../../components/PromoCard';
+import ProductSortDropdown from '../../components/ProductSortDropdown';
 import ProductCard, { GRID_CARD_WIDTH } from '../../components/ProductCard';
-import SectionHeader from '../../components/SectionHeader';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
-import { useScrollHide } from '../../context/ScrollHideContext';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addToCart, fetchCart } from '../../store/slices/cartSlice';
@@ -27,21 +25,35 @@ import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
 import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
+import { useDebounce } from '../../hooks/useDebaunce';
+import {
+  applyProductFilters,
+  ProductSortKey,
+} from '../../utils/productSearchUtils';
 
-const ProductsScreen = () => {
+const ProductSearchScreen = () => {
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent?.() || navigation;
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
   const { productData, setProductData, loadingProducts } = useHomeData();
-  const { onScroll } = useScrollHide();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
-  const handleSearchPress = useCallback(() => {
-    stackNav.navigate('SearchScreen');
-  }, [stackNav]);
+  const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<ProductSortKey>('relevance');
+  const debouncedSearch = useDebounce(searchText, 300);
+
+  const filteredProducts = useMemo(
+    () =>
+      applyProductFilters({
+        products: productData,
+        search: debouncedSearch,
+        sortBy,
+      }),
+    [productData, debouncedSearch, sortBy],
+  );
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -120,57 +132,68 @@ const ProductsScreen = () => {
     ],
   );
 
-  const ListHeader = () => (
-    <View style={styles.headerContent}>
+  const resultLabel = debouncedSearch.trim()
+    ? `${filteredProducts.length} result${filteredProducts.length === 1 ? '' : 's'}`
+    : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'}`;
+
+  const listHeader = (
+    <View style={styles.searchWrap}>
       <SearchBar
         placeholder="Search seeds, oils, supplements..."
-        onPress={handleSearchPress}
+        value={searchText}
+        onChangeText={setSearchText}
+        autoFocus
       />
-      <PromoCard
-        title="Up to 40% OFF on Supplements"
-        desc="Keep your immunity strong this season."
-        tag="SUMMER SALE"
-        buttontext="Shop Now"
-        showButton
-        onPress={() => { }}
-      />
-      <SectionHeader title="Top Selling Products" actionText="View all" />
+      {!loadingProducts && (
+        <Text style={styles.resultCount}>{resultLabel}</Text>
+      )}
+      {!loadingProducts ? (
+        <ProductSortDropdown value={sortBy} onChange={setSortBy} />
+      ) : null}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
-        title="Products"
+        title="Search"
         backIcon={Images.backIcon}
         onBack={() => safeGoBack(navigation)}
-        subtitle="Choose best product"
+        subtitle="Find medicines & products"
       />
 
       {loadingProducts && productData.length === 0 ? (
         <View style={styles.skeletonWrap}>
+          {listHeader}
           <TopSellingListSkeleton />
         </View>
       ) : (
         <FlatList
-          data={productData}
+          data={filteredProducts}
           keyExtractor={(item, i) => String(item.variant_id || i)}
           numColumns={2}
           renderItem={renderItem}
-          ListHeaderComponent={ListHeader}
+          ListHeaderComponent={listHeader}
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
           columnWrapperStyle={styles.columnWrap}
           showsVerticalScrollIndicator={false}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={7}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No products available</Text>
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>
+                {debouncedSearch.trim() ? 'No matching products' : 'No products yet'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {debouncedSearch.trim()
+                  ? `Try another keyword for "${debouncedSearch.trim()}"`
+                  : 'Products will appear here once available.'}
+              </Text>
+            </View>
           }
         />
       )}
@@ -178,36 +201,53 @@ const ProductsScreen = () => {
   );
 };
 
-export default ProductsScreen;
+export default ProductSearchScreen;
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FDFDFB',
-    paddingHorizontal: 20
+    paddingHorizontal: 20,
   },
-  headerContent: {
-    // paddingHorizontal: 20,
+  searchWrap: {
+    marginBottom: 8,
+  },
+  resultCount: {
+    marginTop: 8,
+    marginBottom: 4,
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
   },
   listContent: {
-    // paddingHorizontal: 14,
+    paddingTop: 4,
   },
   columnWrap: {
     justifyContent: 'space-between',
-    // paddingHorizontal: 6,
   },
   cardWrap: {
     width: GRID_CARD_WIDTH,
     marginBottom: 4,
   },
   skeletonWrap: {
-    paddingHorizontal: 20,
+    flex: 1,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingTop: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 6,
   },
   emptyText: {
     textAlign: 'center',
-    marginTop: 40,
     fontSize: 14,
     color: '#94A3B8',
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsRegular,
+    lineHeight: 20,
   },
 });

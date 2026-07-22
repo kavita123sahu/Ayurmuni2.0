@@ -8,6 +8,7 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TablerIcon from './TablerIcon';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
@@ -38,6 +39,7 @@ const UploadRecordModal: React.FC<Props> = ({
     onClose,
     onSubmit,
 }) => {
+    const insets = useSafeAreaInsets();
     const [description, setDescription] = useState('');
     const [recordType, setRecordType] = useState('');
 
@@ -55,7 +57,7 @@ const UploadRecordModal: React.FC<Props> = ({
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={styles.overlay}>
-                <View style={styles.sheet}>
+                <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
                     <View style={styles.headerRow}>
                         <Text style={styles.title}>Upload Medical Record</Text>
                         <TouchableOpacity onPress={onClose} disabled={uploading}>
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: 20,
-        paddingBottom: 30,
+        paddingBottom: 20,
     },
     headerRow: {
         flexDirection: 'row',

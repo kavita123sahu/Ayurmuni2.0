@@ -1,6 +1,7 @@
 import React, {
     useCallback,
     useEffect,
+    useMemo,
     useState,
 } from 'react';
 
@@ -36,6 +37,8 @@ import {
 } from '../../services/ConsultServce';
 import EmptyState from '../../components/EmptyState';
 import { AppointmentSkeletonList } from '../../simmerScreen/ShimmerHook';
+import { resolveAppointmentLookupId } from '../../utils/appointmentUtils';
+import { useDebounce } from '../../hooks/useDebaunce';
 
 
 // ─────────────────────────────────────────────
@@ -131,6 +134,7 @@ const ConsultHistory = (
         useNavigation<any>();
     const [searchText, setSearchText] =
         useState('');
+    const debouncedSearch = useDebounce(searchText, 400);
     const [loading, setLoading] =
         useState(false);
 
@@ -189,19 +193,25 @@ const ConsultHistory = (
         );
 
 
-    const filteredHistory =
-        history?.filter(
-            (item: any) => {
+    const filteredHistory = useMemo(
+        () => {
+            const keyword = debouncedSearch.trim().toLowerCase();
+            if (!keyword) return history || [];
 
+            return (history || []).filter((item: any) => {
                 const doctorName =
-                    item?.doctor?.doctor_name
-                        ?.toLowerCase?.() || '';
+                    item?.doctor?.doctor_name?.toLowerCase?.() || '';
+                const concern =
+                    item?.concern?.toLowerCase?.() || '';
 
-                return doctorName.includes(
-                    searchText.toLowerCase(),
+                return (
+                    doctorName.includes(keyword) ||
+                    concern.includes(keyword)
                 );
-            },
-        ) || [];
+            });
+        },
+        [history, debouncedSearch],
+    );
 
 
     // ─────────────────────────────────────────
@@ -278,7 +288,7 @@ const ConsultHistory = (
                     'AppointmentDetails',
                     {
                         consultation_id:
-                            item.consultation_id,
+                            resolveAppointmentLookupId(item),
                     },
                 );
 
@@ -290,7 +300,7 @@ const ConsultHistory = (
                     'Reschedule',
                     {
                         appointmentId:
-                            item.consultation_id,
+                            resolveAppointmentLookupId(item),
                     },
                 );
 

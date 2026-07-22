@@ -2,6 +2,7 @@
 import { BaseUrl, Method } from "../config/Key";
 import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";
+import { formatExperienceParam } from "../utils/searchUtils";
 
 export const filteredParams = (
     params?: Record<string, any>,
@@ -16,6 +17,22 @@ export const filteredParams = (
                     value !== '',
             ),
     );
+};
+
+/** Builds query string for GET /customers/doctors/ with correct encoding. */
+export const buildDoctorsQueryString = (
+    params?: Record<string, any>,
+): string => {
+    const clean = filteredParams(params);
+    if (clean.experience) {
+        clean.experience = formatExperienceParam(String(clean.experience));
+    }
+    return Object.entries(clean)
+        .map(
+            ([key, value]) =>
+                `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+        )
+        .join('&');
 };
 export const getHomePage = async () => {
     return new Promise(async (resolve, reject) => {
@@ -43,40 +60,13 @@ export const getHomePage = async () => {
 
 export const getAllDoctor = async (payload: object) => {
     try {
-
-        const cleanPayload =
-            Object.fromEntries(
-                Object.entries(payload)
-                    .filter(
-                        ([_, value]) =>
-                            value !== undefined &&
-                            value !== null &&
-                            value !== '',
-                    ),
-            );
-
-        const query =
-            new URLSearchParams(
-                cleanPayload as any,
-            ).toString();
-
-        console.log(
-            'Final Query Paramsurllll:',
-            query,
+        const query = buildDoctorsQueryString(payload as Record<string, any>);
+        const response = await apiClient(
+            query ? `customers/doctors/?${query}` : 'customers/doctors/',
+            { method: 'GET' },
         );
-
-        const response =
-            await apiClient(
-                `customers/doctors/?${query}`,
-                {
-                    method: 'GET',
-                },
-            );
-
         return response;
-
     } catch (error) {
-
         throw error;
     }
 }
@@ -135,18 +125,46 @@ export const getMedicalReceipt = async (appointmentId: string) => {
 }
 
 
+// export const getAppointmentDetail = async (appointmentId: string) => {
+
+
+//     const fetchByParam = (param: 'appointment_id' | 'consultation_id') =>
+//         apiClient(
+//             `customers/patient/consultation/?appointment_id${param}=${encodeURIComponent(id)}`,
+//             { method: 'GET' },
+//         );
+
+//     let response = await fetchByParam('appointment_id');
+//     if (response?.success) {
+//         return response;
+//     }
+
+//     const message = String(response?.message || '').toLowerCase();
+//     const notFound =
+//         response?.status === 404 ||
+//         message.includes('not found') ||
+//         message.includes('does not exist');
+
+//     if (notFound) {
+//         response = await fetchByParam('consultation_id');
+//     }
+
+//     return response;
+// };
+
+
 export const getAppointmentDetail = async (appointmentId: string) => {
     try {
         const response = await apiClient(`customers/patient/consultation/?appointment_id=${appointmentId}`, {
             method: 'GET'
         });
-        console.log("getAppointmentAPIresponse", response)
-
+   
         return response;
     } catch (error) {
         throw error;
     }
 }
+
 
 
 export const getPrescriptionDetail = async (doctor_id: string) => {
@@ -286,31 +304,11 @@ export const getFilterTopDoctor = async (
 ) => {
 
     try {
-
-        const cleanPayload =
-            Object.fromEntries(
-                Object.entries(payload)
-                    .filter(
-                        ([_, value]) =>
-                            value !== undefined &&
-                            value !== null &&
-                            value !== '',
-                    ),
-            );
-
-        const query =
-            new URLSearchParams(
-                cleanPayload as any,
-            ).toString();
-
-        console.log(
-            'Final Query Params:',
-            query,
-        );
+        const query = buildDoctorsQueryString(payload as Record<string, any>);
 
         const response =
             await apiClient(
-                `customers/doctors/?${query}`,
+                query ? `customers/doctors/?${query}` : 'customers/doctors/',
                 {
                     method: 'GET',
                 },
@@ -378,11 +376,30 @@ export const verifyConsultationPayment = async (data: object) => {
 }
 
 
-export const getNotification = async (payload: any) => {
-    const query = new URLSearchParams(payload).toString();
+export const getNotification = async (payload: Record<string, string | number | boolean>) => {
+    const query = new URLSearchParams(
+        Object.entries(payload).reduce<Record<string, string>>((acc, [key, value]) => {
+            acc[key] = String(value);
+            return acc;
+        }, {}),
+    ).toString();
 
     return apiClient(`notifications/?${query}`, {
         method: "GET",
+    });
+};
+
+/** POST actions: read, clear, delete (per API: ?action=read&notification_id=… or &all=true) */
+export const manageNotification = async (payload: Record<string, string | number | boolean>) => {
+    const query = new URLSearchParams(
+        Object.entries(payload).reduce<Record<string, string>>((acc, [key, value]) => {
+            acc[key] = String(value);
+            return acc;
+        }, {}),
+    ).toString();
+
+    return apiClient(`notifications/?${query}`, {
+        method: "POST",
     });
 };
 
