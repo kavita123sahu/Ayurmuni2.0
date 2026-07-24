@@ -228,12 +228,8 @@ export const apiClient = async (
             token,
         );
 
-        // ✅ Refresh token bhi sirf auth APIs ke liye
-        if (
-            requireAuth &&
-            (response.status === 401 ||
-                response.status === 403)
-        ) {
+        // Refresh only on 401 — 403 is often "not allowed for this resource", not expired token.
+        if (requireAuth && response.status === 401) {
             console.log('TOKEN EXPIRED => REFRESHING');
             const freshToken =
                 await getFreshToken();

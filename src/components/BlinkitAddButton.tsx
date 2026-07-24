@@ -41,9 +41,9 @@ const BlinkitAddButton: React.FC<Props> = ({
           locked && styles.addBtnLocked,
         ]}
       >
-        {isAdding ? (
-          <ActivityIndicator size="small" color={Colors.primaryColor} />
-        ) : (
+      {isAdding && quantity <= 0 ? (
+        <ActivityIndicator size="small" color={Colors.primaryColor} />
+      ) : (
           <Text style={[styles.addText, compact && styles.addTextCompact, locked && styles.addTextLocked]}>
             {locked ? 'LOGIN' : 'ADD'}
           </Text>
@@ -63,11 +63,7 @@ const BlinkitAddButton: React.FC<Props> = ({
         <TablerIcon name="minus" size={compact ? 14 : 16} color="#fff" strokeWidth={2.5} />
       </TouchableOpacity>
 
-      {isAdding ? (
-        <ActivityIndicator size="small" color="#fff" style={styles.qtyLoader} />
-      ) : (
-        <Text style={[styles.qtyText, compact && styles.qtyTextCompact]}>{quantity}</Text>
-      )}
+      <Text style={[styles.qtyText, compact && styles.qtyTextCompact]}>{quantity}</Text>
 
       <TouchableOpacity
         onPress={onIncrement}

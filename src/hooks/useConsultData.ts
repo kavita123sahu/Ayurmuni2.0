@@ -264,13 +264,16 @@ export type DoctorListFilters = {
 
 export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [doctorData, setDoctorData] = useState<any[]>([]);
     const requestIdRef = useRef(0);
 
-    const getAllDoctors = useCallback(async () => {
+    const getAllDoctors = useCallback(async (options?: { isRefresh?: boolean }) => {
         const reqId = ++requestIdRef.current;
         try {
-            setLoading(true);
+            if (!options?.isRefresh) {
+                setLoading(true);
+            }
 
             const payload: DoctorListFilters = {
                 specialization: selectedFilters.specialization || '',
@@ -293,7 +296,9 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
             setDoctorData([]);
         } finally {
             if (reqId === requestIdRef.current) {
-                setLoading(false);
+                if (!options?.isRefresh) {
+                    setLoading(false);
+                }
             }
         }
     }, [
@@ -310,7 +315,13 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
         getAllDoctors();
     }, [getAllDoctors]);
 
-    return { loading, doctorData, refetch: getAllDoctors };
+    const refresh = useCallback(async () => {
+        setRefreshing(true);
+        await getAllDoctors({ isRefresh: true });
+        setRefreshing(false);
+    }, [getAllDoctors]);
+
+    return { loading, refreshing, doctorData, refetch: getAllDoctors, refresh };
 };
 
 

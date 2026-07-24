@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
 import { useNotifications, NotificationItem } from '../hooks/useNotification';
+import TablerIcon from '../components/TablerIcon';
 
 /* ------------------------------------------------------------------ */
 /*  TEXT HIGHLIGHTING HELPER (unchanged behaviour)                     */
@@ -136,7 +137,10 @@ const SummaryCard = ({
                 style={[styles.markAllBtn, isSmallDevice && styles.actionBtnFull]}
                 onPress={onMarkAllRead}
             >
-                <Text style={styles.markAllBtnText} numberOfLines={1}>✓  Mark all as read</Text>
+                <TablerIcon name="tick" color="white" size={15} />
+                <Text style={styles.markAllBtnText} numberOfLines={1}>
+                    Mark all as read
+                </Text>
             </TouchableOpacity>
             <TouchableOpacity
                 style={[styles.clearAllBtn, isSmallDevice && styles.actionBtnFull]}
@@ -245,7 +249,7 @@ const NotificationCard = ({
                 {isUnread && <View style={styles.unreadStrip} />}
 
                 <View style={styles.row}>
-                    <View style={[styles.iconBox, { backgroundColor: item.iconBg + '20' }]}>
+                    <View style={[styles.iconBox, { backgroundColor: item.iconBg }]}>
                         {item.icon}
                     </View>
 
@@ -277,7 +281,8 @@ const NotificationCard = ({
 
                             <View style={styles.cardTopRight}>
                                 <View style={styles.timeRow}>
-                                    <Text style={styles.clockIcon}>🕐</Text>
+                                    <TablerIcon name="clock" size={15} />
+                                    {/* <Text style={styles.clockIcon}>🕐</Text> */}
                                     <Text style={styles.time}>{item.time}</Text>
                                 </View>
                                 {isUnread ? (
@@ -286,7 +291,8 @@ const NotificationCard = ({
                                         onPress={() => onQuickMarkRead(item)}
                                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                     >
-                                        <Text style={styles.quickReadIcon}>✓</Text>
+                                        <TablerIcon name="tick-icon" size={15} />
+                                        {/* <Text style={styles.quickReadIcon}>✓</Text> */}
                                     </TouchableOpacity>
                                 ) : null}
                             </View>
@@ -301,7 +307,7 @@ const NotificationCard = ({
                         ) : null}
 
                         {/* Meta row: patient, appointment date, consultation type */}
-                        {(item.patientName || appointmentDate || consultationType) && (
+                        {/* {(item.patientName || appointmentDate || consultationType) && (
                             <View style={styles.metaRow}>
                                 {item.patientName && (
                                     <Text style={styles.metaText} numberOfLines={1}>👤  {item.patientName}</Text>
@@ -313,11 +319,11 @@ const NotificationCard = ({
                                     <Text style={styles.metaText} numberOfLines={1}>🎥  {consultationType}</Text>
                                 )}
                             </View>
-                        )}
+                        )} */}
 
-                        {item.doctorName && (
+                        {/* {item.doctorName && (
                             <Text style={styles.infoText}>🩺  {item.doctorName}</Text>
-                        )}
+                        )} */}
 
                         {item?.rawData?.image ? (
                             <Image source={item.rawData.image} style={styles.image} />
@@ -370,7 +376,7 @@ const NotificationDetailModal = ({
     const isSmallDevice = width < 360;
 
     if (!item) return null;
-
+    console.log("itemitemitemitem", item)
     const isUnread = !item.isRead;
     const patient = item.patientName ?? item?.rawData?.data?.patient_name;
     const doctor = item.doctorName ?? item?.rawData?.data?.doctor_name;
@@ -415,19 +421,19 @@ const NotificationDetailModal = ({
 
                         {isUnread ? (
                             <View style={styles.modalUnreadBanner}>
-                                <Text style={styles.modalUnreadTitle}>🔔  This notification is unread</Text>
-                                <Text style={styles.modalUnreadSubtitle}>Mark as read to update its status</Text>
+                                <Text style={styles.modalUnreadTitle}>Unread notification</Text>
+                                <Text style={styles.modalUnreadSubtitle}>Mark as read to clear the highlight</Text>
                             </View>
                         ) : null}
 
-                        <Text style={styles.modalSectionLabel}>💬  Message</Text>
+                        <Text style={styles.modalSectionLabel}>Message</Text>
                         <View style={styles.modalBox}>
                             <Text style={styles.modalBoxText}>{item.description}</Text>
                         </View>
 
                         {item.eventType ? (
                             <>
-                                <Text style={styles.modalSectionLabel}>ⓘ  Event</Text>
+                                <Text style={styles.modalSectionLabel}>Event</Text>
                                 <View style={styles.modalTag}>
                                     <Text style={styles.modalTagText}>{item.eventType}</Text>
                                 </View>
@@ -436,17 +442,17 @@ const NotificationDetailModal = ({
 
                         {(patient || doctor || reason) ? (
                             <>
-                                <Text style={styles.modalSectionLabel}>📄  Details</Text>
+                                <Text style={styles.modalSectionLabel}>Details</Text>
                                 <View style={styles.modalDetailsBox}>
                                     {patient ? (
                                         <View style={styles.modalDetailRow}>
-                                            <Text style={styles.modalDetailLabel}>👤  Patient</Text>
+                                            <Text style={styles.modalDetailLabel}>Patient</Text>
                                             <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{patient}</Text>
                                         </View>
                                     ) : null}
                                     {doctor ? (
                                         <View style={styles.modalDetailRow}>
-                                            <Text style={styles.modalDetailLabel}>🩺  Doctor</Text>
+                                            <Text style={styles.modalDetailLabel}>Doctor</Text>
                                             <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{doctor}</Text>
                                         </View>
                                     ) : null}
@@ -466,7 +472,7 @@ const NotificationDetailModal = ({
                                     style={[styles.modalViewBtn, isSmallDevice && styles.actionBtnFull]}
                                     onPress={() => onViewAppointment(item)}
                                 >
-                                    <Text style={styles.modalViewBtnText} numberOfLines={1}>⤴  View Appointment</Text>
+                                    <Text style={styles.modalViewBtnText} numberOfLines={1}>View Appointment</Text>
                                 </TouchableOpacity>
                             ) : null}
                             <TouchableOpacity
@@ -478,12 +484,23 @@ const NotificationDetailModal = ({
                                 disabled={!isUnread}
                                 onPress={() => onMarkRead(item)}
                             >
+
+                                {isUnread && (
+                                    <TablerIcon name="tick" size={15} />
+                                )}
                                 <Text
                                     style={[styles.modalMarkBtnText, !isUnread && styles.modalMarkBtnTextDisabled]}
                                     numberOfLines={1}
                                 >
-                                    ✓  {isUnread ? 'Mark as Read' : 'Already Read'}
+                                    {isUnread ? 'Mark as Read' : 'Already Read'}
                                 </Text>
+
+                                {/* <Text
+                                    style={[styles.modalMarkBtnText, !isUnread && styles.modalMarkBtnTextDisabled]}
+                                    numberOfLines={1}
+                                >
+                                    <TablerIcon  name= "tick-icon" style={{marginTop:-10}} size={15} /> {isUnread ? 'Mark as Read' : 'Already Read'}
+                                </Text> */}
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
@@ -564,17 +581,19 @@ const NotificationsScreen = (props: any) => {
     };
 
     const handleMarkRead = async (item: NotificationItem) => {
+        if (item.isRead) {
+            return;
+        }
+
+
         setSelectedItem(prev =>
             prev && prev.id === item.id
                 ? { ...prev, isRead: true, isNew: false, rawData: { ...prev.rawData, is_read: true } }
                 : prev,
         );
+        setModalVisible(false);
 
         await markAsRead?.(item.id);
-
-        if (filter === 'unread') {
-            closeDetail();
-        }
     };
 
     const handleMarkAllRead = () => {
@@ -587,8 +606,9 @@ const NotificationsScreen = (props: any) => {
 
     const handleViewAppointment = (item: NotificationItem) => {
         closeDetail();
-        props.navigation?.navigate?.('AppointmentDetail', {
-            appointmentId: item.appointmentId,
+        console.log("apppintmnetscronnn", item);
+        props.navigation.navigate('AppointmentDetail', {
+            appointmentId: item?.appointmentId,
         });
     };
 
@@ -793,6 +813,9 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: '#0D614E',
         marginRight: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     markAllBtnText: {
         color: '#fff',
@@ -876,19 +899,15 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: '#fff',
         borderRadius: 16,
-        padding: 14,
+        padding: 10,
         marginTop: 12,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 1 },
-        elevation: 1,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
     cardUnread: {
-        backgroundColor: '#FBFEFD',
-        borderWidth: 1,
-        borderColor: '#0D614E1F',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#D1E7DF',
     },
     unreadStrip: {
         position: 'absolute',
@@ -1257,7 +1276,7 @@ const styles = StyleSheet.create({
     modalSectionLabel: {
         fontSize: 12,
         color: '#64748B',
-        fontFamily: Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsBold,
         marginBottom: 8,
     },
     modalBox: {
@@ -1339,6 +1358,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#0D614E14',
         paddingVertical: 12,
         borderRadius: 10,
+        flexDirection: 'row',
+        gap: 6,
         alignItems: 'center',
         justifyContent: 'center',
     },

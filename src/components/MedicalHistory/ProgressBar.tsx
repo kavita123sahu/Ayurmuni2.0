@@ -62,8 +62,8 @@ export default React.memo(ProgressBar);
 const styles = StyleSheet.create({
 
     wrapper: {
-        marginTop: scale(20),
-        marginBottom: scale(10),
+        marginTop: scale(8),
+        marginBottom: scale(6),
         justifyContent: 'center',
     },
 
@@ -88,26 +88,20 @@ const styles = StyleSheet.create({
     },
 
     thumbWrapper: {
-
         position: 'absolute',
-
-        width: scale(28),
-        height: scale(28),
-
+        width: scale(24),
+        height: scale(24),
         borderRadius: scale(999),
-
         backgroundColor: '#F6F7EE',
-
         justifyContent: 'center',
         alignItems: 'center',
-
         borderWidth: 2,
         borderColor: '#E4E8DA',
     },
 
     thumbImage: {
-        width: scale(22),
-        height: scale(22),
+        width: scale(18),
+        height: scale(18),
         resizeMode: 'contain',
     },
 });

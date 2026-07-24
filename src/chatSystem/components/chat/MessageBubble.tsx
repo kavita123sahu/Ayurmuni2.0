@@ -7,6 +7,7 @@ import { Message } from '../../types/chat';
 import { formatMessageTime } from '../../utils/dateFormatter';
 import { Colors } from '../../../common/Colors';
 import { Fonts } from '../../../common/Fonts';
+import TablerIcon from '../../../components/TablerIcon';
 
 const THEME = '#0D614E';
 const OWN_BUBBLE = '#DCF8C6'; // WhatsApp jaisa halka green
@@ -59,22 +60,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, se
 
       <View style={[styles.bubble, isLeft ? styles.bubbleLeft : styles.bubbleRight]}>
         {message.text ? (
-          <Text style={styles.messageText}>{message.text}</Text>
+          <Text style={[styles.messageText, isOwn ? styles.messageTextOwn : styles.messageTextOther]}>
+            {message.text}
+          </Text>
         ) : null}
 
         {renderAttachments()}
 
-        <View style={styles.timestampContainer}>
-          <Text style={styles.timestamp}>
-            {formatMessageTime(message.created_at)}
-          </Text>
-
-          {isOwn && (
-            <Text style={[styles.tick, message.is_seen && styles.tickSeen]}>
-              {message.is_seen ? '✓✓' : '✓'}
-            </Text>
-          )}
-        </View>
+      
 
         {/* <View style={styles.timestampContainer}>
           <Text style={styles.timestamp}>{formatMessageTime(message.created_at)}</Text>
@@ -84,6 +77,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, se
             </Text>
           )}
         </View> */}
+      </View>
+      <View style={{flexDirection:'row',}}>
+        
+        <View style={styles.timestampContainer}>
+          <Text style={styles.timestamp}>
+            {formatMessageTime(message.created_at)}
+          </Text>
+
+        
+        </View>
+
+          {isOwn && (
+              <View style={{ flexDirection: 'row',gap:15,marginRight:10,
+    marginTop: 8}}>
+                <TablerIcon
+                  name="check"
+                  size={12}
+                  color={message.is_seen ? '#3B82F6' : '#888c92'}
+                />
+                {message.is_seen && (
+                  <TablerIcon
+                    name="check"
+                    size={12}
+                    color="#3B82F6"
+                    style={{ marginLeft: -5 }}
+                  />
+                )}
+              </View>
+            )}
       </View>
     </View>
   );
@@ -110,7 +132,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 16,
   },
   bubbleRight: {
-    backgroundColor: '#E6F4EA',
+    backgroundColor: Colors.primaryColor,
     borderBottomRightRadius: 4,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -123,7 +145,18 @@ const styles = StyleSheet.create({
   // bubbleRight: {
   //   backgroundColor: OWN_BUBBLE, borderBottomRightRadius: 4,
   // },
-  messageText: { fontSize: 15, fontFamily: Fonts.PoppinsMedium, lineHeight: 20, color: '#1F2937', includeFontPadding: false },
+  messageText: {
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsMedium,
+    lineHeight: 20,
+    includeFontPadding: false,
+  },
+  messageTextOwn: {
+    color: '#FFFFFF',
+  },
+  messageTextOther: {
+    color: '#111827',
+  },
   timestampContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -134,21 +167,21 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 11,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#6B7280',
+    color: '#888c92',
   },
 
   tick: {
     fontSize: 11,
     marginLeft: 4,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#6B7280',
+    color: '#888c92',
   },
 
   tickSeen: {
-    color: Colors.primaryColor,
+    color: 'blue',
   },
   attachmentWrapper: { marginTop: 6 },
   attachmentImage: { width: 200, height: 150, borderRadius: 10, backgroundColor: '#F3F4F6' },
   attachmentFile: { marginTop: 6, padding: 8, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 8 },
-  attachmentFileText: { fontSize: 13, color: THEME , fontFamily: Fonts.PoppinsMedium},
+  attachmentFileText: { fontSize: 13, color: THEME, fontFamily: Fonts.PoppinsMedium },
 });

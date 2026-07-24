@@ -1,8 +1,14 @@
-import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StatusBar, StyleSheet } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  ActivityIndicator,
+  View,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
 import RecentProductsList from '../../components/RecentProductsList';
 import CategoryList from '../../components/CategoryList';
 import TopSellingList from '../../components/TopSellingList';
@@ -12,12 +18,15 @@ import BrandList from '../../components/BrandList';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
+import { useOrders } from '../../hooks/useOrders';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
-import TablerIcon from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
+import { navigateToSearchScreen } from '../../navigation/productNavigation';
+import { useBrands } from '../../hooks/useBrands';
+import { useHealthConcernCategories } from '../../hooks/useHealthConcernCategories';
 
 type ActionItem = {
   id: string;
@@ -33,34 +42,53 @@ const MedicineScreen = (props: any) => {
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
 
-  const { categories, productData, setProductData, loadingProducts } =
+  const { productData, setProductData, loadingProducts, refreshHomeData, categories: dashboardCategories } =
     useHomeData();
 
-  const productImage = require('../../assets/images/RecentsImage.png');
+  const medicineCategoryId = useMemo(() => {
+    const list = Array.isArray(dashboardCategories) ? dashboardCategories : [];
+    const medicine = list.find(
+      (item: any) => String(item?.name ?? '').trim().toLowerCase() === 'medicine',
+    );
+    return medicine?.id ? String(medicine.id) : null;
+  }, [dashboardCategories]);
 
+  const {
+    categories: healthConcerns,
+    loading: healthConcernsLoading,
+    refresh: refreshHealthConcerns,
+  } = useHealthConcernCategories(medicineCategoryId);
+
+  const { brands, refresh: refreshBrands } = useBrands();
+  const { recentProducts, loading: ordersLoading, refresh: refreshOrders } = useOrders();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // const handleSearchPress = useCallback(() => {
+  //   stackNav.navigate('SearchScreen');
+  // }, [stackNav]);
+
+  
   const handleSearchPress = useCallback(() => {
-    stackNav.navigate('SearchScreen');
-  }, [stackNav]);
+    navigateToSearchScreen(navigation);
+  }, [navigation]);
 
-  const recentProducts = useMemo(
-    () => [
-      {
-        id: '1',
-        name: 'Foxtail millet (Kangni)',
-        price: 649,
-        image: productImage,
-        lastOrdered: '17 February',
-      },
-      {
-        id: '2',
-        name: 'Groundnut oil',
-        price: 499,
-        image: productImage,
-        lastOrdered: '17 February',
-      },
-    ],
-    [productImage],
-  );
+  const handleViewOrderHistory = useCallback(() => {
+    navigation.navigate('OrderHistory');
+  }, [navigation]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refreshHomeData(),
+        refreshOrders(),
+        refreshBrands(),
+        refreshHealthConcerns(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshHomeData, refreshOrders, refreshBrands, refreshHealthConcerns]);
 
   const actionItems: ActionItem[] = useMemo(
     () => [
@@ -82,16 +110,9 @@ const MedicineScreen = (props: any) => {
     [],
   );
 
-  const brandData = useMemo(
-    () => [
-      { id: '1', name: 'Baidyanath', iconName: 'pill' as TablerIconName },
-      { id: '2', name: 'Himalaya', iconName: 'store' as TablerIconName },
-      { id: '3', name: 'Dabur', iconName: 'pill' as TablerIconName },
-    ],
-    [],
-  );
 
-  const safeCategories = Array.isArray(categories) ? categories : [];
+
+  const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
   const safeProducts = Array.isArray(productData) ? productData : [];
 
   const handleActionPress = useCallback(
@@ -109,41 +130,79 @@ const MedicineScreen = (props: any) => {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-      <Header title="Medicine Store" backIcon={Images.backIcon} onBack={() => safeGoBack(props.navigation)} subtitle="Health & Wellness" />
+      <Header
+        title="Medicine Store"
+        backIcon={Images.backIcon}
+        onBack={() => safeGoBack(props.navigation)}
+        subtitle="Health & Wellness"
+        onSearchPress={handleSearchPress}
+        // onRefreshPress={onRefresh}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primaryColor]}
+            tintColor={Colors.primaryColor}
+          />
+        }
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: bottomPadding },
         ]}
         nestedScrollEnabled
       >
-        <SearchBar
-          placeholder="Search seeds, oils..."
-          onPress={handleSearchPress}
-        />
-
         <ActionCards data={actionItems} onpress={handleActionPress} />
 
-        <SectionHeader title="Recent Orders" actionText="View History" />
-        <RecentProductsList data={recentProducts} />
+        {(ordersLoading || recentProducts.length > 0) && (
+          <>
+            <SectionHeader
+              title="Recent Orders"
+              actionText="View History"
+              onPress={handleViewOrderHistory}
+            />
+            {ordersLoading ? (
+              <View style={styles.ordersLoading}>
+                <ActivityIndicator size="small" color={Colors.primaryColor} />
+              </View>
+            ) : (
+              <RecentProductsList data={recentProducts} navigation={navigation} />
+            )}
+          </>
+        )}
 
         <SectionHeader title="Shop by Concern" />
-        <CategoryList
-          data={safeCategories}
-          navigation={stackNav}
-        />
+        {healthConcernsLoading && safeHealthConcerns.length === 0 ? (
+          <View style={styles.ordersLoading}>
+            <ActivityIndicator size="small" color={Colors.primaryColor} />
+          </View>
+        ) : (
+          <CategoryList
+            data={safeHealthConcerns}
+            navigation={navigation}
+            mode="health"
+          />
+        )}
 
         <SectionHeader title="Trusted Brands" />
-        <BrandList data={brandData} />
+        {brands.length > 0 && (
+          <BrandList data={brands} />
+
+        )}
 
         {safeProducts.length > 0 && (
           <>
-            <SectionHeader title="Medicines" actionText="View all" />
+            <SectionHeader
+              title="Medicines"
+              actionText="View all"
+              onPress={() => navigateToSearchScreen(navigation)}
+            />
             <TopSellingList
               data={safeProducts}
-              navigation={stackNav}
+              navigation={navigation}
               setProductData={setProductData}
               nested
             />
@@ -156,10 +215,14 @@ const MedicineScreen = (props: any) => {
 
         {safeProducts.length > 0 && (
           <>
-            <SectionHeader title="Ayurveda" actionText="View all" />
+            <SectionHeader
+              title="Ayurveda"
+              actionText="View all"
+              onPress={() => navigateToSearchScreen(navigation)}
+            />
             <TopSellingList
               data={safeProducts}
-              navigation={stackNav}
+              navigation={navigation}
               setProductData={setProductData}
               nested
             />
@@ -180,5 +243,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 4,
+  },
+  ordersLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });

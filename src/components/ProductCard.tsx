@@ -31,6 +31,7 @@ type Props = {
   isAdding: boolean;
   showWishlist?: boolean;
   actionsLocked?: boolean;
+  gridWidth?: number;
   onPress: () => void;
   onAdd: () => void;
   onIncrement: () => void;
@@ -45,6 +46,7 @@ const ProductCard: React.FC<Props> = ({
   isAdding,
   showWishlist = true,
   actionsLocked = false,
+  gridWidth,
   onPress,
   onAdd,
   onIncrement,
@@ -52,9 +54,10 @@ const ProductCard: React.FC<Props> = ({
   onWishlist,
 }) => {
   const isGrid = variant === 'grid';
-  const cardWidth = isGrid ? GRID_CARD_WIDTH : HORIZONTAL_CARD_WIDTH;
-  const cardHeight = isGrid ? GRID_CARD_HEIGHT : HORIZONTAL_CARD_HEIGHT;
-  const imageHeight = isGrid ? IMAGE_HEIGHT_GRID : IMAGE_HEIGHT_HORIZONTAL;
+  const cardWidth = isGrid ? (gridWidth ?? GRID_CARD_WIDTH) : HORIZONTAL_CARD_WIDTH;
+  const scale = isGrid && gridWidth ? gridWidth / GRID_CARD_WIDTH : 1;
+  const cardHeight = isGrid ? GRID_CARD_HEIGHT * scale : HORIZONTAL_CARD_HEIGHT;
+  const imageHeight = isGrid ? IMAGE_HEIGHT_GRID * scale : IMAGE_HEIGHT_HORIZONTAL;
 
   const discount =
     item?.mrp > item?.selling_price
@@ -66,7 +69,11 @@ const ProductCard: React.FC<Props> = ({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { width: cardWidth, height: cardHeight },
+        {
+          width: cardWidth,
+          height: cardHeight,
+          marginRight: gridWidth ? 0 : 12,
+        },
         pressed && styles.cardPressed,
       ]}
     >
@@ -145,6 +152,7 @@ const styles = StyleSheet.create({
     ...CARD_SURFACE,
     borderRadius: 14,
     marginBottom: 12,
+    marginRight: 12,
   },
   cardPressed: {
     opacity: 0.96,

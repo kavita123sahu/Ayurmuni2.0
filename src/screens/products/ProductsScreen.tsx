@@ -5,10 +5,10 @@ import {
   View,
   Text,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
 import PromoCard from '../../components/PromoCard';
 import ProductCard, { GRID_CARD_WIDTH } from '../../components/ProductCard';
 import SectionHeader from '../../components/SectionHeader';
@@ -19,48 +19,46 @@ import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addToCart, fetchCart } from '../../store/slices/cartSlice';
-import { updateProductItem } from '../../store/slices/homeSlice';
+import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { TogglewishlistProduct } from '../../services/ProductServices';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
 import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
+import { navigateToSearchScreen, navigateToCategoryProducts, navigateToProductDetails } from '../../navigation/productNavigation';
+import { useProductCategories } from '../../hooks/useProductCategories';
+import CategoryList from '../../components/CategoryList';
 
 const ProductsScreen = () => {
   const navigation = useNavigation<any>();
-  const stackNav = navigation.getParent?.() || navigation;
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
   const { productData, setProductData, loadingProducts } = useHomeData();
+  const { categories: productCategories, loading: categoriesLoading } = useProductCategories();
   const { onScroll } = useScrollHide();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
   const handleSearchPress = useCallback(() => {
-    stackNav.navigate('SearchScreen');
-  }, [stackNav]);
+    navigateToSearchScreen(navigation);
+  }, [navigation]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
       const variantId = String(item?.variant_id);
       if (!variantId) return;
-      const result = await dispatch(addToCart({ variantId, quantity: newQty }));
-      if (addToCart.fulfilled.match(result)) {
-        showSuccessToast(result.payload.message || 'Cart updated', 'success');
-        dispatch(fetchCart(true));
-        setProductData(prev =>
-          prev.map(p =>
-            String(p.variant_id) === variantId ? { ...p, quantity: newQty } : p,
-          ),
+      const result = await dispatch(syncCartQuantity({ variantId, quantity: newQty }));
+      if (syncCartQuantity.rejected.match(result)) {
+        showSuccessToast(
+          (result.payload as string) || 'Failed to update cart',
+          'error',
         );
-        dispatch(updateProductItem({ variantId, updates: { quantity: newQty } }));
       }
     },
-    [dispatch, setProductData],
+    [dispatch],
   );
 
   const handleWishlist = useCallback(
@@ -101,7 +99,7 @@ const ProductsScreen = () => {
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             onPress={() =>
-              stackNav.navigate('ProductDetails', { varientID: item.variant_id })
+              navigateToProductDetails(navigation, item.variant_id)
             }
             onAdd={() => handleCartUpdate(item, cartQty + 1)}
             onIncrement={() => handleCartUpdate(item, cartQty + 1)}
@@ -114,7 +112,7 @@ const ProductsScreen = () => {
     [
       variantQuantities,
       addingVariantId,
-      stackNav,
+      navigation,
       handleCartUpdate,
       handleWishlist,
     ],
@@ -122,10 +120,6 @@ const ProductsScreen = () => {
 
   const ListHeader = () => (
     <View style={styles.headerContent}>
-      <SearchBar
-        placeholder="Search seeds, oils, supplements..."
-        onPress={handleSearchPress}
-      />
       <PromoCard
         title="Up to 40% OFF on Supplements"
         desc="Keep your immunity strong this season."
@@ -134,7 +128,29 @@ const ProductsScreen = () => {
         showButton
         onPress={() => { }}
       />
-      <SectionHeader title="Top Selling Products" actionText="View all" />
+
+      <SectionHeader
+        title="Shop by Category"
+        actionText={productCategories.length > 0 ? 'View all' : ''}
+        onPress={() => navigateToCategoryProducts(navigation, { categoryMode: 'product' })}
+      />
+      {categoriesLoading && productCategories.length === 0 ? (
+        <View style={styles.categoryLoading}>
+          <ActivityIndicator size="small" color={Colors.primaryColor} />
+        </View>
+      ) : productCategories.length > 0 ? (
+        <CategoryList
+          data={productCategories}
+          navigation={navigation}
+          mode="product"
+        />
+      ) : null}
+
+      <SectionHeader
+        title="Top Selling Products"
+        actionText="View all"
+        onPress={() => navigateToSearchScreen(navigation)}
+      />
     </View>
   );
 
@@ -148,6 +164,7 @@ const ProductsScreen = () => {
         backIcon={Images.backIcon}
         onBack={() => safeGoBack(navigation)}
         subtitle="Choose best product"
+        onSearchPress={handleSearchPress}
       />
 
       {loadingProducts && productData.length === 0 ? (
@@ -209,5 +226,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  categoryLoading: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
 });

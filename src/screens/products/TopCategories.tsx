@@ -3,7 +3,6 @@ import { View, StyleSheet, StatusBar } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
 import TopSellingList from '../../components/TopSellingList';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
@@ -243,14 +242,10 @@ const TopCategories = (props: any) => {
         title={categoryName}
         subtitle="Organic product"
         onBack={() => navigation.goBack()}
+        onSearchPress={handleSearchPress}
       />
 
       <View style={styles.flexContain}>
-        <SearchBar
-        placeholder="Search seeds, oils..."
-        onPress={handleSearchPress}
-        />
-
       <TopSellingList data={topSelling} header ={true} isGrid={true} setProductData={()=>""} navigation={props.navigation}  />
       
   

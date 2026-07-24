@@ -16,6 +16,7 @@ export type RootStackParamList = {
     };
     ConsultScreen: undefined;
     Onboarding: undefined;
+    ProductRazorpayScreen : undefined;
     FavDoctors: undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
@@ -34,6 +35,7 @@ export type RootStackParamList = {
     DoctorSlot: {
         doctorDetails: string;
     };
+    DoctorConsultationHistory : undefined;
     DoctorProfile: undefined;
     AddCalendar: undefined;
     SplashStack: undefined;
@@ -95,6 +97,16 @@ export type RootStackParamList = {
     Prescription: undefined;
     VerifyPresciption: undefined;
     SearchScreen: undefined;
+    CategoryProducts:
+      | {
+          categoryId?: string;
+          categoryName?: string;
+          categoryMode?: 'health' | 'product';
+          productSubcategoryId?: string;
+          healthCategoryId?: string;
+          healthDiseaseId?: string;
+        }
+      | undefined;
     OrderStatus: undefined;
     MedicineCheckOut: undefined;
     ConsultHome: undefined;

@@ -12,9 +12,15 @@ import { Styles } from "../common/Styles";
 import { Appointment, getStatusStyle } from "../common/DataInterface";
 import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
+import { BUTTON, RADIUS, SPACING, TYPO } from "../constants/responsive";
 import AppointAction from "./AppointAction";
 import TablerIcon from "./TablerIcon";
-import { resolveAppointmentLookupId } from "../utils/appointmentUtils";
+import {
+    buildAppointmentDetailsParams,
+    buildVideoCallNavParams,
+} from "../utils/appointmentUtils";
+import { showSuccessToast } from "../config/Key";
+import { navigateToStackScreen } from "../navigation/navigationUtils";
 export const DateTimeCard = ({
     item,
     isHorizontal = false,
@@ -101,13 +107,10 @@ const RenderAppoint = ({
     console.log("therapiestherapies", therapies)
 
     const openAppointmentDetails = () => {
-        const lookupId = resolveAppointmentLookupId(item);
-        if (!lookupId) {
-            return;
-        }
-        navigation.navigate("AppointmentDetails", {
-            consultation_id: item?.consultation_id,
-        });
+        navigation.navigate(
+            "AppointmentDetails",
+            buildAppointmentDetailsParams({ rawData: item.rawData, ...item }),
+        );
     };
 
     return isHorizontal ? (
@@ -285,16 +288,35 @@ const RenderAppoint = ({
                 call_status={item.call_status}
                 onReschedule={onReschedule}
                 onCancel={onCancel}
-                onJoinCall={() =>
-                    navigation.navigate("PatientVideoCallScreen", {
-                        appointmentId: resolveAppointmentLookupId(item),
-                        role: "patient",
-                        otherPartyName: item?.doctorName,
-                        otherPartyImage: item?.image,
-                    })
-                }
+                onJoinCall={() => {
+                    if (item.call_status !== "in_progress") {
+                        showSuccessToast(
+                            "Video call is not active yet. Please wait for the doctor to start the consultation.",
+                            "error",
+                        );
+                        return;
+                    }
 
-                onViewDetails={openAppointmentDetails}
+                    navigateToStackScreen(
+                        navigation,
+                        "PatientVideoCallScreen",
+                        buildVideoCallNavParams(
+                            { rawData: item.rawData, ...item },
+                            {
+                                role: "patient",
+                                otherPartyName: item?.doctorName,
+                                otherPartyImage: item?.image,
+                            },
+                        ),
+                    );
+                }}
+
+                onViewDetails={() =>
+                    navigation.navigate("DoctorSlipScreen", {
+                        doctorID:
+                            item?.rawData?.doctor?.doctor_id,
+
+                    })}
             />
         </TouchableOpacity>
     );
@@ -307,17 +329,12 @@ const styles = StyleSheet.create({
     /* Card */
     card: {
         backgroundColor: Colors.white,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 14,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.md,
+        marginBottom: SPACING.md,
         borderWidth: 1,
         borderColor: Colors.borderColor,
         overflow: 'hidden',
-        shadowColor: '#0D614E',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 0,
     },
 
 
@@ -359,7 +376,7 @@ const styles = StyleSheet.create({
     },
 
     followUPText: {
-        fontSize: 12,
+        fontSize: TYPO.sm,
         fontWeight: '600',
         color: '#0D614E',
     },
@@ -386,8 +403,7 @@ const styles = StyleSheet.create({
 
 
     statusText: {
-        fontSize: 10,
-
+        fontSize: TYPO.xs,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
@@ -450,13 +466,13 @@ const styles = StyleSheet.create({
     },
 
     horizontalDoctorName: {
-        fontSize: 13,
+        fontSize: TYPO.subtitle,
         color: Colors.black,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     horizontalSpeciality: {
-        fontSize: 11,
+        fontSize: TYPO.caption,
         color: Colors.grey1,
         fontFamily: Fonts.PoppinsRegular,
     },
@@ -477,7 +493,7 @@ const styles = StyleSheet.create({
     },
 
     horizontalText: {
-        fontSize: 11,
+        fontSize: TYPO.caption,
         marginLeft: 6,
         fontFamily: Fonts.PoppinsMedium,
     },

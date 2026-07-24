@@ -407,11 +407,11 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor:
             COLORS.white,
-        borderRadius: 24,
+        // borderRadius: 24,
         padding: 16,
-        borderWidth: 1,
-        borderColor:
-            COLORS.border,
+        // borderWidth: 1,
+        // borderColor:
+        //     COLORS.border,
     },
 
     /* PATIENT */
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     initialAvatar: {
         width: 70,
         height: 70,
-        marginRight:10,
+        marginRight: 10,
         borderRadius: 20,
         backgroundColor: '#0D614E',
         justifyContent: 'center',

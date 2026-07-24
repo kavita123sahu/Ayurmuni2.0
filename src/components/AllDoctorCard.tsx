@@ -221,15 +221,16 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: 18,
         padding: 14,
-        marginBottom: 2,
+        marginBottom: 10,
         borderWidth: 1,
+
         borderColor: '#E8EDF2',
-        backgroundColor: '#FFF',
-        shadowColor: '#0D614E',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 2,
+        // backgroundColor: '#FFF',
+        // shadowColor: '#0D614E',
+        // shadowOffset: { width: 0, height: 2 },
+        // shadowOpacity: 0.06,
+        // shadowRadius: 8,
+        // elevation: 2,
     },
 
     imageWrapper: {

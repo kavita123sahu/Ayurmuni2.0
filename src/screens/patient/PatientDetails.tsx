@@ -161,6 +161,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
           title="Patient Details"
           subtitle="Manage family profiles"
           onBack={() => navigation.goBack()}
+          onRefreshPress={handleRefresh}
         />
         <LoadingSpinner message="Loading patients..." />
       </SafeAreaView>
@@ -177,6 +178,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
           title="Patient Details"
           subtitle="Manage family profiles"
           onBack={() => navigation.goBack()}
+          onRefreshPress={handleRefresh}
         />
       </View>
 
@@ -196,6 +198,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
         {/* Currently Selected Section */}
         <View style={styles.section}>
           <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
+
           <SelectedPatientCard
             name={fullName || "Not set"}
             phone={user?.phone_number || ""}

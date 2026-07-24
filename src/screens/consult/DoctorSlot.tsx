@@ -31,6 +31,7 @@ import { requireAuth } from '../../services/guestAuth';
 import UploadRecordModal from '../../components/UploadRecordModal';
 import AppHeader from '../../components/AppHeader';
 import { formatMessageTime } from '../../chatSystem/utils/dateFormatter';
+import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -122,8 +123,49 @@ const DoctorSlot = (props: any) => {
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    const scrollRef = useRef<ScrollView>(null);
+    const dateScrollRef = useRef<ScrollView>(null);
+    const mainScrollRef = useRef<ScrollView>(null);
+    const concernSectionY = useRef(0);
+    const pendingConcernScrollRef = useRef(false);
     const doctorIdParam = doctorDetails?.id;
+
+    const scrollToConcernSection = useCallback(() => {
+        const scroll = () => {
+            mainScrollRef.current?.scrollTo({
+                y: Math.max(0, concernSectionY.current - 16),
+                animated: true,
+            });
+        };
+
+        if (concernSectionY.current > 0) {
+            requestAnimationFrame(scroll);
+            return;
+        }
+
+        pendingConcernScrollRef.current = true;
+        requestAnimationFrame(() => {
+            setTimeout(scroll, 200);
+        });
+    }, []);
+
+    const handleSelectSlot = useCallback(
+        (slot: any) => {
+            setSelectedSlot(slot);
+            scrollToConcernSection();
+        },
+        [scrollToConcernSection],
+    );
+
+    const handleConcernSectionLayout = useCallback(
+        (y: number) => {
+            concernSectionY.current = y;
+            if (pendingConcernScrollRef.current && y > 0) {
+                pendingConcernScrollRef.current = false;
+                scrollToConcernSection();
+            }
+        },
+        [scrollToConcernSection],
+    );
 
     console.log("doctorDetailsdoctorDetails", doctorDetails);
 
@@ -140,7 +182,7 @@ const DoctorSlot = (props: any) => {
 
         if (todayIndex >= 0) {
             setTimeout(() => {
-                scrollRef.current?.scrollTo({
+                dateScrollRef.current?.scrollTo({
                     x: todayIndex * (CARD_WIDTH + 12),
                     animated: false,
                 });
@@ -206,9 +248,13 @@ const DoctorSlot = (props: any) => {
     useEffect(() => {
         if (!selectedSlot && slotsData?.slots?.length) {
             const firstAvailable = slotsData.slots.find((s: any) => s.status === 'available');
-            if (firstAvailable) setSelectedSlot(firstAvailable);
+            if (firstAvailable) {
+                pendingConcernScrollRef.current = true;
+                setSelectedSlot(firstAvailable);
+                scrollToConcernSection();
+            }
         }
-    }, [slotsData]);
+    }, [slotsData, selectedSlot, scrollToConcernSection]);
 
     const handleContinue = async () => {
         if (!(await requireAuth('Please login to book a consultation'))) return;
@@ -274,6 +320,7 @@ const DoctorSlot = (props: any) => {
                 }
             >
                 <ScrollView
+                    ref={mainScrollRef}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
@@ -324,6 +371,8 @@ const DoctorSlot = (props: any) => {
                         ))}
                     </View>
 
+                  
+
                     <View style={styles.section}>
                         <View style={styles.rowBetween}>
                             <Text style={styles.sectionTitle}>Schedules</Text>
@@ -338,7 +387,12 @@ const DoctorSlot = (props: any) => {
                             </View>
                         </View>
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysContainer}>
+                        <ScrollView
+                            ref={dateScrollRef}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.daysContainer}
+                        >
                             {DAYS.map((item: any) => {
                                 const isActive = selectedDate === item.fullDate;
                                 return (
@@ -378,11 +432,7 @@ const DoctorSlot = (props: any) => {
 
                                                 return (
                                                     <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable}
-                                                        // onPress={() => setSelectedSlot(slot.id)}
-                                                        onPress={() => {
-                                                            console.log("slotiddddddd", slot?.id)
-                                                            setSelectedSlot(slot)
-                                                        }}
+                                                        onPress={() => handleSelectSlot(slot)}
                                                         style={[
                                                             styles.slotBtn,
                                                             selectedSlot?.id === slot.id && styles.activeSlotBtn,
@@ -425,7 +475,25 @@ const DoctorSlot = (props: any) => {
                         )}
                     </View>
 
-                    <View style={styles.section}>
+                    {/* {!!selectedSlot?.id && (
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            style={styles.scrollHint}
+                            onPress={scrollToConcernSection}
+                        >
+                            <TablerIcon name="chevron-down" size={16} color={Colors.primaryColor} />
+                            <Text style={styles.scrollHintText}>
+                                Add concern & upload prescription below
+                            </Text>
+                        </TouchableOpacity>
+                    )} */}
+
+                    <View
+                        style={styles.section}
+                        onLayout={event => {
+                            handleConcernSectionLayout(event.nativeEvent.layout.y);
+                        }}
+                    >
                         <Text style={styles.sectionTitle}>
                             Concern
                         </Text>
@@ -543,6 +611,7 @@ const styles = StyleSheet.create({
     borderRight: { borderRightWidth: 1, borderRightColor: '#F1F5F9' },
     statValue: { fontSize: 22, fontFamily: Fonts.PoppinsBold, color: '#1E293B' },
     statLabel: { fontSize: 12, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
+    consultSection: { marginTop: 20, paddingHorizontal: 12 },
     section: { marginTop: 24, paddingHorizontal: 20 },
     rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     sectionTitle: { fontSize: 18, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
@@ -613,6 +682,25 @@ const styles = StyleSheet.create({
     activeSlotText: { color: '#FFFFFF', fontFamily: Fonts.PoppinsMedium, fontSize: 14 },
     emptyContainer: { marginTop: 35, alignItems: 'center', justifyContent: 'center' },
     emptyTitle: { marginTop: 10, fontSize: 16, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
+    scrollHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginHorizontal: 20,
+        marginTop: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    scrollHintText: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsMedium,
+        color: Colors.primaryColor,
+    },
     slotStatus: { marginTop: 3, fontSize: 11, color: '#64748B', fontFamily: Fonts.PoppinsMedium },
     input: { marginTop: 14, height: 120, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 16, fontFamily: Fonts.PoppinsMedium, fontSize: 14, color: '#1E293B' },
     footer: {

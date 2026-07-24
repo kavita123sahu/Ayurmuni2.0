@@ -23,7 +23,7 @@ import { NativeStackNavigationProp }
   from '@react-navigation/native-stack';
 
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import SectionHeader from '../../components/SectionHeader';
 import RecentDoctors from '../../components/RecentDoctors';
 import CategoryList from '../../components/CategoryList';
@@ -43,6 +43,7 @@ import { getConsultHistory, RecentConsultHistory } from '../../services/ConsultS
 import EmptyState from '../../components/EmptyState';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
+import { getScreenPaddingH, SPACING } from '../../constants/responsive';
 
 type NavigationProp =
   NativeStackNavigationProp<
@@ -70,6 +71,7 @@ const ConsultHome = () => {
 
   const [history, setHistory] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const debouncedSearch = useDebounce(search, 400);
   const [recentLoading, setRecentLoading] = useState(false);
 
@@ -240,6 +242,8 @@ const ConsultHome = () => {
         onBack={() =>
           navigation.goBack()
         }
+        onSearchPress={() => setSearchExpanded(true)}
+        onRefreshPress={onRefresh}
       />
 
 
@@ -260,10 +264,13 @@ const ConsultHome = () => {
         ListHeaderComponent={
           <>
 
-            <SearchBar
+            <ExpandableSearch
               value={search}
               onChangeText={setSearch}
               placeholder="Search doctors, concerns..."
+              showTrigger={false}
+              expanded={searchExpanded}
+              onExpandedChange={setSearchExpanded}
             />
 
             <PromoCard
@@ -348,13 +355,12 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor:
-      '#FDFDFB',
-    paddingHorizontal: 20,
+    backgroundColor: '#FDFDFB',
+    paddingHorizontal: getScreenPaddingH(),
   },
 
   content: {
-    paddingBottom: 40,
+    paddingBottom: SPACING.xxl,
   },
 
   loaderContainer: {

@@ -19,12 +19,8 @@ export function createOptimisticMessage(
     sender_role: 'patient',
     text: text.trim(),
     attachments,
-    phase: null,
-    message_type: hasAttachments
-      ? attachments.length === 1
-        ? 'image'
-        : 'images'
-      : 'text',
+    phase: 'live',
+    message_type: hasAttachments ? 'image' : 'text',
     is_seen: false,
     created_at: new Date().toISOString(),
     _pending: true,

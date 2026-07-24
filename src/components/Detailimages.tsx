@@ -3,14 +3,13 @@ import {
   View,
   FlatList,
   Image,
-  Dimensions,
   StyleSheet,
   Animated,
   ImageSourcePropType,
+  PixelRatio,
 } from 'react-native';
 import { Colors } from '../common/Colors';
-
-const { width } = Dimensions.get('window');
+import { BANNER, getContentWidth, getScreenPaddingH } from '../constants/responsive';
 
 const SPACING = 10;
 const AUTO_SLIDE_MS = 4500;
@@ -19,6 +18,8 @@ type Props = {
   images: any[];
   itemWidth?: number;
   itemHeight?: number;
+  /** When set, height is derived from width ÷ aspectRatio (consistent on all devices). */
+  aspectRatio?: number;
   showIndicator?: boolean;
   DynamicResize?: 'cover' | 'contain';
   autoSlide?: boolean;
@@ -30,13 +31,16 @@ const Detailimages: React.FC<Props> = ({
   images,
   itemWidth,
   itemHeight,
+  aspectRatio = BANNER.aspectRatio,
   DynamicResize = 'cover',
   showIndicator = true,
   autoSlide = true,
   embedded = false,
 }) => {
-  const finalWidth = itemWidth ?? width - 40;
-  const finalHeight = itemHeight ?? 156;
+  const paddingH = getScreenPaddingH();
+  const finalWidth = itemWidth ?? getContentWidth(paddingH);
+  const finalHeight =
+    itemHeight ?? PixelRatio.roundToNearestPixel(finalWidth / aspectRatio);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -189,14 +193,9 @@ const styles = StyleSheet.create({
   slide: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    // overflow: 'hidden',
+    overflow: 'hidden',
     borderWidth: 0.5,
     borderColor: '#E8EDF2',
-    // shadowColor: '#0D614E',
-    // shadowOffset: { width: 0, height: 3 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 8,
-    // elevation: 3,
   },
   image: {
     width: '100%',

@@ -10,6 +10,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Linking,
+    RefreshControl,
 } from 'react-native';
 import TablerIcon from '../../components/TablerIcon';
 import SelectedUploadCard from '../../components/SelectedUploadCard';
@@ -38,6 +39,8 @@ const MedicalRecords = (props: any) => {
     const {
         patientsRecord,
         fetchPatientsRecord,
+        onRefresh,
+        refreshing,
     } = useMedicalRecord();
 
     console.log("patientsRecordpatientsRecord", patientsRecord);
@@ -182,6 +185,7 @@ const MedicalRecords = (props: any) => {
                 title="Medical Records"
                 subtitle="Manage your health documents"
                 onBack={() => { props.navigation.goBack() }}
+                onRefreshPress={onRefresh}
             />
 
             <SearchBar
@@ -192,7 +196,16 @@ const MedicalRecords = (props: any) => {
 
             <TabButton />
 
-            <ScrollView>
+            <ScrollView
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[Colors.primaryColor]}
+                        tintColor={Colors.primaryColor}
+                    />
+                }
+            >
 
                 {uploading ? (
                     <View

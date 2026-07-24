@@ -103,7 +103,7 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                                 {item?.short_description && (
                                     <Text
                                         style={styles.subtitle}
-                                        numberOfLines={3}
+                                        numberOfLines={1}
                                         ellipsizeMode="tail"
                                     >
                                         {item?.short_description}
@@ -123,7 +123,7 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                                         </Text>
                                     </View>
 
-                                    <View style={styles.badge}>
+                                    {/* <View style={styles.badge}>
                                         <TablerIcon
                                             name="clock"
                                             size={14}
@@ -132,7 +132,7 @@ const SuggestedCard: React.FC<Props> = ({ data, price = false, isGrid = false, h
                                         <Text style={styles.badgeText}>
                                             {item?.duration_minutes} min
                                         </Text>
-                                    </View>
+                                    </View> */}
                                 </View>
                                 {price && (
                                     <View style={styles.priceContainer}>
@@ -187,7 +187,8 @@ export default React.memo(SuggestedCard);
 import { Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2;
+const GRID_CARD_WIDTH = (width - 48) / 2;
+const LIST_CARD_WIDTH = Math.min(width * 0.42, 156);
 
 const styles = StyleSheet.create({
     listContent: {
@@ -198,22 +199,19 @@ const styles = StyleSheet.create({
         paddingRight: 4,
     },
     card: {
-        width: CARD_WIDTH,
-        backgroundColor: '#FAFAFA',
-        borderRadius: 16,
-        marginRight: 14,
+        width: LIST_CARD_WIDTH,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        marginRight: 10,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        // height: 240,
-        marginBottom: 20,
-        // minHeight: 200,
-
+        borderColor: '#EEF2F6',
+        overflow: 'hidden',
     },
 
     gridCard: {
-        // width: '48%',
-        width: CARD_WIDTH,
+        width: GRID_CARD_WIDTH,
         marginRight: 0,
+        marginBottom: 10,
     },
 
     emptyCard: {
@@ -222,15 +220,9 @@ const styles = StyleSheet.create({
     },
 
     imageContainer: {
-        // width: "100%",
-        // height: 180,
-        // marginTop: 12,
-        // borderRadius: 16,
-        // overflow: "hidden",
-        backgroundColor: "#F1F5F9",
+        backgroundColor: '#F1F5F9',
         width: '100%',
-        aspectRatio: 1,
-        borderRadius: 16,
+        aspectRatio: 4 / 3,
         overflow: 'hidden',
     },
 
@@ -240,23 +232,22 @@ const styles = StyleSheet.create({
     },
 
     subContainer: {
-        flex: 1,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
     },
 
     title: {
-        fontSize: 16,
-        lineHeight: 22,
+        fontSize: 13,
+        lineHeight: 17,
         fontFamily: Fonts.PoppinsSemiBold,
-        color: "#1E293B",
+        color: '#1E293B',
     },
 
     subtitle: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#64748B',
-        lineHeight: 18,
-
+        lineHeight: 15,
+        marginTop: 2,
         fontFamily: Fonts.PoppinsMedium,
     },
 
@@ -293,8 +284,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         flexWrap: 'wrap',
-        marginTop: 8,
-        gap: 8, // RN 0.71+ supported
+        marginTop: 6,
+        gap: 6,
     },
 
     badge: {
@@ -303,14 +294,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8FAFC',
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        borderRadius: 18,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        borderRadius: 12,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
     },
 
     badgeText: {
-        marginLeft: 4,
-        fontSize: 11,
+        marginLeft: 3,
+        fontSize: 10,
         color: '#475569',
         fontFamily: Fonts.PoppinsMedium,
     },

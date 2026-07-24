@@ -431,39 +431,47 @@ export const TopDoctorsCardSkeleton = () => {
 };
 
 
-export const HomeCategorySkeleton = () => {
+const COMPACT_TILE = 64;
+const COMPACT_ITEM_WIDTH = Math.floor(
+  (Dimensions.get('window').width - 40 - 8 * 4) / 5,
+);
+const COMPACT_ITEM_GAP = 10;
+
+export const HomeCategorySkeleton = ({ compact = false }: { compact?: boolean }) => {
+  const tileSize = compact ? COMPACT_TILE : ITEM_SIZE - 12;
+  const itemWidth = compact ? COMPACT_ITEM_WIDTH : ITEM_SIZE;
+
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{
-        paddingVertical: 10,
+        paddingVertical: compact ? 0 : 10,
       }}
     >
       {[1, 2, 3, 4, 5].map(item => (
         <View
           key={item}
           style={{
-            width: ITEM_SIZE,
+            width: itemWidth,
             alignItems: 'center',
+            marginRight: compact ? COMPACT_ITEM_GAP : 0,
           }}
         >
           <SkeletonPlaceholder
             borderRadius={16}
             speed={1200}
           >
-            {/* Circle */}
             <SkeletonPlaceholder.Item
-              width={ITEM_SIZE - 12}
-              height={ITEM_SIZE - 12}
-              borderRadius={20}
+              width={tileSize}
+              height={tileSize}
+              borderRadius={compact ? 14 : 20}
             />
 
-            {/* Text */}
             <SkeletonPlaceholder.Item
-              marginTop={8}
+              marginTop={compact ? 4 : 8}
               alignSelf="center"
-              width={45}
+              width={compact ? 52 : 45}
               height={10}
               borderRadius={6}
             />

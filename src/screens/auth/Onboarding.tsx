@@ -14,6 +14,7 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
     KeyboardAvoidingView,
+    Animated,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
@@ -107,8 +108,8 @@ const Onboarding = (props: any) => {
         props.navigation.goBack();
         console.log('Back pressed');
     };
-
-
+const avatarAnim = useRef(new Animated.Value(0)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     const uploadProfileImage = async (
         image: Asset
@@ -458,44 +459,63 @@ const Onboarding = (props: any) => {
                             </Text>
 
                             {/* PROFILE IMAGE */}
-                            <View style={styles.imageWrapper}>
+                              <View style={styles.imageWrapper}>  
+                          {/* <Animated.View
+                                style={[
+                                    styles.imageWrapper,
+                                    {
+                                        opacity: avatarAnim,
+                                        transform: [
+                                            {
+                                                scale: avatarAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [0.7, 1],
+                                                }),
+                                            },
+                                        ],
+                                    },
+                                ]}
+                            > */}
                                 <TouchableOpacity
                                     activeOpacity={0.8}
                                     onPress={handleAddImage}
                                     style={styles.profileContainer}
                                 >
-                                    <View style={styles.bigCircle}>
-                                        {isLoadingImage ? (
-                                            <ActivityIndicator size="small" color="#2E7D32" />
-                                        ) : formData?.profileImage?.uri ? (
-                                            <Image
-                                                source={{ uri: formData.profileImage.uri }}
-                                                style={styles.profileImage}
-                                            />
-                                        ) : (
-                                            <>
+                                    <View style={styles.ringOuter}>
+                                        <View style={styles.bigCircle}>
+                                            {isLoadingImage ? (
+                                                <ActivityIndicator size="small" color="#2E7D32" />
+                                            ) : formData?.profileImage?.uri ? (
+                                                <Image
+                                                    source={{ uri: formData.profileImage.uri }}
+                                                    style={styles.profileImage}
+                                                />
+                                            ) : formData?.firstName ? (
                                                 <View style={styles.placeholderContainer}>
                                                     <Text style={styles.placeholderText}>
-                                                        {formData?.firstName
-                                                            ? formData.firstName.charAt(0).toUpperCase()
-                                                            : ""}
+                                                        {formData.firstName.charAt(0).toUpperCase()}
                                                     </Text>
                                                 </View>
-
-                                                {/* Overlay Text */}
+                                            ) : (
                                                 <View style={styles.uploadOverlay}>
                                                     <Text style={styles.uploadText}>Upload Photo</Text>
                                                 </View>
-                                            </>
-                                        )}
+                                            )}
+                                        </View>
                                     </View>
-
+ 
                                     {/* Camera Icon */}
-                                    <View style={styles.smallCircle}>
-                                        <TablerIcon name="camera" size={20} color={Colors.primaryColor} />
-                                    </View>
+                                    <Animated.View
+                                        style={[
+                                            styles.smallCircle,
+                                            { transform: [{ scale: pulseAnim }] },
+                                        ]}
+                                    >
+                                        <TablerIcon name="camera" size={20} color="#FFFFFF" />
+                                    </Animated.View>
                                 </TouchableOpacity>
-                            </View>
+                                </View>
+                            {/* </Animated.View> */}
 
                             <View style={styles.row}>
 
@@ -559,11 +579,11 @@ const Onboarding = (props: any) => {
                                     </TouchableOpacity>
                                 ))}
 
-                            </View>  
+                            </View>
 
-                             <Text style={styles.errorText}>{errors.gender}</Text>
+                            <Text style={styles.errorText}>{errors.gender}</Text>
 
-                     
+
 
                             {/* DOB */}
                             <Text style={styles.label}>Date of Birth *</Text>
@@ -820,6 +840,18 @@ const styles = StyleSheet.create({
     profileContainer: {
         width: 150,
         height: 150,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    ringOuter: {
+        width: 145,
+        height: 145,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: '#0D614E35',
+        borderStyle: 'dashed',
+        padding: 5,
         justifyContent: 'center',
         alignItems: 'center',
     },

@@ -153,17 +153,34 @@ export const getMedicalReceipt = async (appointmentId: string) => {
 // };
 
 
-export const getAppointmentDetail = async (appointmentId: string) => {
+export const getAppointmentDetail = async (lookupId: string) => {
+    const tryFetch = async (param: 'appointment_id' | 'consultation_id') =>
+        apiClient(
+            `customers/patient/consultation/?${param}=${encodeURIComponent(lookupId)}`,
+            { method: 'GET' },
+        );
+
     try {
-        const response = await apiClient(`customers/patient/consultation/?appointment_id=${appointmentId}`, {
-            method: 'GET'
-        });
-   
+        let response = await tryFetch('appointment_id');
+        if (response?.success) {
+            return response;
+        }
+
+        const message = String(response?.message || '').toLowerCase();
+        const notFound =
+            response?.status === 404 ||
+            message.includes('not found') ||
+            message.includes('does not exist');
+
+        if (notFound) {
+            response = await tryFetch('consultation_id');
+        }
+
         return response;
     } catch (error) {
         throw error;
     }
-}
+};
 
 
 

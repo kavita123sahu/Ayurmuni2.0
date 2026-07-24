@@ -256,9 +256,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { chatService } from '../services/chatService';
 import { WebSocketService } from '../services/websocketService';
-import { Message, ChatState, SendMessagePayload, WebSocketMessage, Attachment } from '../types/chat';
+import { Message, ChatState, SendMessagePayload, WebSocketMessage, Attachment, ChatApiError } from '../types/chat';
 import { Utils } from '../../common/Utils';
-import { isChatSendEnabled, getChatDisabledReason, AppointmentChatLike } from '../utils/chatAccessUtils';
+import { isChatSendEnabled, getChatDisabledReason, AppointmentChatLike, shouldSuppressChatError } from '../utils/chatAccessUtils';
 
 export function useChat(
   appointmentId: string,
@@ -308,25 +308,43 @@ export function useChat(
       }
       try {
         const data = await chatService.getMessages(appointmentId, markRead);
-        console.log('datadatadata',data)
         if (mountedRef.current) {
           hasLoadedOnceRef.current = true;
+          setState((prev) => {
+            const incoming = data.messages ?? [];
+            const keepExisting =
+              incoming.length === 0 &&
+              !!data.sendBlocked &&
+              prev.messages.length > 0;
+
+            return {
+              ...prev,
+              messages: keepExisting ? prev.messages : incoming,
+              chatAccess: data.chat_access ?? prev.chatAccess,
+              followUpActive: data.chat_access?.follow_up_active ?? prev.followUpActive,
+              activePhase: data.chat_access?.active_phase ?? prev.activePhase,
+              isLoading: false,
+              error: null,
+            };
+          });
+        }
+      } catch (error: unknown) {
+        if (mountedRef.current) {
+          hasLoadedOnceRef.current = true;
+          const apiError = error as ChatApiError;
+          const isSendBlocked = apiError.httpStatus === 403;
+
           setState((prev) => ({
             ...prev,
-            messages: data.messages || [],
-            chatAccess: data.chat_access || null,
-            followUpActive: data.chat_access?.follow_up_active || false,
-            activePhase: data.chat_access?.active_phase || 'live',
             isLoading: false,
             error: null,
-          }));
-        }
-      } catch (error: any) {
-        if (mountedRef.current) {
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            error: isFirstLoad ? error.message || 'Failed to load messages' : prev.error,
+            chatAccess: isSendBlocked
+              ? {
+                  ...(prev.chatAccess ?? {}),
+                  can_send: false,
+                  can_read: true,
+                } as ChatState['chatAccess']
+              : prev.chatAccess,
           }));
         }
       }
@@ -334,13 +352,24 @@ export function useChat(
     [appointmentId]
   );
 
+  // Always fetch history first — independent of WebSocket.
+  useEffect(() => {
+    mountedRef.current = true;
+    loadMessages();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [appointmentId, loadMessages]);
+
   useEffect(() => {
     loadMessagesRef.current = loadMessages;
   }, [loadMessages]);
 
   // ✅ Error ko auto-clear karo taaki toast hamesha ke liye atka na rahe
   const showTransientError = useCallback((message: string) => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || shouldSuppressChatError(message)) {
+      return;
+    }
     setState((prev) => ({ ...prev, error: message }));
     if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     errorTimeoutRef.current = setTimeout(() => {
@@ -366,6 +395,7 @@ export function useChat(
         showTransientError(getChatDisabledReason(
           chatAccessRef.current,
           appointmentDateRef.current ?? undefined,
+          appointmentContextRef.current ?? undefined,
         ));
         return;
       }
@@ -407,13 +437,27 @@ export function useChat(
             m.id === tempId ? (result?.message ?? { ...m, id: `sent-${Date.now()}` }) : m
           ),
         }));
-      } catch (error: any) {
-        // Fail hone pe temp message hata do, warna galat message atka reh jayega
+      } catch (error: unknown) {
         setState((prev) => ({
           ...prev,
           messages: prev.messages.filter((m) => m.id !== tempId),
         }));
-        showTransientError(error.message || 'Message bhejne mein error aayi');
+        const apiError = error as ChatApiError;
+        if (apiError.httpStatus === 403) {
+          setState((prev) => ({
+            ...prev,
+            chatAccess: prev.chatAccess
+              ? { ...prev.chatAccess, can_send: false }
+              : ({ can_send: false, can_read: true } as ChatState['chatAccess']),
+          }));
+          showTransientError(getChatDisabledReason(
+            chatAccessRef.current,
+            appointmentDateRef.current ?? undefined,
+            appointmentContextRef.current ?? undefined,
+          ));
+          return;
+        }
+        showTransientError('Unable to send message. Please try again.');
       }
     },
     [appointmentId, role, showTransientError]
@@ -437,12 +481,31 @@ export function useChat(
   );
 
   useEffect(() => {
-    mountedRef.current = true;
+    const canSend = isChatSendEnabled(
+      chatAccessRef.current,
+      appointmentDateRef.current ?? undefined,
+      appointmentContextRef.current ?? undefined,
+    );
+
+    if (!canSend) {
+      if (wsRef.current) {
+        wsRef.current.disconnect();
+        wsRef.current = null;
+      }
+      if (mountedRef.current) {
+        setState((prev) => ({ ...prev, isConnected: false }));
+      }
+      return;
+    }
 
     const setupWebSocket = async (): Promise<void> => {
       try {
         const token = await Utils.getData('_TOKEN');
-        if (!token || !appointmentId) return;
+        if (!token || !appointmentId || !mountedRef.current) return;
+
+        if (wsRef.current) {
+          return;
+        }
 
         const ws = new WebSocketService(
           appointmentId,
@@ -465,7 +528,6 @@ export function useChat(
             setState((prev) => {
               const exists = prev.messages.some((m) => m.id === incoming.id);
               if (exists) return prev;
-              // Apna hi temp/optimistic message ho to usko real message se replace karo
               const withoutMatchingTemp = prev.messages.filter((m) => {
                 if (!m.id.startsWith('temp-')) return true;
                 const sameSender = m.sender_role === incoming.sender_role;
@@ -490,15 +552,12 @@ export function useChat(
           }
         });
 
-        ws.on('error', (data) => {
-          if (mountedRef.current && data.error) {
-            showTransientError(data.error);
-          }
+        ws.on('error', () => {
+          // Doctor offline / WS unavailable — history still loads via HTTP; no user-facing error.
         });
 
         ws.connect();
         wsRef.current = ws;
-        await loadMessages();
       } catch (error) {
         console.error('❌ Setup error:', error);
       }
@@ -511,16 +570,15 @@ export function useChat(
         appStateRef.current.match(/inactive|background/) && nextAppState === 'active';
 
       if (isComingToForeground) {
+        loadMessagesRef.current?.();
         if (wsRef.current && !wsRef.current.isConnected()) {
           wsRef.current.connect();
         }
-        loadMessagesRef.current?.();
       }
       appStateRef.current = nextAppState;
     });
 
     return () => {
-      mountedRef.current = false;
       if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
       subscription.remove();
       if (wsRef.current) {
@@ -528,7 +586,13 @@ export function useChat(
         wsRef.current = null;
       }
     };
-  }, [appointmentId, loadMessages, showTransientError]);
+  }, [
+    appointmentId,
+    appointmentDate,
+    appointmentContext,
+    state.chatAccess,
+    showTransientError,
+  ]);
 
   return {
     ...state,

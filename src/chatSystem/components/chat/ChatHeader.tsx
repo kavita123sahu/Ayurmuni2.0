@@ -2,7 +2,7 @@
 
 
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../../common/Images';
 // import logo from '../../../assets/images//backButton.png';
@@ -23,6 +23,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.leftContainer}>
 
         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
@@ -57,7 +58,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
 };
 
 const styles = StyleSheet.create({
- 
+
   container: {
     minHeight: 64,
     paddingVertical: 10,

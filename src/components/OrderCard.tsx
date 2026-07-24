@@ -24,10 +24,10 @@ const OrderCard: React.FC<Props> = ({
 
   const navigation = useNavigation<any>();
   const isDelivered = status === 'DELIVERED';
-  
+
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PrescriptionDetail')}>
+    <TouchableOpacity style={styles.card} >
       {/* Top Row */}
       <View style={styles.topRow}>
         <View style={styles.iconBox}>
@@ -38,14 +38,14 @@ const OrderCard: React.FC<Props> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.id}>ID: {id}</Text>
         </View>
-        
+
         <View
           style={[
             styles.statusBadge,
             {
               backgroundColor: isDelivered ? '#E6F4EA' : '#E8F0FE',
             },
-          ]} 
+          ]}
         >
           <Text
             style={[

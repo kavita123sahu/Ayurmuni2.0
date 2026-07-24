@@ -14,6 +14,7 @@ import {
     StatusBar,
     ActivityIndicator,
     Modal,
+    RefreshControl,
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -30,7 +31,7 @@ import { Images } from '../../common/Images';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import { generateDates, formatDate, AVAILABILITY_OPTIONS, EXPERIENCE_OPTIONS } from '../../common/DataInterface';
 import { useAllDoctors, useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
@@ -70,6 +71,7 @@ const AllDoctors = (props: any) => {
     const [calendarStep, setCalendarStep] = useState<'from' | 'to'>('from');
     const [selectedDateLabel, setSelectedDateLabel] = useState('');
     const [searchText, setSearchText] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
 
     const { categories } = useConsultData();
 
@@ -92,7 +94,7 @@ const AllDoctors = (props: any) => {
         ],
     );
 
-    const { loading, doctorData } = useAllDoctors(apiFilters);
+    const { loading, doctorData, refresh, refreshing } = useAllDoctors(apiFilters);
     const handleTabPress = (tab: string | null) => {
         setActiveTab(prev => (prev === tab ? null : tab));
     };
@@ -275,27 +277,26 @@ const AllDoctors = (props: any) => {
                     }
                 />
 
-                <AppHeader
+                <View style={styles.headerWrap}>
+                    <AppHeader
+                        title="All Doctors"
+                        leftIconName='arrow-left'
+                        onLeftPress={() =>
+                            props.navigation.goBack()
+                        }
+                        onSearchPress={() => setSearchExpanded(true)}
+                        // onRefreshPress={refresh}
+                    />
+                </View>
 
-
-                    title="All Doctors"
-                    leftIconName='arrow-left'
-                    onLeftPress={() =>
-                        props.navigation.goBack()
-                    }
-                    onRightPress={() => props.navigation.navigate('NotificationsScreen')}
-                    rightIconName="bell"
-                />
-
-                <View style={{ flex: 1, paddingHorizontal: 20 }}>
-                    <SearchBar
+                <View style={styles.body}>
+                    <ExpandableSearch
                         placeholder="Search doctors..."
                         value={searchText}
-                        onChangeText={
-                            setSearchText
-                        }
-
-
+                        onChangeText={setSearchText}
+                        showTrigger={false}
+                        expanded={searchExpanded}
+                        onExpandedChange={setSearchExpanded}
                     />
 
                     <FilterTabs
@@ -333,7 +334,14 @@ const AllDoctors = (props: any) => {
                                 styles.listContent,
                                 { paddingBottom: insets.bottom + 24 },
                             ]}
-
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={refresh}
+                                    colors={[Colors.primaryColor]}
+                                    tintColor={Colors.primaryColor}
+                                />
+                            }
 
                             renderItem={renderDoctorItem}
 
@@ -452,6 +460,16 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+    },
+
+    body: {
+        flex: 1,
+        marginTop:10,
+        paddingHorizontal: 20,
+    },
+
+    headerWrap: {
+        paddingHorizontal: 20,
     },
 
     listContent: {

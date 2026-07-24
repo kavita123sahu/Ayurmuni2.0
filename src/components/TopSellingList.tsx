@@ -15,11 +15,12 @@ import { Colors } from '../common/Colors';
 import { TogglewishlistProduct } from '../services/ProductServices';
 import ProductCard from './ProductCard';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addToCart, fetchCart } from '../store/slices/cartSlice';
+import { syncCartQuantity } from '../store/slices/cartSlice';
 import { updateProductItem } from '../store/slices/homeSlice';
 import { showSuccessToast } from '../config/Key';
 import { useScrollHide } from '../context/ScrollHideContext';
 import { requireAuth } from '../services/guestAuth';
+import { navigateToProductDetails, navigateToSearchScreen } from '../navigation/productNavigation';
 
 interface Props {
   data: any[];
@@ -32,6 +33,7 @@ interface Props {
   nested?: boolean;
   onExternalScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   home?: boolean;
+  onViewAllPress?: () => void;
 }
 
 const SPACING = 12;
@@ -47,6 +49,7 @@ const TopSellingList: React.FC<Props> = ({
   nested = false,
   onExternalScroll,
   home = false,
+  onViewAllPress,
 }) => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(state => state.cart.variantQuantities);
@@ -77,22 +80,18 @@ const TopSellingList: React.FC<Props> = ({
       const variantId = String(item?.variant_id);
       if (!variantId) return;
 
-      const result = await dispatch(addToCart({ variantId, quantity: newQty }));
+      const result = await dispatch(
+        syncCartQuantity({ variantId, quantity: newQty }),
+      );
 
-      if (addToCart.fulfilled.match(result)) {
-        showSuccessToast(result.payload.message || 'Cart updated', 'success');
-        dispatch(fetchCart(true));
-        setProductData(prev =>
-          prev.map(product =>
-            String(product.variant_id) === variantId
-              ? { ...product, quantity: newQty }
-              : product,
-          ),
+      if (syncCartQuantity.rejected.match(result)) {
+        showSuccessToast(
+          (result.payload as string) || 'Failed to update cart',
+          'error',
         );
-        dispatch(updateProductItem({ variantId, updates: { quantity: newQty } }));
       }
     },
-    [dispatch, setProductData],
+    [dispatch],
   );
 
   const handleWishlist = useCallback(
@@ -160,7 +159,7 @@ const TopSellingList: React.FC<Props> = ({
       }
 
       const variantId = String(item?.variant_id);
-      const cartQty = variantQuantities[variantId] ?? item?.quantity ?? 0;
+      const cartQty = variantQuantities[variantId] ?? 0;
 
       return (
         <View style={!isGrid ? [styles.horizontalWrap, home && styles.horizontalWrapHome] : undefined}>
@@ -171,7 +170,7 @@ const TopSellingList: React.FC<Props> = ({
             isAdding={addingVariantId === variantId}
             showWishlist={fav}
             onPress={() =>
-              stackNav.navigate('ProductDetails', { varientID: item?.variant_id })
+              navigateToProductDetails(stackNav, item?.variant_id)
             }
             onAdd={() => handleCartUpdate(item, cartQty + 1)}
             onIncrement={() => handleCartUpdate(item, cartQty + 1)}
@@ -203,7 +202,11 @@ const TopSellingList: React.FC<Props> = ({
         tag="CURATED EXCELLENCE"
         showButton={false}
       />
-      <SectionHeader title="Top Selling Products" actionText="View all" />
+      <SectionHeader
+        title="Top Selling Products"
+        actionText="View all"
+        onPress={onViewAllPress ?? (() => navigateToSearchScreen(stackNav))}
+      />
     </>
   );
 
@@ -253,6 +256,7 @@ const TopSellingList: React.FC<Props> = ({
     />
   );
 };
+
 
 export default React.memo(TopSellingList);
 

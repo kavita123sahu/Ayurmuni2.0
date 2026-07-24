@@ -1,17 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
-import { useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
-import { Images } from '../../common/Images';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppointmentHistory } from '../../hooks/useConsultData';
 import { PAST_STATUS, UPCOMING_STATUS } from '../../common/DataInterface';
@@ -22,42 +18,22 @@ import RescheduleModal from '../../components/RescheduleModal';
 import CancelAppointmentModal from '../../components/CancelAppointModal';
 import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
-import { normalizeAppointmentListItem, resolveAppointmentLookupId } from '../../utils/appointmentUtils';
+import { normalizeAppointmentListItem,  } from '../../utils/appointmentUtils';
+import SegmentTabs from '../../components/SegmentTabs';
+import {
+  getListBottomPadding,
+  getScreenPaddingH,
+  SPACING,
+} from '../../constants/responsive';
 
-// ---- TabButton bahar nikala + memo lagaya ----
-// Ab yeh sirf apne props (activeTab) change hone pe hi re-render hoga,
-// aur parent ke har render pe "naya component" ban ke remount NAHI hoga.
-const TabButton = React.memo(
-  ({
-    activeTab,
-    onChange,
-  }: {
-    activeTab: 'upcoming' | 'past';
-    onChange: (tab: 'upcoming' | 'past') => void;
-  }) => {
-    return (
-      <View style={styles.tabWrapper}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => onChange('upcoming')}>
-          <Text style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
-            Upcoming
-          </Text>
-          {activeTab === 'upcoming' && <View style={styles.indicator} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabItem} onPress={() => onChange('past')}>
-          <Text style={[styles.tabText, activeTab === 'past' && styles.activeTabText]}>
-            Past
-          </Text>
-          {activeTab === 'past' && <View style={styles.indicator} />}
-        </TouchableOpacity>
-      </View>
-    );
-  }
-);
+const APPOINTMENT_TABS = [
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'past', label: 'Past' },
+] as const;
 
 const AppointmentScreen = (props: any) => {
   const insets = useSafeAreaInsets();
-  const { AppointData, refreshUpcoming, loading, loadMore, hasMore, loadingMore } =
+  const { AppointData, refreshUpcoming, loading, loadMore, hasMore, loadingMore, refreshing } =
     useAppointmentHistory();
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -233,15 +209,27 @@ const AppointmentScreen = (props: any) => {
     );
   }, [loading, appointmentData.length, activeTab]);
 
+  const handleBookNew = useCallback(() => {
+    props?.navigation.navigate('AllDoctors');
+  }, [props?.navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
       <Header
         title="My Appointments"
         subtitle="Manage your visits "
         onBack={() => props?.navigation.goBack()}
+        rightIconName="plus"
+        onRightPress={handleBookNew}
+        onRefreshPress={refreshUpcoming}
       />
 
-      <TabButton activeTab={activeTab} onChange={handleTabChange} />
+      <SegmentTabs
+        tabs={[...APPOINTMENT_TABS]}
+        activeKey={activeTab}
+        onChange={key => handleTabChange(key as 'upcoming' | 'past')}
+        variant="underline"
+      />
 
       <FlatList
         data={listData}
@@ -255,11 +243,19 @@ const AppointmentScreen = (props: any) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + 100 },
+          { paddingBottom: getListBottomPadding(insets) },
         ]}
         ListEmptyComponent={ListEmpty}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshUpcoming}
+            colors={[Colors.primaryColor]}
+            tintColor={Colors.primaryColor}
+          />
+        }
         ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#0D614E" /> : null}
       />
 
@@ -287,12 +283,6 @@ const AppointmentScreen = (props: any) => {
         }}
       />
 
-      <TouchableOpacity
-        style={[styles.bookBtn, { bottom: insets.bottom + 16 }]}
-        onPress={() => props?.navigation.navigate('AllDoctors')}
-      >
-        <Text style={styles.bookText}>+ Book New Appointment</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -300,48 +290,13 @@ const AppointmentScreen = (props: any) => {
 export default AppointmentScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#F7F8FA' },
-  header: {
-    fontSize: 20,
-    fontFamily: Fonts.PoppinsSemiBold,
-    textAlign: 'center',
-    marginVertical: 16,
-    color: Colors.textColor || '#000',
+  container: {
+    flex: 1,
+    paddingHorizontal: getScreenPaddingH(),
+    backgroundColor: '#F7F8FA',
   },
-  tabWrapper: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-    marginTop: 4,
-  },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, position: 'relative' },
-  tabText: { fontSize: 14, color: '#999', fontFamily: Fonts.PoppinsMedium },
-  activeTabText: { color: Colors.primaryColor, fontFamily: Fonts.PoppinsSemiBold },
-  indicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: Colors.primaryColor, borderRadius: 2 },
   listContent: {
-    paddingTop: 16,
-    paddingBottom: 96,
+    paddingTop: SPACING.lg,
     flexGrow: 1,
   },
-  bookBtn: {
-    position: 'absolute',
-    backgroundColor: Colors.primaryColor,
-    left: 0,
-    right: 0,
-    paddingVertical: 16,
-    minHeight: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginHorizontal: 20,
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#0D614E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  bookText: { color: '#fff', fontFamily: Fonts.PoppinsSemiBold, fontSize: 16 },
 });

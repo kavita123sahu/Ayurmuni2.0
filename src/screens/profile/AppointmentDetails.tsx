@@ -29,8 +29,13 @@ import { Utils } from '../../common/Utils';
 import FeedbackModal from '../../components/FeedbackModal';
 import { useCreateReview } from '../../hooks/useCreateReview';
 import TablerIcon from '../../components/TablerIcon';
-import { resolveAppointmentLookupId } from '../../utils/appointmentUtils';
+import {
+  buildVideoCallNavParams,
+  getAppointmentIds,
+  resolveAppointmentLookupId,
+} from '../../utils/appointmentUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
+import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
 
 const PrimaryButton = ({
   title,
@@ -72,17 +77,12 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
     consultationId: resolveAppointmentLookupId({
       rawData: data,
       appointment: data?.appointment,
-      consultation_id: data?.appointment?.consultation_id,
-      appointment_id: data?.appointment?.appointment_id,
-      id: data?.appointment?.id,
     }),
     patientName: data?.appointment?.patient?.patient_name || '',
-    patientAvatar: data?.appointment?.patient?.patient_image || ''
-
+    patientAvatar: data?.appointment?.patient?.patient_image || '',
   };
 
   const isLive = data?.appointment?.call_status === 'in_progress';
-
   const canOpenChat = !!appointmentData.consultationId;
 
   return (
@@ -145,15 +145,17 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
               title="Join Video Call"
               page="appoint"
               onPress={() => {
-                navigation.navigate('PatientVideoCallScreen', {
-                  appointmentId: appointmentData?.consultationId,
-                  role: 'patient',
-                  otherPartyImage: appointmentData?.doctor_image,
-                  otherPartyName: appointmentData?.doctorName,
-
-
-
-                });
+                navigation.navigate(
+                  'PatientVideoCallScreen',
+                  buildVideoCallNavParams(
+                    { rawData: data, appointment: data?.appointment },
+                    {
+                      role: 'patient',
+                      otherPartyName: appointmentData.doctorName,
+                      otherPartyImage: appointmentData.doctor_image,
+                    },
+                  ),
+                );
               }}
             />
           )}
@@ -192,20 +194,15 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
       </View>
 
-
     </View>
   );
 };
 
 const AppointmentDetailScreen = ({ route, navigation }: any) => {
-  const routeConsultationId =
-    route.params?.consultation_id || route.params?.appointment_id;
-  const consultation_id = resolveAppointmentLookupId({
-    consultation_id: routeConsultationId,
-    ...route.params,
+  const routeLookupId = resolveAppointmentLookupId({
+    consultation_id: route.params?.consultation_id,
+    appointment_id: route.params?.appointment_id,
   });
-
-  console.log("consultionidddddd", consultation_id);
 
   const [loading1, setLoading] = React.useState(true);
   const [detail, setDetail] = React.useState<any>(null);
@@ -256,14 +253,14 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   }) => {
     const response = await submitReview({
       entityType: 'doctor',
-      appointmentId: consultation_id,
+      appointmentId: routeLookupId,
       method: isEditReview ? 'PATCH' : 'POST',
       reviewData: {
         rating,
         review,
         ...(isEditReview
           ? {}
-          : { appointment: consultation_id }),
+          : { appointment: routeLookupId }),
         image_urls: images,
       },
     });
@@ -288,15 +285,16 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   };
 
   const fetchDetail = async () => {
-    // if (!consultation_id) {
-    //   showSuccessToast('Appointment id missing', 'error');
-    //   setLoading(false);
-    //   return;
-    // }
+    if (!routeLookupId) {
+      showSuccessToast('Appointment id missing', 'error');
+      setLoading(false);
+      setDetail(null);
+      return;
+    }
 
     try {
       setLoading(true);
-      const res = await _CONSULT_SERVICE.getAppointmentDetail(consultation_id);
+      const res = await _CONSULT_SERVICE.getAppointmentDetail(routeLookupId);
       console.log("apponitdetaillss", res);
       if (!res?.success) {
         showSuccessToast(res?.message || 'Appointment not found', 'error');
@@ -318,18 +316,19 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     };
     init();
     fetchDetail();
-  }, [consultation_id]);
+  }, [routeLookupId]);
 
   const normalizedAppointment = useMemo(() => {
     if (!detail?.appointment) return null;
     const item = detail;
+    const ids = getAppointmentIds({
+      rawData: detail,
+      appointment: detail?.appointment,
+    });
+
     return {
-      consultation_id:
-        resolveAppointmentLookupId({
-          consultation_id: item?.appointment?.consultation_id || consultation_id,
-          appointment: item?.appointment,
-          rawData: item,
-        }) || consultation_id,
+      consultation_id: ids.consultationId || ids.appointmentId,
+      appointment_id: ids.appointmentId || ids.consultationId,
       doctorName: item.doctor?.doctor_name || '',
       specialty: item.doctor?.doctor_specialization || 'General Physician',
       date: item.appointment?.appointment_date,
@@ -340,7 +339,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       availability: item.availability || [],
       rawData: item,
     };
-  }, [detail, consultation_id]);
+  }, [detail]);
 
   const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
 
@@ -527,6 +526,15 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </View>
               </>)}
 
+            {/* {!!detail?.doctor?.doctor_id && (
+              <View style={styles.consultSectionWrap}>
+                <DoctorConsultationSection
+                  doctorId={detail.doctor.doctor_id}
+                  navigation={navigation}
+                />
+              </View>
+            )} */}
+
             {appointmentStatus === 'completed' && (
               <>
                 <View style={styles.sectionHeaderRow}>
@@ -612,6 +620,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </TouchableOpacity>
               </View>
             )}
+
           </>
         )}
 
@@ -621,10 +630,16 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           isRescheduleRequest={isRescheduleRequest}
           onClose={() => setShowRescheduleModal(false)}
           onSubmit={(payload) => {
-            handleReschedule(normalizedAppointment?.consultation_id, payload);
+            const appointmentId =
+              normalizedAppointment?.appointment_id ||
+              normalizedAppointment?.consultation_id ||
+              routeLookupId;
+            if (!appointmentId) return;
+            handleReschedule(appointmentId, payload);
             setShowRescheduleModal(false);
           }}
         />
+
 
         <FeedbackModal
           visible={showModal}
@@ -645,7 +660,12 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           visible={showCancelModal}
           onClose={() => setShowCancelModal(false)}
           onSubmit={(payload: any) => {
-            handleCancel(normalizedAppointment?.consultation_id, payload);
+            const appointmentId =
+              normalizedAppointment?.appointment_id ||
+              normalizedAppointment?.consultation_id ||
+              routeLookupId;
+            if (!appointmentId) return;
+            handleCancel(appointmentId, payload);
             setShowCancelModal(false);
           }}
         />
@@ -694,6 +714,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginHorizontal: 20,
     marginBottom: 10,
+  },
+
+  consultSectionWrap: {
+    marginHorizontal: 6,
+    marginTop: 8,
   },
 
   sectionTitle: {

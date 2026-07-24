@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import {
   getCurrentPosition,
   getDefaultRegion,
   getPlaceDetails,
+  geocodePincode,
+  enrichAddressWithPincode,
   requestLocationPermission,
   reverseGeocode,
   searchPlaces,
@@ -67,15 +69,30 @@ const LocationPickerScreen = () => {
   const [searching, setSearching] = useState(false);
   const [locationError, setLocationError] = useState('');
 
+  // const [searching, setSearching] = useState(false);
+  // const [locationError, setLocationError] = useState('');
+  const [pincodeInput, setPincodeInput] = useState('');
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const lastPincodeLookupRef = useRef('');
+
   const debouncedQuery = useDebounce(searchQuery, 400);
+  const debouncedPincode = useDebounce(pincodeInput, 500);
+
+  const applyParsedAddress = useCallback((parsed: ParsedAddress) => {
+    setAddress(parsed);
+    setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
+    if (parsed.zipcode) {
+      setPincodeInput(parsed.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
+    }
+  }, []);
 
   const updateLocation = useCallback(async (coords: Coordinates) => {
     setGeocoding(true);
     setLocationError('');
     try {
       const parsed = await reverseGeocode(coords);
-      setAddress(parsed);
-      setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
+      const enriched = await enrichAddressWithPincode(parsed);
+      applyParsedAddress(enriched);
     } catch (error: any) {
       setMarker(coords);
       setLocationError(
@@ -85,7 +102,7 @@ const LocationPickerScreen = () => {
     } finally {
       setGeocoding(false);
     }
-  }, []);
+  }, [applyParsedAddress]);
 
   const loadCurrentLocation = useCallback(async () => {
     setLoading(true);
@@ -102,8 +119,8 @@ const LocationPickerScreen = () => {
     } catch (error: any) {
       const refreshed = await refreshCurrentLocation();
       if (refreshed) {
-        setMarker({ latitude: refreshed.latitude, longitude: refreshed.longitude });
-        setAddress(refreshed);
+        const enriched = await enrichAddressWithPincode(refreshed);
+        applyParsedAddress(enriched);
       } else {
         const code = error?.code;
         if (code === 3) {
@@ -117,11 +134,16 @@ const LocationPickerScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [updateLocation, refreshCurrentLocation]);
+  }, [updateLocation, refreshCurrentLocation, applyParsedAddress]);
 
   useEffect(() => {
     if (initialCoords) {
       setLoading(false);
+      if (currentAddress?.zipcode) {
+        setPincodeInput(currentAddress.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
+      } else if (deliveryLocation?.zipcode) {
+        setPincodeInput(deliveryLocation.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
+      }
       loadCurrentLocation();
       return;
     }
@@ -147,6 +169,42 @@ const LocationPickerScreen = () => {
     runSearch();
   }, [debouncedQuery]);
 
+  useEffect(() => {
+    const lookupByPincode = async () => {
+      const cleaned = debouncedPincode.replace(/[^0-9]/g, '');
+      if (cleaned.length !== 6 || cleaned === lastPincodeLookupRef.current) {
+        return;
+      }
+
+      setPincodeLoading(true);
+      setLocationError('');
+      try {
+        const parsed = await geocodePincode(cleaned);
+        if (!parsed) {
+          setLocationError('Invalid pincode. Please check and try again.');
+          return;
+        }
+
+        lastPincodeLookupRef.current = cleaned;
+        setAddress(prev => ({
+          ...parsed,
+          address_line_1: prev?.address_line_1 || parsed.address_line_1,
+          address_line_2: prev?.address_line_2 || parsed.address_line_2,
+          formatted_address:
+            parsed.formatted_address ||
+            [parsed.city, parsed.state, cleaned].filter(Boolean).join(', '),
+        }));
+        setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
+      } catch {
+        setLocationError('Could not fetch address for this pincode.');
+      } finally {
+        setPincodeLoading(false);
+      }
+    };
+
+    lookupByPincode();
+  }, [debouncedPincode]);
+
   const handleSelectSuggestion = async (item: PlaceSuggestion) => {
     Keyboard.dismiss();
     setSearchQuery(item.main_text);
@@ -154,8 +212,8 @@ const LocationPickerScreen = () => {
     setGeocoding(true);
     try {
       const parsed = await getPlaceDetails(item.place_id);
-      setAddress(parsed);
-      setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
+      const enriched = await enrichAddressWithPincode(parsed);
+      applyParsedAddress(enriched);
     } catch {
       Alert.alert('Error', 'Could not load this place. Please try again.');
     } finally {
@@ -206,7 +264,7 @@ const LocationPickerScreen = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
-        <View style={styles.searchWrap}>
+        {/* <View style={styles.searchWrap}>
           <TablerIcon name="search" size={18} color="#64748B" />
           <TextInput
             style={styles.searchInput}
@@ -216,6 +274,28 @@ const LocationPickerScreen = () => {
             onChangeText={setSearchQuery}
           />
           {searching && <ActivityIndicator size="small" color={Colors.primaryColor} />}
+        </View> */}
+
+        <View style={styles.pincodeWrap}>
+          <TablerIcon name="map-pin" size={18} color="#64748B" />
+          <TextInput
+            style={styles.pincodeInput}
+            placeholder="Enter 6-digit pincode"
+            placeholderTextColor="#94A3B8"
+            value={pincodeInput}
+            onChangeText={text => {
+              const cleaned = text.replace(/[^0-9]/g, '').slice(0, 6);
+              if (cleaned !== pincodeInput) {
+                lastPincodeLookupRef.current = '';
+              }
+              setPincodeInput(cleaned);
+            }}
+            keyboardType="number-pad"
+            maxLength={6}
+          />
+          {pincodeLoading && (
+            <ActivityIndicator size="small" color={Colors.primaryColor} />
+          )}
         </View>
 
         {suggestions.length > 0 && (
@@ -263,9 +343,16 @@ const LocationPickerScreen = () => {
           ) : (
             <>
               <TablerIcon name="map-pin" size={20} color={Colors.primaryColor} />
-              <Text style={styles.addressText} numberOfLines={4}>
-                {address?.formatted_address || 'Move map or search to detect address'}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addressText} numberOfLines={4}>
+                  {address?.formatted_address || 'Move map, search, or enter pincode'}
+                </Text>
+                {!!address?.city && (
+                  <Text style={styles.addressMeta}>
+                    {[address.city, address.state, address.zipcode].filter(Boolean).join(', ')}
+                  </Text>
+                )}
+              </View>
             </>
           )}
         </View>
@@ -303,6 +390,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#0F172A',
+    paddingVertical: 0,
+  },
+  pincodeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  pincodeInput: {
     flex: 1,
     fontSize: 14,
     fontFamily: Fonts.PoppinsRegular,
@@ -386,6 +492,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
     color: '#334155',
     lineHeight: 20,
+  },
+  addressMeta: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+    marginTop: 4,
   },
   footer: {
     padding: 16,

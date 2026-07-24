@@ -405,6 +405,45 @@ const getSection = (date: string) => {
     return "older";
 };
 
+// helper — decides icon + background color based on appointment status
+const getAppointmentIconConfig = (status?: string) => {
+    switch ((status || '').toLowerCase()) {
+        case 'confirmed':
+        case 'accepted':
+            return {
+                icon: <Entypo name="check" size={18} color="#fff" />,
+                bg: '#0D614E', // green
+            };
+        case 'pending':
+            return {
+                icon: <Entypo name="clock" size={18} color="#fff" />,
+                bg: '#F59E0B', // amber
+            };
+        case 'cancelled':
+        case 'rejected':
+            return {
+                icon: <Entypo name="cross" size={18} color="#fff" />,
+                bg: '#EF4444', // red
+            };
+        case 'completed':
+            return {
+                icon: <Entypo name="check" size={18} color="#fff" />,
+                bg: '#2563EB', // blue
+            };
+        case 'rescheduled':
+            return {
+                icon: <Entypo name="cycle" size={18} color="#fff" />,
+                bg: '#8B5CF6', // purple
+            };
+        default:
+            return {
+                icon: <Entypo name="calendar" size={18} color="#fff" />,
+                bg: '#0D614E',
+            };
+    }
+};
+
+
 export const useNotifications = () => {
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -442,48 +481,39 @@ export const useNotifications = () => {
         const content = resolveNotificationContent(item);
         const isRead = !!item.is_read;
 
-        return {
-            id: String(item.id),
-            title: content.title,
-            description: content.description,
-            createdAt: item.created_at,
-            time: getTimeAgo(item.created_at),
-            isRead,
-            isNew: !isRead,
-            type: item.notification_type,
-            notificationType: content.notificationType,
-            eventType: content.eventType,
-            patientName: content.patientName,
-            doctorName: content.doctorName,
-            reason: content.reason,
-            appointmentStatus: content.appointmentStatus,
-            appointmentId: content.appointmentId,
-            section: getSection(item.created_at),
-            icon:
-                item.notification_type === "appointment" ? (
-                    <Entypo name="calendar" size={18} color="#fff" />
-                ) : (
-                    <Fontisto name="bell" size={16} color="#fff" />
-                ),
-            iconBg: item.notification_type === "appointment" ? "#0D614E" : "#64748B",
-            rawData: item,
-        };
+       return {
+    id: String(item.id),
+    title: content.title,
+    description: content.description,
+    createdAt: item.created_at,
+    time: getTimeAgo(item.created_at),
+    isRead,
+    isNew: !isRead,
+    type: item.notification_type,
+    notificationType: content.notificationType,
+    eventType: content.eventType,
+    patientName: content.patientName,
+    doctorName: content.doctorName,
+    reason: content.reason,
+    appointmentStatus: content.appointmentStatus,
+    appointmentId: content.appointmentId,
+    section: getSection(item.created_at),
+    icon:
+        item.notification_type === "appointment"
+            ? getAppointmentIconConfig(content.appointmentStatus).icon
+            : <Fontisto name="bell" size={16} color="#fff" />,
+    iconBg:
+        item.notification_type === "appointment"
+            ? getAppointmentIconConfig(content.appointmentStatus).bg
+            : "#64748B",
+    rawData: item,
+};
     };
 
     const fetchUnreadCount = useCallback(async () => {
-        try {
-            const res = await _CONSULT_SERVICE.getNotification({ view: "unread_count" });
-            if (res?.success) {
-                const count =
-                    res?.data?.unread_count ??
-                    res?.unread_count ??
-                    res?.data?.count ??
-                    0;
-                setUnreadCount(Number(count) || 0);
-            }
-        } catch (error) {
-            console.log("Unread count error:", error);
-        }
+        const count = await fetchUnreadNotificationCount();
+        setUnreadCount(count);
+        publishUnreadCount(count);
     }, []);
 
     const fetchNotifications = useCallback(
@@ -549,17 +579,21 @@ export const useNotifications = () => {
                 return prev.map(item =>
                     item.id === id
                         ? {
-                              ...item,
-                              isRead: true,
-                              isNew: false,
-                              rawData: { ...item.rawData, is_read: true },
-                          }
+                            ...item,
+                            isRead: true,
+                            isNew: false,
+                            rawData: { ...item.rawData, is_read: true },
+                        }
                         : item,
                 );
             });
 
             if (wasUnread) {
-                setUnreadCount(prev => Math.max(0, prev - 1));
+                setUnreadCount(prev => {
+                    const next = Math.max(0, prev - 1);
+                    publishUnreadCount(next);
+                    return next;
+                });
             }
 
             try {
@@ -570,14 +604,15 @@ export const useNotifications = () => {
                 if (!res?.success) {
                     throw new Error(res?.message || "Mark as read failed");
                 }
-                await fetchUnreadCount();
             } catch (e) {
                 console.log("Mark as read failed:", e);
                 setNotifications(snapshot);
-                await fetchUnreadCount();
+                if (wasUnread) {
+                    setUnreadCount(prev => prev + 1);
+                }
             }
         },
-        [filter, fetchUnreadCount],
+        [filter],
     );
 
     const markAllRead = async () => {
@@ -588,13 +623,14 @@ export const useNotifications = () => {
             filter === "unread"
                 ? []
                 : prev.map(item => ({
-                      ...item,
-                      isRead: true,
-                      isNew: false,
-                      rawData: { ...item.rawData, is_read: true },
-                  }))
+                    ...item,
+                    isRead: true,
+                    isNew: false,
+                    rawData: { ...item.rawData, is_read: true },
+                }))
         );
         setUnreadCount(0);
+        publishUnreadCount(0);
 
         try {
             const res = await _CONSULT_SERVICE.manageNotification({
@@ -604,14 +640,12 @@ export const useNotifications = () => {
             if (!res?.success) {
                 throw new Error(res?.message || "Mark all as read failed");
             }
-            await fetchUnreadCount();
             if (filter === "unread") {
                 setNotifications([]);
             }
         } catch (e) {
             console.log("Mark all as read failed:", e);
             setNotifications(previous);
-            await refreshNotifications();
             await fetchUnreadCount();
         }
     };
@@ -627,6 +661,7 @@ export const useNotifications = () => {
             }
             setNotifications([]);
             setUnreadCount(0);
+            publishUnreadCount(0);
         } catch (e) {
             console.log("Clear notifications failed:", e);
         }
@@ -672,4 +707,66 @@ export const useNotifications = () => {
         markAllRead,
         clearNotifications,
     };
+};
+
+let unreadCountListeners = new Set<(count: number) => void>();
+
+export const publishUnreadCount = (count: number) => {
+    unreadCountListeners.forEach(listener => listener(count));
+};
+
+export const subscribeUnreadCount = (listener: (count: number) => void) => {
+    unreadCountListeners.add(listener);
+    return () => {
+        unreadCountListeners.delete(listener);
+    };
+};
+
+export const fetchUnreadNotificationCount = async (): Promise<number> => {
+    try {
+        const res = await _CONSULT_SERVICE.getNotification({
+            view: 'list',
+            is_read: false,
+            page: 1,
+            page_size: 1,
+        });
+
+        if (res?.success) {
+            const total =
+                res?.data?.count ??
+                res?.count ??
+                res?.data?.total ??
+                res?.total;
+
+            if (total !== undefined && total !== null) {
+                return Number(total) || 0;
+            }
+
+            const results = res?.data?.results ?? res?.results ?? [];
+            return Array.isArray(results) ? results.length : 0;
+        }
+    } catch (error) {
+        console.log('Unread count error:', error);
+    }
+    return 0;
+};
+
+export const useUnreadNotificationCount = () => {
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const refreshUnreadCount = useCallback(async () => {
+        const count = await fetchUnreadNotificationCount();
+        setUnreadCount(count);
+        publishUnreadCount(count);
+    }, []);
+
+    useEffect(() => {
+        refreshUnreadCount();
+    }, [refreshUnreadCount]);
+
+    useEffect(() => {
+        return subscribeUnreadCount(setUnreadCount);
+    }, []);
+
+    return { unreadCount, refreshUnreadCount };
 };

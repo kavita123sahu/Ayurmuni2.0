@@ -20,6 +20,8 @@ import OrderItem from '../../components/OrderItem';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../../components/TablerIcon';
+import { useAppDispatch } from '../../store/hooks';
+import { removeOrderedItemsFromCart, CartLineItem } from '../../store/slices/cartSlice';
 
 type DeliveryAddress = {
     id: string;
@@ -92,9 +94,38 @@ const getItemPrice = (item: OrderItemType) =>
     formatCurrency(item.total_price ?? item.price);
 
 const OrderConfirmation: React.FC = (props: any) => {
+    const dispatch = useAppDispatch();
     const [showModal, setShowModal] = useState(false);
 
     const orderResult: OrderResult | undefined = props.route?.params?.orderResult;
+    const orderedCartItems: CartLineItem[] | undefined =
+        props.route?.params?.orderedCartItems;
+    const clearedCartRef = useRef(false);
+
+    useEffect(() => {
+        if (clearedCartRef.current) {
+            return;
+        }
+
+        const itemsToRemove: CartLineItem[] =
+            orderedCartItems?.length
+                ? orderedCartItems
+                : (orderResult?.items ?? [])
+                      .map(item => ({
+                          variant_id: String(
+                              item?.variant?.variant_id ?? '',
+                          ),
+                          quantity: Number(item.quantity ?? 0),
+                      }))
+                      .filter(item => item.variant_id && item.quantity > 0);
+
+        if (!itemsToRemove.length) {
+            return;
+        }
+
+        clearedCartRef.current = true;
+        dispatch(removeOrderedItemsFromCart(itemsToRemove));
+    }, [dispatch, orderedCartItems, orderResult?.items]);
 
     // ---- Animations ----
     const tickScale = useRef(new Animated.Value(0)).current;
@@ -206,7 +237,7 @@ const OrderConfirmation: React.FC = (props: any) => {
 
             <AppHeader
                 title="Order Confirmation"
-                onLeftPress={() => props.navigation.goBack()}
+                // onLeftPress={() => props.navigation.goBack()}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -222,7 +253,7 @@ const OrderConfirmation: React.FC = (props: any) => {
                             { transform: [{ scale: tickScale }] },
                         ]}
                     >
-                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+                        <TablerIcon name="tick-icon" size={100} color={Colors.primaryColor} />
                     </Animated.View>
 
                     <Text style={styles.successTitle}>Order Placed Successfully!</Text>
@@ -239,7 +270,7 @@ const OrderConfirmation: React.FC = (props: any) => {
                     <TouchableOpacity
                         style={styles.continueBtn}
                         activeOpacity={0.8}
-                        onPress={() => props.navigation.navigate('Home')}
+                        onPress={() => props.navigation.replace('HomeStack', { screen: 'Home' })}
                     >
                         <Text style={styles.continueText}>Continue Shopping</Text>
                     </TouchableOpacity>

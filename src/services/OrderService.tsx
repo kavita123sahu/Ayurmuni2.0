@@ -16,3 +16,26 @@ export const place_order_API = async (data: Object) => {
     }
 }
 
+export const verifyOrderPayment = async (data: object) => {
+    try {
+        const response = await apiClient('order/verify-payment/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const getOrders = async () => {
+    try {
+        const response = await apiClient('order/', {
+            method: 'GET',
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+

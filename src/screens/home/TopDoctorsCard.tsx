@@ -6,32 +6,14 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
-  PixelRatio,
 } from 'react-native';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../../components/TablerIcon';
+import { RADIUS, SPACING, TYPO } from '../../constants/responsive';
 
-const { width } = Dimensions.get('window');
-
-// ---- Responsive helpers -----------------------------------------------
-// Base design was done on a 375pt-wide screen (standard iPhone reference).
-const BASE_WIDTH = 375;
-const scale = (size: number) => (width / BASE_WIDTH) * size;
-
-// Clamp font scaling so text doesn't blow up on tablets or shrink too much
-// on tiny devices.
-const normalize = (size: number) => {
-  const newSize = scale(size);
-  return Math.round(PixelRatio.roundToNearestPixel(newSize));
-};
-
-// Card sizing: ~46% of screen width so ~2.2 cards are visible per row —
-// smaller, tighter cards than a half-screen card.
-const CARD_WIDTH = Math.min(width * 0.46, 190);
-const CARD_PADDING = scale(10);
-const AVATAR_SIZE = scale(46);
+const CARD_WIDTH = 248;
+const CARD_GAP = 12;
 
 interface Doctor {
   id: string;
@@ -49,101 +31,101 @@ interface Doctor {
 }
 
 const TopDoctorsCard = ({ data = [], navigation }: any) => {
-  const stackNav = navigation?.getParent?.() || navigation;
+  const openDoctorProfile = useCallback(
+    (item: Doctor) => {
+      navigation?.navigate?.('DoctorProfile', { doctorData: item });
+    },
+    [navigation],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: Doctor }) => {
-      const therapies = Array.isArray(item?.health_diseases)
+      const speciality = Array.isArray(item?.health_diseases)
         ? item.health_diseases.map((disease: any) => disease.name).join(', ')
-        : '';
+        : 'Ayurveda Specialist';
 
-      const openProfile = () =>
-        stackNav.navigate('DoctorProfile', { doctorData: item });
+      const isAvailable = item?.has_availability === true;
 
       return (
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.88}
-          onPress={openProfile}
+          onPress={() => openDoctorProfile(item)}
         >
-          {/* Top row: avatar on the left, rating fills the empty space on the right */}
-          <View style={styles.topRow}>
-            <View style={styles.avatarOuter}>
-              <View style={styles.doctorImageWrapper}>
-                {item?.profile_image ? (
-                  <Image
-                    source={{ uri: item.profile_image }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarText}>
-                      {(item?.first_name?.charAt(0) || '').toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+          <View style={styles.doctorRow}>
+  <View style={styles.avatarWrapper}>
+    {item?.profile_image ? (
+      <Image source={{ uri: item.profile_image }} style={styles.avatar} />
+    ) : (
+      <View style={[styles.avatar, styles.avatarFallback]}>
+        <TablerIcon name="user" size={18} color={Colors.primaryColor} />
+      </View>
+    )}
+
+    <View
+      style={[
+        styles.statusBadge,
+        {
+          backgroundColor: isAvailable ? '#22C55E' : '#CBD5E1',
+        },
+      ]}
+    />
+  </View>
+
+  <View style={styles.doctorMeta}>
+
+              <View style={styles.nameRow}>
+                <Text style={styles.doctorName} numberOfLines={2}>
+                  {item.full_name || item.name}
+                </Text>
+
+              
               </View>
-              {item?.has_availability && <View style={styles.onlineDot} />}
-            </View>
 
-            <View style={styles.ratingBadge}>
-              <TablerIcon name="star" size={normalize(12)} color="#F59E0B" />
-              <Text style={styles.rating}>
-                {item?.average_rating != null ? item.average_rating : 0}
-
+              <Text style={styles.speciality} numberOfLines={1}>
+                {speciality.split(',').slice(0, 2).join(', ') || 'Ayurveda Specialist'}
               </Text>
             </View>
           </View>
 
-          {/* Name & specialization */}
-          <Text numberOfLines={1} style={styles.name}>
-            {item.full_name || item.name}
-          </Text>
-          <Text numberOfLines={1} style={styles.specialization}>
-            {therapies?.split(',').slice(0, 1).join(', ') ||
-              'Ayurveda Specialist'}
-          </Text>
-
-          <View style={styles.expRow}>
-            <View style={styles.expLeft}>
-              <TablerIcon name="clock" size={normalize(11)} color="#64748B" />
-              <Text style={styles.exp}>
-                {item?.experience_years || '—'} Yrs Exp
+          <View style={styles.infoBar}>
+            <View style={styles.infoItem}>
+              <TablerIcon name="clock" size={14} color={Colors.primaryColor} />
+              <Text style={styles.infoText} numberOfLines={1}>
+                {item?.experience_years || '—'} Yrs
               </Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.iconButton}
-              activeOpacity={0.85}
-              onPress={openProfile}
-            >
-              <TablerIcon
-                name="stethoscope"
-                size={normalize(15)}
-                color="#fff"
-              />
-            </TouchableOpacity>
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoItem}>
+              <TablerIcon name="star" size={14} color="#F59E0B" />
+              <Text style={styles.infoText} numberOfLines={1}>
+                {item?.average_rating ?? item?.ranking_score ?? '0'}
+                {item?.total_reviews != null ? ` (${item.total_reviews})` : ''}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
       );
     },
-    [stackNav],
+    [openDoctorProfile],
   );
 
   return (
     <FlatList
       horizontal
       data={data}
-      keyExtractor={(item) => item.id}
+      keyExtractor={item => item.id}
       renderItem={renderItem}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
-      initialNumToRender={3}
-      maxToRenderPerBatch={3}
+      initialNumToRender={4}
+      maxToRenderPerBatch={4}
       windowSize={5}
       getItemLayout={(_, index) => ({
-        length: CARD_WIDTH + scale(12),
-        offset: (CARD_WIDTH + scale(12)) * index,
+        length: CARD_WIDTH + CARD_GAP,
+        offset: (CARD_WIDTH + CARD_GAP) * index,
         index,
       })}
     />
@@ -154,126 +136,145 @@ export default React.memo(TopDoctorsCard);
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: scale(2),
-    paddingRight: scale(6),
-    paddingVertical: scale(4),
+    paddingVertical: 2,
+    paddingRight: 4,
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: '#FFFFFF',
-    borderRadius: scale(16),
-    marginRight: scale(8),
+    backgroundColor: Colors.white,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    marginRight: CARD_GAP,
     borderWidth: 1,
-    borderColor: '#E8EEF3',
-    padding: CARD_PADDING,
+    borderColor: Colors.borderColor,
   },
-  topRow: {
+  avatarWrapper: {
+  position: 'relative',
+  marginRight: SPACING.sm,
+},
+
+statusBadge: {
+  position: 'absolute',
+  right: 1,
+  bottom: 1,
+  width: 12,
+  height: 12,
+  borderRadius: 6,
+  borderWidth: 2,
+  borderColor: '#FFF',
+},
+
+doctorName: {
+  fontSize: TYPO.subtitle,
+  color: Colors.black,
+  fontFamily: Fonts.PoppinsSemiBold,
+  lineHeight: 18,
+  flexShrink: 1,
+},
+
+  doctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: scale(8),
-  },
-  avatarOuter: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-  },
-  doctorImageWrapper: {
-    width: '100%',
-    height: '100%',
-    borderRadius: scale(16),
-    overflow: 'hidden',
-    backgroundColor: '#F0FAF7',
-    borderWidth: 1,
-    borderColor: '#E2F3EE',
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: -scale(1),
-    right: -scale(1),
-    width: scale(11),
-    height: scale(11),
-    borderRadius: scale(6),
-    backgroundColor: '#22C55E',
-    borderWidth: scale(2),
-    borderColor: '#FFFFFF',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: scale(16),
-    backgroundColor: Colors.primaryColor,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#FFF',
-    fontSize: normalize(12),
-    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: SPACING.sm,
   },
   avatar: {
-    width: '100%',
-    height: '100%',
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: SPACING.sm,
   },
-  name: {
-    fontSize: normalize(12),
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
-    lineHeight: normalize(17),
+  avatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0FAF7',
   },
-  specialization: {
-    marginTop: scale(1),
-    fontSize: normalize(10),
-    lineHeight: normalize(14),
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
+  doctorMeta: {
+    flex: 1,
+    minWidth: 0,
   },
-  expRow: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: scale(4),
+    gap: 6,
   },
-  expLeft: {
+  // doctorName: {
+  //   flex: 1,
+  //   fontSize: TYPO.subtitle,
+  //   color: Colors.black,
+  //   fontFamily: Fonts.PoppinsSemiBold,
+  //   lineHeight: 17,
+  // },
+  statusBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(4),
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    flexShrink: 0,
   },
-  exp: {
-    fontSize: normalize(10.5),
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
+  statusBtnActive: {
+    backgroundColor: '#22C55E',
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(3),
+  statusBtnInactive: {
+    backgroundColor: '#E2E8F0',
   },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(3),
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: scale(7),
-    paddingVertical: scale(3),
-    borderRadius: 10,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
   },
-  rating: {
-    fontSize: normalize(11.5),
-    color: '#0F172A',
+  statusDotActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  statusDotInactive: {
+    backgroundColor: '#94A3B8',
+  },
+  statusBtnText: {
+    fontSize: 9,
     fontFamily: Fonts.PoppinsSemiBold,
+    lineHeight: 12,
   },
-  reviewCount: {
-    fontSize: normalize(9.5),
-    color: '#94A3B8',
+  statusBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  statusBtnTextInactive: {
+    color: '#64748B',
+  },
+  speciality: {
+    marginTop: 2,
+    fontSize: TYPO.caption,
+    color: Colors.grey1,
     fontFamily: Fonts.PoppinsRegular,
-    fontWeight: 'normal',
+    lineHeight: 14,
   },
-  iconButton: {
-    width: scale(28),
-    height: scale(28),
-    borderRadius: scale(9),
-    backgroundColor: Colors.primaryColor,
-    justifyContent: 'center',
+  infoBar: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: Colors.bgcolor,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  infoItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  infoText: {
+    flexShrink: 1,
+    fontSize: TYPO.caption,
+    marginLeft: 5,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#334155',
+  },
+  infoDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: Colors.borderColor,
+    marginHorizontal: 4,
   },
 });

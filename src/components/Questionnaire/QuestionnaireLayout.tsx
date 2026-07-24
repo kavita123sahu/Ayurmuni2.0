@@ -53,13 +53,13 @@ const InfoCard = ({ text }: { text: string }) => (
     <View style={styles.infoLeft}>
       <Image
         source={require('../../assets/images/ayurveda.png')}
-        style={{ height: 50, width: 50 }}
+        style={{ height: 32, width: 32, resizeMode: 'contain' }}
       />
     </View>
     <Text style={styles.infoText}>{text}</Text>
     <Image
       source={require('../../assets/images/ayurvedaLeaf.png')}
-      style={{ height: 30, width: 30, resizeMode: 'contain' }}
+      style={{ height: 22, width: 22, resizeMode: 'contain' }}
     />
   </View>
 );
@@ -157,7 +157,7 @@ const QuestionnaireLayout = ({
         <ScrollView
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 140 }}
+          contentContainerStyle={{ paddingBottom: 72 }}
         >
           <Text style={styles.title}>
             {basicInfoStep
@@ -186,7 +186,7 @@ const QuestionnaireLayout = ({
           ) : (
             <>
               {currentStep.answer_type !== 'text' && (
-                <View style={{ paddingTop: 24 }}>{renderOptions()}</View>
+                <View style={{ paddingTop: 6 }}>{renderOptions()}</View>
               )}
 
               {currentStep.answer_type === 'text' && handleTextChange && (

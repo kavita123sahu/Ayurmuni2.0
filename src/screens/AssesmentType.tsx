@@ -230,18 +230,18 @@ const styles = StyleSheet.create({
 
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 20,
+        paddingBottom: 12,
     },
 
     header: {
-        marginTop: height * 0.07,
-        marginBottom: 32,
+        marginTop: height * 0.03,
+        marginBottom: 20,
         alignItems: 'center',
     },
 
     title: {
-        fontSize: scale(24),
-        lineHeight: scale(34),
+        fontSize: scale(20),
+        lineHeight: scale(28),
         textAlign: 'center',
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#111827',
@@ -249,13 +249,13 @@ const styles = StyleSheet.create({
     },
 
     subtitle: {
-        fontSize: scale(14),
-        lineHeight: scale(22),
-        marginTop: 8,
+        fontSize: scale(13),
+        lineHeight: scale(20),
+        marginTop: 6,
         textAlign: 'center',
         color: '#6B7280',
         fontFamily: Fonts.PoppinsMedium,
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
     },
 
     cardsWrapper: {
@@ -264,22 +264,19 @@ const styles = StyleSheet.create({
 
     card: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 16,
-
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 10,
         borderWidth: 1,
         borderColor: Colors.borderColor,
-
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 1,
         },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-
-        elevation: 2,
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
     },
 
     row: {
@@ -288,14 +285,12 @@ const styles = StyleSheet.create({
     },
 
     iconBox: {
-        width: scale(52),
-        height: scale(52),
-        borderRadius: 16,
+        width: scale(44),
+        height: scale(44),
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
-
-        // ✅ prevents shrinking
+        marginRight: 10,
         flexShrink: 0,
     },
 
@@ -305,33 +300,27 @@ const styles = StyleSheet.create({
     },
 
     cardTitle: {
-        fontSize: scale(16),
-        lineHeight: scale(24),
+        fontSize: scale(15),
+        lineHeight: scale(22),
         color: '#111827',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     cardSubtitle: {
-        marginTop: 4,
-        fontSize: scale(13),
-        lineHeight: scale(20),
+        marginTop: 2,
+        fontSize: scale(12),
+        lineHeight: scale(18),
         color: '#6B7280',
         fontFamily: Fonts.PoppinsMedium,
-
-        // ✅ prevents overflow
         flexShrink: 1,
     },
 
     skipBtn: {
-        marginBottom:
-            Platform.OS === 'ios' ? 20 : 16,
-
-        paddingVertical: 16,
-        borderRadius: 16,
-
+        marginBottom: Platform.OS === 'ios' ? 16 : 12,
+        paddingVertical: 12,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-
         borderWidth: 1,
         borderColor: Colors.questionGreen,
         backgroundColor: Colors.primaryColor,

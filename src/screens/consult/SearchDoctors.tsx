@@ -31,7 +31,7 @@ import { Images } from '../../common/Images';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import { generateDates, formatDate, AVAILABILITY_OPTIONS, EXPERIENCE_OPTIONS } from '../../common/DataInterface';
 import { useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
@@ -655,15 +655,11 @@ const AllDoctors = (props: any) => {
 
                                 {/* SEARCH */}
 
-                                <SearchBar
+                                <ExpandableSearch
                                     placeholder="Search doctors..."
                                     value={search}
-                                    onChangeText={
-                                        setSearch
-                                    }
-
-
-                                    />
+                                    onChangeText={setSearch}
+                                />
 
                                 {/* FILTER TAB */}
 

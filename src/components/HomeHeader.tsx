@@ -21,6 +21,7 @@ import { useLocation } from '../context/LocationContext';
 import { savedAddressToParsed } from '../services/locationService';
 import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
+import { useUnreadNotificationCount } from '../hooks/useNotification';
 
 interface Address {
     id: string;
@@ -48,19 +49,22 @@ interface AddressItem {
     state?: string;
     zipcode?: string;
 }
-interface Props {
+type Props = {
     progress1?: number;
-    progress2?: number
-}
+    progress2?: number;
+    onSearchPress?: () => void;
+};
 
 const HomeHeader = ({
     progress1 = 0,
     progress2 = 0,
+    onSearchPress,
 }: Props) => {
     const navigation = useNavigation<any>();
     const stackNavigation = navigation.getParent?.() || navigation;
     const dispatch = useAppDispatch();
     const cartCount = useCartCount();
+    const { unreadCount, refreshUnreadCount } = useUnreadNotificationCount();
     const [localAddresses, setLocalAddresses] =
         useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
@@ -88,12 +92,6 @@ const HomeHeader = ({
     );
 
 
-    // const activeLocation = useMemo(() => {
-    //     return currentAddress
-    //         ?? savedAddressToParsed(defaultAddress!)
-    //         ?? deliveryLocation
-    //         ?? null;
-    // }, [currentAddress, defaultAddress, deliveryLocation]);
     const activeLocation = useMemo(() => {
         if (deliveryLocation) {
             return deliveryLocation;
@@ -139,7 +137,8 @@ const HomeHeader = ({
         useCallback(() => {
             fetchCustomerData();
             dispatch(fetchCart(false));
-        }, [fetchCustomerData, dispatch]),
+            refreshUnreadCount();
+        }, [fetchCustomerData, dispatch, refreshUnreadCount]),
     );
 
 
@@ -286,13 +285,20 @@ const HomeHeader = ({
                 {/* RIGHT */}
                 <View style={styles.rightIcons}>
 
+                    <TouchableOpacity
+                        style={styles.bellButton}
+                        onPress={onSearchPress}
+                        disabled={!onSearchPress}
+                    >
+                        <TablerIcon name="search" size={20} color={Colors.primaryColor} />
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.bellButton}
                         onPress={() => stackNavigation.navigate('MyCart')}
                     >
                         <TablerIcon name="shopping-cart" size={20} color={Colors.primaryColor} />
-                        <CartBadge count={cartCount} />
+                        <CartBadge count={cartCount}  />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -304,7 +310,7 @@ const HomeHeader = ({
                         }}
                     >
                         <TablerIcon name="bell" size={20} color="#000" />
-                        <View style={styles.dot} />
+                        <CartBadge count={unreadCount}  />
                     </TouchableOpacity>
 
                 </View>
@@ -469,17 +475,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
+        overflow: 'visible',
     },
 
-    dot: {
-        position: 'absolute',
-        top: 6,
-        right: 8,
-        height: 8,
-        width: 8,
-        borderRadius: 4,
-        backgroundColor: '#F04438',
-    },
     // STYLES
 
     searchContainer: {

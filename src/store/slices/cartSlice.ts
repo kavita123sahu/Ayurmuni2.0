@@ -10,6 +10,11 @@ type CartData = {
   prescription_cart?: { items?: any[]; subtotal?: number };
 };
 
+export type CartLineItem = {
+  variant_id: string;
+  quantity: number;
+};
+
 type CartState = {
   cartData: CartData;
   itemCount: number;
@@ -19,6 +24,9 @@ type CartState = {
   error: string | null;
 };
 
+const getVariantIdFromItem = (item: any): string =>
+  String(item?.variant_id ?? item?.variant?.variant_id ?? '');
+
 const computeMetrics = (data: CartData) => {
   const items = data?.my_cart?.items ?? [];
   const variantQuantities: Record<string, number> = {};
@@ -27,11 +35,42 @@ const computeMetrics = (data: CartData) => {
   items.forEach((item: any) => {
     const qty = Number(item.quantity) || 0;
     itemCount += qty;
-    const vid = String(item.variant_id ?? item.variant?.variant_id ?? '');
-    if (vid) variantQuantities[vid] = qty;
+    const vid = getVariantIdFromItem(item);
+    if (vid) {
+      variantQuantities[vid] = qty;
+    }
   });
 
   return { itemCount, variantQuantities };
+};
+
+const patchCartItemQuantity = (
+  data: CartData,
+  variantId: string,
+  quantity: number,
+): CartData => {
+  const items = [...(data?.my_cart?.items ?? [])];
+  const index = items.findIndex(
+    item => getVariantIdFromItem(item) === variantId,
+  );
+
+  if (quantity <= 0) {
+    if (index >= 0) {
+      items.splice(index, 1);
+    }
+  } else if (index >= 0) {
+    items[index] = { ...items[index], quantity };
+  } else {
+    items.push({ variant_id: variantId, quantity });
+  }
+
+  return {
+    ...data,
+    my_cart: {
+      ...data.my_cart,
+      items,
+    },
+  };
 };
 
 const initialState: CartState = {
@@ -43,9 +82,19 @@ const initialState: CartState = {
   error: null,
 };
 
-export const fetchCart = createAsyncThunk<CartData, boolean | undefined>(
+type FetchCartArg = boolean | { force?: boolean; silent?: boolean } | undefined;
+
+const parseFetchCartArg = (arg: FetchCartArg) => {
+  if (typeof arg === 'boolean') {
+    return { force: arg, silent: false };
+  }
+  return { force: arg?.force ?? false, silent: arg?.silent ?? false };
+};
+
+export const fetchCart = createAsyncThunk<CartData, FetchCartArg>(
   'cart/fetch',
-  async (force = false, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
+    const { force } = parseFetchCartArg(arg);
     try {
       if (!(await isAuthenticated())) {
         return {};
@@ -80,12 +129,59 @@ export const addToCart = createAsyncThunk(
         quantity,
       });
       if (!response?.success) {
-        return rejectWithValue(response?.message ?? 'Failed to add to cart');
+        return rejectWithValue(response?.message ?? 'Failed to update cart');
       }
       invalidateCache(CART_CACHE_KEY);
-      return { variantId: String(variantId), quantity, message: response.message };
+      return {
+        variantId: String(variantId),
+        quantity,
+        message: response.message,
+      };
     } catch (error: any) {
-      return rejectWithValue(error?.message ?? 'Failed to add to cart');
+      return rejectWithValue(error?.message ?? 'Failed to update cart');
+    }
+  },
+);
+
+/** Updates cart on API; optimistic Redux state is updated in addToCart reducers. */
+export const syncCartQuantity = createAsyncThunk(
+  'cart/syncQuantity',
+  async (
+    { variantId, quantity }: { variantId: string | number; quantity: number },
+    { dispatch, rejectWithValue },
+  ) => {
+    const result = await dispatch(addToCart({ variantId, quantity }));
+    if (addToCart.rejected.match(result)) {
+      await dispatch(fetchCart({ force: true, silent: true }));
+      return rejectWithValue(result.payload);
+    }
+    return result.payload;
+  },
+);
+
+/** Removes ordered products from cart after successful checkout. */
+export const removeOrderedItemsFromCart = createAsyncThunk(
+  'cart/removeOrderedItems',
+  async (items: CartLineItem[], { dispatch, rejectWithValue }) => {
+    try {
+      if (!(await isAuthenticated()) || !items.length) {
+        return { removed: 0 };
+      }
+
+      const uniqueItems = items.filter(item => item.variant_id && item.quantity > 0);
+
+      for (const item of uniqueItems) {
+        await _CART_SERVICES.AddupdateCart({
+          variant_id: item.variant_id,
+          quantity: 0,
+        });
+      }
+
+      invalidateCache(CART_CACHE_KEY);
+      await dispatch(fetchCart({ force: true, silent: true }));
+      return { removed: uniqueItems.length };
+    } catch (error: any) {
+      return rejectWithValue(error?.message ?? 'Failed to clear cart');
     }
   },
 );
@@ -104,17 +200,20 @@ const cartSlice = createSlice({
       } else {
         state.variantQuantities[variantId] = quantity;
       }
-      state.itemCount = Object.values(state.variantQuantities).reduce(
-        (sum, q) => sum + q,
-        0,
-      );
+      state.cartData = patchCartItemQuantity(state.cartData, variantId, quantity);
+      const metrics = computeMetrics(state.cartData);
+      state.itemCount = metrics.itemCount;
+      state.variantQuantities = metrics.variantQuantities;
     },
     clearCartState: () => initialState,
   },
   extraReducers: builder => {
     builder
-      .addCase(fetchCart.pending, state => {
-        state.loading = true;
+      .addCase(fetchCart.pending, (state, action) => {
+        const { silent } = parseFetchCartArg(action.meta.arg);
+        if (!silent) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
@@ -130,14 +229,28 @@ const cartSlice = createSlice({
       })
       .addCase(addToCart.pending, (state, action) => {
         state.addingVariantId = String(action.meta.arg.variantId);
+        const { variantId, quantity } = action.meta.arg;
+        const id = String(variantId);
+        state.cartData = patchCartItemQuantity(state.cartData, id, quantity);
+        if (quantity <= 0) {
+          delete state.variantQuantities[id];
+        } else {
+          state.variantQuantities[id] = quantity;
+        }
+        state.itemCount = Object.values(state.variantQuantities).reduce(
+          (sum, q) => sum + q,
+          0,
+        );
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.addingVariantId = null;
         const { variantId, quantity } = action.payload;
+        const id = String(variantId);
+        state.cartData = patchCartItemQuantity(state.cartData, id, quantity);
         if (quantity <= 0) {
-          delete state.variantQuantities[variantId];
+          delete state.variantQuantities[id];
         } else {
-          state.variantQuantities[variantId] = quantity;
+          state.variantQuantities[id] = quantity;
         }
         state.itemCount = Object.values(state.variantQuantities).reduce(
           (sum, q) => sum + q,
@@ -153,9 +266,11 @@ const cartSlice = createSlice({
 
 export const { setVariantQuantity, clearCartState } = cartSlice.actions;
 export const selectCartCount = (state: { cart: CartState }) => state.cart.itemCount;
-export const selectVariantQuantity = (variantId: string) => (state: { cart: CartState }) =>
-  state.cart.variantQuantities[variantId] ?? 0;
-export const selectIsAddingVariant = (variantId: string) => (state: { cart: CartState }) =>
-  state.cart.addingVariantId === variantId;
+export const selectVariantQuantity =
+  (variantId: string) => (state: { cart: CartState }) =>
+    state.cart.variantQuantities[variantId] ?? 0;
+export const selectIsAddingVariant =
+  (variantId: string) => (state: { cart: CartState }) =>
+    state.cart.addingVariantId === variantId;
 
 export default cartSlice.reducer;

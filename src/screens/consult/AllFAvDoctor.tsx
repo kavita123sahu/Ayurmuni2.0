@@ -12,6 +12,7 @@ import {
     FlatList,
     StatusBar,
     ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 
 import { Colors } from '../../common/Colors';
@@ -23,7 +24,7 @@ import { Images } from '../../common/Images';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import { useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
 import { useDebounce } from '../../hooks/useDebaunce';
@@ -35,10 +36,11 @@ const AllFavDoctors = (props: any) => {
 
     const [search, setSearch] =
         useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
 
     const debouncedSearch = useDebounce(search, 400);
 
-    const { favDoctor, onRefresh, loading } = useConsultData();
+    const { favDoctor, onRefresh, loading, refreshing } = useConsultData();
 
     const filteredDoctors = useMemo(() => {
         let list = favDoctor.filter(item => item?.is_favorite);
@@ -105,8 +107,8 @@ const AllFavDoctors = (props: any) => {
                 onLeftPress={() =>
                     props.navigation.goBack()
                 }
-            // rightIconName="bell"
-            // onRightPress={()=>}
+                onSearchPress={() => setSearchExpanded(true)}
+                onRefreshPress={onRefresh}
             />
 
 
@@ -135,8 +137,14 @@ const AllFavDoctors = (props: any) => {
                         keyExtractor={(item) =>
                             String(item?.id)
                         }
-
-                        // onRefresh={onRefresh}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[Colors.primaryColor]}
+                                tintColor={Colors.primaryColor}
+                            />
+                        }
                         showsVerticalScrollIndicator={
                             false
                         }
@@ -153,14 +161,13 @@ const AllFavDoctors = (props: any) => {
 
                                 {/* SEARCH */}
 
-                                <SearchBar
+                                <ExpandableSearch
                                     placeholder="Search doctors..."
                                     value={search}
-                                    onChangeText={
-                                        setSearch
-                                    }
-
-
+                                    onChangeText={setSearch}
+                                    showTrigger={false}
+                                    expanded={searchExpanded}
+                                    onExpandedChange={setSearchExpanded}
                                 />
                             </>
                         }

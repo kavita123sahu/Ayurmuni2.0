@@ -15,6 +15,8 @@ type Props = {
   title: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
+  onSearchPress?: () => void;
+  onRefreshPress?: () => void;
   useLocalBackIcon?: boolean;
   leftIconName?: TablerIconName;
   rightIconName?: TablerIconName;
@@ -25,6 +27,8 @@ const AppHeader: React.FC<Props> = ({
   title,
   onLeftPress,
   onRightPress,
+  onSearchPress,
+  // onRefreshPress,
   useLocalBackIcon = true,
   leftIconName = 'arrow-left',
   rightIconName,
@@ -55,12 +59,26 @@ const AppHeader: React.FC<Props> = ({
           <TouchableOpacity onPress={onRightPress} style={styles.labelBox}>
             <Text style={styles.rightLabel}>{rightLabel}</Text>
           </TouchableOpacity>
-        ) : rightIconName ? (
-          <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
-            <TablerIcon name={rightIconName} size={22} color={Colors.primaryColor} />
-          </TouchableOpacity>
         ) : (
-          <View style={styles.iconPlaceholder} />
+          <View style={styles.rightActions}>
+            {/* {onRefreshPress ? (
+              <TouchableOpacity onPress={onRefreshPress} style={styles.iconBox}>
+                <TablerIcon name="refresh" size={22} color={Colors.primaryColor} />
+              </TouchableOpacity>
+            ) : null} */}
+            {onSearchPress ? (
+              <TouchableOpacity onPress={onSearchPress} style={styles.iconBox}>
+                <TablerIcon name="search" size={22} color={Colors.primaryColor} />
+              </TouchableOpacity>
+            ) : null}
+            {rightIconName ? (
+              <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
+                <TablerIcon name={rightIconName} size={22} color={Colors.primaryColor} />
+              </TouchableOpacity>
+            ) : !onSearchPress ? (
+              <View style={styles.iconPlaceholder} />
+            ) : null}
+          </View>
         )}
       </View>
       <View style={styles.divider} />
@@ -97,6 +115,10 @@ const styles = StyleSheet.create({
   iconPlaceholder: {
     width: 44,
     height: 44,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   labelBox: {
     paddingHorizontal: 4,

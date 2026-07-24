@@ -84,9 +84,10 @@ const ProductDetails = (props: any) => {
     const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
 
     // ── LOCAL quantity — no API, just counter ────
-
+    console.log("defaultVariantdefaultVariant", defaultVariant)
+    console.log("ProductDataProductDataProductData", variants)
     const [quantity, setQuantity] = useState(
-        selectedVariant?.quantity || 1,
+        1,
     );
 
     // reset qty when variant changes
@@ -96,7 +97,7 @@ const ProductDetails = (props: any) => {
 
     useEffect(() => {
         setQuantity(
-            selectedVariant?.quantity || 1,
+            1,
         );
         console.log("selelctedporudtselcprodutc", selectedVariant)
     }, [selectedVariant?.id]);
@@ -127,11 +128,11 @@ const ProductDetails = (props: any) => {
 
 
     // stock
-    const stockLabel = !selectedVariant?.stock ? 'Out of Stock'
-        : selectedVariant.stock > 10 ? 'In Stock'
-            : `Only ${selectedVariant.stock} Left`;
-    const stockColor = !selectedVariant?.stock ? '#DC2626'
-        : selectedVariant.stock > 10 ? '#16A34A' : '#D97706';
+    const stockLabel = !selectedVariant?.quantity ? 'Out of Stock'
+        : selectedVariant.quantity > 10 ? 'In Stock'
+            : `Only ${selectedVariant.quantity} Left`;
+    const stockColor = !selectedVariant?.quantity ? '#DC2626'
+        : selectedVariant.quantity > 10 ? '#16A34A' : '#D97706';
 
     const totalPrice = (selectedVariant?.selling_price || 0) * quantity;
 
@@ -161,6 +162,7 @@ const ProductDetails = (props: any) => {
         );
     }
 
+    const isOutOfStock = Number(selectedVariant?.quantity ?? 0) <= 0;
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -369,20 +371,29 @@ const ProductDetails = (props: any) => {
                 </View> */}
 
                 {/* Add to Cart — fires API with current qty */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                     style={styles.addToCartBtn}
                     onPress={handleAddToCart}
                     activeOpacity={0.85}
-                    disabled={isAdding || !selectedVariant?.stock}
+                    disabled={isAdding || !selectedVariant?.quantity}
+                > */}
+                <TouchableOpacity
+                    style={[
+                        styles.addToCartBtn,
+                        isOutOfStock && styles.addToCartBtnDisabled,
+                    ]}
+                    onPress={handleAddToCart}
+                    activeOpacity={0.85}
+                    disabled={isAdding || isOutOfStock}
                 >
                     {isAdding ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                         <View style={styles.addToCartInner}>
-                            <TablerIcon name="shopping-cart" size={20} color={Colors.primaryColor} />
+                            <TablerIcon name="shopping-cart" size={20} color={Colors.white} />
                             <View>
                                 <Text style={styles.addToCartText}>
-                                    {selectedVariant?.stock
+                                    {selectedVariant?.quantity
                                         ? 'Add to Cart'
                                         : 'Out of Stock'}
                                 </Text>
@@ -506,7 +517,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
-    addToCartBtnDisabled: { backgroundColor: Colors.secondaryColor, shadowOpacity: 0 },
+    addToCartBtnDisabled: { backgroundColor: '#6c9180', shadowOpacity: 0 },
     addToCartInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     cartIcon: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#FFFFFF' },
     addToCartText: { fontSize: 15, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },

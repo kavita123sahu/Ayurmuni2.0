@@ -227,7 +227,7 @@ const ProfilePage = ({ navigation }: any) => {
     return (
         <>
             <ScreenShell withTabBar contentStyle={styles.shellContent}>
-                <Header title="Profile" subtitle="Manage your account" />
+                <Header title="Profile" subtitle="Manage your account" onBack={() => navigation.goBack()} />
 
                 <ScrollView
                     style={styles.scrollArea}
@@ -352,10 +352,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginTop: SECTION_GAP,
+        marginTop: SECTION_GAP,                                                      
         paddingVertical: 14,
         borderRadius: 14,
-        backgroundColor: '#FEF2F2',
+        backgroundColor: '#FEF2F2',                                  
         borderWidth: 1,
         borderColor: '#FFCECE',
     },

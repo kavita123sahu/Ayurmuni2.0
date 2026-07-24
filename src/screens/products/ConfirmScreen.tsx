@@ -1,16 +1,18 @@
 // screens/CheckoutScreen.tsx
 // Swiggy/Zomato style — Payment method select → Order place
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    Animated, StatusBar, ActivityIndicator, Image, Easing,
+    Animated, StatusBar, ActivityIndicator, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import RazorpayCheckout from 'react-native-razorpay';
 import { usePlaceOrder } from '../../hooks/UsePlaceOrder';
+import { useHomeData } from '../../hooks/UseHomeData';
 import { Fonts } from '../../common/Fonts';
-import Header from '../../components/Header';
-import { Images } from '../../common/Images';
+import AppHeader from '../../components/AppHeader';
+import TablerIcon from '../../components/TablerIcon';
+import { Colors } from '../../common/Colors';
+import { showSuccessToast } from '../../config/Key';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type PaymentMethod = 'cod' | 'online';
@@ -50,10 +52,8 @@ const ConfirmScreen = ({ navigation, route }: any) => {
 
 
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
-
-    console.log("orderpalcoimgg", isPlacing, orderError, placeOrder);
+    const { customerData } = useHomeData();
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cod');
-    const [razorpayLoading, setRazorpayLoading] = useState(false);
 
     // ── Animated values ───────────────────────────────────────────────────────
     const slideAnim = useRef(new Animated.Value(0)).current;
@@ -77,85 +77,77 @@ const ConfirmScreen = ({ navigation, route }: any) => {
     };
 
     // ── Price calculation ─────────────────────────────────────────────────────
-    const subtotal = cartItems.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
-    const shippingFee = charges.shipping_charges ?? 50;
-    const codFee = selectedMethod === 'cod' ? (charges.cod_charges ?? 30) : 0;
+    const shippingFee = Number(charges.shipping_charges ?? 50);
+    const codChargeDefault = Number(charges.cod_charges ?? 30);
+
+    const subtotal = useMemo(
+        () =>
+            cartItems.reduce(
+                (sum: number, item: any) =>
+                    sum + Number(item.price) * Number(item.quantity),
+                0,
+            ),
+        [cartItems],
+    );
+
+    const codFee = selectedMethod === 'cod' ? codChargeDefault : 0;
     const total = subtotal + shippingFee + codFee;
     const isFreeShip = shippingFee === 0;
 
     // ── COD order ─────────────────────────────────────────────────────────────
     const handleCOD = async () => {
+        if (!address?.id) {
+            showSuccessToast('Please select a delivery address', 'error');
+            return;
+        }
+
         const result = await placeOrder(cartItems, {
             delivery_address_id: address.id,
-            shipping_charges: shippingFee,
-            cod_charges: codFee,
+            shipping_charges: 0,
+            cod_charges: 0,
             payment_type: 'cod',
             payment_method: 'cash',
             shipping_method: 'STD',
-
+            prepaid_amount: 0,
         });
-        console.log('orderPAIIII', result);
+
         if (result?.success) {
             navigation.replace('OrderConfirmation', {
-                orderResult: result?.data
-            })
-            // navigation.replace('OrderSuccess', {
-            //     order_id: result.data?.order_id,
-            //     total: total.toFixed(0),
-            //     item_count: cartItems.length,
-            // });
+                orderResult: result?.data,
+                orderedCartItems: cartItems.map((item: any) => ({
+                    variant_id: String(item.variant_id),
+                    quantity: Number(item.quantity),
+                })),
+            });
+            return;
         }
+
+        showSuccessToast(result?.message ?? orderError ?? 'Order failed', 'error');
     };
 
-    // ── Online order via Razorpay ─────────────────────────────────────────────
-    const handleOnline = async () => {
-        setRazorpayLoading(true);
-        try {
-            // Step 1: Create order on your backend → get razorpay_order_id
-            const orderRes = await placeOrder(cartItems, {
-                delivery_address_id: address.id,
+    const handleOnline = () => {
+        if (!address?.id) {
+            showSuccessToast('Please select a delivery address', 'error');
+            return;
+        }
+
+        navigation.navigate('ProductRazorpayScreen', {
+            cartItems: cartItems.map((item: any) => ({
+                id: item.id,
+                variant_id: item.variant_id,
+                quantity: item.quantity,
+                price: item.price,
+                name: item.name,
+                discount: item.discount ?? 0,
+            })),
+            address,
+            charges: {
                 shipping_charges: shippingFee,
                 cod_charges: 0,
-                payment_type: 'prepaid',
-                payment_method: 'upi',
-                shipping_method: 'STD',
-            });
-
-            if (!orderRes?.success) return;
-
-            // Step 2: Open Razorpay checkout
-            const options = {
-                description: 'Order Payment',
-                currency: 'INR',
-                key: 'YOUR_RAZORPAY_KEY_ID',  // apna key daal
-                amount: String(total * 100),      // paise mein
-                order_id: orderRes.data?.razorpay_order_id,
-                name: 'AyurMuni',
-                prefill: {
-                    email: address.email ?? '',
-                    contact: address.phone ?? '',
-                    name: address.name ?? '',
-                },
-                theme: { color: '#0D614E' },
-            };
-
-            const paymentData = await RazorpayCheckout.open(options);
-
-            // Step 3: Navigate to success
-            navigation.replace('OrderSuccess', {
-                order_id: orderRes.data?.order_id,
-                razorpay_payment_id: paymentData.razorpay_payment_id,
-                total: total.toFixed(0),
-                item_count: cartItems.length,
-            });
-        } catch (err: any) {
-            // err.code 0 = user cancelled, 2 = failed
-            if (err?.code !== 0) {
-                console.error('[RAZORPAY ERROR]', err);
-            }
-        } finally {
-            setRazorpayLoading(false);
-        }
+            },
+            customerInfo: customerData ?? {},
+            totalAmount: subtotal + shippingFee,
+        });
     };
 
     const handlePlaceOrder = () => {
@@ -163,7 +155,7 @@ const ConfirmScreen = ({ navigation, route }: any) => {
         else handleOnline();
     };
 
-    const isLoading = isPlacing || razorpayLoading;
+    const isLoading = isPlacing;
 
     const slideY = slideAnim.interpolate({
         inputRange: [0, 1], outputRange: [40, 0],
@@ -172,11 +164,11 @@ const ConfirmScreen = ({ navigation, route }: any) => {
     return (
         <SafeAreaView style={styles.safe}>
 
-            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
             {/* Header */}
 
-            <Header title='Checkout' onBack={() => navigation.goBack()}
+            <AppHeader title='Checkout' onLeftPress={() => navigation.goBack()}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -186,7 +178,8 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                     {/* ── Delivery Address ── */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>
-                            <Text style={styles.cardIcon}>📍</Text>
+                            {/* <Text style={styles.cardIcon}>📍</Text> */}
+                            <TablerIcon name='location' size={20} />
                             <SectionTitle title="Delivery address" />
                         </View>
                         <Text style={styles.addressName}>{address?.address_type_name ?? 'Home'}</Text>
@@ -200,7 +193,8 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                     {/* ── Order Summary ── */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>
-                            <Text style={styles.cardIcon}>🛒</Text>
+                            <TablerIcon name="shopping-cart" size={20} />
+                            {/* <Text style={styles.cardIcon}>🛒</Text> */}
                             <SectionTitle title="Order summary" />
                         </View>
                         {cartItems.map((item: any) => (
@@ -221,7 +215,8 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                     {/* ── Payment Method ── */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>
-                            <Text style={styles.cardIcon}>💳</Text>
+                            <TablerIcon name="payment" size={20} />
+                            {/* <Text style={styles.cardIcon}>💳</Text> */}
                             <SectionTitle title="Payment method" />
                         </View>
 
@@ -237,10 +232,11 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                                 </View>
                                 <View>
                                     <Text style={styles.methodTitle}>Cash on delivery</Text>
-                                    <Text style={styles.methodDesc}>Pay ₹{codFee} extra as COD charges</Text>
+                                    <Text style={styles.methodDesc}>Pay ₹{codChargeDefault} extra as COD charges</Text>
                                 </View>
                             </View>
-                            <Text style={styles.methodEmoji}>💵</Text>
+                            <TablerIcon name="cash" size={20} />
+                            {/* <Text style={styles.methodEmoji}>💵</Text> */}
                         </TouchableOpacity>
 
                         {/* Online Option */}
@@ -287,7 +283,6 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                 </Animated.View>
             </ScrollView>
 
-            {/* ── Sticky Place Order Bar ── */}
             <Animated.View style={[styles.stickyBar, { transform: [{ scale: scaleBtn }] }]}>
                 <View style={styles.stickyLeft}>
                     <Text style={styles.stickyLabel}>
@@ -311,6 +306,8 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                     )}
                 </TouchableOpacity>
             </Animated.View>
+            {/* ── Sticky Place Order Bar ── */}
+
         </SafeAreaView>
     );
 };
@@ -319,7 +316,7 @@ export default ConfirmScreen;
 
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: '#F1F5F9', paddingHorizontal: 20 },
+    safe: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 20 },
     scroll: { paddingTop: 12 },
 
     // Header
@@ -335,8 +332,7 @@ const styles = StyleSheet.create({
     // Card
     card: {
         backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 12,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+        borderWidth: 1, borderColor: Colors.borderColor,
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     cardIcon: { fontSize: 18 },
@@ -393,13 +389,12 @@ const styles = StyleSheet.create({
 
     // Sticky bar
     stickyBar: {
-        position: 'absolute', bottom: 10, left: 0, right: 0,
+        position: 'absolute', bottom: 50, left: 0, right: 0,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 20,
         backgroundColor: '#FFFFFF',
-        borderTopWidth: 1, borderTopColor: '#E2E8F0',
-        shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.08, shadowRadius: 8, elevation: 12,
+        borderTopColor: '#E2E8F0',
+
         gap: 12,
     },
     stickyLeft: { flex: 0 },

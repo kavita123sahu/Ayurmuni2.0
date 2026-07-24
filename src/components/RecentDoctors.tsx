@@ -8,16 +8,18 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
+import { BUTTON, RADIUS, SPACING, TYPO } from '../constants/responsive';
 
 interface Props {
   image: ImageSourcePropType;
   name: string;
   speciality: string;
   date: string;
-
   onPressReceipt?: () => void;
   onPressReschedule?: (item: any) => void;
 }
+
+const AVATAR_SIZE = 80;
 
 const RecentDoctors: React.FC<Props> = ({
   image,
@@ -29,14 +31,12 @@ const RecentDoctors: React.FC<Props> = ({
 }) => {
   return (
     <View style={styles.card}>
-
-      {/* LEFT IMAGE */}
       <Image source={image} style={styles.image} />
 
-      {/* RIGHT CONTENT */}
       <View style={styles.right}>
-
-        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {name}
+        </Text>
 
         <Text style={styles.sub} numberOfLines={1}>
           <Text style={styles.speciality}>{speciality}</Text>
@@ -44,19 +44,19 @@ const RecentDoctors: React.FC<Props> = ({
           {date}
         </Text>
 
-        {/* BUTTONS */}
         <View style={styles.btnRow}>
-
-          <TouchableOpacity style={styles.lightBtn}  onPress={onPressReceipt}>
-            <Text style={styles.lightText} numberOfLines={1} adjustsFontSizeToFit>View Receipt</Text>
+          <TouchableOpacity style={styles.lightBtn} onPress={onPressReceipt} activeOpacity={0.75}>
+            <Text style={styles.lightText} numberOfLines={1}>
+              View Receipt
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={onPressReschedule}>
-            <Text style={styles.primaryText} numberOfLines={1} adjustsFontSizeToFit>Reschedule</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={onPressReschedule} activeOpacity={0.75}>
+            <Text style={styles.primaryText} numberOfLines={1}>
+              Reschedule
+            </Text>
           </TouchableOpacity>
-
         </View>
-
       </View>
     </View>
   );
@@ -67,80 +67,73 @@ export default RecentDoctors;
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    padding: 20,
-    borderRadius: 24,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.pill,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F1F5F9',
     alignItems: 'center',
   },
-
   image: {
-    width: 100,
-    height: 100,
-    borderRadius: 20,
-    marginRight: 18,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: RADIUS.xl,
+    marginRight: SPACING.lg,
+    flexShrink: 0,
   },
-
   right: {
     flex: 1,
+    minWidth: 0,
   },
-
   name: {
-    fontSize: 18,
+    fontSize: TYPO.lg,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
-    marginBottom:-4
+    marginBottom: 2,
   },
-
   sub: {
-    fontSize: 13,
+    fontSize: TYPO.subtitle,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
-
   speciality: {
-    marginBottom:-10,
     color: '#0D614E',
     fontFamily: Fonts.PoppinsMedium,
   },
-
   dot: {
     color: '#94A3B8',
   },
-
   btnRow: {
     flexDirection: 'row',
-    marginTop: 12,
-    justifyContent: 'space-between',
+    marginTop: SPACING.md,
+    gap: SPACING.sm,
   },
-
   lightBtn: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+    minHeight: BUTTON.heightSm,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginRight: 9,
+    justifyContent: 'center',
   },
-
   lightText: {
     color: '#475569',
-    fontSize: 13,
+    fontSize: TYPO.subtitle,
     fontFamily: Fonts.PoppinsMedium,
   },
-
   primaryBtn: {
     flex: 1,
     backgroundColor: '#0D614E',
+    minHeight: BUTTON.heightSm,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-
   primaryText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: TYPO.subtitle,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 });

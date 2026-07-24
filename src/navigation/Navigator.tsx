@@ -28,6 +28,7 @@ import PatientFAQ from "../screens/PatientFAQ";
 import OrderHistory from "../screens/orders/OrderHistory";
 import ProductsScreen from "../screens/products/ProductsScreen";
 import ProductSearchScreen from "../screens/products/ProductSearchScreen";
+import CategoryProductsScreen from "../screens/products/CategoryProductsScreen";
 import TopCategories from "../screens/products/TopCategories";
 import ProductDetails from "../screens/products/ProductDetails";
 import ReviewPage from "../screens/products/ReviewPage";
@@ -77,6 +78,7 @@ import AddCalendar from "../screens/consult/AddCalendar";
 import CategoryDoctor from "../screens/consult/CategoryDoctor";
 import DoctorSlipScreen from "../screens/consult/DoctorSlip";
 import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
+import DoctorConsultationHistoryScreen from "../screens/consult/DoctorConsultationHistoryScreen";
 import NetworkError from "../screens/NetworkError";
 import AddEditAddress from "../components/AddEditAddress";
 import LocationPickerScreen from "../screens/LocationPickerScreen";
@@ -84,6 +86,7 @@ import PrakritiProfile from "../screens/auth/PrakritiProfile";
 import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
 import RazorpayScreen from "../screens/payment/RazorpayScreen";
+import ProductRazorpayScreen from "../screens/payment/ProductRazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
 import ConsultHome from "../screens/consult/ConsultHome";
@@ -184,6 +187,7 @@ const HomeStack = () => {
       <Stack.Screen name="SOSRequest" component={SOSRequest} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
+      <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
       <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -218,9 +222,11 @@ const HomeStack = () => {
       <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="DoctorConsultationHistory" component={DoctorConsultationHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProductRazorpayScreen" component={ProductRazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ConsultScreen" component={ConsultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />

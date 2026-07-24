@@ -6,11 +6,12 @@ import {
     FlatList,
     TouchableOpacity,
     Text,
+    RefreshControl,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import PromoCard from '../../components/PromoCard';
 import SectionHeader from '../../components/SectionHeader';
 import { Images } from '../../common/Images';
@@ -28,6 +29,7 @@ const CategoryDoctor = (props: any) => {
     const navigation = useNavigation<any>();
     const [showAll, setShowAll] = useState(false);
     const [searchText, setSearchText] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
 
     const { categoryName, categoryId } = route.params || {};
     const debouncedSearch = useDebounce(searchText, 400);
@@ -41,7 +43,7 @@ const CategoryDoctor = (props: any) => {
         [categoryId, debouncedSearch],
     );
 
-    const { loading, doctorData } = useAllDoctors(apiFilters);
+    const { loading, doctorData, refresh, refreshing } = useAllDoctors(apiFilters);
 
     const displayDoctors = useMemo(
         () => (showAll ? doctorData : doctorData.slice(0, 2)),
@@ -73,6 +75,8 @@ const CategoryDoctor = (props: any) => {
                 title={categoryName}
                 subtitle="Find best doctor"
                 onBack={() => navigation.goBack()}
+                onSearchPress={() => setSearchExpanded(true)}
+                onRefreshPress={refresh}
             />
 
             <View style={styles.flexContain}>
@@ -80,12 +84,23 @@ const CategoryDoctor = (props: any) => {
                     data={displayDoctors}
                     keyExtractor={item => String(item.id)}
                     showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={refresh}
+                            colors={[Colors.primaryColor]}
+                            tintColor={Colors.primaryColor}
+                        />
+                    }
                     ListHeaderComponent={
                         <>
-                            <SearchBar
+                            <ExpandableSearch
                                 value={searchText}
                                 onChangeText={setSearchText}
                                 placeholder="Search doctor name or qualification..."
+                                showTrigger={false}
+                                expanded={searchExpanded}
+                                onExpandedChange={setSearchExpanded}
                             />
                             <PromoCard
                                 title="Consult with Specialists"

@@ -15,6 +15,8 @@ import { CARD_SURFACE, CARD_RADIUS_LG } from '../constants/cardStyles';
 type BrandType = {
   id: string;
   name: string;
+  logo?:
+  TablerIconName;
   image?: ImageSourcePropType;
   iconName?: TablerIconName;
   onPress?: () => void;
@@ -46,15 +48,15 @@ const BrandList: React.FC<Props> = ({ data = [] }) => {
           onPress={item.onPress}
         >
           <View style={styles.imageContainer}>
-            {item.iconName ? (
-              <TablerIcon name={item.iconName} size={26} color="#0D614E" />
-            ) : item.image ? (
-              <Image source={item.image} style={styles.image} />
+            {item.logo ? (
+              <TablerIcon name={item.logo} size={26} color="#0D614E" />
+            ) : item.logo ? (
+              <Image source={item.logo} style={styles.image} />
             ) : (
               <TablerIcon name="pill" size={26} color="#0D614E" />
             )}
           </View>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={2}>
             {item.name}
           </Text>
         </TouchableOpacity>
@@ -98,6 +100,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 13,
+    textAlign: 'center',
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0D614E',
   },

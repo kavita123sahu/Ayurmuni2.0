@@ -409,7 +409,7 @@ export const geocodePincode = async (
     );
 
     if (data.status !== 'OK' || !data.results?.length) {
-      return null;
+      return geocodePincodeNominatim(cleaned);
     }
 
     const result = pickBestGeocodeResult(data.results);
@@ -421,8 +421,86 @@ export const geocodePincode = async (
       { latitude: lat, longitude: lng },
     );
   } catch {
+    return geocodePincodeNominatim(cleaned);
+  }
+};
+
+const geocodePincodeNominatim = async (
+  pincode: string,
+): Promise<ParsedAddress | null> => {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/search` +
+      `?postalcode=${encodeURIComponent(pincode)}` +
+      `&country=India&format=json&addressdetails=1&limit=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'AyurmuniApp/1.0',
+        Accept: 'application/json',
+      },
+    });
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      return null;
+    }
+
+    const item = data[0];
+    const addr = item.address || {};
+    const city =
+      addr.city ||
+      addr.town ||
+      addr.village ||
+      addr.suburb ||
+      addr.county ||
+      '';
+    const state = addr.state || '';
+
+    return {
+      address_line_1: city || pincode,
+      address_line_2: addr.suburb || '',
+      city,
+      state,
+      zipcode: pincode,
+      country: addr.country || 'India',
+      formatted_address: item.display_name || `${city}, ${state} ${pincode}`,
+      latitude: parseFloat(item.lat),
+      longitude: parseFloat(item.lon),
+    };
+  } catch {
     return null;
   }
+};
+
+/** Fill city/state (and coords) from a 6-digit pincode when GPS geocode is incomplete. */
+export const enrichAddressWithPincode = async (
+  address: ParsedAddress,
+): Promise<ParsedAddress> => {
+  const zip = address.zipcode?.replace(/[^0-9]/g, '') || '';
+  if (zip.length !== 6) {
+    return address;
+  }
+
+  const fromPin = await geocodePincode(zip);
+  if (!fromPin) {
+    return address;
+  }
+
+  return {
+    ...address,
+    city: fromPin.city || address.city,
+    state: fromPin.state || address.state,
+    zipcode: fromPin.zipcode || zip,
+    country: fromPin.country || address.country,
+    latitude: fromPin.latitude || address.latitude,
+    longitude: fromPin.longitude || address.longitude,
+    formatted_address:
+      address.formatted_address ||
+      fromPin.formatted_address ||
+      [address.address_line_1, fromPin.city, fromPin.state, zip]
+        .filter(Boolean)
+        .join(', '),
+  };
 };
 
 export const searchPlaces = async (

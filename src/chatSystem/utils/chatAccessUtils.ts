@@ -42,12 +42,30 @@ const parseDate = (value?: string | null) => {
 
 const normalize = (value?: string) => value?.trim().toLowerCase() ?? '';
 
+const isWithinDefaultChatWindow = (
+  appointmentDate?: string | null,
+  fallback?: AppointmentChatLike | null,
+): boolean => {
+  const resolvedDate = appointmentDate ?? fallback?.appointment_date ?? null;
+  const apptDay = parseDate(resolvedDate);
+  if (!apptDay) {
+    return false;
+  }
+  const cutoff = new Date(apptDay);
+  cutoff.setDate(cutoff.getDate() + DEFAULT_CHAT_DAYS);
+  return startOfDay(new Date()) <= cutoff;
+};
+
 /** Client-side rules for whether the user can send messages. */
 export function isChatSendEnabled(
   access: ChatAccessLike | null | undefined,
   appointmentDate?: string | null,
   fallback?: AppointmentChatLike | null,
 ): boolean {
+  if (access && typeof access.can_send === 'boolean') {
+    return access.can_send;
+  }
+
   const merged: ChatAccessLike = {
     call_status: access?.call_status ?? fallback?.call_status,
     appointment_status: access?.appointment_status ?? fallback?.appointment_status,
@@ -62,7 +80,6 @@ export function isChatSendEnabled(
   const callStatus = normalize(merged.call_status);
   const appointmentStatus = normalize(merged.appointment_status);
   const today = startOfDay(new Date());
-  const resolvedDate = appointmentDate ?? fallback?.appointment_date ?? null;
 
   if (callStatus === 'in_progress') {
     return true;
@@ -85,19 +102,17 @@ export function isChatSendEnabled(
 
   if (isCompleted) {
     const followUp = merged.follow_up;
+
+    if (access?.follow_up_active === false && followUp?.schedule) {
+      return false;
+    }
+
     if (followUp?.schedule && followUp.date) {
       const followUpDay = parseDate(followUp.date);
       return !!followUpDay && followUpDay >= today;
     }
 
-    const apptDay = parseDate(resolvedDate);
-    if (apptDay) {
-      const cutoff = new Date(apptDay);
-      cutoff.setDate(cutoff.getDate() + DEFAULT_CHAT_DAYS);
-      return today <= cutoff;
-    }
-
-    return false;
+    return isWithinDefaultChatWindow(appointmentDate, fallback);
   }
 
   return false;
@@ -122,17 +137,49 @@ export function isChatVisibleForAppointment(
 export function getChatDisabledReason(
   access: ChatAccessLike | null | undefined,
   appointmentDate?: string | null,
+  fallback?: AppointmentChatLike | null,
 ): string {
-  if (isChatEnabled(access, appointmentDate)) {
+  if (isChatSendEnabled(access, appointmentDate, fallback)) {
     return '';
   }
 
-  const followUp = access?.follow_up;
-  if (followUp?.schedule && followUp.date) {
-    return 'Follow-up chat period has ended';
+  if (access?.follow_up_active === false) {
+    return 'Follow-up chat is inactive — you can read previous messages but cannot send new ones';
   }
 
-  return 'Chat closed — consultation completed';
+  const followUp = access?.follow_up ?? fallback?.follow_up;
+  if (followUp?.schedule && followUp.date) {
+    return 'Follow-up chat period has ended — you can still read previous messages';
+  }
+
+  return `Chat closed — ${DEFAULT_CHAT_DAYS}-day consultation window has ended. You can still read previous messages`;
+}
+
+/** Hide raw API / websocket errors — only show predefined copy in the UI. */
+export function shouldSuppressChatError(
+  error: string | null | undefined,
+  messageCount = 0,
+): boolean {
+  if (!error) {
+    return true;
+  }
+
+  if (messageCount > 0) {
+    return true;
+  }
+
+  const normalized = error.trim().toLowerCase();
+  return (
+    normalized.includes('connection') ||
+    normalized.includes('network') ||
+    normalized.includes('unauthorized') ||
+    normalized.includes('forbidden') ||
+    normalized.includes('request failed') ||
+    normalized.includes('failed to load') ||
+    normalized.includes('refresh') ||
+    normalized.includes('offline') ||
+    normalized.includes('not allowed')
+  );
 }
 
 export { DEFAULT_CHAT_DAYS };

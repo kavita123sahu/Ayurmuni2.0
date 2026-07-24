@@ -152,7 +152,7 @@ const insets = useSafeAreaInsets();
         </TouchableOpacity>
       </View>
 
-      {!isConnected && (
+      {!isDisabled && !isConnected && (
         <View style={styles.statusBar}>
           <ActivityIndicator size="small" color="#D97706" />
           <Text style={styles.statusText}>Connecting...</Text>

@@ -93,19 +93,27 @@ const OptionCard = ({
                         {imageSource ? (
                             <Image
                                 source={imageSource}
-                                style={{ height: 40, width: 40, alignContent: 'center', resizeMode: 'contain' }}
+                                style={{ height: 32, width: 32, resizeMode: 'contain' }}
                             />
                         ) : (
-                            <View style={{ height: 40, width: 40 }} />
+                            <View style={{ height: 32, width: 32 }} />
                         )}
                     </View>
                 ) : imageSource ? (
                     <Image
                         source={imageSource}
-                        style={styles.avatar}
+                        style={[
+                            styles.avatar,
+                            isYesNoQuestion && styles.compactAvatar,
+                        ]}
                     />
                 ) : (
-                    <View style={styles.avatar} />
+                    <View
+                        style={[
+                            styles.avatar,
+                            isYesNoQuestion && styles.compactAvatar,
+                        ]}
+                    />
                 )}
 
 

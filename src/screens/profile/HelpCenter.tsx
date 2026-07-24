@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
-import SearchBar from "../../components/SearchBar";
+import { ExpandableSearch } from "../../components/SearchBar";
 import { Ionicons } from "../../common/Vector";
 import DynamicGrid from "../../components/DynamicGrid";
 import { Colors } from "../../common/Colors";
@@ -16,6 +16,7 @@ const HelpCenterScreen = (props: any) => {
 
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const [searchText, setSearchText] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
     const debouncedSearch = useDebounce(searchText, 400);
 
     const faqData = [
@@ -107,17 +108,19 @@ const HelpCenterScreen = (props: any) => {
             <AppHeader
                 title="Help Center"
                 onLeftPress={() => props.navigation.goBack()}
-                rightIconName="search"
-                onRightPress={() => console.log('Search clicked')}
+                onSearchPress={() => setSearchExpanded(true)}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
                 <View style={styles.content}>
 
-                    <SearchBar
+                    <ExpandableSearch
                         placeholder="Search for help topics..."
                         value={searchText}
                         onChangeText={setSearchText}
+                        showTrigger={false}
+                        expanded={searchExpanded}
+                        onExpandedChange={setSearchExpanded}
                     />
 
                     {filteredCategories.length > 0 && (

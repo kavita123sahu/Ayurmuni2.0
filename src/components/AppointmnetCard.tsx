@@ -10,6 +10,7 @@ import {
 import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
+import { BUTTON, RADIUS, SPACING, TYPO } from '../constants/responsive';
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -334,10 +335,11 @@ const styles = StyleSheet.create({
 
     card: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        padding: 18,
+        borderRadius: RADIUS.pill,
+        padding: SPACING.lg,
         borderWidth: 1,
         borderColor: '#F1F5F9',
+        marginBottom: SPACING.md,
     },
 
     cancelledCard: {
@@ -350,14 +352,12 @@ const styles = StyleSheet.create({
     },
 
     avatar: {
-        width: 78,
-        height: 78,
-
-        borderRadius: 18,
-
+        width: 72,
+        height: 72,
+        borderRadius: RADIUS.lg,
         resizeMode: 'cover',
-
-        marginRight: 12,
+        marginRight: SPACING.md,
+        flexShrink: 0,
     },
 
     info: {
@@ -367,29 +367,19 @@ const styles = StyleSheet.create({
     },
 
     doctorName: {
-        fontSize: 16,
+        fontSize: TYPO.lg,
         lineHeight: 22,
-
         color: '#1E293B',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
-
-        minHeight: 30,
-
+        fontFamily: Fonts.PoppinsSemiBold,
         flexShrink: 1,
     },
 
     meta: {
         marginTop: 2,
-
-        fontSize: 12,
+        fontSize: TYPO.sm,
         lineHeight: 18,
-
         color: '#64748B',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     badge: {
@@ -402,20 +392,15 @@ const styles = StyleSheet.create({
     },
 
     badgeText: {
-        fontSize: 10,
-
+        fontSize: TYPO.xs,
         textTransform: 'uppercase',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     actions: {
         flexDirection: 'row',
-
-        marginTop: 18,
-
-        gap: 10,
+        marginTop: SPACING.lg,
+        gap: SPACING.sm,
     },
 
     fullBtn: {
@@ -424,54 +409,35 @@ const styles = StyleSheet.create({
 
     secondaryBtn: {
         flex: 1,
-
-        height: 48,
-
-        borderRadius: 14,
-
+        minHeight: BUTTON.height,
+        borderRadius: BUTTON.radius,
         backgroundColor: '#F8FAFC',
-
         alignItems: 'center',
         justifyContent: 'center',
-
-        paddingHorizontal: 10,
+        paddingHorizontal: SPACING.sm,
     },
 
     secondaryBtnText: {
-        fontSize: 14,
-
+        fontSize: TYPO.button,
         color: '#475569',
-
         textAlign: 'center',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     primaryBtn: {
         flex: 1,
-
-        height: 48,
-
-        borderRadius: 14,
-
-        backgroundColor:
-            Colors.primaryColor,
-
+        minHeight: BUTTON.height,
+        borderRadius: BUTTON.radius,
+        backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
-
-        paddingHorizontal: 10,
+        paddingHorizontal: SPACING.sm,
     },
 
     primaryBtnText: {
-        fontSize: 14,
-
+        fontSize: TYPO.button,
         color: '#FFFFFF',
-
         textAlign: 'center',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsMedium,
     },
 });

@@ -17,6 +17,7 @@ import {
     StatusBar,
     ActivityIndicator,
     TextInput,
+    RefreshControl,
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -26,7 +27,7 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { useAllCartData } from '../../hooks/Cart';
 import { useAppDispatch } from '../../store/hooks';
-import { addToCart, fetchCart, setVariantQuantity } from '../../store/slices/cartSlice';
+import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { getProductData, ProductItem, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
@@ -34,6 +35,7 @@ import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToLogin } from '../../services/guestAuth';
 import { useAuth } from '../../hooks/useAuth';
+import { navigateToCheckout } from '../../navigation/productNavigation';
 
 
 
@@ -45,6 +47,19 @@ const MyCart = ({ navigation }: any) => {
 
     const { CartData, loading, fetchAllData } =
         useAllCartData();
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(async () => {
+        if (!isLoggedIn) {
+            return;
+        }
+        setRefreshing(true);
+        try {
+            await fetchAllData(true);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchAllData, isLoggedIn]);
 
     useFocusEffect(
         useCallback(() => {
@@ -55,18 +70,14 @@ const MyCart = ({ navigation }: any) => {
     );
 
     const insets = useSafeAreaInsets();
-    const [sections, setSections] =
-        useState<SectionType[]>([]);
-
     const [selectedItems, setSelectedItems] =
         useState<string[]>([]);
 
     const [activeTab, setActiveTab] = useState<'cart' | 'prescribed'>('cart');
     const [showDetails, setShowDetails] =
         useState(false);
-    console.log('CartDataCartData', CartData);
 
-    const mappedSections = useMemo<SectionType[]>(() => {
+    const sections = useMemo<SectionType[]>(() => {
         const next: SectionType[] = [];
 
         if (CartData?.my_cart?.items?.length) {
@@ -104,11 +115,6 @@ const MyCart = ({ navigation }: any) => {
     );
 
     const hasCartItems = cartItemCount > 0;
-
-
-    useEffect(() => {
-        setSections(mappedSections);
-    }, [mappedSections]);
 
     useEffect(() => {
         if (!hasCartItems) {
@@ -190,7 +196,9 @@ const MyCart = ({ navigation }: any) => {
                 .flatMap(s => s.items)
                 .find(i => i.variant_id === variantId);
 
-            if (!selectedItem) return;
+            if (!selectedItem) {
+                return;
+            }
 
             const oldQty = selectedItem.quantity;
             const newQty =
@@ -200,42 +208,11 @@ const MyCart = ({ navigation }: any) => {
                         ? oldQty + 1
                         : oldQty - 1;
 
-            if (newQty === 0) {
-                setSections(prev =>
-                    prev
-                        .map(section => ({
-                            ...section,
-                            items: section.items.filter(
-                                item => item.variant_id !== variantId,
-                            ),
-                        }))
-                        .filter(section => section.items.length > 0),
-                );
-            } else {
-                setSections(prev =>
-                    prev.map(section => ({
-                        ...section,
-                        items: section.items.map(item =>
-                            item.variant_id === variantId
-                                ? { ...item, quantity: newQty }
-                                : item,
-                        ),
-                    })),
-                );
-            }
-
-            dispatch(setVariantQuantity({ variantId, quantity: newQty }));
-
-            const result = await dispatch(
-                addToCart({ variantId, quantity: newQty }),
+            await dispatch(
+                syncCartQuantity({ variantId, quantity: newQty }),
             );
-
-            if (addToCart.rejected.match(result)) {
-                await dispatch(fetchCart(true));
-                fetchAllData();
-            }
         },
-        [sections, dispatch, fetchAllData],
+        [sections, dispatch],
     );
 
     const selectedProducts =
@@ -309,20 +286,11 @@ const MyCart = ({ navigation }: any) => {
     }, [activeTab, cartSection, prescribedSection, hasCartItems]);
 
     const handleCheckout = () => {
-
-        console.log("selctedproduct", selectedProducts);
-
         if (selectedProducts.length === 0) {
             return;
         }
 
-        navigation.navigate(
-            'Checkout',
-            {
-                selectedProducts,
-                totalSubtotal
-            },
-        );
+        navigateToCheckout(navigation, selectedProducts, totalSubtotal);
     };
 
 
@@ -344,6 +312,7 @@ const MyCart = ({ navigation }: any) => {
                 onLeftPress={() =>
                     navigation.goBack()
                 }
+                onRefreshPress={onRefresh}
             />
 
             {!isLoggedIn ? (
@@ -383,7 +352,7 @@ const MyCart = ({ navigation }: any) => {
 
                     <TouchableOpacity
                         style={styles.shopNowBtn}
-                        onPress={() => navigation.navigate('Home')}
+                        onPress={() => navigation.replace('HomeStack', { screen: 'Home' })}
                     >
                         <Text style={styles.shopNowText}>
                             Shop Now
@@ -395,6 +364,14 @@ const MyCart = ({ navigation }: any) => {
                     <ScrollView
                         style={styles.scrollView}
                         showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[Colors.primaryColor]}
+                                tintColor={Colors.primaryColor}
+                            />
+                        }
                         contentContainerStyle={[
                             styles.scrollContent,
                             { paddingBottom: 16 },
@@ -601,7 +578,7 @@ const MyCart = ({ navigation }: any) => {
                             <Text
                                 style={
                                     styles.checkoutText} >
-                                Proceed To Checkout
+                                Proceed
                             </Text>
 
                             <View

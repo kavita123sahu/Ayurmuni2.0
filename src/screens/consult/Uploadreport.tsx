@@ -63,7 +63,7 @@ const PrescriptionUpload: React.FC<Props> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Upload Prescription
+        Upload Documents
         <Text style={styles.optional}> (optional)</Text>
       </Text>
 
@@ -74,7 +74,7 @@ const PrescriptionUpload: React.FC<Props> = ({
           </View>
 
           <View style={styles.headerText}>
-            <Text style={styles.uploadTitle}>Attach prescription</Text>
+            <Text style={styles.uploadTitle}>Attach Documents</Text>
             <Text style={styles.uploadSubTitle}>
               Photo or PDF — helps your doctor prepare
             </Text>
@@ -94,7 +94,7 @@ const PrescriptionUpload: React.FC<Props> = ({
           >
             <TablerIcon name="upload" size={18} color={Colors.primaryColor} />
             <Text style={styles.uploadBtnText}>
-              {selectedRecordData?.length > 0 ? 'Add another file' : 'Upload prescription'}
+              {selectedRecordData?.length > 0 ? 'Add another file' : 'Upload Documents'}
             </Text>
           </TouchableOpacity>
         )}

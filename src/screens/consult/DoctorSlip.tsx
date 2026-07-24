@@ -463,18 +463,22 @@ const DoctorSlipScreen = (props: any) => {
 
                             {/* MEDICINES */}
 
-                            <SectionHeader
-                                title="Current Regimen"
-                                actionText="VERIFIED PROTOCOL"
-                            />
+                            {MEDICINES.length > 0 && (
+                                <>
+                                    <SectionHeader
+                                        title="Current Regimen"
+                                        actionText="VERIFIED PROTOCOL"
+                                    />
 
-                            <FlatList
-                                data={MEDICINES}
-                                scrollEnabled={false}
-                                keyExtractor={item => item.id.toString()}
-                                renderItem={renderMedicine}
-                                contentContainerStyle={styles.listGap}
-                            />
+                                    <FlatList
+                                        data={MEDICINES}
+                                        scrollEnabled={false}
+                                        keyExtractor={item => item.id.toString()}
+                                        renderItem={renderMedicine}
+                                        contentContainerStyle={styles.listGap}
+                                    />
+                                </>
+                            )}
 
                             {/* GUIDELINES */}
 
@@ -555,7 +559,10 @@ const DoctorSlipScreen = (props: any) => {
 
                             <FooterButton
                                 title="Buy Now"
-                                onPress={() => props?.navigation.navigate('MultipleDoctorSlip')}
+                                onPress={() => props?.navigation.navigate('DoctorConsultationHistory', {
+                                    doctorID,
+                                    doctorName: slipData?.doctor?.doctor_name,
+                                })}
                                 isPrimary
                             />
                         </View>

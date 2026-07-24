@@ -51,6 +51,7 @@ import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { requireAuth, navigateToLogin } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
+import { navigateToSearchScreen } from '../../navigation/productNavigation';
 
 
 const { width } = Dimensions.get('window');
@@ -86,6 +87,7 @@ const HomePage: React.FC = (props: any) => {
     onScroll,
     headerContentAnimatedStyle,
     searchBarAnimatedStyle,
+    categoryAnimatedStyle,
     headerShellAnimatedStyle,
   } = useScrollHide();
   const headerTotalHeight = getHomeHeaderTotalHeight(insets);
@@ -95,7 +97,12 @@ const HomePage: React.FC = (props: any) => {
 
   const handleSearchPress = useCallback(() => {
     const stackNav = props.navigation.getParent?.() || props.navigation;
-    stackNav.navigate('SearchScreen');
+    navigateToSearchScreen(stackNav);
+  }, [props.navigation]);
+
+  const handleViewAllProducts = useCallback(() => {
+    const stackNav = props.navigation.getParent?.() || props.navigation;
+    navigateToSearchScreen(stackNav);
   }, [props.navigation]);
 
   useFocusEffect(
@@ -182,6 +189,7 @@ const HomePage: React.FC = (props: any) => {
           <HomeHeader
             progress1={Math.round(customerData?.prakriti_progress || 0)}
             progress2={Math.round(customerData?.medical_history_progress || 0)}
+            onSearchPress={handleSearchPress}
           />
         </Animated.View>
 
@@ -189,8 +197,22 @@ const HomePage: React.FC = (props: any) => {
           <SearchBar
             placeholder="Search doctors, medicine and products..."
             onPress={handleSearchPress}
+            showMicIcon
+            onMicPress={handleSearchPress}
             compact
           />
+        </Animated.View>
+
+        <Animated.View style={[styles.categoryDock, categoryAnimatedStyle]}>
+          {loadingCategories ? (
+            <HomeCategorySkeleton compact />
+          ) : (
+            <HomeCategory
+              data={categories}
+              navigation={props.navigation}
+              sticky
+            />
+          )}
         </Animated.View>
       </Animated.View>
 
@@ -219,23 +241,14 @@ const HomePage: React.FC = (props: any) => {
         renderItem={() => (
           <View style={styles.sections}>
             <View style={styles.homeSection}>
-              {loadingCategories ? (
-                <HomeCategorySkeleton />
-              ) : (
-                <HomeCategory data={categories} navigation={props.navigation} />
-              )}
-            </View>
-
-            {/* <View style={styles.homeSection}> */}
             <Detailimages
               images={product.images}
               itemWidth={width - SCREEN_PADDING_H * 2}
-              itemHeight={156}
               DynamicResize="contain"
               autoSlide
               embedded
             />
-            {/* </View> */}
+            </View>
 
 
             {(loadingAppointments || sortedUpcomingAppointments.length > 0) && (
@@ -297,12 +310,36 @@ const HomePage: React.FC = (props: any) => {
               )}
             </View>
 
+
+            {productData?.length > 0 && (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Suggested Products"
+                  actionText={productData.length > 1 ? 'View all' : ''}
+                  onPress={handleViewAllProducts}
+                />
+                {loadingProducts ? (
+                  <TopSellingListSkeleton />
+                ) : (
+                  <TopSellingList
+                    data={productData}
+                    navigation={props.navigation}
+                    setProductData={setProductData}
+                    nested
+                    home
+                  />
+                )}
+              </View>
+            )}
+
             {productData?.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
                   title="Suggested Medicines"
                   actionText={productData.length > 1 ? 'View all' : ''}
+                  onPress={handleViewAllProducts}
                 />
                 {loadingProducts ? (
                   <TopSellingListSkeleton />
@@ -420,7 +457,7 @@ const styles = StyleSheet.create({
   },
   sections: {
     gap: HOME_SECTION_GAP,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   homeSection: {
     width: '100%',
@@ -445,15 +482,13 @@ const styles = StyleSheet.create({
     zIndex: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.borderColor,
-    shadowColor: '#0D614E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 6,
+    borderBottomColor: '#E2E8F0',
     overflow: 'hidden',
     justifyContent: 'flex-end',
-    paddingBottom: 6,
+    paddingBottom: 0,
+  },
+  categoryDock: {
+    width: '100%',
   },
   searchDock: {
     width: '100%',
