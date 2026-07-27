@@ -11,6 +11,7 @@ import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { BUTTON, RADIUS, SPACING, TYPO } from '../constants/responsive';
+import { buildAppointmentDetailsParams } from '../utils/appointmentUtils';
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -52,6 +53,7 @@ export interface Appointment {
 
 interface AppointmentCardProps {
     item: Appointment;
+    navigation: any;
     onAction?: (
         actionKey: ActionKey,
         item: Appointment,
@@ -59,16 +61,16 @@ interface AppointmentCardProps {
     style?: ViewStyle;
 }
 const UPCOMING_STATUS = [
-  "pending",
-  "confirmed",
-  "reschedule",
-  "rescheduled",
+    "pending",
+    "confirmed",
+    "reschedule",
+    "rescheduled",
 ];
 
 const PAST_STATUS = [
-  "completed",
-  "cancelled",
-  "missed",
+    "completed",
+    "cancelled",
+    "missed",
 ];
 /* -------------------------------------------------------------------------- */
 /*                               BADGE CONFIG                                 */
@@ -148,6 +150,7 @@ const AppointmentCard = ({
     item,
     onAction,
     style,
+    navigation,
 }: AppointmentCardProps) => {
 
     const {
@@ -179,6 +182,7 @@ const AppointmentCard = ({
         appointment_status ===
         'upcoming';
 
+    const showActions = isCompleted || isCancelled || isUpcoming;
 
 
     const handleAction = (
@@ -188,13 +192,18 @@ const AppointmentCard = ({
     };
 
     return (
-        <View
+        <TouchableOpacity
             style={[
                 styles.card,
                 isCancelled &&
                 styles.cancelledCard,
                 style,
             ]}
+
+            onPress={() => navigation.navigate(
+                "AppointmentDetails",
+                buildAppointmentDetailsParams({ rawData: item.rawData, ...item }),
+            )}
         >
             {/* TOP SECTION */}
 
@@ -230,7 +239,60 @@ const AppointmentCard = ({
 
             {/* ACTIONS */}
 
-            <View style={styles.actions}>
+
+
+            {showActions && (
+                <View style={styles.actions}>
+                    {isCompleted && (
+                        <>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                style={styles.secondaryBtn}
+                                onPress={() => handleAction('view_receipt')}
+                            >
+                                <Text style={styles.secondaryBtnText}>
+                                    View Receipt
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                style={styles.primaryBtn}
+                                onPress={() => handleAction('book_again')}
+                            >
+                                <Text style={styles.primaryBtnText}>
+                                    Book Again
+                                </Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+
+                    {isCancelled && (
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            style={[styles.secondaryBtn, styles.fullBtn]}
+                            onPress={() => handleAction('view_details')}
+                        >
+                            <Text style={styles.secondaryBtnText}>
+                                View Details
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {isUpcoming && (
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.primaryBtn, styles.fullBtn]}
+                            onPress={() => handleAction('reschedule')}
+                        >
+                            <Text style={styles.primaryBtnText}>
+                                Reschedule
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+            {/* <View style={styles.actions}>
                 {isCompleted && (
                     <>
                         <TouchableOpacity
@@ -317,8 +379,8 @@ const AppointmentCard = ({
                         </Text>
                     </TouchableOpacity>
                 )}
-            </View>
-        </View>
+            </View> */}
+        </TouchableOpacity>
     );
 };
 

@@ -25,18 +25,6 @@ import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService';
 import { Utils } from '../../common/Utils';
 
-/* ============================================================
-   PHONE / OTP ENTRY — Figma match + animated photo marquee
-   ------------------------------------------------------------
-   Collage header is now 3 independent vertical marquee columns:
-     • Column 1 — scrolls UP, continuously
-     • Column 2 — scrolls DOWN, continuously
-     • Column 3 — scrolls UP, continuously
-   Each column loops its image set seamlessly (content is
-   duplicated end-to-end, so the wrap-around is invisible).
-   Logo now sits in a solid frosted badge so it stays readable
-   no matter what's scrolling behind it.
-   ============================================================ */
 
 const C = {
   collageBg: '#33422C',

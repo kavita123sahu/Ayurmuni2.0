@@ -1,4 +1,4 @@
-/** Illustrations, logos & photos only — UI icons use TablerIcon */
+
 export const Images = {
     backIcon: require('../assets/images/backButton.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),

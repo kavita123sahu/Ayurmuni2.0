@@ -9,7 +9,7 @@ import {
     Dimensions,
     StatusBar,
     ActivityIndicator,
-    Alert,
+    Platform,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import AppHeader from '../../components/AppHeader';
@@ -17,13 +17,10 @@ import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import * as _CONSULT_SERVICE from '../../services/ConsultServce';
-import { formatDate } from '../../common/DataInterface';
-import { getReceiptHtml } from '../../hooks/DownloadFuction';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import RNFS from 'react-native-fs';
-import FileViewer from 'react-native-file-viewer';
-import { Buffer } from 'buffer';
 import TablerIcon from '../../components/TablerIcon';
+import { showSuccessToast } from '../../config/Key';
+import { saveAndOpenTextFile } from '../../utils/fileDownloadUtils';
+import { formatDate } from '../../common/DataInterface';
 const { width } = Dimensions.get('window');
 
 interface ReceiptData {
@@ -96,191 +93,49 @@ const MedicalReceipt = (props: any) => {
         };
 
     const downloadReceiptPDF = async () => {
-        console.log('Downloading PDF...');
+        if (!receipt) {
+            showSuccessToast('Receipt data not loaded yet', 'error');
+            return;
+        }
+
         try {
+            const specializationText =
+                Array.isArray(receipt?.info?.doctor_specialization)
+                    ? receipt.info.doctor_specialization.join(', ')
+                    : receipt?.info?.doctor_specialization || '';
 
-            const pdfDoc =
-                await PDFDocument.create();
-
-            const page =
-                pdfDoc.addPage([595, 842]);
-
-            const font =
-                await pdfDoc.embedFont(
-                    StandardFonts.Helvetica,
-                );
-
-            const boldFont =
-                await pdfDoc.embedFont(
-                    StandardFonts.HelveticaBold,
-                );
-
-            page.drawText(
-                'HEALTHCONNECT CLINIC',
-                {
-                    x: 160,
-                    y: 790,
-                    size: 20,
-                    font: boldFont,
-                },
-            );
-
-            page.drawText(
+            const receiptText = [
+                'AYURMUNI CLINIC',
                 'Digital Consultation Receipt',
-                {
-                    x: 190,
-                    y: 765,
-                    size: 12,
-                    font,
-                },
-            );
-
-            page.drawLine({
-                start: { x: 40, y: 745 },
-                end: { x: 555, y: 745 },
-                thickness: 1,
-            });
-
-            let y = 710;
-
-            const drawRow = (
-                label: string,
-                value?: string | number | null,
-            ) => {
-
-                page.drawText(String(label ?? '-'), {
-                    x: 50,
-                    y,
-                    size: 12,
-                    font: boldFont,
-                });
-
-                page.drawText(String(value ?? '-'), {
-                    x: 220,
-                    y,
-                    size: 12,
-                    font,
-                });
-
-                y -= 30;
-            };
-
-            drawRow(
-                'Receipt ID',
-                receipt?.consultation_id,
-            );
-
-            drawRow(
-                'Patient Name',
-                receipt?.patient_name,
-            );
-
-            drawRow(
-                'Doctor',
-                receipt?.info?.doctor_name,
-            );
-
-            drawRow(
-                'Date',
-                receipt?.date,
-            );
-
-            // drawRow(
-            //     'Time',
-            //     receipt?.slot?.slot_time,
-            // );
-
-            drawRow(
-                'Consultation Fee',
-                `Rs.${receipt?.consultation_fees}`,
-            );
-
-            // drawRow(
-            //     'Admin Charges',
-            //     `Rs.${receipt?.administrative_charges}`,
-            // );
-
-            // drawRow(
-            //     'Digital Report',
-            //     `Rs.${receipt?.digital_report_access}`,
-            // );
-
-            y -= 10;
-
-            page.drawLine({
-                start: { x: 40, y },
-                end: { x: 555, y },
-                thickness: 1,
-            });
-
-            y -= 40;
-
-            page.drawText(
-                'TOTAL PAID',
-                {
-                    x: 50,
-                    y,
-                    size: 16,
-                    font: boldFont,
-                },
-            );
-
-            page.drawText(
-                `Rs.${receipt?.consultation_fees}`,
-                {
-                    x: 430,
-                    y,
-                    size: 18,
-                    font: boldFont,
-                },
-            );
-
-            y -= 80;
-
-            page.drawText(
+                '----------------------------------------',
+                `Receipt ID: ${receipt?.consultation_id ?? '-'}`,
+                `Patient Name: ${receipt?.patient_name ?? '-'}`,
+                `Doctor: ${receipt?.info?.doctor_name ?? receipt?.doctor_name ?? '-'}`,
+                `Specialization: ${specializationText || '-'}`,
+                `Date: ${receipt?.date ?? '-'}`,
+                `Consultation Fee: Rs.${receipt?.consultation_fees ?? 0}`,
+                `Administrative Charges: Rs.${receipt?.administrative_charges ?? 0}`,
+                `Digital Report Access: Rs.${receipt?.digital_report_access ?? 0}`,
+                '----------------------------------------',
+                `TOTAL PAID: Rs.${receipt?.total_amount ?? receipt?.consultation_fees ?? 0}`,
+                '',
                 'This is a computer generated receipt.',
-                {
-                    x: 120,
-                    y,
-                    size: 10,
-                    font,
-                },
+            ].join('\n');
+
+            const fileName = `Medical_Receipt_${receipt?.consultation_id ?? Date.now()}.txt`;
+            await saveAndOpenTextFile(receiptText, fileName);
+
+            showSuccessToast(
+                Platform.OS === 'android'
+                    ? 'Receipt saved to your device'
+                    : 'Receipt saved successfully',
+                'success',
             );
-
-            const pdfBytes =
-                await pdfDoc.save();
-
-            const filePath =
-                `${RNFS.DownloadDirectoryPath}/Medical_Receipt_${Date.now()}.pdf`;
-
-            await RNFS.writeFile(
-                filePath,
-                Buffer.from(pdfBytes).toString('base64'),
-                'base64',
-            );
-
-            const exists =
-                await RNFS.exists(filePath);
-
-            console.log(
-                'FILE EXISTS =>',
-                exists,
-            );
-
-            console.log(
-                'FILE PATH =>',
-                filePath,
-            );
-
-            await FileViewer.open(
-                filePath,
-            );
-
-        } catch (error) {
-
-            console.log(
-                'PDF ERROR:',
-                error,
+        } catch (error: any) {
+            console.log('RECEIPT SAVE ERROR:', error);
+            showSuccessToast(
+                error?.message || 'Unable to save receipt on device',
+                'error',
             );
         }
     };
@@ -297,26 +152,6 @@ const MedicalReceipt = (props: any) => {
             ? receipt.info.doctor_specialization.join(', ')
             : receipt?.info?.doctor_specialization || '';
 
-    if (loading) {
-
-        return (
-            <SafeAreaView
-                style={{
-                    flex: 1,
-                    justifyContent:
-                        'center',
-                    alignItems:
-                        'center',
-                }}>
-                <ActivityIndicator
-                    size="large"
-                    color={
-                        Colors.primaryColor
-                    }
-                />
-            </SafeAreaView>
-        );
-    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -329,99 +164,122 @@ const MedicalReceipt = (props: any) => {
 
             />
 
-            <ScrollView contentContainerStyle={styles.scroll}
-                showsVerticalScrollIndicator={false} >
+            {loading ?
 
-                <View style={styles.cardWrapper}>
-                    <View style={styles.card}>
+                (<SafeAreaView
+                    style={{
+                        flex: 1,
+                        justifyContent:
+                            'center',
+                        alignItems:
+                            'center',
+                    }}>
+                    <ActivityIndicator
+                        size="large"
+                        color={
+                            Colors.primaryColor
+                        }
+                    />
+                </SafeAreaView>)
+                :
+                (
+                    <>
+                        <ScrollView contentContainerStyle={styles.scroll}
+                            showsVerticalScrollIndicator={false} >
 
-                        <View style={styles.iconBox}>
-                            <TablerIcon name="plus-bag" size={30} color={Colors.primaryColor} />
-                        </View>
+                            <View style={styles.cardWrapper}>
+                                <View style={styles.card}>
 
-                        <Text style={styles.title}>HealthConnect Clinic</Text>
-                        <Text style={styles.subtitle}>DIGITAL CONSULTATION RECEIPT</Text>
+                                    <View style={styles.iconBox}>
+                                        <TablerIcon name="plus-bag" size={30} color={Colors.primaryColor} />
+                                    </View>
 
-                        {/* INFO ROWS */}
-                        <View style={styles.infoRow}>
-                            <View>
-                                <Text style={styles.label}>Receipt No.</Text>
-                                <Text style={styles.value} numberOfLines={1}>#RC-983421</Text>
+                                    <Text style={styles.title}>HealthConnect Clinic</Text>
+                                    <Text style={styles.subtitle}>DIGITAL CONSULTATION RECEIPT</Text>
+
+                                    {/* INFO ROWS */}
+                                    <View style={styles.infoRow}>
+                                        <View>
+                                            <Text style={styles.label}>Receipt No.</Text>
+                                            <Text style={styles.value} numberOfLines={1}>#RC-983421</Text>
+                                        </View>
+
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={styles.label}>Date</Text>
+                                            <Text style={styles.value} numberOfLines={1}>{formatDate(receipt?.date ?? '')}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.infoRow}>
+                                        <View>
+                                            <Text style={styles.label}>Patient Name</Text>
+                                            <Text style={styles.value} numberOfLines={1}>{receipt?.patient_name}</Text>
+                                        </View>
+
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={styles.label}>Payment Method</Text>
+                                            <Text style={[styles.value, { color: Colors.primaryColor }]}>
+                                                Credit Card
+                                            </Text>
+                                        </View>
+                                    </View>
+
+
+                                    <View style={styles.dashed} />
+
+                                    <View style={styles.doctorRow}>
+                                        <Image
+                                            source={Images.doctorImage}
+                                            style={styles.docImg}
+                                        />
+                                        <View style={{ paddingLeft: 5, }}>
+                                            <Text style={styles.docName}>{receipt?.info?.doctor_name}</Text>
+                                            <Text style={styles.docSpec}>{specialization}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.priceRow}>
+                                        <Text style={styles.priceLabel}>Consultation Fee</Text>
+                                        <Text style={styles.priceValue}>{receipt?.consultation_fees?.toFixed(2) || '0.00'}</Text>
+                                    </View>
+
+                                    <View style={styles.priceRow1}>
+                                        <Text style={styles.priceLabel}>Administrative Charges</Text>
+                                        <Text style={styles.priceValue}>{receipt?.administrative_charges?.toFixed(2) || '0.00'}</Text>
+                                    </View>
+
+                                    <View style={styles.priceRow1}>
+                                        <Text style={styles.priceLabel}>Digital Report Access</Text>
+                                        <Text style={styles.priceValue}>{receipt?.digital_report_access?.toFixed(2) || '0.00'}</Text>
+                                    </View>
+
+
+                                    <View style={styles.dashed} />
+
+                                    {/* TOTAL */}
+                                    <View style={styles.totalRow}>
+                                        <Text style={styles.totalText}>Total Paid</Text>
+                                        <Text style={styles.totalAmount}>{receipt?.consultation_fees?.toFixed(2) || '0.00'}</Text>
+                                    </View>
+
+                                    <View style={styles.noteBox}>
+                                        <Text style={styles.noteText}>
+                                            THIS IS A COMPUTER GENERATED RECEIPT. NO SIGNATURE IS REQUIRED.
+                                        </Text>
+                                    </View>
+
+                                </View>
                             </View>
 
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={styles.label}>Date</Text>
-                                <Text style={styles.value} numberOfLines={1}>{formatDate(receipt?.date ?? '')}</Text>
-                            </View>
-                        </View>
+                        </ScrollView>
 
-                        <View style={styles.infoRow}>
-                            <View>
-                                <Text style={styles.label}>Patient Name</Text>
-                                <Text style={styles.value} numberOfLines={1}>{receipt?.patient_name}</Text>
-                            </View>
-
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={styles.label}>Payment Method</Text>
-                                <Text style={[styles.value, { color: Colors.primaryColor }]}>
-                                    Credit Card
-                                </Text>
-                            </View>
-                        </View>
-
-
-                        <View style={styles.dashed} />
-
-                        <View style={styles.doctorRow}>
-                            <Image
-                                source={Images.doctorImage}
-                                style={styles.docImg}
-                            />
-                            <View style={{ paddingLeft: 5, }}>
-                                <Text style={styles.docName}>{receipt?.info?.doctor_name}</Text>
-                                <Text style={styles.docSpec}>{specialization}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.priceRow}>
-                            <Text style={styles.priceLabel}>Consultation Fee</Text>
-                            <Text style={styles.priceValue}>${receipt?.consultation_fees?.toFixed(2) || '0.00'}</Text>
-                        </View>
-
-                        <View style={styles.priceRow1}>
-                            <Text style={styles.priceLabel}>Administrative Charges</Text>
-                            <Text style={styles.priceValue}>${receipt?.administrative_charges?.toFixed(2) || '0.00'}</Text>
-                        </View>
-
-                        <View style={styles.priceRow1}>
-                            <Text style={styles.priceLabel}>Digital Report Access</Text>
-                            <Text style={styles.priceValue}>${receipt?.digital_report_access?.toFixed(2) || '0.00'}</Text>
-                        </View>
-
-
-                        <View style={styles.dashed} />
-
-                        {/* TOTAL */}
-                        <View style={styles.totalRow}>
-                            <Text style={styles.totalText}>Total Paid</Text>
-                            <Text style={styles.totalAmount}>${receipt?.consultation_fees?.toFixed(2) || '0.00'}</Text>
-                        </View>
-
-                        <View style={styles.noteBox}>
-                            <Text style={styles.noteText}>
-                                THIS IS A COMPUTER GENERATED RECEIPT. NO SIGNATURE IS REQUIRED.
-                            </Text>
-                        </View>
-
-                    </View>
-                </View>
-
-            </ScrollView>
-
-            <TouchableOpacity style={styles.downloadBtn} onPress={downloadReceiptPDF}>
-                <TablerIcon name="file" size={15} color={'#FFFFFF'} />
-                <Text style={styles.downloadText}> Download PDF</Text>
-            </TouchableOpacity>
+                        <TouchableOpacity style={styles.downloadBtn} onPress={downloadReceiptPDF}>
+                            <TablerIcon name="file" size={15} color={'#FFFFFF'} />
+                            <Text style={styles.downloadText}> Download Receipt</Text>
+                        </TouchableOpacity>
+                    </>
+                )
+            }
 
         </SafeAreaView>
     );

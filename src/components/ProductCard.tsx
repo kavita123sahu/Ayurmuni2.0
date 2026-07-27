@@ -82,7 +82,7 @@ const ProductCard: React.FC<Props> = ({
           <Image
             source={{ uri: item.image_url }}
             style={styles.productImage}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         ) : (
           <View style={styles.imagePlaceholder}>

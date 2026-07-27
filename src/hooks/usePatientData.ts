@@ -11,6 +11,7 @@ import { AddMedicalRecord } from '../services/PatientServices';
 import {
     launchCamera,
 } from 'react-native-image-picker';
+import { extractUploadUrl } from '../utils/reviewUtils';
 
 
 export const usePatientData = () => {
@@ -402,7 +403,7 @@ export const useMedicalUpload = (
             console.log('_PROFILE_SERVICES.UploadProfilePhoto2222 =>', _PROFILE_SERVICES.UploadProfilePhoto);
 
             const uploadResponse = await _PROFILE_SERVICES.UploadProfilePhoto(formData);
-            const fileUrl = uploadResponse?.data?.url;
+            const fileUrl = extractUploadUrl(uploadResponse);
 
             // 2. Add Medical Record
             const recordResponse = await AddMedicalRecord({

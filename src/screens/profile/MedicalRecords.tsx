@@ -413,6 +413,7 @@ const styles = StyleSheet.create({
     tabs: {
         flexDirection: 'row',
         marginBottom: 16,
+        marginTop:10,
 
     },
 
@@ -528,6 +529,7 @@ const styles = StyleSheet.create({
         paddingVertical: 28,
         alignItems: 'center',
         marginTop: 16,
+     marginBottom:20,
     },
 
     uploadIcon: {

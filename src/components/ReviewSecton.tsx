@@ -2,8 +2,15 @@ import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
+import { collectReviewImageUrls, getAverageRating } from "../utils/reviewUtils";
 
-const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigation: any }) => {
+const ReviewSection = ({
+  reviews = [],
+  navigation,
+}: {
+  reviews?: any[];
+  navigation: any;
+}) => {
   const renderStars = (count: number) => {
     return "⭐".repeat(count); // simple star render
   };
@@ -37,14 +44,7 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
       percent: total ? Math.round((counts[star] / total) * 100) : 0,
     }));
 
-    const average =
-      total > 0
-        ? Number(
-          (
-            reviews?.reduce((sum, r) => sum + Number(r.rating), 0) / total
-          ).toFixed(1)
-        )
-        : 0;
+    const average = getAverageRating(reviews);
 
     return {
       average,
@@ -56,10 +56,11 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
   const MAX_VISIBLE_IMAGES = 4;
 
   const allImages = useMemo(() => {
-    const reviewImages = reviews?.flatMap((item: any) => item?.image_urls || []);
+    const reviewImages = collectReviewImageUrls(reviews);
 
-    const mediaImages = reviews?.map((item: any) => item?.media_url ?? '')
-      .filter(Boolean);
+    const mediaImages = reviews
+      ?.map((item: any) => item?.media_url ?? '')
+      .filter(Boolean) ?? [];
 
     return [...mediaImages, ...reviewImages];
   }, [reviews]);

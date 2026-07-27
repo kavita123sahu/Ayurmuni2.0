@@ -8,7 +8,6 @@ import {
 
 import {
     Colors,
-    COLORS,
     scale,
 } from '../../common/Colors';
 

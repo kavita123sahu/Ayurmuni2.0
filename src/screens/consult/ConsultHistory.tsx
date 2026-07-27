@@ -143,7 +143,7 @@ const ConsultHistory = (props: any) => {
     };
 
     const renderItem = ({ item }: { item: Appointment }) => (
-        <AppointmentCard item={item} onAction={handleAction} />
+        <AppointmentCard item={item}  navigation={navigation} onAction={handleAction} />
     );
 
     return (

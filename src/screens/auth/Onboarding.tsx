@@ -29,7 +29,7 @@ import { RouteProp, useIsFocused, useRoute } from '@react-navigation/native';
 import { genderOptions } from '../../common/DataInterface';
 import CommonButton from '../../components/CommonButton';
 import { Images } from '../../common/Images';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as _PROFILE_SERVICE from '../../services/ProfileServices';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import TablerIcon from '../../components/TablerIcon';
@@ -58,6 +58,7 @@ interface FormErrors {
 
 const Onboarding = (props: any) => {
 
+    const insets = useSafeAreaInsets();
     const [isLoading, setIsLoading] = useState(false);
     const [focusedField, setFocusedField] = useState<
         'day' | 'month' | 'year' | null
@@ -430,32 +431,44 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
 
     return (
 
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
 
             <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.keyboardContainer}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
             >
-
-                {/* <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                    <TablerIcon name="arrow-left" size={22} color={Colors.primaryColor}
-                        style={styles.backIcon}
-                    />
-                </TouchableOpacity> */}
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.scrollContent}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingBottom: 16 },
+                        ]}
                     >
-                        <View style={styles.content}>
+                        <LinearGradient
+                            colors={['#0D614E', '#14876A', '#1FA37D']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.heroBanner}
+                        >
+                            <View style={styles.stepPill}>
+                                <Text style={styles.stepPillText}>Step 1 of 2</Text>
+                            </View>
+                            <Text style={styles.heroTitle}>Welcome to Ayurmuni</Text>
+                            <Text style={styles.heroSubtitle}>
+                                Create your profile to unlock personalized Ayurvedic care, orders, and consultations.
+                            </Text>
+                        </LinearGradient>
 
-                            {/* HEADER */}
+                        <View style={styles.formCard}>
+                        <View style={styles.content}>
 
                             <Text style={styles.title}>Create Account</Text>
                             <Text style={styles.subtitle}>
-                                Join our healthcare community today for better health management.
+                                Add your details below. This helps us tailor recommendations for you.
                             </Text>
 
                             {/* PROFILE IMAGE */}
@@ -742,19 +755,17 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                             />
                             <Text style={styles.errorText}>{errors.email}</Text>
                         </View>
-
-
-                        {/* BUTTON */}
-                        <View style={styles.bottom}>
-                            <CommonButton
-                                title="Proceed"
-                                onPress={handleProcees}
-                                loading={isLoading}
-                            />
                         </View>
-
                     </ScrollView>
                 </TouchableWithoutFeedback>
+
+                <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                    <CommonButton
+                        title="Proceed"
+                        onPress={handleProcees}
+                        loading={isLoading}
+                    />
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -766,8 +777,7 @@ export default Onboarding;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: 20,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#EEF4F2',
     },
 
     keyboardContainer: {
@@ -776,12 +786,66 @@ const styles = StyleSheet.create({
 
     scrollContent: {
         flexGrow: 1,
-        // paddingBottom: 40,
+    },
+
+    heroBanner: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        borderRadius: 24,
+        paddingHorizontal: 20,
+        paddingVertical: 22,
+    },
+
+    stepPill: {
+        alignSelf: 'flex-start',
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        marginBottom: 12,
+    },
+
+    stepPillText: {
+        color: '#E8FFF8',
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 0.3,
+    },
+
+    heroTitle: {
+        fontSize: 24,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+        lineHeight: 32,
+    },
+
+    heroSubtitle: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 8,
+        lineHeight: 20,
+        fontFamily: Fonts.PoppinsMedium,
+        paddingRight: 8,
+    },
+
+    formCard: {
+        marginHorizontal: 16,
+        marginTop: 14,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        paddingHorizontal: 18,
+        paddingTop: 18,
+        paddingBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E4ECE8',
+        // shadowColor: '#0D614E',
+        // shadowOpacity: 0.06,
+        // shadowRadius: 12,
+        // shadowOffset: { width: 0, height: 4 },
+        // elevation: 2,
     },
 
     content: {
-        // paddingHorizontal: 20,
-        // paddingTop: Platform.OS === 'android' ? 10 : 0,
     },
 
     /* ---------------- HEADER ---------------- */
@@ -813,19 +877,19 @@ const styles = StyleSheet.create({
     },
 
     title: {
-        fontSize: 30,
+        fontSize: 22,
         color: '#111827',
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 40,
+        lineHeight: 30,
     },
 
     subtitle: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginTop: 8,
-        lineHeight: 22,
+        fontSize: 13,
+        color: '#64748B',
+        marginTop: 6,
+        lineHeight: 20,
         fontFamily: Fonts.PoppinsRegular,
-        marginBottom: 30,
+        marginBottom: 22,
         paddingRight: 10,
     },
 
@@ -1079,8 +1143,11 @@ const styles = StyleSheet.create({
     /* ---------------- BUTTON ---------------- */
 
     bottom: {
-        // paddingHorizontal: 20,
-        marginTop: 26,
+        paddingTop: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#EEF4F2',
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
     },
 
     button: {

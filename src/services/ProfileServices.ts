@@ -82,35 +82,73 @@ export const createDoctorReview = async (
 };
 
 
+export const buildReviewEndpoint = ({
+  entityType,
+  appointmentId,
+  variantId,
+}: {
+  entityType: 'doctor' | 'product' | string;
+  appointmentId?: string;
+  variantId?: string;
+}) => {
+  const normalizedType = String(entityType).toLowerCase();
+
+  if (normalizedType === 'doctor') {
+    if (!appointmentId) {
+      throw new Error('appointment_id is required for doctor reviews');
+    }
+    return `review/?entity_type=doctor&appointment_id=${encodeURIComponent(appointmentId)}`;
+  }
+
+  if (normalizedType === 'product') {
+    if (!variantId) {
+      throw new Error('variant_id is required for product reviews');
+    }
+    return `review/?entity_type=product&variant_id=${encodeURIComponent(variantId)}`;
+  }
+
+  throw new Error('Unsupported review entity type');
+};
+
 export const createReview = async ({
   entityType,
   appointmentId,
+  variantId,
   reviewData,
   method = 'POST',
 }: {
-  entityType: string;
-  appointmentId: string;
+  entityType: 'doctor' | 'product' | string;
+  appointmentId?: string;
+  variantId?: string;
   reviewData: {
     rating: number;
     review: string;
     image_urls?: string[];
     appointment?: string;
+    tags?: string[];
   };
   method?: 'POST' | 'PATCH';
 }) => {
   try {
-    return await apiClient(
-      `review/?entity_type=${entityType}&appointment_id=${appointmentId}`,
-      {
-        method,
-        body: JSON.stringify(reviewData),
-      },
-    );
+    const endpoint = buildReviewEndpoint({ entityType, appointmentId, variantId });
+    const payload = {
+      rating: reviewData.rating,
+      review: reviewData.review,
+      ...(reviewData.image_urls?.length ? { image_urls: reviewData.image_urls } : {}),
+      ...(entityType === 'doctor' && reviewData.appointment
+        ? { appointment: reviewData.appointment }
+        : {}),
+      ...(reviewData.tags?.length ? { tags: reviewData.tags } : {}),
+    };
+
+    return await apiClient(endpoint, {
+      method,
+      body: JSON.stringify(payload),
+    });
   } catch (error) {
     throw error;
   }
 };
-
 
 
 export const UploadProfilePhoto = async (data: FormData) => {

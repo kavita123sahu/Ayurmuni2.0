@@ -7,23 +7,30 @@ import {
   Animated,
   ImageSourcePropType,
   PixelRatio,
+  Modal,
+  TouchableOpacity,
+  Pressable,
+  Text,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
 import { Colors } from '../common/Colors';
+import { Fonts } from '../common/Fonts';
 import { BANNER, getContentWidth, getScreenPaddingH } from '../constants/responsive';
+import TablerIcon from './TablerIcon';
 
 const SPACING = 10;
 const AUTO_SLIDE_MS = 4500;
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 type Props = {
   images: any[];
   itemWidth?: number;
   itemHeight?: number;
-  /** When set, height is derived from width ÷ aspectRatio (consistent on all devices). */
   aspectRatio?: number;
   showIndicator?: boolean;
   DynamicResize?: 'cover' | 'contain';
   autoSlide?: boolean;
-  /** Removes outer vertical margin when embedded in HomePage sections */
   embedded?: boolean;
 };
 
@@ -45,6 +52,7 @@ const Detailimages: React.FC<Props> = ({
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const slideSize = finalWidth + SPACING;
 
   const safeImages = useMemo(
@@ -63,7 +71,7 @@ const Detailimages: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    if (!autoSlide || safeImages.length <= 1) return;
+    if (!autoSlide || safeImages.length <= 1 || previewIndex !== null) return;
 
     const timer = setInterval(() => {
       setActiveIndex(prev => {
@@ -77,7 +85,18 @@ const Detailimages: React.FC<Props> = ({
     }, AUTO_SLIDE_MS);
 
     return () => clearInterval(timer);
-  }, [autoSlide, safeImages.length, slideSize]);
+  }, [autoSlide, safeImages.length, slideSize, previewIndex]);
+
+  const openPreview = (index: number) => {
+    setPreviewIndex(index);
+  };
+
+  const closePreview = () => {
+    setPreviewIndex(null);
+  };
+
+  const previewSource =
+    previewIndex !== null ? getImageSource(safeImages[previewIndex]) : null;
 
   if (safeImages.length === 0) return null;
 
@@ -110,7 +129,9 @@ const Detailimages: React.FC<Props> = ({
         renderItem={({ item, index }) => {
           const source = getImageSource(item);
           return (
-            <View
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={() => openPreview(index)}
               style={[
                 styles.slide,
                 {
@@ -129,7 +150,10 @@ const Detailimages: React.FC<Props> = ({
               ) : (
                 <View style={styles.placeholder} />
               )}
-            </View>
+              <View style={styles.tapHint}>
+                <TablerIcon name="eye" size={14} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
           );
         }}
       />
@@ -172,6 +196,40 @@ const Detailimages: React.FC<Props> = ({
           })}
         </View>
       )}
+
+      <Modal
+        visible={previewIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closePreview}
+        statusBarTranslucent
+      >
+        <View style={styles.previewOverlay}>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <Pressable style={StyleSheet.absoluteFill} onPress={closePreview} />
+
+          <View style={styles.previewHeader}>
+            <Text style={styles.previewCounter}>
+              {(previewIndex ?? 0) + 1} / {safeImages.length}
+            </Text>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={closePreview}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <TablerIcon name="x" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {previewSource ? (
+            <Image
+              source={previewSource}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -205,6 +263,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F1F5F9',
   },
+  tapHint: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -214,5 +283,38 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     marginHorizontal: 4,
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.94)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewHeader: {
+    position: 'absolute',
+    top: 48,
+    left: 16,
+    right: 16,
+    zIndex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  previewCounter: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    width: SCREEN_W,
+    height: SCREEN_H * 0.72,
   },
 });

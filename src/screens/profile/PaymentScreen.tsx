@@ -24,21 +24,21 @@ const PaymentsScreen = (props: any) => {
         iconName: TablerIconName;
         isActive: boolean;
     }[] = [
-        {
-            id: "1",
-            title: "HDFC Bank Debit Card",
-            subtitle: "**** **** **** 4290",
-            iconName: 'credit-card',
-            isActive: true,
-        },
-        {
-            id: "2",
-            title: "Google Pay / PhonePe",
-            subtitle: "arjun.06@okaxis",
-            iconName: 'wallet',
-            isActive: false,
-        },
-    ];
+            {
+                id: "1",
+                title: "HDFC Bank Debit Card",
+                subtitle: "**** **** **** 4290",
+                iconName: 'credit-card',
+                isActive: true,
+            },
+            {
+                id: "2",
+                title: "Google Pay / PhonePe",
+                subtitle: "arjun.06@okaxis",
+                iconName: 'wallet',
+                isActive: false,
+            },
+        ];
 
     const transactionData: {
         id: string;
@@ -48,31 +48,31 @@ const PaymentsScreen = (props: any) => {
         status: string;
         iconName: TablerIconName;
     }[] = [
-        {
-            id: "1",
-            name: "Dr. Sarah Johnson",
-            date: "12 Oct 2023 · 10:30 AM",
-            amount: "800",
-            status: "PAID",
-            iconName: 'user',
-        },
-        {
-            id: "2",
-            name: "Apollo Pharmacy",
-            date: "08 Oct 2023 · 06:15 PM",
-            amount: "1,250",
-            status: "PAID",
-            iconName: 'shopping-cart',
-        },
-        {
-            id: "3",
-            name: "Thyrocare Lab Test",
-            date: "05 Oct 2023 · 09:00 AM",
-            amount: "2,400",
-            status: "REFUNDED",
-            iconName: 'upload',
-        },
-    ];
+            {
+                id: "1",
+                name: "Dr. Sarah Johnson",
+                date: "12 Oct 2023 · 10:30 AM",
+                amount: "800",
+                status: "PAID",
+                iconName: 'user',
+            },
+            {
+                id: "2",
+                name: "Apollo Pharmacy",
+                date: "08 Oct 2023 · 06:15 PM",
+                amount: "1,250",
+                status: "PAID",
+                iconName: 'shopping-cart',
+            },
+            {
+                id: "3",
+                name: "Thyrocare Lab Test",
+                date: "05 Oct 2023 · 09:00 AM",
+                amount: "2,400",
+                status: "REFUNDED",
+                iconName: 'upload',
+            },
+        ];
 
     return (
         <SafeAreaView style={styles.container}>
@@ -115,7 +115,7 @@ const PaymentsScreen = (props: any) => {
                         status={item.status}
                     />
                 ))}
-                
+
                 <View style={{ marginTop: 30 }}>
 
                     <PrimaryButton

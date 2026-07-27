@@ -670,7 +670,7 @@ const Checkout: React.FC = (props: any) => {
 
                         {[
 
-                            'No COD charges — save ₹30',
+                            'No COD charges — save ₹0',
 
                             'Instant payment confirmation',
 

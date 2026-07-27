@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -21,7 +15,6 @@ import {
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { Colors } from '../../common/Colors';
-import PrakritiCard from '../../components/PrakritiCard';
 import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
 import SectionHeader from '../../components/SectionHeader';
@@ -49,7 +42,7 @@ import RenderAppoint from '../../components/RenderAppoint';
 import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
-import { requireAuth, navigateToLogin } from '../../services/guestAuth';
+import { requireAuth, } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToSearchScreen } from '../../navigation/productNavigation';
 

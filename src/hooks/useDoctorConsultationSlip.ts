@@ -16,6 +16,7 @@ export function useDoctorConsultationSlip(doctorId?: string | null) {
       setLoading(true);
       setError(null);
       const res = await getPrescriptionDetail(String(doctorId));
+      console.log('consultationSlipData', res);
       setSlipData(res?.data ?? null);
     } catch {
       setError('Unable to load consultation history');

@@ -11,7 +11,6 @@ import {
   Pressable,
   BackHandler,
 } from 'react-native';
-import DoctorReviewModal from '../../screens/consult/ReviewModal'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';

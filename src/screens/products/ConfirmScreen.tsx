@@ -262,7 +262,7 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                         {/* Online benefits */}
                         {selectedMethod === 'online' && (
                             <Animated.View style={[styles.benefitBox, { opacity: fadeAnim }]}>
-                                {['No COD charges — save ₹30', 'Instant payment confirmation', 'UPI, cards, netbanking & wallets'].map((t) => (
+                                {['No COD charges — save ₹0', 'Instant payment confirmation', 'UPI, cards, netbanking & wallets'].map((t) => (
                                     <View key={t} style={styles.benefitRow}>
                                         <Text style={styles.benefitDot}>✓</Text>
                                         <Text style={styles.benefitText}>{t}</Text>

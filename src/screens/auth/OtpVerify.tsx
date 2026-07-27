@@ -26,6 +26,7 @@ import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { AntDesign } from '../../common/Vector';
+import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 
 // Constants matching Send OTP screen
 const C = {
@@ -245,12 +246,9 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                 Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
 
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
-                props.navigation.replace('HomeStack', {
-                    screen: 'TermsCondition',
-                    params: {
-                        agreed: false
-                    }
-                })
+                resetRootToHomeStack(props.navigation, 'TermsCondition', {
+                  agreed: false,
+                });
             } else {
                 showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
                 shake();
@@ -297,9 +295,9 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
                 const customerOnboard = response?.data?.customer;
 
                 if (!customerOnboard || customerOnboard.customer_id == null) {
-                    props.navigation.replace('HomeStack', { screen: 'Onboarding' });
+                    resetRootToHomeStack(props.navigation, 'Onboarding');
                 } else {
-                    props.navigation.replace('HomeStack', { screen: 'Home' });
+                    resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
                 }
             } else {
                 showSuccessToast(response?.message || 'Failed to verify OTP', 'error');

@@ -190,17 +190,16 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
                     disabled={!isAvailable}
                     onPress={() => onChatPress?.(item)}
                 >
-                    <TablerIcon name="chat-support" size={24} color="#64748B" />
+                    <TablerIcon name="chat-support" size={20} color="#64748B" />
                 </TouchableOpacity>
 
                 {/* Consult Button */}
                 <TouchableOpacity
                     style={[styles.consultBtn,]}
-                    // disabled={!isAvailable}
                     onPress={() => onPress?.(item)}
                     activeOpacity={0.8}
                 >
-                    <TablerIcon name="consult" size={24} color={Colors.white} />
+                    <TablerIcon name="consult" size={20} color={Colors.white} />
                     <Text style={[styles.consultText,]}>
                         Consult Now
                     </Text>
@@ -219,24 +218,23 @@ export default React.memo(AllDoctorCard);
 const styles = StyleSheet.create({
 
     card: {
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 10,
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 8,
         borderWidth: 1,
-
+        backgroundColor: '#FFFFFF',
         borderColor: '#E8EDF2',
-        // backgroundColor: '#FFF',
         // shadowColor: '#0D614E',
         // shadowOffset: { width: 0, height: 2 },
-        // shadowOpacity: 0.06,
-        // shadowRadius: 8,
+        // shadowOpacity: 0.05,
+        // shadowRadius: 6,
         // elevation: 2,
     },
 
     imageWrapper: {
-        width: 78,
-        height: 78,
-        borderRadius: 14,
+        width: 72,
+        height: 72,
+        borderRadius: 12,
         overflow: 'hidden',
         marginRight: 10,
         backgroundColor: Colors.bgborderColor,
@@ -257,14 +255,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        minHeight: 26,
+        minHeight: 22,
     },
 
     tag: {
         backgroundColor: '#EAF8F4',
         paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 5,
+        paddingVertical: 3,
+        borderRadius: 6,
     },
 
     tagText: {
@@ -283,25 +281,25 @@ const styles = StyleSheet.create({
 
     name: {
         fontSize: 15,
-        lineHeight: 20,
+        lineHeight: 19,
         color: '#1E293B',
         fontFamily: Fonts.PoppinsSemiBold,
-        marginTop: 4,
+        marginTop: 2,
     },
 
     speciality: {
-        fontSize: 12,
-        lineHeight: 17,
+        fontSize: 11,
+        lineHeight: 15,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsMedium,
-        marginTop: 2,
+        marginTop: 1,
     },
 
 
     consultBtn: {
         flex: 1,
-        height: 48,
-        borderRadius: 12,
+        height: 40,
+        borderRadius: 10,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -310,7 +308,7 @@ const styles = StyleSheet.create({
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 6,
+        marginTop: 4,
     },
 
     infoItem: {
@@ -329,25 +327,25 @@ const styles = StyleSheet.create({
     bottomRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 12,
+        marginTop: 10,
+        gap: 8,
     },
 
     chatBtn: {
-        width: 46,
-        height: 46,
-        borderRadius: 12,
+        width: 40,
+        height: 40,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F1F8F6',
-        marginRight: 8,
     },
 
 
     consultText: {
         color: '#FFF',
-        fontSize: 13,
-        marginLeft: 8,
-        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 12,
+        marginLeft: 6,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
 

@@ -5,6 +5,7 @@ export type ProductQuery = {
   product_subcategory_id?: string;
   health_category_id?: string;
   health_disease_id?: string;
+  brand_name_id?: string;
   category_id?: string;
   variant_id?: string;
   search?: string;
@@ -33,6 +34,7 @@ const buildProductQuery = (params: ProductQuery = {}) => {
   appendQueryParam(query, 'product_subcategory_id', params.product_subcategory_id);
   appendQueryParam(query, 'health_category_id', params.health_category_id);
   appendQueryParam(query, 'health_disease_id', params.health_disease_id);
+  appendQueryParam(query, 'brand_name_id', params.brand_name_id);
   appendQueryParam(query, 'category_id', params.category_id);
   appendQueryParam(query, 'variant_id', params.variant_id);
   appendQueryParam(query, 'search', params.search);

@@ -5,6 +5,7 @@ import {
   View,
   Image,
   useWindowDimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -16,6 +17,7 @@ type Item = {
   value?: string | number;
   label: string;
   image?: any;
+  onPress?: () => void;
 };
 
 type Props = {
@@ -38,61 +40,89 @@ const DashboardCard = ({
 
   return (
     <View style={styles.row}>
-      {data.map((item, index) => (
-        <View
-          key={index}
-          style={[
-            styles.statBox,
-            {
-              width: itemWidth,
-              minHeight: itemWidth * 0.10,
-            },
-          ]}
-        >
-          {item.image ? (
-            <Image
-              source={item.image}
-              style={{
-                width: itemWidth * 0.20,
-                height: itemWidth * 0.20,
-                marginBottom: 6,
-              }}
-              resizeMode="contain"
-            />
-          ) : (
+      {data.map((item, index) => {
+        const content = (
+          <>
+            {item.image ? (
+              <Image
+                source={item.image}
+                style={{
+                  width: itemWidth * 0.20,
+                  height: itemWidth * 0.20,
+                  marginBottom: 6,
+                }}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.statNumber,
+                  {
+                    fontSize: Math.max(
+                      14,
+                      itemWidth * 0.14,
+                    ),
+                  },
+                ]}
+              >
+                {item.value}
+              </Text>
+            )}
+
             <Text
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
               style={[
-                styles.statNumber,
+                styles.statLabel,
                 {
                   fontSize: Math.max(
-                    14,
-                    itemWidth * 0.14,
+                    10,
+                    itemWidth * 0.1,
                   ),
                 },
               ]}
             >
-              {item.value}
+              {item.label}
             </Text>
-          )}
+          </>
+        );
 
-          <Text
-            numberOfLines={2}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
+        if (item.onPress) {
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.statBox,
+                styles.statBoxPressable,
+                {
+                  width: itemWidth,
+                  minHeight: itemWidth * 0.10,
+                },
+              ]}
+              onPress={item.onPress}
+              activeOpacity={0.75}
+            >
+              {content}
+            </TouchableOpacity>
+          );
+        }
+
+        return (
+          <View
+            key={index}
             style={[
-              styles.statLabel,
+              styles.statBox,
               {
-                fontSize: Math.max(
-                  10,
-                  itemWidth * 0.1,
-                ),
+                width: itemWidth,
+                minHeight: itemWidth * 0.10,
               },
             ]}
           >
-            {item.label}
-          </Text>
-        </View>
-      ))}
+            {content}
+          </View>
+        );
+      })}
     </View>
   );
 };
@@ -117,6 +147,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 5,
+  },
+  statBoxPressable: {
+    borderColor: '#0D614E33',
   },
 
   statNumber: {

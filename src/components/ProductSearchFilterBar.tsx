@@ -19,14 +19,20 @@ import {
   getSortLabel,
 } from '../utils/productSearchUtils';
 
+export type BrandFilterOption = {
+  id: string;
+  name: string;
+};
+
 type Props = {
   sortBy: ProductSortKey;
   onSortChange: (key: ProductSortKey) => void;
-  brandName: string | null;
-  onBrandChange: (brand: string | null) => void;
+  brandId: string | null;
+  brandLabel?: string | null;
+  onBrandChange: (brand: BrandFilterOption | null) => void;
   priceRange: PriceRangeKey;
   onPriceRangeChange: (key: PriceRangeKey) => void;
-  brands: string[];
+  brands: BrandFilterOption[];
   activeFilterCount: number;
   onClearFilters: () => void;
 };
@@ -34,7 +40,8 @@ type Props = {
 const ProductSearchFilterBar: React.FC<Props> = ({
   sortBy,
   onSortChange,
-  brandName,
+  brandId,
+  brandLabel,
   onBrandChange,
   priceRange,
   onPriceRangeChange,
@@ -50,17 +57,22 @@ const ProductSearchFilterBar: React.FC<Props> = ({
     PRICE_RANGE_OPTIONS.find(option => option.key === priceRange)?.label ?? 'Price';
 
   const sortActive = sortBy !== 'relevance';
-  const brandActive = !!brandName;
+  const brandActive = !!brandId;
+  const selectedBrandName =
+    brandLabel ?? brands.find(brand => brand.id === brandId)?.name ?? null;
   const priceActive = priceRange !== 'all';
   const filtersActive = activeFilterCount > 0;
 
   return (
     <>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-      >
+      <View style={styles.bar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+          style={styles.scroll}
+          nestedScrollEnabled
+        >
         <FilterChip
           label="Sort"
           selectedText={sortActive ? getSortLabel(sortBy) : undefined}
@@ -70,7 +82,7 @@ const ProductSearchFilterBar: React.FC<Props> = ({
         />
         <FilterChip
           label="Brand"
-          selectedText={brandActive ? brandName ?? undefined : undefined}
+          selectedText={brandActive ? selectedBrandName ?? undefined : undefined}
           icon="package"
           active={brandActive}
           onPress={() => setSheet('brand')}
@@ -93,7 +105,8 @@ const ProductSearchFilterBar: React.FC<Props> = ({
             }
           }}
         />
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <Modal visible={sheet !== null} transparent animationType="fade" onRequestClose={closeSheet}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
@@ -120,7 +133,7 @@ const ProductSearchFilterBar: React.FC<Props> = ({
                 <Text style={styles.sheetTitle}>Brand</Text>
                 <OptionRow
                   label="All brands"
-                  selected={!brandName}
+                  selected={!brandId}
                   onPress={() => {
                     onBrandChange(null);
                     closeSheet();
@@ -128,9 +141,9 @@ const ProductSearchFilterBar: React.FC<Props> = ({
                 />
                 {brands.map(brand => (
                   <OptionRow
-                    key={brand}
-                    label={brand}
-                    selected={brandName === brand}
+                    key={brand.id}
+                    label={brand.name}
+                    selected={brandId === brand.id}
                     onPress={() => {
                       onBrandChange(brand);
                       closeSheet();
@@ -218,13 +231,21 @@ const OptionRow = ({
 
 export default React.memo(ProductSearchFilterBar);
 
-const CHIP_WIDTH = 88;
+const FILTER_BAR_HEIGHT = 36;
 
 const styles = StyleSheet.create({
+  bar: {
+    height: FILTER_BAR_HEIGHT,
+    marginBottom: 6,
+  },
+  scroll: {
+    flexGrow: 0,
+  },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    paddingBottom: 10,
+    paddingRight: 4,
   },
   // chip: {
   //   width: CHIP_WIDTH,
@@ -242,13 +263,12 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    height: 32,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: 16,
+    paddingHorizontal: 10,
     marginRight: 8,
   },
   chipActive: {

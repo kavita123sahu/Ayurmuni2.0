@@ -57,6 +57,7 @@ export type RootStackParamList = {
     BookingConfrimScreen: undefined;
     Appointments: undefined;
     OrderHistory: undefined;
+    OrderDetailsScreen: { order?: any };
     TabStack: undefined;
     MentorOrder: undefined;
     PatientDetails: undefined;
@@ -69,6 +70,17 @@ export type RootStackParamList = {
     ProductDetails: undefined;
     TopCategories: undefined;
     ReviewPage: undefined;
+    ShareExperienceScreen: {
+        entityType?: 'doctor' | 'product';
+        entityName?: string;
+        entitySubtitle?: string;
+        appointmentId?: string;
+        variantId?: string;
+        initialRating?: number;
+        initialReview?: string;
+        initialImages?: string[];
+        isEdit?: boolean;
+    };
     YogaSession: undefined;
     MyCart: undefined;
     Mentor: undefined;
@@ -105,6 +117,8 @@ export type RootStackParamList = {
           productSubcategoryId?: string;
           healthCategoryId?: string;
           healthDiseaseId?: string;
+          brand_name_id?: string;
+          brandName?: string;
         }
       | undefined;
     OrderStatus: undefined;

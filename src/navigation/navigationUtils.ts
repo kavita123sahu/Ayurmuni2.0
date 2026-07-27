@@ -1,6 +1,72 @@
 import { CommonActions } from '@react-navigation/native';
 import { navigate as navigateRoot } from './navigationRef';
 import type { RootStackParamList } from '../../type';
+
+export const getRootNavigation = (navigation: any) => {
+  let current = navigation;
+
+  for (let depth = 0; depth < 10 && current; depth += 1) {
+    const parent = current.getParent?.();
+    if (!parent) {
+      return current;
+    }
+    current = parent;
+  }
+
+  return navigation;
+};
+
+type HomeStackRoute = {
+  name: string;
+  params?: Record<string, unknown>;
+  state?: {
+    routes: Array<{ name: string; params?: Record<string, unknown> }>;
+    index: number;
+  };
+};
+
+const buildHomeStackRoute = (
+  screen: string,
+  params?: Record<string, unknown>,
+): HomeStackRoute => {
+  if (screen === 'TabStack') {
+    const tabScreen = (params?.screen as string) || 'Home';
+    return {
+      name: 'TabStack',
+      state: {
+        routes: [{ name: tabScreen }],
+        index: 0,
+      },
+    };
+  }
+
+  return { name: screen, params };
+};
+
+/** Clears Welcome/Auth history so hardware back cannot return to login. */
+export const resetRootToHomeStack = (
+  navigation: any,
+  screen: string = 'TabStack',
+  params?: Record<string, unknown>,
+) => {
+  const root = getRootNavigation(navigation);
+
+  root?.dispatch?.(
+    CommonActions.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'HomeStack',
+          state: {
+            routes: [buildHomeStackRoute(screen, params)],
+            index: 0,
+          },
+        },
+      ],
+    }),
+  );
+};
+
 /** Walk up navigators to find the root stack that owns product/category screens. */
 export const getStackNavigation = (navigation: any) => {
   let current = navigation;

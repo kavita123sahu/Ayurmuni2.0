@@ -31,11 +31,7 @@ interface Address {
     state: string;
     zipcode: string;
 }
-interface UserData {
-    first_name: string;
-    profile_picture?: string;
-    addresses: Address[];
-}
+
 
 interface AddressItem {
     id: string;
@@ -298,7 +294,7 @@ const HomeHeader = ({
                         onPress={() => stackNavigation.navigate('MyCart')}
                     >
                         <TablerIcon name="shopping-cart" size={20} color={Colors.primaryColor} />
-                        <CartBadge count={cartCount}  />
+                        <CartBadge count={cartCount} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -310,7 +306,7 @@ const HomeHeader = ({
                         }}
                     >
                         <TablerIcon name="bell" size={20} color="#000" />
-                        <CartBadge count={unreadCount}  />
+                        <CartBadge count={unreadCount} />
                     </TouchableOpacity>
 
                 </View>
@@ -464,11 +460,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+        marginRight:5,
     },
 
     bellButton: {
-        height: 38,
-        width: 38,
+        height: 35,
+        width: 35,
         borderRadius: 11,
         borderWidth: 1,
         borderColor: Colors.borderColor,

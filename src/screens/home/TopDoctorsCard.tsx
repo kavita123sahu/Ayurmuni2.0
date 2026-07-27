@@ -5,15 +5,17 @@ import {
   FlatList,
   Image,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
+import { Images } from '../../common/Images';
+import { Ionicons } from '../../common/Vector';
 import TablerIcon from '../../components/TablerIcon';
-import { RADIUS, SPACING, TYPO } from '../../constants/responsive';
 
-const CARD_WIDTH = 248;
-const CARD_GAP = 12;
+const CARD_WIDTH = 232;
+const CARD_GAP = 10;
 
 interface Doctor {
   id: string;
@@ -45,68 +47,73 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
         : 'Ayurveda Specialist';
 
       const isAvailable = item?.has_availability === true;
+      const rating = item?.average_rating ?? item?.ranking_score ?? '0';
+      const reviewCount = item?.total_reviews ?? '0';
+      const experience = item?.experience_years || item?.experience || '0';
+      const displayName = item.full_name || item.name || 'Doctor';
+      const shortSpeciality =
+        speciality.split(',').slice(0, 2).join(', ') || 'Ayurveda Specialist';
 
       return (
-        <TouchableOpacity
-          style={styles.card}
-          activeOpacity={0.88}
+        <Pressable
+          style={({ pressed }) => [
+            styles.card,
+            // isAvailable ? styles.cardActive : styles.cardIdle,
+            // pressed && styles.cardPressed,
+          ]}
           onPress={() => openDoctorProfile(item)}
         >
-          <View style={styles.doctorRow}>
-  <View style={styles.avatarWrapper}>
-    {item?.profile_image ? (
-      <Image source={{ uri: item.profile_image }} style={styles.avatar} />
-    ) : (
-      <View style={[styles.avatar, styles.avatarFallback]}>
-        <TablerIcon name="user" size={18} color={Colors.primaryColor} />
-      </View>
-    )}
+          <View style={styles.bodyRow}>
+            <View style={styles.imageWrapper}>
+              <Image
+                source={
+                  item?.profile_image?.trim?.()
+                    ? { uri: item.profile_image }
+                    : Images.doctorImage
+                }
+                style={[styles.image, !isAvailable && styles.imageMuted]}
+              />
+              {isAvailable ? <View style={styles.liveDot} /> : null}
+            </View>
 
-    <View
-      style={[
-        styles.statusBadge,
-        {
-          backgroundColor: isAvailable ? '#22C55E' : '#CBD5E1',
-        },
-      ]}
-    />
-  </View>
-
-  <View style={styles.doctorMeta}>
-
-              <View style={styles.nameRow}>
-                <Text style={styles.doctorName} numberOfLines={2}>
-                  {item.full_name || item.name}
-                </Text>
-
-              
+            <View style={styles.content}>
+              <View style={styles.tagRow}>
+                {/* <View style={[styles.tag, !isAvailable && styles.tagIdle]}>
+                  <Text style={[styles.tagText, !isAvailable && styles.tagTextIdle]}>
+                    {isAvailable ? 'Active' : 'Inactive'}
+                  </Text>
+                </View> */}
               </View>
 
+              <Text style={styles.name} numberOfLines={1}>
+                {displayName}
+              </Text>
+
               <Text style={styles.speciality} numberOfLines={1}>
-                {speciality.split(',').slice(0, 2).join(', ') || 'Ayurveda Specialist'}
+                {shortSpeciality}
               </Text>
+
+              <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                  <Ionicons name="time-outline" size={12} color="#64748B" />
+                  <Text style={styles.infoText}>{experience} Yrs</Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Ionicons name="star" size={11} color="#F59E0B" />
+                  <Text style={styles.infoText}>
+                    {rating}
+                    <Text style={styles.reviewCount}> ({reviewCount})</Text>
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
-
-          <View style={styles.infoBar}>
-            <View style={styles.infoItem}>
-              <TablerIcon name="clock" size={14} color={Colors.primaryColor} />
-              <Text style={styles.infoText} numberOfLines={1}>
-                {item?.experience_years || '—'} Yrs
-              </Text>
-            </View>
-
-            <View style={styles.infoDivider} />
-
-            <View style={styles.infoItem}>
-              <TablerIcon name="star" size={14} color="#F59E0B" />
-              <Text style={styles.infoText} numberOfLines={1}>
-                {item?.average_rating ?? item?.ranking_score ?? '0'}
-                {item?.total_reviews != null ? ` (${item.total_reviews})` : ''}
-              </Text>
-            </View>
+          {/* /!isAvailable && styles.consultBtnIdle */}
+          <View style={[styles.consultBtn,]}>
+            <TablerIcon name="consult" size={16} color="#FFFFFF" />
+            <Text style={styles.consultText}>Consult Now</Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       );
     },
     [openDoctorProfile],
@@ -141,140 +148,139 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: Colors.white,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
     marginRight: CARD_GAP,
+    borderRadius: 14,
+    padding: 10,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.borderColor,
+    borderColor: '#E8EDF2',
+    // ...Platform.select({
+    //   ios: {
+    //     shadowColor: '#0D614E',
+    //     shadowOffset: { width: 0, height: 3 },
+    //     shadowOpacity: 0.07,
+    //     shadowRadius: 8,
+    //   },
+    //   // android: { elevation: 3 },
+    // }),
   },
-  avatarWrapper: {
-  position: 'relative',
-  marginRight: SPACING.sm,
-},
-
-statusBadge: {
-  position: 'absolute',
-  right: 1,
-  bottom: 1,
-  width: 12,
-  height: 12,
-  borderRadius: 6,
-  borderWidth: 2,
-  borderColor: '#FFF',
-},
-
-doctorName: {
-  fontSize: TYPO.subtitle,
-  color: Colors.black,
-  fontFamily: Fonts.PoppinsSemiBold,
-  lineHeight: 18,
-  flexShrink: 1,
-},
-
-  doctorRow: {
+  cardActive: {
+    borderColor: '#CFE8DF',
+  },
+  cardIdle: {
+    backgroundColor: '#FAFBFC',
+  },
+  cardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }],
+  },
+  bodyRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
+    alignItems: 'flex-start',
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    marginRight: SPACING.sm,
+  imageWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 8,
+    backgroundColor: Colors.bgborderColor,
   },
-  avatarFallback: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0FAF7',
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  doctorMeta: {
+  imageMuted: {
+    opacity: 0.75,
+  },
+  liveDot: {
+    position: 'absolute',
+    bottom: 3,
+    right: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  content: {
     flex: 1,
     minWidth: 0,
   },
-  nameRow: {
+  tagRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
+    marginBottom: 2,
   },
-  // doctorName: {
-  //   flex: 1,
-  //   fontSize: TYPO.subtitle,
-  //   color: Colors.black,
-  //   fontFamily: Fonts.PoppinsSemiBold,
-  //   lineHeight: 17,
-  // },
-  statusBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-    flexShrink: 0,
+  tag: {
+    backgroundColor: '#EAF8F4',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 5,
   },
-  statusBtnActive: {
-    backgroundColor: '#22C55E',
+  tagIdle: {
+    backgroundColor: '#F1F5F9',
   },
-  statusBtnInactive: {
-    backgroundColor: '#E2E8F0',
+  tagText: {
+    fontSize: 10,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
+  tagTextIdle: {
+    color: '#94A3B8',
   },
-  statusDotActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  statusDotInactive: {
-    backgroundColor: '#94A3B8',
-  },
-  statusBtnText: {
-    fontSize: 9,
+  name: {
+    fontSize: 13,
+    lineHeight: 17,
+    color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
-    lineHeight: 12,
-  },
-  statusBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  statusBtnTextInactive: {
-    color: '#64748B',
   },
   speciality: {
-    marginTop: 2,
-    fontSize: TYPO.caption,
-    color: Colors.grey1,
-    fontFamily: Fonts.PoppinsRegular,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+    marginTop: 1,
   },
-  infoBar: {
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgcolor,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
   },
   infoItem: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  infoText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+    marginLeft: 3,
+  },
+  reviewCount: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  consultBtn: {
+    marginTop: 8,
+    height: 34,
+    borderRadius: 9,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 0,
+    backgroundColor: Colors.primaryColor,
+    gap: 5,
   },
-  infoText: {
-    flexShrink: 1,
-    fontSize: TYPO.caption,
-    marginLeft: 5,
-    fontFamily: Fonts.PoppinsMedium,
-    color: '#334155',
+  consultBtnIdle: {
+    backgroundColor: '#94A3B8',
   },
-  infoDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: Colors.borderColor,
-    marginHorizontal: 4,
+  consultText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

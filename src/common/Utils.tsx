@@ -92,7 +92,6 @@ export const Utils = {
 }
 
 
-
 export const AddressEvents = new SimpleEventEmitter();
 
 export const ADDRESS_UPDATED =

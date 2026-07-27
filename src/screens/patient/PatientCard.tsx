@@ -28,14 +28,17 @@ interface Props {
   patient: Patient;
   navigation: any,
   onSelect: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
+const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation, onDelete }) => {
 
   const full_name = patient?.first_name + " " + patient?.last_name;
 
 
   console.log('patient_card_patient', patient);
+
+  const isSelf = String(patient?.relation ?? '').toLowerCase() === 'self';
 
   return (
     <TouchableOpacity
@@ -61,9 +64,9 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
 
       <View style={styles.actions}>
         <TouchableOpacity
-          disabled={patient?.relation === 'self'}
+          disabled={isSelf}
           onPress={() => {
-            if (patient?.relation === 'self') {
+            if (isSelf) {
               return;
             }
 
@@ -78,12 +81,21 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
             name="edit"
             size={20}
             color={
-              patient?.relation === 'self'
+              isSelf
                 ? Colors.grey1
                 : Colors.primaryColor
             }
           />
         </TouchableOpacity>
+
+        {!isSelf && onDelete ? (
+          <TouchableOpacity
+            onPress={() => onDelete(patient.id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <TablerIcon name="trash" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        ) : null}
 
         {patient.selected ? (
           <TablerIcon name="verify" size={22} color={Colors.primaryColor} />

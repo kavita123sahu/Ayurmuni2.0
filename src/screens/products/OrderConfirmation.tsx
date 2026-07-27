@@ -20,8 +20,6 @@ import OrderItem from '../../components/OrderItem';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../../components/TablerIcon';
-import { useAppDispatch } from '../../store/hooks';
-import { removeOrderedItemsFromCart, CartLineItem } from '../../store/slices/cartSlice';
 
 type DeliveryAddress = {
     id: string;
@@ -94,38 +92,9 @@ const getItemPrice = (item: OrderItemType) =>
     formatCurrency(item.total_price ?? item.price);
 
 const OrderConfirmation: React.FC = (props: any) => {
-    const dispatch = useAppDispatch();
     const [showModal, setShowModal] = useState(false);
 
     const orderResult: OrderResult | undefined = props.route?.params?.orderResult;
-    const orderedCartItems: CartLineItem[] | undefined =
-        props.route?.params?.orderedCartItems;
-    const clearedCartRef = useRef(false);
-
-    useEffect(() => {
-        if (clearedCartRef.current) {
-            return;
-        }
-
-        const itemsToRemove: CartLineItem[] =
-            orderedCartItems?.length
-                ? orderedCartItems
-                : (orderResult?.items ?? [])
-                      .map(item => ({
-                          variant_id: String(
-                              item?.variant?.variant_id ?? '',
-                          ),
-                          quantity: Number(item.quantity ?? 0),
-                      }))
-                      .filter(item => item.variant_id && item.quantity > 0);
-
-        if (!itemsToRemove.length) {
-            return;
-        }
-
-        clearedCartRef.current = true;
-        dispatch(removeOrderedItemsFromCart(itemsToRemove));
-    }, [dispatch, orderedCartItems, orderResult?.items]);
 
     // ---- Animations ----
     const tickScale = useRef(new Animated.Value(0)).current;
@@ -191,10 +160,13 @@ const OrderConfirmation: React.FC = (props: any) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setShowModal(true);
-        }, 5000);
+            props.navigation.navigate('OrderDetailsScreen',{
+                 order: orderResult,
+            })
+        }, 2000);
         return () => clearTimeout(timer);
     }, []);
+
 
     useEffect(() => {
         const backAction = () => {
@@ -237,7 +209,7 @@ const OrderConfirmation: React.FC = (props: any) => {
 
             <AppHeader
                 title="Order Confirmation"
-                // onLeftPress={() => props.navigation.goBack()}
+            // onLeftPress={() => props.navigation.goBack()}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>

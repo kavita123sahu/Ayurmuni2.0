@@ -119,7 +119,7 @@ export const mapBrandItem = (brand: any) => {
     null;
 
   return {
-    id: String(brand?.id ?? brand?.brand_id ?? ''),
+    id: String(brand?.id ?? brand?.brand_id ?? brand?.brand_name_id ?? ''),
     name: String(brand?.brand_name ?? brand?.name ?? ''),
     ...(imageUrl ? { image: { uri: String(imageUrl) } } : {}),
   };

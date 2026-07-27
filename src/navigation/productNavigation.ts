@@ -17,6 +17,8 @@ export const navigateToCategoryProducts = (
     productSubcategoryId?: string;
     healthCategoryId?: string;
     healthDiseaseId?: string;
+    brand_name_id?: string;
+    brandName?: string;
   },
 ) => {
   navigateToStackScreen(navigation, 'CategoryProducts', params ?? {});

@@ -23,18 +23,15 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { useAllCartData } from '../../hooks/Cart';
 import { useAppDispatch } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { getProductData, ProductItem, SectionType } from '../../common/DataInterface';
+import { getProductData, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
-import { navigateToLogin } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
 import { navigateToCheckout } from '../../navigation/productNavigation';
 
 
@@ -42,7 +39,6 @@ import { navigateToCheckout } from '../../navigation/productNavigation';
 
 const MyCart = ({ navigation }: any) => {
 
-    const { isLoggedIn } = useAuth();
     const dispatch = useAppDispatch();
 
     const { CartData, loading, fetchAllData } =
@@ -50,24 +46,29 @@ const MyCart = ({ navigation }: any) => {
     const [refreshing, setRefreshing] = useState(false);
 
     const onRefresh = useCallback(async () => {
-        if (!isLoggedIn) {
-            return;
-        }
+
         setRefreshing(true);
         try {
             await fetchAllData(true);
         } finally {
             setRefreshing(false);
         }
-    }, [fetchAllData, isLoggedIn]);
+    }, [fetchAllData]);
 
     useFocusEffect(
         useCallback(() => {
-            if (isLoggedIn) {
-                fetchAllData(true);
-            }
-        }, [fetchAllData, isLoggedIn]),
+            fetchAllData(true);
+        }, [fetchAllData])
     );
+
+
+    // useFocusEffect(
+    //     useCallback(() => {
+    //         if (isLoggedIn) {
+    //             fetchAllData(true);
+    //         }
+    //     }, [fetchAllData, isLoggedIn]),
+    // );
 
     const insets = useSafeAreaInsets();
     const [selectedItems, setSelectedItems] =
@@ -315,7 +316,7 @@ const MyCart = ({ navigation }: any) => {
                 onRefreshPress={onRefresh}
             />
 
-            {!isLoggedIn ? (
+            {/* {!isLoggedIn ? (
                 <View style={styles.emptyContainer}>
                     <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
 
@@ -336,7 +337,8 @@ const MyCart = ({ navigation }: any) => {
                         </Text>
                     </TouchableOpacity>
                 </View>
-            ) : loading ? (
+            ) :  */}
+            {loading ? (
                 <MyProductCardSkeleton />
             ) : !hasCartItems ? (
                 <View style={styles.emptyContainer}>

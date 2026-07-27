@@ -48,10 +48,10 @@ const BrandList: React.FC<Props> = ({ data = [] }) => {
           onPress={item.onPress}
         >
           <View style={styles.imageContainer}>
-            {item.logo ? (
-              <TablerIcon name={item.logo} size={26} color="#0D614E" />
-            ) : item.logo ? (
-              <Image source={item.logo} style={styles.image} />
+            {item.iconName ? (
+              <TablerIcon name={item.iconName} size={26} color="#0D614E" />
+            ) : item.image ? (
+              <Image source={item.image} style={styles.image} />
             ) : (
               <TablerIcon name="pill" size={26} color="#0D614E" />
             )}

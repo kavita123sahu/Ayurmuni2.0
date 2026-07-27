@@ -39,7 +39,7 @@ import { useConsultData }
   from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
 import { DoctorCardSkeleton, HomeCategorySkeleton, TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
-import { getConsultHistory, RecentConsultHistory } from '../../services/ConsultServce';
+import { RecentConsultHistory } from '../../services/ConsultServce';
 import EmptyState from '../../components/EmptyState';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
@@ -54,8 +54,6 @@ const ConsultHome = () => {
 
   const navigation =
     useNavigation<NavigationProp>();
-
-
 
   const {
     loading,
@@ -281,6 +279,8 @@ const ConsultHome = () => {
               buttontext="Book an appointment online"
               approved
               showButton
+                onPress={() => navigation.navigate('AllDoctors')}
+              // onPress={()}
             />
 
             <SectionHeader

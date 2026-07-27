@@ -24,9 +24,10 @@ import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
-import { navigateToSearchScreen } from '../../navigation/productNavigation';
+import { navigateToSearchScreen, navigateToCategoryProducts } from '../../navigation/productNavigation';
 import { useBrands } from '../../hooks/useBrands';
 import { useHealthConcernCategories } from '../../hooks/useHealthConcernCategories';
+import { mapBrandItem } from '../../utils/orderUtils';
 
 type ActionItem = {
   id: string;
@@ -62,6 +63,28 @@ const MedicineScreen = (props: any) => {
   const { brands, refresh: refreshBrands } = useBrands();
   const { recentProducts, loading: ordersLoading, refresh: refreshOrders } = useOrders();
   const [refreshing, setRefreshing] = useState(false);
+
+  const brandListData = useMemo(
+    () =>
+      (Array.isArray(brands) ? brands : []).map((brand: any) => {
+        const mapped = mapBrandItem(brand);
+        return {
+          ...mapped,
+          onPress: () => {
+            if (!mapped.id) {
+              return;
+            }
+            navigateToCategoryProducts(navigation, {
+              categoryMode: 'product',
+              categoryName: mapped.name,
+              brand_name_id: mapped.id,
+              brandName: mapped.name,
+            });
+          },
+        };
+      }),
+    [brands, navigation],
+  );
 
   // const handleSearchPress = useCallback(() => {
   //   stackNav.navigate('SearchScreen');
@@ -188,9 +211,8 @@ const MedicineScreen = (props: any) => {
         )}
 
         <SectionHeader title="Trusted Brands" />
-        {brands.length > 0 && (
-          <BrandList data={brands} />
-
+        {brandListData.length > 0 && (
+          <BrandList data={brandListData} />
         )}
 
         {safeProducts.length > 0 && (

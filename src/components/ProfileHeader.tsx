@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   View,
@@ -6,22 +6,18 @@ import {
   StyleSheet,
   Image,
   ImageBackground,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-
+import { useFocusEffect } from '@react-navigation/native';
 
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
-import TablerIcon from './TablerIcon';
 
 import DashboardCard from './DashboardCard';
-import * as _PROFILE_SERVICE from '../services/ProfileServices';
+import { useProfileDashboardStats } from '../hooks/useProfileDashboardStats';
 
-import { showSuccessToast } from '../config/Key';
-
-const ProfileHeader = ({ user }: any) => {
+const ProfileHeader = ({ user, navigation }: any) => {
 
   console.log('UserinProfileHeader:', user);
 
@@ -31,7 +27,40 @@ const ProfileHeader = ({ user }: any) => {
   const [profileImage, setProfileImage] =
     useState('');
 
+  const { stats: dashboardStats, refresh: refreshDashboardStats } =
+    useProfileDashboardStats();
 
+  const stackNav = navigation?.getParent?.() || navigation;
+
+  const dashboardData = useMemo(
+    () =>
+      dashboardStats.map(stat => {
+        let onPress: (() => void) | undefined;
+
+        switch (stat.label) {
+          case 'CONSULTS':
+            onPress = () => stackNav?.navigate?.('Appointments');
+            break;
+          case 'ORDERS':
+            onPress = () => stackNav?.navigate?.('OrderHistory');
+            break;
+          case 'REPORTS':
+            onPress = () => stackNav?.navigate?.('MedicalRecords');
+            break;
+          default:
+            break;
+        }
+
+        return { ...stat, onPress };
+      }),
+    [dashboardStats, stackNav],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshDashboardStats();
+    }, [refreshDashboardStats]),
+  );
 
   useEffect(() => {
 
@@ -172,24 +201,7 @@ const ProfileHeader = ({ user }: any) => {
 
         {/* STATS */}
 
-        {/* <View style={styles.statsRow}> */}
-        <DashboardCard
-          data={[
-            {
-              value: '02',
-              label: 'CONSULTS',
-            },
-            {
-              value: '14',
-              label: 'ORDERS',
-            },
-            {
-              value: '05',
-              label: 'REPORTS',
-            },
-          ]}
-        />
-        {/* </View> */}
+        <DashboardCard data={dashboardData} />
 
       </View>
     </View>

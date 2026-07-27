@@ -6,11 +6,16 @@ export type CategoryProductFilter = {
   product_subcategory_id?: string | null;
   health_category_id?: string | null;
   health_disease_id?: string | null;
+  brand_name_id?: string | null;
   search?: string;
+  page?: number;
 };
 
 const toProductQuery = (filter: CategoryProductFilter): ProductQuery => {
-  const query: ProductQuery = { page_size: 100 };
+  const query: ProductQuery = {
+    page_size: 100,
+    page: filter.page ?? 1,
+  };
 
   if (filter.id) query.id = filter.id;
   if (filter.product_subcategory_id) {
@@ -21,6 +26,9 @@ const toProductQuery = (filter: CategoryProductFilter): ProductQuery => {
   }
   if (filter.health_disease_id) {
     query.health_disease_id = filter.health_disease_id;
+  }
+  if (filter.brand_name_id) {
+    query.brand_name_id = filter.brand_name_id;
   }
   if (filter.search?.trim()) {
     query.search = filter.search.trim();
@@ -46,14 +54,18 @@ export const useCategoryProducts = (
         product_subcategory_id: filter.product_subcategory_id ?? '',
         health_category_id: filter.health_category_id ?? '',
         health_disease_id: filter.health_disease_id ?? '',
+        brand_name_id: filter.brand_name_id ?? '',
         search: filter.search ?? '',
+        page: filter.page ?? 1,
       }),
     [
       filter.id,
       filter.product_subcategory_id,
       filter.health_category_id,
       filter.health_disease_id,
+      filter.brand_name_id,
       filter.search,
+      filter.page,
     ],
   );
 
@@ -76,6 +88,7 @@ export const useCategoryProducts = (
             parsedFilter.product_subcategory_id ||
             parsedFilter.health_category_id ||
             parsedFilter.health_disease_id ||
+            parsedFilter.brand_name_id ||
             parsedFilter.search,
         );
 

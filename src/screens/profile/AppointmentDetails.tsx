@@ -1,5 +1,6 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -27,8 +28,9 @@ import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
 import FeedbackModal from '../../components/FeedbackModal';
-import { useCreateReview } from '../../hooks/useCreateReview';
 import TablerIcon from '../../components/TablerIcon';
+import { createReview } from '../../services/ProfileServices';
+import { buildReviewSubmitPayload } from '../../utils/reviewUtils';
 import {
   buildVideoCallNavParams,
   getAppointmentIds,
@@ -209,16 +211,11 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [token, setToken] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const [selectedImages, setSelectedImages] = useState<any[]>([]);
   const [isEditReview, setIsEditReview] = useState(false);
-
-
   const [refreshing, setRefreshing] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
-  const { loading, submitReview } = useCreateReview();
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const shouldShowReviewModal =
     detail?.appointment?.appointment_status?.toLowerCase() === 'completed' &&
@@ -242,46 +239,63 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     navigation.setOptions({ gestureEnabled: !showModal });
   }, [navigation, showModal]);
 
-  const handleReviewSubmit = async ({
-    rating,
-    review,
-    images = [],
-  }: {
-    rating: number;
-    review: string;
-    images?: string[];
-  }) => {
-    const response = await submitReview({
+  const openShareExperience = (rating: number, editMode = isEditReview) => {
+    navigation.navigate('ShareExperienceScreen', {
       entityType: 'doctor',
+      entityName: detail?.doctor?.doctor_name ?? 'Doctor',
+      entitySubtitle: detail?.doctor?.doctor_specialization ?? '',
       appointmentId: routeLookupId,
-      method: isEditReview ? 'PATCH' : 'POST',
-      reviewData: {
-        rating,
-        review,
-        ...(isEditReview
-          ? {}
-          : { appointment: routeLookupId }),
-        image_urls: images,
-      },
+      initialRating: rating,
+      initialReview: detail?.appointment?.review?.review ?? '',
+      initialImages: detail?.appointment?.review?.attachments ?? [],
+      isEdit: editMode,
     });
+  };
 
-    if (response?.success) {
-      showSuccessToast(response?.message, 'success');
-
-      setShowModal(false);
-      setIsEditReview(false);
-
-      fetchDetail();
+  const handleRatingSubmit = async (rating: number) => {
+    if (!routeLookupId) {
+      showSuccessToast('Appointment id missing', 'error');
       return;
     }
 
-    showSuccessToast(
-      response?.message ||
-      (isEditReview
-        ? 'Unable to update review'
-        : 'Unable to submit review'),
-      'error',
-    );
+    try {
+      setSubmittingReview(true);
+
+      const response = await createReview({
+        entityType: 'doctor',
+        appointmentId: routeLookupId,
+        method: isEditReview ? 'PATCH' : 'POST',
+        reviewData: buildReviewSubmitPayload({
+          rating,
+          entityType: 'doctor',
+          appointmentId: routeLookupId,
+          isEdit: isEditReview,
+        }),
+      });
+
+      if (!response?.success) {
+        showSuccessToast(response?.message || 'Unable to submit rating', 'error');
+        return;
+      }
+
+      showSuccessToast(
+        response?.message || 'Thank you for your rating!',
+        'success',
+      );
+      setShowModal(false);
+      setIsEditReview(false);
+      await fetchDetail();
+    } catch {
+      showSuccessToast('Something went wrong while submitting', 'error');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleRatingContinue = (rating: number) => {
+    setShowModal(false);
+    setIsEditReview(false);
+    openShareExperience(rating, isEditReview);
   };
 
   const fetchDetail = async () => {
@@ -317,6 +331,14 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     init();
     fetchDetail();
   }, [routeLookupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (routeLookupId) {
+        fetchDetail();
+      }
+    }, [routeLookupId]),
+  );
 
   const normalizedAppointment = useMemo(() => {
     if (!detail?.appointment) return null;
@@ -435,6 +457,62 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     }
   }, [fetchDetail]);
 
+  const patient = detail?.appointment?.patient;
+  const appointment = detail?.appointment;
+
+  const formatLabel = (value?: string | null) => {
+    if (!value) return '';
+    return String(value)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  };
+
+  const patientFields = [
+    { icon: 'person-outline', label: 'Name', value: patient?.patient_name },
+    { icon: 'people-outline', label: 'Relation', value: patient?.relation ?? patient?.patient_relation },
+    { icon: 'calendar-outline', label: 'Age', value: patient?.age },
+    { icon: 'body-outline', label: 'Gender', value: formatLabel(patient?.gender) },
+    { icon: 'call-outline', label: 'Phone', value: patient?.phone ?? patient?.phone_number },
+    { icon: 'mail-outline', label: 'Email', value: patient?.email },
+  ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
+
+  const appointmentFields = [
+    { icon: 'document-text-outline', label: 'Appointment ID', value: appointment?.appointment_id ?? appointment?.id },
+    // { icon: 'id-card-outline', label: 'Consultation ID', value: appointment?.consultation_id },
+    { icon: 'calendar-outline', label: 'Date', value: appointment?.appointment_date },
+    { icon: 'time-outline', label: 'Start Time', value: appointment?.start_time },
+    { icon: 'time-outline', label: 'End Time', value: appointment?.end_time },
+    { icon: 'flag-outline', label: 'Status', value: formatLabel(appointment?.appointment_status) },
+    { icon: 'videocam-outline', label: 'Call Status', value: formatLabel(appointment?.call_status) },
+    {
+      icon: 'medkit-outline',
+      label: 'Consultation Type',
+      value: formatLabel(appointment?.consultation_type ?? appointment?.mode),
+    },
+    { icon: 'cash-outline', label: 'Payment', value: formatLabel(appointment?.payment_status) },
+    { icon: 'repeat-outline', label: 'Follow-up', value: appointment?.follow_up?.date ?? appointment?.follow_up_date },
+    { icon: 'close-circle-outline', label: 'Cancellation Reason', value: appointment?.cancellation_reason },
+    { icon: 'refresh-outline', label: 'Reschedule Reason', value: appointment?.reschedule_reason },
+  ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
+
+  const renderInfoFields = (fields: typeof patientFields) =>
+    fields.map((field, index) => (
+      <React.Fragment key={field.label}>
+        {index > 0 ? <View style={styles.infoDivider} /> : null}
+        <View style={styles.infoRow}>
+          <View style={styles.infoLabelWrap}>
+            <View style={styles.infoIconCircle}>
+              <Ionicons name={field.icon as any} size={14} color={Theme.emerald} />
+            </View>
+            <Text style={styles.infoLabel}>{field.label}</Text>
+          </View>
+          <Text style={styles.infoValue} numberOfLines={2}>
+            {String(field.value)}
+          </Text>
+        </View>
+      </React.Fragment>
+    ));
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
@@ -481,37 +559,20 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               <Text style={styles.sectionTitle}>Patient Information</Text>
             </View>
             <View style={styles.card}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoLabelWrap}>
-                  <View style={styles.infoIconCircle}>
-                    <Ionicons name="person-outline" size={14} color={Theme.emerald} />
-                  </View>
-                  <Text style={styles.infoLabel}>Name</Text>
-                </View>
-                <Text style={styles.infoValue}>{detail?.appointment?.patient?.patient_name}</Text>
-              </View>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoLabelWrap}>
-                  <View style={styles.infoIconCircle}>
-                    <Ionicons name="calendar-outline" size={14} color={Theme.emerald} />
-                  </View>
-                  <Text style={styles.infoLabel}>Age</Text>
-                </View>
-                <Text style={styles.infoValue}>{detail?.appointment?.patient?.age}</Text>
-              </View>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoLabelWrap}>
-                  <View style={styles.infoIconCircle}>
-                    <Ionicons name="body-outline" size={14} color={Theme.emerald} />
-                  </View>
-                  <Text style={styles.infoLabel}>Gender</Text>
-                </View>
-                <Text style={styles.infoValue}>{detail?.appointment?.patient?.gender}</Text>
-              </View>
+              {renderInfoFields(patientFields)}
             </View>
 
+            {appointmentFields.length > 0 && (
+              <>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="clipboard-outline" size={15} color={Theme.gold} />
+                  <Text style={styles.sectionTitle}>Appointment Details</Text>
+                </View>
+                <View style={styles.card}>
+                  {renderInfoFields(appointmentFields)}
+                </View>
+              </>
+            )}
 
             {detail?.appointment?.concern && (
               <>
@@ -569,13 +630,11 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                       <TouchableOpacity
                         style={styles.editReviewBtn}
                         onPress={() => {
-                          setReviewRating(detail?.appointment?.review?.rating || 0);
-                          setReviewText(detail?.appointment?.review?.review || '');
-                          setSelectedImages(
-                            detail?.appointment?.review?.attachments || []
-                          ); // agar images hain
                           setIsEditReview(true);
-                          setShowModal(true);
+                          openShareExperience(
+                            detail?.appointment?.review?.rating || 0,
+                            true,
+                          );
                         }}
                       >
                         <Ionicons
@@ -643,16 +702,15 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
         <FeedbackModal
           visible={showModal}
-          loading={loading}
+          loading={submittingReview}
           isEdit={isEditReview}
+          mode="submit"
           initialRating={detail?.appointment?.review?.rating}
-          initialReview={detail?.appointment?.review?.review}
-          initialImages={detail?.appointment?.review?.attachments || []}
           onClose={() => {
             setShowModal(false);
             setIsEditReview(false);
           }}
-          onSubmit={handleReviewSubmit}
+          onContinue={handleRatingSubmit}
         />
 
 

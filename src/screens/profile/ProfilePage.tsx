@@ -236,7 +236,7 @@ const ProfilePage = ({ navigation }: any) => {
                     keyboardShouldPersistTaps="handled"
                 >
 
-                    <ProfileHeader user={user} />
+                    <ProfileHeader user={user} navigation={navigation} />
 
                     <Section title="Account">
                         {accountMenu.map((item) => (
@@ -259,7 +259,7 @@ const ProfilePage = ({ navigation }: any) => {
                         <Text style={styles.logoutText}>Logout</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.version}>APP VERSION 1.2</Text>
+                    <Text style={styles.version}>APP VERSION 1.0</Text>
                 </ScrollView>
             </ScreenShell>
 

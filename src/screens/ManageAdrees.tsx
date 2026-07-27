@@ -155,10 +155,10 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                 if (res?.success || res?.status === 200) {
                     await setDeliveryLocation(savedAddressToParsed(item));
-
+                    navigation.goBack();
                     AddressEvents.emit(ADDRESS_UPDATED, res?.data ?? res);
 
-                    showSuccessToast('Default address updated', 'success');
+                    // showSuccessToast('Default address updated', 'success');
 
                     // fetchAddresses();
                 } else {

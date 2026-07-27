@@ -277,7 +277,7 @@ const PrakritiProfile = (props: any) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionBtn,{borderColor:'#FED7AA'}]}
+            style={[styles.actionBtn, { borderColor: '#FED7AA' }]}
             onPress={() =>
               props.navigation.navigate('MedicalHistory')
             }
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 12,
     gap: 8,
-    paddingHorizontal:20,
+    paddingHorizontal: 20,
   },
 
   actionBtn: {

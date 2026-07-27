@@ -14,13 +14,12 @@ import QuantityControl from '../../components/QuantityControl';
 import { useProductData } from '../../hooks/useProductData';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
-import { reviews } from '../../common/DataInterface';
 import { useCartActions } from '../../hooks/Cart';
 import { requireAuth } from '../../services/guestAuth';
 import { showSuccessToast } from '../../config/Key';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
-import { handleShareAction, handleShareProduct } from '../../hooks/DownloadFuction';
+import { handleShareAction, } from '../../hooks/DownloadFuction';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 

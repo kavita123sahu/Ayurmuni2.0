@@ -3,7 +3,7 @@ import { Fonts } from "../common/Fonts";
 import { Platform } from "react-native";
 
 export const BaseUrl = {
-    base_url: "https://ayurmuni.aimantra.info/"
+    base_url: "https://scarce-derby-voice.ngrok-free.dev/"
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/
     // https://6057-203-110-81-106.ngrok-free.app/
@@ -21,12 +21,10 @@ export const Method = {
     PUT: 'PUT'
 }
 
-export const ZUGOKey = {
-    ZEGO_APP_ID: '712416091',
-    ZEGO_APP_SIGN: 'c6de6e9ebf00826ca6a1834aaf6db203e722d67f5976cb9ede3f023db73232e8'
-}
-
-export const APP_ID = 'YOUR_AGORA_APP_ID';
+// export const ZUGOKey = {
+//     ZEGO_APP_ID: '712416091',
+//     ZEGO_APP_SIGN: 'c6de6e9ebf00826ca6a1834aaf6db203e722d67f5976cb9ede3f023db73232e8'
+// }
 
 /** Google Maps SDK key (Android/iOS native maps) */
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';

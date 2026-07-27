@@ -7,6 +7,7 @@ import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICES from '../../services/AuthService';
 import LinearGradient from 'react-native-linear-gradient';
+import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -216,16 +217,12 @@ const Splash = (props: any) => {
       }
 
       if (!result?.data?.is_onboarded && !result?.data?.is_skipped) {
-        props.navigation.replace('HomeStack', {
-          screen: 'AssessmentType',
-        });
+        resetRootToHomeStack(props.navigation, 'AssessmentType');
         return;
       }
 
       if (result?.data?.is_skipped) {
-        props.navigation.replace('HomeStack', {
-          screen: 'Home',
-        });
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
         return;
       }
 
@@ -241,9 +238,7 @@ const Splash = (props: any) => {
 
       await Utils.storeData('_USER_INFO', result?.data);
 
-      props.navigation.replace('HomeStack', {
-        screen: 'Home',
-      });
+      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     } catch (error: any) {
       console.log('GET USER ERROR =>', error);
 

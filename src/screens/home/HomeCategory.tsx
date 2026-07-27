@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    // borderWidth: 1,
     borderColor: 'transparent',
   },
   tileActive: {
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     height: '58%',
   },
   label: {
-    marginTop: 6,
+    marginTop: 2,
     fontSize: 11,
     lineHeight: 14,
     height: 14,

@@ -5,10 +5,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Animated,
-  Image,
-  Alert,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -16,47 +13,33 @@ import TablerIcon from '../components/TablerIcon';
 
 type Props = {
   visible: boolean;
-  loading: boolean;
+  loading?: boolean;
   isEdit?: boolean;
   initialRating?: number;
-  initialReview?: string;
-  initialImages?: string[];
+  /** submit = post rating in-place; continue = go to next screen */
+  mode?: 'submit' | 'continue';
   onClose: () => void;
-  onSubmit: (data: {
-    rating: number;
-    review: string;
-    images: string[];
-  }) => void;
+  onContinue: (rating: number) => void;
 };
+
 const FeedbackModal: React.FC<Props> = ({
   visible,
-  loading,
+  loading = false,
   isEdit = false,
   initialRating = 0,
-  initialReview = '',
-  initialImages = [],
+  mode = 'continue',
   onClose,
-  onSubmit,
+  onContinue,
 }) => {
   const [rating, setRating] = useState(initialRating);
-  const [feedback, setFeedback] = useState(initialReview);
-  const [images, setImages] = useState<string[]>(initialImages);
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-
 
   useEffect(() => {
     if (visible) {
       setRating(initialRating);
-      setFeedback(initialReview);
-      setImages(initialImages);
     }
-  }, [
-    visible,
-    initialRating,
-    initialReview,
-    initialImages,
-  ]);
+  }, [visible, initialRating]);
 
   useEffect(() => {
     if (visible) {
@@ -67,92 +50,68 @@ const FeedbackModal: React.FC<Props> = ({
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 200,
+          duration: 220,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      scaleAnim.setValue(0.8);
+      scaleAnim.setValue(0.9);
       opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, opacityAnim, scaleAnim]);
 
-
-
-
-  const handleSubmit = () => {
+  const handleContinue = () => {
     if (!rating) {
-      Alert.alert("Validation", "Please select rating");
       return;
     }
-
-    onSubmit({
-      rating,
-      review: feedback,
-      images,
-    });
-
-    setRating(0);
-    setFeedback('');
-    setImages([]);
+    onContinue(rating);
   };
 
+  const isSubmitMode = mode === 'submit';
 
   return (
     <Modal transparent visible={visible} animationType="none">
-
       <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
-        <Animated.View
-          style={[
-            styles.container,
-            { transform: [{ scale: scaleAnim }] },
-          ]}
-        >
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+        <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
           <View style={styles.iconBox}>
-            <TablerIcon name="star" size={20} color={Colors.primaryColor} />
+            <TablerIcon name="star-filled" size={22} color={Colors.primaryColor} />
           </View>
 
           <Text style={styles.title}>How was your experience?</Text>
-
           <Text style={styles.subtitle}>
-            Your feedback helps us improve our service for everyone.
+            {isSubmitMode
+              ? 'Tap the stars to rate your consultation. Your rating will be saved on this page.'
+              : 'Rate your experience, then share photos, videos, and details on the next screen.'}
           </Text>
 
           <View style={styles.stars}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <TouchableOpacity key={i} onPress={() => setRating(i)}>
+            {[1, 2, 3, 4, 5].map(i => (
+              <TouchableOpacity key={i} onPress={() => setRating(i)} activeOpacity={0.85}>
                 <TablerIcon
                   name={i <= rating ? 'star-filled' : 'star'}
-                  size={32}
+                  size={36}
                   color="#F59E0B"
                 />
               </TouchableOpacity>
             ))}
           </View>
 
-          <TextInput
-            placeholder="Tell us more (optional)"
-            placeholderTextColor="#6B7280"
-            style={styles.input}
-            multiline
-            value={feedback}
-            onChangeText={setFeedback}
-          />
-
           <TouchableOpacity
-            style={styles.submitBtn}
-            onPress={handleSubmit}
-            disabled={loading}
+            style={[styles.submitBtn, (!rating || loading) && styles.submitBtnDisabled]}
+            onPress={handleContinue}
+            disabled={!rating || loading}
           >
             <Text style={styles.submitText}>
               {loading
-                ? isEdit
-                  ? 'Updating...'
-                  : 'Submitting...'
-                : isEdit
-                  ? 'Update Review'
-                  : 'Submit Review'}
+                ? 'Please wait...'
+                : isSubmitMode
+                  ? isEdit
+                    ? 'Update Rating'
+                    : 'Submit Rating'
+                  : isEdit
+                    ? 'Continue to Edit'
+                    : 'Continue'}
             </Text>
           </TouchableOpacity>
 
@@ -173,88 +132,62 @@ const styles = StyleSheet.create({
     backgroundColor: '#00000066',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
-
   container: {
-    width: '85%',
+    width: '100%',
+    maxWidth: 360,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 20,
+    padding: 22,
     alignItems: 'center',
   },
-
   iconBox: {
     backgroundColor: '#006B591A',
-    height: 52,
-    width: 52,
-    borderRadius: 12,
+    height: 54,
+    width: 54,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
-
-  icon: {
-    height: 20,
-    width: 20,
-    tintColor: '#0D614E',
-  },
-
   title: {
-    fontSize: 18,
-    fontFamily: Fonts.PoppinsBold,
+    fontSize: 20,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: 'center',
   },
-
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-    marginBottom: 18,
+    marginBottom: 20,
     fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 18,
+    lineHeight: 20,
+    paddingHorizontal: 4,
   },
-
   stars: {
     flexDirection: 'row',
-    marginBottom: 20,
-  },
-
-  starIcon: {
-    height: 28,
-    width: 28,
-    marginHorizontal: 6,
-    resizeMode: 'contain',
-  },
-
-  input: {
-    width: '100%',
-    height: 90,
-    color: '#0F172A',
-    backgroundColor: '#0D614E0D',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-    fontFamily: Fonts.PoppinsMedium,
-
-    textAlignVertical: 'top',
+    gap: 6,
+    marginBottom: 22,
   },
   submitBtn: {
     width: '100%',
-    backgroundColor: '#0D614E',
+    backgroundColor: Colors.primaryColor,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     marginBottom: 10,
   },
-
+  submitBtnDisabled: {
+    opacity: 0.55,
+  },
   submitText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
   laterText: {
     color: '#64748B',
     fontSize: 14,

@@ -43,8 +43,7 @@ export const usePlaceOrder = (): UsePlaceOrderReturn => {
             config: ChargeConfig,
         ): Promise<PlaceOrderResponse | null> => {
 
-            // if (!cartItems.length || !config.delivery_address_id) return null;
-            // if (isPlacing) return null; // debounce
+            
 
             setIsPlacing(true);
             setOrderError(null);

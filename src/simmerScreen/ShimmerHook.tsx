@@ -337,92 +337,55 @@ export const TopDoctorsCardSkeleton = () => {
         paddingRight: 10,
       }}
     >
-      {[1, 2, 3, 4, 5].map(item => (
+      {[1, 2, 3, 4].map(item => (
         <View
           key={item}
           style={{
-            marginRight: 12,
-            marginBottom: 14,
-            backgroundColor: "#fff",
-            borderRadius: 18,
-            padding: 12,
+            width: 232,
+            marginRight: 10,
+            marginBottom: 6,
+            backgroundColor: '#fff',
+            borderRadius: 14,
+            padding: 10,
             borderWidth: 1,
-            borderColor: "#EEF2F6",
+            borderColor: '#E8EDF2',
           }}
         >
-          <SkeletonPlaceholder
-            borderRadius={12}
-            speed={1200}
-          >
-            <SkeletonPlaceholder.Item
-              width={220}
-              height={170}
-              padding={14}
-              borderRadius={20}
-            >
-              {/* Top Section */}
-              <SkeletonPlaceholder.Item
-                flexDirection="row"
-              >
+          <SkeletonPlaceholder borderRadius={10} speed={1200}>
+            <SkeletonPlaceholder.Item flexDirection="row">
+              <SkeletonPlaceholder.Item width={54} height={54} borderRadius={10} />
+              <SkeletonPlaceholder.Item marginLeft={8} flex={1}>
+                <SkeletonPlaceholder.Item width={52} height={14} borderRadius={5} />
                 <SkeletonPlaceholder.Item
-                  width={56}
-                  height={56}
-                  borderRadius={12}
+                  marginTop={6}
+                  width="88%"
+                  height={13}
+                  borderRadius={5}
                 />
-
                 <SkeletonPlaceholder.Item
-                  marginLeft={10}
-                >
+                  marginTop={4}
+                  width="72%"
+                  height={11}
+                  borderRadius={5}
+                />
+                <SkeletonPlaceholder.Item flexDirection="row" marginTop={6}>
+                  <SkeletonPlaceholder.Item width={48} height={10} borderRadius={4} />
                   <SkeletonPlaceholder.Item
-                    width={120}
-                    height={14}
-                    borderRadius={6}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    marginTop={8}
-                    width={90}
-                    height={12}
-                    borderRadius={6}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    marginTop={10}
-                    width={85}
-                    height={22}
-                    borderRadius={20}
+                    marginLeft={8}
+                    width={56}
+                    height={10}
+                    borderRadius={4}
                   />
                 </SkeletonPlaceholder.Item>
               </SkeletonPlaceholder.Item>
-
-              {/* Experience */}
-              <SkeletonPlaceholder.Item
-                marginTop={18}
-                width={110}
-                height={12}
-                borderRadius={6}
-              />
-
-              {/* Bottom */}
-              <SkeletonPlaceholder.Item
-                marginTop={20}
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <SkeletonPlaceholder.Item
-                  width={80}
-                  height={12}
-                  borderRadius={6}
-                />
-
-                <SkeletonPlaceholder.Item
-                  width={42}
-                  height={42}
-                  borderRadius={12}
-                />
-              </SkeletonPlaceholder.Item>
             </SkeletonPlaceholder.Item>
+
+            <SkeletonPlaceholder.Item
+              marginTop={8}
+              width="100%"
+              height={34}
+              borderRadius={9}
+            />
           </SkeletonPlaceholder>
         </View>
       ))}

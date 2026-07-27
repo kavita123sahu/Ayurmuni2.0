@@ -3,15 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
-import { useNavigation } from '@react-navigation/native';
 
 type Props = {
   title: string;
   id: string;
-
   status: 'DELIVERED' | 'IN PROGRESS';
   date: string;
   amount: string;
+  onPress?: () => void;
 };
 
 const OrderCard: React.FC<Props> = ({
@@ -20,14 +19,12 @@ const OrderCard: React.FC<Props> = ({
   status,
   date,
   amount,
+  onPress,
 }) => {
-
-  const navigation = useNavigation<any>();
   const isDelivered = status === 'DELIVERED';
 
-
   return (
-    <TouchableOpacity style={styles.card} >
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
       {/* Top Row */}
       <View style={styles.topRow}>
         <View style={styles.iconBox}>

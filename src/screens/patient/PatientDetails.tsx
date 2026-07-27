@@ -27,6 +27,7 @@ import { Utils } from '../../common/Utils';
 import { showSuccessToast } from '../../config/Key';
 import { usePatientData } from '../../hooks/usePatientData';
 import * as PROFILE_SERVICES from '../../services/ProfileServices';
+import * as PATIENT_SERVICES from '../../services/PatientServices';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import TablerIcon from '../../components/TablerIcon';
 
@@ -47,7 +48,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  console.log("deleteModalVisible", deleteModalVisible);
+  const [patientDeleteTarget, setPatientDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   // ─── Custom Hooks ──────────────────────────────────────────
   const {
     patients,
@@ -120,11 +121,36 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
     navigation.navigate('Records');
   }, [navigation]);
 
+  const handleDeletePatient = useCallback(async () => {
+    if (!patientDeleteTarget?.id) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const response = await PATIENT_SERVICES.deletePatientById(patientDeleteTarget.id);
+
+      if (!response?.success) {
+        showSuccessToast(response?.message || 'Failed to delete patient', 'error');
+        return;
+      }
+
+      showSuccessToast(response?.message || 'Patient deleted successfully', 'success');
+      setPatientDeleteTarget(null);
+      await loadAllData();
+    } catch (error) {
+      console.log('DELETE PATIENT ERROR =>', error);
+      showSuccessToast('Something went wrong', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [patientDeleteTarget, loadAllData]);
+
   const handleDeleteAccount = useCallback(async () => {
     try {
       setIsDeleting(true);
       const response = await PROFILE_SERVICES.deleteAccount();
-
+      console.log("deleteaccount", response);
       if (!response?.success) {
         showSuccessToast(response?.message || 'Failed to delete account', 'error');
         return;
@@ -197,8 +223,6 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
       >
         {/* Currently Selected Section */}
         <View style={styles.section}>
-          <Text style={Styles.sectionTitle}>CURRENTLY SELECTED</Text>
-
           <SelectedPatientCard
             name={fullName || "Not set"}
             phone={user?.phone_number || ""}
@@ -229,6 +253,10 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
                   selected: item?.is_active_profile,
                 }}
                 onSelect={() => handleSelectPatient(item.id)}
+                onDelete={patientId => {
+                  const name = `${item?.first_name ?? ''} ${item?.last_name ?? ''}`.trim();
+                  setPatientDeleteTarget({ id: patientId, name: name || 'this patient' });
+                }}
                 navigation={navigation}
               />
             )}
@@ -270,10 +298,23 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
         </View>
 
         {/* Version Text */}
-        <Text style={styles.version}>APP VERSION 1.2</Text>
+        <Text style={styles.version}>APP VERSION 1.0</Text>
       </ScrollView>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Patient Modal */}
+      <CommonModal
+        visible={!!patientDeleteTarget}
+        icon="🗑️"
+        title="Delete Patient"
+        subtitle={`Remove ${patientDeleteTarget?.name ?? 'this patient'} from your family list? This cannot be undone.`}
+        cancelText="Cancel"
+        confirmText="Delete"
+        loading={isDeleting}
+        onClose={() => setPatientDeleteTarget(null)}
+        onConfirm={handleDeletePatient}
+      />
+
+      {/* Delete Account Modal */}
       <CommonModal
         visible={deleteModalVisible}
         icon="🗑️"

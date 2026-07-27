@@ -14,18 +14,25 @@ import {
 } from 'react-native';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
+import { createReview } from '../../services/ProfileServices';
+import { showSuccessToast } from '../../config/Key';
+import { buildReviewSubmitPayload } from '../../utils/reviewUtils';
 
 type Props = {
     visible: boolean;
     doctorName: string;
     doctorSpeciality?: string;
     doctorImage?: string;
+    entityType?: 'doctor' | 'product';
+    appointmentId?: string;
+    variantId?: string;
     onClose: () => void;
-    onSubmit: (data: {
+    onSubmit?: (data: {
         rating: number;
         review: string;
         tags: string[];
     }) => Promise<void>;
+    onSubmitSuccess?: () => void;
 };
 
 const REVIEW_TAGS = [
@@ -42,8 +49,12 @@ const ReviewModal = ({
     doctorName,
     doctorSpeciality,
     doctorImage,
+    entityType = 'doctor',
+    appointmentId,
+    variantId,
     onClose,
     onSubmit,
+    onSubmitSuccess,
 }: Props) => {
     const [rating, setRating] = useState(0);
     const [review, setReview] = useState('');
@@ -66,11 +77,39 @@ const ReviewModal = ({
         try {
             setLoading(true);
 
-            await onSubmit({
+            const payload = {
                 rating,
                 review,
                 tags: selectedTags,
-            });
+            };
+
+            if (onSubmit) {
+                await onSubmit(payload);
+            } else if (
+                (entityType === 'doctor' && appointmentId) ||
+                (entityType === 'product' && variantId)
+            ) {
+                const response = await createReview({
+                    entityType,
+                    appointmentId: entityType === 'doctor' ? appointmentId : undefined,
+                    variantId: entityType === 'product' ? variantId : undefined,
+                    reviewData: buildReviewSubmitPayload({
+                        rating,
+                        review,
+                        entityType,
+                        appointmentId,
+                        tags: selectedTags,
+                    }),
+                });
+
+                if (!response?.success) {
+                    showSuccessToast(response?.message || 'Unable to submit review', 'error');
+                    return;
+                }
+
+                showSuccessToast(response?.message || 'Review submitted', 'success');
+                onSubmitSuccess?.();
+            }
 
             setRating(0);
             setReview('');
@@ -381,7 +420,6 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
         paddingTop: 12,
-        bottom: 50,
         paddingBottom: 20,
         backgroundColor: '#FFF',
     },
