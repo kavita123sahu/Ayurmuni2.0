@@ -7,11 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import PromoCard from '../../components/PromoCard';
-import ProductCard, { GRID_CARD_WIDTH } from '../../components/ProductCard';
+import ProductCard from '../../components/ProductCard';
 import SectionHeader from '../../components/SectionHeader';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
@@ -40,6 +41,11 @@ import {
 } from '../../utils/productStockUtils';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+
+const H_PAD = 20;
+const GRID_GAP = 10;
+const GRID_CARD_WIDTH =
+  (Dimensions.get('window').width - H_PAD * 2 - GRID_GAP) / 2;
 
 const ProductsScreen = () => {
   const navigation = useNavigation<any>();
@@ -147,6 +153,7 @@ const ProductsScreen = () => {
           <ProductCard
             item={item}
             variant="grid"
+            gridWidth={GRID_CARD_WIDTH}
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             onPress={() =>
@@ -274,16 +281,17 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FDFDFB',
-    paddingHorizontal: 20,
+    paddingHorizontal: H_PAD,
   },
   headerContent: {},
   listContent: {},
   columnWrap: {
     justifyContent: 'space-between',
+    gap: GRID_GAP,
   },
   cardWrap: {
     width: GRID_CARD_WIDTH,
-    marginBottom: 4,
+    marginBottom: GRID_GAP,
   },
   skeletonWrap: {
     flex: 1,

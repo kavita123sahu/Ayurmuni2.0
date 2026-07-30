@@ -11,7 +11,7 @@
  * Prepaid (online):
  * {
  *   delivery_address_id, payment_type: "prepaid",
- *   payment_method: <from Razorpay SDK — upi|card|wallet|netbanking|…>,
+ *   payment_method: "upi",
  *   shipping_method, shipping_charges, cod_charges, prepaid_amount,
  *   cart_item_ids: [], gift_wrap_item_ids: []
  * }
@@ -36,6 +36,49 @@ export type OrderPayload = {
   cart_item_ids: string[];
   gift_wrap_item_ids: string[];
 };
+
+/**
+ * After Razorpay verify — treat as success if payment/order is placed,
+ * even when API returns a stock warning (e.g. "SKU is out of stock") with an order body.
+ */
+export const isOrderVerifySuccessful = (response: any): boolean => {
+  if (!response || typeof response !== 'object') return false;
+  if (response.success === true) return true;
+
+  const data = response.data;
+  const order = data?.order ?? data;
+  const hasOrder =
+    Boolean(order?.id) ||
+    Boolean(order?.order_id) ||
+    Boolean(order?.order_number) ||
+    Boolean(data?.order_id) ||
+    Boolean(data?.order_number);
+
+  if (hasOrder) return true;
+
+  const msg = String(response.message ?? '').toLowerCase();
+  const stockNoise =
+    msg.includes('out of stock') ||
+    msg.includes('sku') ||
+    msg.includes('insufficient');
+
+  // Paid + stock warning but still has payment confirmation
+  if (
+    stockNoise &&
+    (data?.payment_id ||
+      data?.razorpay_payment_id ||
+      data?.status === 'paid' ||
+      data?.payment_status === 'paid' ||
+      data?.order_status)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+export const getVerifiedOrderResult = (response: any) =>
+  response?.data?.order ?? response?.data ?? null;
 
 /** Prefer cart line id (`item.id`); never fall back to variant_id. */
 export const getCartItemId = (item: OrderCartLine): string | null => {

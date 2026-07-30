@@ -23,6 +23,8 @@ import BackIconButton from '../../components/BackIconButton';
 import {
   buildPrepaidOrderPayload,
   getRazorpayPaymentMethod,
+  getVerifiedOrderResult,
+  isOrderVerifySuccessful,
 } from '../../utils/orderPayload';
 
 type Props = {
@@ -103,13 +105,14 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
       setLoading(true);
       paymentStartedRef.current = true;
 
-      // Complete prepaid payload — no static payment_method
+      // Complete prepaid payload — online always sends payment_method: "upi"
       const placePayload = buildPrepaidOrderPayload({
         delivery_address_id: address.id,
         cartItems: normalizedCartItems,
         shipping_charges: shippingFee,
         cod_charges: codCharges,
         prepaid_amount: Math.round(payableAmount),
+        payment_method: 'upi',
       });
       console.log(
         'ORDER_PAYLOAD_PREPAID =>',
@@ -159,7 +162,8 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
           );
 
           // Method selected by user in Razorpay (upi / card / wallet / …)
-          const paymentMethod = getRazorpayPaymentMethod(razorpayResult);
+          const paymentMethod =
+            getRazorpayPaymentMethod(razorpayResult) || 'upi';
 
           const verifyBody: Record<string, any> = {
             payment_id: paymentData?.payment_id,
@@ -167,10 +171,8 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
             razorpay_payment_id: razorpayResult?.razorpay_payment_id,
             razorpay_signature: razorpayResult?.razorpay_signature,
             payment_type: 'prepaid',
+            payment_method: paymentMethod,
           };
-          if (paymentMethod) {
-            verifyBody.payment_method = paymentMethod;
-          }
 
           console.log('VERIFY_PAYLOAD =>', JSON.stringify(verifyBody, null, 2));
 
@@ -180,11 +182,10 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
 
           setIsVerifyingPayment(false);
 
-          if (verifyResponse?.success) {
+          if (isOrderVerifySuccessful(verifyResponse)) {
             showSuccessToast('Payment Successful', 'success');
             navigation.replace('OrderConfirmation', {
-              orderResult:
-                verifyResponse?.data?.order ?? verifyResponse?.data,
+              orderResult: getVerifiedOrderResult(verifyResponse),
               orderedCartItems: normalizedCartItems.map((item: any) => ({
                 variant_id: String(item.variant_id),
                 quantity: Number(item.quantity),

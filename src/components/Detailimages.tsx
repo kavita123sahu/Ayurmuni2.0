@@ -32,6 +32,10 @@ type Props = {
   DynamicResize?: 'cover' | 'contain';
   autoSlide?: boolean;
   embedded?: boolean;
+  /** Home promo banners vs product gallery */
+  mode?: 'product' | 'banner';
+  /** Disable fullscreen preview (banner default) */
+  enablePreview?: boolean;
 };
 
 const Detailimages: React.FC<Props> = ({
@@ -39,11 +43,17 @@ const Detailimages: React.FC<Props> = ({
   itemWidth,
   itemHeight,
   aspectRatio = BANNER.aspectRatio,
-  DynamicResize = 'cover',
+  DynamicResize,
   showIndicator = true,
   autoSlide = true,
   embedded = false,
+  mode = 'product',
+  enablePreview,
 }) => {
+  const isBanner = mode === 'banner';
+  const resizeMode = DynamicResize ?? (isBanner ? 'cover' : 'cover');
+  const allowPreview = enablePreview ?? !isBanner;
+
   const paddingH = getScreenPaddingH();
   const finalWidth = itemWidth ?? getContentWidth(paddingH);
   const finalHeight =
@@ -88,6 +98,7 @@ const Detailimages: React.FC<Props> = ({
   }, [autoSlide, safeImages.length, slideSize, previewIndex]);
 
   const openPreview = (index: number) => {
+    if (!allowPreview) return;
     setPreviewIndex(index);
   };
 
@@ -101,7 +112,13 @@ const Detailimages: React.FC<Props> = ({
   if (safeImages.length === 0) return null;
 
   return (
-    <View style={[styles.wrapper, embedded && styles.wrapperEmbedded]}>
+    <View
+      style={[
+        styles.wrapper,
+        embedded && styles.wrapperEmbedded,
+        isBanner && styles.wrapperBanner,
+      ]}
+    >
       <FlatList
         ref={flatListRef}
         data={safeImages}
@@ -130,10 +147,12 @@ const Detailimages: React.FC<Props> = ({
           const source = getImageSource(item);
           return (
             <TouchableOpacity
-              activeOpacity={0.92}
+              activeOpacity={allowPreview ? 0.92 : 1}
+              disabled={!allowPreview}
               onPress={() => openPreview(index)}
               style={[
                 styles.slide,
+                isBanner && styles.slideBanner,
                 {
                   marginLeft: index === 0 ? 0 : SPACING,
                   width: finalWidth,
@@ -145,21 +164,28 @@ const Detailimages: React.FC<Props> = ({
                 <Image
                   source={source}
                   style={styles.image}
-                  resizeMode={DynamicResize}
+                  resizeMode={resizeMode}
                 />
               ) : (
                 <View style={styles.placeholder} />
               )}
-              <View style={styles.tapHint}>
-                <TablerIcon name="eye" size={14} color="#FFFFFF" />
-              </View>
+              {allowPreview ? (
+                <View style={styles.tapHint}>
+                  <TablerIcon name="eye" size={14} color="#FFFFFF" />
+                </View>
+              ) : null}
             </TouchableOpacity>
           );
         }}
       />
 
       {showIndicator && safeImages.length > 1 && (
-        <View style={styles.indicatorContainer}>
+        <View
+          style={[
+            styles.indicatorContainer,
+            isBanner && styles.indicatorBanner,
+          ]}
+        >
           {safeImages.map((_, index) => {
             const inputRange = [
               (index - 1) * slideSize,
@@ -188,7 +214,13 @@ const Detailimages: React.FC<Props> = ({
                     width: widthAnim,
                     opacity: opacityAnim,
                     backgroundColor:
-                      index === activeIndex ? Colors.primaryColor : '#C5D9D2',
+                      index === activeIndex
+                        ? isBanner
+                          ? '#FFFFFF'
+                          : Colors.primaryColor
+                        : isBanner
+                          ? 'rgba(255,255,255,0.45)'
+                          : '#C5D9D2',
                   },
                 ]}
               />
@@ -245,6 +277,10 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
   },
+  wrapperBanner: {
+    marginTop: 0,
+    marginBottom: 4,
+  },
   listContent: {
     paddingRight: SPACING,
   },
@@ -254,6 +290,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 0.5,
     borderColor: '#E8EDF2',
+  },
+  slideBanner: {
+    // backgroundColor: '#0B2E26',
+    borderRadius: 18,
+    borderWidth: 0,
+    // elevation: 2,
+    // shadowColor: '#0D614E',
+    // shadowOpacity: 0.12,
+    // shadowRadius: 8,
+    // shadowOffset: { width: 0, height: 3 },
   },
   image: {
     width: '100%',
@@ -278,6 +324,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 10,
+  },
+  indicatorBanner: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    marginTop: 0,
   },
   dot: {
     height: 6,

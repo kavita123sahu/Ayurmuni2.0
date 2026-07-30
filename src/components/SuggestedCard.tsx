@@ -191,7 +191,7 @@ const SuggestedCard: React.FC<Props> = ({
                   source={
                     imageUri
                       ? { uri: imageUri }
-                      : require('../assets/images/FinalLogo2.png')
+                      : require('../assets/images/login/7.jpg')
                   }
                   style={styles.image}
                   resizeMode="cover"

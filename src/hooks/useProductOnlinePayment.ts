@@ -7,6 +7,8 @@ import * as _ORDER_SERVICES from '../services/OrderService';
 import {
   buildPrepaidOrderPayload,
   getRazorpayPaymentMethod,
+  getVerifiedOrderResult,
+  isOrderVerifySuccessful,
   OrderCartLine,
 } from '../utils/orderPayload';
 
@@ -24,6 +26,7 @@ type OnlinePaymentArgs = {
   address: any;
   customerInfo?: any;
   shippingFee: number;
+  payment_method ?: any;
   codCharges?: number;
   onSuccess: (
     orderResult: any,
@@ -37,9 +40,9 @@ type OnlinePaymentArgs = {
 
 /**
  * Online flow:
- * 1) Place prepaid order WITHOUT payment_method (creates Razorpay order)
- * 2) User selects method in Razorpay (UPI / card / wallet / …)
- * 3) Verify — payment_method = exact value from Razorpay success event
+ * 1) Place prepaid with payment_method: "upi" (API expects this for online)
+ * 2) User pays in Razorpay
+ * 3) Verify — prefer Razorpay method, fallback "upi"
  */
 export const useProductOnlinePayment = () => {
   const [isPaying, setIsPaying] = useState(false);
@@ -80,14 +83,14 @@ export const useProductOnlinePayment = () => {
         setIsPaying(true);
         paymentStartedRef.current = true;
 
-        // ── 1) Place prepaid — no static payment_method ─────────────────────
+        // ── 1) Place prepaid — online sends payment_method: "upi" ────────────
         const placePayload = buildPrepaidOrderPayload({
           delivery_address_id: address.id,
           cartItems,
           shipping_charges: shippingFee,
           cod_charges: codCharges,
           prepaid_amount: payableAmount,
-          // payment_method intentionally omitted — comes from Razorpay after pay
+          payment_method: 'upi',
         });
         console.log(
           'ORDER_PAYLOAD_PREPAID (before Razorpay) =>',
@@ -136,8 +139,9 @@ export const useProductOnlinePayment = () => {
               JSON.stringify(razorpayResult, null, 2),
             );
 
-            // Exact method user selected in Razorpay UI
-            const paymentMethod = getRazorpayPaymentMethod(razorpayResult);
+            // Prefer Razorpay method; online default is upi
+            const paymentMethod =
+              getRazorpayPaymentMethod(razorpayResult) || 'upi';
 
             const verifyBody: Record<string, any> = {
               payment_id: paymentData?.payment_id,
@@ -145,16 +149,8 @@ export const useProductOnlinePayment = () => {
               razorpay_payment_id: razorpayResult?.razorpay_payment_id,
               razorpay_signature: razorpayResult?.razorpay_signature,
               payment_type: 'prepaid',
+              payment_method: paymentMethod,
             };
-
-            if (paymentMethod) {
-              verifyBody.payment_method = paymentMethod;
-            } else {
-              console.warn(
-                'RAZORPAY_METHOD_MISSING — SDK event had no method field',
-                razorpayResult,
-              );
-            }
 
             console.log(
               'VERIFY_PAYLOAD =>',
@@ -166,10 +162,10 @@ export const useProductOnlinePayment = () => {
             );
             setIsVerifyingPayment(false);
 
-            if (verifyResponse?.success) {
+            if (isOrderVerifySuccessful(verifyResponse)) {
               showSuccessToast('Payment Successful', 'success');
               onSuccess(
-                verifyResponse?.data?.order ?? verifyResponse?.data,
+                getVerifiedOrderResult(verifyResponse),
                 cartItems.map(item => ({
                   variant_id: String(item.variant_id),
                   quantity: Number(item.quantity),

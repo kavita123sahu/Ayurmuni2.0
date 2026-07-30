@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   StyleSheet,
-  TouchableOpacity,
   Dimensions,
   Pressable,
 } from 'react-native';
@@ -20,7 +19,8 @@ import {
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-export const GRID_CARD_WIDTH = (SCREEN_W - 52) / 2;
+/** Default 2-col grid width for full-width screens (16px pad + 10 gap) */
+export const GRID_CARD_WIDTH = (SCREEN_W - 42) / 2;
 export const HORIZONTAL_CARD_WIDTH = 158;
 const IMAGE_HEIGHT_GRID = 136;
 const IMAGE_HEIGHT_HORIZONTAL = 124;
@@ -35,6 +35,7 @@ type Props = {
   isAdding: boolean;
   showWishlist?: boolean;
   actionsLocked?: boolean;
+  /** Required for proper grid fit — parent should pass measured column width */
   gridWidth?: number;
   onPress: () => void;
   onAdd: () => void;
@@ -58,17 +59,22 @@ const ProductCard: React.FC<Props> = ({
   onWishlist,
 }) => {
   const isGrid = variant === 'grid';
-  const cardWidth = isGrid ? (gridWidth ?? GRID_CARD_WIDTH) : HORIZONTAL_CARD_WIDTH;
+  const cardWidth = isGrid
+    ? gridWidth ?? GRID_CARD_WIDTH
+    : HORIZONTAL_CARD_WIDTH;
   const scale = isGrid && gridWidth ? gridWidth / GRID_CARD_WIDTH : 1;
-  const cardHeight = isGrid ? GRID_CARD_HEIGHT * scale : HORIZONTAL_CARD_HEIGHT;
-  const imageHeight = isGrid ? IMAGE_HEIGHT_GRID * scale : IMAGE_HEIGHT_HORIZONTAL;
+  const cardHeight = isGrid
+    ? GRID_CARD_HEIGHT * Math.min(Math.max(scale, 0.85), 1.15)
+    : HORIZONTAL_CARD_HEIGHT;
+  const imageHeight = isGrid
+    ? IMAGE_HEIGHT_GRID * Math.min(Math.max(scale, 0.85), 1.15)
+    : IMAGE_HEIGHT_HORIZONTAL;
 
   const discount =
     item?.mrp > item?.selling_price
       ? Math.round(((item.mrp - item.selling_price) / item.mrp) * 100)
       : 0;
 
-  // Stock from listing `quantity` (e.g. quantity: 900 → in stock)
   const stockQty = getProductStockQty(item);
   const isOutOfStock = isProductOutOfStock(item);
   const maxQuantity =
@@ -95,15 +101,15 @@ const ProductCard: React.FC<Props> = ({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        isGrid ? styles.cardGrid : styles.cardHorizontal,
         {
           width: cardWidth,
           height: cardHeight,
-          marginRight: gridWidth ? 0 : 12,
         },
         pressed && styles.cardPressed,
       ]}
     >
-      <View style={[styles.imageZone, { height: imageHeight ,}]}>
+      <View style={[styles.imageZone, { height: imageHeight }]}>
         {item?.image_url ? (
           <Image
             source={{ uri: item.image_url }}
@@ -133,7 +139,6 @@ const ProductCard: React.FC<Props> = ({
           />
         )}
 
-        {/* Add stays visible but disabled when OOS — card press still opens details */}
         <View style={styles.addOverlay} pointerEvents="box-none">
           <BlinkitAddButton
             quantity={isOutOfStock ? 0 : cartQty}
@@ -151,7 +156,7 @@ const ProductCard: React.FC<Props> = ({
 
       <View style={styles.infoZone}>
         <Text numberOfLines={2} style={styles.title}>
-          {item.product_name || 'Product'}
+          {item.product_name || item.name || 'Product'}
         </Text>
 
         <Text numberOfLines={1} style={styles.subtitle}>
@@ -161,9 +166,9 @@ const ProductCard: React.FC<Props> = ({
         <View style={styles.bottomRow}>
           <View style={styles.priceBlock}>
             <Text style={styles.price}>
-              ₹{Math.floor(Number(item?.selling_price || 0))}
+              ₹{Math.floor(Number(item?.selling_price || item?.price || 0))}
             </Text>
-            {item?.mrp > item?.selling_price && (
+            {Number(item?.mrp) > Number(item?.selling_price || 0) && (
               <Text style={styles.oldPrice}>₹{item.mrp}</Text>
             )}
           </View>
@@ -184,8 +189,16 @@ const styles = StyleSheet.create({
   card: {
     ...CARD_SURFACE,
     borderRadius: 14,
-    marginBottom: 12,
-    marginRight: 12,
+    overflow: 'hidden',
+  },
+  /** Spacing handled by parent FlatList / cardWrap */
+  cardGrid: {
+    marginRight: 0,
+    marginBottom: 0,
+  },
+  cardHorizontal: {
+    marginRight: 10,
+    marginBottom: 0,
   },
   cardPressed: {
     opacity: 0.96,
@@ -198,7 +211,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
-    // padding: 8,
   },
   productImage: {
     width: '100%',
@@ -259,7 +271,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     lineHeight: 16,
-    // height: 32,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
   },
@@ -280,6 +291,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
+    flexShrink: 1,
   },
   price: {
     fontSize: 14,

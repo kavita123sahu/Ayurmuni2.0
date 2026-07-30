@@ -1,496 +1,129 @@
-// import React, { useCallback, useEffect, useMemo, useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   FlatList,
-//   TouchableOpacity,
-//   StatusBar,
-//   ActivityIndicator,
-//   RefreshControl,
-// } from 'react-native';
-// import Header from '../../components/Header';
-// import { Fonts } from '../../common/Fonts';
-// import { Colors } from '../../common/Colors';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-// import { getDietPlans } from '../../services/PatientServices';
-// import { useHomeData } from '../../hooks/UseHomeData';
-// import TablerIcon from '../../components/TablerIcon';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
+  Dimensions,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import SectionHeader from '../../components/SectionHeader';
+import Header from '../../components/Header';
+import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
+import MealCard from '../../components/MealCard';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDietPlans } from '../../hooks/useDietPlans';
+import TablerIcon from '../../components/TablerIcon';
+import {
+  isDietPlanStarted,
+  resolveDietImage,
+} from '../../utils/dietPlanUtils';
 
-// type DietPlan = {
-//   id: string;
-//   name: string;
-//   title?: string;
-//   season?: string | null;
-//   prakriti?: string | null;
-//   health_diseases?: { id: string; name: string }[];
-//   is_common?: boolean;
-//   is_paid?: boolean;
-//   price?: number;
-//   patient_assignment_status?: string | null;
-//   short_description?: string;
-// };
+const { width: SCREEN_W } = Dimensions.get('window');
+const PLAN_CARD_W = Math.min(280, SCREEN_W * 0.72);
 
-// const mapPlan = (item: any): DietPlan => ({
-//   ...item,
-//   id: String(item?.id ?? ''),
-//   name: String(item?.name ?? item?.title ?? 'Diet Plan'),
-//   title: String(item?.name ?? item?.title ?? 'Diet Plan'),
-//   short_description:
-//     item?.short_description ||
-//     (Array.isArray(item?.health_diseases)
-//       ? item.health_diseases.map((d: any) => d?.name).filter(Boolean).join(', ')
-//       : '') ||
-//     item?.season ||
-//     '',
-// });
+const MACRO_COLORS = {
+  Carbs: '#1FA77A',
+  Protein: '#2F6BDE',
+  Fat: '#F4B400',
+};
 
-// const normalizePlans = (response: any): DietPlan[] => {
-//   if (Array.isArray(response)) {
-//     return response.map(mapPlan).filter(p => p.id);
-//   }
-//   const data = response?.data ?? response?.results;
-//   if (Array.isArray(data)) {
-//     return data.map(mapPlan).filter(p => p.id);
-//   }
-//   if (data && typeof data === 'object') {
-//     const list =
-//       data.results || data.diet_plans || data.plans || data.items || null;
-//     if (Array.isArray(list)) {
-//       return list.map(mapPlan).filter(p => p.id);
-//     }
-//     if (data.id || data.name) {
-//       return [mapPlan(data)];
-//     }
-//   }
-//   return [];
-// };
+const formatKcal = (n: number) =>
+  Math.round(Number(n) || 0).toLocaleString('en-IN');
 
-// const DietScreen = (props: any) => {
-//   const selectedFromRoute: DietPlan | null = props?.route?.params?.item
-//     ? mapPlan(props.route.params.item)
-//     : null;
-
-//   const { dietProducts, refreshHomeData } = useHomeData();
-//   const [plans, setPlans] = useState<DietPlan[]>(
-//     Array.isArray(dietProducts) && dietProducts.length
-//       ? dietProducts.map(mapPlan)
-//       : [],
-//   );
-//   const [loading, setLoading] = useState(plans.length === 0);
-//   const [refreshing, setRefreshing] = useState(false);
-//   const [selected, setSelected] = useState<DietPlan | null>(selectedFromRoute);
-
-//   const loadPlans = useCallback(async (isRefresh = false) => {
-//     try {
-//       if (isRefresh) {
-//         setRefreshing(true);
-//       } else if (plans.length === 0) {
-//         setLoading(true);
-//       }
-
-//       const response = await getDietPlans();
-//       const list = normalizePlans(response);
-//       setPlans(list);
-
-//       if (selectedFromRoute?.id) {
-//         const matched = list.find(p => p.id === selectedFromRoute.id);
-//         setSelected(matched || selectedFromRoute);
-//       }
-//     } catch (error) {
-//       console.log('DIET_PLANS_ERROR =>', error);
-//       if (Array.isArray(dietProducts) && dietProducts.length) {
-//         setPlans(dietProducts.map(mapPlan));
-//       }
-//     } finally {
-//       setLoading(false);
-//       setRefreshing(false);
-//     }
-//   }, [dietProducts, plans.length, selectedFromRoute]);
-
-//   useEffect(() => {
-//     loadPlans();
-//   }, []);
-
-//   const onRefresh = useCallback(async () => {
-//     await Promise.all([loadPlans(true), refreshHomeData()]);
-//   }, [loadPlans, refreshHomeData]);
-
-//   const diseaseText = useMemo(() => {
-//     if (!selected?.health_diseases?.length) {
-//       return selected?.short_description || '—';
-//     }
-//     return selected.health_diseases.map(d => d.name).filter(Boolean).join(', ');
-//   }, [selected]);
-
-//   const renderPlanCard = ({ item }: { item: DietPlan }) => {
-//     const diseases =
-//       item.health_diseases?.map(d => d.name).filter(Boolean).join(', ') ||
-//       item.short_description ||
-//       '';
-//     const priceLabel =
-//       item.is_paid === false || Number(item.price) === 0
-//         ? 'Free'
-//         : `₹${item.price}`;
-
-//     return (
-//       <TouchableOpacity
-//         style={styles.planCard}
-//         activeOpacity={0.85}
-//         onPress={() => setSelected(item)}
-//       >
-//         <View style={styles.planIcon}>
-//           <TablerIcon name="heart" size={22} color={Colors.primaryColor} />
-//         </View>
-//         <View style={styles.planBody}>
-//           <Text style={styles.planTitle} numberOfLines={2}>
-//             {item.name}
-//           </Text>
-//           {!!diseases && (
-//             <Text style={styles.planMeta} numberOfLines={1}>
-//               {diseases}
-//             </Text>
-//           )}
-//           <View style={styles.planTags}>
-//             {!!item.prakriti && (
-//               <View style={styles.tag}>
-//                 <Text style={styles.tagText}>{item.prakriti}</Text>
-//               </View>
-//             )}
-//             {!!item.season && (
-//               <View style={styles.tag}>
-//                 <Text style={styles.tagText}>{item.season}</Text>
-//               </View>
-//             )}
-//             <View style={[styles.tag, styles.priceTag]}>
-//               <Text style={[styles.tagText, styles.priceTagText]}>
-//                 {priceLabel}
-//               </Text>
-//             </View>
-//           </View>
-//         </View>
-//         <TablerIcon name="chevron-right" size={18} color="#94A3B8" />
-//       </TouchableOpacity>
-//     );
-//   };
-
-//   if (selected) {
-//     const priceLabel =
-//       selected.is_paid === false || Number(selected.price) === 0
-//         ? 'Free'
-//         : `₹${selected.price}`;
-
-//     return (
-//       <SafeAreaView style={styles.container} edges={['top']}>
-//         <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
-//         <Header
-//           title="Diet Plan"
-//           subtitle={selected.name}
-//           onBack={() => {
-//             if (selectedFromRoute && plans.length <= 1) {
-//               props.navigation.goBack();
-//               return;
-//             }
-//             setSelected(null);
-//           }}
-//         />
-
-//         <View style={styles.detailCard}>
-//           <Text style={styles.detailTitle}>{selected.name}</Text>
-
-//           <View style={styles.detailRow}>
-//             <Text style={styles.detailLabel}>Prakriti</Text>
-//             <Text style={styles.detailValue}>{selected.prakriti || '—'}</Text>
-//           </View>
-//           <View style={styles.detailRow}>
-//             <Text style={styles.detailLabel}>Season</Text>
-//             <Text style={styles.detailValue}>{selected.season || '—'}</Text>
-//           </View>
-//           <View style={styles.detailRow}>
-//             <Text style={styles.detailLabel}>Health focus</Text>
-//             <Text style={styles.detailValue}>{diseaseText}</Text>
-//           </View>
-//           <View style={styles.detailRow}>
-//             <Text style={styles.detailLabel}>Price</Text>
-//             <Text style={styles.detailValue}>{priceLabel}</Text>
-//           </View>
-//           {!!selected.patient_assignment_status && (
-//             <View style={styles.detailRow}>
-//               <Text style={styles.detailLabel}>Status</Text>
-//               <Text style={styles.detailValue}>
-//                 {selected.patient_assignment_status}
-//               </Text>
-//             </View>
-//           )}
-//         </View>
-//       </SafeAreaView>
-//     );
-//   }
-
-//   return (
-//     <SafeAreaView style={styles.container} edges={['top']}>
-//       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
-//       <Header
-//         title="Diet Plans"
-//         subtitle="Personalized nutrition plans"
-//         onBack={() => props.navigation.goBack()}
-//       />
-
-//       {loading ? (
-//         <View style={styles.loader}>
-//           <ActivityIndicator size="large" color={Colors.primaryColor} />
-//         </View>
-//       ) : (
-//         <FlatList
-//           data={plans}
-//           keyExtractor={(item, index) => item.id || String(index)}
-//           renderItem={renderPlanCard}
-//           contentContainerStyle={styles.listContent}
-//           showsVerticalScrollIndicator={false}
-//           refreshControl={
-//             <RefreshControl
-//               refreshing={refreshing}
-//               onRefresh={onRefresh}
-//               colors={[Colors.primaryColor]}
-//               tintColor={Colors.primaryColor}
-//             />
-//           }
-//           ListEmptyComponent={
-//             <View style={styles.empty}>
-//               <Text style={styles.emptyTitle}>No diet plans yet</Text>
-//               <Text style={styles.emptySub}>
-//                 Pull to refresh or check back later.
-//               </Text>
-//             </View>
-//           }
-//         />
-//       )}
-//     </SafeAreaView>
-//   );
-// };
-
-// export default DietScreen;
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     paddingHorizontal: 20,
-//     backgroundColor: Colors.background,
-//   },
-//   loader: {
-//     flex: 1,
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-//   listContent: {
-//     paddingBottom: 40,
-//     paddingTop: 8,
-//     gap: 12,
-//   },
-//   planCard: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     backgroundColor: '#FFFFFF',
-//     borderRadius: 14,
-//     padding: 14,
-//     borderWidth: 1,
-//     borderColor: '#E8EEF2',
-//   },
-//   planIcon: {
-//     width: 44,
-//     height: 44,
-//     borderRadius: 12,
-//     backgroundColor: '#E6F4F0',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//     marginRight: 12,
-//   },
-//   planBody: {
-//     flex: 1,
-//   },
-//   planTitle: {
-//     fontSize: 14,
-//     fontFamily: Fonts.PoppinsSemiBold,
-//     color: '#1E293B',
-//   },
-//   planMeta: {
-//     fontSize: 12,
-//     fontFamily: Fonts.PoppinsRegular,
-//     color: '#64748B',
-//     marginTop: 2,
-//   },
-//   planTags: {
-//     flexDirection: 'row',
-//     flexWrap: 'wrap',
-//     gap: 6,
-//     marginTop: 8,
-//   },
-//   tag: {
-//     backgroundColor: '#F1F5F9',
-//     borderRadius: 8,
-//     paddingHorizontal: 8,
-//     paddingVertical: 3,
-//   },
-//   tagText: {
-//     fontSize: 11,
-//     fontFamily: Fonts.PoppinsMedium,
-//     color: '#475569',
-//     textTransform: 'capitalize',
-//   },
-//   priceTag: {
-//     backgroundColor: '#E6F4F0',
-//   },
-//   priceTagText: {
-//     color: Colors.primaryColor,
-//   },
-//   detailCard: {
-//     backgroundColor: '#FFFFFF',
-//     borderRadius: 16,
-//     padding: 18,
-//     borderWidth: 1,
-//     borderColor: '#E8EEF2',
-//     marginTop: 8,
-//   },
-//   detailTitle: {
-//     fontSize: 18,
-//     fontFamily: Fonts.PoppinsSemiBold,
-//     color: '#0F172A',
-//     marginBottom: 16,
-//   },
-//   detailRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     gap: 12,
-//     paddingVertical: 10,
-//     borderBottomWidth: 1,
-//     borderBottomColor: '#F1F5F9',
-//   },
-//   detailLabel: {
-//     fontSize: 13,
-//     fontFamily: Fonts.PoppinsMedium,
-//     color: '#64748B',
-//   },
-//   detailValue: {
-//     flex: 1,
-//     textAlign: 'right',
-//     fontSize: 13,
-//     fontFamily: Fonts.PoppinsSemiBold,
-//     color: '#1E293B',
-//     textTransform: 'capitalize',
-//   },
-//   empty: {
-//     alignItems: 'center',
-//     paddingTop: 60,
-//     paddingHorizontal: 24,
-//   },
-//   emptyTitle: {
-//     fontSize: 16,
-//     fontFamily: Fonts.PoppinsSemiBold,
-//     color: '#1E293B',
-//   },
-//   emptySub: {
-//     marginTop: 6,
-//     fontSize: 13,
-//     fontFamily: Fonts.PoppinsRegular,
-//     color: '#94A3B8',
-//     textAlign: 'center',
-//   },
-// });
-
-
-import React from "react";
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, FlatList, Image, StatusBar } from "react-native";
-import SectionHeader from "../../components/SectionHeader";
-import Header from "../../components/Header";
-import { Images } from "../../common/Images";
-import { Fonts } from "../../common/Fonts";
-import { Colors } from "../../common/Colors";
-import MealCard from "../../components/MealCard";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-
-
-const macrosData = [
-  { id: 1, label: "Carbs", value: 45, color: "#1FA77A" },
-  { id: 2, label: "Protein", value: 30, color: "#2F6BDE" },
-  { id: 3, label: "Fat", value: 25, color: "#F4B400" },
-];
-
-const mealsData = [
-  {
-    id: "1",
-    type: "BREAKFAST",
-    time: "08:30 AM",
-    title: "Avocado & Poached Egg Toast",
-    subtitle: "Whole grain sourdough...",
-    kcal: 340,
-    image: undefined,
-    status: "log",
-  },
-  {
-    id: "2",
-    type: "LUNCH",
-    time: "01:15 PM",
-    title: "Mediterranean Quinoa Bowl",
-    subtitle: "Quinoa, chickpeas...",
-    kcal: 520,
-    image: undefined,
-    status: "done",
-  },
-  {
-    id: "3",
-    type: "DINNER",
-    time: "07:45 PM",
-    title: "Lemon Garlic Glazed Salmon",
-    subtitle: "Wild salmon, asparagus...",
-    kcal: 410,
-    image: undefined,
-    status: "log",
-  },
-  {
-    id: "4",
-    type: "SNACKS",
-    time: "Afternoon",
-    title: "Mixed Nuts & Berries",
-    subtitle: "Almonds, walnuts...",
-    kcal: 185,
-    image: undefined,
-    status: "log",
-  },
-  {
-    id: "5",
-    type: "SNACKS",
-    time: "Afternoon",
-    title: "Mixed Nuts & Berries",
-    subtitle: "Almonds, walnuts...",
-    kcal: 185,
-    image: undefined,
-    status: "log",
-  },
-];
+const litersLabel = (ml: number) => {
+  const liters = (Number(ml) || 0) / 1000;
+  return `${liters.toFixed(1)}L`;
+};
 
 const DietScreen = (props: any) => {
+  const routeItem = props?.route?.params?.item;
+  const initialPlanId = routeItem?.id ? String(routeItem.id) : null;
+  const [browseMode, setBrowseMode] = useState(false);
 
+  const {
+    plans,
+    selectedPlanId,
+    setSelectedPlanId,
+    selectedSummary,
+    planDetail,
+    meals,
+    nutrition,
+    waterMl,
+    isStarted,
+    loadingList,
+    loadingDetail,
+    starting,
+    refreshing,
+    refresh,
+    startPlan,
+    logMeal,
+    adjustWater,
+  } = useDietPlans({ initialPlanId, listType: 'all' });
 
-  const Macro = ({ label = "", value = 0, color = "#000" }) => {
+  const todayLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+      }),
+    [],
+  );
+
+  const macrosData = [
+    { id: 1, label: 'Carbs', value: nutrition.carbsPct, color: MACRO_COLORS.Carbs },
+    { id: 2, label: 'Protein', value: nutrition.proteinPct, color: MACRO_COLORS.Protein },
+    { id: 3, label: 'Fat', value: nutrition.fatPct, color: MACRO_COLORS.Fat },
+  ];
+
+  const planImage = resolveDietImage(planDetail || selectedSummary || routeItem);
+  const dayNumber =
+    Number(
+      planDetail?.day_number ??
+        planDetail?.current_day ??
+        selectedSummary?.day_number ??
+        1,
+    ) || 1;
+  const durationDays =
+    Number(
+      planDetail?.duration_days ??
+        planDetail?.days ??
+        selectedSummary?.duration_days ??
+        21,
+    ) || 21;
+  const dayPct = Math.min(100, Math.round((dayNumber / durationDays) * 100));
+
+  const showActiveJourney = isStarted && !browseMode;
+
+  const Macro = ({
+    label = '',
+    value = 0,
+    color = '#000',
+  }: {
+    label?: string;
+    value?: number;
+    color?: string;
+  }) => {
     const safeValue = Math.min(Math.max(value, 0), 100);
     return (
       <View style={styles.macroItem}>
         <View style={styles.macroTop}>
           <Text style={styles.macroLabel}>{label}</Text>
-          <Text style={[styles.macroPercent, { color }]}>
-            {safeValue}%
-          </Text>
+          <Text style={[styles.macroPercent, { color }]}>{safeValue}%</Text>
         </View>
-
         <View style={styles.progressBg}>
           <View
             style={[
               styles.progressFill,
-              {
-                width: `${safeValue}%`,
-                backgroundColor: color,
-              },
+              { width: `${safeValue}%`, backgroundColor: color },
             ]}
           />
         </View>
@@ -498,116 +131,351 @@ const DietScreen = (props: any) => {
     );
   };
 
-  const DailyVitalityCard = () => {
-    return (
-      <View style={styles.DailyCard}>
-
-        <View style={styles.content}>
-
-          <View style={styles.circle}>
-            <Text style={styles.calories}>1,420</Text>
-            <Text style={styles.kcalText}>KCAL LEFT</Text>
-          </View>
-
-          <View style={styles.info}>
-            <View style={styles.row}>
-              <Text style={styles.label}>Eaten</Text>
-              <Text style={styles.value}>780 kcal</Text>
-            </View>
-
-            <View style={styles.row}>
-              <Text style={styles.label}>Burned</Text>
-              <Text style={[styles.value, styles.green]}>320 kcal</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.row}>
-              <Text style={styles.goalLabel}>Goal</Text>
-              <Text style={styles.goalValue}>2,200 kcal</Text>
-            </View>
-          </View>
+  const DailyVitalityCard = () => (
+    <View style={styles.DailyCard}>
+      <View style={styles.content}>
+        <View style={styles.circle}>
+          <Text style={styles.calories}>{formatKcal(nutrition.leftKcal)}</Text>
+          <Text style={styles.kcalText}>KCAL LEFT</Text>
         </View>
 
-
-        <View style={styles.macroRow}>
-          {macrosData.map((item) => (
-            <Macro
-              key={item.id}
-              label={item.label}
-              value={item.value}
-              color={item.color}
-            />
-          ))}
+        <View style={styles.info}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Eaten</Text>
+            <Text style={styles.value}>{formatKcal(nutrition.eatenKcal)} kcal</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Burned</Text>
+            <Text style={[styles.value, styles.green]}>
+              {formatKcal(nutrition.burnedKcal)} kcal
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.row}>
+            <Text style={styles.goalLabel}>Goal</Text>
+            <Text style={styles.goalValue}>
+              {formatKcal(nutrition.goalKcal)} kcal
+            </Text>
+          </View>
         </View>
-
-
       </View>
+
+      <View style={styles.macroRow}>
+        {macrosData.map(item => (
+          <Macro
+            key={item.id}
+            label={item.label}
+            value={item.value}
+            color={item.color}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  const HydrationCard = () => (
+    <View style={styles.Hydrationcard}>
+      <View style={styles.left}>
+        <View style={styles.iconBox}>
+          <Image
+            source={require('../../assets/images/WaterDrop.png')}
+            style={{ height: 20, width: 16 }}
+          />
+        </View>
+        <View>
+          <Text style={styles.Hydrationtitle}>Hydration</Text>
+          <Text style={styles.subtitle}>
+            {litersLabel(waterMl)} of {litersLabel(nutrition.waterGoalMl)} reached
+          </Text>
+        </View>
+      </View>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={styles.minus}
+          onPress={() => adjustWater(-250)}
+          disabled={!selectedPlanId}
+        >
+          <Text style={styles.btnText}>−</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.plus}
+          onPress={() => adjustWater(250)}
+          disabled={!selectedPlanId}
+        >
+          <Text style={styles.plusText}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderPlanCard = ({ item }: { item: any }) => {
+    const selected = item.id === selectedPlanId;
+    const started = isDietPlanStarted(item);
+    const priceLabel =
+      item.is_paid === false || Number(item.price) === 0
+        ? 'Free'
+        : `₹${item.price ?? 0}`;
+
+    return (
+      <TouchableOpacity
+        style={[styles.planCard, selected && styles.planCardSelected]}
+        activeOpacity={0.9}
+        onPress={() => {
+          setSelectedPlanId(item.id);
+          setBrowseMode(false);
+        }}
+      >
+        <Image source={resolveDietImage(item)} style={styles.planCardImage} />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.75)']}
+          style={styles.planCardGradient}
+        />
+        <View style={styles.planCardBody}>
+          {started ? (
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveBadgeText}>In progress</Text>
+            </View>
+          ) : (
+            <View style={styles.priceBadge}>
+              <Text style={styles.priceBadgeText}>{priceLabel}</Text>
+            </View>
+          )}
+          <Text style={styles.planCardTitle} numberOfLines={2}>
+            {item.name}
+          </Text>
+          {!!item.short_description && (
+            <Text style={styles.planCardMeta} numberOfLines={2}>
+              {item.short_description}
+            </Text>
+          )}
+          <View style={styles.planCardTags}>
+            {!!item.prakriti && (
+              <Text style={styles.planTag}>{item.prakriti}</Text>
+            )}
+            {!!item.season && (
+              <Text style={styles.planTag}>{item.season}</Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
-
-  const HydrationCard = () => {
-    return (
-      <View style={styles.Hydrationcard}>
-        <View style={styles.left}>
-          <View style={styles.iconBox}>
-            <Image source={require('../../assets/images/WaterDrop.png')} style={{ height: 20, width: 16 }} />
+  const ActiveHero = () => (
+    <View style={styles.heroWrap}>
+      <Image source={planImage} style={styles.heroImage} />
+      <LinearGradient
+        colors={['rgba(13,97,78,0.15)', 'rgba(13,97,78,0.92)']}
+        style={styles.heroGradient}
+      />
+      <View style={styles.heroContent}>
+        <View style={styles.heroTopRow}>
+          <View style={styles.liveBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveBadgeText}>Active plan</Text>
           </View>
+          <TouchableOpacity onPress={() => setBrowseMode(true)}>
+            <Text style={styles.switchPlan}>Switch plan</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.heroTitle} numberOfLines={2}>
+          {selectedSummary?.name || 'Your diet plan'}
+        </Text>
+        <Text style={styles.heroSub}>
+          Day {dayNumber} of {durationDays} · Keep logging meals to stay on track
+        </Text>
 
-          <View>
-            <Text style={styles.Hydrationtitle}>Hydration</Text>
-            <Text style={styles.subtitle}>1.2L of 2.5L reached</Text>
-          </View>
+        <View style={styles.dayTrack}>
+          <View style={[styles.dayTrackFill, { width: `${dayPct}%` }]} />
         </View>
 
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.minus}>
-            <Text style={styles.btnText}>−</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.plus}>
-            <Text style={styles.plusText}>+</Text>
-          </TouchableOpacity>
+        <View style={styles.statRow}>
+          <View style={styles.statPill}>
+            <Text style={styles.statValue}>
+              {nutrition.mealsDone}/{nutrition.mealsTotal || '—'}
+            </Text>
+            <Text style={styles.statLabel}>Meals today</Text>
+          </View>
+          <View style={styles.statPill}>
+            <Text style={styles.statValue}>{formatKcal(nutrition.eatenKcal)}</Text>
+            <Text style={styles.statLabel}>Kcal eaten</Text>
+          </View>
+          <View style={styles.statPill}>
+            <Text style={styles.statValue}>{litersLabel(waterMl)}</Text>
+            <Text style={styles.statLabel}>Water</Text>
+          </View>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
+
+  const PreviewHero = () => (
+    <View style={styles.heroWrap}>
+      <Image source={planImage} style={styles.heroImage} />
+      <LinearGradient
+        colors={['transparent', 'rgba(15,23,42,0.88)']}
+        style={styles.heroGradient}
+      />
+      <View style={styles.heroContent}>
+        <Text style={styles.heroEyebrow}>Ready to begin</Text>
+        <Text style={styles.heroTitle} numberOfLines={2}>
+          {selectedSummary?.name || 'Choose a diet plan'}
+        </Text>
+        {!!(selectedSummary?.short_description || selectedSummary?.prakriti) && (
+          <Text style={styles.heroSub} numberOfLines={3}>
+            {selectedSummary?.short_description ||
+              `${selectedSummary?.prakriti || ''} · ${selectedSummary?.season || ''}`}
+          </Text>
+        )}
+        <TouchableOpacity
+          style={styles.startBtn}
+          onPress={() => startPlan(selectedPlanId || undefined)}
+          disabled={starting || !selectedPlanId}
+          activeOpacity={0.9}
+        >
+          {starting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <TablerIcon name="plus" size={18} color="#fff" />
+              <Text style={styles.startBtnText}>Start this plan</Text>
+            </>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.startHint}>
+          After you start, you’ll see today’s meals, calories left, and hydration
+          progress here.
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-
-      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
         title="Diet"
-        subtitle="Track your medical journey"
-        onBack={() => { props.navigation.goBack() }}
+        subtitle={
+          showActiveJourney
+            ? 'Your daily nutrition journey'
+            : 'Personalized Ayurvedic plans'
+        }
+        onBack={() => props.navigation.goBack()}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingBottom: 100 }} >
-
-        <View style={{ flex: 1, justifyContent: "space-between" }}>
-
-          <SectionHeader title="Daily Vitality" actionText="Tuesday, Oct 24" />
-
-          <DailyVitalityCard />
-
-          <HydrationCard />
-
-          <SectionHeader title="Today's Meals" actionText="Weekly Plan" />
-
-          <FlatList
-            data={mealsData}
-            scrollEnabled={false} // 👈 IMPORTANT
-            keyExtractor={(item) => item.id}
-
-            renderItem={({ item }) => <MealCard data={item} navigation={props.navigation} />}
-          />
-
+      {loadingList && plans.length === 0 ? (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={Colors.primaryColor} />
         </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 110 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={Colors.primaryColor}
+            />
+          }
+        >
+          {(!showActiveJourney || browseMode) && (
+            <>
+              <SectionHeader
+                title="Explore plans"
+                actionText={browseMode ? 'Back' : `${plans.length} plans`}
+                onPress={
+                  browseMode
+                    ? () => setBrowseMode(false)
+                    : undefined
+                }
+              />
+              <FlatList
+                data={plans}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={item => item.id}
+                renderItem={renderPlanCard}
+                contentContainerStyle={styles.planList}
+                ListEmptyComponent={
+                  <Text style={styles.emptySub}>No diet plans available yet.</Text>
+                }
+              />
+            </>
+          )}
 
-      </ScrollView>
+          {loadingDetail && selectedPlanId ? (
+            <View style={styles.detailLoader}>
+              <ActivityIndicator color={Colors.primaryColor} />
+            </View>
+          ) : showActiveJourney ? (
+            <>
+              <ActiveHero />
+
+              <View style={styles.nextUpCard}>
+                <TablerIcon name="clock" size={20} color={Colors.primaryColor} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.nextUpTitle}>What’s next</Text>
+                  <Text style={styles.nextUpText}>
+                    {nutrition.mealsDone < (nutrition.mealsTotal || 0)
+                      ? `Log your next meal — ${nutrition.mealsTotal - nutrition.mealsDone} left today`
+                      : nutrition.mealsTotal === 0
+                        ? 'Meals will appear as your plan loads'
+                        : 'All meals logged — stay hydrated and check back tomorrow'}
+                  </Text>
+                </View>
+              </View>
+
+              <SectionHeader title="Daily Vitality" actionText={todayLabel} />
+              <DailyVitalityCard />
+              <HydrationCard />
+
+              <SectionHeader
+                title="Today's Meals"
+                actionText={`${nutrition.mealProgressPct}% done`}
+              />
+
+              {meals.length === 0 ? (
+                <View style={styles.emptyMeals}>
+                  <Text style={styles.emptyTitle}>No meals listed yet</Text>
+                  <Text style={styles.emptySub}>
+                    Pull to refresh, or check back once your doctor updates this
+                    plan.
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={meals}
+                  scrollEnabled={false}
+                  keyExtractor={item => item.id}
+                  renderItem={({ item }) => (
+                    <MealCard
+                      data={item}
+                      navigation={props.navigation}
+                      onLog={() => logMeal(item)}
+                    />
+                  )}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              {selectedPlanId ? <PreviewHero /> : null}
+              {!selectedPlanId && (
+                <View style={styles.emptyMeals}>
+                  <Text style={styles.emptyTitle}>Pick a plan to begin</Text>
+                  <Text style={styles.emptySub}>
+                    Browse the cards above, then start to unlock today’s meal
+                    tracking.
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -615,41 +483,289 @@ const DietScreen = (props: any) => {
 export default DietScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, backgroundColor: "#FDFDFB" },
+  container: { flex: 1, paddingHorizontal: 20, backgroundColor: '#FDFDFB' },
 
-  card: {
-    backgroundColor: "#fff",
-    margin: 12,
-    padding: 16,
-    borderRadius: 12,
+  loader: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
+  detailLoader: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+
+  planList: {
+    gap: 14,
+    paddingBottom: 8,
+    paddingRight: 8,
+  },
+
+  planCard: {
+    width: PLAN_CARD_W,
+    height: 210,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#0F172A',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+
+  planCardSelected: {
+    borderColor: Colors.primaryColor,
+  },
+
+  planCardImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+
+  planCardGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  planCardBody: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 14,
+  },
+
+  planCardTitle: {
+    color: '#fff',
+    fontSize: 17,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  planCardMeta: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 2,
+  },
+
+  planCardTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+
+  planTag: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    color: '#fff',
+    overflow: 'hidden',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    textTransform: 'capitalize',
+  },
+
+  liveBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16,185,129,0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 8,
+    gap: 6,
+  },
+
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#34D399',
+  },
+
+  liveBadgeText: {
+    color: '#ECFDF5',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  priceBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+
+  priceBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  heroWrap: {
+    height: 280,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginTop: 8,
+    marginBottom: 16,
+    backgroundColor: Colors.primaryColor,
+  },
+
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  heroContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 18,
+  },
+
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+
+  switchPlan: {
+    color: '#fff',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    textDecorationLine: 'underline',
+  },
+
+  heroEyebrow: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+
+  heroTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  heroSub: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+
+  dayTrack: {
+    height: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+
+  dayTrackFill: {
+    height: 6,
+    backgroundColor: '#34D399',
+    borderRadius: 8,
+  },
+
+  statRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  statPill: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+
+  statValue: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  statLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 2,
+  },
+
+  startBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.primaryColor,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+
+  startBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  startHint: {
+    marginTop: 10,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    textAlign: 'center',
+  },
+
+  nextUpCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    marginBottom: 8,
+  },
+
+  nextUpTitle: {
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.black,
+  },
+
+  nextUpText: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    color: Colors.subTextColor,
+    marginTop: 2,
+  },
+
   DailyCard: {
-    backgroundColor: "#0D614E0D",
+    backgroundColor: '#0D614E0D',
     borderRadius: 20,
     paddingVertical: 25,
-    paddingHorizontal: 25
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1D1F",
-  },
-
-  date: {
-    color: "#1FA77A",
-    fontWeight: "600",
+    paddingHorizontal: 25,
   },
 
   content: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   circle: {
@@ -657,22 +773,22 @@ const styles = StyleSheet.create({
     height: 130,
     borderRadius: 65,
     borderWidth: 10,
-    borderColor: "#0F5D4A",
-    justifyContent: "center",
-    alignItems: "center",
+    borderColor: '#0F5D4A',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   calories: {
     fontSize: 26,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
-    marginBottom: -10
+    marginBottom: -10,
   },
 
   kcalText: {
     fontSize: 12,
     color: Colors.subTextColor,
-    fontFamily: Fonts.PoppinsRegular
+    fontFamily: Fonts.PoppinsRegular,
   },
 
   info: {
@@ -681,16 +797,15 @@ const styles = StyleSheet.create({
   },
 
   row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
 
   label: {
     color: Colors.subTextColor,
     fontSize: 14,
-    fontFamily: Fonts.PoppinsMedium
-
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   value: {
@@ -701,12 +816,12 @@ const styles = StyleSheet.create({
   green: {
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 14
+    fontSize: 14,
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: '#D1D5DB',
     marginVertical: 10,
   },
 
@@ -718,44 +833,43 @@ const styles = StyleSheet.create({
   goalValue: {
     fontSize: 16,
     color: Colors.black,
-    fontFamily: Fonts.PoppinsSemiBold
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
-
   macroRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 20,
   },
 
   macroItem: {
-    width: "30%",
+    width: '30%',
   },
 
   macroTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
   },
 
   macroLabel: {
     fontSize: 12,
     color: Colors.black,
-    fontFamily: Fonts.PoppinsMedium
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   macroPercent: {
     fontSize: 12,
     color: Colors.black,
-    fontFamily: Fonts.PoppinsSemiBold
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   progressBg: {
     height: 6,
-    backgroundColor: "#E0E3E2", // light gray
+    backgroundColor: '#E0E3E2',
     borderRadius: 11,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
 
   progressFill: {
@@ -764,27 +878,27 @@ const styles = StyleSheet.create({
   },
 
   Hydrationcard: {
-    backgroundColor: "#0D614E0D",
+    backgroundColor: '#0D614E0D',
     marginTop: 20,
     borderRadius: 20,
     padding: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
   left: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   iconBox: {
     width: 50,
     height: 50,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
 
@@ -792,28 +906,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: -5,
     color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   subtitle: {
     color: Colors.subTextColor,
     fontSize: 14,
-    fontFamily: Fonts.PoppinsMedium
-
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   actions: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   minus: {
     width: 45,
     height: 45,
     borderRadius: 12,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.borderColor,
     marginRight: 10,
@@ -823,19 +936,38 @@ const styles = StyleSheet.create({
     width: 45,
     height: 45,
     borderRadius: 12,
-    backgroundColor: "#0F5D4A",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#0F5D4A',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   btnText: {
     fontSize: 25,
-    color: "#374151",
+    color: '#374151',
   },
 
   plusText: {
     fontSize: 25,
-    color: "#fff",
+    color: '#fff',
   },
 
+  emptyMeals: {
+    paddingVertical: 28,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+
+  emptyTitle: {
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#1E293B',
+  },
+
+  emptySub: {
+    marginTop: 6,
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
 });

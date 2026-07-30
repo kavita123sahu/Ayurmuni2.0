@@ -13,13 +13,20 @@ import TablerIcon from "./TablerIcon";
 interface MealProps {
     data: any;
     navigation?: any;
+    onLog?: () => void;
 }
 
-const MealCard = ({ data, navigation }: MealProps) => {
-    return (
-        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('MealDetails')}>
+const MealCard = ({ data, navigation, onLog }: MealProps) => {
+    const imageSource =
+        data?.image || require('../assets/images/login/7.jpg');
 
-            <Image source={data?.image} style={styles.image} />
+    return (
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation?.navigate?.('MealDetails', { item: data })}
+            activeOpacity={0.9}
+        >
+            <Image source={imageSource} style={styles.image} />
 
             <View style={styles.content}>
                 <View style={styles.topRow}>
@@ -44,11 +51,23 @@ const MealCard = ({ data, navigation }: MealProps) => {
                     </Text>
 
                     {data?.status === "log" ? (
-                        <TouchableOpacity style={styles.logBtn} >
+                        <TouchableOpacity
+                            style={styles.logBtn}
+                            onPress={e => {
+                                e?.stopPropagation?.();
+                                onLog?.();
+                            }}
+                        >
                             <Text style={styles.logText}>LOG</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={styles.doneBtn} >
+                        <TouchableOpacity
+                            style={styles.doneBtn}
+                            onPress={e => {
+                                e?.stopPropagation?.();
+                                onLog?.();
+                            }}
+                        >
                             <TablerIcon name="circle-check" size={28} color={Colors.primaryColor} />
                         </TouchableOpacity>
                     )}

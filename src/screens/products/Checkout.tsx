@@ -340,6 +340,9 @@ const Checkout: React.FC = (props: any) => {
 
             address: defaultAddress,
 
+            
+           payment_method : "upi",
+
             customerInfo: customerData ?? {},
 
             shippingFee,

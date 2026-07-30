@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Dimensions,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
@@ -41,6 +42,9 @@ interface Props {
 }
 
 const SPACING = 12;
+const { width: SCREEN_W } = Dimensions.get('window');
+/** 2-col width inside TopSellingList grid (12px side pad + 12 gap) */
+const LIST_GRID_CARD_WIDTH = (SCREEN_W - SPACING * 2 - SPACING) / 2;
 
 const TopSellingList: React.FC<Props> = ({
   data,
@@ -185,10 +189,17 @@ const TopSellingList: React.FC<Props> = ({
       const cartQty = variantQuantities[variantId] ?? 0;
 
       return (
-        <View style={!isGrid ? [styles.horizontalWrap, home && styles.horizontalWrapHome] : undefined}>
+        <View
+          style={
+            isGrid
+              ? styles.gridWrap
+              : [styles.horizontalWrap, home && styles.horizontalWrapHome]
+          }
+        >
           <ProductCard
             item={item}
             variant={isGrid ? 'grid' : 'horizontal'}
+            gridWidth={isGrid ? LIST_GRID_CARD_WIDTH : undefined}
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             showWishlist={fav}
@@ -259,7 +270,11 @@ const TopSellingList: React.FC<Props> = ({
       ]}
       columnWrapperStyle={
         isGrid
-          ? { justifyContent: 'space-between', paddingHorizontal: SPACING }
+          ? {
+              justifyContent: 'space-between',
+              paddingHorizontal: SPACING,
+              gap: SPACING,
+            }
           : undefined
       }
       renderItem={renderItem}
@@ -294,7 +309,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   gridContent: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   horizontalWrap: {
     marginLeft: 8,
@@ -302,9 +317,13 @@ const styles = StyleSheet.create({
   horizontalWrapHome: {
     marginLeft: 0,
   },
+  gridWrap: {
+    width: LIST_GRID_CARD_WIDTH,
+    marginBottom: SPACING,
+  },
   emptyCard: {
-    width: '48%',
-    marginBottom: 12,
+    width: LIST_GRID_CARD_WIDTH,
+    marginBottom: SPACING,
   },
   footerContainer: {
     width: '100%',

@@ -4,29 +4,47 @@ import { fetchCart, syncCartQuantity, selectCartCount } from '../store/slices/ca
 import { showSuccessToast } from '../config/Key';
 import { requireAuth } from '../services/guestAuth';
 
+type FetchCartOptions = boolean | { force?: boolean; silent?: boolean };
+
 export const useAllCartData = () => {
   const dispatch = useAppDispatch();
   const cart = useAppSelector(state => state.cart);
 
+  const hasCachedCart =
+    Boolean(cart.cartData?.my_cart) ||
+    Boolean(cart.cartData?.prescription_cart) ||
+    cart.itemCount > 0;
+
   const fetchAllData = useCallback(
-    async (force = true) => {
-      await dispatch(fetchCart(force));
+    async (arg: FetchCartOptions = true) => {
+      if (typeof arg === 'boolean') {
+        await dispatch(fetchCart({ force: arg, silent: false }));
+        return;
+      }
+      await dispatch(
+        fetchCart({
+          force: arg.force ?? true,
+          silent: arg.silent ?? false,
+        }),
+      );
     },
     [dispatch],
   );
 
-  const onRefresh = useCallback(() => {
-    fetchAllData(true);
-  }, [fetchAllData]);
+  const onRefresh = useCallback(async () => {
+    await dispatch(fetchCart({ force: true, silent: true }));
+  }, [dispatch]);
 
   return {
-    loading: cart.loading,
+    // Block UI with skeleton only on cold load (no cart payload yet)
+    loading: cart.loading && !hasCachedCart,
     refreshing: cart.loading,
     CartData: cart.cartData,
     favDoctor: [],
     fetchAllData,
     onRefresh,
     itemCount: cart.itemCount,
+    hasCachedCart,
   };
 };
 
@@ -76,6 +94,7 @@ export const useCartActions = (): UseCartActionsReturn => {
       if (syncCartQuantity.rejected.match(result)) {
         return false;
       }
+      console.log("cartttttAPIIIIIIIIIIIIIII", result);
       if (syncCartQuantity.fulfilled.match(result)) {
         showSuccessToast(result.payload?.message || 'Added to cart', 'success');
         return true;

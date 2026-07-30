@@ -270,9 +270,11 @@ const HomePage: React.FC = (props: any) => {
               <Detailimages
                 images={product.images}
                 itemWidth={width - SCREEN_PADDING_H * 2}
-                DynamicResize="contain"
+                DynamicResize="cover"
                 autoSlide
                 embedded
+                mode="banner"
+                enablePreview={false}
               />
             </View>
 

@@ -6,6 +6,7 @@ import {
   View,
   Text,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
@@ -14,7 +15,7 @@ import CategoryList from '../../components/CategoryList';
 import SectionHeader from '../../components/SectionHeader';
 import ActionCards from '../../components/ActionCards';
 import BrandList from '../../components/BrandList';
-import ProductCard, { GRID_CARD_WIDTH } from '../../components/ProductCard';
+import ProductCard from '../../components/ProductCard';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
@@ -50,6 +51,11 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+
+const H_PAD = 20;
+const GRID_GAP = 10;
+const GRID_CARD_WIDTH =
+  (Dimensions.get('window').width - H_PAD * 2 - GRID_GAP) / 2;
 
 type ActionItem = {
   id: string;
@@ -234,6 +240,7 @@ const MedicineScreen = (props: any) => {
           <ProductCard
             item={item}
             variant="grid"
+            gridWidth={GRID_CARD_WIDTH}
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             onPress={() =>
@@ -380,7 +387,7 @@ export default React.memo(MedicineScreen);
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: H_PAD,
     backgroundColor: '#FDFDFB',
   },
   listContent: {
@@ -388,10 +395,11 @@ const styles = StyleSheet.create({
   },
   columnWrap: {
     justifyContent: 'space-between',
+    gap: GRID_GAP,
   },
   cardWrap: {
     width: GRID_CARD_WIDTH,
-    marginBottom: 4,
+    marginBottom: GRID_GAP,
   },
   footerLoader: {
     paddingVertical: 8,

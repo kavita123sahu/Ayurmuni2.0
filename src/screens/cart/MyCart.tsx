@@ -43,7 +43,7 @@ const MyCart = ({ navigation }: any) => {
 
     const dispatch = useAppDispatch();
 
-    const { CartData, loading, fetchAllData } =
+    const { CartData, loading, fetchAllData, hasCachedCart } =
         useAllCartData();
     const [refreshing, setRefreshing] = useState(false);
 
@@ -51,7 +51,7 @@ const MyCart = ({ navigation }: any) => {
 
         setRefreshing(true);
         try {
-            await fetchAllData(true);
+            await fetchAllData({ force: true, silent: true });
         } finally {
             setRefreshing(false);
         }
@@ -59,8 +59,9 @@ const MyCart = ({ navigation }: any) => {
 
     useFocusEffect(
         useCallback(() => {
-            fetchAllData(true);
-        }, [fetchAllData])
+            // First visit: full load. Later visits: silent sync, keep UI.
+            fetchAllData({ force: true, silent: hasCachedCart });
+        }, [fetchAllData, hasCachedCart])
     );
 
 
