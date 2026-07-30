@@ -15,6 +15,7 @@ import { getDoctorSlots } from "../services/ConsultServce";
 import DateTimePicker from "react-native-modal-datetime-picker";
 import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
+import { isSlotBookable } from "../utils/slotAvailabilityUtils";
 
 interface Props {
     visible: boolean;
@@ -141,8 +142,9 @@ const RescheduleModal = ({
         selectedDate,
         doctorInfo?.id,
     ]);
+    // Hide missed / expired / past slots — never show as available
     const availableSlots =
-        slotList?.filter(slot => slot?.status === "available") || [];
+        slotList?.filter(slot => isSlotBookable(slot)) || [];
     return (
 
         <Modal

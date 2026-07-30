@@ -21,6 +21,10 @@ import { showSuccessToast } from '../config/Key';
 import { useScrollHide } from '../context/ScrollHideContext';
 import { requireAuth } from '../services/guestAuth';
 import { navigateToProductDetails, navigateToSearchScreen } from '../navigation/productNavigation';
+import {
+  canAddProductQty,
+  isProductOutOfStock,
+} from '../utils/productStockUtils';
 
 interface Props {
   data: any[];
@@ -74,11 +78,30 @@ const TopSellingList: React.FC<Props> = ({
     [hideOnScroll, onExternalScroll],
   );
 
+  const resolveVariantId = useCallback((item: any) => {
+    return (
+      item?.variant_id ??
+      item?.variant?.variant_id ??
+      item?.variant?.id ??
+      item?.id ??
+      null
+    );
+  }, []);
+
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
-      const variantId = String(item?.variant_id);
-      if (!variantId) return;
+      const variantId = String(resolveVariantId(item) ?? '');
+      if (!variantId || variantId === 'undefined' || variantId === 'null') return;
+
+      if (newQty > 0 && isProductOutOfStock(item)) {
+        showSuccessToast('This product is out of stock', 'error');
+        return;
+      }
+      if (!canAddProductQty(item, newQty)) {
+        showSuccessToast('Not enough stock available', 'error');
+        return;
+      }
 
       const result = await dispatch(
         syncCartQuantity({ variantId, quantity: newQty }),
@@ -91,7 +114,7 @@ const TopSellingList: React.FC<Props> = ({
         );
       }
     },
-    [dispatch],
+    [dispatch, resolveVariantId],
   );
 
   const handleWishlist = useCallback(
@@ -158,7 +181,7 @@ const TopSellingList: React.FC<Props> = ({
         return <View style={styles.emptyCard} />;
       }
 
-      const variantId = String(item?.variant_id);
+      const variantId = String(resolveVariantId(item) ?? '');
       const cartQty = variantQuantities[variantId] ?? 0;
 
       return (
@@ -169,9 +192,13 @@ const TopSellingList: React.FC<Props> = ({
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             showWishlist={fav}
-            onPress={() =>
-              navigateToProductDetails(stackNav, item?.variant_id)
-            }
+            onPress={() => {
+              const id = resolveVariantId(item);
+              if (id == null || id === '') {
+                return;
+              }
+              navigateToProductDetails(navigation, id);
+            }}
             onAdd={() => handleCartUpdate(item, cartQty + 1)}
             onIncrement={() => handleCartUpdate(item, cartQty + 1)}
             onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
@@ -182,7 +209,7 @@ const TopSellingList: React.FC<Props> = ({
     },
     [
       navigation,
-      stackNav,
+      resolveVariantId,
       isGrid,
       fav,
       variantQuantities,
@@ -190,7 +217,6 @@ const TopSellingList: React.FC<Props> = ({
       handleCartUpdate,
       handleWishlist,
       home,
-      isWishlistScreen,
     ],
   );
 

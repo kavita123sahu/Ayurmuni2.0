@@ -22,6 +22,11 @@ import { Colors } from '../../common/Colors';
 import { formatDate, generateFutureDates, } from '../../common/DataInterface';
 import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
+import {
+    getSlotStatusKey,
+    isSlotBookable,
+    isSlotMissedOrExpired,
+} from '../../utils/slotAvailabilityUtils';
 import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
 import PrescriptionUpload from './Uploadreport';
 import { launchCamera } from 'react-native-image-picker';
@@ -32,6 +37,7 @@ import UploadRecordModal from '../../components/UploadRecordModal';
 import AppHeader from '../../components/AppHeader';
 import { formatMessageTime } from '../../chatSystem/utils/dateFormatter';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
+import { showSuccessToast } from '../../config/Key';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -247,7 +253,9 @@ const DoctorSlot = (props: any) => {
 
     useEffect(() => {
         if (!selectedSlot && slotsData?.slots?.length) {
-            const firstAvailable = slotsData.slots.find((s: any) => s.status === 'available');
+            const firstAvailable = slotsData.slots.find((s: any) =>
+                isSlotBookable(s),
+            );
             if (firstAvailable) {
                 pendingConcernScrollRef.current = true;
                 setSelectedSlot(firstAvailable);
@@ -256,11 +264,24 @@ const DoctorSlot = (props: any) => {
         }
     }, [slotsData, selectedSlot, scrollToConcernSection]);
 
+    // Clear selection if the chosen slot becomes expired/missed
+    useEffect(() => {
+        if (selectedSlot && !isSlotBookable(selectedSlot)) {
+            setSelectedSlot(null);
+        }
+    }, [selectedSlot, slotsData]);
+
     const handleContinue = async () => {
         if (!(await requireAuth('Please login to book a consultation'))) return;
         console.log("selectedSlotselectedSlot", selectedSlot?.id)
 
         if (!selectedSlot?.id) return;
+
+        if (!isSlotBookable(selectedSlot)) {
+            showSuccessToast('This slot has expired. Please pick another time.', 'error');
+            setSelectedSlot(null);
+            return;
+        }
 
         const selectedSlotObj = slotsData?.slots?.find(
             (s: any) => String(s.id) === String(selectedSlot?.id)
@@ -423,12 +444,11 @@ const DoctorSlot = (props: any) => {
 
                                         <View style={styles.slotGrid}>
                                             {sectionSlots.map((slot: any) => {
-                                                const status = String(slot?.status || '').toLowerCase();
-
-                                                const isAvailable = status === 'available';
-                                                const isReserved = status === 'reserved';
-                                                const isBooked = status === 'booked';
-                                                const selectable = isAvailable;
+                                                const status = getSlotStatusKey(slot);
+                                                const expired = isSlotMissedOrExpired(slot);
+                                                const isReserved = !expired && status === 'reserved';
+                                                const isBooked = !expired && status === 'booked';
+                                                const selectable = isSlotBookable(slot);
 
                                                 return (
                                                     <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable}
@@ -446,6 +466,12 @@ const DoctorSlot = (props: any) => {
                                                                 backgroundColor: '#FFF1F2',
                                                                 borderColor: '#FEE2E2',
                                                             },
+
+                                                            expired && {
+                                                                backgroundColor: '#F1F5F9',
+                                                                borderColor: '#E2E8F0',
+                                                                opacity: 0.72,
+                                                            },
                                                         ]}
 
                                                     >
@@ -457,6 +483,12 @@ const DoctorSlot = (props: any) => {
                                                         {isReserved && (
                                                             <Text style={styles.slotStatus}>
                                                                 Reserved
+                                                            </Text>
+                                                        )}
+
+                                                        {expired && (
+                                                            <Text style={styles.slotStatus}>
+                                                                {status === 'missed' ? 'Missed' : 'Expired'}
                                                             </Text>
                                                         )}
 

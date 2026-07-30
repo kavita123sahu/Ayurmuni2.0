@@ -7,14 +7,14 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import SearchBar from '../../components/SearchBar';
 import ProductCard from '../../components/ProductCard';
 import { Colors } from '../../common/Colors';
-import { useHomeData } from '../../hooks/UseHomeData';
-import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
+import { ProductGridSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
@@ -26,7 +26,11 @@ import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
 import { navigateToProductDetails } from '../../navigation/productNavigation';
 import { useDebounce } from '../../hooks/useDebaunce';
-import { applyProductFilters } from '../../utils/productSearchUtils';
+import { useCategoryProducts } from '../../hooks/useCategoryProducts';
+import {
+  canAddProductQty,
+  isProductOutOfStock,
+} from '../../utils/productStockUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const H_PADDING = 16;
@@ -36,38 +40,66 @@ const GRID_CARD_WIDTH = (SCREEN_W - H_PADDING * 2 - GRID_GAP) / 2;
 const ProductSearchScreen = (props: any) => {
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
-  const { productData, setProductData, loadingProducts, refreshHomeData } = useHomeData();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
+  const routeParams = props.route?.params ?? {};
   const [searchText, setSearchText] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const debouncedSearch = useDebounce(searchText, 300);
+  const debouncedSearch = useDebounce(searchText, 350);
 
-  const filteredProducts = useMemo(
-    () =>
-      applyProductFilters({
-        products: productData,
-        search: debouncedSearch,
-      }),
-    [productData, debouncedSearch],
-  );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await refreshHomeData();
-    } finally {
-      setRefreshing(false);
+  // Search → whole catalog (`?search=` only). No search → optional browse filters from route / all products.
+  const productFilter = useMemo(() => {
+    const q = debouncedSearch.trim();
+    if (q) {
+      return { search: q };
     }
-  }, [refreshHomeData]);
+
+    return {
+      service_category_id: routeParams.serviceCategoryId
+        ? String(routeParams.serviceCategoryId)
+        : undefined,
+      id: routeParams.categoryId ? String(routeParams.categoryId) : undefined,
+      health_category_id: routeParams.healthCategoryId
+        ? String(routeParams.healthCategoryId)
+        : undefined,
+    };
+  }, [
+    debouncedSearch,
+    routeParams.serviceCategoryId,
+    routeParams.categoryId,
+    routeParams.healthCategoryId,
+  ]);
+
+  const {
+    products,
+    setProducts,
+    loading,
+    loadingMore,
+    refreshing,
+    refresh,
+    loadMore,
+  } = useCategoryProducts(productFilter, [], { enabled: true });
+
+  const onRefresh = useCallback(() => {
+    refresh();
+  }, [refresh]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
       const variantId = String(item?.variant_id);
       if (!variantId) return;
+
+      if (newQty > 0 && isProductOutOfStock(item)) {
+        showSuccessToast('This product is out of stock', 'error');
+        return;
+      }
+      if (!canAddProductQty(item, newQty)) {
+        showSuccessToast('Not enough stock available', 'error');
+        return;
+      }
+
       const result = await dispatch(syncCartQuantity({ variantId, quantity: newQty }));
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -83,7 +115,7 @@ const ProductSearchScreen = (props: any) => {
     async (item: any) => {
       if (!(await requireAuth('Please login to save wishlist items'))) return;
       const old = item?.is_wishlist_item;
-      setProductData(prev =>
+      setProducts((prev: any[]) =>
         prev.map(p =>
           p.variant_id === item.variant_id
             ? { ...p, is_wishlist_item: !old }
@@ -93,7 +125,7 @@ const ProductSearchScreen = (props: any) => {
       try {
         await TogglewishlistProduct(item.variant_id, 'POST');
       } catch {
-        setProductData(prev =>
+        setProducts((prev: any[]) =>
           prev.map(p =>
             p.variant_id === item.variant_id
               ? { ...p, is_wishlist_item: old }
@@ -102,7 +134,7 @@ const ProductSearchScreen = (props: any) => {
         );
       }
     },
-    [setProductData],
+    [setProducts],
   );
 
   const renderProductItem = useCallback(
@@ -132,8 +164,8 @@ const ProductSearchScreen = (props: any) => {
   );
 
   const resultLabel = debouncedSearch.trim()
-    ? `${filteredProducts.length} result${filteredProducts.length === 1 ? '' : 's'}`
-    : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'}`;
+    ? `${products.length} result${products.length === 1 ? '' : 's'}`
+    : `${products.length} product${products.length === 1 ? '' : 's'}`;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -153,16 +185,21 @@ const ProductSearchScreen = (props: any) => {
           onChangeText={setSearchText}
           autoFocus
         />
-        {!loadingProducts && (
+        {!loading && (
           <Text style={styles.resultCount}>{resultLabel}</Text>
         )}
       </View>
 
-      {loadingProducts && productData.length === 0 ? (
-        <TopSellingListSkeleton />
+      {loading && products.length === 0 ? (
+        <ProductGridSkeleton
+          cardWidth={GRID_CARD_WIDTH}
+          gap={GRID_GAP}
+          count={6}
+          paddingHorizontal={H_PADDING}
+        />
       ) : (
         <FlatList
-          data={filteredProducts}
+          data={products}
           keyExtractor={(item, i) => String(item.variant_id || i)}
           numColumns={2}
           renderItem={renderProductItem}
@@ -177,6 +214,17 @@ const ProductSearchScreen = (props: any) => {
               colors={[Colors.primaryColor]}
               tintColor={Colors.primaryColor}
             />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.35}
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator
+                size="small"
+                color={Colors.primaryColor}
+                style={styles.footerLoader}
+              />
+            ) : null
           }
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
@@ -226,6 +274,9 @@ const styles = StyleSheet.create({
     width: GRID_CARD_WIDTH,
     marginBottom: GRID_GAP,
   },
+  footerLoader: {
+    marginVertical: 16,
+  },
   emptyWrap: {
     alignItems: 'center',
     paddingTop: 48,
@@ -235,13 +286,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 6,
   },
   emptyText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
     textAlign: 'center',
-    fontSize: 14,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsRegular,
-    lineHeight: 20,
   },
 });

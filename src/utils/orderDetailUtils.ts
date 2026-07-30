@@ -138,13 +138,20 @@ export const formatDeliveryAddress = (address?: any) => {
   return parts.join(', ');
 };
 
-export const isOrderItemRated = (item: any, order?: any) => {
-  if (item?.is_rated === true || item?.is_reviewed === true) {
-    return true;
-  }
+export const getOrderItemReview = (item: any, order?: any) => {
+  const buildReview = (source: any) => ({
+    rating: Number(source?.rating ?? 0),
+    review: String(source?.review ?? source?.comment ?? ''),
+    images: Array.isArray(source?.attachments)
+      ? source.attachments
+      : Array.isArray(source?.image_urls)
+        ? source.image_urls
+        : [],
+    isRated: source?.is_rated === true || Number(source?.rating ?? 0) > 0,
+  });
 
-  if (item?.review?.is_rated === true || Number(item?.review?.rating ?? 0) > 0) {
-    return true;
+  if (item?.review && (item.review.is_rated || Number(item.review.rating ?? 0) > 0)) {
+    return buildReview(item.review);
   }
 
   const variantId = String(
@@ -152,7 +159,7 @@ export const isOrderItemRated = (item: any, order?: any) => {
   );
 
   if (!variantId) {
-    return false;
+    return null;
   }
 
   const reviewLists = [
@@ -162,11 +169,26 @@ export const isOrderItemRated = (item: any, order?: any) => {
   ].filter(Array.isArray);
 
   for (const list of reviewLists) {
-    const matched = list.some((review: any) => {
+    const matched = list.find((review: any) => {
       const reviewVariant = String(review?.variant_id ?? review?.variant ?? '');
-      return reviewVariant === variantId && (review?.is_rated || Number(review?.rating ?? 0) > 0);
+      return reviewVariant === variantId;
     });
-    if (matched) return true;
+
+    if (matched) {
+      return buildReview(matched);
+    }
+  }
+
+  return null;
+};
+
+export const isOrderItemRated = (item: any, order?: any) => {
+  if (getOrderItemReview(item, order)?.isRated) {
+    return true;
+  }
+
+  if (item?.is_rated === true || item?.is_reviewed === true) {
+    return true;
   }
 
   return false;

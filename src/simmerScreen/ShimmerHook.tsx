@@ -1,8 +1,10 @@
 import React from 'react';
-import { Dimensions, ScrollView, View } from 'react-native';
+import { Dimensions, ScrollView, View, StyleSheet } from 'react-native';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import { Colors } from '../common/Colors';
-
+import {
+  GRID_CARD_WIDTH,
+} from '../components/ProductCard';
 
 const { width } = Dimensions.get('window');
 
@@ -327,6 +329,118 @@ export const TopSellingListSkeleton = () => {
   );
 };
 
+const GRID_IMAGE_HEIGHT = 136;
+const GRID_INFO_HEIGHT = 94;
+
+type ProductGridSkeletonProps = {
+  cardWidth?: number;
+  gap?: number;
+  count?: number;
+  paddingHorizontal?: number;
+};
+
+const ProductGridSkeletonCard = ({
+  cardWidth,
+  imageHeight,
+  infoHeight,
+}: {
+  cardWidth: number;
+  imageHeight: number;
+  infoHeight: number;
+}) => (
+  <View
+    style={[
+      gridSkeletonStyles.card,
+      { width: cardWidth, height: imageHeight + infoHeight },
+    ]}
+  >
+    <SkeletonPlaceholder borderRadius={14} speed={1200}>
+      <SkeletonPlaceholder.Item width={cardWidth} height={imageHeight} borderRadius={14} />
+      <SkeletonPlaceholder.Item padding={10}>
+        <SkeletonPlaceholder.Item
+          width={cardWidth * 0.78}
+          height={12}
+          borderRadius={4}
+        />
+        <SkeletonPlaceholder.Item
+          marginTop={6}
+          width={cardWidth * 0.52}
+          height={10}
+          borderRadius={4}
+        />
+        <SkeletonPlaceholder.Item
+          marginTop={8}
+          width={cardWidth * 0.42}
+          height={10}
+          borderRadius={4}
+        />
+        <SkeletonPlaceholder.Item
+          marginTop={10}
+          flexDirection="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <SkeletonPlaceholder.Item
+            width={cardWidth * 0.34}
+            height={14}
+            borderRadius={4}
+          />
+          <SkeletonPlaceholder.Item width={34} height={34} borderRadius={10} />
+        </SkeletonPlaceholder.Item>
+      </SkeletonPlaceholder.Item>
+    </SkeletonPlaceholder>
+  </View>
+);
+
+/** 2-column grid skeleton — matches ProductCard grid layout (not horizontal stretch). */
+export const ProductGridSkeleton = ({
+  cardWidth = GRID_CARD_WIDTH,
+  gap = 10,
+  count = 6,
+  paddingHorizontal = 0,
+}: ProductGridSkeletonProps) => {
+  const scale = cardWidth / GRID_CARD_WIDTH;
+  const imageHeight = GRID_IMAGE_HEIGHT * scale;
+  const infoHeight = GRID_INFO_HEIGHT * scale;
+
+  return (
+    <View
+      style={[
+        gridSkeletonStyles.grid,
+        { paddingHorizontal, rowGap: gap },
+      ]}
+    >
+      {Array.from({ length: count }).map((_, index) => (
+        <View
+          key={`product-grid-skeleton-${index}`}
+          style={{ width: cardWidth, marginBottom: gap }}
+        >
+          <ProductGridSkeletonCard
+            cardWidth={cardWidth}
+            imageHeight={imageHeight}
+            infoHeight={infoHeight}
+          />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const gridSkeletonStyles = StyleSheet.create({
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  card: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EEF2F7',
+  },
+});
+
 export const TopDoctorsCardSkeleton = () => {
   return (
     <ScrollView
@@ -444,6 +558,25 @@ export const HomeCategorySkeleton = ({ compact = false }: { compact?: boolean })
     </ScrollView>
   );
 };
+
+/** Horizontal pill chips for disease / subcategory loading */
+export const DiseaseChipSkeleton = ({ count = 5 }: { count?: number }) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+  >
+    {Array.from({ length: count }).map((_, i) => (
+      <SkeletonPlaceholder key={i} borderRadius={18} speed={1200}>
+        <SkeletonPlaceholder.Item
+          width={72 + (i % 3) * 18}
+          height={34}
+          borderRadius={18}
+        />
+      </SkeletonPlaceholder>
+    ))}
+  </ScrollView>
+);
 
 
 export const DoctorCardSkeleton = () => {
@@ -1340,3 +1473,141 @@ export const PrakritiProfileSkeleton = () => {
     </ScrollView>
   );
 };
+
+const SectionTitleSkeleton = ({ width: titleWidth = 140 }: { width?: number }) => (
+  <SkeletonPlaceholder borderRadius={6} speed={1200}>
+    <SkeletonPlaceholder.Item
+      width={titleWidth}
+      height={16}
+      borderRadius={6}
+      marginTop={16}
+      marginBottom={12}
+    />
+  </SkeletonPlaceholder>
+);
+
+/** Promo banner — matches PromoCard on Products screen */
+export const PromoCardSkeleton = () => (
+  <SkeletonPlaceholder borderRadius={16} speed={1200}>
+    <SkeletonPlaceholder.Item
+      width="100%"
+      height={140}
+      borderRadius={18}
+      marginTop={8}
+    />
+  </SkeletonPlaceholder>
+);
+
+/** Horizontal category / concern chips */
+export const CategoryRowSkeleton = ({ count = 5 }: { count?: number }) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={{ paddingVertical: 4 }}
+  >
+    {Array.from({ length: count }).map((_, index) => (
+      <View
+        key={index}
+        style={{ width: ITEM_SIZE, alignItems: 'center', marginRight: 4 }}
+      >
+        <SkeletonPlaceholder borderRadius={16} speed={1200}>
+          <SkeletonPlaceholder.Item
+            width={ITEM_SIZE - 16}
+            height={ITEM_SIZE - 16}
+            borderRadius={18}
+          />
+          <SkeletonPlaceholder.Item
+            marginTop={8}
+            alignSelf="center"
+            width={48}
+            height={10}
+            borderRadius={5}
+          />
+        </SkeletonPlaceholder>
+      </View>
+    ))}
+  </ScrollView>
+);
+
+/** Two action tiles — Medicine screen top */
+export const ActionCardsSkeleton = () => (
+  <View style={{ flexDirection: 'row', gap: 14, marginTop: 10 }}>
+    {[1, 2].map(item => (
+      <View key={item} style={{ flex: 1 }}>
+        <SkeletonPlaceholder borderRadius={16} speed={1200}>
+          <SkeletonPlaceholder.Item width="100%" height={110} borderRadius={16} />
+        </SkeletonPlaceholder>
+      </View>
+    ))}
+  </View>
+);
+
+/** Horizontal recent-order / brand strip */
+export const HorizontalChipSkeleton = ({
+  count = 4,
+  width: chipW = 88,
+  height: chipH = 88,
+}: {
+  count?: number;
+  width?: number;
+  height?: number;
+}) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={{ paddingVertical: 6, gap: 10 }}
+  >
+    {Array.from({ length: count }).map((_, index) => (
+      <SkeletonPlaceholder key={index} borderRadius={14} speed={1200}>
+        <SkeletonPlaceholder.Item width={chipW} height={chipH} borderRadius={14} />
+      </SkeletonPlaceholder>
+    ))}
+  </ScrollView>
+);
+
+/** Full Products screen skeleton — promo + categories + product grid */
+export const ProductsScreenSkeleton = () => (
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={{ paddingBottom: 40 }}
+  >
+    <PromoCardSkeleton />
+    <SectionTitleSkeleton width={150} />
+    <CategoryRowSkeleton />
+    <SectionTitleSkeleton width={120} />
+    <ProductGridSkeleton cardWidth={GRID_CARD_WIDTH} gap={10} count={6} />
+  </ScrollView>
+);
+
+/** Full Medicine screen skeleton — actions + recent + concern + brands + grid */
+export const MedicineScreenSkeleton = () => (
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={{ paddingBottom: 40, paddingTop: 4 }}
+  >
+    <ActionCardsSkeleton />
+    <SectionTitleSkeleton width={130} />
+    <HorizontalChipSkeleton count={4} width={100} height={72} />
+    <SectionTitleSkeleton width={140} />
+    <CategoryRowSkeleton />
+    <SectionTitleSkeleton width={130} />
+    <HorizontalChipSkeleton count={5} width={72} height={72} />
+    <SectionTitleSkeleton width={130} />
+    <ProductGridSkeleton cardWidth={GRID_CARD_WIDTH} gap={10} count={6} />
+  </ScrollView>
+);
+
+/** Suggested diet / yoga card row on home */
+export const SuggestedCardSkeleton = ({ count = 3 }: { count?: number }) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+  >
+    {Array.from({ length: count }).map((_, index) => (
+      <SkeletonPlaceholder key={index} borderRadius={14} speed={1200}>
+        <SkeletonPlaceholder.Item width={168} height={200} borderRadius={14} />
+      </SkeletonPlaceholder>
+    ))}
+  </ScrollView>
+);

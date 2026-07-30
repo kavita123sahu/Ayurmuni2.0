@@ -43,6 +43,8 @@ import {
   ProductSortKey,
   PriceRangeKey,
 } from '../../utils/productSearchUtils';
+import { renderCategoryName } from '../../common/DataInterface';
+import TablerIcon from '../../components/TablerIcon';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CATEGORY_PANEL_WIDTH = 78;
@@ -56,6 +58,7 @@ type CategoryItem = ProductCategoryItem & { isAll?: boolean };
 const ALL_CATEGORY: CategoryItem = {
   id: 'all',
   name: 'All',
+  parent_id: '',
   image_url: '',
   isAll: true,
 };
@@ -77,8 +80,11 @@ const CategoryProductsScreen = (props: any) => {
   const initialBrandId = routeParams.brand_name_id
     ? String(routeParams.brand_name_id)
     : null;
-  const initialBrandLabel = routeParams.brandName
+  const initialBrandName = routeParams.brandName
     ? String(routeParams.brandName)
+    : null;
+  const serviceCategoryId = routeParams.serviceCategoryId
+    ? String(routeParams.serviceCategoryId)
     : null;
 
   const insets = useSafeAreaInsets();
@@ -90,7 +96,7 @@ const CategoryProductsScreen = (props: any) => {
 
   const [sortBy, setSortBy] = useState<ProductSortKey>('relevance');
   const [brandId, setBrandId] = useState<string | null>(initialBrandId);
-  const [brandLabel, setBrandLabel] = useState<string | null>(initialBrandLabel);
+  const [brandLabel, setBrandLabel] = useState<string | null>(initialBrandName);
   const [priceRange, setPriceRange] = useState<PriceRangeKey>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(
@@ -140,6 +146,7 @@ const CategoryProductsScreen = (props: any) => {
         health_category_id: healthId,
         health_disease_id: routeParams.healthDiseaseId ?? null,
         brand_name_id: brandId,
+        service_category_id: serviceCategoryId,
       };
     }
 
@@ -149,6 +156,7 @@ const CategoryProductsScreen = (props: any) => {
       health_category_id: routeParams.healthCategoryId ?? null,
       health_disease_id: routeParams.healthDiseaseId ?? null,
       brand_name_id: brandId,
+      service_category_id: serviceCategoryId,
     };
   }, [
     categoryMode,
@@ -157,12 +165,17 @@ const CategoryProductsScreen = (props: any) => {
     routeParams.healthCategoryId,
     routeParams.healthDiseaseId,
     brandId,
+    serviceCategoryId,
   ]);
 
-  const { products: fetchedProducts, loading, refreshing, refresh } = useCategoryProducts(
-    productFilter,
-    productData,
-  );
+  const {
+    products: fetchedProducts,
+    loading,
+    loadingMore,
+    refreshing,
+    refresh,
+    loadMore,
+  } = useCategoryProducts(productFilter, productData);
   const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
@@ -198,10 +211,10 @@ const CategoryProductsScreen = (props: any) => {
       .map(item => ({
         id: String(
           item?.brand_name_id ??
-            item?.brand_id ??
-            item?.brand?.id ??
-            item?.brand_name ??
-            '',
+          item?.brand_id ??
+          item?.brand?.id ??
+          item?.brand_name ??
+          '',
         ),
         name: String(item?.brand_name ?? item?.brand?.name ?? '').trim(),
       }))
@@ -339,22 +352,41 @@ const CategoryProductsScreen = (props: any) => {
           activeOpacity={0.85}
         >
           <View style={[styles.categoryIconWrap, active && styles.categoryIconWrapActive]}>
-            <Image
+            {/* <Image
               source={
                 item.isAll
                   ? Images.cardiology
                   : item.image_url
                     ? { uri: item.image_url }
-                    : Images.cardiology
+                    : Images.
               }
               style={styles.categoryIcon}
-            />
+            /> */}
+
+            {item.isAll ? (
+              <TablerIcon
+                name="list"
+                size={26}
+                color={Colors.primaryColor}
+              />
+            ) : (
+              <Image
+                source={
+                  item.image_url
+                    ? { uri: item.image_url }
+                    : Images.cardiology // fallback image
+                }
+                style={styles.categoryIcon}
+                resizeMode="cover"
+              />
+            )}
           </View>
           <Text
             style={[styles.categoryLabel, active && styles.categoryLabelActive]}
             numberOfLines={2}
           >
-            {item.name}
+            {renderCategoryName(item.name, styles.categoryLabel)}
+            {/* {item.name} */}
           </Text>
         </TouchableOpacity>
       );
@@ -362,86 +394,13 @@ const CategoryProductsScreen = (props: any) => {
     [selectedCategoryId],
   );
 
-  const selectedCategoryName =
-    categoryList.find(item => item.id === selectedCategoryId)?.name ?? 'All';
+  const selectedCategoryName = categoryList.find(item => item.id === selectedCategoryId)?.name ?? 'All';
 
-  const selectedSubcategoryName =
-    subcategories.find(item => item.id === selectedSubcategoryId)?.name ?? '';
+  const selectedSubcategoryName = subcategories.find(item => item.id === selectedSubcategoryId)?.name ?? '';
 
   const subtitle = selectedSubcategoryName || selectedCategoryName;
 
-  const showSubcategories =
-    activeCategoryId && subcategories.length > 0 && !subcategoriesLoading;
-
-  const listHeader = useMemo(
-    () => (
-      <View style={styles.listHeader}>
-        {showSubcategories ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.subcategoryRow}
-            style={styles.subcategoryScroll}
-          >
-            <TouchableOpacity
-              style={[
-                styles.subcategoryChip,
-                !selectedSubcategoryId && styles.subcategoryChipActive,
-              ]}
-              onPress={() => setSelectedSubcategoryId(null)}
-            >
-              <Text
-                style={[
-                  styles.subcategoryChipText,
-                  !selectedSubcategoryId && styles.subcategoryChipTextActive,
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-
-            {subcategories.map(item => {
-              const active = selectedSubcategoryId === item.id;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.subcategoryChip,
-                    active && styles.subcategoryChipActive,
-                  ]}
-                  onPress={() => setSelectedSubcategoryId(item.id)}
-                >
-                  <Text
-                    style={[
-                      styles.subcategoryChipText,
-                      active && styles.subcategoryChipTextActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        ) : null}
-
-        {!loading ? (
-          <Text style={styles.resultCount}>
-            {filteredProducts.length} product
-            {filteredProducts.length === 1 ? '' : 's'}
-          </Text>
-        ) : null}
-      </View>
-    ),
-    [
-      showSubcategories,
-      subcategories,
-      selectedSubcategoryId,
-      loading,
-      filteredProducts.length,
-    ],
-  );
+  const showSubcategories = activeCategoryId && subcategories.length > 0 && !subcategoriesLoading;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left']}>
@@ -449,10 +408,19 @@ const CategoryProductsScreen = (props: any) => {
 
       <View style={styles.headerWrap}>
         <Header
-          title={routeParams.categoryName ?? (categoryMode === 'health' ? 'Health Concerns' : 'Categories')}
+          title={
+            routeParams.brandName
+              ? String(routeParams.brandName)
+              : routeParams.categoryName ??
+                (categoryMode === 'health' ? 'Health Concerns' : 'Categories')
+          }
           backIcon={Images.backIcon}
           onBack={() => safeGoBack(props.navigation)}
-          subtitle={subtitle}
+          subtitle={
+            routeParams.brandName
+              ? 'Brand products'
+              : subtitle
+          }
           onRefreshPress={handleRefresh}
         />
       </View>
@@ -477,67 +445,132 @@ const CategoryProductsScreen = (props: any) => {
         </View>
 
         <View style={styles.productPanel}>
-          <View style={styles.filterSection}>
-            <ProductSearchFilterBar
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              brandId={brandId}
-              brandLabel={brandLabel}
-              onBrandChange={brand => {
-                setBrandId(brand?.id ?? null);
-                setBrandLabel(brand?.name ?? null);
-              }}
-              priceRange={priceRange}
-              onPriceRangeChange={setPriceRange}
-              brands={brandOptions}
-              activeFilterCount={activeFilterCount}
-              onClearFilters={clearFilters}
-            />
-          </View>
+          <ProductSearchFilterBar
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            brandId={brandId}
+            brandLabel={brandLabel}
+            onBrandChange={brand => {
+              setBrandId(brand?.id ?? null);
+              setBrandLabel(brand?.name ?? null);
+            }}
+            priceRange={priceRange}
+            onPriceRangeChange={setPriceRange}
+            brands={brandOptions}
+            activeFilterCount={activeFilterCount}
+            onClearFilters={clearFilters}
+          />
 
-          <View style={styles.listSection}>
-            {loading && products.length === 0 ? (
-              <TopSellingListSkeleton />
-            ) : (
-              <FlatList
-                data={filteredProducts}
-                keyExtractor={(item, i) => String(item.variant_id || i)}
-                numColumns={2}
-                renderItem={renderProductItem}
-                style={styles.productList}
-                contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
-                columnWrapperStyle={styles.columnWrap}
-                showsVerticalScrollIndicator={false}
-                ListHeaderComponent={listHeader}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    colors={[Colors.primaryColor]}
-                    tintColor={Colors.primaryColor}
-                  />
-                }
-                ListEmptyComponent={
-                  loading ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={Colors.primaryColor}
-                      style={styles.loader}
-                    />
-                  ) : (
-                    <View style={styles.emptyWrap}>
-                      <Text style={styles.emptyTitle}>No products in this category</Text>
-                      <Text style={styles.emptyText}>
-                        Try another category or adjust filters.
+          {showSubcategories && (
+            <View style={styles.subcategorySection}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.subcategoryRow}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.subcategoryChip,
+                    !selectedSubcategoryId && styles.subcategoryChipActive,
+                  ]}
+                  onPress={() => setSelectedSubcategoryId(null)}
+                >
+                  <Text
+                    style={[
+                      styles.subcategoryChipText,
+                      !selectedSubcategoryId && styles.subcategoryChipTextActive,
+                    ]}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
+
+                {subcategories.map(item => {
+                  const active = selectedSubcategoryId === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.subcategoryChip,
+                        active && styles.subcategoryChipActive,
+                      ]}
+                      onPress={() => setSelectedSubcategoryId(item.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.subcategoryChipText,
+                          active && styles.subcategoryChipTextActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                        {/* {renderCategoryName(item.name, styles.subcategoryChipText)} */}
                       </Text>
-                    </View>
-                  )
-                }
-              />
-            )}
-          </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {!loading && (
+            <Text style={styles.resultCount}>
+              {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'}
+            </Text>
+          )}
+
+          {loading && products.length === 0 ? (
+            <TopSellingListSkeleton />
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              keyExtractor={(item, i) => String(item.variant_id || i)}
+              numColumns={2}
+              renderItem={renderProductItem}
+              style={styles.productList}
+              contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
+              columnWrapperStyle={styles.columnWrap}
+              showsVerticalScrollIndicator={false}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.35}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  colors={[Colors.primaryColor]}
+                  tintColor={Colors.primaryColor}
+                />
+              }
+              ListFooterComponent={
+                loadingMore ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={Colors.primaryColor}
+                    style={styles.loader}
+                  />
+                ) : null
+              }
+              ListEmptyComponent={
+                loading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={Colors.primaryColor}
+                    style={styles.loader}
+                  />
+                ) : (
+                  <View style={styles.emptyWrap}>
+                    <Text style={styles.emptyTitle}>No products in this category</Text>
+                    <Text style={styles.emptyText}>
+                      Try another category or adjust filters.
+                    </Text>
+                  </View>
+                )
+              }
+            />
+          )}
         </View>
       </View>
+      
     </SafeAreaView>
   );
 };
@@ -555,30 +588,14 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     flexDirection: 'row',
-    minHeight: 0,
   },
   productPanel: {
     flex: 1,
-    minHeight: 0,
     paddingLeft: 6,
     paddingRight: CONTENT_PADDING,
   },
-  filterSection: {
-    flexShrink: 0,
-  },
-  listSection: {
-    flex: 1,
-    minHeight: 0,
-  },
   productList: {
     flex: 1,
-  },
-  listHeader: {
-    flexShrink: 0,
-  },
-  subcategoryScroll: {
-    flexGrow: 0,
-    marginBottom: 4,
   },
   categoryPanel: {
     width: CATEGORY_PANEL_WIDTH,
@@ -616,9 +633,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF8F4',
   },
   categoryIcon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
+    // width: 20,
+    // height: 20,
+    borderRadius: 10,
+    width: 36,
+    height: 36,
+    // resizeMode: 'cover',
   },
   categoryLabel: {
     marginTop: 3,
@@ -633,8 +653,16 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  subcategorySection: {
+    marginBottom: 6,
+  },
+  subcategoryTitle: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 6,
+  },
   subcategoryRow: {
-    alignItems: 'center',
     gap: 6,
     paddingRight: 4,
   },
@@ -668,7 +696,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   listContent: {
     paddingTop: 2,

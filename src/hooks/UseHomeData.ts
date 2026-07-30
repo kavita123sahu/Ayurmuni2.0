@@ -3,7 +3,9 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   fetchHomeData,
   fetchCustomerData,
-  updateProductData,
+  fetchDietPlans,
+  updateMedicineProducts,
+  updateStoreProducts,
   updateProductItem,
   selectHomeData,
 } from '../store/slices/homeSlice';
@@ -26,9 +28,20 @@ export const useHomeData = () => {
     await dispatch(fetchCustomerData(true));
   }, [dispatch]);
 
-  const setProductData = useCallback(
+  const fetchDietPlansFn = useCallback(async (force = true) => {
+    await dispatch(fetchDietPlans(force));
+  }, [dispatch]);
+
+  const setMedicineProducts = useCallback(
     (updater: any[] | ((prev: any[]) => any[])) => {
-      dispatch(updateProductData(updater));
+      dispatch(updateMedicineProducts(updater));
+    },
+    [dispatch],
+  );
+
+  const setStoreProducts = useCallback(
+    (updater: any[] | ((prev: any[]) => any[])) => {
+      dispatch(updateStoreProducts(updater));
     },
     [dispatch],
   );
@@ -36,18 +49,27 @@ export const useHomeData = () => {
   return {
     categories: home.categories,
     SuggestDoctor: home.SuggestDoctor,
-    productData: home.productData,
+    medicineProducts: home.medicineProducts,
+    storeProducts: home.storeProducts,
+    dietProducts: home.dietProducts,
+    productData: home.storeProducts,
     customerData: home.customerData,
     YogaSession: home.YogaSession,
     loadingCustomer: home.loadingCustomer,
     loadingCategories: home.loadingCategories,
     loadingDoctors: home.loadingDoctors,
     loadingProducts: home.loadingProducts,
+    loadingDiet: home.loadingDiet,
     loadingNotification: home.loadingYoga,
-    setProductData,
+    setMedicineProducts,
+    setStoreProducts,
+    setProductData: setStoreProducts,
     fetchCustomerData: fetchCustomerDataFn,
+    fetchDietPlans: fetchDietPlansFn,
     refreshHomeData,
     loading: !home.initialized,
     refreshing: false,
   };
 };
+
+export { updateProductItem };

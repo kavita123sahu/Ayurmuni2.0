@@ -21,6 +21,7 @@ import {
   buildOrderTrackingSteps,
   formatDeliveryAddress,
   formatOrderDateTime,
+  getOrderItemReview,
   isOrderItemRated,
 } from '../../utils/orderDetailUtils';
 import { getOrders } from '../../services/OrderService';
@@ -35,6 +36,12 @@ type OrderItemRow = {
   image?: string;
   raw: any;
   rated: boolean;
+  review: {
+    rating: number;
+    review: string;
+    images: string[];
+    isRated: boolean;
+  } | null;
 };
 
 const formatCurrency = (value?: string | number) => {
@@ -53,6 +60,7 @@ const mapOrderItems = (order: any): OrderItemRow[] => {
     price: formatCurrency(item?.selling_price ?? item?.variant?.selling_price ?? item?.price),
     image: item?.variant?.image_url ?? item?.image_url ?? '',
     raw: item,
+    review: getOrderItemReview(item, order),
     rated: isOrderItemRated(item, order),
   }));
 };
@@ -84,7 +92,6 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const [order, setOrder] = useState<any>(initialOrder);
   const [refreshing, setRefreshing] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<OrderItemRow | null>(null);
-  const [locallyRated, setLocallyRated] = useState<Record<string, boolean>>({});
 
   const refreshOrder = useCallback(async () => {
     if (!initialOrder?.id && !initialOrder?.order_code) {
@@ -120,12 +127,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
     }, [refreshOrder]),
   );
 
-  const items = useMemo(() => {
-    return mapOrderItems(order).map(item => ({
-      ...item,
-      rated: item.rated || !!locallyRated[item.variantId],
-    }));
-  }, [order, locallyRated]);
+  const items = useMemo(() => mapOrderItems(order), [order]);
 
   const status = formatOrderStatus(order?.order_status);
   const canReview = status === 'DELIVERED';
@@ -157,16 +159,20 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       return;
     }
 
-    const variantId = reviewTarget.variantId;
+    const target = reviewTarget;
+    const isEdit = target.rated || target.review?.isRated === true;
+
     setReviewTarget(null);
-    setLocallyRated(prev => ({ ...prev, [variantId]: true }));
 
     navigation.navigate('ShareExperienceScreen', {
       entityType: 'product',
-      entityName: reviewTarget.name,
+      entityName: target.name,
       entitySubtitle: `Order #${order?.order_code ?? order?.id ?? ''}`,
-      variantId,
-      initialRating: rating,
+      variantId: target.variantId,
+      initialRating: target.review?.rating ?? rating,
+      initialReview: target.review?.review ?? '',
+      initialImages: target.review?.images ?? [],
+      isEdit,
     });
   };
 
@@ -281,13 +287,17 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
               </View>
             </View>
 
-            {/* {item.rated ? (
-              <View style={styles.ratedPill}>
-                <TablerIcon name="star-filled" size={14} color="#F59E0B" />
-                <Text style={styles.ratedText}>You rated this product</Text>
-              </View>
-            ) : 
-            canReview && !!item.variantId ? ( */}
+            {/* {item.rated ? ( */}
+            <TouchableOpacity
+              style={styles.editReviewBtn}
+              activeOpacity={0.88}
+              onPress={() => setReviewTarget(item)}
+            >
+              <TablerIcon name="star-filled" size={16} color="#F59E0B" />
+              <Text style={styles.editReviewBtnText}>Edit Review</Text>
+            </TouchableOpacity>
+            {/* // ) :  */}
+            {/* // canReview && !!item.variantId ? ( */}
             <TouchableOpacity
               style={styles.reviewBtn}
               activeOpacity={0.88}
@@ -296,10 +306,11 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
               <TablerIcon name="star" size={16} color="#FFFFFF" />
               <Text style={styles.reviewBtnText}>Rate Product</Text>
             </TouchableOpacity>
-            {/* ) : null} */}
+            {/* ) 
+            // : null} */}
           </View>
         ))}
-
+        
         <Text style={styles.sectionTitle}>Payment Summary</Text>
         <View style={styles.card}>
           {paymentRows.map(row => (
@@ -326,6 +337,8 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
 
       <FeedbackModal
         visible={!!reviewTarget}
+        isEdit={!!reviewTarget?.rated}
+        initialRating={reviewTarget?.review?.rating ?? 0}
         onClose={() => setReviewTarget(null)}
         onContinue={openProductReview}
       />
@@ -531,6 +544,23 @@ const styles = StyleSheet.create({
   },
   reviewBtnText: {
     color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  editReviewBtn: {
+    marginTop: 12,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  editReviewBtnText: {
+    color: '#92400E',
     fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
   },

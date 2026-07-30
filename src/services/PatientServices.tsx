@@ -114,3 +114,16 @@ export const AddMedicalRecord = async (patientData: any) => {
         throw error;
     }
 }
+
+export const getDietPlans = async () => {
+    try {
+        const response = await apiClient('patients/diet-plans/', {
+            method: 'GET',
+        });
+        console.log('DIET_PLANS_API =>', response);
+        return response;
+    } catch (error) {
+        console.log('DIET_PLANS_API_ERROR =>', error);
+        throw error;
+    }
+}

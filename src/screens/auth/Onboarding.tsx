@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -6,15 +6,15 @@ import {
     TouchableOpacity,
     StatusBar,
     StyleSheet,
-    Alert,
     Image,
     Platform,
     ScrollView,
     ActivityIndicator,
     Keyboard,
-    TouchableWithoutFeedback,
     KeyboardAvoidingView,
     Animated,
+    findNodeHandle,
+    UIManager,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
@@ -65,9 +65,63 @@ const Onboarding = (props: any) => {
     >(null);
     const [isLoadingImage, setImageloding] = useState(false);
     const [Isloading, setUSERID] = useState('');
+    const scrollRef = useRef<ScrollView>(null);
     const dayRef = useRef<TextInput>(null);
     const monthRef = useRef<TextInput>(null);
     const yearRef = useRef<TextInput>(null);
+    const emailRef = useRef<TextInput>(null);
+    const firstNameRef = useRef<TextInput>(null);
+    const lastNameRef = useRef<TextInput>(null);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    /** Scroll focused field into view above keyboard + sticky Proceed button */
+    const scrollFieldIntoView = useCallback((target: TextInput | View | null) => {
+        if (!target || !scrollRef.current) return;
+
+        const scrollNode = findNodeHandle(scrollRef.current);
+        const fieldNode = findNodeHandle(target);
+        if (!scrollNode || !fieldNode) return;
+
+        requestAnimationFrame(() => {
+            UIManager.measureLayout(
+                fieldNode,
+                scrollNode,
+                () => {},
+                (_x, y, _w, h) => {
+                    const offset = Math.max(0, y - 24);
+                    scrollRef.current?.scrollTo({
+                        y: offset,
+                        animated: true,
+                    });
+                },
+            );
+        });
+    }, []);
+
+    const onFieldFocus = useCallback(
+        (ref: React.RefObject<TextInput | null>) => {
+            // Wait for keyboard animation, then scroll so field stays visible
+            setTimeout(() => scrollFieldIntoView(ref.current), Platform.OS === 'ios' ? 280 : 120);
+        },
+        [scrollFieldIntoView],
+    );
+
+    useEffect(() => {
+        const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvt, e => {
+            setKeyboardHeight(e.endCoordinates?.height ?? 0);
+        });
+        const hideSub = Keyboard.addListener(hideEvt, () => {
+            setKeyboardHeight(0);
+        });
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     const [formData, setFormData] = useState<FormData>({
         firstName: '',
@@ -436,18 +490,23 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
 
             <KeyboardAvoidingView
                 style={styles.keyboardContainer}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+                behavior="padding"
+                keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <ScrollView
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={[
-                            styles.scrollContent,
-                            { paddingBottom: 16 },
-                        ]}
-                    >
+                <ScrollView
+                    ref={scrollRef}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    showsVerticalScrollIndicator={false}
+                    automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        {
+                            // Extra space so email/DOB clear keyboard + Proceed bar
+                            paddingBottom: 24 + (keyboardHeight > 0 ? Math.min(keyboardHeight * 0.35, 160) : 0),
+                        },
+                    ]}
+                >
                         <LinearGradient
                             colors={['#0D614E', '#14876A', '#1FA37D']}
                             start={{ x: 0, y: 0 }}
@@ -473,22 +532,6 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
 
                             {/* PROFILE IMAGE */}
                               <View style={styles.imageWrapper}>  
-                          {/* <Animated.View
-                                style={[
-                                    styles.imageWrapper,
-                                    {
-                                        opacity: avatarAnim,
-                                        transform: [
-                                            {
-                                                scale: avatarAnim.interpolate({
-                                                    inputRange: [0, 1],
-                                                    outputRange: [0.7, 1],
-                                                }),
-                                            },
-                                        ],
-                                    },
-                                ]}
-                            > */}
                                 <TouchableOpacity
                                     activeOpacity={0.8}
                                     onPress={handleAddImage}
@@ -517,7 +560,6 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                         </View>
                                     </View>
  
-                                    {/* Camera Icon */}
                                     <Animated.View
                                         style={[
                                             styles.smallCircle,
@@ -528,17 +570,20 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                     </Animated.View>
                                 </TouchableOpacity>
                                 </View>
-                            {/* </Animated.View> */}
 
                             <View style={styles.row}>
 
                                 <View style={styles.inputWrapper}>
                                     <Text style={styles.label}>First Name *</Text>
                                     <TextInput
+                                        ref={firstNameRef}
                                         placeholder="ABC"
                                         placeholderTextColor="#9CA3AF"
                                         value={formData.firstName}
                                         onChangeText={(t) => handleFieldChange('firstName', t)}
+                                        onFocus={() => onFieldFocus(firstNameRef)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => lastNameRef.current?.focus()}
                                         style={[
                                             styles.inputHalf,
                                             formData.firstName && styles.inputFilled
@@ -549,14 +594,17 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
 
                                 </View>
 
-                                {/* LAST NAME */}
                                 <View style={styles.inputWrapper}>
                                     <Text style={styles.label}>Last Name *</Text>
                                     <TextInput
+                                        ref={lastNameRef}
                                         placeholder="XYZ"
                                         placeholderTextColor="#9CA3AF"
                                         value={formData.lastName}
                                         onChangeText={(t) => handleFieldChange('lastName', t)}
+                                        onFocus={() => onFieldFocus(lastNameRef)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => emailRef.current?.focus()}
                                         style={[
                                             styles.inputHalf,
                                             formData.lastName && styles.inputFilled
@@ -566,6 +614,28 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
 
                                 </View>
 
+                            </View>
+
+                            {/* EMAIL — placed under name so it stays near top section & visible with keyboard */}
+                            <View style={styles.emailBlock}>
+                            <Text style={styles.label}>Email Address</Text>
+                            <TextInput
+                                ref={emailRef}
+                                placeholder="email@gmail.com"
+                                placeholderTextColor="#9CA3AF"
+                                value={formData.email}
+                                onChangeText={(t) => handleFieldChange('email', t)}
+                                onFocus={() => onFieldFocus(emailRef)}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                returnKeyType="next"
+                                style={[
+                                    styles.inputFull,
+                                    formData.email && styles.inputFilled
+                                ]}
+                            />
+                            <Text style={styles.errorText}>{errors.email}</Text>
                             </View>
 
                             {/* GENDER */}
@@ -596,14 +666,10 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
 
                             <Text style={styles.errorText}>{errors.gender}</Text>
 
-
-
                             {/* DOB */}
                             <Text style={styles.label}>Date of Birth *</Text>
 
                             <View style={styles.dobContainer}>
-
-                                {/* DAY */}
 
                                 <TextInput
                                     ref={dayRef}
@@ -629,16 +695,17 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                             day: value,
                                         });
 
-                                        // AUTO NEXT
                                         if (value.length === 2) {
                                             monthRef.current?.focus();
                                         }
                                     }}
-                                    onFocus={() => setFocusedField('day')}
+                                    onFocus={() => {
+                                        setFocusedField('day');
+                                        onFieldFocus(dayRef);
+                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     onKeyPress={({ nativeEvent }) => {
 
-                                        // BACK TO PREVIOUS
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.day.length === 0
@@ -647,8 +714,6 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                         }
                                     }}
                                 />
-
-                                {/* MONTH */}
 
                                 <TextInput
                                     ref={monthRef}
@@ -665,7 +730,10 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                         styles.dobInput,
                                         dob.month && styles.inputFilled,
                                     ]}
-                                    onFocus={() => setFocusedField('month')}
+                                    onFocus={() => {
+                                        setFocusedField('month');
+                                        onFieldFocus(monthRef);
+                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     onChangeText={(t) => {
 
@@ -676,14 +744,12 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                             month: value,
                                         });
 
-                                        // AUTO NEXT
                                         if (value.length === 2) {
                                             yearRef.current?.focus();
                                         }
                                     }}
                                     onKeyPress={({ nativeEvent }) => {
 
-                                        // BACK TO DAY
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.month.length === 0
@@ -692,9 +758,6 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                         }
                                     }}
                                 />
-
-                                {/* YEAR */}
-
 
                                 <TextInput
                                     ref={yearRef}
@@ -705,7 +768,10 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                             : ''
                                     }
                                     placeholderTextColor="#9CA3AF"
-                                    onFocus={() => setFocusedField('year')}
+                                    onFocus={() => {
+                                        setFocusedField('year');
+                                        onFieldFocus(yearRef);
+                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     keyboardType="number-pad"
                                     maxLength={4}
@@ -723,7 +789,6 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                     }}
                                     onKeyPress={({ nativeEvent }) => {
 
-                                        // BACK TO MONTH
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.year.length === 0
@@ -733,31 +798,12 @@ const avatarAnim = useRef(new Animated.Value(0)).current;
                                     }}
                                 />
 
-
-
-
-
                             </View>
 
                             <Text style={[styles.errorText, { top: -15 }]}>{errors.dob}</Text>
-
-                            {/* EMAIL */}
-                            <Text style={styles.label}>Email Address</Text>
-                            <TextInput
-                                placeholder="email@gmail.com"
-                                placeholderTextColor="#9CA3AF"
-                                value={formData.email}
-                                onChangeText={(t) => handleFieldChange('email', t)}
-                                style={[
-                                    styles.inputFull,
-                                    formData.email && styles.inputFilled
-                                ]}
-                            />
-                            <Text style={styles.errorText}>{errors.email}</Text>
                         </View>
                         </View>
-                    </ScrollView>
-                </TouchableWithoutFeedback>
+                </ScrollView>
 
                 <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                     <CommonButton

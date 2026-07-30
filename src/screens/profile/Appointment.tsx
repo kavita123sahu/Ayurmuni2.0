@@ -1,12 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { Colors } from '../../common/Colors';
+import { Fonts } from '../../common/Fonts';
 import Header from '../../components/Header';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppointmentHistory } from '../../hooks/useConsultData';
@@ -18,7 +22,7 @@ import RescheduleModal from '../../components/RescheduleModal';
 import CancelAppointmentModal from '../../components/CancelAppointModal';
 import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
-import { normalizeAppointmentListItem,  } from '../../utils/appointmentUtils';
+import { normalizeAppointmentListItem } from '../../utils/appointmentUtils';
 import SegmentTabs from '../../components/SegmentTabs';
 import {
   getListBottomPadding,
@@ -31,76 +35,175 @@ const APPOINTMENT_TABS = [
   { key: 'past', label: 'Past' },
 ] as const;
 
+const FOLLOW_UP_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'true', label: 'Follow-up' },
+  { key: 'false', label: 'Regular' },
+] as const;
+
+const UPCOMING_STATUS_FILTERS = [
+  { key: 'all', label: 'All status' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'reschedule', label: 'Reschedule' },
+] as const;
+
+const PAST_STATUS_FILTERS = [
+  { key: 'all', label: 'All status' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'missed', label: 'Missed' },
+] as const;
+
+type Chip = { key: string; label: string };
+
+const FilterChips = ({
+  items,
+  activeKey,
+  onChange,
+}: {
+  items: readonly Chip[] | Chip[];
+  activeKey: string;
+  onChange: (key: string) => void;
+}) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={styles.chipRow}
+  >
+    {items.map(item => {
+      const active = activeKey === item.key;
+      return (
+        <TouchableOpacity
+          key={item.key}
+          style={[styles.chip, active && styles.chipActive]}
+          onPress={() => onChange(item.key)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.chipText, active && styles.chipTextActive]}>
+            {item.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
+  </ScrollView>
+);
+
+/**
+ * My Appointments — same screen, conditional:
+ * - Home "View all" → mode: 'upcoming' (no Past tab)
+ * - Profile → full Upcoming / Past tabs
+ * Filters: Follow-up + Status (API-backed)
+ */
 const AppointmentScreen = (props: any) => {
   const insets = useSafeAreaInsets();
-  const { AppointData, refreshUpcoming, loading, loadMore, hasMore, loadingMore, refreshing } =
-    useAppointmentHistory();
+  const mode = props?.route?.params?.mode;
+  const upcomingOnly = mode === 'upcoming';
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [followUpFilter, setFollowUpFilter] = useState('all');
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
-  const prefetchAttemptsRef = useRef(0);
-  const MAX_TAB_PREFETCH = 10;
 
-  // ---- Normalize karo sirf ek baar jab AppointData change ho ----
+  const listScope = upcomingOnly ? 'upcoming' : activeTab;
+
+  // Reset status chip when switching upcoming ↔ past
+  const handleTabChange = useCallback((tab: 'upcoming' | 'past') => {
+    setActiveTab(tab);
+    setStatusFilter('all');
+  }, []);
+
+  const apiFilters = useMemo(() => {
+    const filters: { appointment_status?: string; follow_up?: string } = {};
+
+    if (statusFilter !== 'all') {
+      filters.appointment_status = statusFilter;
+    } else {
+      filters.appointment_status = listScope; // 'upcoming' | 'past'
+    }
+
+    if (followUpFilter !== 'all') {
+      filters.follow_up = followUpFilter;
+    }
+
+    return filters;
+  }, [listScope, statusFilter, followUpFilter]);
+
+  const {
+    AppointData,
+    refreshUpcoming,
+    loading,
+    loadMore,
+    hasMore,
+    loadingMore,
+    refreshing,
+  } = useAppointmentHistory(apiFilters);
+
+  const statusChips =
+    listScope === 'upcoming' ? UPCOMING_STATUS_FILTERS : PAST_STATUS_FILTERS;
+
   const normalizedData = useMemo(() => {
-    if (loading) return [];
-    return (AppointData ?? []).map((item: any) => normalizeAppointmentListItem(item));
+    if (loading && (!AppointData || AppointData.length === 0)) return [];
+    return (AppointData ?? []).map((item: any) =>
+      normalizeAppointmentListItem(item),
+    );
   }, [AppointData, loading]);
 
-  // ---- Tab switch pe API call NAHI hoti, sirf client-side filter ----
+  // Soft client guard (API already filtered by status/follow_up when supported)
   const appointmentData = useMemo(() => {
-    return normalizedData.filter((item) =>
-      activeTab === 'upcoming'
-        ? UPCOMING_STATUS.includes(item.status)
-        : PAST_STATUS.includes(item.status)
-    );
-  }, [normalizedData, activeTab]);
+    return normalizedData.filter(item => {
+      const status = String(item.status ?? '').toLowerCase();
+
+      if (statusFilter === 'all') {
+        const inScope =
+          listScope === 'upcoming'
+            ? UPCOMING_STATUS.includes(status) ||
+              status === 'upcoming' ||
+              !PAST_STATUS.includes(status)
+            : PAST_STATUS.includes(status) || status === 'past';
+        if (!inScope && listScope === 'past') return false;
+        if (
+          listScope === 'upcoming' &&
+          PAST_STATUS.includes(status) &&
+          statusFilter === 'all'
+        ) {
+          return false;
+        }
+      } else if (status !== statusFilter && status !== `${statusFilter}d`) {
+        // allow reschedule / rescheduled
+        if (
+          !(
+            statusFilter === 'reschedule' &&
+            (status === 'reschedule' || status === 'rescheduled')
+          )
+        ) {
+          return false;
+        }
+      }
+
+      if (followUpFilter !== 'all') {
+        const raw = item?.rawData as any;
+        const fu = raw?.follow_up;
+        const hasFollowUp = Boolean(
+          fu?.date || fu?.schedule || raw?.follow_up_active,
+        );
+        if (followUpFilter === 'true' && !hasFollowUp) return false;
+        if (followUpFilter === 'false' && hasFollowUp) return false;
+      }
+
+      return true;
+    });
+  }, [normalizedData, listScope, statusFilter, followUpFilter]);
 
   const listData = loading ? [{ id: 'appointment-skeleton' }] : appointmentData;
 
-  // Load more when the active tab has no matches yet (e.g. upcoming on page 2+).
-  useEffect(() => {
-    if (loading || loadingMore || !hasMore) {
-      return;
-    }
-
-    if (appointmentData.length > 0) {
-      prefetchAttemptsRef.current = 0;
-      return;
-    }
-
-    if ((AppointData ?? []).length === 0) {
-      return;
-    }
-
-    if (prefetchAttemptsRef.current >= MAX_TAB_PREFETCH) {
-      return;
-    }
-
-    prefetchAttemptsRef.current += 1;
+  const handleEndReached = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
     loadMore();
-  }, [
-    loading,
-    loadingMore,
-    hasMore,
-    appointmentData.length,
-    AppointData,
-    activeTab,
-    loadMore,
-  ]);
+  }, [loading, loadingMore, hasMore, loadMore]);
 
-  useEffect(() => {
-    prefetchAttemptsRef.current = 0;
-  }, [activeTab]);
-
-  // ---- Tab change ka stable callback ----
-  const handleTabChange = useCallback((tab: 'upcoming' | 'past') => {
-    setActiveTab(tab);
-  }, []);
-
-  // ---- Modal open handlers stable rakho ----
   const openReschedule = useCallback((item: any) => {
     setSelectedAppointment(item);
     setShowRescheduleModal(true);
@@ -119,7 +222,7 @@ const AppointmentScreen = (props: any) => {
         availability: number;
         reschedule_reason?: string;
         cancellation_reason?: string;
-      }
+      },
     ) => {
       const action = payload.action || 'reschedule';
       let payloadSend: any = { action };
@@ -135,7 +238,10 @@ const AppointmentScreen = (props: any) => {
           break;
       }
 
-      const res = await handleAppointmentAction({ appointmentId, payload: payloadSend });
+      const res = await handleAppointmentAction({
+        appointmentId,
+        payload: payloadSend,
+      });
 
       if (res?.success) {
         refreshUpcoming?.();
@@ -146,19 +252,26 @@ const AppointmentScreen = (props: any) => {
       }
       setShowRescheduleModal(false);
       setSelectedAppointment(null);
-      showSuccessToast(res?.message || 'You cannot reschedule multiple times', 'error');
+      showSuccessToast(
+        res?.message || 'You cannot reschedule multiple times',
+        'error',
+      );
     },
-    [refreshUpcoming]
+    [refreshUpcoming],
   );
 
   const handleCancel = useCallback(
-    async (appointmentId: string, payload: { action: string; cancellation_reason: string }) => {
-      const payloadSend: any = {
-        action: payload.action,
-        cancellation_reason: payload.cancellation_reason,
-      };
-
-      const res = await handleAppointmentAction({ appointmentId, payload: payloadSend });
+    async (
+      appointmentId: string,
+      payload: { action: string; cancellation_reason: string },
+    ) => {
+      const res = await handleAppointmentAction({
+        appointmentId,
+        payload: {
+          action: 'cancel',
+          cancellation_reason: payload.cancellation_reason,
+        },
+      });
 
       if (res?.success) {
         refreshUpcoming?.();
@@ -169,13 +282,13 @@ const AppointmentScreen = (props: any) => {
       }
       showSuccessToast(res?.message || 'Something went wrong', 'error');
     },
-    [refreshUpcoming]
+    [refreshUpcoming],
   );
 
-  // ---- keyExtractor + renderItem ab stable hain, FlatList unnecessarily re-render nahi karegi ----
   const keyExtractor = useCallback(
-    (item: any, index: number) => (loading ? item.id : item.consultation_id || String(index)),
-    [loading]
+    (item: any, index: number) =>
+      loading ? item.id : item.consultation_id || String(index),
+    [loading],
   );
 
   const renderItem = useCallback(
@@ -191,7 +304,7 @@ const AppointmentScreen = (props: any) => {
           onCancel={() => openCancel(item)}
         />
       ),
-    [loading, props.navigation, openReschedule, openCancel]
+    [loading, props.navigation, openReschedule, openCancel],
   );
 
   const ListEmpty = useMemo(() => {
@@ -199,15 +312,19 @@ const AppointmentScreen = (props: any) => {
     return (
       <EmptyState
         iconName="star"
-        title={activeTab === 'upcoming' ? 'No Upcoming Appointments' : 'No Past Appointments'}
+        title={
+          listScope === 'upcoming'
+            ? 'No Upcoming Appointments'
+            : 'No Past Appointments'
+        }
         subtitle={
-          activeTab === 'upcoming'
-            ? 'You have no upcoming appointments.'
-            : 'You have no past appointments.'
+          listScope === 'upcoming'
+            ? 'You have no upcoming appointments for these filters.'
+            : 'You have no past appointments for these filters.'
         }
       />
     );
-  }, [loading, appointmentData.length, activeTab]);
+  }, [loading, appointmentData.length, listScope]);
 
   const handleBookNew = useCallback(() => {
     props?.navigation.navigate('AllDoctors');
@@ -216,20 +333,39 @@ const AppointmentScreen = (props: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <Header
-        title="My Appointments"
-        subtitle="Manage your visits "
+        title={upcomingOnly ? 'Upcoming Appointments' : 'My Appointments'}
+        subtitle={
+          upcomingOnly
+            ? 'Your next visits'
+            : 'Manage your visits'
+        }
         onBack={() => props?.navigation.goBack()}
         rightIconName="plus"
         onRightPress={handleBookNew}
         onRefreshPress={refreshUpcoming}
       />
 
-      <SegmentTabs
-        tabs={[...APPOINTMENT_TABS]}
-        activeKey={activeTab}
-        onChange={key => handleTabChange(key as 'upcoming' | 'past')}
-        variant="underline"
-      />
+      {!upcomingOnly ? (
+        <SegmentTabs
+          tabs={[...APPOINTMENT_TABS]}
+          activeKey={activeTab}
+          onChange={key => handleTabChange(key as 'upcoming' | 'past')}
+          variant="underline"
+        />
+      ) : null}
+
+      <View style={styles.filtersBlock}>
+        <FilterChips
+          items={FOLLOW_UP_FILTERS}
+          activeKey={followUpFilter}
+          onChange={setFollowUpFilter}
+        />
+        <FilterChips
+          items={statusChips}
+          activeKey={statusFilter}
+          onChange={setStatusFilter}
+        />
+      </View>
 
       <FlatList
         data={listData}
@@ -246,7 +382,7 @@ const AppointmentScreen = (props: any) => {
           { paddingBottom: getListBottomPadding(insets) },
         ]}
         ListEmptyComponent={ListEmpty}
-        onEndReached={loadMore}
+        onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl
@@ -256,7 +392,11 @@ const AppointmentScreen = (props: any) => {
             tintColor={Colors.primaryColor}
           />
         }
-        ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#0D614E" /> : null}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator size="small" color="#0D614E" />
+          ) : null
+        }
       />
 
       <RescheduleModal
@@ -266,9 +406,14 @@ const AppointmentScreen = (props: any) => {
           setShowRescheduleModal(false);
           setSelectedAppointment(null);
         }}
-        isRescheduleRequest={selectedAppointment?.status?.toLowerCase() === 'reschedule'}
-        onSubmit={(payload) => {
-          handleReschedule(selectedAppointment?.consultation_id, payload);
+        isRescheduleRequest={
+          selectedAppointment?.status?.toLowerCase() === 'reschedule'
+        }
+        onSubmit={payload => {
+          handleReschedule(selectedAppointment?.consultation_id, {
+            ...payload,
+            action: (payload as any)?.action || 'reschedule',
+          });
         }}
       />
 
@@ -282,7 +427,6 @@ const AppointmentScreen = (props: any) => {
           handleCancel(selectedAppointment?.consultation_id, payload);
         }}
       />
-
     </SafeAreaView>
   );
 };
@@ -295,8 +439,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: getScreenPaddingH(),
     backgroundColor: '#F7F8FA',
   },
+  filtersBlock: {
+    marginTop: SPACING.sm,
+    gap: 8,
+  },
+  chipRow: {
+    paddingVertical: 2,
+    gap: 8,
+    paddingRight: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chipActive: {
+    backgroundColor: Colors.onfillColor,
+    borderColor: Colors.primaryColor,
+  },
+  chipText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  chipTextActive: {
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   listContent: {
-    paddingTop: SPACING.lg,
+    paddingTop: SPACING.md,
     flexGrow: 1,
   },
 });

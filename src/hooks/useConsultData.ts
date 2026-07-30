@@ -3,6 +3,7 @@ import {
     useState,
     useCallback,
     useRef,
+    useMemo,
 } from 'react';
 
 import * as _CONSULT_SERVICES
@@ -10,6 +11,11 @@ import * as _CONSULT_SERVICES
 import { Images } from '../common/Images';
 import { isAuthenticated } from '../services/guestAuth';
 import { filterUpcomingAppointments } from '../utils/appointmentUtils';
+import {
+    getHealthCategories,
+    mapProductCategory,
+    normalizeApiList,
+} from '../services/ProductServices';
 
 export type SlotItem = {
     id: string;
@@ -57,8 +63,7 @@ export const useConsultData = () => {
                     topDoctorRes,
                     AllfavDoctor
                 ]: any = await Promise.all([
-                    // _CONSULT_SERVICES.getConsultCategory(),
-                    _CONSULT_SERVICES.getConsultCategory(),
+                    getHealthCategories(),
                     _CONSULT_SERVICES.getTopDoctor(),
                     _CONSULT_SERVICES.AllDoctorData(),
 
@@ -70,8 +75,14 @@ export const useConsultData = () => {
 
                 setFavDoctors(AllfavDoctor?.data?.results || []);
 
+                const healthCats = normalizeApiList(categoryRes)
+                    .map(mapProductCategory)
+                    .filter(item => item.id);
+
                 setCategories(
-                    categoryRes?.data || [],
+                    healthCats.length
+                        ? healthCats
+                        : categoryRes?.data || [],
                 );
 
                 setTopDoctors(
@@ -260,6 +271,10 @@ export type DoctorListFilters = {
     page?: number;
     page_size?: number;
     suggested?: boolean;
+    /** Filter doctors by health category (concern) */
+    health_category_id?: string;
+    /** Filter doctors by disease subcategory */
+    health_disease_id?: string;
 };
 
 export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
@@ -275,15 +290,35 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
                 setLoading(true);
             }
 
+            // Only send defined filters — never force empty specialization (avoids fetching all)
             const payload: DoctorListFilters = {
-                specialization: selectedFilters.specialization || '',
-                experience: selectedFilters.experience || '',
-                from_date: selectedFilters.from_date || '',
-                to_date: selectedFilters.to_date || '',
-                search: selectedFilters.search?.trim() || '',
                 page: selectedFilters.page ?? 1,
                 page_size: selectedFilters.page_size ?? 20,
             };
+
+            if (selectedFilters.health_disease_id) {
+                payload.health_disease_id = selectedFilters.health_disease_id;
+            } else if (selectedFilters.health_category_id) {
+                payload.health_category_id = selectedFilters.health_category_id;
+            } else if (selectedFilters.specialization) {
+                payload.specialization = selectedFilters.specialization;
+            }
+
+            if (selectedFilters.experience) {
+                payload.experience = selectedFilters.experience;
+            }
+            if (selectedFilters.from_date) {
+                payload.from_date = selectedFilters.from_date;
+            }
+            if (selectedFilters.to_date) {
+                payload.to_date = selectedFilters.to_date;
+            }
+            if (selectedFilters.search?.trim()) {
+                payload.search = selectedFilters.search.trim();
+            }
+            if (selectedFilters.suggested) {
+                payload.suggested = selectedFilters.suggested;
+            }
 
             const res = await _CONSULT_SERVICES.getFilterTopDoctor(payload);
 
@@ -303,12 +338,15 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
         }
     }, [
         selectedFilters.specialization,
+        selectedFilters.health_category_id,
+        selectedFilters.health_disease_id,
         selectedFilters.experience,
         selectedFilters.from_date,
         selectedFilters.to_date,
         selectedFilters.search,
         selectedFilters.page,
         selectedFilters.page_size,
+        selectedFilters.suggested,
     ]);
 
     useEffect(() => {
@@ -377,7 +415,10 @@ export const useUpcomingAppointmentsPreview = (limit = HOME_UPCOMING_LIMIT) => {
     };
 };
 
-export const useAppointmentHistory = () => {
+export const useAppointmentHistory = (filters?: {
+  appointment_status?: string;
+  follow_up?: string;
+}) => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -391,6 +432,15 @@ export const useAppointmentHistory = () => {
     const hasMoreRef = useRef(true);
     const loadingMoreRef = useRef(false);
     const appointDataRef = useRef<any[]>([]);
+
+    const filterKey = useMemo(
+        () =>
+            JSON.stringify({
+                appointment_status: filters?.appointment_status ?? '',
+                follow_up: filters?.follow_up ?? '',
+            }),
+        [filters?.appointment_status, filters?.follow_up],
+    );
 
     const getAllAppointment = useCallback(
         async (pageNo = 1, isLoadMore = false) => {
@@ -416,13 +466,26 @@ export const useAppointmentHistory = () => {
                     setLoading(true);
                 }
 
+                const parsed = JSON.parse(filterKey) as {
+                    appointment_status?: string;
+                    follow_up?: string;
+                };
+
                 const res = await _CONSULT_SERVICES.getConsultHistory({
                     page: pageNo,
+                    page_size: 20,
+                    ...(parsed.appointment_status
+                        ? { appointment_status: parsed.appointment_status }
+                        : {}),
+                    ...(parsed.follow_up
+                        ? { follow_up: parsed.follow_up }
+                        : {}),
                 });
-                console.log("APPOINTMENT_HISTORY_DATA", res?.data);
+                console.log('APPOINTMENT_HISTORY_DATA', res?.data);
 
                 const results = res?.data?.results || [];
                 const nextExists = !!res?.data?.next;
+                const canLoadMore = nextExists && results.length > 0;
 
                 setAppointData(prev => {
                     const merged = isLoadMore ? [...prev, ...results] : results;
@@ -431,13 +494,13 @@ export const useAppointmentHistory = () => {
                 });
 
                 pageRef.current = pageNo;
-                hasMoreRef.current = nextExists;
-                setHasMore(nextExists);
+                hasMoreRef.current = canLoadMore;
+                setHasMore(canLoadMore);
                 setPage(pageNo);
 
                 return appointDataRef.current;
             } catch (e) {
-                console.log("ALL_DOCTOR_APPOINT_ERROR", e);
+                console.log('ALL_DOCTOR_APPOINT_ERROR', e);
                 return appointDataRef.current;
             } finally {
                 setLoading(false);
@@ -445,7 +508,7 @@ export const useAppointmentHistory = () => {
                 loadingMoreRef.current = false;
             }
         },
-        [],
+        [filterKey],
     );
 
     const loadMore = useCallback(() => {
@@ -464,13 +527,17 @@ export const useAppointmentHistory = () => {
             setHasMore(true);
             await getAllAppointment(1, false);
         } catch (e) {
-            console.log("REFRESH_APPOINTMENT_ERROR", e);
+            console.log('REFRESH_APPOINTMENT_ERROR', e);
         } finally {
             setRefreshing(false);
         }
     }, [getAllAppointment]);
 
     useEffect(() => {
+        pageRef.current = 1;
+        hasMoreRef.current = true;
+        setPage(1);
+        setHasMore(true);
         getAllAppointment(1);
     }, [getAllAppointment]);
 

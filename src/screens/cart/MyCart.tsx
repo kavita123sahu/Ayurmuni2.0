@@ -3,6 +3,7 @@ import React, {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
 
@@ -33,6 +34,7 @@ import { Colors } from '../../common/Colors';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToCheckout } from '../../navigation/productNavigation';
+import SegmentTabs from '../../components/SegmentTabs';
 
 
 
@@ -77,6 +79,8 @@ const MyCart = ({ navigation }: any) => {
     const [activeTab, setActiveTab] = useState<'cart' | 'prescribed'>('cart');
     const [showDetails, setShowDetails] =
         useState(false);
+    const didAutoSelectRef = useRef(false);
+    const didSetInitialTabRef = useRef(false);
 
     const sections = useMemo<SectionType[]>(() => {
         const next: SectionType[] = [];
@@ -86,7 +90,10 @@ const MyCart = ({ navigation }: any) => {
                 id: 'cart',
                 title: 'My Cart',
                 type: 'cart',
-                items: CartData.my_cart.items.map((item: any) => getProductData(item)),
+                items: CartData.my_cart.items.map((item: any) => ({
+                    ...getProductData(item),
+                    source: 'cart' as const,
+                })),
             });
         }
 
@@ -97,12 +104,13 @@ const MyCart = ({ navigation }: any) => {
                 type: 'prescribed',
                 items: CartData.prescription_cart.items.flatMap(
                     (prescription: any) =>
-                        prescription.items.map((item: any) =>
-                            getProductData(
+                        prescription.items.map((item: any) => ({
+                            ...getProductData(
                                 item,
                                 prescription.doctor_name,
                             ),
-                        ),
+                            source: 'prescribed' as const,
+                        })),
                 ),
             });
         }
@@ -119,11 +127,14 @@ const MyCart = ({ navigation }: any) => {
 
     useEffect(() => {
         if (!hasCartItems) {
+            didAutoSelectRef.current = false;
+            didSetInitialTabRef.current = false;
             setSelectedItems([]);
             return;
         }
 
-        if (selectedItems.length === 0) {
+        if (!didAutoSelectRef.current) {
+            didAutoSelectRef.current = true;
             setSelectedItems(
                 sections.flatMap(section =>
                     section.items.map(item => item.id),
@@ -261,9 +272,26 @@ const MyCart = ({ navigation }: any) => {
 
     const cartSection = sections.find(item => item.type === 'cart');
     const prescribedSection = sections.find(item => item.type === 'prescribed');
-    const showTabs =
-        (cartSection?.items.length ?? 0) > 0 &&
-        (prescribedSection?.items.length ?? 0) > 0;
+    const cartCount = cartSection?.items.length ?? 0;
+    const prescribedCount = prescribedSection?.items.length ?? 0;
+    const showTabs = hasCartItems;
+
+    const cartTabs = useMemo(
+        () => [
+            {
+                key: 'cart',
+                label: cartCount > 0 ? `My Cart (${cartCount})` : 'My Cart',
+            },
+            {
+                key: 'prescribed',
+                label:
+                    prescribedCount > 0
+                        ? `Prescribed (${prescribedCount})`
+                        : 'Prescribed',
+            },
+        ],
+        [cartCount, prescribedCount],
+    );
 
     const currentSection = sections.find(
         item =>
@@ -276,15 +304,25 @@ const MyCart = ({ navigation }: any) => {
             return;
         }
 
-        if (activeTab === 'cart' && !cartSection?.items.length && prescribedSection?.items.length) {
+        if (!didSetInitialTabRef.current) {
+            didSetInitialTabRef.current = true;
+            if (cartCount > 0) {
+                setActiveTab('cart');
+            } else if (prescribedCount > 0) {
+                setActiveTab('prescribed');
+            }
+            return;
+        }
+
+        if (activeTab === 'cart' && !cartCount && prescribedCount) {
             setActiveTab('prescribed');
             return;
         }
 
-        if (activeTab === 'prescribed' && !prescribedSection?.items.length && cartSection?.items.length) {
+        if (activeTab === 'prescribed' && !prescribedCount && cartCount) {
             setActiveTab('cart');
         }
-    }, [activeTab, cartSection, prescribedSection, hasCartItems]);
+    }, [activeTab, cartCount, prescribedCount, hasCartItems]);
 
     const handleCheckout = () => {
         if (selectedProducts.length === 0) {
@@ -381,35 +419,22 @@ const MyCart = ({ navigation }: any) => {
                     >
 
                         {showTabs ? (
-                            <View style={styles.tabContainer}>
-                                <TouchableOpacity
-                                    style={styles.tabBtn}
-                                    onPress={() => setActiveTab('cart')}>
-                                    <Text
-                                        style={[
-                                            styles.tabText,
-                                            activeTab === 'cart' &&
-                                            styles.activeTabText,
-                                        ]}>
-                                        My Cart
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.tabBtn}
-                                    onPress={() =>
-                                        setActiveTab('prescribed')
-                                    }>
-                                    <Text
-                                        style={[
-                                            styles.tabText,
-                                            activeTab === 'prescribed' &&
-                                            styles.activeTabText,
-                                        ]}>
-                                        Prescribed
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
+                            <SegmentTabs
+                                tabs={cartTabs}
+                                activeKey={activeTab}
+                                onChange={key => {
+                                    const nextTab = key as 'cart' | 'prescribed';
+                                    if (nextTab === 'cart' && cartCount === 0) {
+                                        return;
+                                    }
+                                    if (nextTab === 'prescribed' && prescribedCount === 0) {
+                                        return;
+                                    }
+                                    setActiveTab(nextTab);
+                                }}
+                                variant="underline"
+                                style={styles.tabContainer}
+                            />
                         ) : null}
 
 
@@ -479,7 +504,6 @@ const MyCart = ({ navigation }: any) => {
                                             updateQuantity={
                                                 updateQuantity
                                             }
-                                            styles={styles}
                                         />
                                     ))}
                                 </View>
@@ -488,7 +512,7 @@ const MyCart = ({ navigation }: any) => {
 
 
 
-                        <View style={styles.promoCard}>
+                        {/* <View style={styles.promoCard}>
 
                             <Text style={styles.promoTitle}>
                                 Got a promo code?
@@ -511,7 +535,7 @@ const MyCart = ({ navigation }: any) => {
 
                             </View>
 
-                        </View>
+                        </View> */}
 
                         <View style={styles.billBox}>
 
@@ -684,9 +708,6 @@ const styles = StyleSheet.create({
     },
 
     sectionCard: {
-        // backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 12,
         marginBottom: 12,
     },
     sectionHeader: {
@@ -694,45 +715,15 @@ const styles = StyleSheet.create({
         justifyContent:
             'space-between',
         alignItems: 'center',
-        marginBottom: 12,
-        paddingHorizontal: 4,
+        marginBottom: 8,
+        paddingHorizontal: 2,
     },
 
     sectionTitle: {
-        fontSize: 20,
+        fontSize: 16,
         color: '#1E293B',
         fontFamily:
             Fonts.PoppinsSemiBold,
-    },
-
-    productCard: {
-        // flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-        borderRadius: 20,
-        padding: 10,
-        marginBottom: 10,
-    },
-
-    productTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    prescribedWrapper: {
-        marginTop: 14,
-        paddingTop: 12,
-
-        borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
-
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    leftWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginRight: 12,
     },
 
     checkbox: {
@@ -799,27 +790,8 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
     },
     tabContainer: {
-        flexDirection: 'row',
-        marginTop: 10,
-        marginBottom: 20,
-    },
-
-    tabBtn: {
-        flex: 1,
-        alignItems: 'center',
-        paddingBottom: 10,
-        borderBottomWidth: 2,
-        borderBottomColor: '#E5E7EB',
-    },
-
-    tabText: {
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    activeTabText: {
-        color: '#0D614E',
-        fontFamily: Fonts.PoppinsSemiBold,
+        marginTop: 4,
+        marginBottom: 12,
     },
 
     infoCard: {

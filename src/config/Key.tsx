@@ -3,7 +3,7 @@ import { Fonts } from "../common/Fonts";
 import { Platform } from "react-native";
 
 export const BaseUrl = {
-    base_url: "https://scarce-derby-voice.ngrok-free.dev/"
+    base_url: "https://ayurmuni.aimantra.info/"
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/
     // https://6057-203-110-81-106.ngrok-free.app/

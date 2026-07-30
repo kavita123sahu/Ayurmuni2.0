@@ -7,6 +7,7 @@ export type ProductQuery = {
   health_disease_id?: string;
   brand_name_id?: string;
   category_id?: string;
+  service_category_id?: string;
   variant_id?: string;
   search?: string;
   page?: number;
@@ -36,6 +37,7 @@ const buildProductQuery = (params: ProductQuery = {}) => {
   appendQueryParam(query, 'health_disease_id', params.health_disease_id);
   appendQueryParam(query, 'brand_name_id', params.brand_name_id);
   appendQueryParam(query, 'category_id', params.category_id);
+  appendQueryParam(query, 'service_category_id', params.service_category_id);
   appendQueryParam(query, 'variant_id', params.variant_id);
   appendQueryParam(query, 'search', params.search);
   appendQueryParam(query, 'page', params.page);
@@ -51,6 +53,8 @@ const buildProductCategoryQuery = (params: ProductCategoryQuery = {}) => {
   const qs = query.toString();
   return qs ? `customers/product-categories/?${qs}` : 'customers/product-categories/';
 };
+
+export const PRODUCT_PAGE_SIZE = 20;
 
 export const normalizeApiList = (response: any): any[] => {
   if (response?.success === false) {
@@ -78,6 +82,29 @@ export const normalizeApiList = (response: any): any[] => {
   }
 
   return [];
+};
+
+export const hasMoreProductPages = (
+  response: any,
+  resultsLength: number,
+  pageSize: number = PRODUCT_PAGE_SIZE,
+) => {
+  const data = response?.data;
+
+  if (data && typeof data === 'object' && data.next != null && data.next !== '') {
+    return true;
+  }
+
+  if (
+    data &&
+    typeof data === 'object' &&
+    typeof data.count === 'number' &&
+    typeof data.page === 'number'
+  ) {
+    return data.page * pageSize < data.count;
+  }
+
+  return resultsLength >= pageSize;
 };
 
 const resolveImageUrl = (item: any): string => {

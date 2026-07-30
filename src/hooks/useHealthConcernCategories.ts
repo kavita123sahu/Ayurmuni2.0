@@ -69,21 +69,12 @@ export const useHealthConcernCategories = (serviceCategoryId?: string | null) =>
 
         let list = normalizeApiList(response).map(mapHealthItem);
 
-        if (serviceCategoryId && list.length === 0) {
-          response = await getHealthCategories();
-          if (reqId !== requestIdRef.current) {
-            return;
-          }
-          if (response?.success !== false) {
-            list = filterMedicineConcerns(
-              normalizeApiList(response).map(mapHealthItem),
-              serviceCategoryId,
-            );
-          }
-        } else if (serviceCategoryId) {
-          list = list.length > 0 ? list : filterMedicineConcerns(list, serviceCategoryId);
+        // Flat health categories — no parent/service tree.
+        // When a service id is provided, keep client-side filter as optional narrowing.
+        if (serviceCategoryId) {
+          list = filterMedicineConcerns(list, serviceCategoryId);
         } else {
-          list = filterMedicineConcerns(list, null);
+          list = list.filter(item => !!item.id);
         }
 
         setCategories(list);

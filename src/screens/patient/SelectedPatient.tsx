@@ -28,18 +28,12 @@ const SelectedPatientCard: React.FC<Props> = ({
   image,
   navigation,
   relation,
-  avatarGroup = [
-    { initials: 'AS', color: '#CBD5E1' },
-    { initials: 'PS', color: '#BAE6FD' },
-    { initials: 'AA', color: '#BBF7D0' },
-  ],
+  avatarGroup = [],
   onViewRecords,
 }) => {
   return (
     <View style={styles.card}>
-      {/* Avatar + Info + View Records */}
       <View style={styles.topRow}>
-        {/* Avatar with SELF badge */}
         <View style={styles.avatarWrapper}>
           {image ? (
             <Image
@@ -53,7 +47,6 @@ const SelectedPatientCard: React.FC<Props> = ({
           )}
         </View>
 
-        {/* Name & Phone */}
         <View style={styles.info}>
           <View style={styles.selfBadge}>
             <Text style={styles.selfBadgeText}>SELF</Text>
@@ -67,27 +60,27 @@ const SelectedPatientCard: React.FC<Props> = ({
         </Pressable>
       </View>
 
-      {/* Divider */}
       <View style={styles.divider} />
 
-      {/* Bottom row: avatar group + view records */}
       <View style={styles.bottomRow}>
-        {/* Initials avatar group */}
         <View style={styles.avatarGroup}>
-          {avatarGroup.map((item, index) => (
-            <View
-              key={index}
-              style={[
-                styles.initialsCircle,
-                { backgroundColor: item.color, marginLeft: index === 0 ? 0 : -8 },
-              ]}
-            >
-              <Text style={styles.initialsText}>{item.initials}</Text>
-            </View>
-          ))}
+          {avatarGroup.length > 0 ? (
+            avatarGroup.map((item, index) => (
+              <View
+                key={`${item.initials}-${index}`}
+                style={[
+                  styles.initialsCircle,
+                  { backgroundColor: item.color, marginLeft: index === 0 ? 0 : -8 },
+                ]}
+              >
+                <Text style={styles.initialsText}>{item.initials}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyPatients}>No patients yet</Text>
+          )}
         </View>
 
-        {/* View Records */}
         <TouchableOpacity onPress={onViewRecords} style={styles.viewRecordsBtn}>
           <Text style={Styles.addBtn}>View Records  </Text>
           <FontAwesome5 name='arrow-right' color={Colors.primaryColor} />
@@ -212,6 +205,11 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     color: '#0F172A',
+  },
+  emptyPatients: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
   },
   viewRecordsBtn: {
     paddingVertical: 4,

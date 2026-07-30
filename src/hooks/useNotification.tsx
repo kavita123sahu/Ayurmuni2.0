@@ -411,33 +411,33 @@ const getAppointmentIconConfig = (status?: string) => {
         case 'confirmed':
         case 'accepted':
             return {
-                icon: <Entypo name="check" size={18} color="#fff" />,
+                icon: <Entypo name="check" size={14} color="#fff" />,
                 bg: '#0D614E', // green
             };
         case 'pending':
             return {
-                icon: <Entypo name="clock" size={18} color="#fff" />,
+                icon: <Entypo name="clock" size={14} color="#fff" />,
                 bg: '#F59E0B', // amber
             };
         case 'cancelled':
         case 'rejected':
             return {
-                icon: <Entypo name="cross" size={18} color="#fff" />,
+                icon: <Entypo name="cross" size={14} color="#fff" />,
                 bg: '#EF4444', // red
             };
         case 'completed':
             return {
-                icon: <Entypo name="check" size={18} color="#fff" />,
+                icon: <Entypo name="check" size={14} color="#fff" />,
                 bg: '#2563EB', // blue
             };
         case 'rescheduled':
             return {
-                icon: <Entypo name="cycle" size={18} color="#fff" />,
+                icon: <Entypo name="cycle" size={14} color="#fff" />,
                 bg: '#8B5CF6', // purple
             };
         default:
             return {
-                icon: <Entypo name="calendar" size={18} color="#fff" />,
+                icon: <Entypo name="calendar" size={14} color="#fff" />,
                 bg: '#0D614E',
             };
     }
@@ -501,7 +501,7 @@ export const useNotifications = () => {
     icon:
         item.notification_type === "appointment"
             ? getAppointmentIconConfig(content.appointmentStatus).icon
-            : <Fontisto name="bell" size={16} color="#fff" />,
+            : <Fontisto name="bell" size={14} color="#fff" />,
     iconBg:
         item.notification_type === "appointment"
             ? getAppointmentIconConfig(content.appointmentStatus).bg

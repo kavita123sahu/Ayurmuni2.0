@@ -264,12 +264,13 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       const response = await createReview({
         entityType: 'doctor',
         appointmentId: routeLookupId,
-        method: isEditReview ? 'PATCH' : 'POST',
+        method:
+          isEditReview || detail?.appointment?.review?.is_rated ? 'PATCH' : 'POST',
         reviewData: buildReviewSubmitPayload({
           rating,
           entityType: 'doctor',
           appointmentId: routeLookupId,
-          isEdit: isEditReview,
+          isEdit: isEditReview || detail?.appointment?.review?.is_rated,
         }),
       });
 

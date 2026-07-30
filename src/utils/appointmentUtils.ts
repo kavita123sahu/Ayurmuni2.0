@@ -104,23 +104,61 @@ export function buildAppointmentDetailsParams(
 
 export function normalizeAppointmentListItem(item: any) {
   const ids = getAppointmentIds({ rawData: item, ...item });
+  const root = item?.rawData ?? item;
+  const doctor = root?.doctor ?? item?.doctor ?? {};
+  const appointment = root?.appointment ?? item ?? {};
+
+  const doctorName =
+    doctor?.doctor_name ||
+    doctor?.full_name ||
+    doctor?.name ||
+    item?.doctorName ||
+    '';
+
+  const image =
+    doctor?.doctor_image ||
+    doctor?.profile_image ||
+    doctor?.image ||
+    item?.image ||
+    '';
+
+  const specialty =
+    doctor?.doctor_specialization ||
+    (Array.isArray(doctor?.health_diseases)
+      ? doctor.health_diseases.map((i: any) => i?.name).filter(Boolean).join(', ')
+      : '') ||
+    item?.therapies ||
+    '';
+
+  const date =
+    appointment?.appointment_date ??
+    item?.appointment_date ??
+    item?.date ??
+    '';
+
+  const time =
+    appointment?.start_time ??
+    item?.start_time ??
+    item?.time ??
+    '';
 
   return {
     consultation_id: ids.consultationId || ids.appointmentId,
     appointment_id: ids.appointmentId || ids.consultationId,
-    doctorName: item?.doctor?.doctor_name || '',
-    therapies: Array.isArray(item?.doctor?.health_diseases)
-      ? item.doctor.health_diseases.map((i: any) => i.name).join(', ')
-      : '',
-    date: item?.appointment_date,
-    time: item?.start_time,
-    status: item?.appointment_status,
+    doctorName,
+    specialty,
+    therapies: Array.isArray(doctor?.health_diseases)
+      ? doctor.health_diseases.map((i: any) => i.name).join(', ')
+      : specialty,
+    date,
+    time,
+    status: appointment?.appointment_status ?? item?.appointment_status ?? item?.status,
     call_status:
+      appointment?.call_status ??
       item?.call_status ??
-      item?.appointment?.call_status ??
       item?.rawData?.call_status,
-    image: item?.doctor?.doctor_image,
-    rawData: item,
+    image,
+    rawData: root,
   };
 }
 
@@ -154,4 +192,146 @@ export function filterUpcomingAppointments(items: any[] = [], limit?: number) {
   }
 
   return upcoming;
+}
+
+const parseAppointmentStart = (dateStr?: string, timeStr?: string): Date | null => {
+  if (!dateStr) {
+    return null;
+  }
+
+  const base = new Date(dateStr);
+  if (Number.isNaN(base.getTime())) {
+    return null;
+  }
+
+  if (!timeStr) {
+    return base;
+  }
+
+  const match = String(timeStr).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (!match) {
+    return base;
+  }
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[4]?.toUpperCase();
+
+  if (meridiem === 'PM' && hours < 12) {
+    hours += 12;
+  }
+  if (meridiem === 'AM' && hours === 12) {
+    hours = 0;
+  }
+
+  base.setHours(hours, minutes, 0, 0);
+  return base;
+};
+
+export const formatAppointmentDayLabel = (dateStr?: string) => {
+  if (!dateStr) {
+    return '';
+  }
+
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) {
+    return dateStr;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+
+  if (target.getTime() === today.getTime()) {
+    return 'Today';
+  }
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (target.getTime() === tomorrow.getTime()) {
+    return 'Tomorrow';
+  }
+
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+  });
+};
+
+export const formatAppointmentTimeLabel = (timeStr?: string) => {
+  if (!timeStr) {
+    return '';
+  }
+
+  const raw = String(timeStr).trim();
+  if (/am|pm/i.test(raw)) {
+    return raw;
+  }
+
+  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) {
+    return raw;
+  }
+
+  let hours = Number(match[1]);
+  const minutes = match[2];
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${meridiem}`;
+};
+
+export const formatDoctorDisplayName = (name?: string) => {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) {
+    return 'Doctor';
+  }
+  return /^dr\.?\s/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
+};
+
+export const getMinutesUntilAppointment = (
+  dateStr?: string,
+  timeStr?: string,
+): number | null => {
+  const start = parseAppointmentStart(dateStr, timeStr);
+  if (!start) {
+    return null;
+  }
+
+  return Math.max(0, Math.ceil((start.getTime() - Date.now()) / 60000));
+};
+
+export type JoinableAppointment = {
+  item: ReturnType<typeof normalizeAppointmentListItem>;
+  minutesLeft: number;
+  isLive: boolean;
+};
+
+/** Appointment the patient can join now or within the pre-call window. */
+export function getJoinableAppointment(
+  items: any[] = [],
+  windowMinutes = 15,
+): JoinableAppointment | null {
+  const now = Date.now();
+
+  for (const raw of items) {
+    const item = normalizeAppointmentListItem(raw);
+    const callStatus = String(item.call_status || '').toLowerCase();
+
+    if (callStatus === 'in_progress') {
+      return { item, minutesLeft: 0, isLive: true };
+    }
+
+    const start = parseAppointmentStart(item.date, item.time);
+    if (!start) {
+      continue;
+    }
+
+    const diffMin = Math.ceil((start.getTime() - now) / 60000);
+    if (diffMin >= 0 && diffMin <= windowMinutes) {
+      return { item, minutesLeft: diffMin, isLive: false };
+    }
+  }
+
+  return null;
 }

@@ -148,78 +148,79 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
     setMediaItems(prev => prev.filter(item => item.id !== id));
   };
 
-const handleSubmit = async () => {
-  if (!rating) {
-    showSuccessToast('Please select a rating', 'error');
-    return;
-  }
-
-  if (!lookupId) {
-    showSuccessToast('Missing review reference', 'error');
-    return;
-  }
-
-  try {
-    setUploading(true);
-
-    // 1. Upload media and get AWS URLs
-    const uploadedUrls = await Promise.all(
-      mediaItems.map(async item => {
-        if (item.uploadedUrl) {
-          return item.uploadedUrl;
-        }
-
-        return uploadAsset({
-          uri: item.uri,
-          type: item.type === 'video' ? 'video/mp4' : 'image/jpeg',
-          fileName:
-            item.type === 'video'
-              ? `review_${Date.now()}.mp4`
-              : `review_${Date.now()}.jpg`,
-        } as Asset);
-      }),
-    );
-
-    // 2. Prepare payload object
-    const reviewPayload = buildReviewSubmitPayload({
-      rating,
-      review,
-      imageUrls: uploadedUrls,
-      entityType,
-      appointmentId: lookupId,
-      isEdit,
-    });
-
-    const response = await submitReview({
-      entityType,
-      appointmentId: entityType === 'doctor' ? lookupId : undefined,
-      variantId: entityType === 'product' ? lookupId : undefined,
-      method: isEdit ? 'PATCH' : 'POST',
-      reviewData: reviewPayload,
-    });
-    if (response?.success) {
-      showSuccessToast(
-        response.message || 'Thank you for sharing your experience!',
-        'success',
-      );
-      navigation.goBack();
+  const handleSubmit = async () => {
+    if (!rating) {
+      showSuccessToast('Please select a rating', 'error');
       return;
     }
 
-    showSuccessToast(
-      response?.message || 'Unable to submit review',
-      'error',
-    );
-  } catch (error) {
-    console.log('Review submit error:', error);
-    showSuccessToast(
-      'Something went wrong while submitting',
-      'error',
-    );
-  } finally {
-    setUploading(false);
-  }
-};
+    if (!lookupId) {
+      showSuccessToast('Missing review reference', 'error');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // 1. Upload media and get AWS URLs
+      const uploadedUrls = await Promise.all(
+        mediaItems.map(async item => {
+          if (item.uploadedUrl) {
+            return item.uploadedUrl;
+          }
+
+          return uploadAsset({
+            uri: item.uri,
+            type: item.type === 'video' ? 'video/mp4' : 'image/jpeg',
+            fileName:
+              item.type === 'video'
+                ? `review_${Date.now()}.mp4`
+                : `review_${Date.now()}.jpg`,
+          } as Asset);
+        }),
+      );
+
+      // 2. Prepare payload object
+      const reviewPayload = buildReviewSubmitPayload({
+        rating,
+        review,
+        imageUrls: uploadedUrls,
+        entityType,
+        appointmentId: lookupId,
+        isEdit,
+      });
+
+      const response = await submitReview({
+        entityType,
+        appointmentId: entityType === 'doctor' ? lookupId : undefined,
+        variantId: entityType === 'product' ? lookupId : undefined,
+        method: isEdit ? 'PATCH' : 'POST',
+        reviewData: reviewPayload,
+      });
+      console.log("reposneeeeeeeeeeeeeeee", response);
+      if (response?.success) {
+        showSuccessToast(
+          response.message || 'Thank you for sharing your experience!',
+          'success',
+        );
+        navigation.goBack();
+        return;
+      }
+
+      showSuccessToast(
+        response?.message || 'Unable to submit review',
+        'error',
+      );
+    } catch (error) {
+      console.log('Review submit error:', error);
+      showSuccessToast(
+        'Something went wrong while submitting',
+        'error',
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const isBusy = loading || uploading;
 

@@ -101,15 +101,23 @@ const ConfirmScreen = ({ navigation, route }: any) => {
             return;
         }
 
-        const result = await placeOrder(cartItems, {
-            delivery_address_id: address.id,
-            shipping_charges: 0,
-            cod_charges: 0,
-            payment_type: 'cod',
-            payment_method: 'cash',
-            shipping_method: 'STD',
-            prepaid_amount: 0,
-        });
+        const result = await placeOrder(
+            cartItems.map((item: any) => ({
+                ...item,
+                id: item.id ?? item.cart_item_id,
+                cart_item_id: item.cart_item_id ?? item.id,
+                gift_wrap: Boolean(item.gift_wrap),
+            })),
+            {
+                delivery_address_id: address.id,
+                shipping_charges: shippingFee,
+                cod_charges: selectedMethod === 'cod' ? codChargeDefault : 0,
+                payment_type: 'cod',
+                payment_method: 'cash',
+                shipping_method: 'STD',
+                prepaid_amount: 0,
+            },
+        );
 
         if (result?.success) {
             navigation.replace('OrderConfirmation', {
@@ -117,6 +125,7 @@ const ConfirmScreen = ({ navigation, route }: any) => {
                 orderedCartItems: cartItems.map((item: any) => ({
                     variant_id: String(item.variant_id),
                     quantity: Number(item.quantity),
+                    source: item.source,
                 })),
             });
             return;
@@ -133,17 +142,20 @@ const ConfirmScreen = ({ navigation, route }: any) => {
 
         navigation.navigate('ProductRazorpayScreen', {
             cartItems: cartItems.map((item: any) => ({
-                id: item.id,
+                id: item.id ?? item.cart_item_id,
+                cart_item_id: item.cart_item_id ?? item.id,
                 variant_id: item.variant_id,
                 quantity: item.quantity,
                 price: item.price,
                 name: item.name,
                 discount: item.discount ?? 0,
+                gift_wrap: Boolean(item.gift_wrap),
+                source: item.source,
             })),
             address,
             charges: {
                 shipping_charges: shippingFee,
-                cod_charges: 0,
+                cod_charges: codChargeDefault,
             },
             customerInfo: customerData ?? {},
             totalAmount: subtotal + shippingFee,

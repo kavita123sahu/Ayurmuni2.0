@@ -37,14 +37,18 @@ import {
   SCREEN_PADDING_H,
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
+import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton, SuggestedCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
+import JoinCallBanner from '../../components/JoinCallBanner';
+import { getJoinableAppointment } from '../../utils/appointmentUtils';
 import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { requireAuth, } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToSearchScreen } from '../../navigation/productNavigation';
+import DietScreen from '../mentor/DietScreen';
+import MealCard from '../../components/MealCard';
 
 
 const { width } = Dimensions.get('window');
@@ -58,11 +62,15 @@ const HomePage: React.FC = (props: any) => {
   const {
     categories,
     SuggestDoctor,
-    productData,
+    medicineProducts,
+    storeProducts,
     customerData,
-    setProductData,
+    setMedicineProducts,
+    setStoreProducts,
     YogaSession,
-
+    dietProducts,
+    loadingDiet,
+    fetchDietPlans,
 
     loadingCategories,
     loadingDoctors,
@@ -71,6 +79,7 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
+  console.log("homeproductsssssssss",storeProducts );
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -95,7 +104,12 @@ const HomePage: React.FC = (props: any) => {
 
   const handleViewAllProducts = useCallback(() => {
     const stackNav = props.navigation.getParent?.() || props.navigation;
-    navigateToSearchScreen(stackNav);
+    stackNav.navigate('ProductsScreen');
+  }, [props.navigation]);
+
+  const handleViewAllMedicines = useCallback(() => {
+    const stackNav = props.navigation.getParent?.() || props.navigation;
+    stackNav.navigate('MedicineScreen');
   }, [props.navigation]);
 
   useFocusEffect(
@@ -103,14 +117,33 @@ const HomePage: React.FC = (props: any) => {
       const timer = setTimeout(() => {
         promptLocationOnHome();
       }, 600);
+
+      fetchDietPlans(false);
+
       return () => clearTimeout(timer);
-    }, [promptLocationOnHome]),
+    }, [promptLocationOnHome, fetchDietPlans]),
   );
 
   const sortedUpcomingAppointments = useMemo(
     () => upcomingAppointments,
     [upcomingAppointments],
   );
+
+  const joinableAppointment = useMemo(
+    () => getJoinableAppointment(sortedUpcomingAppointments),
+    [sortedUpcomingAppointments],
+  );
+
+  const homeAppointmentList = useMemo(() => {
+    if (!joinableAppointment) {
+      return sortedUpcomingAppointments;
+    }
+
+    const joinId = joinableAppointment.item.consultation_id;
+    return sortedUpcomingAppointments.filter(
+      item => item.consultation_id !== joinId,
+    );
+  }, [sortedUpcomingAppointments, joinableAppointment]);
 
 
 
@@ -234,52 +267,68 @@ const HomePage: React.FC = (props: any) => {
         renderItem={() => (
           <View style={styles.sections}>
             <View style={styles.homeSection}>
-            <Detailimages
-              images={product.images}
-              itemWidth={width - SCREEN_PADDING_H * 2}
-              DynamicResize="contain"
-              autoSlide
-              embedded
-            />
+              <Detailimages
+                images={product.images}
+                itemWidth={width - SCREEN_PADDING_H * 2}
+                DynamicResize="contain"
+                autoSlide
+                embedded
+              />
             </View>
 
 
-            {(loadingAppointments || sortedUpcomingAppointments.length > 0) && (
-              <View style={styles.homeSection}>
-                <SectionHeader
-                  home
-                  title="Upcoming Appointments"
-                  actionText={
-                    !loadingAppointments && sortedUpcomingAppointments.length > 1 ? 'View all' : ''
-                  }
-                  onPress={async () => {
-                    if (await requireAuth('Please login to view appointments')) {
-                      props.navigation.navigate('Appointments');
+            {(loadingAppointments ||
+              joinableAppointment ||
+              sortedUpcomingAppointments.length > 0) && (
+                <View style={styles.homeSection}>
+                  <SectionHeader
+                    home
+                    title="Upcoming Appointments"
+                    actionText={
+                      !loadingAppointments && sortedUpcomingAppointments.length > 1
+                        ? 'View all'
+                        : ''
                     }
-                  }}
-                />
-                {loadingAppointments ? (
-                  <HorizontalAppointmentSkeleton />
-                ) : (
-                  <FlatList
-                    horizontal
-                    data={sortedUpcomingAppointments}
-                    keyExtractor={(item, index) =>
-                      `${item?.consultation_id || index}`
-                    }
-                    contentContainerStyle={styles.horizontalList}
-                    renderItem={({ item }) => (
-                      <RenderAppoint
-                        item={item}
-                        navigation={props.navigation}
-                        isHorizontal
-                      />
-                    )}
-                    showsHorizontalScrollIndicator={false}
+                    onPress={async () => {
+                      if (await requireAuth('Please login to view appointments')) {
+                        props.navigation.navigate('Appointments', {
+                          mode: 'upcoming',
+                        });
+                      }
+                    }}
                   />
-                )}
-              </View>
-            )}
+                  {loadingAppointments ? (
+                    <HorizontalAppointmentSkeleton />
+                  ) : (
+                    <>
+                      {joinableAppointment ? (
+                        <JoinCallBanner
+                          joinable={joinableAppointment}
+                          navigation={props.navigation}
+                        />
+                      ) : null}
+                      {homeAppointmentList?.length > 0 ? (
+                        <FlatList
+                          horizontal
+                          data={homeAppointmentList}
+                          keyExtractor={(item, index) =>
+                            `${item?.consultation_id || index}`
+                          }
+                          contentContainerStyle={styles.horizontalList}
+                          renderItem={({ item }) => (
+                            <RenderAppoint
+                              item={item}
+                              navigation={props.navigation}
+                              isHorizontal
+                            />
+                          )}
+                          showsHorizontalScrollIndicator={false}
+                        />
+                      ) : null}
+                    </>
+                  )}
+                </View>
+              )}
 
             <View style={styles.homeSection}>
               <SectionHeader
@@ -304,21 +353,21 @@ const HomePage: React.FC = (props: any) => {
             </View>
 
 
-            {productData?.length > 0 && (
+            {storeProducts?.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
                   title="Suggested Products"
-                  actionText={productData.length > 1 ? 'View all' : ''}
+                  actionText={storeProducts.length > 1 ? 'View all' : ''}
                   onPress={handleViewAllProducts}
                 />
                 {loadingProducts ? (
                   <TopSellingListSkeleton />
                 ) : (
                   <TopSellingList
-                    data={productData}
+                    data={storeProducts}
                     navigation={props.navigation}
-                    setProductData={setProductData}
+                    setProductData={setStoreProducts}
                     nested
                     home
                   />
@@ -326,21 +375,21 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
-            {productData?.length > 0 && (
+            {medicineProducts?.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
                   title="Suggested Medicines"
-                  actionText={productData.length > 1 ? 'View all' : ''}
-                  onPress={handleViewAllProducts}
+                  actionText={medicineProducts.length > 1 ? 'View all' : ''}
+                  onPress={handleViewAllMedicines}
                 />
                 {loadingProducts ? (
                   <TopSellingListSkeleton />
                 ) : (
                   <TopSellingList
-                    data={productData}
+                    data={medicineProducts}
                     navigation={props.navigation}
-                    setProductData={setProductData}
+                    setProductData={setMedicineProducts}
                     nested
                     home
                   />
@@ -364,10 +413,33 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
+            {loadingDiet && (!dietProducts || dietProducts?.length === 0) ? (
+              <View style={styles.homeSection}>
+                <SectionHeader home title="Diet's" actionText="" />
+                <SuggestedCardSkeleton />
+              </View>
+            ) : dietProducts?.length > 0 ? (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Diet's"
+                  actionText={dietProducts?.length > 1 ? 'View all' : ''}
+                  onPress={() => props.navigation.navigate('DietScreen')}
+                />
+                <SuggestedCard
+                  data={dietProducts}
+                  navigation={props.navigation}
+                  home
+                />
+              </View>
+            ) : null}
+
             <View style={[styles.homeSection, styles.comingSoonGroup]}>
-              {YogaSession.length === 0 && (
-                <ComingSoonCard title="Personalized Diet Plans" icon="🥗" />
-              )}
+              {!loadingDiet &&
+                YogaSession.length === 0 &&
+                (!dietProducts || dietProducts.length === 0) && (
+                  <ComingSoonCard title="Personalized Diet Plans" icon="🥗" />
+                )}
               <ComingSoonCard title="Panchakarma" icon="🌿" />
             </View>
           </View>

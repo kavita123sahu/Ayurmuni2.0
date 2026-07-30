@@ -65,6 +65,21 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
 
   const hasPatients = useMemo(() => patients.length > 0, [patients]);
 
+  const patientAvatarGroup = useMemo(() => {
+    const colors = ['#CBD5E1', '#BAE6FD', '#BBF7D0', '#FDE68A', '#FBCFE8', '#DDD6FE'];
+
+    return (patients ?? []).slice(0, 5).map((patient: any, index: number) => {
+      const first = String(patient?.first_name ?? '').trim();
+      const last = String(patient?.last_name ?? '').trim();
+      const initials = `${first.charAt(0)}${last.charAt(0) || first.charAt(1) || ''}`.toUpperCase() || 'P';
+
+      return {
+        initials,
+        color: colors[index % colors.length],
+      };
+    });
+  }, [patients]);
+
   // ─── Data Fetching ─────────────────────────────────────────
   const fetchUserData = useCallback(async () => {
     try {
@@ -118,7 +133,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
   }, [navigation]);
 
   const handleViewRecords = useCallback(() => {
-    navigation.navigate('Records');
+    navigation.navigate('MedicalRecords');
   }, [navigation]);
 
   const handleDeletePatient = useCallback(async () => {
@@ -229,6 +244,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
             relation="Self"
             navigation={navigation}
             image={user?.profile_picture || ""}
+            avatarGroup={patientAvatarGroup}
             onViewRecords={handleViewRecords}
           />
         </View>

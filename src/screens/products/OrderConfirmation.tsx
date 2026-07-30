@@ -20,6 +20,11 @@ import OrderItem from '../../components/OrderItem';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../../components/TablerIcon';
+import { useAppDispatch } from '../../store/hooks';
+import {
+    removeOrderedItemsFromCart,
+    CartLineItem,
+} from '../../store/slices/cartSlice';
 
 type DeliveryAddress = {
     id: string;
@@ -93,8 +98,21 @@ const getItemPrice = (item: OrderItemType) =>
 
 const OrderConfirmation: React.FC = (props: any) => {
     const [showModal, setShowModal] = useState(false);
+    const dispatch = useAppDispatch();
 
     const orderResult: OrderResult | undefined = props.route?.params?.orderResult;
+    const orderedCartItems: CartLineItem[] =
+        props.route?.params?.orderedCartItems ?? [];
+    const clearedCartRef = useRef(false);
+
+    useEffect(() => {
+        if (clearedCartRef.current || !orderedCartItems.length) {
+            return;
+        }
+
+        clearedCartRef.current = true;
+        dispatch(removeOrderedItemsFromCart(orderedCartItems));
+    }, [dispatch, orderedCartItems]);
 
     // ---- Animations ----
     const tickScale = useRef(new Animated.Value(0)).current;

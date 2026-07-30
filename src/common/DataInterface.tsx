@@ -1,6 +1,7 @@
-import { Platform } from "react-native";
+import { Platform, Text } from "react-native";
 import { Images } from "./Images";
 import { Colors } from "./Colors";
+import React from "react";
 
 
 export interface ProductItem {
@@ -14,6 +15,8 @@ export interface ProductItem {
   image: string;
   brand_name?: string;
   doctorName?: string;
+  source?: 'cart' | 'prescribed';
+  gift_wrap?: boolean;
 }
 export type SectionType = {
   id: string;
@@ -45,6 +48,33 @@ export type CartItem = {
 };
 
 
+export const renderCategoryName = (
+  name: string,
+  styles: any,
+  maxChars = 14,
+) => {
+  const words = name.trim().split(/\s+/);
+
+  let firstLine = '';
+  let secondLine = '';
+
+  words.forEach(word => {
+    const testLine = firstLine ? `${firstLine} ${word}` : word;
+
+    if (testLine.length <= maxChars || firstLine === '') {
+      firstLine = testLine;
+    } else {
+      secondLine += (secondLine ? ' ' : '') + word;
+    }
+  });
+
+  return (
+    <Text style={styles.text} numberOfLines={2}>
+      {secondLine ? `${firstLine}\n${secondLine}` : firstLine}
+    </Text>
+  );
+};
+
 export type OrderItem = {
   variant_id: string | number;
   quantity: number;
@@ -56,12 +86,19 @@ export type OrderItem = {
 export type PlaceOrderPayload = {
   delivery_address_id: string | number;
   payment_type: 'cod' | 'prepaid' | 'online';
-  payment_method: 'cash' | 'upi' | 'card' | 'netbanking';
+  /**
+   * COD → "cash".
+   * Prepaid → value from Razorpay SDK (upi / card / wallet / netbanking / …).
+   * Optional on place-order; set after user selects method in Razorpay.
+   */
+  payment_method?: string;
   shipping_method: 'STD' | 'EXPRESS';
   shipping_charges: number;
   cod_charges: number;
   prepaid_amount: number;
-  items: OrderItem[];
+  cart_item_ids: string[];
+  gift_wrap_item_ids: string[];
+  items?: OrderItem[];
 };
 
 export type PlaceOrderResponse = {
@@ -105,6 +142,7 @@ export const getProductData = (
     item.variant?.image_url || '',
 
   doctorName,
+  gift_wrap: Boolean((item as any)?.gift_wrap || (item as any)?.is_gift_wrap),
 });
 
 export interface GenderOption {

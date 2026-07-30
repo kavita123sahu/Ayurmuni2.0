@@ -163,9 +163,27 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   });
 
-  const tabBarAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - visible.value) * TAB_SLIDE }],
-  }));
+  const tabBarAnimatedStyle = useAnimatedStyle(() => {
+    const scrollHide = interpolate(
+      scrollY.value,
+      [0, 48, 140],
+      [0, TAB_SLIDE * 0.42, TAB_SLIDE],
+      Extrapolation.CLAMP,
+    );
+    const directionHide = (1 - visible.value) * TAB_SLIDE;
+    const translateY = Math.max(scrollHide, directionHide);
+
+    return {
+      transform: [{ translateY }],
+      opacity:
+        interpolate(
+          scrollY.value,
+          [0, 48, 140],
+          [1, 0.72, 0],
+          Extrapolation.CLAMP,
+        ) * visible.value,
+    };
+  });
 
   return (
     <ScrollHideContext.Provider

@@ -143,7 +143,6 @@ const ProductDetails = (props: any) => {
     ];
 
 
-
     if (loading) {
         return (
             <SafeAreaView
@@ -189,7 +188,7 @@ const ProductDetails = (props: any) => {
                 {/* 1. Images */}
                 <Detailimages
                     itemHeight={300}
-                    DynamicResize="contain"
+                    DynamicResize="cover"
                     images={selectedVariant?.media?.length ? selectedVariant.media : []}
                 />
 

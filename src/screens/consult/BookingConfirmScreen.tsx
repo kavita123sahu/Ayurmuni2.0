@@ -417,11 +417,11 @@ console.log("slotdetailsssssssssssss", SlotsDetail);
 
         {/* LINK */}
 
-        <TouchableOpacity activeOpacity={0.7}>
+        {/* <TouchableOpacity activeOpacity={0.7}>
           <Text style={styles.bottomText}>
             View Appointment Details
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </ScrollView>
 
 
@@ -1127,7 +1127,7 @@ const styles = StyleSheet.create({
 
   secondaryBtn: {
     flex: 1,
-
+gap : 5,
     minHeight: 52,
 
     borderRadius: 16,

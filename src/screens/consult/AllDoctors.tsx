@@ -52,13 +52,27 @@ type SelectedFilters = {
 const AllDoctors = (props: any) => {
     const insets = useSafeAreaInsets();
     const all = props?.route?.params?.all ?? false;
-
+    const initialSpecialization =
+        props?.route?.params?.specialization != null &&
+        String(props.route.params.specialization).trim() !== ''
+            ? String(props.route.params.specialization)
+            : null;
+    const initialHealthCategoryId =
+        props?.route?.params?.health_category_id != null &&
+        String(props.route.params.health_category_id).trim() !== ''
+            ? String(props.route.params.health_category_id)
+            : null;
+    const initialHealthDiseaseId =
+        props?.route?.params?.health_disease_id != null &&
+        String(props.route.params.health_disease_id).trim() !== ''
+            ? String(props.route.params.health_disease_id)
+            : null;
 
     const [activeTab, setActiveTab] = useState<string | null>(null);
 
     const [selectedFilters, setSelectedFilters] =
         useState<SelectedFilters>({
-            specialization: null,
+            specialization: initialSpecialization,
             date_range: '',
             from_date: '',
             to_date: '',
@@ -79,11 +93,13 @@ const AllDoctors = (props: any) => {
 
     const apiFilters = useMemo(
         () => ({
-            specialization: selectedFilters.specialization || '',
-            experience: selectedFilters.experience || '',
-            from_date: selectedFilters.from_date || '',
-            to_date: selectedFilters.to_date || '',
-            search: debouncedSearch.trim(),
+            specialization: selectedFilters.specialization || undefined,
+            experience: selectedFilters.experience || undefined,
+            from_date: selectedFilters.from_date || undefined,
+            to_date: selectedFilters.to_date || undefined,
+            search: debouncedSearch.trim() || undefined,
+            health_category_id: initialHealthCategoryId || undefined,
+            health_disease_id: initialHealthDiseaseId || undefined,
         }),
         [
             selectedFilters.specialization,
@@ -91,6 +107,8 @@ const AllDoctors = (props: any) => {
             selectedFilters.from_date,
             selectedFilters.to_date,
             debouncedSearch,
+            initialHealthCategoryId,
+            initialHealthDiseaseId,
         ],
     );
 

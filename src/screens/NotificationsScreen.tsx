@@ -13,11 +13,22 @@ import {
     useWindowDimensions,
     ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
 import { useNotifications, NotificationItem } from '../hooks/useNotification';
 import TablerIcon from '../components/TablerIcon';
+
+const getNotificationImageSource = (image: unknown) => {
+    if (!image) return null;
+    if (typeof image === 'string') return { uri: image };
+    if (typeof image === 'object' && image !== null) {
+        const obj = image as { uri?: string; url?: string };
+        if (obj.uri) return { uri: obj.uri };
+        if (obj.url) return { uri: obj.url };
+    }
+    return null;
+};
 
 /* ------------------------------------------------------------------ */
 /*  TEXT HIGHLIGHTING HELPER (unchanged behaviour)                     */
@@ -239,9 +250,7 @@ const NotificationCard = ({
 }) => {
     const status = item.appointmentStatus ?? item?.rawData?.data?.appointment_status;
     const isUnread = !item.isRead;
-
-    const appointmentDate = item?.rawData?.data?.appointment_date ?? item?.rawData?.data?.date;
-    const consultationType = item?.rawData?.data?.consultation_type ?? item?.rawData?.data?.mode;
+    const imageSource = getNotificationImageSource(item?.rawData?.image);
 
     return (
         <TouchableOpacity activeOpacity={0.85} onPress={() => onPress(item)}>
@@ -253,49 +262,28 @@ const NotificationCard = ({
                         {item.icon}
                     </View>
 
-                    <View style={{ flex: 1 }}>
+                    <View style={styles.cardBody}>
                         <View style={styles.cardTopRow}>
-                            <View style={styles.cardTopLeft}>
-                                <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-                                <View style={styles.badgeRow}>
-                                    {item.isNew && isUnread && (
-                                        <View style={styles.newBadge}>
-                                            <Text style={styles.newBadgeText}>New</Text>
-                                        </View>
-                                    )}
-                                    {item.notificationType ? (
-                                        <View style={styles.typeBadge}>
-                                            <Text style={styles.typeBadgeText} numberOfLines={1}>
-                                                {item.notificationType}
-                                            </Text>
-                                        </View>
-                                    ) : null}
-                                    <View style={[styles.statusBadge, isUnread ? styles.statusUnread : styles.statusRead]}>
-                                        <View style={[styles.statusDot, isUnread ? styles.dotUnread : styles.dotRead]} />
-                                        <Text style={[styles.statusBadgeText, isUnread ? styles.statusUnreadText : styles.statusReadText]}>
-                                            {isUnread ? 'Unread' : 'Read'}
-                                        </Text>
-                                    </View>
-                                </View>
+                            <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
+                            <View style={styles.timeRow}>
+                                <TablerIcon name="clock" size={11} color="#94A3B8" />
+                                <Text style={styles.time}>{item.time}</Text>
                             </View>
+                        </View>
 
-                            <View style={styles.cardTopRight}>
-                                <View style={styles.timeRow}>
-                                    <TablerIcon name="clock" size={15} />
-                                    {/* <Text style={styles.clockIcon}>🕐</Text> */}
-                                    <Text style={styles.time}>{item.time}</Text>
+                        <View style={styles.badgeRow}>
+                            {item.isNew && isUnread ? (
+                                <View style={styles.newBadge}>
+                                    <Text style={styles.newBadgeText}>New</Text>
                                 </View>
-                                {isUnread ? (
-                                    <TouchableOpacity
-                                        style={styles.quickReadBtn}
-                                        onPress={() => onQuickMarkRead(item)}
-                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                    >
-                                        <TablerIcon name="tick-icon" size={15} />
-                                        {/* <Text style={styles.quickReadIcon}>✓</Text> */}
-                                    </TouchableOpacity>
-                                ) : null}
-                            </View>
+                            ) : null}
+                            {item.notificationType ? (
+                                <View style={styles.typeBadge}>
+                                    <Text style={styles.typeBadgeText} numberOfLines={1}>
+                                        {item.notificationType}
+                                    </Text>
+                                </View>
+                            ) : null}
                         </View>
 
                         {renderStyledText(item.description)}
@@ -306,30 +294,11 @@ const NotificationCard = ({
                             </View>
                         ) : null}
 
-                        {/* Meta row: patient, appointment date, consultation type */}
-                        {/* {(item.patientName || appointmentDate || consultationType) && (
-                            <View style={styles.metaRow}>
-                                {item.patientName && (
-                                    <Text style={styles.metaText} numberOfLines={1}>👤  {item.patientName}</Text>
-                                )}
-                                {appointmentDate && (
-                                    <Text style={styles.metaText} numberOfLines={1}>📅  {appointmentDate}</Text>
-                                )}
-                                {consultationType && (
-                                    <Text style={styles.metaText} numberOfLines={1}>🎥  {consultationType}</Text>
-                                )}
-                            </View>
-                        )} */}
-
-                        {/* {item.doctorName && (
-                            <Text style={styles.infoText}>🩺  {item.doctorName}</Text>
-                        )} */}
-
-                        {item?.rawData?.image ? (
-                            <Image source={item.rawData.image} style={styles.image} />
+                        {imageSource ? (
+                            <Image source={imageSource} style={styles.image} />
                         ) : null}
 
-                        {status && (
+                        {status ? (
                             <View style={styles.buttonRow}>
                                 {status === 'completed' && (
                                     <TouchableOpacity style={styles.joinBtn}>
@@ -347,8 +316,18 @@ const NotificationCard = ({
                                     </View>
                                 )}
                             </View>
-                        )}
+                        ) : null}
                     </View>
+
+                    {isUnread ? (
+                        <TouchableOpacity
+                            style={styles.quickReadBtn}
+                            onPress={() => onQuickMarkRead(item)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <TablerIcon name="tick-icon" size={12} color="#0D614E" />
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
             </View>
         </TouchableOpacity>
@@ -372,64 +351,50 @@ const NotificationDetailModal = ({
     onMarkRead: (item: NotificationItem) => void;
     onViewAppointment: (item: NotificationItem) => void;
 }) => {
-    const { width, height } = useWindowDimensions();
+    const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const isSmallDevice = width < 360;
 
     if (!item) return null;
-    console.log("itemitemitemitem", item)
+
     const isUnread = !item.isRead;
     const patient = item.patientName ?? item?.rawData?.data?.patient_name;
     const doctor = item.doctorName ?? item?.rawData?.data?.doctor_name;
     const reason = item.reason ?? item?.rawData?.data?.reason;
 
     return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <Pressable style={styles.modalOverlay} onPress={onClose}>
-                <Pressable
-                    style={[styles.modalCard, { maxHeight: height * 0.85 }]}
-                    onPress={() => { }}
-                >
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <View style={styles.modalOverlay}>
+                <Pressable style={styles.modalBackdrop} onPress={onClose} />
+                <View style={[styles.modalCard, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                    <View style={styles.modalHandle} />
+
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         bounces={false}
                         contentContainerStyle={styles.modalScrollContent}
                     >
                         <View style={styles.modalHeaderRow}>
-                            <View style={styles.modalHeaderLeft}>
-                                <View style={styles.modalIconBox}>
-                                    <Text style={styles.summaryIconGlyph}>🔔</Text>
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.modalTitle}>{item.title}</Text>
-                                    <View style={styles.modalMetaRow}>
-                                        <Text style={styles.modalMetaText}>{item.time}</Text>
-                                        <View style={[styles.statusBadge, isUnread ? styles.statusUnread : styles.statusRead]}>
-                                            <View style={[styles.statusDot, isUnread ? styles.dotUnread : styles.dotRead]} />
-                                            <Text style={[styles.statusBadgeText, isUnread ? styles.statusUnreadText : styles.statusReadText]}>
-                                                {isUnread ? 'Unread' : 'Read'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
+                            <View style={[styles.modalIconBox, { backgroundColor: item.iconBg }]}>
+                                {item.icon}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalTitle} numberOfLines={2}>{item.title}</Text>
+                                <Text style={styles.modalMetaText}>{item.time}</Text>
                             </View>
                             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                                <Text style={styles.modalCloseIcon}>✕</Text>
+                                <TablerIcon name="x" size={18} color="#94A3B8" />
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.modalDivider} />
-
                         {isUnread ? (
                             <View style={styles.modalUnreadBanner}>
-                                <Text style={styles.modalUnreadTitle}>Unread notification</Text>
-                                <Text style={styles.modalUnreadSubtitle}>Mark as read to clear the highlight</Text>
+                                <Text style={styles.modalUnreadTitle}>Unread</Text>
                             </View>
                         ) : null}
 
                         <Text style={styles.modalSectionLabel}>Message</Text>
-                        <View style={styles.modalBox}>
-                            <Text style={styles.modalBoxText}>{item.description}</Text>
-                        </View>
+                        <Text style={styles.modalBoxText}>{item.description}</Text>
 
                         {item.eventType ? (
                             <>
@@ -447,19 +412,19 @@ const NotificationDetailModal = ({
                                     {patient ? (
                                         <View style={styles.modalDetailRow}>
                                             <Text style={styles.modalDetailLabel}>Patient</Text>
-                                            <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{patient}</Text>
+                                            <Text style={styles.modalDetailValue}>{String(patient)}</Text>
                                         </View>
                                     ) : null}
                                     {doctor ? (
                                         <View style={styles.modalDetailRow}>
                                             <Text style={styles.modalDetailLabel}>Doctor</Text>
-                                            <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{doctor}</Text>
+                                            <Text style={styles.modalDetailValue}>{String(doctor)}</Text>
                                         </View>
                                     ) : null}
                                     {reason ? (
                                         <View style={styles.modalDetailRow}>
-                                            <Text style={styles.modalDetailLabel}>⚠️  Reason</Text>
-                                            <Text style={[styles.modalDetailValue, styles.modalDetailValueWrap]}>{reason}</Text>
+                                            <Text style={styles.modalDetailLabel}>Reason</Text>
+                                            <Text style={styles.modalDetailValue}>{String(reason)}</Text>
                                         </View>
                                     ) : null}
                                 </View>
@@ -484,28 +449,18 @@ const NotificationDetailModal = ({
                                 disabled={!isUnread}
                                 onPress={() => onMarkRead(item)}
                             >
-
-                                {isUnread && (
-                                    <TablerIcon name="tick" size={15} />
-                                )}
+                                {isUnread ? <TablerIcon name="tick" size={14} color="#0D614E" /> : null}
                                 <Text
                                     style={[styles.modalMarkBtnText, !isUnread && styles.modalMarkBtnTextDisabled]}
                                     numberOfLines={1}
                                 >
                                     {isUnread ? 'Mark as Read' : 'Already Read'}
                                 </Text>
-
-                                {/* <Text
-                                    style={[styles.modalMarkBtnText, !isUnread && styles.modalMarkBtnTextDisabled]}
-                                    numberOfLines={1}
-                                >
-                                    <TablerIcon  name= "tick-icon" style={{marginTop:-10}} size={15} /> {isUnread ? 'Mark as Read' : 'Already Read'}
-                                </Text> */}
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
-                </Pressable>
-            </Pressable>
+                </View>
+            </View>
         </Modal>
     );
 };
@@ -898,9 +853,9 @@ const styles = StyleSheet.create({
     /* ---------- Notification Card ---------- */
     card: {
         backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 10,
-        marginTop: 12,
+        borderRadius: 12,
+        padding: 8,
+        marginTop: 8,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#F1F5F9',
@@ -921,22 +876,28 @@ const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
         alignItems: 'flex-start',
+        gap: 8,
+    },
+
+    cardBody: {
+        flex: 1,
+        minWidth: 0,
     },
 
     iconBox: {
-        height: 48,
-        width: 48,
-        borderRadius: 16,
+        height: 34,
+        width: 34,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
     },
 
     badgeRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 6,
+        gap: 4,
+        marginTop: 4,
+        marginBottom: 2,
     },
     newBadge: {
         paddingVertical: 3,
@@ -997,22 +958,24 @@ const styles = StyleSheet.create({
     },
 
     title: {
-        fontSize: 16,
-        marginRight: 6,
+        flex: 1,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
+        lineHeight: 18,
     },
 
     time: {
-        fontSize: 12,
+        fontSize: 10,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsMedium,
     },
 
     desc: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#475569',
-        marginTop: 4,
+        marginTop: 2,
+        lineHeight: 17,
         fontFamily: Fonts.PoppinsRegular,
     },
 
@@ -1053,28 +1016,28 @@ const styles = StyleSheet.create({
 
     image: {
         width: '100%',
-        height: 140,
-        borderRadius: 10,
-        marginTop: 10,
+        height: 96,
+        borderRadius: 8,
+        marginTop: 6,
     },
 
     buttonRow: {
         flexDirection: 'row',
-        marginTop: 10,
-        gap: 10,
+        marginTop: 6,
+        gap: 8,
     },
 
     joinBtn: {
         flex: 1,
         backgroundColor: '#0D614E',
-        paddingVertical: 10,
-        borderRadius: 10,
+        paddingVertical: 7,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
     joinText: {
         color: '#fff',
-        fontSize: 12,
+        fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
@@ -1082,8 +1045,8 @@ const styles = StyleSheet.create({
         flex: 1,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        paddingVertical: 10,
-        borderRadius: 10,
+        paddingVertical: 7,
+        borderRadius: 8,
         backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1111,38 +1074,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        gap: 8,
-    },
-    cardTopLeft: {
-        flex: 1,
-        minWidth: 0,
-    },
-    cardTopRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        flexShrink: 0,
+        gap: 6,
     },
     timeRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
-    },
-    clockIcon: {
-        fontSize: 10,
+        flexShrink: 0,
     },
     quickReadBtn: {
-        height: 22,
-        width: 22,
-        borderRadius: 11,
+        height: 20,
+        width: 20,
+        borderRadius: 10,
         backgroundColor: '#0D614E14',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    quickReadIcon: {
-        fontSize: 12,
-        color: '#0D614E',
-        fontFamily: Fonts.PoppinsSemiBold,
+        marginTop: 2,
     },
 
     /* ---------- Meta row (patient / date / consultation type) ---------- */
@@ -1194,148 +1141,126 @@ const styles = StyleSheet.create({
     /* ---------- Modal ---------- */
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.5)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
+        justifyContent: 'flex-end',
+    },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
     },
     modalCard: {
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
         width: '100%',
-        maxWidth: 420,
-        overflow: 'hidden',
+        maxHeight: '78%',
+    },
+    modalHandle: {
+        alignSelf: 'center',
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#E2E8F0',
+        marginTop: 8,
+        marginBottom: 4,
     },
     modalScrollContent: {
-        padding: 20,
+        paddingHorizontal: 16,
+        paddingBottom: 8,
     },
     modalHeaderRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'flex-start',
-    },
-    modalHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        flex: 1,
-        gap: 12,
+        gap: 10,
+        marginBottom: 10,
     },
     modalIconBox: {
-        height: 40,
-        width: 40,
-        borderRadius: 12,
-        backgroundColor: '#F1F5F9',
+        height: 34,
+        width: 34,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
     },
     modalTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
-    },
-    modalMetaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 4,
-        flexWrap: 'wrap',
+        lineHeight: 20,
     },
     modalMetaText: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsRegular,
-    },
-    modalCloseIcon: {
-        fontSize: 16,
-        color: '#94A3B8',
-        padding: 4,
-    },
-    modalDivider: {
-        height: 1,
-        backgroundColor: '#E2E8F0',
-        marginVertical: 16,
-    },
-    modalUnreadBanner: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 16,
-    },
-    modalUnreadTitle: {
-        fontSize: 13,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    modalUnreadSubtitle: {
         fontSize: 11,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsRegular,
         marginTop: 2,
     },
-    modalSectionLabel: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsBold,
-        marginBottom: 8,
+    modalUnreadBanner: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#EAF8F4',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        marginBottom: 10,
     },
-    modalBox: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 16,
+    modalUnreadTitle: {
+        fontSize: 11,
+        color: '#0D614E',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    modalSectionLabel: {
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 4,
+        marginTop: 8,
     },
     modalBoxText: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#334155',
         fontFamily: Fonts.PoppinsRegular,
-        lineHeight: 20,
+        lineHeight: 19,
     },
     modalTag: {
         alignSelf: 'flex-start',
         backgroundColor: '#F1F5F9',
         borderRadius: 8,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        marginBottom: 16,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        marginBottom: 4,
     },
     modalTagText: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#334155',
         fontFamily: Fonts.PoppinsMedium,
     },
     modalDetailsBox: {
         backgroundColor: '#F8FAFC',
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 20,
-        gap: 12,
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 8,
+        gap: 8,
     },
     modalDetailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        gap: 12,
+        gap: 10,
     },
     modalDetailLabel: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#64748B',
         fontFamily: Fonts.PoppinsRegular,
         flexShrink: 0,
     },
     modalDetailValue: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
         flex: 1,
         textAlign: 'right',
     },
-    modalDetailValueWrap: {
-        flexWrap: 'wrap',
-    },
     modalButtonRow: {
         flexDirection: 'row',
-        gap: 10,
+        gap: 8,
+        marginTop: 12,
     },
     modalButtonRowCompact: {
         flexDirection: 'column',
@@ -1343,23 +1268,23 @@ const styles = StyleSheet.create({
     modalViewBtn: {
         flex: 1,
         backgroundColor: '#0D614E',
-        paddingVertical: 12,
+        paddingVertical: 10,
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     modalViewBtnText: {
         color: '#fff',
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
     },
     modalMarkBtn: {
         flex: 1,
         backgroundColor: '#0D614E14',
-        paddingVertical: 12,
+        paddingVertical: 10,
         borderRadius: 10,
         flexDirection: 'row',
-        gap: 6,
+        gap: 5,
         alignItems: 'center',
         justifyContent: 'center',
     },

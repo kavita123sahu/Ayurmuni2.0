@@ -52,10 +52,17 @@ export type RootStackParamList = {
         consultationId : string
     }
     AllDoctors: undefined;
-    CategoryDoctor: undefined;
+    CategoryDoctor: {
+        categoryName?: string;
+        categoryId?: string;
+    };
     Splash: undefined;
     BookingConfrimScreen: undefined;
-    Appointments: undefined;
+    Appointments:
+      | {
+          mode?: 'upcoming' | 'all';
+        }
+      | undefined;
     OrderHistory: undefined;
     OrderDetailsScreen: { order?: any };
     TabStack: undefined;
@@ -96,6 +103,7 @@ export type RootStackParamList = {
     HelpCenterScreen: undefined;
     Settings: undefined;
     PaymentsScreen: undefined;
+    TransactionDetailsScreen: { transaction?: any };
     EmergencySOS: undefined;
     SOSConfirmed: undefined;
     SOSCancel: undefined;
@@ -119,6 +127,7 @@ export type RootStackParamList = {
           healthDiseaseId?: string;
           brand_name_id?: string;
           brandName?: string;
+          serviceCategoryId?: string;
         }
       | undefined;
     OrderStatus: undefined;

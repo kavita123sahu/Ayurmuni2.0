@@ -13,6 +13,10 @@ import { CARD_SURFACE } from '../constants/cardStyles';
 import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import WishlistButton from './WishlistButton';
+import {
+  getProductStockQty,
+  isProductOutOfStock,
+} from '../utils/productStockUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -64,6 +68,28 @@ const ProductCard: React.FC<Props> = ({
       ? Math.round(((item.mrp - item.selling_price) / item.mrp) * 100)
       : 0;
 
+  // Stock from listing `quantity` (e.g. quantity: 900 → in stock)
+  const stockQty = getProductStockQty(item);
+  const isOutOfStock = isProductOutOfStock(item);
+  const maxQuantity =
+    stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
+
+  const handleAdd = () => {
+    if (isOutOfStock || actionsLocked) return;
+    onAdd();
+  };
+
+  const handleIncrement = () => {
+    if (isOutOfStock || actionsLocked) return;
+    if (maxQuantity != null && cartQty >= maxQuantity) return;
+    onIncrement();
+  };
+
+  const handleDecrement = () => {
+    if (isOutOfStock || actionsLocked) return;
+    onDecrement();
+  };
+
   return (
     <Pressable
       onPress={onPress}
@@ -77,11 +103,11 @@ const ProductCard: React.FC<Props> = ({
         pressed && styles.cardPressed,
       ]}
     >
-      <View style={[styles.imageZone, { height: imageHeight }]}>
+      <View style={[styles.imageZone, { height: imageHeight ,}]}>
         {item?.image_url ? (
           <Image
             source={{ uri: item.image_url }}
-            style={styles.productImage}
+            style={[styles.productImage, isOutOfStock && styles.imageDimmed]}
             resizeMode="cover"
           />
         ) : (
@@ -90,11 +116,15 @@ const ProductCard: React.FC<Props> = ({
           </View>
         )}
 
-        {discount > 0 && (
+        {isOutOfStock ? (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockText}>Out of Stock</Text>
+          </View>
+        ) : discount > 0 ? (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discount}% OFF</Text>
           </View>
-        )}
+        ) : null}
 
         {showWishlist && onWishlist && !actionsLocked && (
           <WishlistButton
@@ -103,15 +133,18 @@ const ProductCard: React.FC<Props> = ({
           />
         )}
 
+        {/* Add stays visible but disabled when OOS — card press still opens details */}
         <View style={styles.addOverlay} pointerEvents="box-none">
           <BlinkitAddButton
-            quantity={cartQty}
+            quantity={isOutOfStock ? 0 : cartQty}
             isAdding={isAdding}
             locked={actionsLocked}
+            outOfStock={isOutOfStock}
+            maxQuantity={maxQuantity}
             compact
-            onAdd={onAdd}
-            onIncrement={onIncrement}
-            onDecrement={onDecrement}
+            onAdd={handleAdd}
+            onIncrement={handleIncrement}
+            onDecrement={handleDecrement}
           />
         </View>
       </View>
@@ -165,11 +198,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
-    padding: 8,
+    // padding: 8,
   },
   productImage: {
     width: '100%',
     height: '100%',
+  },
+  imageDimmed: {
+    opacity: 0.55,
   },
   imagePlaceholder: {
     flex: 1,
@@ -188,6 +224,21 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   discountText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  outOfStockBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderBottomRightRadius: 10,
+    zIndex: 5,
+  },
+  outOfStockText: {
     color: '#FFF',
     fontSize: 9,
     fontFamily: Fonts.PoppinsSemiBold,

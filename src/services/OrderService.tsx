@@ -39,3 +39,21 @@ export const getOrders = async () => {
     }
 }
 
+export const getTransactions = async (params?: { page?: number; page_size?: number }) => {
+    try {
+        const query = new URLSearchParams();
+        if (params?.page) query.set('page', String(params.page));
+        if (params?.page_size) query.set('page_size', String(params.page_size));
+        const path = query.toString()
+            ? `order/transactions/?${query.toString()}`
+            : 'order/transactions/';
+
+        const response = await apiClient(path, {
+            method: 'GET',
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+

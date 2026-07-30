@@ -12,9 +12,9 @@ import { VideoCallProvider } from './src/context/VideoCallContext';
 import FloatingVideoOverlay from './src/components/FloatingVideoOverlay';
 
 
-// console.log = () => { };
-// console.warn = () => { };
-// console.error = () => { };
+console.log = () => { };
+console.warn = () => { };
+console.error = () => { };
 
 
 const toastConfig = {

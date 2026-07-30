@@ -236,9 +236,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 {/* LEFT */}
 
                 <View style={styles.iconContainer}>
-
-                    <TablerIcon name="home" size={20} color={Colors.primaryColor} />
-
+                    <TablerIcon name="home" size={16} color={Colors.primaryColor} />
                 </View>
 
                 {/* CENTER */}
@@ -303,7 +301,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                 {
                     isSelected && (
-                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+                        <TablerIcon name="tick-icon" size={16} color={Colors.primaryColor} />
                     )
                 }
 
@@ -359,7 +357,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             style={styles.locationBox}
                         >
 
-                            <TablerIcon name="current-location" size={20} color={Colors.primaryColor} />
+                            <TablerIcon name="current-location" size={16} color={Colors.primaryColor} />
 
                         </View>
 
@@ -402,7 +400,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                         {
                             selectedId ===
                             'current' && (
-                                <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+                                <TablerIcon name="tick-icon" size={16} color={Colors.primaryColor} />
                             )
                         }
 
@@ -477,181 +475,119 @@ const styles = StyleSheet.create({
     },
 
     scroll: {
-        padding: 20,
-        paddingBottom: 120,
+        padding: 16,
+        paddingBottom: 100,
     },
 
     currentCard: {
         flexDirection: 'row',
-
+        alignItems: 'flex-start',
         backgroundColor: '#FFFFFF',
-
-        borderRadius: 22,
-
-        padding: 16,
-
-        marginBottom: 24,
-
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 16,
         borderWidth: 1,
         borderColor: '#EEF2F6',
+        gap: 10,
     },
 
     selectedCard: {
-        borderColor:
-            Colors.primaryColor,
-
+        borderColor: Colors.primaryColor,
         backgroundColor: '#F0FDF9',
     },
 
     locationBox: {
-        height: 48,
-        width: 48,
-
-        borderRadius: 16,
-
+        height: 36,
+        width: 36,
+        borderRadius: 10,
         backgroundColor: '#ECFDF3',
-
         justifyContent: 'center',
         alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    locationIcon: {
-        height: 22,
-        width: 22,
-        resizeMode: 'contain',
     },
 
     currentTitle: {
-        fontSize: 15,
-
+        fontSize: 13,
         color: '#111827',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     heading: {
-        fontSize: 20,
-
-        marginBottom: 16,
-
+        fontSize: 16,
+        marginBottom: 10,
         color: '#111827',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     addressCard: {
         flexDirection: 'row',
-
+        alignItems: 'flex-start',
         backgroundColor: '#FFFFFF',
-
-        borderRadius: 22,
-
-        padding: 16,
-
-        marginBottom: 14,
-
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 10,
         borderWidth: 1,
         borderColor: '#EEF2F6',
+        gap: 10,
     },
 
     iconContainer: {
-        height: 46,
-        width: 46,
-
-        borderRadius: 14,
-
+        height: 36,
+        width: 36,
+        borderRadius: 10,
         backgroundColor: '#F5F7FA',
-
         justifyContent: 'center',
         alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    icon: {
-        height: 20,
-        width: 20,
-        resizeMode: 'contain',
     },
 
     cardContent: {
         flex: 1,
+        minWidth: 0,
     },
 
     cardTitle: {
-        fontSize: 15,
-
+        fontSize: 13,
         color: '#111827',
-
-        marginBottom: 2,
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     addressText: {
-        fontSize: 13,
-
-        lineHeight: 20,
-
+        fontSize: 12,
+        lineHeight: 17,
         color: '#667085',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsRegular,
+        marginTop: 2,
     },
 
     cityText: {
-        fontSize: 12,
-
+        fontSize: 11,
         marginTop: 2,
-
         color: '#98A2B3',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsRegular,
     },
 
     useLocation: {
-        marginTop: 8,
-
-        fontSize: 13,
-
-        color:
-            Colors.primaryColor,
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        marginTop: 6,
+        fontSize: 12,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     actionRow: {
         flexDirection: 'row',
-
-        marginTop: 10,
-
-        gap: 16,
+        marginTop: 8,
+        gap: 8,
     },
 
     editText: {
-        fontSize: 13,
-
-        color:
-            Colors.primaryColor,
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontSize: 12,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     deleteText: {
-        fontSize: 13,
-
+        fontSize: 12,
         color: '#EF4444',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     tickIcon: {

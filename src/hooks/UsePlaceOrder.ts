@@ -1,97 +1,82 @@
-// hooks/usePlaceOrder.ts
-// ── Place order hook — call karo, response lo, navigate karo ─────────────────
-
 import { useState, useCallback } from 'react';
-import { OrderItem, PlaceOrderPayload, PlaceOrderResponse } from '../common/DataInterface';
-// import { OrderService, PlaceOrderPayload, PlaceOrderResponse, OrderItem } from '../services/OrderService';
+import { PlaceOrderResponse } from '../common/DataInterface';
 import * as _ORDER_SERVICES from '../services/OrderService';
-// ── Cart item shape (jo cart screen se aata hai) ──────────────────────────────
-type CartItem = {
-    variant_id: string | number;
-    quantity: number;
-    price: number;
-    discount?: number;
-    name?: string;
+import {
+  buildCodOrderPayload,
+  buildPrepaidOrderPayload,
+  OrderCartLine,
+} from '../utils/orderPayload';
+
+type CartItem = OrderCartLine & {
+  variant_id: string | number;
+  quantity: number;
+  price: number;
+  discount?: number;
+  name?: string;
 };
 
 type ChargeConfig = {
-    delivery_address_id: string | number;
-    shipping_charges: number;
-    cod_charges: number;
-    prepaid_amount?: number;
-    payment_type?: 'cod' | 'prepaid' | 'online';
-    payment_method?: 'cash' | 'upi' | 'card' | 'netbanking';
-    shipping_method?: 'STD' | 'EXPRESS';
+  delivery_address_id: string | number;
+  shipping_charges: number;
+  cod_charges: number;
+  prepaid_amount?: number;
+  payment_type?: 'cod' | 'prepaid' | 'online';
+  /** Only for prepaid when already known from Razorpay */
+  payment_method?: string | null;
+  shipping_method?: 'STD' | 'EXPRESS';
 };
 
-type UsePlaceOrderReturn = {
-    isPlacing: boolean;
-    orderError: string | null;
-    placeOrder: (
-        cartItems: CartItem[],
-        config: ChargeConfig,
-    ) => Promise<PlaceOrderResponse | null>;
-};
+export const usePlaceOrder = () => {
+  const [isPlacing, setIsPlacing] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
-export const usePlaceOrder = (): UsePlaceOrderReturn => {
-    const [isPlacing, setIsPlacing] = useState(false);
-    const [orderError, setOrderError] = useState<string | null>(null);
+  const placeOrder = useCallback(
+    async (
+      cartItems: CartItem[],
+      config: ChargeConfig,
+    ): Promise<PlaceOrderResponse | null> => {
+      setIsPlacing(true);
+      setOrderError(null);
 
-    const placeOrder = useCallback(
-        async (
-            cartItems: CartItem[],
-            config: ChargeConfig,
-        ): Promise<PlaceOrderResponse | null> => {
+      const isCod = config.payment_type === 'cod';
 
-            
+      const payload = isCod
+        ? buildCodOrderPayload({
+            delivery_address_id: config.delivery_address_id,
+            cartItems,
+            shipping_charges: config.shipping_charges,
+            cod_charges: config.cod_charges,
+            shipping_method: config.shipping_method ?? 'STD',
+          })
+        : buildPrepaidOrderPayload({
+            delivery_address_id: config.delivery_address_id,
+            cartItems,
+            shipping_charges: config.shipping_charges,
+            cod_charges: config.cod_charges,
+            shipping_method: config.shipping_method ?? 'STD',
+            prepaid_amount: config.prepaid_amount ?? 0,
+            // Never hardcode upi/card — only if Razorpay already gave us a method
+            payment_method: config.payment_method ?? null,
+          });
 
-            setIsPlacing(true);
-            setOrderError(null);
+      console.log('ORDER_PAYLOAD =>', JSON.stringify(payload, null, 2));
 
-            // ── Build optimised payload ──────────────────────────────────────────
-            const items: OrderItem[] = cartItems.map(item => ({
-                variant_id: item.variant_id,
-                quantity: item.quantity,
-                discount: item.discount ?? 0,
-                shipping_charges: 0,
-                gift_wrap: false,
-            }));
+      try {
+        const response = await _ORDER_SERVICES.place_order_API(payload);
+        console.log('ORDER_RESPONSE =>', response);
+        if (!response?.success) {
+          setOrderError(response?.message ?? 'Order placement failed');
+        }
+        return response;
+      } catch (err: any) {
+        setOrderError(err?.message ?? 'Order placement failed');
+        return null;
+      } finally {
+        setIsPlacing(false);
+      }
+    },
+    [],
+  );
 
-            const itemsTotal = cartItems.reduce(
-                (sum, item) => sum + Number(item.price) * Number(item.quantity),
-                0,
-            );
-
-            const payload: PlaceOrderPayload = {
-                delivery_address_id: config.delivery_address_id,
-                payment_type: config.payment_type ?? 'cod',
-                payment_method: config.payment_method ?? 'cash',
-                shipping_method: config.shipping_method ?? 'STD',
-                shipping_charges: config.shipping_charges,
-                cod_charges: config.cod_charges,
-                prepaid_amount:
-                    config.payment_type === 'prepaid' || config.payment_type === 'online'
-                        ? (config.prepaid_amount ?? itemsTotal + config.shipping_charges)
-                        : 0,
-                items,
-            };
-            console.log("orderpaylaod", payload);
-            try {
-                const response = await _ORDER_SERVICES.place_order_API(payload);
-                console.log("orderresposneeeee", response);
-                if (!response?.success) {
-                    setOrderError(response?.message ?? 'Order placement failed');
-                }
-                return response;
-            } catch (err: any) {
-                setOrderError(err?.message ?? 'Order placement failed');
-                return null;
-            } finally {
-                setIsPlacing(false);
-            }
-        },
-        [isPlacing],
-    );
-
-    return { isPlacing, orderError, placeOrder };
+  return { isPlacing, orderError, placeOrder };
 };

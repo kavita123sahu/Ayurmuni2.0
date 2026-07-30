@@ -38,6 +38,7 @@ import FAQScreen from "../screens/profile/FAQScreen";
 import HelpCenterScreen from "../screens/profile/HelpCenter";
 import SettingsScreen from "../screens/profile/Settings";
 import PaymentsScreen from "../screens/profile/PaymentScreen";
+import TransactionDetailsScreen from "../screens/profile/TransactionDetailsScreen";
 // import EmergencySOS from "../screens/SOS/EmergencySOS";
 // import SOSPayment from "../screens/SOS/SOSPayment";
 // import SOSRequest from "../screens/SOS/SOSRequest";
@@ -150,6 +151,7 @@ const HomeStackNavigator = () => (
       <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} />
+      <Stack.Screen name="TransactionDetailsScreen" component={TransactionDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
       <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
       <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />

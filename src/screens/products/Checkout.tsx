@@ -205,6 +205,8 @@ const Checkout: React.FC = (props: any) => {
 
                 id: item.id,
 
+                cart_item_id: item.id,
+
                 variant_id: item.variant_id,
 
                 quantity: item.quantity,
@@ -217,6 +219,10 @@ const Checkout: React.FC = (props: any) => {
 
                 discount: item.discount ?? 0,
 
+                source: item.source,
+
+                gift_wrap: Boolean(item.gift_wrap),
+
             })),
 
         [selectedProducts],
@@ -225,9 +231,9 @@ const Checkout: React.FC = (props: any) => {
 
 
 
-    const shippingFee: number = 0;
+    const shippingFee: number = 50;
 
-    const codChargeDefault = 0;
+    const codChargeDefault = 30;
 
 
 
@@ -280,9 +286,9 @@ const Checkout: React.FC = (props: any) => {
 
             delivery_address_id: defaultAddress.id,
 
-            shipping_charges: 0,
+            shipping_charges: shippingFee,
 
-            cod_charges: 0,
+            cod_charges: codChargeDefault,
 
             payment_type: 'cod',
 
@@ -307,6 +313,8 @@ const Checkout: React.FC = (props: any) => {
                     variant_id: String(item.variant_id),
 
                     quantity: Number(item.quantity),
+
+                    source: item.source,
 
                 })),
 
@@ -335,6 +343,8 @@ const Checkout: React.FC = (props: any) => {
             customerInfo: customerData ?? {},
 
             shippingFee,
+
+            codCharges: codChargeDefault,
 
             onSuccess: (orderResult, orderedCartItems) => {
 
@@ -426,7 +436,7 @@ const Checkout: React.FC = (props: any) => {
 
                             <View style={styles.iconBox}>
 
-                                <TablerIcon name="location" size={20} color={Colors.primaryColor} />
+                                <TablerIcon name="location" size={16} color={Colors.primaryColor} />
 
                             </View>
 
@@ -521,7 +531,6 @@ const Checkout: React.FC = (props: any) => {
                 <Text style={styles.sectionTitle}>Delivery Method</Text>
 
 
-
                 <Option
 
                     selected={deliveryMethod === 'standard'}
@@ -536,10 +545,7 @@ const Checkout: React.FC = (props: any) => {
 
                 />
 
-
-
                 <Option
-
                     selected={deliveryMethod === 'express'}
 
                     title="Express Delivery"
@@ -551,8 +557,6 @@ const Checkout: React.FC = (props: any) => {
                     onPress={() => setDeliveryMethod('express')}
 
                 />
-
-
 
                 <Text style={styles.sectionTitle}>Payment Method</Text>
 
@@ -957,15 +961,15 @@ const styles = StyleSheet.create({
 
     addressCard: {
 
-        borderRadius: 24,
+        borderRadius: 14,
 
-        padding: 16,
+        padding: 12,
 
         borderWidth: 1,
 
-        borderColor: '#0D614E1A',
+        borderColor: '#EEF2F6',
 
-        marginBottom: 20,
+        marginBottom: 16,
 
         backgroundColor: '#FFFFFF',
 
@@ -977,17 +981,23 @@ const styles = StyleSheet.create({
 
         alignItems: 'center',
 
+        gap: 10,
+
     },
 
     iconBox: {
 
-        backgroundColor: '#0D614E1A',
+        backgroundColor: '#EAF8F4',
 
-        padding: 14,
+        width: 36,
 
-        borderRadius: 16,
+        height: 36,
 
-        marginRight: 14,
+        borderRadius: 10,
+
+        alignItems: 'center',
+
+        justifyContent: 'center',
 
     },
 
@@ -995,13 +1005,15 @@ const styles = StyleSheet.create({
 
         flex: 1,
 
+        minWidth: 0,
+
     },
 
     home: {
 
         fontFamily: Fonts.PoppinsSemiBold,
 
-        fontSize: 14,
+        fontSize: 13,
 
         color: '#0F172A',
 
@@ -1009,11 +1021,15 @@ const styles = StyleSheet.create({
 
     addressText: {
 
-        fontSize: 14,
+        fontSize: 12,
 
         color: '#64748B',
 
-        fontFamily: Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsRegular,
+
+        lineHeight: 17,
+
+        marginTop: 2,
 
     },
 
@@ -1023,17 +1039,17 @@ const styles = StyleSheet.create({
 
         justifyContent: 'center',
 
-        paddingVertical: 20,
+        paddingVertical: 12,
 
     },
 
     emptyIconWrapper: {
 
-        width: 60,
+        width: 44,
 
-        height: 60,
+        height: 44,
 
-        borderRadius: 30,
+        borderRadius: 22,
 
         backgroundColor: '#0D614E12',
 
@@ -1041,13 +1057,13 @@ const styles = StyleSheet.create({
 
         alignItems: 'center',
 
-        marginBottom: 12,
+        marginBottom: 8,
 
     },
 
     emptyTitle: {
 
-        fontSize: 16,
+        fontSize: 14,
 
         color: '#0F172A',
 
@@ -1057,7 +1073,7 @@ const styles = StyleSheet.create({
 
     emptySubTitle: {
 
-        fontSize: 13,
+        fontSize: 12,
 
         color: '#64748B',
 
@@ -1065,7 +1081,7 @@ const styles = StyleSheet.create({
 
         marginTop: 4,
 
-        marginBottom: 14,
+        marginBottom: 10,
 
         fontFamily: Fonts.PoppinsRegular,
 

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,32 +6,56 @@ import {
   StatusBar,
   StyleSheet,
   ScrollView,
-  Image,
-  Animated,
-  Dimensions,
 } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import { showSuccessToast } from '../config/Key';
-import { Images } from '../common/Images';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TablerIcon from '../components/TablerIcon';
+import AppHeader from '../components/AppHeader';
+import { safeGoBack } from '../navigation/navigationUtils';
 
-const { height } = Dimensions.get('window');
+const POLICY_SECTIONS = [
+  {
+    title: '1. Information We Collect',
+    body:
+      'We collect information you provide during registration, consultations, orders, and health assessments. This may include name, contact details, medical history, prescriptions, and payment information required to deliver Ayurvedic care and wellness services.',
+  },
+  {
+    title: '2. How We Use Your Data',
+    body:
+      'Your data is used to provide consultations, process orders, personalize recommendations, send appointment reminders, and improve app experience. We do not sell your personal or medical information to third parties.',
+  },
+  {
+    title: '3. Medical Data Protection',
+    body:
+      'Health records, prescriptions, and consultation notes are stored securely and accessed only by authorized doctors and care teams involved in your treatment, unless you explicitly consent otherwise.',
+  },
+  {
+    title: '4. Data Sharing',
+    body:
+      'We may share limited data with payment gateways, logistics partners, and technology providers strictly to operate the service. All partners are expected to follow appropriate confidentiality and security standards.',
+  },
+  {
+    title: '5. Your Rights',
+    body:
+      'You may review, update, or request deletion of your account information from profile settings, subject to legal and medical record retention requirements.',
+  },
+  {
+    title: '6. Contact',
+    body:
+      'For privacy-related questions, contact Ayurmuni support through the Help Center in the app.',
+  },
+];
 
 const TermsCondition = (props: any) => {
-  const { agreed } = props?.route?.params;
+  const agreed = props?.route?.params?.agreed;
+  const isOnboardingFlow = agreed === false;
+  const title = isOnboardingFlow ? 'Terms & Conditions' : 'Privacy Policy';
 
-  // ✅ FIX: stable animation value
-  const scrollY = useRef(new Animated.Value(0)).current;
 
-  const fadeAnim = scrollY.interpolate({
-    inputRange: [0, 120],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
+const insets = useSafeAreaInsets();
   const handleAgree = () => {
     showSuccessToast('Accepted Terms & Conditions', 'success');
     props.navigation.replace('HomeStack', { screen: 'Onboarding' });
@@ -42,171 +66,169 @@ const TermsCondition = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* HEADER */}
-      <View style={styles.header}>
-        {/* <TouchableOpacity onPress={() => props.navigation.goBack()}>
-          <TablerIcon name="arrow-left" size={22} color={Colors.primaryColor} style={styles.backIcon} />
-        </TouchableOpacity> */}
-      </View>
+      <AppHeader
+        title={title}
+        onLeftPress={() => safeGoBack(props.navigation)}
+      />
 
-      {/* BANNER */}
       <View style={styles.banner}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>Hello,</Text>
+        <View style={styles.bannerIconWrap}>
+          <TablerIcon name="shield" size={22} color={Colors.primaryColor} />
+        </View>
+        <View style={styles.bannerTextWrap}>
+          <Text style={styles.bannerTitle}>
+            {isOnboardingFlow ? 'Welcome to Ayurmuni' : 'Your privacy matters'}
+          </Text>
           <Text style={styles.bannerText}>
-            {agreed
-              ? 'Successfully accepted Terms & Conditions'
-              : 'Please read and accept Terms & Conditions'}
+            {isOnboardingFlow
+              ? 'Please read and accept the terms to continue.'
+              : 'Learn how Ayurmuni protects your personal and medical information.'}
           </Text>
         </View>
-
-        <Image source={require('../assets/images/HelloIcon.png')} style={styles.bannerIcon} />
       </View>
 
-      {/* SCROLL */}
-      <Animated.ScrollView
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Terms & Conditions</Text>
+        {POLICY_SECTIONS.map(section => (
+          <View key={section.title} style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.text}>{section.body}</Text>
+          </View>
+        ))}
+      </ScrollView>
 
-        <Text style={styles.text}>
-          Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio... Lorem ipsum dolor sit amet consectetur. Proin diam nunc, tortor in bibendum odio...
-        </Text>
-      </Animated.ScrollView>
-
-      {/* BUTTONS (SAFE FIX) */}
-      {!agreed && (
-        <View style={styles.bottomContainer}>
+      {isOnboardingFlow ? (
+        <View style={[styles.bottomContainer,{ paddingBottom: Math.max(insets.bottom, 16),}]}>
           <TouchableOpacity
             onPress={handleAgree}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
             style={styles.agreeBtn}
           >
             <Text style={styles.agreeText}>Agree</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleDisagree}
-            style={styles.disagreeBtn}
-          >
+          <TouchableOpacity onPress={handleDisagree} style={styles.disagreeBtn}>
             <Text style={styles.disagreeText}>Disagree</Text>
           </TouchableOpacity>
         </View>
-      )}
+      ) : null}
     </SafeAreaView>
   );
 };
 
 export default TermsCondition;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: '#F4F7F6',
   },
-
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
-
-  backIcon: {
-    width: 40,
-    height: 40,
-    resizeMode: 'contain',
-  },
-
   banner: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
     padding: 14,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryColor,
+    borderRadius: 14,
+    backgroundColor: '#EAF8F4',
+    borderWidth: 1,
+    borderColor: '#CFE8DF',
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
-
+  bannerIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerTextWrap: {
+    flex: 1,
+  },
   bannerTitle: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#0F172A',
+    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
   bannerText: {
-    color: '#fff',
-    fontSize: 13,
-    marginTop: 4,
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 3,
+    lineHeight: 17,
     fontFamily: Fonts.PoppinsRegular,
   },
-
-  bannerIcon: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-  },
-
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100, // ✅ safe for all devices
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
-
-  title: {
-    fontSize: 22,
-    fontFamily: Fonts.PoppinsMedium,
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8EDF2',
   },
-
+  sectionTitle: {
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    marginBottom: 6,
+  },
   text: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
     fontFamily: Fonts.PoppinsRegular,
-    color: '#333',
-    textAlign: 'justify',
+    color: '#475569',
   },
-
-  bottomContainer: {
+   bottomContainer: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+   
     gap: 12,
-
-    // ✅ IMPORTANT FIX
-    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E8EDF2',
   },
-
+  // bottomContainer: {
+  //   flexDirection: 'row',
+  //   padding: 16,
+  //   gap: 12,
+  //   backgroundColor: '#FFFFFF',
+  //   borderTopWidth: 1,
+  //   borderTopColor: '#E8EDF2',
+  // },
   agreeBtn: {
     flex: 1,
     backgroundColor: Colors.primaryColor,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
-
   disagreeBtn: {
     flex: 1,
     borderWidth: 1,
     borderColor: Colors.primaryColor,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
-
   agreeText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 15,
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
-
   disagreeText: {
     color: Colors.primaryColor,
     fontSize: 15,
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

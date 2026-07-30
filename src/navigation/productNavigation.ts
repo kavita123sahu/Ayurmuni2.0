@@ -3,7 +3,12 @@ import { navigateToStackScreen } from './navigationUtils';
 
 export const navigateToSearchScreen = (
   navigation: any,
-  params?: { categoryId?: string; categoryName?: string },
+  params?: {
+    categoryId?: string;
+    categoryName?: string;
+    serviceCategoryId?: string;
+    categoryMode?: 'health' | 'product';
+  },
 ) => {
   navigateToStackScreen(navigation, 'SearchScreen', params ?? {});
 };
@@ -19,6 +24,7 @@ export const navigateToCategoryProducts = (
     healthDiseaseId?: string;
     brand_name_id?: string;
     brandName?: string;
+    serviceCategoryId?: string;
   },
 ) => {
   navigateToStackScreen(navigation, 'CategoryProducts', params ?? {});
@@ -41,12 +47,15 @@ export const navigateToCheckout = (
   navigation: any,
   selectedProducts: Array<{
     id?: string;
+    cart_item_id?: string;
     variant_id?: string;
     quantity?: number;
     price?: number;
     name?: string;
     image?: unknown;
     discount?: number;
+    gift_wrap?: boolean;
+    source?: 'cart' | 'prescribed';
   }>,
   totalSubtotal?: number,
 ) => {
@@ -55,16 +64,21 @@ export const navigateToCheckout = (
   }
 
   const normalizedProducts = selectedProducts.map(item => {
-    const variantId = String(item.variant_id ?? item.id ?? '');
+    // Cart line id from API (data.item.id) — NOT variant.variant_id
+    const cartItemId = String(item.id ?? item.cart_item_id ?? '');
+    const variantId = String(item.variant_id ?? '');
 
     return {
-      id: variantId,
+      id: cartItemId,
+      cart_item_id: cartItemId,
       variant_id: variantId,
       quantity: Number(item.quantity ?? 1),
       price: Number(item.price ?? 0),
       name: item.name ?? '',
       image: resolveImageUri(item.image),
       discount: item.discount ?? 0,
+      gift_wrap: Boolean(item.gift_wrap),
+      source: item.source,
     };
   });
 

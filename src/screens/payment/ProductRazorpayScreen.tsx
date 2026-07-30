@@ -20,6 +20,10 @@ import { showSuccessToast } from '../../config/Key';
 import { openRazorpayPayment } from '../../services/RazorpayService';
 import * as _ORDER_SERVICES from '../../services/OrderService';
 import BackIconButton from '../../components/BackIconButton';
+import {
+  buildPrepaidOrderPayload,
+  getRazorpayPaymentMethod,
+} from '../../utils/orderPayload';
 
 type Props = {
   route: any;
@@ -40,15 +44,27 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
   const paymentStartedRef = useRef(false);
 
   const shippingFee = Number(charges.shipping_charges ?? 50);
+  const codCharges = Number(charges.cod_charges ?? 0);
+
+  const normalizedCartItems = useMemo(
+    () =>
+      (cartItems as any[]).map(item => ({
+        ...item,
+        id: item.id ?? item.cart_item_id,
+        cart_item_id: item.cart_item_id ?? item.id,
+        gift_wrap: Boolean(item.gift_wrap),
+      })),
+    [cartItems],
+  );
 
   const subtotal = useMemo(
     () =>
-      cartItems.reduce(
+      normalizedCartItems.reduce(
         (sum: number, item: any) =>
           sum + Number(item.price) * Number(item.quantity),
         0,
       ),
-    [cartItems],
+    [normalizedCartItems],
   );
 
   const payableAmount = Number(totalAmount || subtotal + shippingFee);
@@ -68,23 +84,6 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
     }, [isVerifyingPayment]),
   );
 
-  const buildOrderPayload = () => ({
-    delivery_address_id: address.id,
-    payment_type: 'prepaid',
-    payment_method: 'upi',
-    shipping_method: 'STD',
-    shipping_charges: shippingFee,
-    cod_charges: 0,
-    prepaid_amount: Math.round(subtotal + shippingFee),
-    items: cartItems.map((item: any) => ({
-      variant_id: item.variant_id,
-      quantity: item.quantity,
-      discount: item.discount ?? 0,
-      shipping_charges: 0,
-      gift_wrap: false,
-    })),
-  });
-
   const handlePayment = async () => {
     if (loading || paymentStartedRef.current) {
       return;
@@ -95,7 +94,7 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
       return;
     }
 
-    if (!cartItems.length) {
+    if (!normalizedCartItems.length) {
       showSuccessToast('Cart is empty', 'error');
       return;
     }
@@ -104,9 +103,20 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
       setLoading(true);
       paymentStartedRef.current = true;
 
-      const orderResponse = await _ORDER_SERVICES.place_order_API(
-        buildOrderPayload(),
+      // Complete prepaid payload — no static payment_method
+      const placePayload = buildPrepaidOrderPayload({
+        delivery_address_id: address.id,
+        cartItems: normalizedCartItems,
+        shipping_charges: shippingFee,
+        cod_charges: codCharges,
+        prepaid_amount: Math.round(payableAmount),
+      });
+      console.log(
+        'ORDER_PAYLOAD_PREPAID =>',
+        JSON.stringify(placePayload, null, 2),
       );
+
+      const orderResponse = await _ORDER_SERVICES.place_order_API(placePayload);
 
       if (!orderResponse?.success) {
         showSuccessToast(orderResponse?.message ?? 'Order failed', 'error');
@@ -134,19 +144,39 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
         order_id: paymentData?.razorpay_order_id,
         name: customerName,
         email: customerInfo?.email ?? address?.email ?? 'customer@ayurmuni.com',
-        contact: contactNumber ? `91${contactNumber.slice(-10)}` : '919999999999',
+        contact: contactNumber
+          ? `91${contactNumber.slice(-10)}`
+          : '919999999999',
         description: 'Product Order Payment',
         themeColor: Colors.primaryColor,
       })
         .then(async (razorpayResult: any) => {
           setIsVerifyingPayment(true);
 
-          const verifyResponse = await _ORDER_SERVICES.verifyOrderPayment({
+          console.log(
+            'RAZORPAY_SUCCESS_EVENT =>',
+            JSON.stringify(razorpayResult, null, 2),
+          );
+
+          // Method selected by user in Razorpay (upi / card / wallet / …)
+          const paymentMethod = getRazorpayPaymentMethod(razorpayResult);
+
+          const verifyBody: Record<string, any> = {
             payment_id: paymentData?.payment_id,
             razorpay_order_id: paymentData?.razorpay_order_id,
             razorpay_payment_id: razorpayResult?.razorpay_payment_id,
             razorpay_signature: razorpayResult?.razorpay_signature,
-          });
+            payment_type: 'prepaid',
+          };
+          if (paymentMethod) {
+            verifyBody.payment_method = paymentMethod;
+          }
+
+          console.log('VERIFY_PAYLOAD =>', JSON.stringify(verifyBody, null, 2));
+
+          const verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
+            verifyBody,
+          );
 
           setIsVerifyingPayment(false);
 
@@ -155,9 +185,10 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
             navigation.replace('OrderConfirmation', {
               orderResult:
                 verifyResponse?.data?.order ?? verifyResponse?.data,
-              orderedCartItems: cartItems.map((item: any) => ({
+              orderedCartItems: normalizedCartItems.map((item: any) => ({
                 variant_id: String(item.variant_id),
                 quantity: Number(item.quantity),
+                source: item.source,
               })),
             });
             return;

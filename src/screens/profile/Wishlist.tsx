@@ -19,7 +19,15 @@ const Wishlist = (props: any) => {
       const data = res?.data?.results || [];
       const wishlistItems = data
         .filter((item: any) => item?.is_wishlist_item === true)
-        .map((item: any) => ({ ...item, is_wishlist_item: true }));
+        .map((item: any) => ({
+          ...item,
+          is_wishlist_item: true,
+          variant_id:
+            item?.variant_id ??
+            item?.variant?.variant_id ??
+            item?.variant?.id ??
+            item?.id,
+        }));
 
       setWishlistData(wishlistItems);
     } catch (error) {

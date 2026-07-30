@@ -11,6 +11,7 @@ import {
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
 import { navigateToCategoryProducts } from '../navigation/productNavigation';
+import { renderCategoryName } from '../common/DataInterface';
 
 const { width } = Dimensions.get('window');
 
@@ -22,7 +23,12 @@ interface Category {
   image_url: any;
 }
 
-const CategoryList = ({ data = [], navigation, doctor, mode = 'product' }: any) => {
+const CategoryList = ({
+  data = [],
+  navigation,
+  doctor,
+  mode = 'product',
+}: any) => {
   const handlePress = useCallback(
     (item: Category) => {
       if (doctor) {
@@ -68,7 +74,17 @@ const CategoryList = ({ data = [], navigation, doctor, mode = 'product' }: any) 
         />
       </View>
 
-      <Text style={styles.text}>{item.name}</Text>
+      {/* <Text style={styles.text}>{item.name}</Text> */}
+      <Text
+        style={styles.text}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >
+        {/* {item.name} */}
+        {renderCategoryName(item.name, styles.text)}
+      </Text>
+
+
     </TouchableOpacity>
   );
 
@@ -99,6 +115,7 @@ export default React.memo(CategoryList);
 const styles = StyleSheet.create({
   container: {
     paddingLeft: -10,
+    marginBottom: 10
   },
   item: {
     alignItems: 'center',
@@ -109,11 +126,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D614E1A',
     justifyContent: 'center',
     alignItems: 'center',
+
   },
   icon: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
+    // width: 28,
+    // height: 28,
+    borderRadius: 20,
+    width: ITEM_SIZE - 10, height: ITEM_SIZE - 10,
+    resizeMode: 'cover',
   },
   text: {
     marginTop: 6,
@@ -122,5 +142,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
     width: ITEM_SIZE - 8,
+    lineHeight: 16,
+    flexWrap: 'wrap',
+    includeFontPadding: false,
   },
 });
