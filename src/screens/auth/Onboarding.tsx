@@ -1053,6 +1053,10 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
+    emailBlock: {
+        marginBottom: 18,
+    },
+
     label: {
         fontSize: 14,
         color: '#111827',
