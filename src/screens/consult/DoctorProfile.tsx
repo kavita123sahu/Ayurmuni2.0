@@ -74,10 +74,21 @@ const StatBar = memo(({ stats }: { stats: StatItem[] }) => {
 });
 
 const ReviewCard = memo(({ review }: { review: any }) => (
+
+
     <View style={styles.reviewCard}>
         <View style={styles.reviewTop}>
             <View style={styles.userRow}>
-                <Image source={review.image} style={styles.userImage} />
+               {review.image ? (
+  <Image source={review.image} style={styles.userImage} />
+) : (
+  <View style={styles.avatarPlaceholder}>
+    <Text style={styles.avatarText}>
+      {review.name?.charAt(0)?.toUpperCase()}
+    </Text>
+  </View>
+)}
+
                 <View style={styles.userInfo}>
                     <Text numberOfLines={1} style={styles.userName}>
                         {review.name}
@@ -183,11 +194,13 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 review: review.review,
                 time: review.time_ago,
                 image: review.reviewer_profile_image
-                    ? { uri: review.reviewer_profile_image }
-                    : Images.doctorImage,
+    ? { uri: review.reviewer_profile_image }
+    : null,
+
             })),
         [reviews]
     );
+
 
     const aboutText = useMemo(
         () => doctor?.bio || '',
@@ -651,6 +664,21 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginRight: 12,
     },
+    avatarPlaceholder: {
+  width: 48,
+  height: 48,
+  marginRight:10,
+  borderRadius: 24,
+  backgroundColor: Colors.bgcolor,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+avatarText: {
+  fontSize: 18,
+  fontFamily: Fonts.PoppinsMedium,
+  color: Colors.primaryColor,
+},
     userName: {
         fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,

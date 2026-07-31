@@ -82,6 +82,8 @@ const OrderHistory = (props: any) => {
               status={formatOrderStatus(item.status)}
               date={item.date}
               amount={item.amount}
+              image={item.image}
+              moreCount={item.moreCount}
               onPress={() =>
                 props.navigation.navigate('OrderDetailsScreen', {
                   order: item.raw,

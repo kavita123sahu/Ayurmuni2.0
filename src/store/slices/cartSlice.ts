@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import * as _CART_SERVICES from '../../services/CartService';
 import { fetchWithCache, invalidateCache } from '../../services/apiCache';
 import { isAuthenticated } from '../../services/guestAuth';
+import { enrichCartItemImages } from '../../utils/imageUtils';
 
 const CART_CACHE_KEY = 'cart_data';
 
@@ -45,6 +46,32 @@ const computeMetrics = (data: CartData) => {
   return { itemCount, variantQuantities };
 };
 
+const normalizeCartItemsImages = (data: CartData): CartData => {
+  const myItems = (data?.my_cart?.items ?? []).map((item: any) =>
+    enrichCartItemImages(item),
+  );
+  const prescriptionGroups = (data?.prescription_cart?.items ?? []).map(
+    (group: any) => ({
+      ...group,
+      items: (group?.items ?? []).map((item: any) => enrichCartItemImages(item)),
+    }),
+  );
+
+  return {
+    ...data,
+    my_cart: {
+      ...data.my_cart,
+      items: myItems,
+    },
+    prescription_cart: data.prescription_cart
+      ? {
+          ...data.prescription_cart,
+          items: prescriptionGroups,
+        }
+      : data.prescription_cart,
+  };
+};
+
 const patchCartItemQuantity = (
   data: CartData,
   variantId: string,
@@ -62,26 +89,34 @@ const patchCartItemQuantity = (
     }
   } else if (index >= 0) {
     const existing = items[index];
-    items[index] = {
+    const merged = {
       ...existing,
       ...(cartItemFromApi ?? {}),
       // Prefer API cart line id (data.item.id)
       id: cartItemFromApi?.id ?? existing?.id,
       quantity: Number(cartItemFromApi?.quantity ?? quantity),
       variant_id: getVariantIdFromItem(cartItemFromApi ?? existing) || variantId,
-      variant: cartItemFromApi?.variant ?? existing?.variant,
+      variant: {
+        ...(existing?.variant ?? {}),
+        ...(cartItemFromApi?.variant ?? {}),
+      },
       price: cartItemFromApi?.price ?? existing?.price,
     };
+    // Replace cart placeholder image_url with cover_image / cached cover for this variant
+    items[index] = enrichCartItemImages(merged, variantId);
   } else {
     items.push(
       cartItemFromApi
-        ? {
-            ...cartItemFromApi,
-            id: cartItemFromApi.id,
-            variant_id:
-              getVariantIdFromItem(cartItemFromApi) || variantId,
-            quantity: Number(cartItemFromApi.quantity ?? quantity),
-          }
+        ? enrichCartItemImages(
+            {
+              ...cartItemFromApi,
+              id: cartItemFromApi.id,
+              variant_id:
+                getVariantIdFromItem(cartItemFromApi) || variantId,
+              quantity: Number(cartItemFromApi.quantity ?? quantity),
+            },
+            variantId,
+          )
         : { variant_id: variantId, quantity },
     );
   }
@@ -283,8 +318,9 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.loading = false;
-        state.cartData = action.payload;
-        const metrics = computeMetrics(action.payload);
+        const normalized = normalizeCartItemsImages(action.payload);
+        state.cartData = normalized;
+        const metrics = computeMetrics(normalized);
         state.itemCount = metrics.itemCount;
         state.variantQuantities = metrics.variantQuantities;
       })

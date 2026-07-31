@@ -1,4 +1,45 @@
-import { UPCOMING_STATUS } from '../common/DataInterface';
+import { PAST_STATUS, UPCOMING_STATUS } from '../common/DataInterface';
+
+const normalizeStatus = (status?: string | null): string =>
+  String(status || '')
+    .trim()
+    .toLowerCase();
+
+/** Statuses where the patient can still reschedule the same appointment. */
+export const RESCHEDULABLE_STATUSES = [
+  ...UPCOMING_STATUS,
+  'upcoming',
+  'booked',
+];
+
+/** Terminal / past statuses — never offer Reschedule. */
+export const NON_RESCHEDULABLE_STATUSES = [
+  ...PAST_STATUS,
+  'expired',
+  'no_show',
+  'noshow',
+  'cancellation_requested',
+  'rejected',
+];
+
+export const canRescheduleAppointment = (status?: string | null): boolean => {
+  const value = normalizeStatus(status);
+  if (!value) return false;
+  if (NON_RESCHEDULABLE_STATUSES.includes(value)) return false;
+  return RESCHEDULABLE_STATUSES.includes(value);
+};
+
+/** Receipt is available for any consultation that has an id (including past). */
+export const canShowConsultationReceipt = (
+  status?: string | null,
+  consultationId?: string | null,
+): boolean => {
+  if (consultationId != null && String(consultationId).trim() !== '') {
+    return true;
+  }
+  // Fallback: allow for known past statuses even if id wiring is odd
+  return NON_RESCHEDULABLE_STATUSES.includes(normalizeStatus(status));
+};
 
 /**
  * Any screen/object that represents an appointment may store ids on different fields.
@@ -259,6 +300,31 @@ export const formatAppointmentDayLabel = (dateStr?: string) => {
   });
 };
 
+/** Weekday name: Thu / Thursday */
+export const formatAppointmentWeekday = (
+  dateStr?: string,
+  short = true,
+): string => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-IN', {
+    weekday: short ? 'short' : 'long',
+  });
+};
+
+/** Calendar date: 31 Jul 2026 */
+export const formatAppointmentDateFull = (dateStr?: string): string => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return String(dateStr);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
 export const formatAppointmentTimeLabel = (timeStr?: string) => {
   if (!timeStr) {
     return '';
@@ -279,6 +345,44 @@ export const formatAppointmentTimeLabel = (timeStr?: string) => {
   const meridiem = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
   return `${hours}:${minutes} ${meridiem}`;
+};
+
+/** Normalize history/recent API item into display fields */
+export const getConsultationScheduleLabels = (item: any) => {
+  const dateRaw =
+    item?.date ||
+    item?.appointment_date ||
+    item?.appointment?.appointment_date ||
+    '';
+  const timeRaw =
+    item?.time ||
+    item?.start_time ||
+    item?.appointment?.start_time ||
+    '';
+  const status =
+    item?.status ||
+    item?.appointment_status ||
+    item?.appointment?.appointment_status ||
+    '';
+
+  const weekday = formatAppointmentWeekday(dateRaw);
+  const dayLabel = formatAppointmentDayLabel(dateRaw);
+  const dateLabel = formatAppointmentDateFull(dateRaw);
+  const timeLabel = formatAppointmentTimeLabel(timeRaw);
+
+  return {
+    dateRaw,
+    timeRaw,
+    status: String(status || ''),
+    weekday,
+    dayLabel,
+    dateLabel,
+    timeLabel,
+    /** Compact line: Today · 31 Jul 2026 · 10:30 AM */
+    scheduleLine: [dayLabel || weekday, dateLabel, timeLabel]
+      .filter(Boolean)
+      .join(' · '),
+  };
 };
 
 export const formatDoctorDisplayName = (name?: string) => {

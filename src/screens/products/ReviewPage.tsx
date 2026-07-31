@@ -249,11 +249,20 @@ const ReviewPage = (props: any) => {
 
                         <View style={styles.reviewCard}>
                             <View style={styles.reviewHeaderRow}>
+
+
                                 <View style={styles.avatar}>
+                                    {item?.reviewer_profile_image  ? (
+                                         <Image
+    source={{ uri: item.reviewer_profile_image }}
+    style={styles.userImage}
+  />
+                                 
+                                    ):(
                                     <Text style={styles.avatarText}>
                                         {getInitials(item?.patient_name ||
                                             item?.reviewer_name)}
-                                    </Text>
+                                    </Text>)}
                                 </View>
 
                                 <View style={{ flex: 1, marginLeft: 10 }}>
@@ -413,14 +422,19 @@ const styles = StyleSheet.create({
     },
 
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 8,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: '#0D614E1A',
         justifyContent: 'center',
         alignItems: 'center',
     },
 
+    userImage: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+},
     avatarText: {
         color: '#0D614E',
         fontSize: 12,

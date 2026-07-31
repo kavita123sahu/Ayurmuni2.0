@@ -16,6 +16,7 @@ import {
   getProductStockQty,
   isProductOutOfStock,
 } from '../utils/productStockUtils';
+import { resolveProductImageUri } from '../utils/imageUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -79,6 +80,7 @@ const ProductCard: React.FC<Props> = ({
   const isOutOfStock = isProductOutOfStock(item);
   const maxQuantity =
     stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
+  const productImageUri = resolveProductImageUri(item);
 
   const handleAdd = () => {
     if (isOutOfStock || actionsLocked) return;
@@ -110,9 +112,9 @@ const ProductCard: React.FC<Props> = ({
       ]}
     >
       <View style={[styles.imageZone, { height: imageHeight }]}>
-        {item?.image_url ? (
+        {productImageUri ? (
           <Image
-            source={{ uri: item.image_url }}
+            source={{ uri: productImageUri }}
             style={[styles.productImage, isOutOfStock && styles.imageDimmed]}
             resizeMode="cover"
           />

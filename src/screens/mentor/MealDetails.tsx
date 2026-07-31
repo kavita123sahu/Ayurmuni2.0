@@ -1,384 +1,432 @@
-import React from "react";
+import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    ScrollView,
-    TouchableOpacity,
-    StatusBar,
-} from "react-native";
-import SectionHeader from "../../components/SectionHeader";
-import { Fonts } from "../../common/Fonts";
-import { Colors } from "../../common/Colors";
-import { CalenderCard } from "../../components/CalenderCard";
-import AppHeader from "../../components/AppHeader";
-import { Images } from "../../common/Images";
-import StepCard from "../../components/StepCard";
-import { SafeAreaView } from "react-native-safe-area-context";
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  ActivityIndicator,
+} from 'react-native';
+import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
+import AppHeader from '../../components/AppHeader';
+import { Images } from '../../common/Images';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import TablerIcon from '../../components/TablerIcon';
+import * as _PATIENT from '../../services/PatientServices';
+import { nowIso } from '../../utils/dietPlanUtils';
+import { showSuccessToast } from '../../config/Key';
+import { requireAuth } from '../../services/guestAuth';
+import { resolveImageSource } from '../../utils/imageUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+const FALLBACK_IMAGE = require('../../assets/images/login/7.jpg');
 
-
-const stepsData = [
-    { id: "1", step: "Toast the sourdough bread until golden and crisp." },
-    { id: "2", step: "Mash the avocado with salt, pepper, and lemon juice." },
-    { id: "3", step: "Poach the eggs in simmering water for 3-4 minutes." },
-    { id: "4", step: "Spread avocado on toast, top with eggs and chili flakes." },
-];
-
-const statsData = [
-    { label: "Calories", value: "340", bg: "#EDEFF1" },
-    { label: "Carbs", value: "24g", bg: "#EDEFF1" },
-    { label: "Protein", value: "12g", bg: "#EDEFF1" },
-    { label: "Fat", value: "22g", bg: "#EDEFF1" },
-];
-
-const ingredientsData = [
-    { id: "1", title: "Sourdough Bread", subtitle: "1 thick slice" },
-    { id: "2", title: "Ripe Avocado", subtitle: "1/2 large" },
-    { id: "3", title: "Large Eggs", subtitle: "2" },
-    { id: "4", title: "Olive Oil", subtitle: "1 tsp" },
-    { id: "5", title: "Chili Flakes & Salt", subtitle: "to taste" },
-];
 const MealDetails = (props: any) => {
 
-    const IngredientCard = ({ title = "", isLast = "", subtitle = "" }) => {
-        return (
-            <>
-                <View style={styles.itemRow}>
-                    <Text style={styles.itemLeft} numberOfLines={1}>
-                        {title}
-                    </Text>
 
+  const insets = useSafeAreaInsets();
+  const item = props?.route?.params?.item;
+  const [logging, setLogging] = useState(false);
+  const [logged, setLogged] = useState(item?.status === 'done');
+
+  const mealTitle = item?.title || 'Meal';
+  const mealType = String(item?.type || 'Meal');
+  const imageSource =
+    resolveImageSource(item?.image) || FALLBACK_IMAGE;
+
+  const stats = [
+    { label: 'Calories', value: String(item?.kcal ?? '—') },
+    { label: 'Carbs', value: item ? `${item.carbs ?? 0}g` : '—' },
+    { label: 'Protein', value: item ? `${item.protein ?? 0}g` : '—' },
+    { label: 'Fat', value: item ? `${item.fat ?? 0}g` : '—' },
+  ];
+
+  const ingredients =
+    Array.isArray(item?.dietItems) && item.dietItems.length
+      ? item.dietItems.map((title: string, index: number) => ({
+        id: String(index),
+        title,
+        subtitle: '',
+      }))
+      : [];
+
+  const steps =
+    Array.isArray(item?.preparationSteps) && item.preparationSteps.length
+      ? item.preparationSteps
+      : [];
+
+  const onLogMeal = async () => {
+    if (!item?.dayKey || !item?.mealKey) {
+      showSuccessToast('Meal details unavailable', 'error');
+      return;
+    }
+    if (!(await requireAuth('Please login to log meals'))) return;
+
+    try {
+      setLogging(true);
+      const markingDone = !logged;
+      const completedAt = markingDone ? nowIso() : null;
+      const res = await _PATIENT.updateDietPlanProgress({
+        day: item.dayKey,
+        meal: item.mealKey,
+        status: markingDone ? 'completed' : 'pending',
+        completed_at: completedAt,
+      });
+      if (res?.success === false) {
+        showSuccessToast(res?.message || 'Unable to update meal', 'error');
+        return;
+      }
+      setLogged(markingDone);
+      showSuccessToast(
+        markingDone ? 'Meal logged' : 'Meal unmarked',
+        'success',
+      );
+      // Go back so Diet list reloads progress and shows the check
+      props.navigation.goBack();
+    } catch (e: any) {
+      showSuccessToast(e?.message || 'Unable to update meal', 'error');
+    } finally {
+      setLogging(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <AppHeader
+        title="Meal Details"
+        onLeftPress={() => props.navigation.goBack()}
+      />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
+        <Image source={imageSource} style={styles.image} />
+
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{mealType}</Text>
+            </View>
+            <TablerIcon name="heart" size={26} color={Colors.primaryColor} />
+          </View>
+
+          <Text style={styles.title}>{mealTitle}</Text>
+
+          <View style={styles.statsRow}>
+            {stats.map(stat => (
+              <View style={styles.statBox} key={stat.label}>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+                <Text style={styles.statValue}>{stat.value}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Image
+                source={Images.Ingredient}
+                style={styles.sectionIcon}
+              />
+              <Text style={styles.sectionTitle}>Ingredients</Text>
+            </View>
+
+            {ingredients.length === 0 ? (
+              <Text style={styles.emptySection}>No ingredients listed</Text>
+            ) : (
+              ingredients.map((ing: any) => (
+                <View style={styles.itemRow} key={ing.id}>
+                  <Text style={styles.itemLeft} numberOfLines={2}>
+                    {ing.title}
+                  </Text>
+                  {!!ing.subtitle && (
                     <Text style={styles.itemRight} numberOfLines={1}>
-                        {subtitle}
+                      {ing.subtitle}
                     </Text>
+                  )}
                 </View>
-            </>
-        );
-    };
+              ))
+            )}
+          </View>
 
-    const StepItem = ({ index, text }: any) => {
-        return (
-            <View style={styles.stepRow}>
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <TablerIcon
+                name="prescription"
+                size={16}
+                color={Colors.primaryColor}
+              />
+              <Text style={styles.sectionTitle}>Preparation Steps</Text>
+            </View>
 
-                <View style={styles.stepCircle}>
+            {steps.length === 0 ? (
+              <Text style={styles.emptySection}>No preparation steps</Text>
+            ) : (
+              steps.map((text: string, index: number) => (
+                <View style={styles.stepRow} key={`${index}-${text}`}>
+                  <View style={styles.stepCircle}>
                     <Text style={styles.stepNumber}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{text}</Text>
                 </View>
+              ))
+            )}
+          </View>
+        </View>
+      </ScrollView>
 
-                <Text style={styles.stepText}>
-                    {text}
-                </Text>
-            </View>
-        );
-    };
-    return (
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12), }]}>
+        <TouchableOpacity
+          style={[styles.btn, styles.primaryBtn]}
+          onPress={onLogMeal}
+          disabled={logging}
+          activeOpacity={0.9}
+        >
+          {logging ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>
+              {logged ? 'Undo Log' : 'Log Meal'}
+            </Text>
+          )}
+        </TouchableOpacity>
 
-        <SafeAreaView style={styles.container}>
-
-            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFF'} />
-
-            <AppHeader
-                title="Meal Details"
-                onLeftPress={() => props.navigation.goBack()}
-            />
-
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={{     backgroundColor: '#FDFDFB'}}
-                // contentContainerStyle={styles.scroll}
-                >
-
-                <Image
-                    source={undefined}
-                    style={styles.image}
-                />
-                <View style={styles.card}>
-
-                    {/* HEADER */}
-                    <View style={styles.rowBetween}>
-                        <View style={styles.tag}>
-                            <Text style={styles.tagText}>Breakfast</Text>
-                        </View>
-
-                        <TablerIcon name="heart" size={30} color={Colors.primaryColor} />
-                    </View>
-
-
-                    <Text style={styles.title}>
-                        Avocado & Poached{"\n"}Egg Toast
-                    </Text>
-
-                    <View style={styles.statsRow}>
-                        {statsData.map((item, index) => (
-
-                            <View style={[styles.statBox]}>
-                                <Text style={[styles.statLabel, { color: "#6B7280" }]}>
-                                    {item?.label}
-                                </Text>
-
-                                <Text style={[styles.statValue, { color: Colors.primaryColor }]}>
-                                    {item?.value}
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
-
-
-                    <View style={styles.sectionContainer}>
-                        <View style={{
-                            flexDirection: 'row',
-                            marginBottom: -15
-                        }}>
-                            <Image source={Images.Ingredient} style={{ justifyContent: 'center', marginRight: 8, height: 15, width: 15 }} />
-                            <Text style={styles.sectionTitle}>Ingredient</Text>
-
-                        </View>
-
-
-                        {ingredientsData.map((item, index) => (
-                            <IngredientCard
-                                key={item.id}
-                                title={item.title}
-                                subtitle={item.subtitle}
-
-                            />
-                        ))}
-                    </View>
-
-
-
-                    <View style={styles.sectionContainer}>
-
-                        <View style={{
-                            flexDirection: 'row',
-                        }}>
-                            <TablerIcon name="prescription" size={15} color={Colors.primaryColor} />
-                            <Text style={styles.sectionTitle}>Preparation Steps</Text>
-
-                        </View>
-                        {stepsData.map((item, index) => (
-                            <StepItem
-                                key={item.id}
-                                index={index}
-                                text={item.step}
-                                isLast={index === stepsData.length - 1}
-                            />
-                        ))}
-                    </View>
-
-                </View>
-
-
-            </ScrollView>
-
-            <View style={styles.footer}>
-                <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => props.navigation.navigate('WeeklyMeal')}>
-                    <Text style={styles.btnText}>Log Meal</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.btn, styles.secondaryBtn]}>
-                    <Text style={[styles.btnText, { color: Colors.primaryColor }]}>+</Text>
-                </TouchableOpacity>
-            </View>
-
-        </SafeAreaView>
-    );
+        <TouchableOpacity
+          style={[styles.btn, styles.secondaryBtn]}
+          onPress={() => props.navigation.goBack()}
+        >
+          <Text style={[styles.btnText, { color: Colors.primaryColor }]}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 };
 
 export default MealDetails;
 
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
 
-    image: {
-        width: "100%",
-        height: 300,
-        resizeMode: 'stretch'
-    },
+  scroll: {
+    paddingBottom: 120,
+    backgroundColor: '#FDFDFB',
+  },
 
-    scroll: {
-        paddingBottom: 120,
-        backgroundColor: '#FDFDFB'
+  image: {
+    width: '100%',
+    height: 300,
+    resizeMode: 'cover',
+    backgroundColor: '#E5E7EB',
+  },
 
-    },
+  card: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    marginTop: -36,
+    borderRadius: 22,
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
 
-    card: {
-        backgroundColor: "#FFFFFF",
-        marginHorizontal: 20,
-        borderWidth: 1,
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
 
-        borderColor: Colors.borderColor,
-        marginTop: -40, // 🔥 overlap effect
-        borderRadius: 20,
-        padding: 20,
-    },
+  tag: {
+    backgroundColor: '#E6F2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
 
-    rowBetween: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
+  tagText: {
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 12,
+    textTransform: 'capitalize',
+  },
 
-    tag: {
-        backgroundColor: Colors.bgcolor,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-    },
+  title: {
+    fontSize: 24,
+    fontFamily: Fonts.PoppinsBold,
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 16,
+    lineHeight: 32,
+  },
 
-    tagText: {
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 12,
-    },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
 
-    heart: {
-        fontSize: 20,
-    },
+  statBox: {
+    backgroundColor: '#EDEFF1',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    flex: 1,
+    alignItems: 'center',
+  },
 
-    title: {
-        fontSize: 24,
-        fontFamily: Fonts.PoppinsBold,
-        color: "#1A1D1F",
-        marginVertical: 20,
+  statLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 
-    },
+  statValue: {
+    fontSize: 15,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsBold,
+    marginTop: 2,
+  },
 
-    statsRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginVertical: 10,
-    },
+  sectionContainer: {
+    marginTop: 24,
+  },
 
-    statBox: {
-        backgroundColor: "#EDEFF1",
-        padding: 10,
-        borderRadius: 14,
-        width: "22%",
-        alignItems: "center",
-    },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 8,
+  },
 
-    statLabel: {
-        fontSize: 10,
-        color: "#6B7280",
-        fontFamily: Fonts.PoppinsSemiBold
-    },
+  sectionIcon: {
+    height: 15,
+    width: 15,
+  },
 
-    statValue: {
-        fontSize: 16,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsBold,
-    },
-    sectionContainer: {
-        marginTop: 20,
-    },
+  sectionTitle: {
+    fontSize: 17,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#1F2937',
+  },
 
-    sectionTitle: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 20,
-        marginTop: -5
-    },
+  emptySection: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+  },
 
-    itemRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: 10,
-        //  marginBottom: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: "#EBEEED80", // light divider
-    },
-    itemLeft: {
-        flex: 1,
-        fontSize: 14,
-        color: Colors.black,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEEED80',
+  },
 
-    itemRight: {
-        fontSize: 16,
-        color: "#6B7280",
-        fontFamily: Fonts.PoppinsRegular,
-        marginLeft: 10,
-    },
+  itemLeft: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F2937',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 
-    footer: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        // paddingBottom: 40,
-        gap: 12, // 👈 spacing between buttons
-    },
+  itemRight: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: Fonts.PoppinsRegular,
+    marginLeft: 10,
+  },
 
-    btn: {
-        height: 55,
-        borderRadius: 15,
-        justifyContent: "center",
-        alignItems: "center",
-    },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 18,
+  },
 
-    primaryBtn: {
-        flex: 4, // 👈 60%
-        backgroundColor: Colors.primaryColor,
-    },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F4D9A4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
 
-    secondaryBtn: {
-        flex: 1, // 👈 20%
-        borderWidth: 1,
-        borderColor: Colors.borderColor,
-        backgroundColor: Colors.bgcolor,
-    },
+  stepNumber: {
+    fontSize: 12,
+    color: '#1A1D1F',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 
-    btnText: {
-        color: "#fff",
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    // btn: {
-    //     backgroundColor: Colors.primaryColor,
-    //     padding: 15,
-    //     borderRadius: 30,
-    //     alignItems: "center",
-    // },
+  stepText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsMedium,
+    lineHeight: 21,
+    paddingTop: 3,
+  },
 
 
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    // Safe area for all devices
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
 
-    stepRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        marginBottom: 25,
-    },
+  },
+  // footer: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   paddingHorizontal: 20,
+  //   paddingTop: 10,
+  //   paddingBottom: 12,
+  //   gap: 12,
+  //   backgroundColor: '#FFFFFF',
+  //   borderTopWidth: 1,
+  //   borderTopColor: '#F1F5F9',
+  // },
 
-    stepCircle: {
-        width: 30,
-        height: 30,
-        borderRadius: 14,
-        backgroundColor: "#F4D9A4", // same yellow tone
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 10,
-    },
+  btn: {
+    height: 55,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-    stepNumber: {
-        fontSize: 12,
-        color: "#1A1D1F",
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+  primaryBtn: {
+    flex: 4,
+    backgroundColor: Colors.primaryColor,
+  },
 
-    stepText: {
-        flex: 1,
-        fontSize: 14,
-        justifyContent: "center",
-        alignItems: "center",
-        color: Colors.subTextColor,
-        fontFamily: Fonts.PoppinsMedium,
-        lineHeight: 20,
-    },
+  secondaryBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    backgroundColor: Colors.bgcolor,
+  },
+
+  btnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 });

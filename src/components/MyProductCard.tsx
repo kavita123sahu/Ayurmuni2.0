@@ -11,6 +11,8 @@ import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import { Fonts } from '../common/Fonts';
 import { CARD_SURFACE } from '../constants/cardStyles';
+import { resolveImageUri } from '../utils/imageUtils';
+import { resolveCartItemImage } from '../common/DataInterface';
 
 type Props = {
     item: any;
@@ -30,6 +32,8 @@ const MyProductCard = ({
     updateQuantity,
 }: Props) => {
     const lineTotal = Math.round(Number(item.price || 0) * Number(item.quantity || 1));
+    const imageUri =
+        resolveImageUri(item?.image) || resolveCartItemImage(item);
 
     return (
         <Pressable
@@ -51,8 +55,8 @@ const MyProductCard = ({
             </TouchableOpacity>
 
             <View style={styles.imageWrap}>
-                {item?.image ? (
-                    <Image source={{ uri: item.image }} style={styles.image} />
+                {imageUri ? (
+                    <Image source={{ uri: imageUri }} style={styles.image} />
                 ) : (
                     <View style={styles.imagePlaceholder}>
                         <TablerIcon name="package" size={28} color="#CBD5E1" />

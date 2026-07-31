@@ -108,8 +108,31 @@ export const hasMoreProductPages = (
 };
 
 const resolveImageUrl = (item: any): string => {
-  if (typeof item?.image_url === 'string') return item.image_url;
-  if (typeof item?.image === 'string') return item.image;
+  // Prefer cover_image / media over flat image_url (cart may send example.com placeholders)
+  if (typeof item?.cover_image?.media_url === 'string') {
+    const cover = item.cover_image.media_url.trim();
+    if (cover && !/example\.com|placeholder/i.test(cover)) return cover;
+  }
+  const variants = Array.isArray(item?.variants) ? item.variants : [];
+  const def = variants.find((v: any) => v?.is_default) || variants[0];
+  if (typeof def?.cover_image?.media_url === 'string') {
+    const cover = def.cover_image.media_url.trim();
+    if (cover && !/example\.com|placeholder/i.test(cover)) return cover;
+  }
+  const coverMedia = Array.isArray(def?.media)
+    ? def.media.find((m: any) => m?.is_cover) || def.media[0]
+    : null;
+  if (typeof coverMedia?.media_url === 'string') {
+    const mediaUrl = coverMedia.media_url.trim();
+    if (mediaUrl && !/example\.com|placeholder/i.test(mediaUrl)) return mediaUrl;
+  }
+  if (typeof item?.image_url === 'string' && item.image_url.trim()) {
+    const url = item.image_url.trim();
+    if (!/example\.com|placeholder/i.test(url)) return url;
+  }
+  if (typeof item?.image === 'string' && !/example\.com|placeholder/i.test(item.image)) {
+    return item.image;
+  }
   if (item?.image?.url) return String(item.image.url);
   if (item?.icon_url) return String(item.icon_url);
   return '';

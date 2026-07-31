@@ -1,3 +1,5 @@
+import { resolveProductImageUri } from './imageUtils';
+
 export type OrderListItem = {
   id: string;
   orderCode: string;
@@ -5,6 +7,8 @@ export type OrderListItem = {
   status: string;
   date: string;
   amount: string;
+  image?: string;
+  moreCount?: number;
   raw: any;
 };
 
@@ -40,12 +44,14 @@ export const formatOrderStatus = (
 export const mapOrderToListItem = (order: any): OrderListItem => {
   const items = Array.isArray(order?.items) ? order.items : [];
   const firstItem = items[0];
-  const firstTitle = firstItem?.variant?.variant_title ?? 'Medicines Order';
+  const firstTitle =
+    firstItem?.variant?.variant_title ??
+    firstItem?.product_name ??
+    'Medicines Order';
+  const moreCount = Math.max(0, items.length - 1);
 
   const title =
-    items.length > 1
-      ? `${firstTitle} +${items.length - 1} more`
-      : firstTitle;
+    moreCount > 0 ? `${firstTitle} +${moreCount} more` : firstTitle;
 
   return {
     id: String(order?.id ?? order?.order_code ?? ''),
@@ -54,6 +60,8 @@ export const mapOrderToListItem = (order: any): OrderListItem => {
     status: String(order?.order_status ?? 'pending'),
     date: formatOrderDate(order?.created_at),
     amount: String(order?.total_amount ?? '0.00'),
+    image: resolveProductImageUri(firstItem),
+    moreCount,
     raw: order,
   };
 };
@@ -84,6 +92,7 @@ export const mapOrdersToRecentProducts = (orders: any[] = [], limit = 3) => {
         break;
       }
 
+      const imageUri = resolveProductImageUri(item);
       recentItems.push({
         id: String(item?.id ?? item?.variant?.variant_id ?? recentItems.length),
         variantId: String(
@@ -95,8 +104,8 @@ export const mapOrdersToRecentProducts = (orders: any[] = [], limit = 3) => {
         ),
         name: item?.variant?.variant_title ?? 'Product',
         price: Number(item?.selling_price ?? item?.variant?.selling_price ?? 0),
-        image: item?.variant?.image_url
-          ? { uri: item.variant.image_url }
+        image: imageUri
+          ? { uri: imageUri }
           : require('../assets/images/RecentsImage.png'),
         lastOrdered: orderDate,
       });

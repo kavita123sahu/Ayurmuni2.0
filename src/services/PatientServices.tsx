@@ -156,23 +156,82 @@ export const startDietPlan = async (diet_plan_id: string | number) => {
     }
 };
 
-/** Track / update diet plan progress */
+/** GET current diet plan progress */
+export const getDietPlanProgress = async (patient_diet_plan_id?: string | number) => {
+    try {
+        const qs =
+            patient_diet_plan_id != null && String(patient_diet_plan_id).trim() !== ''
+                ? `?id=${encodeURIComponent(String(patient_diet_plan_id))}`
+                : '';
+        const response = await apiClient(`patients/diet-plans/progress/${qs}`, {
+            method: 'GET',
+        });
+        console.log('DIET_PROGRESS_GET =>', response);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * PATCH diet plan progress
+ * payload: { day: "day_1", meal: "morning", status: "completed", completed_at: "2026-07-15T07:15:00Z" }
+ */
 export const updateDietPlanProgress = async (payload: {
-    diet_plan_id: string | number;
-    meal_id?: string | number;
-    calories_consumed?: number;
-    water_ml?: number;
-    carbs_g?: number;
-    protein_g?: number;
-    fat_g?: number;
-    date?: string;
-    [key: string]: any;
+    day: string;
+    meal: string;
+    status: 'completed' | 'pending' | string;
+    completed_at?: string | null;
 }) => {
     try {
+        const body: Record<string, any> = {
+            day: payload.day,
+            meal: payload.meal,
+            status: payload.status,
+        };
+        // Always send completed_at when completing (required by API)
+        if (payload.status === 'completed') {
+            body.completed_at =
+                payload.completed_at ||
+                new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+        } else if (payload.completed_at !== undefined) {
+            body.completed_at = payload.completed_at;
+        }
+
+        console.log('DIET_PROGRESS_PATCH =>', body);
         const response = await apiClient('patients/diet-plans/progress/', {
-            method: 'POST',
-            body: JSON.stringify(payload),
+            method: 'PATCH',
+            body: JSON.stringify(body),
         });
+        console.log('DIET_PROGRESS_PATCH_RES =>', response);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export type DietPlanStatusAction = 'pause' | 'resume' | 'stop' | 'complete';
+
+/**
+ * Update patient diet plan assignment status
+ * /patients/diet-plans/status/?id={{patient_diet_plan_id}}
+ */
+export const updateDietPlanStatus = async (
+    patient_diet_plan_id: string | number,
+    payload: {
+        action: DietPlanStatusAction;
+        stop_reason?: string;
+    },
+) => {
+    try {
+        const id = encodeURIComponent(String(patient_diet_plan_id));
+        const response = await apiClient(
+            `patients/diet-plans/status/?id=${id}`,
+            {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            },
+        );
         return response;
     } catch (error) {
         throw error;

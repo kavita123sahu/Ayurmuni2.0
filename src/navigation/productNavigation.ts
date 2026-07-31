@@ -1,4 +1,5 @@
 import { resolveImageUri } from '../utils/imageUtils';
+import { resolveCartItemImage } from '../common/DataInterface';
 import { navigateToStackScreen } from './navigationUtils';
 
 export const navigateToSearchScreen = (
@@ -75,7 +76,7 @@ export const navigateToCheckout = (
       quantity: Number(item.quantity ?? 1),
       price: Number(item.price ?? 0),
       name: item.name ?? '',
-      image: resolveImageUri(item.image),
+      image: resolveImageUri(item.image) || resolveCartItemImage(item),
       discount: item.discount ?? 0,
       gift_wrap: Boolean(item.gift_wrap),
       source: item.source,
@@ -114,7 +115,8 @@ export const navigateToCheckoutWithProduct = (
     return;
   }
 
-  const imageUri = resolveImageUri(item.image);
+  const imageUri =
+    resolveImageUri(item.image) || resolveCartItemImage(item);
 
   const selectedProducts = [
     {

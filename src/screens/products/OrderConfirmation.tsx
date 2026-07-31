@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -25,6 +25,7 @@ import {
     removeOrderedItemsFromCart,
     CartLineItem,
 } from '../../store/slices/cartSlice';
+import { resolveProductImageUri } from '../../utils/imageUtils';
 
 type DeliveryAddress = {
     id: string;
@@ -86,12 +87,14 @@ const formatDate = (dateStr?: string, addDays = 0) => {
 };
 
 const getItemTitle = (item: OrderItemType) =>
-    item?.variant?.variant_title || '';
+    item?.variant?.variant_title ||
+    item?.product_name ||
+    item?.name ||
+    item?.title ||
+    item?.product?.name ||
+    'Product';
 
 const getItemQty = (item: OrderItemType) => item.quantity ?? item.qty ?? 1;
-
-const getItemImage = (item: OrderItemType) =>
-    item?.variant?.image_url || item.product?.image;
 
 const getItemPrice = (item: OrderItemType) =>
     formatCurrency(item.total_price ?? item.price);
@@ -101,9 +104,30 @@ const OrderConfirmation: React.FC = (props: any) => {
     const dispatch = useAppDispatch();
 
     const orderResult: OrderResult | undefined = props.route?.params?.orderResult;
-    const orderedCartItems: CartLineItem[] =
-        props.route?.params?.orderedCartItems ?? [];
+    const orderedCartItems: Array<
+        CartLineItem & { image?: string; name?: string; price?: number }
+    > = props.route?.params?.orderedCartItems ?? [];
     const clearedCartRef = useRef(false);
+
+    const cartImageByVariant = useMemo(() => {
+        const map = new Map<string, string>();
+        orderedCartItems.forEach((item: any) => {
+            const vid = String(item?.variant_id ?? '');
+            const uri =
+                resolveProductImageUri(item) || String(item?.image ?? '');
+            if (vid && uri) map.set(vid, uri);
+        });
+        return map;
+    }, [orderedCartItems]);
+
+    const getItemImage = (item: OrderItemType) => {
+        const fromOrder = resolveProductImageUri(item);
+        if (fromOrder) return fromOrder;
+        const vid = String(
+            item?.variant?.variant_id ?? (item as any)?.variant_id ?? '',
+        );
+        return cartImageByVariant.get(vid) || String(item?.image ?? '');
+    };
 
     useEffect(() => {
         if (clearedCartRef.current || !orderedCartItems.length) {
@@ -195,7 +219,22 @@ const OrderConfirmation: React.FC = (props: any) => {
         return () => backHandler.remove();
     }, []);
 
-    const items = orderResult?.items ?? [];
+    const items: OrderItemType[] = (() => {
+        const orderItems = Array.isArray(orderResult?.items)
+            ? orderResult.items
+            : [];
+        if (orderItems.length > 0) return orderItems;
+
+        // Fallback: show cart lines with images if order payload omitted items
+        return orderedCartItems.map((item: any, index: number) => ({
+            id: String(item.id ?? index),
+            variant: { variant_id: item.variant_id, variant_title: item.name },
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            image: item.image,
+        }));
+    })();
 
     const subtotal = items.reduce((sum, item) => {
         const price = Number(item.total_price ?? item.price ?? 0);

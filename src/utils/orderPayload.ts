@@ -37,48 +37,122 @@ export type OrderPayload = {
   gift_wrap_item_ids: string[];
 };
 
+const hasOrderEntity = (response: any): boolean => {
+  const data = response?.data;
+  const order = data?.order ?? data;
+  return Boolean(
+    order?.id ||
+      order?.order_id ||
+      order?.order_number ||
+      order?.order_code ||
+      data?.order_id ||
+      data?.order_number ||
+      data?.order_code ||
+      response?.order_id ||
+      response?.order_code,
+  );
+};
+
+const getResponseMessage = (response: any): string =>
+  String(
+    response?.message ??
+      response?.data?.message ??
+      response?.error ??
+      response?.detail ??
+      '',
+  ).toLowerCase();
+
+const isFulfillmentNoise = (msg: string): boolean =>
+  msg.includes('out of stock') ||
+  msg.includes('sku') ||
+  msg.includes('insufficient') ||
+  msg.includes('unicommerce') ||
+  msg.includes('uni-commerce') ||
+  msg.includes('fulfillment') ||
+  msg.includes('inventory') ||
+  msg.includes('warehouse') ||
+  msg.includes('sync') ||
+  msg.includes('channel item') ||
+  msg.includes('facility') ||
+  msg.includes('allocation');
+
+const isHardPaymentFailure = (msg: string): boolean =>
+  msg.includes('signature') ||
+  msg.includes('invalid payment') ||
+  msg.includes('payment failed') ||
+  msg.includes('authentication failed') ||
+  msg.includes('unauthorized') ||
+  msg.includes('not verified');
+
 /**
- * After Razorpay verify — treat as success if payment/order is placed,
- * even when API returns a stock warning (e.g. "SKU is out of stock") with an order body.
+ * After place/verify — treat as success if order was created,
+ * even when Unicommerce / stock sync returns an error message.
+ * Unicommerce errors are handled server-side; user should still see confirmation.
  */
 export const isOrderVerifySuccessful = (response: any): boolean => {
   if (!response || typeof response !== 'object') return false;
-  if (response.success === true) return true;
+  if (response.success === true || response.status === true) return true;
+  // Some APIs use success: "true" / 1
+  if (response.success === 'true' || response.success === 1) return true;
 
-  const data = response.data;
-  const order = data?.order ?? data;
-  const hasOrder =
-    Boolean(order?.id) ||
-    Boolean(order?.order_id) ||
-    Boolean(order?.order_number) ||
-    Boolean(data?.order_id) ||
-    Boolean(data?.order_number);
+  if (hasOrderEntity(response)) return true;
 
-  if (hasOrder) return true;
+  const data = response.data ?? {};
+  const msg = getResponseMessage(response);
+  const paidLike =
+    data?.payment_id ||
+    data?.razorpay_payment_id ||
+    data?.status === 'paid' ||
+    data?.payment_status === 'paid' ||
+    data?.payment_status === 'success' ||
+    data?.order_status ||
+    data?.verified === true ||
+    response?.payment_id ||
+    response?.payment_status === 'paid';
 
-  const msg = String(response.message ?? '').toLowerCase();
-  const stockNoise =
-    msg.includes('out of stock') ||
-    msg.includes('sku') ||
-    msg.includes('insufficient');
+  // Paid / placed with fulfillment noise — still confirm for the user
+  if (isFulfillmentNoise(msg) && (paidLike || hasOrderEntity(response))) {
+    return true;
+  }
 
-  // Paid + stock warning but still has payment confirmation
-  if (
-    stockNoise &&
-    (data?.payment_id ||
-      data?.razorpay_payment_id ||
-      data?.status === 'paid' ||
-      data?.payment_status === 'paid' ||
-      data?.order_status)
-  ) {
+  // success:false but only Unicommerce/stock noise (order already created server-side)
+  if (response.success === false && isFulfillmentNoise(msg) && !isHardPaymentFailure(msg)) {
     return true;
   }
 
   return false;
 };
 
+/**
+ * After Razorpay charge succeeds — confirm unless verify is a hard payment failure.
+ * Covers verify responses that omit order entity but still create the order.
+ */
+export const isPrepaidVerifyAcceptable = (
+  response: any,
+  razorpayResult?: any,
+): boolean => {
+  if (isOrderVerifySuccessful(response)) return true;
+
+  const razorpayPaid = Boolean(razorpayResult?.razorpay_payment_id);
+  if (!razorpayPaid) return false;
+
+  const msg = getResponseMessage(response);
+  if (isHardPaymentFailure(msg)) return false;
+
+  // Money already collected — soft/fulfillment errors should not block confirmation
+  return true;
+};
+
 export const getVerifiedOrderResult = (response: any) =>
-  response?.data?.order ?? response?.data ?? null;
+  response?.data?.order ??
+  (response?.data?.id ||
+  response?.data?.order_code ||
+  response?.data?.order_number ||
+  response?.data?.order_id
+    ? response.data
+    : null) ??
+  response?.order ??
+  null;
 
 /** Prefer cart line id (`item.id`); never fall back to variant_id. */
 export const getCartItemId = (item: OrderCartLine): string | null => {

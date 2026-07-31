@@ -40,6 +40,7 @@ import PromoCard from '../../components/PromoCard';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
+import { getConsultationScheduleLabels } from '../../utils/appointmentUtils';
 import { getScreenPaddingH, SPACING } from '../../constants/responsive';
 import {
   navigateToCategoryProducts,
@@ -265,9 +266,29 @@ const ConsultHome = () => {
     fetchConsultHistory({});
   }, [fetchConsultHistory]);
 
+  const openDoctorSlot = useCallback(
+    (item: any) => {
+      navigation.navigate('DoctorSlot', {
+        doctorDetails: {
+          ...item.doctor,
+          id: item.doctor?.doctor_id,
+          is_favorite: (item.doctor as any)?.is_favorite,
+          total_patients: (item.doctor as any)?.total_patients,
+          full_name: item.doctor?.doctor_name,
+          profile_image: item.doctor?.doctor_image,
+          designation: (item.doctor as any)?.qualification,
+        },
+      });
+    },
+    [navigation],
+  );
+
   const renderRecentDoctor =
     useCallback(
       ({ item }: any) => {
+        const consultationId =
+          item?.consultation_id || item?.appointment_id || item?.id;
+        const schedule = getConsultationScheduleLabels(item);
 
         return (
           <RecentDoctors
@@ -278,32 +299,27 @@ const ConsultHome = () => {
             speciality={
               item?.doctor?.doctor_designation ||
               item?.doctor?.qualification ||
+              item?.doctor?.doctor_specialization ||
               ''
             }
-            date={item?.date}
-            status={item?.status}
-            onPressReceipt={() =>
-              navigation.navigate('MedicalReceipt', {
-                consultationId: item?.consultation_id,
-              })
+            day={schedule.dayLabel || schedule.weekday}
+            date={schedule.dateLabel}
+            time={schedule.timeLabel}
+            status={schedule.status}
+            onPressReceipt={
+              consultationId
+                ? () =>
+                    navigation.navigate('MedicalReceipt', {
+                      consultationId,
+                    })
+                : undefined
             }
-            onPressReschedule={() =>
-              navigation.navigate('DoctorSlot', {
-                doctorDetails: {
-                  ...item.doctor,
-                  id: item.doctor?.doctor_id,
-                  is_favorite: (item.doctor as any)?.is_favorite,
-                  total_patients: (item.doctor as any)?.total_patients,
-                  full_name: item.doctor?.doctor_name,
-                  profile_image: item.doctor?.doctor_image,
-                  designation: (item.doctor as any)?.qualification,
-                },
-              })
-            }
+            onPressReschedule={() => openDoctorSlot(item)}
+            onPressBookAgain={() => openDoctorSlot(item)}
           />
         );
       },
-      [navigation],
+      [navigation, openDoctorSlot],
     );
 
 
@@ -367,7 +383,7 @@ const ConsultHome = () => {
             <PromoCard
               title="Consult with Specialists"
               desc="Over 50+ Medical Experts"
-              imageLeftIconName="plus-bag"
+              imageLeftIconName="consult"
               image={require('../../assets/images/doctorbanner.png')}
               buttontext="Book an appointment online"
               approved

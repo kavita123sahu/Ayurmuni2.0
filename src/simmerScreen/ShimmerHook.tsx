@@ -1611,3 +1611,170 @@ export const SuggestedCardSkeleton = ({ count = 3 }: { count?: number }) => (
     ))}
   </ScrollView>
 );
+
+/** Diet plan list skeleton */
+export const DietListSkeleton = ({ count = 4 }: { count?: number }) => (
+  <View style={{ paddingTop: 8, gap: 12 }}>
+    {Array.from({ length: count }).map((_, index) => (
+      <SkeletonPlaceholder key={index} borderRadius={14} speed={1200}>
+        <SkeletonPlaceholder.Item
+          flexDirection="row"
+          alignItems="center"
+          padding={12}
+        >
+          <SkeletonPlaceholder.Item width={56} height={56} borderRadius={12} />
+          <SkeletonPlaceholder.Item marginLeft={12} flex={1}>
+            <SkeletonPlaceholder.Item width="75%" height={14} borderRadius={6} />
+            <SkeletonPlaceholder.Item
+              width="50%"
+              height={11}
+              borderRadius={5}
+              marginTop={8}
+            />
+            <SkeletonPlaceholder.Item
+              flexDirection="row"
+              marginTop={10}
+              gap={6}
+            >
+              <SkeletonPlaceholder.Item width={54} height={20} borderRadius={8} />
+              <SkeletonPlaceholder.Item width={54} height={20} borderRadius={8} />
+            </SkeletonPlaceholder.Item>
+          </SkeletonPlaceholder.Item>
+        </SkeletonPlaceholder.Item>
+      </SkeletonPlaceholder>
+    ))}
+  </View>
+);
+
+/** Diet plan detail / start skeleton */
+export const DietDetailSkeleton = () => (
+  <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+    <SkeletonPlaceholder borderRadius={20} speed={1200}>
+      <SkeletonPlaceholder.Item width="100%" height={200} borderRadius={22} />
+      <SkeletonPlaceholder.Item
+        marginTop={-24}
+        marginHorizontal={4}
+        padding={18}
+        borderRadius={20}
+      >
+        <SkeletonPlaceholder.Item flexDirection="row" gap={8}>
+          <SkeletonPlaceholder.Item width={64} height={24} borderRadius={10} />
+          <SkeletonPlaceholder.Item width={64} height={24} borderRadius={10} />
+        </SkeletonPlaceholder.Item>
+        <SkeletonPlaceholder.Item
+          width="90%"
+          height={20}
+          borderRadius={8}
+          marginTop={14}
+        />
+        <SkeletonPlaceholder.Item
+          width="60%"
+          height={13}
+          borderRadius={6}
+          marginTop={10}
+        />
+        <SkeletonPlaceholder.Item
+          width="100%"
+          height={12}
+          borderRadius={6}
+          marginTop={18}
+        />
+        <SkeletonPlaceholder.Item
+          width="100%"
+          height={12}
+          borderRadius={6}
+          marginTop={12}
+        />
+      </SkeletonPlaceholder.Item>
+      <SkeletonPlaceholder.Item
+        width="100%"
+        height={52}
+        borderRadius={14}
+        marginTop={20}
+      />
+    </SkeletonPlaceholder>
+  </ScrollView>
+);
+
+/** Active diet tracking skeleton (days + vitality + meals) */
+export const DietActiveSkeleton = () => (
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={{ paddingBottom: 40, paddingTop: 4 }}
+  >
+    <SkeletonPlaceholder borderRadius={16} speed={1200}>
+      <SkeletonPlaceholder.Item
+        flexDirection="row"
+        justifyContent="space-between"
+        marginBottom={14}
+      >
+        <SkeletonPlaceholder.Item width={120} height={28} borderRadius={20} />
+        <SkeletonPlaceholder.Item width={80} height={18} borderRadius={8} />
+      </SkeletonPlaceholder.Item>
+
+      <SkeletonPlaceholder.Item
+        width={90}
+        height={16}
+        borderRadius={6}
+        marginBottom={12}
+      />
+      <SkeletonPlaceholder.Item flexDirection="row" gap={10} marginBottom={18}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonPlaceholder.Item
+            key={i}
+            width={88}
+            height={78}
+            borderRadius={16}
+          />
+        ))}
+      </SkeletonPlaceholder.Item>
+
+      <SkeletonPlaceholder.Item
+        width="100%"
+        height={170}
+        borderRadius={20}
+        marginBottom={16}
+      />
+      <SkeletonPlaceholder.Item
+        width="100%"
+        height={88}
+        borderRadius={20}
+        marginBottom={18}
+      />
+
+      <SkeletonPlaceholder.Item
+        width={140}
+        height={16}
+        borderRadius={6}
+        marginBottom={12}
+      />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <SkeletonPlaceholder.Item
+          key={i}
+          flexDirection="row"
+          height={110}
+          borderRadius={20}
+          marginBottom={12}
+          overflow="hidden"
+        >
+          <SkeletonPlaceholder.Item width={110} height={110} />
+          <SkeletonPlaceholder.Item flex={1} padding={14}>
+            <SkeletonPlaceholder.Item width="40%" height={11} borderRadius={5} />
+            <SkeletonPlaceholder.Item
+              width="85%"
+              height={15}
+              borderRadius={6}
+              marginTop={10}
+            />
+            <SkeletonPlaceholder.Item
+              width="60%"
+              height={12}
+              borderRadius={5}
+              marginTop={8}
+            />
+          </SkeletonPlaceholder.Item>
+        </SkeletonPlaceholder.Item>
+      ))}
+    </SkeletonPlaceholder>
+  </ScrollView>
+);

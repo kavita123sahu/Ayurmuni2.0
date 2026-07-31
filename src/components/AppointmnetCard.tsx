@@ -1,505 +1,329 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import {
-    View,
-    Text,
-    Image,
-    TouchableOpacity,
-    StyleSheet,
-    ViewStyle,
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ViewStyle,
 } from 'react-native';
 import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { BUTTON, RADIUS, SPACING, TYPO } from '../constants/responsive';
-import { buildAppointmentDetailsParams } from '../utils/appointmentUtils';
+import { getStatusStyle } from '../common/DataInterface';
+import TablerIcon from './TablerIcon';
+import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
+import {
+  buildAppointmentDetailsParams,
+  canRescheduleAppointment,
+  getConsultationScheduleLabels,
+} from '../utils/appointmentUtils';
 
-/* -------------------------------------------------------------------------- */
-/*                                   TYPES                                    */
-/* -------------------------------------------------------------------------- */
 export type AppointmentStatus =
-    | 'confirmed'
-    | 'cancelled'
-    | 'upcoming';
+  | 'confirmed'
+  | 'cancelled'
+  | 'upcoming'
+  | string;
 
 export type ActionKey =
-    | 'view_receipt'
-    | 'book_again'
-    | 'view_details'
-    | 'reschedule';
-
+  | 'view_receipt'
+  | 'book_again'
+  | 'view_details'
+  | 'reschedule';
 
 export interface Appointment {
-    consultation_id: string;
-    doctorName: string;
-    specialty: string;
-    date: string;
-    time: string;
-    status: string;
-    image: string | null;
-    rawData?: any;
-    appointment_status:
-    AppointmentStatus;
-    doctor: {
-        doctor_id: string;
-        doctor_name: string;
-        doctor_specialization:
-        string | null;
-        doctor_image:
-        string | null;
-    };
+  consultation_id: string;
+  doctorName?: string;
+  specialty?: string;
+  date?: string;
+  time?: string;
+  status?: string;
+  image?: string | null;
+  rawData?: any;
+  appointment_status?: AppointmentStatus;
+  start_time?: string;
+  appointment_date?: string;
+  doctor?: {
+    doctor_id?: string;
+    doctor_name?: string;
+    doctor_specialization?: string | null;
+    doctor_designation?: string | null;
+    qualification?: string | null;
+    doctor_image?: string | null;
+  };
 }
-
-
 
 interface AppointmentCardProps {
-    item: Appointment;
-    navigation: any;
-    onAction?: (
-        actionKey: ActionKey,
-        item: Appointment,
-    ) => void;
-    style?: ViewStyle;
+  item: Appointment;
+  navigation: any;
+  onAction?: (actionKey: ActionKey, item: Appointment) => void;
+  style?: ViewStyle;
 }
-const UPCOMING_STATUS = [
-    "pending",
-    "confirmed",
-    "reschedule",
-    "rescheduled",
-];
 
-const PAST_STATUS = [
-    "completed",
-    "cancelled",
-    "missed",
-];
-/* -------------------------------------------------------------------------- */
-/*                               BADGE CONFIG                                 */
-/* -------------------------------------------------------------------------- */
-
-const BADGE_CONFIG: any = {
-
-    confirmed: {
-        bg: '#DCFCE7',
-        color: '#16A34A',
-    },
-
-    cancelled: {
-        bg: '#FEE2E2',
-        color: '#DC2626',
-    },
-
-    upcoming: {
-        bg: '#FEF3C7',
-        color: '#D97706',
-    },
-};
-/* -------------------------------------------------------------------------- */
-/*                                   BADGE                                    */
-/* -------------------------------------------------------------------------- */
-
-const Badge = ({
-    status,
-}: {
-    status: string;
-}) => {
-
-    const normalizedStatus =
-        status?.toLowerCase?.();
-
-    const config =
-        BADGE_CONFIG[
-        normalizedStatus
-        ];
-
-    if (!config) {
-        return null;
-    }
-
-    return (
-
-        <View
-            style={[
-                styles.badge,
-                {
-                    backgroundColor:
-                        config.bg,
-                },
-            ]}
-        >
-
-            <Text
-                style={[
-                    styles.badgeText,
-                    {
-                        color:
-                            config.color,
-                    },
-                ]}
-            >
-                {status}
-            </Text>
-
-        </View>
-    );
-};
-/* -------------------------------------------------------------------------- */
-/*                              APPOINTMENT CARD                              */
-/* -------------------------------------------------------------------------- */
+const formatStatusLabel = (status?: string) =>
+  String(status || '')
+    .replace(/_/g, ' ')
+    .trim();
 
 const AppointmentCard = ({
-    item,
-    onAction,
-    style,
-    navigation,
+  item,
+  onAction,
+  style,
+  navigation,
 }: AppointmentCardProps) => {
+  const doctor = item?.doctor;
+  const doctorName =
+    doctor?.doctor_name || item?.doctorName || 'Doctor';
+  const specialty =
+    doctor?.doctor_specialization ||
+    doctor?.doctor_designation ||
+    doctor?.qualification ||
+    item?.specialty ||
+    'General Physician';
+  const avatarUrl = doctor?.doctor_image || item?.image;
 
-    const {
-        doctor,
-        date,
-        appointment_status,
-    } = item;
+  const schedule = useMemo(
+    () => getConsultationScheduleLabels(item),
+    [item],
+  );
+  const status = schedule.status || String(item?.appointment_status || '');
+  const statusStyle = useMemo(() => getStatusStyle(status.toLowerCase()), [status]);
+  const statusLabel = formatStatusLabel(status);
 
+  const showReschedule = canRescheduleAppointment(status);
+  const showReceipt = Boolean(item?.consultation_id);
+  const showBookAgain = !showReschedule;
 
-    const doctorName =
-        doctor?.doctor_name;
+  const handleAction = (action: ActionKey) => {
+    onAction?.(action, item);
+  };
 
-    const specialty =
-        doctor?.doctor_specialization ||
-        'General Physician';
+  return (
+    <TouchableOpacity
+      style={[styles.card, style]}
+      activeOpacity={0.9}
+      onPress={() =>
+        navigation.navigate(
+          'AppointmentDetails',
+          buildAppointmentDetailsParams({ rawData: item.rawData, ...item }),
+        )
+      }
+    >
+      <View style={styles.topRow}>
+        <Image
+          source={avatarUrl ? { uri: avatarUrl } : Images.doctorImage}
+          style={styles.avatar}
+        />
 
-    const avatarUrl =
-        doctor?.doctor_image;
+        <View style={styles.info}>
+          <View style={styles.nameRow}>
+            <Text numberOfLines={1} style={styles.doctorName}>
+              {doctorName}
+            </Text>
+            {statusLabel ? (
+              <View
+                style={[
+                  styles.statusChip,
+                  { backgroundColor: statusStyle.backgroundColor },
+                ]}
+              >
+                <Text
+                  style={[styles.statusText, { color: statusStyle.color }]}
+                  numberOfLines={1}
+                >
+                  {statusLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
 
-    const isCompleted =
-        appointment_status ===
-        'confirmed';
+          <Text style={styles.specialty} numberOfLines={1}>
+            {specialty}
+          </Text>
 
-    const isCancelled =
-        appointment_status ===
-        'cancelled';
+          <View style={styles.metaChips}>
+            {schedule.dayLabel || schedule.weekday ? (
+              <View style={styles.chip}>
+                <TablerIcon name="calendar" size={12} color="#64748B" />
+                <Text style={styles.chipText} numberOfLines={1}>
+                  {schedule.dayLabel || schedule.weekday}
+                </Text>
+              </View>
+            ) : null}
+            {schedule.dateLabel ? (
+              <View style={styles.chip}>
+                <Text style={styles.chipText} numberOfLines={1}>
+                  {schedule.dateLabel}
+                </Text>
+              </View>
+            ) : null}
+            {schedule.timeLabel ? (
+              <View style={styles.chip}>
+                <TablerIcon name="clock" size={12} color="#64748B" />
+                <Text style={styles.chipText} numberOfLines={1}>
+                  {schedule.timeLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
 
-    const isUpcoming =
-        appointment_status ===
-        'upcoming';
-
-    const showActions = isCompleted || isCancelled || isUpcoming;
-
-
-    const handleAction = (
-        action: ActionKey,
-    ) => {
-        onAction?.(action, item);
-    };
-
-    return (
-        <TouchableOpacity
+      <View style={styles.actions}>
+        {showReceipt ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
             style={[
-                styles.card,
-                isCancelled &&
-                styles.cancelledCard,
-                style,
+              styles.secondaryBtn,
+              !showReschedule && !showBookAgain && styles.fullBtn,
             ]}
+            onPress={() => handleAction('view_receipt')}
+          >
+            <TablerIcon name="receipt" size={14} color="#475569" />
+            <Text style={styles.secondaryBtnText}>Receipt</Text>
+          </TouchableOpacity>
+        ) : null}
 
-            onPress={() => navigation.navigate(
-                "AppointmentDetails",
-                buildAppointmentDetailsParams({ rawData: item.rawData, ...item }),
-            )}
-        >
-            {/* TOP SECTION */}
-
-            <View style={styles.topRow}>
-                <Image
-                    source={
-                        avatarUrl
-                            ? { uri: avatarUrl }
-                            : Images.doctorImage
-                    }
-                    style={styles.avatar}
-                />
-
-                <View style={styles.info}>
-                    <Text
-                        numberOfLines={2}
-                        style={styles.doctorName}
-                    >
-                        {doctorName}
-                    </Text>
-
-                    <Text style={styles.meta}>
-                        {specialty} • {date}
-                    </Text>
-                </View>
-
-                <Badge
-                    status={
-                        appointment_status.toUpperCase() as AppointmentStatus
-                    }
-                />
-            </View>
-
-            {/* ACTIONS */}
-
-
-
-            {showActions && (
-                <View style={styles.actions}>
-                    {isCompleted && (
-                        <>
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                style={styles.secondaryBtn}
-                                onPress={() => handleAction('view_receipt')}
-                            >
-                                <Text style={styles.secondaryBtnText}>
-                                    View Receipt
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                activeOpacity={0.8}
-                                style={styles.primaryBtn}
-                                onPress={() => handleAction('book_again')}
-                            >
-                                <Text style={styles.primaryBtnText}>
-                                    Book Again
-                                </Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
-
-                    {isCancelled && (
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            style={[styles.secondaryBtn, styles.fullBtn]}
-                            onPress={() => handleAction('view_details')}
-                        >
-                            <Text style={styles.secondaryBtnText}>
-                                View Details
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {isUpcoming && (
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={[styles.primaryBtn, styles.fullBtn]}
-                            onPress={() => handleAction('reschedule')}
-                        >
-                            <Text style={styles.primaryBtnText}>
-                                Reschedule
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            )}
-            {/* <View style={styles.actions}>
-                {isCompleted && (
-                    <>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            style={styles.secondaryBtn}
-                            onPress={() =>
-                                handleAction(
-                                    'view_receipt',
-                                )
-                            }
-                        >
-                            <Text
-                                style={
-                                    styles.secondaryBtnText
-                                }
-                            >
-                                View Receipt
-                            </Text>
-                        </TouchableOpacity>
-
-
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.primaryBtn}
-                            onPress={() =>
-                                handleAction(
-                                    'book_again',
-                                )
-                            }
-                        >
-                            <Text
-                                style={
-                                    styles.primaryBtnText
-                                }
-                            >
-                                Book Again
-                            </Text>
-                        </TouchableOpacity>
-                    </>
-                )}
-
-                {isCancelled && (
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        style={[
-                            styles.secondaryBtn,
-                            styles.fullBtn,
-                        ]}
-                        onPress={() =>
-                            handleAction(
-                                'view_details',
-                            )
-                        }
-                    >
-                        <Text
-                            style={
-                                styles.secondaryBtnText
-                            }
-                        >
-                            View Details
-                        </Text>
-                    </TouchableOpacity>
-                )}
-
-                {isUpcoming && (
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[
-                            styles.primaryBtn,
-                            styles.fullBtn,
-                        ]}
-                        onPress={() =>
-                            handleAction(
-                                'reschedule',
-                            )
-                        }
-                    >
-                        <Text
-                            style={
-                                styles.primaryBtnText
-                            }
-                        >
-                            Reschedule
-                        </Text>
-                    </TouchableOpacity>
-                )}
-            </View> */}
-        </TouchableOpacity>
-    );
+        {showReschedule ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.primaryBtn}
+            onPress={() => handleAction('reschedule')}
+          >
+            <TablerIcon name="calendar" size={14} color="#FFFFFF" />
+            <Text style={styles.primaryBtnText}>
+              {status.toLowerCase() === 'reschedule'
+                ? 'Request Change'
+                : 'Reschedule'}
+            </Text>
+          </TouchableOpacity>
+        ) : showBookAgain ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.primaryBtn}
+            onPress={() => handleAction('book_again')}
+          >
+            <TablerIcon name="stethoscope" size={14} color="#FFFFFF" />
+            <Text style={styles.primaryBtnText}>Book Again</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
 };
 
 export default memo(AppointmentCard);
 
-/* -------------------------------------------------------------------------- */
-/*                                   STYLES                                   */
-/* -------------------------------------------------------------------------- */
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-
-    card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: RADIUS.pill,
-        padding: SPACING.lg,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-        marginBottom: SPACING.md,
-    },
-
-    cancelledCard: {
-        opacity: 0.9,
-    },
-
-    topRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-
-    avatar: {
-        width: 72,
-        height: 72,
-        borderRadius: RADIUS.lg,
-        resizeMode: 'cover',
-        marginRight: SPACING.md,
-        flexShrink: 0,
-    },
-
-    info: {
-        flex: 1,
-        minWidth: 0,
-        paddingRight: 10,
-    },
-
-    doctorName: {
-        fontSize: TYPO.lg,
-        lineHeight: 22,
-        color: '#1E293B',
-        fontFamily: Fonts.PoppinsSemiBold,
-        flexShrink: 1,
-    },
-
-    meta: {
-        marginTop: 2,
-        fontSize: TYPO.sm,
-        lineHeight: 18,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-
-        borderRadius: 8,
-
-        alignSelf: 'flex-start',
-    },
-
-    badgeText: {
-        fontSize: TYPO.xs,
-        textTransform: 'uppercase',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    actions: {
-        flexDirection: 'row',
-        marginTop: SPACING.lg,
-        gap: SPACING.sm,
-    },
-
-    fullBtn: {
-        flex: 1,
-    },
-
-    secondaryBtn: {
-        flex: 1,
-        minHeight: BUTTON.height,
-        borderRadius: BUTTON.radius,
-        backgroundColor: '#F8FAFC',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: SPACING.sm,
-    },
-
-    secondaryBtnText: {
-        fontSize: TYPO.button,
-        color: '#475569',
-        textAlign: 'center',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    primaryBtn: {
-        flex: 1,
-        minHeight: BUTTON.height,
-        borderRadius: BUTTON.radius,
-        backgroundColor: Colors.primaryColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: SPACING.sm,
-    },
-
-    primaryBtnText: {
-        fontSize: TYPO.button,
-        color: '#FFFFFF',
-        textAlign: 'center',
-        fontFamily: Fonts.PoppinsMedium,
-    },
+  card: {
+    ...CARD_SURFACE,
+    borderRadius: CARD_RADIUS_MD,
+    padding: 14,
+    gap: 12,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: '#E8F2EE',
+  },
+  info: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  doctorName: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  statusChip: {
+    maxWidth: 96,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
+    textTransform: 'capitalize',
+  },
+  specialty: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  metaChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#EEF2F6',
+  },
+  chipText: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  fullBtn: {
+    flex: 1,
+  },
+  secondaryBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  secondaryBtnText: {
+    fontSize: 12,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  primaryBtn: {
+    flex: 1.15,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.primaryColor,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  primaryBtnText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 });

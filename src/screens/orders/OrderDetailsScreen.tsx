@@ -26,6 +26,7 @@ import {
 } from '../../utils/orderDetailUtils';
 import { getOrders } from '../../services/OrderService';
 import { getScreenBottomPadding } from '../../constants/layout';
+import { resolveProductImageUri } from '../../utils/imageUtils';
 
 type OrderItemRow = {
   id: string;
@@ -58,7 +59,7 @@ const mapOrderItems = (order: any): OrderItemRow[] => {
     name: String(item?.variant?.variant_title ?? item?.product_name ?? 'Product'),
     subtitle: `Qty: ${item?.quantity ?? 1}`,
     price: formatCurrency(item?.selling_price ?? item?.variant?.selling_price ?? item?.price),
-    image: item?.variant?.image_url ?? item?.image_url ?? '',
+    image: resolveProductImageUri(item),
     raw: item,
     review: getOrderItemReview(item, order),
     rated: isOrderItemRated(item, order),

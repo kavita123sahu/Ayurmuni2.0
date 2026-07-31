@@ -2,6 +2,7 @@ import { Platform, Text } from "react-native";
 import { Images } from "./Images";
 import { Colors } from "./Colors";
 import React from "react";
+import { resolveProductImageUri } from '../utils/imageUtils';
 
 
 export interface ProductItem {
@@ -35,16 +36,36 @@ export type CartItem = {
   variant_title?: string;
   variant?: {
     variant_id?: string;
+    id?: string;
     variant_title?: string;
+    title?: string;
     size?: string;
     selling_price?: number;
     brand_name?: string;
     image_url?: string;
+    cover_image?: {
+      id?: string;
+      media_url?: string;
+      media_type?: string;
+      is_cover?: boolean;
+    };
+    media?: {
+      id?: string;
+      media_url?: string;
+      media_type?: string;
+      is_cover?: boolean;
+    }[];
+  };
+  cover_image?: {
+    id?: string;
+    media_url?: string;
+    is_cover?: boolean;
   };
   media?: {
+    id?: string;
     media_url?: string;
+    is_cover?: boolean;
   }[];
-
 };
 
 
@@ -114,13 +135,22 @@ export type PlaceOrderResponse = {
 };
 
 
+/** Resolve cart/checkout thumbnail from common API shapes */
+export const resolveCartItemImage = (item: any): string =>
+  resolveProductImageUri(item);
+
 export const getProductData = (
   item: CartItem,
   doctorName?: string,
 ): ProductItem => ({
   id: item.id,
 
-  name: item.variant?.variant_title || '',
+  name:
+    item.variant?.variant_title ||
+    item.variant?.title ||
+    (item as any)?.product_name ||
+    (item as any)?.name ||
+    '',
 
   weight: item.variant?.size || '',
 
@@ -129,7 +159,10 @@ export const getProductData = (
   brand_name: item.variant?.brand_name || '',
 
   variant_id:
-    item.variant?.variant_id || '',
+    item.variant?.variant_id ||
+    item.variant?.id ||
+    (item as any)?.variant_id ||
+    '',
   price: Number(
     item.variant?.selling_price ||
     item.price ||
@@ -138,8 +171,8 @@ export const getProductData = (
 
   quantity: Number(item.quantity || 1),
 
-  image:
-    item.variant?.image_url || '',
+  // cover_image.media_url → media is_cover → legacy image fields
+  image: resolveCartItemImage(item),
 
   doctorName,
   gift_wrap: Boolean((item as any)?.gift_wrap || (item as any)?.is_gift_wrap),
@@ -193,6 +226,7 @@ export const PAST_STATUS = [
   "completed",
   "cancelled",
   "missed",
+  "expired",
 ];
 
 export const PRAKRITI_IMAGES: Record<string, string> = {
@@ -250,13 +284,21 @@ export const getStatusStyle = (status: string) => {
       backgroundColor: "#F3F4F6",
       color: "#6B7280",
     },
+    expired: {
+      backgroundColor: "#F3F4F6",
+      color: "#6B7280",
+    },
+    no_show: {
+      backgroundColor: "#F3F4F6",
+      color: "#6B7280",
+    },
     reschedule: {
-      backgroundColor: "#e9b712",
-      color: "#fff3cd",
+      backgroundColor: "#FEF3C7",
+      color: "#B45309",
     },
     rescheduled: {
-      backgroundColor: "#e9b712",
-      color: "#f7f8f5",
+      backgroundColor: "#FEF3C7",
+      color: "#B45309",
     },
   };
 

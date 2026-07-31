@@ -8,7 +8,7 @@ import {
   buildPrepaidOrderPayload,
   getRazorpayPaymentMethod,
   getVerifiedOrderResult,
-  isOrderVerifySuccessful,
+  isPrepaidVerifyAcceptable,
   OrderCartLine,
 } from '../utils/orderPayload';
 
@@ -26,7 +26,7 @@ type OnlinePaymentArgs = {
   address: any;
   customerInfo?: any;
   shippingFee: number;
-  payment_method ?: any;
+  payment_method?: any;
   codCharges?: number;
   onSuccess: (
     orderResult: any,
@@ -108,9 +108,9 @@ export const useProductOnlinePayment = () => {
         const paymentData = orderResponse?.data;
         const contactNumber = String(
           customerInfo?.phone_number ??
-            address?.phone_number ??
-            address?.phone ??
-            '',
+          address?.phone_number ??
+          address?.phone ??
+          '',
         ).replace(/\D/g, '');
         const customerName =
           customerInfo?.first_name ??
@@ -157,18 +157,39 @@ export const useProductOnlinePayment = () => {
               JSON.stringify(verifyBody, null, 2),
             );
 
-            const verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
-              verifyBody,
-            );
+            let verifyResponse: any;
+            try {
+              verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
+                verifyBody,
+              );
+            } catch (verifyError: any) {
+              // Some APIs throw on Unicommerce/sync 4xx but still create the order
+              verifyResponse =
+                verifyError?.response ??
+                verifyError?.data ??
+                verifyError;
+            }
+            console.log('verifyResponse', verifyResponse);
+
             setIsVerifyingPayment(false);
 
-            if (isOrderVerifySuccessful(verifyResponse)) {
+            // Razorpay already charged — confirm even on Unicommerce/sync verify noise
+            if (isPrepaidVerifyAcceptable(verifyResponse, razorpayResult)) {
               showSuccessToast('Payment Successful', 'success');
               onSuccess(
-                getVerifiedOrderResult(verifyResponse),
-                cartItems.map(item => ({
+                getVerifiedOrderResult(verifyResponse) ?? {
+                  ...paymentData,
+                  razorpay_payment_id: razorpayResult?.razorpay_payment_id,
+                  payment_status: 'paid',
+                },
+                cartItems.map((item: any) => ({
+                  id: item.id,
+                  cart_item_id: item.id ?? item.cart_item_id,
                   variant_id: String(item.variant_id),
                   quantity: Number(item.quantity),
+                  name: item.name,
+                  image: item.image,
+                  price: item.price,
                   source: item.source,
                 })),
               );

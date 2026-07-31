@@ -24,7 +24,7 @@ import {
   buildPrepaidOrderPayload,
   getRazorpayPaymentMethod,
   getVerifiedOrderResult,
-  isOrderVerifySuccessful,
+  isPrepaidVerifyAcceptable,
 } from '../../utils/orderPayload';
 
 type Props = {
@@ -176,19 +176,36 @@ const ProductRazorpayScreen = ({ route, navigation }: Props) => {
 
           console.log('VERIFY_PAYLOAD =>', JSON.stringify(verifyBody, null, 2));
 
-          const verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
-            verifyBody,
-          );
+          let verifyResponse: any;
+          try {
+            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
+              verifyBody,
+            );
+          } catch (verifyError: any) {
+            verifyResponse =
+              verifyError?.response ?? verifyError?.data ?? verifyError;
+          }
 
           setIsVerifyingPayment(false);
 
-          if (isOrderVerifySuccessful(verifyResponse)) {
+          // Razorpay already charged — confirm even on Unicommerce/sync verify noise
+          if (isPrepaidVerifyAcceptable(verifyResponse, razorpayResult)) {
             showSuccessToast('Payment Successful', 'success');
             navigation.replace('OrderConfirmation', {
-              orderResult: getVerifiedOrderResult(verifyResponse),
+              orderResult:
+                getVerifiedOrderResult(verifyResponse) ?? {
+                  ...paymentData,
+                  razorpay_payment_id: razorpayResult?.razorpay_payment_id,
+                  payment_status: 'paid',
+                },
               orderedCartItems: normalizedCartItems.map((item: any) => ({
+                id: item.id,
+                cart_item_id: item.id ?? item.cart_item_id,
                 variant_id: String(item.variant_id),
                 quantity: Number(item.quantity),
+                name: item.name,
+                image: item.image,
+                price: item.price,
                 source: item.source,
               })),
             });

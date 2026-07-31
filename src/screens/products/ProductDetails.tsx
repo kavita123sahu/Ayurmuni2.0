@@ -25,6 +25,11 @@ import { Colors } from '../../common/Colors';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
+import {
+  buildVariantGallery,
+  cacheVariantImage,
+  resolveProductImageUri,
+} from '../../utils/imageUtils';
 
 const Divider = () => <View style={styles.divider} />;
 
@@ -88,11 +93,33 @@ const ProductDetails = (props: any) => {
     setQuantity(1);
   }, [selectedVariant?.id]);
 
+  const galleryImages = useMemo(
+    () => buildVariantGallery(selectedVariant),
+    [selectedVariant],
+  );
+
+  const coverImageUri = useMemo(
+    () => resolveProductImageUri(selectedVariant) || resolveProductImageUri(ProductData),
+    [selectedVariant, ProductData],
+  );
+
+  useEffect(() => {
+    if (selectedVariant?.id && coverImageUri) {
+      cacheVariantImage(selectedVariant.id, coverImageUri);
+    }
+  }, [selectedVariant?.id, coverImageUri]);
+
   const increaseQty = () => setQuantity((q: number) => q + 1);
   const decreaseQty = () => setQuantity((q: number) => (q > 1 ? q - 1 : 1));
 
   const handleAddToCart = async () => {
     if (!(await requireAuth('Please login to add items to cart'))) return;
+    // Cache real cover before cart API returns placeholder image_url
+    if (selectedVariant?.id && coverImageUri) {
+      cacheVariantImage(selectedVariant.id, coverImageUri);
+    } else {
+      resolveProductImageUri(selectedVariant);
+    }
     const success = await addToCart(selectedVariant?.id, quantity);
     if (success) {
       props.navigation.navigate('MyCart');
@@ -227,7 +254,7 @@ const ProductDetails = (props: any) => {
         onRightPress={() =>
           handleShareAction({
             type: 'whatsapp',
-            message: selectedVariant?.media?.[0]?.media_url,
+            message: coverImageUri || galleryImages[0]?.media_url || '',
           })
         }
       />
@@ -236,13 +263,10 @@ const ProductDetails = (props: any) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Keep Detailimages untouched */}
         <Detailimages
           itemHeight={300}
           DynamicResize="contain"
-          images={
-            selectedVariant?.media?.length ? selectedVariant.media : []
-          }
+          images={galleryImages}
         />
 
         {/* Title + price (commerce-style) */}

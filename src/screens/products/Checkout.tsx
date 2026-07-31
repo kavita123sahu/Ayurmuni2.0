@@ -43,7 +43,9 @@ import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
 import { showSuccessToast } from '../../config/Key';
 
-import { resolveImageUri } from '../../utils/imageUtils';
+import { resolveImageUri, resolveProductImageUri } from '../../utils/imageUtils';
+import { resolveCartItemImage } from '../../common/DataInterface';
+import { isOrderVerifySuccessful } from '../../utils/orderPayload';
 
 
 
@@ -215,7 +217,10 @@ const Checkout: React.FC = (props: any) => {
 
                 name: item.name,
 
-                image: resolveImageUri(item.image),
+                image:
+                    resolveImageUri(item.image) ||
+                    resolveCartItemImage(item) ||
+                    resolveProductImageUri(item),
 
                 discount: item.discount ?? 0,
 
@@ -230,10 +235,12 @@ const Checkout: React.FC = (props: any) => {
     );
 
 
+    console.log("cartItemscartItems",cartItems)
 
-    const shippingFee: number = 50;
 
-    const codChargeDefault = 30;
+    const shippingFee: number = 0;
+
+    const codChargeDefault = 0;
 
 
 
@@ -302,29 +309,23 @@ const Checkout: React.FC = (props: any) => {
 
 
 
-        if (result?.success) {
-
+        // Navigate even when Unicommerce/sync returns an error — order is created
+        if (isOrderVerifySuccessful(result)) {
             props.navigation.replace('OrderConfirmation', {
-
-                orderResult: result?.data,
-
+                orderResult: result?.data?.order ?? result?.data,
                 orderedCartItems: cartItems.map((item: any) => ({
-
+                    id: item.id,
+                    cart_item_id: item.id,
                     variant_id: String(item.variant_id),
-
                     quantity: Number(item.quantity),
-
+                    name: item.name,
+                    image: item.image,
+                    price: item.price,
                     source: item.source,
-
                 })),
-
             });
-
             return;
-
         }
-
-
 
         showSuccessToast(result?.message ?? orderError ?? 'Order failed', 'error');
 
@@ -355,7 +356,21 @@ const Checkout: React.FC = (props: any) => {
 
                     orderResult,
 
-                    orderedCartItems,
+                    orderedCartItems: (orderedCartItems || cartItems).map(
+                        (item: any) => ({
+                            id: item.id,
+                            cart_item_id: item.id ?? item.cart_item_id,
+                            variant_id: String(item.variant_id),
+                            quantity: Number(item.quantity),
+                            name: item.name,
+                            image:
+                                item.image ||
+                                resolveProductImageUri(item) ||
+                                '',
+                            price: item.price,
+                            source: item.source,
+                        }),
+                    ),
 
                 });
 
@@ -721,8 +736,8 @@ const Checkout: React.FC = (props: any) => {
 
                         >
 
-                            {resolveImageUri(item.image) ? (
-                                <Image source={{ uri: resolveImageUri(item.image) }} style={styles.itemImage} />
+                            {item.image ? (
+                                <Image source={{ uri: item.image }} style={styles.itemImage} />
 
                             ) : (
 

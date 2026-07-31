@@ -28,20 +28,27 @@ const AppointmentActions = ({
         "pending",
         "confirmed",
         "reschedule",
+        "rescheduled",
+        "upcoming",
+        "booked",
     ].includes(appointmentStatus);
 
     const showCancel = [
         "pending",
         "confirmed",
         "reschedule",
-        "rescheduled", // ✅ Added
+        "rescheduled",
+        "upcoming",
+        "booked",
     ].includes(appointmentStatus);
 
     const showViewDetails = [
         "completed",
         "cancelled",
         "missed",
-        // "rescheduled", ❌ Remove
+        "expired",
+        "no_show",
+        "noshow",
     ].includes(appointmentStatus);
 
     const showJoinCall =  call_status === "in_progress"; // future

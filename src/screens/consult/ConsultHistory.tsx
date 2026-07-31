@@ -49,7 +49,7 @@ type ActionKey =
 const TABS = [
     { key: 'All', label: 'All' },
     { key: 'Last 30 Days', label: 'Last 30 Days' },
-    { key: 'Last 6 Months', label: 'Last 6 Months' },
+    { key: 'Last 90 Days', label: 'Last 90 Days' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['key'];
@@ -58,7 +58,7 @@ const getPayload = (tab: Tab) => {
     const payloadMap = {
         All: { period: 'all' },
         'Last 30 Days': { period: 'last_30_days' },
-        'Last 6 Months': { period: 'last_6_months' },
+        'Last 90 Days': { period: 'last_90_days' },
     };
     return payloadMap[tab];
 };
@@ -135,7 +135,14 @@ const ConsultHistory = (props: any) => {
                 );
                 break;
             case 'reschedule':
-                navigation.navigate('Reschedule', {
+                navigation.navigate('DoctorSlot', {
+                    doctorDetails: {
+                        ...item.doctor,
+                        id: item.doctor?.doctor_id,
+                        full_name: item.doctor?.doctor_name,
+                        profile_image: item.doctor?.doctor_image,
+                        designation: (item.doctor as any)?.qualification,
+                    },
                     appointmentId: resolveAppointmentLookupId(item),
                 });
                 break;

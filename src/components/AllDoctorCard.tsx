@@ -86,126 +86,74 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
         <Pressable style={[styles.card,]} onPress={() => onPress?.(item)}>
 
             <View style={{ flexDirection: 'row', flex: 1 }}>
-                <View style={styles.imageWrapper}>
-                    <Image
-                        source={
-                            item?.profile_image?.trim()
-                                ? {
-                                    uri: item.profile_image,
-                                }
-                                : Images.doctorImage
-                        }
-                        style={[
-                            styles.image,
-                            !isAvailable &&
-                            styles.imageGrayscale,
-                        ]}
-                    />
+               <View style={styles.imageWrapper}>
+  <Image
+    source={
+      item?.profile_image?.trim()
+        ? { uri: item.profile_image }
+        : Images.doctorImage
+    }
+    style={[
+      styles.image,
+      !isAvailable && styles.imageGrayscale,
+    ]}
+  />
 
-                </View>
+  {isAvailable && <View style={styles.onlineDot} />}
+</View>
 
-                <View style={styles.right}>
+             <View style={styles.right}>
+  <View style={styles.topRow}>
+    <Text style={styles.name} numberOfLines={1}>
+      {item?.name || item?.full_name}
+    </Text>
 
-                    {/* TOP ROW: Tag + Wishlist */}
-                    <View style={styles.topRow}>
-                        <View style={[styles.tag,]}>
+    <FavouriteButton
+      isFavourite={isWishlisted}
+      onPress={handleWishlist}
+      style={styles.iconBtn}
+    />
+  </View>
 
-                            <Text style={[styles.tagText,]}>
-                                {isAvailable ? '  Active' : 'Inactive'}
-                            </Text>
+  <Text style={styles.speciality} numberOfLines={1}>
+    {Array.isArray(item?.health_diseases)
+      ? item.health_diseases.map(i => i.name).join(', ')
+      : ''}
+  </Text>
 
-                        </View>
+  <View style={styles.statsRow}>
+    <View style={styles.badge}>
+      <Ionicons name="time-outline" size={14} color="#0F766E" />
+      <Text style={styles.badgeText}>
+        {item?.experience_years || 0} Yrs
+      </Text>
+    </View>
 
+    <View style={styles.badge}>
+      <Ionicons name="star" size={13} color="#F59E0B" />
+      <Text style={styles.badgeText}>
+        {item?.ranking_score || 0}
+      </Text>
+    </View>
 
-                        <FavouriteButton
-                            isFavourite={isWishlisted}
-                            onPress={handleWishlist}
-                            style={styles.iconBtn}
-                        />
+    <View style={styles.badge}>
+      <Text style={styles.badgeText}>
+        {item?.total_reviews || 0} Reviews
+      </Text>
+    </View>
+  </View>
 
-                    </View>
-
-                    {/* NAME */}
-                    <Text style={[styles.name]} numberOfLines={1}>
-                        {item?.name || item?.full_name}
-                    </Text>
-
-                    {/* SPECIALITY */}
-                    <Text
-                        style={[
-                            styles.speciality,
-
-                        ]}
-                    >
-
-                        {
-                            Array.isArray(item?.health_diseases)
-                                ? item.health_diseases.map(i => i?.name).join(", ")
-                                : ''
-                        }
-
-
-                    </Text>
-
-                    {/* INFO ROW */}
-                    <View style={styles.infoRow}>
-                        <View style={styles.infoItem}>
-                            <Ionicons
-                                name="time-outline"
-                                size={14}
-                                color={'#64748B'}
-                            />
-                            <Text style={[styles.infoText]}>
-                                {`${item?.experience_years || 0} Yrs Exp`}
-                            </Text>
-                        </View>
-
-                        <View style={styles.infoItem}>
-                            <Ionicons
-                                name="star"
-                                size={12}
-                                color={'#F59E0B'}
-                            />
-                            <Text style={styles.infoText}>
-                                {item?.ranking_score || 0}
-                                <Text style={styles.reviewCount}>
-                                    {` (${item?.total_reviews || 0})`}
-                                </Text>
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* BOTTOM ROW: Chat + Consult */}
-
-                </View>
+  <TouchableOpacity
+    style={styles.consultBtn}
+    onPress={() => onPress?.(item)}>
+    <TablerIcon name="consult" size={20} color="#FFF" />
+    <Text style={styles.consultText}>Consult Now</Text>
+  </TouchableOpacity>
+</View>
 
             </View>
 
 
-            <View style={styles.bottomRow}>
-
-                {/* Chat Button */}
-                <TouchableOpacity
-                    style={[styles.chatBtn,]}
-                    disabled={!isAvailable}
-                    onPress={() => onChatPress?.(item)}
-                >
-                    <TablerIcon name="chat-support" size={20} color="#64748B" />
-                </TouchableOpacity>
-
-                {/* Consult Button */}
-                <TouchableOpacity
-                    style={[styles.consultBtn,]}
-                    onPress={() => onPress?.(item)}
-                    activeOpacity={0.8}
-                >
-                    <TablerIcon name="consult" size={20} color={Colors.white} />
-                    <Text style={[styles.consultText,]}>
-                        Consult Now
-                    </Text>
-                </TouchableOpacity>
-
-            </View>
 
         </Pressable>
     );
@@ -257,6 +205,26 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         minHeight: 22,
     },
+    statsRow: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  marginTop: 10,
+  gap: 8,
+},
+    badge: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#F8FAFC',
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 20,
+},
+badgeText: {
+  marginLeft: 4,
+  fontSize: 12,
+  color: '#475569',
+  fontFamily: Fonts.PoppinsMedium,
+},
 
     tag: {
         backgroundColor: '#EAF8F4',
@@ -298,7 +266,7 @@ const styles = StyleSheet.create({
 
     consultBtn: {
         flex: 1,
-        height: 40,
+        height: 35,
         borderRadius: 10,
         flexDirection: 'row',
         alignItems: 'center',
@@ -370,6 +338,17 @@ const styles = StyleSheet.create({
         // opacity: 0.4,   
         backgroundColor: '#F1F5F9'                    // simulates grayscale in RN
     },
+    onlineDot: {
+  position: 'absolute',
+  bottom: 3,
+  right: 3,
+  width: 14,
+  height: 14,
+  borderRadius: 7,
+  backgroundColor: '#22C55E',
+  borderWidth: 2,
+  borderColor: '#FFF',
+},
 
     grayscaleOverlay: {
         ...StyleSheet.absoluteFillObject,

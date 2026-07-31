@@ -26,6 +26,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../utils/productStockUtils';
+import { resolveProductImageUri } from '../utils/imageUtils';
 
 interface Props {
   data: any[];
@@ -106,6 +107,9 @@ const TopSellingList: React.FC<Props> = ({
         showSuccessToast('Not enough stock available', 'error');
         return;
       }
+
+      // Seed variant image cache so cart/checkout can show cover after add
+      resolveProductImageUri(item);
 
       const result = await dispatch(
         syncCartQuantity({ variantId, quantity: newQty }),
