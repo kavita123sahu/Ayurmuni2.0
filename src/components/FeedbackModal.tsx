@@ -106,12 +106,8 @@ const FeedbackModal: React.FC<Props> = ({
               {loading
                 ? 'Please wait...'
                 : isSubmitMode
-                  ? isEdit
-                    ? 'Update Rating'
-                    : 'Submit Rating'
-                  : isEdit
-                    ? 'Continue to Edit'
-                    : 'Continue'}
+                  ? 'Submit Rating'
+                  : 'Continue'}
             </Text>
           </TouchableOpacity>
 

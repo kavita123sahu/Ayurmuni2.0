@@ -41,15 +41,26 @@ export const getHomeHeaderTotalHeight = (insets: EdgeInsets) =>
 export const getHomeHeaderCollapsedHeight = (insets: EdgeInsets) =>
   homeStickyChromeHeight + (insets.top || 0);
 
-export const TAB_BAR_HEIGHT = 64;
+export const TAB_BAR_HEIGHT = 62;
+export const TAB_CART_FAB_SIZE = 58;
+export const TAB_CONSULT_FAB_SIZE = 56;
+/** How far the center cart FAB sticks above the pill bar */
+export const TAB_FAB_OVERHANG = 14;
 export const TAB_BAR_SIDE_GAP = 12;
-export const TAB_BAR_BOTTOM_OFFSET = 10;
+export const TAB_BAR_BOTTOM_OFFSET = 8;
 
-export const getTabBarTotalHeight = (insets: EdgeInsets) =>
-  TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + (insets.bottom || 0) + 8;
+/**
+ * Exact clearance for tab chrome (bar + small FAB overhang + safe inset).
+ * Use as contentContainerStyle.paddingBottom only — not list marginBottom
+ * (margin creates a visible empty "patti" strip).
+ */
+export const getTabBarTotalHeight = (insets: EdgeInsets) => {
+  const bottomPad = Math.max(insets.bottom || 0, 8) + TAB_BAR_BOTTOM_OFFSET;
+  return TAB_BAR_HEIGHT + TAB_FAB_OVERHANG + bottomPad;
+};
 
 export const getScreenBottomPadding = (insets: EdgeInsets) =>
-  getTabBarTotalHeight(insets) + 12;
+  getTabBarTotalHeight(insets);
 
 export const getDetailBottomPadding = (insets: EdgeInsets) =>
   (insets.bottom || 0) + 24;

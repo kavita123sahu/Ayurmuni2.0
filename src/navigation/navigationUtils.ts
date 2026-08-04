@@ -119,6 +119,16 @@ export const safeGoBack = (navigation: any) => {
     return;
   }
 
+  // Prefer AccessMode (guest ask page) over forcing Home remount
+  const routeNames: string[] =
+    navigation?.getState?.()?.routeNames ??
+    parent?.getState?.()?.routeNames ??
+    [];
+  if (routeNames.includes('AccessMode')) {
+    navigation?.navigate?.('AccessMode');
+    return;
+  }
+
   navigation?.navigate?.('TabStack', { screen: 'Home' });
 };
 

@@ -2,16 +2,53 @@ import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity, Dimensi
 import React, { useEffect, useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader'
-import { Images } from '../../common/Images'
-import Detailimages from '../../components/Detailimages'
 import { Fonts } from '../../common/Fonts'
 import { Colors } from '../../common/Colors'
+import {
+    collectReviewImageUrls,
+    isReviewVideoUrl,
+    normalizeReviewsForDisplay,
+} from '../../utils/reviewUtils'
+import TablerIcon from '../../components/TablerIcon'
+import { getReviewsAll } from '../../services/ProductServices'
 
 const ReviewPage = (props: any) => {
+    const routeParams = props.route?.params ?? {};
+    const rawReviews = routeParams.reviews ?? [];
+    const entityType = routeParams.entityType;
+    const doctorId = routeParams.doctorId;
+    const [fetchedReviews, setFetchedReviews] = useState<any[] | null>(null);
 
-    const { reviews } = props.route.params;
+    useEffect(() => {
+        const loadDoctorReviews = async () => {
+            if (entityType !== 'doctor' || !doctorId) return;
+            try {
+                const res = await getReviewsAll({
+                    entity_type: 'doctor',
+                    doctor_id: String(doctorId),
+                });
+                const list =
+                    res?.data?.results ||
+                    res?.data?.reviews ||
+                    res?.data ||
+                    [];
+                if (Array.isArray(list)) {
+                    setFetchedReviews(list);
+                }
+            } catch (error) {
+                console.log('ReviewPage doctor fetch error', error);
+            }
+        };
+        loadDoctorReviews();
+    }, [entityType, doctorId]);
 
-    console.log("reviessssss", reviews);
+    const reviews = useMemo(
+        () =>
+            normalizeReviewsForDisplay(
+                fetchedReviews !== null ? fetchedReviews : rawReviews,
+            ),
+        [fetchedReviews, rawReviews],
+    );
 
     const [activeFilter, setActiveFilter] = useState('All Reviews');
 
@@ -26,7 +63,8 @@ const ReviewPage = (props: any) => {
             case 'Recent':
                 return [...reviews].sort(
                     (a: any, b: any) =>
-                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                        new Date(b.created_at || 0).getTime() -
+                        new Date(a.created_at || 0).getTime()
                 );
 
             default:
@@ -72,18 +110,10 @@ const ReviewPage = (props: any) => {
         };
     }, [reviews]);
 
-
-
-    const allImages = useMemo(() => {
-        const reviewImages = reviews.flatMap((item: any) => item.image_urls || []);
-
-        const mediaImages = reviews
-            .map((item: any) => item.media_url)
-            .filter(Boolean);
-
-        return [...mediaImages, ...reviewImages];
-    }, [reviews]);
-
+    const allImages = useMemo(
+        () => collectReviewImageUrls(reviews),
+        [reviews],
+    );
 
     const MAX_VISIBLE_IMAGES = 4;
 
@@ -194,6 +224,12 @@ const ReviewPage = (props: any) => {
                                                 }
                                             />
 
+                                            {isReviewVideoUrl(item) ? (
+                                                <View style={styles.videoBadge}>
+                                                    <TablerIcon name="video" size={12} color="#FFFFFF" />
+                                                </View>
+                                            ) : null}
+
                                             {isLastVisible && (
                                                 <View
                                                     style={
@@ -267,7 +303,9 @@ const ReviewPage = (props: any) => {
 
                                 <View style={{ flex: 1, marginLeft: 10 }}>
                                     <Text style={styles.name}>{item?.patient_name || item?.reviewer_name}</Text>
-                                    <Text style={styles.verified}>VERIFIED PURCHASE</Text>
+                                    <Text style={styles.verified}>
+                                        {entityType === 'doctor' ? 'VERIFIED PATIENT' : 'VERIFIED PURCHASE'}
+                                    </Text>
                                 </View>
 
                                 <Text style={styles.time}>
@@ -278,14 +316,46 @@ const ReviewPage = (props: any) => {
                             </View>
 
                             <Text style={styles.stars}>
-                                {/* {"⭐".repeat(item.rating)} */}
                                 {"⭐".repeat(Number(item?.rating || 0))}
                             </Text>
 
-                            <Text style={styles.reviewText}>
-                                {/* {item.review} */}
-                                {item?.review || 'No review available'}
-                            </Text>
+                            {!!item?.review?.trim?.() ? (
+                                <Text style={styles.reviewText}>{item.review}</Text>
+                            ) : null}
+
+                            {!!item?.image_urls?.length && (
+                                <View style={styles.cardImageRow}>
+                                    {item.image_urls.map((uri: string, idx: number) => (
+                                        <TouchableOpacity
+                                            key={`${item.id}-${idx}`}
+                                            activeOpacity={0.85}
+                                            onPress={() =>
+                                                props?.navigation.navigate(
+                                                    'ReviewGalleryScreen',
+                                                    {
+                                                        images: item.image_urls,
+                                                        selectedIndex: idx,
+                                                    },
+                                                )
+                                            }
+                                        >
+                                            <Image source={{ uri }} style={styles.cardImage} />
+                                            {isReviewVideoUrl(uri) ? (
+                                                <View style={styles.cardVideoBadge}>
+                                                    <TablerIcon name="video" size={10} color="#FFFFFF" />
+                                                </View>
+                                            ) : null}
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+
+                            {!!item?.doctor_reply?.trim?.() && (
+                                <View style={styles.doctorReplyBox}>
+                                    <Text style={styles.doctorReplyLabel}>Doctor replied</Text>
+                                    <Text style={styles.doctorReplyText}>{item.doctor_reply}</Text>
+                                </View>
+                            )}
                         </View>
                     )}
                 />
@@ -477,22 +547,73 @@ const styles = StyleSheet.create({
     reviewImage: {
         width: 90,
         height: 90,
-        backgroundColor: Colors.bgcolor,
         borderRadius: 12,
-        marginRight: 8,
+        marginRight: 10,
+        backgroundColor: '#E2E8F0',
     },
-
+    videoBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cardImageRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 10,
+    },
+    cardImage: {
+        width: 68,
+        height: 68,
+        borderRadius: 12,
+        backgroundColor: '#E2E8F0',
+    },
+    cardVideoBadge: {
+        position: 'absolute',
+        top: 6,
+        left: 6,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    doctorReplyBox: {
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E8F2EE',
+    },
+    doctorReplyLabel: {
+        fontSize: 11,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 4,
+    },
+    doctorReplyText: {
+        fontSize: 13,
+        lineHeight: 20,
+        color: '#475569',
+        fontFamily: Fonts.PoppinsMedium,
+    },
     overlay: {
         position: 'absolute',
         width: 90,
         height: 90,
         borderRadius: 12,
-        backgroundColor:
-            'rgba(0,0,0,0.55)',
+        backgroundColor: 'rgba(0,0,0,0.55)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-
     overlayText: {
         color: '#FFF',
         fontSize: 18,

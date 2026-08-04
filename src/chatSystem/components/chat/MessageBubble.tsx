@@ -10,7 +10,6 @@ import { Fonts } from '../../../common/Fonts';
 import TablerIcon from '../../../components/TablerIcon';
 
 const THEME = '#0D614E';
-const OWN_BUBBLE = '#DCF8C6'; // WhatsApp jaisa halka green
 
 interface MessageBubbleProps {
   message: Message;

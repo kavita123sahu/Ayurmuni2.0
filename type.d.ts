@@ -16,6 +16,8 @@ export type RootStackParamList = {
     };
     ConsultScreen: undefined;
     Onboarding: undefined;
+    AccessMode: undefined;
+    CompleteDetails: { reason?: string } | undefined;
     ProductRazorpayScreen : undefined;
     FavDoctors: undefined;
     AppointmentDetails: undefined;

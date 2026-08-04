@@ -91,7 +91,14 @@ const refreshAccessToken = async (): Promise<string | null> => {
         );
 
 
-        if (!data.success) {
+        // Backend sometimes returns 401 "User not found" on refresh —
+        // do not treat that as a successful rotation; keep existing access token.
+        if (!response.ok || !data?.success) {
+            console.log(
+                'TOKEN REFRESH FAILED =>',
+                response.status,
+                data?.message || responseText,
+            );
             return null;
         }
 

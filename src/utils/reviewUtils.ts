@@ -105,16 +105,75 @@ export const uploadReviewAsset = async (
   return uploadedUrl;
 };
 
+export const normalizeReviewMediaUrls = (review: any): string[] => {
+  if (!review || typeof review !== 'object') {
+    return [];
+  }
+
+  const urls: string[] = [];
+  const push = (value: unknown) => {
+    if (!value) return;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) urls.push(trimmed);
+      return;
+    }
+    if (typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      const candidate =
+        record.url ??
+        record.image_urls ??
+        record.file_url ??
+        record.media_url ??
+        record.uri ??
+        record.image;
+      if (typeof candidate === 'string' && candidate.trim()) {
+        urls.push(candidate.trim());
+      }
+    }
+  };
+
+  (Array.isArray(review.image_urls) ? review.image_urls : []).forEach(push);
+  (Array.isArray(review.attachments) ? review.attachments : []).forEach(push);
+  push(review.media_url);
+
+  // de-dupe while preserving order
+  return Array.from(new Set(urls));
+};
+
 export const collectReviewImageUrls = (reviews: any[] | null | undefined): string[] => {
   if (!Array.isArray(reviews)) {
     return [];
   }
 
-  return reviews.flatMap(item => {
-    const fromImageUrls = Array.isArray(item?.image_urls) ? item.image_urls : [];
-    const fromAttachments = Array.isArray(item?.attachments) ? item.attachments : [];
-    return [...fromImageUrls, ...fromAttachments].filter(Boolean);
-  });
+  return reviews.flatMap(normalizeReviewMediaUrls);
+};
+
+/** Ensure ReviewPage / gallery receive a flat `image_urls` array (doctor + product). */
+export const normalizeReviewsForDisplay = (reviews: any[] | null | undefined): any[] => {
+  if (!Array.isArray(reviews)) {
+    return [];
+  }
+
+  return reviews.map(review => ({
+    ...review,
+    image_urls: normalizeReviewMediaUrls(review),
+    patient_name:
+      review?.patient_name ||
+      review?.reviewer_name ||
+      review?.name ||
+      'Patient',
+    reviewer_name:
+      review?.reviewer_name ||
+      review?.patient_name ||
+      review?.name ||
+      'Patient',
+  }));
+};
+
+export const isReviewVideoUrl = (url?: string | null): boolean => {
+  if (!url) return false;
+  return /\.(mp4|mov|m4v|webm)(\?|$)/i.test(String(url));
 };
 
 export const getAverageRating = (reviews: any[] | null | undefined): number => {

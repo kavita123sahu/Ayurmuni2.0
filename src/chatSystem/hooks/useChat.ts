@@ -3,9 +3,23 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { chatService } from '../services/chatService';
 import { WebSocketService } from '../services/websocketService';
-import { Message, ChatState, SendMessagePayload, WebSocketMessage, Attachment, ChatApiError } from '../types/chat';
+import {
+  Message,
+  ChatState,
+  SendMessagePayload,
+  WebSocketMessage,
+  Attachment,
+  ChatApiError,
+} from '../types/chat';
 import { Utils } from '../../common/Utils';
-import { isChatSendEnabled, getChatDisabledReason, AppointmentChatLike, shouldSuppressChatError } from '../utils/chatAccessUtils';
+import {
+  isChatSendEnabled,
+  getChatDisabledReason,
+  AppointmentChatLike,
+  shouldSuppressChatError,
+} from '../utils/chatAccessUtils';
+
+const POLL_INTERVAL_MS = 1500;
 
 export function useChat(
   appointmentId: string,
@@ -26,7 +40,7 @@ export function useChat(
   });
 
   const wsRef = useRef<WebSocketService | null>(null);
-  const mountedRef = useRef<boolean>(true);
+  const mountedRef = useRef(true);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const loadMessagesRef = useRef<((markRead?: boolean | string) => Promise<void>) | null>(null);
   const hasLoadedOnceRef = useRef(false);
@@ -44,62 +58,99 @@ export function useChat(
     appointmentContext,
   );
 
-  // ✅ Load messages — sirf pehli baar full loading dikhao, uske baad silently refresh
+  const appendOrReplaceMessage = useCallback(
+    (prevMessages: Message[], incoming: Message): Message[] => {
+      const exists = prevMessages.some(m => m.id === incoming.id);
+      if (exists) {
+        return prevMessages.map(m => (m.id === incoming.id ? incoming : m));
+      }
+      const withoutMatchingTemp = prevMessages.filter(m => {
+        if (!m.id.startsWith('temp-')) return true;
+        return !(
+          m.sender_role === incoming.sender_role &&
+          (m.text || '') === (incoming.text || '')
+        );
+      });
+      return [...withoutMatchingTemp, incoming];
+    },
+    [],
+  );
+
   const loadMessages = useCallback(
     async (markRead?: boolean | string): Promise<void> => {
       if (!mountedRef.current) return;
 
       const isFirstLoad = !hasLoadedOnceRef.current;
       if (isFirstLoad) {
-        setState((prev) => ({ ...prev, isLoading: true }));
+        setState(prev => ({ ...prev, isLoading: true }));
       }
       try {
         const data = await chatService.getMessages(appointmentId, markRead);
-        if (mountedRef.current) {
-          hasLoadedOnceRef.current = true;
-          setState((prev) => {
-            const incoming = data.messages ?? [];
-            const keepExisting =
-              incoming.length === 0 &&
-              !!data.sendBlocked &&
-              prev.messages.length > 0;
+        if (!mountedRef.current) return;
+        hasLoadedOnceRef.current = true;
+        setState(prev => {
+          const incoming = data.messages ?? [];
+          const keepExisting =
+            incoming.length === 0 &&
+            !!data.sendBlocked &&
+            prev.messages.length > 0;
 
-            return {
-              ...prev,
-              messages: keepExisting ? prev.messages : incoming,
-              chatAccess: data.chat_access ?? prev.chatAccess,
-              followUpActive: data.chat_access?.follow_up_active ?? prev.followUpActive,
-              activePhase: data.chat_access?.active_phase ?? prev.activePhase,
-              isLoading: false,
-              error: null,
-            };
-          });
-        }
-      } catch (error: unknown) {
-        if (mountedRef.current) {
-          hasLoadedOnceRef.current = true;
-          const apiError = error as ChatApiError;
-          const isSendBlocked = apiError.httpStatus === 403;
+          let nextMessages = keepExisting ? prev.messages : incoming;
+          if (!keepExisting && prev.messages.some(m => m.id.startsWith('temp-'))) {
+            // Preserve temps until server echoes them
+            const temps = prev.messages.filter(m => m.id.startsWith('temp-'));
+            const server = incoming;
+            nextMessages = [...server];
+            temps.forEach(temp => {
+              const matched = server.some(
+                s =>
+                  s.sender_role === temp.sender_role &&
+                  (s.text || '') === (temp.text || ''),
+              );
+              if (!matched) nextMessages.push(temp);
+            });
+            nextMessages.sort(
+              (a, b) =>
+                new Date(a.created_at).getTime() -
+                new Date(b.created_at).getTime(),
+            );
+          }
 
-          setState((prev) => ({
+          return {
             ...prev,
+            messages: nextMessages,
+            chatAccess: data.chat_access ?? prev.chatAccess,
+            followUpActive:
+              data.chat_access?.follow_up_active ?? prev.followUpActive,
+            activePhase: data.chat_access?.active_phase ?? prev.activePhase,
             isLoading: false,
+            // HTTP path works — treat chat as connected so UI never sticks on Connecting
+            isConnected: true,
             error: null,
-            chatAccess: isSendBlocked
-              ? {
-                  ...(prev.chatAccess ?? {}),
-                  can_send: false,
-                  can_read: true,
-                } as ChatState['chatAccess']
-              : prev.chatAccess,
-          }));
-        }
+          };
+        });
+      } catch (error: unknown) {
+        if (!mountedRef.current) return;
+        hasLoadedOnceRef.current = true;
+        const apiError = error as ChatApiError;
+        const isSendBlocked = apiError.httpStatus === 403;
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: null,
+          chatAccess: isSendBlocked
+            ? ({
+                ...(prev.chatAccess ?? {}),
+                can_send: false,
+                can_read: true,
+              } as ChatState['chatAccess'])
+            : prev.chatAccess,
+        }));
       }
     },
-    [appointmentId]
+    [appointmentId],
   );
 
-  // Always fetch history first — independent of WebSocket.
   useEffect(() => {
     mountedRef.current = true;
     loadMessages();
@@ -112,38 +163,77 @@ export function useChat(
     loadMessagesRef.current = loadMessages;
   }, [loadMessages]);
 
-  // ✅ Error ko auto-clear karo taaki toast hamesha ke liye atka na rahe
+  // HTTP poll so peer messages arrive even if WS receive fails
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!mountedRef.current) return;
+      if (appStateRef.current !== 'active') return;
+      loadMessagesRef.current?.();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [appointmentId]);
+
   const showTransientError = useCallback((message: string) => {
-    if (!mountedRef.current || shouldSuppressChatError(message)) {
-      return;
-    }
-    setState((prev) => ({ ...prev, error: message }));
+    if (!mountedRef.current || shouldSuppressChatError(message)) return;
+    setState(prev => ({ ...prev, error: message }));
     if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     errorTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current) {
-        setState((prev) => ({ ...prev, error: null }));
+        setState(prev => ({ ...prev, error: null }));
       }
     }, 4000);
   }, []);
 
-  // ✅ Send message — attachments HAMESHA HTTP se jaate hain (WS sirf text handle karta hai)
+  const sendViaHttp = useCallback(
+    async (
+      tempId: string,
+      trimmedText: string,
+      attachments?: Attachment[],
+    ) => {
+      const hasAttachments = !!attachments && attachments.length > 0;
+      const payload: SendMessagePayload = {};
+      if (trimmedText) payload.text = trimmedText;
+      if (hasAttachments) payload.attachments = attachments;
+
+      const result = await chatService.sendMessage(appointmentId, payload);
+      if (!mountedRef.current) return;
+
+      setState(prev => ({
+        ...prev,
+        messages: prev.messages.map(m =>
+          m.id === tempId
+            ? result?.message ?? {
+                ...m,
+                id: `sent-${Date.now()}`,
+                _pending: false,
+              }
+            : m,
+        ),
+      }));
+    },
+    [appointmentId],
+  );
+
   const sendMessage = useCallback(
     async (text: string, attachments?: Attachment[]): Promise<void> => {
       const trimmedText = (text || '').trim();
       const hasAttachments = !!attachments && attachments.length > 0;
-
       if (!trimmedText && !hasAttachments) return;
 
-      if (!isChatSendEnabled(
-        chatAccessRef.current,
-        appointmentDateRef.current ?? undefined,
-        appointmentContextRef.current ?? undefined,
-      )) {
-        showTransientError(getChatDisabledReason(
+      if (
+        !isChatSendEnabled(
           chatAccessRef.current,
           appointmentDateRef.current ?? undefined,
           appointmentContextRef.current ?? undefined,
-        ));
+        )
+      ) {
+        showTransientError(
+          getChatDisabledReason(
+            chatAccessRef.current,
+            appointmentDateRef.current ?? undefined,
+            appointmentContextRef.current ?? undefined,
+          ),
+        );
         return;
       }
 
@@ -156,61 +246,58 @@ export function useChat(
         text: trimmedText,
         attachments: attachments || [],
         phase: 'live',
-        message_type: hasAttachments ? (attachments![0].file_type as any) : 'text',
+        message_type: hasAttachments
+          ? (attachments![0].file_type as any)
+          : 'text',
         is_seen: false,
         created_at: new Date().toISOString(),
+        _pending: true,
       };
 
-      // Optimistic UI — turant dikhao
-      setState((prev) => ({ ...prev, messages: [...prev.messages, tempMessage] }));
+      setState(prev => ({ ...prev, messages: [...prev.messages, tempMessage] }));
 
-      // Sirf pure-text message hi WS se try karo
+      // Always persist via HTTP so peer receives reliably.
+      // Also push on WS when open for realtime.
       if (!hasAttachments && wsRef.current?.isConnected() && trimmedText) {
-        const sent = wsRef.current.sendMessage(trimmedText);
-        if (sent) return; // real confirmation 'message' event se aayega (dedupe wahan)
+        wsRef.current.sendMessage(trimmedText);
       }
 
-      // Attachment ya WS-fail case — HTTP se bhejo
       try {
-        const payload: SendMessagePayload = {};
-        if (trimmedText) payload.text = trimmedText;
-        if (hasAttachments) payload.attachments = attachments;
-
-        const result = await chatService.sendMessage(appointmentId, payload);
-
-        setState((prev) => ({
-          ...prev,
-          messages: prev.messages.map((m) =>
-            m.id === tempId ? (result?.message ?? { ...m, id: `sent-${Date.now()}` }) : m
-          ),
-        }));
+        await sendViaHttp(tempId, trimmedText, attachments);
+        // Pull latest immediately, then burst-poll so peer messages arrive faster
+        // even when WebSocket realtime is down.
+        loadMessagesRef.current?.();
+        setTimeout(() => loadMessagesRef.current?.(), 400);
+        setTimeout(() => loadMessagesRef.current?.(), 1000);
+        setTimeout(() => loadMessagesRef.current?.(), 2000);
       } catch (error: unknown) {
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
-          messages: prev.messages.filter((m) => m.id !== tempId),
+          messages: prev.messages.filter(m => m.id !== tempId),
         }));
         const apiError = error as ChatApiError;
         if (apiError.httpStatus === 403) {
-          setState((prev) => ({
+          setState(prev => ({
             ...prev,
             chatAccess: prev.chatAccess
               ? { ...prev.chatAccess, can_send: false }
               : ({ can_send: false, can_read: true } as ChatState['chatAccess']),
           }));
-          showTransientError(getChatDisabledReason(
-            chatAccessRef.current,
-            appointmentDateRef.current ?? undefined,
-            appointmentContextRef.current ?? undefined,
-          ));
+          showTransientError(
+            getChatDisabledReason(
+              chatAccessRef.current,
+              appointmentDateRef.current ?? undefined,
+              appointmentContextRef.current ?? undefined,
+            ),
+          );
           return;
         }
         showTransientError('Unable to send message. Please try again.');
       }
     },
-    [appointmentId, role, showTransientError]
+    [appointmentId, role, showTransientError, sendViaHttp],
   );
 
-  // ✅ Mark as read — koi reload nahi, sirf WS ping ya silent HTTP
   const markAsRead = useCallback(
     async (messageIds?: string[]): Promise<void> => {
       if (!messageIds || messageIds.length === 0) return;
@@ -220,110 +307,112 @@ export function useChat(
         try {
           await chatService.getMessages(appointmentId, messageIds.join(','));
         } catch {
-          // silent fail — read receipt critical nahi hai
+          // silent
         }
       }
     },
-    [appointmentId]
+    [appointmentId],
   );
 
-  useEffect(() => {
-    const canSend = isChatSendEnabled(
-      chatAccessRef.current,
-      appointmentDateRef.current ?? undefined,
-      appointmentContextRef.current ?? undefined,
-    );
+  const attachSocketHandlers = useCallback(
+    (ws: WebSocketService) => {
+      ws.on('connected', () => {
+        if (mountedRef.current) {
+          setState(prev => ({ ...prev, isConnected: true, error: null }));
+        }
+      });
 
-    if (!canSend) {
-      if (wsRef.current) {
-        wsRef.current.disconnect();
-        wsRef.current = null;
-      }
-      if (mountedRef.current) {
-        setState((prev) => ({ ...prev, isConnected: false }));
-      }
+      ws.on('message', (data: WebSocketMessage) => {
+        if (!data.message || !mountedRef.current) return;
+        const incoming = data.message;
+        setState(prev => ({
+          ...prev,
+          messages: appendOrReplaceMessage(prev.messages, incoming),
+        }));
+      });
+
+      ws.on('read', data => {
+        if (!data.message_ids || !mountedRef.current) return;
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.map(msg =>
+            data.message_ids!.includes(msg.id)
+              ? { ...msg, is_seen: true, seen_at: new Date().toISOString() }
+              : msg,
+          ),
+        }));
+      });
+
+      ws.on('error', () => {
+        // HTTP poll covers gaps
+      });
+    },
+    [appendOrReplaceMessage],
+  );
+
+  const readAccessToken = useCallback(async () => {
+    const tokenRaw = await Utils.getData('_TOKEN');
+    if (!tokenRaw) return null;
+    return String(tokenRaw).replace(/^Bearer\s+/i, '');
+  }, []);
+
+  const ensureSocket = useCallback(async () => {
+    if (!mountedRef.current || !appointmentId) return;
+    if (wsRef.current?.isConnected()) {
+      setState(prev => ({ ...prev, isConnected: true }));
       return;
     }
 
-    const setupWebSocket = async (): Promise<void> => {
-      try {
-        const token = await Utils.getData('_TOKEN');
-        if (!token || !appointmentId || !mountedRef.current) return;
+    const token = await readAccessToken();
+    if (!token || !mountedRef.current) return;
 
-        if (wsRef.current) {
-          return;
+    if (wsRef.current) {
+      wsRef.current.updateToken(token);
+      await wsRef.current.connect();
+      return;
+    }
+
+    const ws = new WebSocketService(
+      appointmentId,
+      token,
+      () => {
+        if (mountedRef.current) {
+          setState(prev => ({ ...prev, isConnected: true, error: null }));
+          loadMessagesRef.current?.();
         }
-
-        const ws = new WebSocketService(
-          appointmentId,
-          token,
-          () => {
-            if (mountedRef.current) {
-              setState((prev) => ({ ...prev, isConnected: true, error: null }));
-            }
-          },
-          () => {
-            if (mountedRef.current) {
-              setState((prev) => ({ ...prev, isConnected: false }));
-            }
-          }
-        );
-
-        ws.on('message', (data: WebSocketMessage) => {
-          if (data.message && mountedRef.current) {
-            const incoming = data.message;
-            setState((prev) => {
-              const exists = prev.messages.some((m) => m.id === incoming.id);
-              if (exists) return prev;
-              const withoutMatchingTemp = prev.messages.filter((m) => {
-                if (!m.id.startsWith('temp-')) return true;
-                const sameSender = m.sender_role === incoming.sender_role;
-                const sameText = (m.text || '') === (incoming.text || '');
-                return !(sameSender && sameText);
-              });
-              return { ...prev, messages: [...withoutMatchingTemp, incoming] };
-            });
-          }
-        });
-
-        ws.on('read', (data) => {
-          if (data.message_ids && mountedRef.current) {
-            setState((prev) => ({
-              ...prev,
-              messages: prev.messages.map((msg) =>
-                data.message_ids!.includes(msg.id)
-                  ? { ...msg, is_seen: true, seen_at: new Date().toISOString() }
-                  : msg
-              ),
-            }));
-          }
-        });
-
-        ws.on('error', () => {
-          // Doctor offline / WS unavailable — history still loads via HTTP; no user-facing error.
-        });
-
-        ws.connect();
-        wsRef.current = ws;
-      } catch (error) {
-        console.error('❌ Setup error:', error);
-      }
-    };
-
-    setupWebSocket();
-
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      const isComingToForeground =
-        appStateRef.current.match(/inactive|background/) && nextAppState === 'active';
-
-      if (isComingToForeground) {
-        loadMessagesRef.current?.();
-        if (wsRef.current && !wsRef.current.isConnected()) {
-          wsRef.current.connect();
+      },
+      () => {
+        // Keep isConnected true — HTTP + polling still deliver messages.
+        // Only realtime WS dropped.
+        if (mountedRef.current) {
+          setState(prev => ({ ...prev, isConnected: true }));
         }
-      }
-      appStateRef.current = nextAppState;
-    });
+      },
+      readAccessToken,
+    );
+    attachSocketHandlers(ws);
+    await ws.connect();
+    wsRef.current = ws;
+  }, [appointmentId, attachSocketHandlers, readAccessToken]);
+
+  // Stable WS lifecycle — do not depend on chatAccess object identity
+  useEffect(() => {
+    ensureSocket();
+
+    const subscription = AppState.addEventListener(
+      'change',
+      (nextAppState: AppStateStatus) => {
+        const isComingToForeground =
+          !!appStateRef.current.match(/inactive|background/) &&
+          nextAppState === 'active';
+
+        if (isComingToForeground) {
+          loadMessagesRef.current?.();
+          ensureSocket();
+        }
+        appStateRef.current = nextAppState;
+      },
+    );
 
     return () => {
       if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
@@ -333,13 +422,7 @@ export function useChat(
         wsRef.current = null;
       }
     };
-  }, [
-    appointmentId,
-    appointmentDate,
-    appointmentContext,
-    state.chatAccess,
-    showTransientError,
-  ]);
+  }, [appointmentId, ensureSocket]);
 
   return {
     ...state,

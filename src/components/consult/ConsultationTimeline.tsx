@@ -7,17 +7,22 @@ import {
 } from 'react-native';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../TablerIcon';
+import {
+  formatSlipDate,
+  formatSlipTimeRange,
+  getConsultationTitle,
+  getPatientMeta,
+  hasPrescribedData,
+} from '../../utils/doctorSlipUtils';
 
 const COLORS = {
   primary: '#0D614E',
-  secondary: '#6B7280',
+  secondary: '#64748B',
   white: '#FFFFFF',
-  border: '#E5E7EB',
-  greenBg: '#E8F7EF',
-  green: Colors.primaryColor,
-  blueBg: '#EEF4FF',
-  blue: '#3B82F6',
-  text: '#111827',
+  border: '#E8EEEB',
+  text: '#0F172A',
+  soft: '#F3F7F5',
+  accentSoft: '#E8F3EF',
 };
 
 const Fonts = {
@@ -39,7 +44,7 @@ export const ConsultationTimeline = ({
   navigation,
   onPressItem,
 }: ConsultationTimelineProps) => {
-  const handlePress = (item: any) => {
+  const openPrescription = (item: any) => {
     if (onPressItem) {
       onPressItem(item);
       return;
@@ -50,80 +55,96 @@ export const ConsultationTimeline = ({
     });
   };
 
-  const renderConsultationCard = (item: any) => {
-    const isGreen = item.appointment_status === 'completed';
-    const isBlue = item.appointment_status === 'confirmed';
+  const renderConsultationCard = (item: any, index: number) => {
+    const canViewPrescription = hasPrescribedData(item);
+    const patientMeta = getPatientMeta(item?.patient);
+    const timeRange = formatSlipTimeRange(item?.start_time, item?.end_time);
+    const fee =
+      item?.payment?.consultation_fee ?? item?.payment?.amount ?? null;
+    const concern = item?.concern?.trim?.() || '';
+    const symptom = item?.prescription?.symptom_description?.trim?.() || '';
+    const summary = concern || symptom;
 
     return (
-      <TouchableOpacity
-        style={styles.consultationCard}
-        activeOpacity={0.85}
-        onPress={() => handlePress(item)}
-      >
-        <View style={styles.consultationTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.consultDate}>{item?.appointment_date}</Text>
-            <Text style={styles.consultTitle} numberOfLines={2}>
-              {item?.prescription?.diagnosis_advice || 'Consultation'}
-            </Text>
+      <View style={styles.consultationCard}>
+        <View style={styles.cardAccent} />
+
+        <View style={styles.cardBody}>
+          <View style={styles.topRow}>
+            <View style={styles.datePill}>
+              <TablerIcon name="calendar" size={13} color={COLORS.primary} />
+              <Text style={styles.datePillText}>
+                {formatSlipDate(item?.appointment_date || item?.date)}
+              </Text>
+            </View>
+            {!!item?.consultation_type && (
+              <Text style={styles.typeChip}>
+                {String(item.consultation_type)}
+              </Text>
+            )}
           </View>
 
-          <View
-            style={[
-              styles.progressBox,
-              {
-                backgroundColor: isGreen
-                  ? COLORS.greenBg
-                  : isBlue
-                    ? COLORS.blueBg
-                    : '#F3F4F6',
-              },
-            ]}
-          >
-            {/* <Text
-              style={[
-                styles.progressText,
-                {
-                  color: isGreen
-                    ? COLORS.green
-                    : isBlue
-                      ? COLORS.blue
-                      : '#9CA3AF',
-                },
-              ]}
-            >
-              {item.progress ?? '—'}
-            </Text> */}
-            <Text
-              style={[
-                styles.improvementText,
-                {
-                  color: isGreen
-                    ? COLORS.green
-                    : isBlue
-                      ? COLORS.blue
-                      : '#9CA3AF',
-                },
-              ]}
-            >
-              {isGreen ? 'completed' : 'in-progress'}
-            </Text>
-          </View>
-        </View>
-
-        {!!item?.prescription?.symptom_description && (
-          <Text style={styles.consultDesc} numberOfLines={3}>
-            {item.prescription.symptom_description}
+          <Text style={styles.consultTitle} numberOfLines={2}>
+            {getConsultationTitle(item)}
           </Text>
-        )}
 
-        <View style={styles.bottomRow}>
-          <Text style={styles.viewText}>View Prescription</Text>
-          <View style={styles.arrowButton}>
-            <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
-          </View>
+          <Text style={styles.consultMeta}>
+            {[
+              timeRange !== '—' ? timeRange : '',
+              item?.duration_minutes ? `${item.duration_minutes} min` : '',
+            ]
+              .filter(Boolean)
+              .join('  ·  ')}
+          </Text>
+
+          {!!item?.patient?.patient_name && (
+            <View style={styles.patientRow}>
+              <View style={styles.patientAvatar}>
+                <Text style={styles.patientAvatarText}>
+                  {String(item.patient.patient_name).charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.patientName} numberOfLines={1}>
+                  {item.patient.patient_name}
+                </Text>
+                {!!patientMeta && (
+                  <Text style={styles.patientMeta} numberOfLines={1}>
+                    {patientMeta}
+                  </Text>
+                )}
+              </View>
+              {fee != null && (
+                <Text style={styles.feeText}>
+                  ₹{Number(fee).toLocaleString('en-IN')}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {!!summary && (
+            <Text style={styles.consultDesc} numberOfLines={2}>
+              {summary}
+            </Text>
+          )}
+
+          {canViewPrescription ? (
+            <TouchableOpacity
+              style={styles.ctaBtn}
+              activeOpacity={0.88}
+              onPress={() => openPrescription(item)}
+            >
+              <TablerIcon name="prescription" size={16} color="#FFFFFF" />
+              <Text style={styles.ctaText}>View Prescription</Text>
+              <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.noRxHint}>
+              Prescription not available for this visit
+            </Text>
+          )}
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -132,19 +153,14 @@ export const ConsultationTimeline = ({
   }
 
   return (
-    <View style={styles.timelineWrapper}>
-      <View style={styles.trackLine} />
+    <View style={styles.listWrap}>
       {consultations.map((item, index) => {
         if (!item) return null;
-        const isLatest = index === 0;
-
         return (
           <View
             key={item.consultation_id ?? item.appointment_id ?? index}
-            style={styles.timelineItem}
           >
-            <View style={[styles.dot, isLatest && styles.dotActive]} />
-            {renderConsultationCard(item)}
+            {renderConsultationCard(item, index)}
           </View>
         );
       })}
@@ -199,106 +215,138 @@ export const StitchedRegimenList = ({ items }: { items: any[] }) => {
 };
 
 const styles = StyleSheet.create({
-  timelineWrapper: {
-    position: 'relative',
-    paddingLeft: 28,
-  },
-  trackLine: {
-    position: 'absolute',
-    left: 7,
-    top: 10,
-    bottom: 10,
-    width: 1.5,
-    borderStyle: 'dashed',
-    borderLeftWidth: 1.5,
-    borderColor: COLORS.border,
-  },
-  timelineItem: {
-    position: 'relative',
-    marginBottom: 14,
-  },
-  dot: {
-    position: 'absolute',
-    left: -28,
-    top: 16,
-    width: 15,
-    height: 15,
-    borderRadius: 12,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#D1D5DB',
-    zIndex: 1,
-  },
-  dotActive: {
-    backgroundColor: Colors.primaryColor,
-    borderColor: Colors.secondaryColor,
-  },
-  consultationCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  consultationTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  listWrap: {
     gap: 12,
   },
-  consultDate: {
-    fontSize: 12,
-    color: COLORS.secondary,
-    fontFamily: Fonts.medium,
+  consultationCard: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
   },
-  consultTitle: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontFamily: Fonts.semiBold,
-    marginTop: 4,
+  cardAccent: {
+    width: 4,
+    backgroundColor: COLORS.primary,
   },
-  progressBox: {
-    minWidth: 74,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
+  cardBody: {
+    flex: 1,
+    padding: 14,
   },
-  progressText: {
-    fontSize: 16,
-    fontFamily: Fonts.semiBold,
-  },
-  improvementText: {
-    fontSize: 10,
-    fontFamily: Fonts.medium,
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-  consultDesc: {
-    marginTop: 14,
-    fontSize: 13,
-    lineHeight: 22,
-    color: COLORS.secondary,
-    fontFamily: Fonts.regular,
-  },
-  bottomRow: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
+    gap: 8,
   },
-  viewText: {
+  datePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.accentSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  datePillText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontFamily: Fonts.medium,
+  },
+  typeChip: {
+    fontSize: 11,
+    color: COLORS.secondary,
+    fontFamily: Fonts.medium,
+    textTransform: 'capitalize',
+    backgroundColor: COLORS.soft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  consultTitle: {
+    marginTop: 10,
+    fontSize: 15,
+    lineHeight: 22,
+    color: COLORS.text,
+    fontFamily: Fonts.semiBold,
+  },
+  consultMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: COLORS.secondary,
+    fontFamily: Fonts.regular,
+  },
+  patientRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.soft,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  patientAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  patientAvatarText: {
     fontSize: 13,
     color: COLORS.primary,
     fontFamily: Fonts.semiBold,
   },
-  arrowButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  patientName: {
+    fontSize: 13,
+    color: COLORS.text,
+    fontFamily: Fonts.semiBold,
+  },
+  patientMeta: {
+    marginTop: 1,
+    fontSize: 11,
+    color: COLORS.secondary,
+    fontFamily: Fonts.regular,
+    textTransform: 'capitalize',
+  },
+  feeText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontFamily: Fonts.semiBold,
+  },
+  consultDesc: {
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 19,
+    color: COLORS.secondary,
+    fontFamily: Fonts.regular,
+  },
+  ctaBtn: {
+    marginTop: 12,
+    minHeight: 42,
+    borderRadius: 12,
     backgroundColor: COLORS.primary,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  ctaText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontFamily: Fonts.semiBold,
+  },
+  noRxHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.regular,
   },
   medicineCard: {
     marginTop: 12,

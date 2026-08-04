@@ -11,7 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {
   launchCamera,
@@ -61,22 +61,16 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
     appointmentId = '',
     variantId = '',
     initialRating = 0,
-    initialReview = '',
-    initialImages = [],
-    isEdit = false,
   } = params;
 
+  // One review only — ignore edit/PATCH params from older navigation paths
+  const isEdit = false;
+
+  const insets = useSafeAreaInsets();
   const { loading, submitReview } = useCreateReview();
   const [rating, setRating] = useState(Math.max(0, Math.min(5, initialRating)));
-  const [review, setReview] = useState(initialReview);
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>(
-    initialImages.map((uri, index) => ({
-      id: `existing-${index}`,
-      uri,
-      type: uri.includes('.mp4') || uri.includes('.mov') ? 'video' : 'image',
-      uploadedUrl: uri,
-    })),
-  );
+  const [review, setReview] = useState('');
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [uploading, setUploading] = useState(false);
 
   const lookupId = entityType === 'product' ? variantId : appointmentId;
@@ -189,12 +183,13 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         appointmentId: lookupId,
         isEdit,
       });
+      console.log("'reviewPayloadreviewPayloadreviewPayload", reviewPayload)
 
       const response = await submitReview({
         entityType,
         appointmentId: entityType === 'doctor' ? lookupId : undefined,
         variantId: entityType === 'product' ? lookupId : undefined,
-        method: isEdit ? 'PATCH' : 'POST',
+        method: 'POST',
         reviewData: reviewPayload,
       });
       console.log("reposneeeeeeeeeeeeeeee", response);
@@ -322,7 +317,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <TouchableOpacity
           style={[styles.submitBtn, isBusy && styles.submitBtnDisabled]}
           onPress={handleSubmit}
@@ -333,7 +328,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.submitText}>
-              {isEdit ? 'Update Review' : 'Submit Review'}
+              Submit Review
             </Text>
           )}
         </TouchableOpacity>
@@ -517,7 +512,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 18 : 14,
+    // paddingBottom: Platform.OS === 'ios' ? 18 : 14,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E8EFEC',

@@ -235,7 +235,7 @@ const Checkout: React.FC = (props: any) => {
     );
 
 
-    console.log("cartItemscartItems",cartItems)
+    console.log("cartItemscartItems", cartItems)
 
 
     const shippingFee: number = 0;
@@ -336,18 +336,10 @@ const Checkout: React.FC = (props: any) => {
     const handleOnline = async () => {
 
         await payOnline({
-
             cartItems,
-
             address: defaultAddress,
-
-            
-           payment_method : "upi",
-
             customerInfo: customerData ?? {},
-
             shippingFee,
-
             codCharges: codChargeDefault,
 
             onSuccess: (orderResult, orderedCartItems) => {
@@ -546,7 +538,7 @@ const Checkout: React.FC = (props: any) => {
 
 
 
-                <Text style={styles.sectionTitle}>Delivery Method</Text>
+                {/* <Text style={styles.sectionTitle}>Delivery Method</Text>
 
 
                 <Option
@@ -574,7 +566,7 @@ const Checkout: React.FC = (props: any) => {
 
                     onPress={() => setDeliveryMethod('express')}
 
-                />
+                /> */}
 
                 <Text style={styles.sectionTitle}>Payment Method</Text>
 

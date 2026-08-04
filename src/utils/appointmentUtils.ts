@@ -183,6 +183,9 @@ export function normalizeAppointmentListItem(item: any) {
     item?.time ??
     '';
 
+  const endTime = appointment?.end_time || item?.end_time || null;
+  const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
+
   return {
     consultation_id: ids.consultationId || ids.appointmentId,
     appointment_id: ids.appointmentId || ids.consultationId,
@@ -193,6 +196,8 @@ export function normalizeAppointmentListItem(item: any) {
       : specialty,
     date,
     time,
+    endTime,
+    endTimeLabel,
     status: appointment?.appointment_status ?? item?.appointment_status ?? item?.status,
     call_status:
       appointment?.call_status ??
@@ -364,12 +369,13 @@ export const getConsultationScheduleLabels = (item: any) => {
     item?.appointment_status ||
     item?.appointment?.appointment_status ||
     '';
+const endTime = item?.end_time || item?.appointment?.end_time || null;
 
   const weekday = formatAppointmentWeekday(dateRaw);
   const dayLabel = formatAppointmentDayLabel(dateRaw);
   const dateLabel = formatAppointmentDateFull(dateRaw);
   const timeLabel = formatAppointmentTimeLabel(timeRaw);
-
+  const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
   return {
     dateRaw,
     timeRaw,
@@ -378,6 +384,7 @@ export const getConsultationScheduleLabels = (item: any) => {
     dayLabel,
     dateLabel,
     timeLabel,
+    endTimeLabel,
     /** Compact line: Today · 31 Jul 2026 · 10:30 AM */
     scheduleLine: [dayLabel || weekday, dateLabel, timeLabel]
       .filter(Boolean)

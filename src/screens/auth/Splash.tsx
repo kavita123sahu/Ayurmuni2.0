@@ -8,6 +8,11 @@ import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICES from '../../services/AuthService';
 import LinearGradient from 'react-native-linear-gradient';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
+import {
+  isGuestUser,
+  markAsGuest,
+  syncAccessFromProfile,
+} from '../../services/guestAuth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -201,42 +206,45 @@ const Splash = (props: any) => {
       }
 
       const result: any = await _PROFILE_SERVICES.user_profile();
-
       console.log('PROFILE RESULT =>', result);
 
-      const isCustomer = result?.data?.user_roles?.includes('customer');
-
-      console.log('isCustomerisCustomer', isCustomer);
-
-      if (!isCustomer) {
-        props.navigation.replace('Welcome');
-        // props.navigation.replace('AuthStack', {
-        //   screen: 'Login',
-        // });
-        return;
+      if (result?.data) {
+        await Utils.storeData('_USER_INFO', result.data);
       }
 
-      if (!result?.data?.is_onboarded && !result?.data?.is_skipped) {
-        resetRootToHomeStack(props.navigation, 'AssessmentType');
-        return;
-      }
-
-      if (result?.data?.is_skipped) {
+      // Server says onboarded → full user + Home
+      if (result?.data?.is_onboarded) {
+        await syncAccessFromProfile(result.data);
         resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
         return;
       }
 
-      if (!result?.success) {
-        showSuccessToast(
-          result?.message || 'Something went wrong',
-          'error',
-        );
+      // Guest browse session (post-OTP choice) → Home, never force assessment
+      if (await isGuestUser()) {
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
         return;
       }
 
-      console.log('PROFILE DATA =>', result);
+      const isCustomer = result?.data?.user_roles?.includes('customer');
 
-      await Utils.storeData('_USER_INFO', result?.data);
+      if (!isCustomer) {
+        await markAsGuest();
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
+        return;
+      }
+
+      // Skipped assessment earlier → Home as guest (actions still gated)
+      if (result?.data?.is_skipped) {
+        await markAsGuest();
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
+        return;
+      }
+
+      // Not guest flag + customer + incomplete → resume assessment
+      if (!result?.data?.is_onboarded) {
+        resetRootToHomeStack(props.navigation, 'AssessmentType');
+        return;
+      }
 
       resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     } catch (error: any) {
@@ -249,7 +257,9 @@ const Splash = (props: any) => {
         return;
       }
 
-      showSuccessToast('Network Error', 'error');
+      // Soft fallback: token present → guest Home
+      await markAsGuest();
+      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     }
   };
 

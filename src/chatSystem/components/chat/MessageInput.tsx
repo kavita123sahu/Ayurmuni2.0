@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Platform,
   Keyboard,
-  Text,
   Image,
 } from 'react-native';
 import { launchImageLibrary, Asset } from 'react-native-image-picker';
@@ -28,7 +27,7 @@ const THEME = '#0D614E';
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
-  isConnected,
+  isConnected: _isRealtimeConnected = true,
   isDisabled = false,
   placeholder = 'Type a message...',
 }) => {
@@ -152,12 +151,7 @@ const insets = useSafeAreaInsets();
         </TouchableOpacity>
       </View>
 
-      {!isDisabled && !isConnected && (
-        <View style={styles.statusBar}>
-          <ActivityIndicator size="small" color="#D97706" />
-          <Text style={styles.statusText}>Connecting...</Text>
-        </View>
-      )}
+      {/* Chat works over HTTP even when WS is down — don't block UI with Connecting */}
     </View>
   );
 };

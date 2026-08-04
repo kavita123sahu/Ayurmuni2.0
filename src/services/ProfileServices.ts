@@ -115,7 +115,7 @@ export const createReview = async ({
   appointmentId,
   variantId,
   reviewData,
-  method = 'POST',
+  method: _method = 'POST',
 }: {
   entityType: 'doctor' | 'product' | string;
   appointmentId?: string;
@@ -141,8 +141,9 @@ export const createReview = async ({
       ...(reviewData.tags?.length ? { tags: reviewData.tags } : {}),
     };
 
+    // One review per entity — never PATCH/edit from the app
     return await apiClient(endpoint, {
-      method,
+      method: 'POST',
       body: JSON.stringify(payload),
     });
   } catch (error) {

@@ -8,6 +8,8 @@ import {
 } from "@react-navigation/native";
 import Login from "../screens/auth/Login";
 import OtpVerify from "../screens/auth/OtpVerify";
+import AccessModeScreen from "../screens/auth/AccessModeScreen";
+import CompleteDetailsScreen from "../screens/auth/CompleteDetailsScreen";
 import Splash from "../screens/auth/Splash";
 import HomePage from "../screens/home/HomePage";
 import ProfilePage from "../screens/profile/ProfilePage";
@@ -84,7 +86,6 @@ import PrakritiProfile from "../screens/auth/PrakritiProfile";
 import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
 import EditProfile from "../screens/profile/EditProfile";
 import RazorpayScreen from "../screens/payment/RazorpayScreen";
-import ProductRazorpayScreen from "../screens/payment/ProductRazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
 import ConsultHome from "../screens/consult/ConsultHome";
@@ -100,7 +101,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
 import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
 import ChatScreen from "../screens/profile/ChatScreen";
-import ConfirmScreen from "../screens/products/ConfirmScreen";
+// import ConfirmScreen from "../screens/products/ConfirmScreen";
 
 
 const TabStack = () => {
@@ -115,6 +116,11 @@ const TabStack = () => {
       >
         <Tab.Screen name="Home" component={HomePage} />
         <Tab.Screen name="Products" component={ProductsScreen} />
+        <Tab.Screen
+          name="MyCart"
+          component={MyCart}
+          options={{ tabBarLabel: 'Cart' }}
+        />
         <Tab.Screen name="Medicine" component={MedicineScreen} />
         <Tab.Screen name="Profile" component={ProfilePage} />
       </Tab.Navigator>
@@ -128,78 +134,88 @@ const HomeStackNavigator = () => (
     screenOptions={({ route }) => getStackScreenOptions(route.name)}
   >
     <Stack.Screen name="TabStack" component={TabStack} />
-      <Stack.Screen name="OrderHistory" component={OrderHistory} />
-      <Stack.Screen name="OrderDetailsScreen" component={OrderDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Appointments" component={AppointmentScreen} />
-      <Stack.Screen name="PatientDetails" component={PatientDetails} />
-      <Stack.Screen name="PatientFAQ" component={PatientFAQ} />
-      <Stack.Screen name="Onboarding" component={Onboarding} />
-      <Stack.Screen name="TermsCondition" component={TermsCondition} />
-      <Stack.Screen name="TopCategories" component={TopCategories} />
-      <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} />
-      <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
-      <Stack.Screen name="ProductDetails" component={ProductDetails} />
-      <Stack.Screen name="ReviewPage" component={ReviewPage} />
-      <Stack.Screen name="ShareExperienceScreen" component={ShareExperienceScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MyCart" component={MyCart} />
-      <Stack.Screen name="Checkout" component={Checkout} />
-      <Stack.Screen name="MedicalRecords" component={MedicalRecords} />
-      <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} />
-      <Stack.Screen name="MedicineScreen" component={MedicineScreen} />
-      <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
-      <Stack.Screen name="FAQScreen" component={FAQScreen} />
-      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} />
-      <Stack.Screen name="TransactionDetailsScreen" component={TransactionDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
-      <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
-      <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MedicineCheckOut" component={MedicineCheckOut} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="OrderStatus" component={OrderStatus} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Wishlist" component={Wishlist} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MedicalHistory" component={MedicalHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AssessmentType" component={AssessmentType} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="Mentor" component={MentorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="YogaScreen" component={YogaScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="DietScreen" component={DietScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MealDetails" component={MealDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="WeeklyMeal" component={WeeklyMeal} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="YogaSession" component={YogaSession} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MentorCheckout" component={MentorCheckout} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ConsultMentor" component={ConsultMentor} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MentorOrder" component={MentorOrder} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="History" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PrakritiProfile" component={PrakritiProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="RefundScreen" component={RefundScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ExchangeScreen" component={ExchangeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MedicalReceipt" component={MedicalReceipt} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ConsultHistory" component={ConsultHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AllDoctors" component={AllDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="DoctorSlot" component={DoctorSlot} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="DoctorProfile" component={DoctorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="BookingConfrimScreen" component={BookingConfrimScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AddCalendar" component={AddCalendar} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="DoctorConsultationHistory" component={DoctorConsultationHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ProductRazorpayScreen" component={ProductRazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ConsultScreen" component={ConsultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="ConfirmScreen" component={ConfirmScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="OrderHistory" component={OrderHistory} />
+    <Stack.Screen name="OrderDetailsScreen" component={OrderDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="Appointments" component={AppointmentScreen} />
+    <Stack.Screen name="PatientDetails" component={PatientDetails} />
+    <Stack.Screen name="PatientFAQ" component={PatientFAQ} />
+    <Stack.Screen name="Onboarding" component={Onboarding} />
+    <Stack.Screen
+      name="AccessMode"
+      component={AccessModeScreen}
+      options={{ headerShown: false, animation: 'slide_from_right' }}
+    />
+    <Stack.Screen
+      name="CompleteDetails"
+      component={CompleteDetailsScreen}
+      options={{ headerShown: false, animation: 'slide_from_bottom' }}
+    />
+    <Stack.Screen name="TermsCondition" component={TermsCondition} />
+    <Stack.Screen name="TopCategories" component={TopCategories} />
+    <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} />
+    <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
+    <Stack.Screen name="ProductDetails" component={ProductDetails} />
+    <Stack.Screen name="ReviewPage" component={ReviewPage} />
+    <Stack.Screen name="ShareExperienceScreen" component={ShareExperienceScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MyCart" component={MyCart} />
+    <Stack.Screen name="Checkout" component={Checkout} />
+    <Stack.Screen name="MedicalRecords" component={MedicalRecords} />
+    <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} />
+    <Stack.Screen name="MedicineScreen" component={MedicineScreen} />
+    <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
+    <Stack.Screen name="FAQScreen" component={FAQScreen} />
+    <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+    <Stack.Screen name="Settings" component={SettingsScreen} />
+    <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} />
+    <Stack.Screen name="TransactionDetailsScreen" component={TransactionDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
+    <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
+    <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MedicineCheckOut" component={MedicineCheckOut} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="OrderStatus" component={OrderStatus} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="Wishlist" component={Wishlist} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MedicalHistory" component={MedicalHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="AssessmentType" component={AssessmentType} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="Mentor" component={MentorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="YogaScreen" component={YogaScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="DietScreen" component={DietScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MealDetails" component={MealDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="WeeklyMeal" component={WeeklyMeal} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="YogaSession" component={YogaSession} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MentorCheckout" component={MentorCheckout} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ConsultMentor" component={ConsultMentor} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MentorOrder" component={MentorOrder} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="History" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="PrakritiProfile" component={PrakritiProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="RefundScreen" component={RefundScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ExchangeScreen" component={ExchangeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MedicalReceipt" component={MedicalReceipt} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ConsultHistory" component={ConsultHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="AllDoctors" component={AllDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="DoctorSlot" component={DoctorSlot} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="DoctorProfile" component={DoctorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="BookingConfrimScreen" component={BookingConfrimScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="AddCalendar" component={AddCalendar} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="DoctorConsultationHistory" component={DoctorConsultationHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    {/* <Stack.Screen name="ProductRazorpayScreen" component={ProductRazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
+    <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ConsultScreen" component={ConsultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    {/* <Stack.Screen name="ConfirmScreen" component={ConfirmScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
   </Stack.Navigator>
 );
 

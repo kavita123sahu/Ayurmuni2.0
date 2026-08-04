@@ -14,6 +14,8 @@ import { Fonts } from '../common/Fonts';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showSuccessToast } from '../config/Key';
 import TablerIcon, { TablerIconName } from '../components/TablerIcon';
+import { markAsGuest } from '../services/guestAuth';
+import { resetRootToHomeStack } from '../navigation/navigationUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -77,7 +79,9 @@ const AssessmentType = (props: any) => {
         return;
       }
 
-      props.navigation.replace('HomeStack', { screen: 'Home' });
+      // Skip keeps guest access — browse OK, actions still need full profile/prakriti
+      await markAsGuest();
+      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     } catch {
       showSuccessToast('Network Error', 'error');
     }

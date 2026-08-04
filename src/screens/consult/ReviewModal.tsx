@@ -61,6 +61,8 @@ const ReviewModal = ({
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
+    const insets = Platform.OS === 'ios' ? { bottom: 0 } : { bottom: 0 }; // Placeholder for safe area insets
+
     const toggleTag = (tag: string) => {
         setSelectedTags(prev =>
             prev.includes(tag)
@@ -249,7 +251,7 @@ const ReviewModal = ({
                             </ScrollView>
 
                         </KeyboardAvoidingView>
-                        <View style={styles.footer}>
+                        <View style={[styles.footer,{paddingBottom: Math.max(insets.bottom, 10)}]}>
                             <TouchableOpacity
                                 activeOpacity={0.8}
                                 disabled={

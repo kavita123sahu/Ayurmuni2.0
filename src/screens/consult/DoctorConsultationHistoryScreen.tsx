@@ -15,16 +15,18 @@ import {
   ConsultationTimeline,
   StitchedRegimenList,
 } from '../../components/consult/ConsultationTimeline';
-import { PatientDetails } from './DoctorSlip';
+import { DoctorCityHeader } from './DoctorSlip';
+import { getDoctorLocationLine } from '../../utils/doctorSlipUtils';
 
 const DoctorConsultationHistoryScreen = ({ route, navigation }: any) => {
   const doctorID = route?.params?.doctorID;
   const doctorName = route?.params?.doctorName;
 
-  const { loading, consultations, regimenData, doctor, slipData } =
+  const { loading, consultations, regimenData, doctor } =
     useDoctorConsultationSlip(doctorID);
 
   const title = doctorName || doctor?.doctor_name || 'Consultation History';
+  const cityLine = getDoctorLocationLine(doctor);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -32,7 +34,7 @@ const DoctorConsultationHistoryScreen = ({ route, navigation }: any) => {
 
       <Header
         title={title}
-        subtitle="All consultations with this doctor"
+        subtitle={cityLine || 'All visits with this doctor'}
         onBack={() => navigation.goBack()}
       />
 
@@ -45,14 +47,10 @@ const DoctorConsultationHistoryScreen = ({ route, navigation }: any) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {!!consultations.length && (
-            <PatientDetails
-              data={consultations[0]}
-              doctor={doctor ?? slipData}
-            />
-          )}
+          {/* After View all: only city/location under doctor name — no full doctor detail card */}
+          <DoctorCityHeader doctor={doctor} />
 
-          <SectionHeader title="Consultation History" />
+          <SectionHeader title="All consultations" />
 
           {consultations.length > 0 ? (
             <ConsultationTimeline
@@ -62,13 +60,15 @@ const DoctorConsultationHistoryScreen = ({ route, navigation }: any) => {
             />
           ) : (
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyText}>No consultations found for this doctor.</Text>
+              <Text style={styles.emptyText}>
+                No consultations found for this doctor.
+              </Text>
             </View>
           )}
 
           {regimenData.length > 0 && (
             <>
-              <SectionHeader title="Current Stitched Regimen" />
+              <SectionHeader title="Medicines from visits" />
               <StitchedRegimenList items={regimenData} />
             </>
           )}
@@ -101,5 +101,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#6B7280',
+    fontFamily: 'Poppins-Regular',
   },
 });

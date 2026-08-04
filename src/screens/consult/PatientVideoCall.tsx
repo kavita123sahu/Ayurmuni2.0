@@ -634,6 +634,23 @@ const PatientVideoCallScreen: React.FC = () => {
             </Text>
           </View>
         </View>
+        {isJoined ? (
+          <TouchableOpacity
+            style={styles.minimizeBtn}
+            onPress={() => {
+              minimizeCall();
+              requestAnimationFrame(() => {
+                // @ts-ignore
+                if (navigation.canGoBack?.()) {
+                  navigation.goBack();
+                }
+              });
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="picture-in-picture-alt" size={22} color="#fff" />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {errorMsg && (
@@ -810,6 +827,15 @@ const styles = StyleSheet.create({
   headerStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   headerStatusText: { color: '#9a9aa5', fontSize: 12.5 },
+  minimizeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#2a2a33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   errorBanner: {
     backgroundColor: '#d32f2f',
     padding: 10,

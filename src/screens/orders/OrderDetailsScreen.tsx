@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,6 +28,7 @@ import {
 import { getOrders } from '../../services/OrderService';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { resolveProductImageUri } from '../../utils/imageUtils';
+import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 
 type OrderItemRow = {
   id: string;
@@ -87,12 +89,38 @@ const DetailRow = ({
 
 const OrderDetailsScreen = ({ route, navigation }: any) => {
   const initialOrder = route?.params?.order;
+  const fromOrderSuccess = Boolean(route?.params?.fromOrderSuccess);
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
 
   const [order, setOrder] = useState<any>(initialOrder);
   const [refreshing, setRefreshing] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<OrderItemRow | null>(null);
+
+  const goBackFromDetails = useCallback(() => {
+    if (fromOrderSuccess) {
+      resetRootToHomeStack(navigation, 'TabStack', { screen: 'Home' });
+      return;
+    }
+    if (navigation.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('OrderHistory');
+  }, [fromOrderSuccess, navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!fromOrderSuccess) {
+        return undefined;
+      }
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        goBackFromDetails();
+        return true;
+      });
+      return () => sub.remove();
+    }, [fromOrderSuccess, goBackFromDetails]),
+  );
 
   const refreshOrder = useCallback(async () => {
     if (!initialOrder?.id && !initialOrder?.order_code) {
@@ -130,6 +158,8 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
 
   const items = useMemo(() => mapOrderItems(order), [order]);
 
+
+  console.log("itemsitemsitemsitems", items)
   const status = formatOrderStatus(order?.order_status);
   const canReview = status === 'DELIVERED';
   const trackingSteps = useMemo(() => buildOrderTrackingSteps(order), [order]);
@@ -160,9 +190,13 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       return;
     }
 
-    const target = reviewTarget;
-    const isEdit = target.rated || target.review?.isRated === true;
+    // One review per product — never open edit/PATCH flow
+    if (reviewTarget.rated || reviewTarget.review?.isRated) {
+      setReviewTarget(null);
+      return;
+    }
 
+    const target = reviewTarget;
     setReviewTarget(null);
 
     navigation.navigate('ShareExperienceScreen', {
@@ -170,17 +204,17 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       entityName: target.name,
       entitySubtitle: `Order #${order?.order_code ?? order?.id ?? ''}`,
       variantId: target.variantId,
-      initialRating: target.review?.rating ?? rating,
-      initialReview: target.review?.review ?? '',
-      initialImages: target.review?.images ?? [],
-      isEdit,
+      initialRating: rating,
+      initialReview: '',
+      initialImages: [],
+      isEdit: false,
     });
   };
 
   if (!order) {
     return (
       <SafeAreaView style={styles.safe}>
-        <AppHeader title="Order Details" onLeftPress={() => navigation.goBack()} />
+        <AppHeader title="Order Details" onLeftPress={goBackFromDetails} />
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyText}>Order details not found.</Text>
         </View>
@@ -191,7 +225,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <AppHeader title="Order Details" onLeftPress={() => navigation.goBack()} />
+      <AppHeader title="Order Details" onLeftPress={goBackFromDetails} />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
@@ -289,16 +323,15 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
             </View>
 
             {/* {item.rated ? ( */}
-            <TouchableOpacity
-              style={styles.editReviewBtn}
-              activeOpacity={0.88}
-              onPress={() => setReviewTarget(item)}
-            >
-              <TablerIcon name="star-filled" size={16} color="#F59E0B" />
-              <Text style={styles.editReviewBtnText}>Edit Review</Text>
-            </TouchableOpacity>
-            {/* // ) :  */}
-            {/* // canReview && !!item.variantId ? ( */}
+            <View style={styles.ratedPill}>
+              <TablerIcon name="star-filled" size={14} color="#F59E0B" />
+              <Text style={styles.ratedText} numberOfLines={1}>
+                Rated {item.review?.rating ?? ''}
+                {item.review?.review ? ` · Review submitted` : ' · Review submitted'}
+              </Text>
+            </View>
+            {/* ) : 
+            canReview && !!item.variantId ? ( */}
             <TouchableOpacity
               style={styles.reviewBtn}
               activeOpacity={0.88}
@@ -308,10 +341,10 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
               <Text style={styles.reviewBtnText}>Rate Product</Text>
             </TouchableOpacity>
             {/* ) 
-            // : null} */}
+            : null} */}
           </View>
         ))}
-        
+
         <Text style={styles.sectionTitle}>Payment Summary</Text>
         <View style={styles.card}>
           {paymentRows.map(row => (
@@ -337,9 +370,9 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       </ScrollView>
 
       <FeedbackModal
-        visible={!!reviewTarget}
-        isEdit={!!reviewTarget?.rated}
-        initialRating={reviewTarget?.review?.rating ?? 0}
+        visible={!!reviewTarget && !reviewTarget.rated}
+        isEdit={false}
+        initialRating={0}
         onClose={() => setReviewTarget(null)}
         onContinue={openProductReview}
       />

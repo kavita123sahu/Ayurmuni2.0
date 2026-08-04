@@ -42,22 +42,22 @@ export const usePlaceOrder = () => {
 
       const payload = isCod
         ? buildCodOrderPayload({
-            delivery_address_id: config.delivery_address_id,
-            cartItems,
-            shipping_charges: config.shipping_charges,
-            cod_charges: config.cod_charges,
-            shipping_method: config.shipping_method ?? 'STD',
-          })
+          delivery_address_id: config.delivery_address_id,
+          cartItems,
+          shipping_charges: config.shipping_charges,
+          cod_charges: config.cod_charges,
+          shipping_method: config.shipping_method ?? 'STD',
+        })
         : buildPrepaidOrderPayload({
-            delivery_address_id: config.delivery_address_id,
-            cartItems,
-            shipping_charges: config.shipping_charges,
-            cod_charges: config.cod_charges,
-            shipping_method: config.shipping_method ?? 'STD',
-            prepaid_amount: config.prepaid_amount ?? 0,
-            // Never hardcode upi/card — only if Razorpay already gave us a method
-            payment_method: config.payment_method ?? null,
-          });
+          delivery_address_id: config.delivery_address_id,
+          cartItems,
+          shipping_charges: config.shipping_charges,
+          cod_charges: config.cod_charges,
+          shipping_method: config.shipping_method ?? 'STD',
+          prepaid_amount: config.prepaid_amount ?? 0,
+          // Never hardcode upi/card — only if Razorpay already gave us a method
+          payment_method: config.payment_method ?? null,
+        });
 
       console.log('ORDER_PAYLOAD =>', JSON.stringify(payload, null, 2));
 

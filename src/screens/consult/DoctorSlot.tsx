@@ -77,8 +77,34 @@ const DoctorSlot = (props: any) => {
 
     const [doctorDetailData, setDoctorDetailData] = useState<any>(null);
     const doctorInfo = useMemo(() => doctorDetails, [doctorDetails]);
-    console.log("patientsListpatientsListpatientsList", patientsList);
+    const doctor = useMemo(
+        () => ({
+            ...doctorInfo,
+            ...doctorDetailData,
+        }),
+        [doctorInfo, doctorDetailData],
+    );
 
+    const stats = useMemo(
+        () => [
+            {
+                id: '1',
+                value: doctor?.patients_display || doctor?.total_patients || 0,
+                label: 'PATIENTS',
+            },
+            {
+                id: '2',
+                value: doctor?.total_reviews || 0,
+                label: 'REVIEWS',
+            },
+            {
+                id: '3',
+                value: doctor?.experience_display || `${doctor?.experience_years || 0}+`,
+                label: 'EXPERIENCE',
+            },
+        ],
+        [doctor],
+    );
 
     const [monthOffset, setMonthOffset] = useState(0);
     // const DAYS = useMemo(() => generateFutureDates(monthOffset), [monthOffset]);
@@ -119,6 +145,12 @@ const DoctorSlot = (props: any) => {
             );
         }
     }, [doctorDetails?.id]);
+
+    useEffect(() => {
+        if (doctorDetails?.id) {
+            getDoctorDetails();
+        }
+    }, [doctorDetails?.id, getDoctorDetails]);
 
     const [selectedDate, setSelectedDate] = useState(getTodayDate());
     const [selectedSlot, setSelectedSlot] = useState<any>(null);
@@ -304,32 +336,14 @@ const DoctorSlot = (props: any) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar backgroundColor={Colors.background} barStyle="dark-content" />
-
-            {/* <View style={styles.headerTop}>
-                <TouchableOpacity onPress={() => { navigation.goBack(); }} style={styles.iconBtn}>
-                    <Image source={Images.backIcon} style={styles.backIcon} />
-                </TouchableOpacity>
-
-                <Text style={styles.headerTitle}>Doctor Profile</Text>
-
-                {/* <TouchableOpacity activeOpacity={0.8} style={styles.iconBtn}>
-                    {doctorInfo?.is_favorite ?
-                        <Ionicons name="heart" size={25} color={Colors.primaryColor} /> :
-                        <Ionicons name="heart-outline" size={25} color="#0F172A" />
-                    }
-
-                </TouchableOpacity> */}
-
+            <StatusBar backgroundColor="#F7FBF9" barStyle="dark-content" />
 
             <AppHeader
-                title="Doctor Profile"
+                title="Book Appointment"
                 leftIconName='arrow-left'
                 onLeftPress={() =>
                     props.navigation.goBack()
                 }
-            // onRightPress={() => props.navigation.navigate('NotificationsScreen')}
-            // rightIconName={doctorInfo?.is_favorite ? "heart" : "heart-outline"}
             />
 
             <KeyboardAvoidingView
@@ -352,58 +366,69 @@ const DoctorSlot = (props: any) => {
                         />
                     }
                 >
-                    <View style={styles.headerContainer}>
-                        <View style={styles.profileContainer}>
-                            <View style={styles.avatarBgWrapper}>
-                                {/* <ImageBackground source={Images.BackgroundImage} style={styles.avatarBg} imageStyle={{ borderRadius: 100 }}> */}
-                                <View style={styles.avatarWrapper}>
-                                    {doctorInfo?.profile_image ? (
-                                        <Image
-                                            source={{ uri: doctorInfo?.profile_image }}
-                                            style={styles.avatar}
-                                        />
-                                    ) : (
-                                        <View style={styles.avatarFallback}>
-                                            <Text style={styles.avatarLetter}>
-                                                {doctorInfo?.full_name?.charAt(0)?.toUpperCase() || ''}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {/* <Image source={Images.doctorImage} style={styles.avatar} /> */}
-                                </View>
-                                {/* </ImageBackground> */}
+                    <View style={styles.heroCard}>
+                        <View style={styles.avatarRing}>
+                            <View style={styles.avatarWrapper}>
+                                {doctor?.profile_image ? (
+                                    <Image
+                                        source={{ uri: doctor?.profile_image }}
+                                        style={styles.avatar}
+                                    />
+                                ) : (
+                                    <View style={styles.avatarFallback}>
+                                        <Text style={styles.avatarLetter}>
+                                            {doctor?.full_name?.charAt(0)?.toUpperCase() || ''}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
-
-                            <Text style={styles.doctorName}>{doctorInfo?.full_name}</Text>
-                            <Text style={styles.speciality}>{doctorInfo?.designation || doctorInfo?.qualification}</Text>
                         </View>
+
+                        <Text numberOfLines={2} style={styles.doctorName}>
+                            {doctor?.full_name || 'Doctor'}
+                        </Text>
+
+                        {!!(doctor?.designation || doctor?.qualification) && (
+                            <View style={styles.designationChip}>
+                                <TablerIcon name="stethoscope" size={14} color={Colors.primaryColor} />
+                                <Text numberOfLines={1} style={styles.speciality}>
+                                    {doctor?.designation || doctor?.qualification}
+                                </Text>
+                            </View>
+                        )}
+
+                        {!!(doctor?.consultation_fee) && (
+                            <Text style={styles.heroFeeHint}>
+                                Consultation from{' '}
+                                <Text style={styles.heroFeeValue}>
+                                    {doctor?.consultation_fee}
+                                </Text>
+                            </Text>
+                        )}
                     </View>
 
                     <View style={styles.statsContainer}>
-                        {[
-                            { label: 'PATIENTS', value: doctorInfo?.total_patients ?? '0' },
-                            { label: 'REVIEWS', value: doctorInfo?.total_reviews ?? '0' },
-                            { label: 'EXPERIENCE', value: doctorInfo?.experience_display ?? '0' },
-                        ].map((item, index) => (
-                            <View key={index} style={[styles.statBox, index !== 2 && styles.borderRight]}>
-                                <Text style={styles.statValue}>{item.value}</Text>
-                                <Text style={styles.statLabel}>{item.label}</Text>
-                            </View>
+                        {stats.map((item, index) => (
+                            <React.Fragment key={item.id}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{item.value}</Text>
+                                    <Text style={styles.statLabel}>{item.label}</Text>
+                                </View>
+                                {index !== stats.length - 1 ? <View style={styles.divider} /> : null}
+                            </React.Fragment>
                         ))}
                     </View>
 
-                  
-
-                    <View style={styles.section}>
+                    <View style={styles.sectionCard}>
                         <View style={styles.rowBetween}>
-                            <Text style={styles.sectionTitle}>Schedules</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <Text style={styles.sectionTitle}>Select date</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                 <TouchableOpacity disabled={monthOffset === 0} onPress={() => setMonthOffset(prev => prev - 1)}>
-                                    <Ionicons name="chevron-back" size={22} color={monthOffset === 0 ? '#CBD5E1' : Colors.primaryColor} />
+                                    <Ionicons name="chevron-back" size={20} color={monthOffset === 0 ? '#CBD5E1' : Colors.primaryColor} />
                                 </TouchableOpacity>
-                                <Text style={styles.monthText}>{new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                                <Text style={styles.monthText}>{new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</Text>
                                 <TouchableOpacity onPress={() => setMonthOffset(prev => prev + 1)}>
-                                    <Ionicons name="chevron-forward" size={22} color={Colors.primaryColor} />
+                                    <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -420,13 +445,12 @@ const DoctorSlot = (props: any) => {
                                     <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => setSelectedDate(item.fullDate)} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
                                         <Text style={[styles.dayText, isActive && { color: '#FFFFFF' }]}>{item.day}</Text>
                                         <Text style={[styles.dateText, isActive && { color: '#FFFFFF' }]}>{item.date}</Text>
-                                        <Text style={[styles.monthDayText, isActive && { color: '#FFFFFF' }]}>{item.month}</Text>
+                                        <Text style={[styles.monthDayText, isActive && { color: '#D1FAE5' }]}>{item.month}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
 
-                        {/* Slots */}
                         {loadingSlots ? (
                             <View style={{ marginTop: 24, alignItems: 'center' }}>
                                 <Ionicons name="hourglass-outline" size={32} color="#CBD5E1" />
@@ -438,7 +462,7 @@ const DoctorSlot = (props: any) => {
                                 return (
                                     <View key={sectionTitle} style={styles.slotSection}>
                                         <View style={styles.slotHeader}>
-                                            <Ionicons name={sectionIcon} size={16} color="#94A3B8" />
+                                            <Ionicons name={sectionIcon} size={16} color="#64748B" />
                                             <Text style={styles.slotTitle}>{sectionTitle}</Text>
                                         </View>
 
@@ -507,27 +531,17 @@ const DoctorSlot = (props: any) => {
                         )}
                     </View>
 
-                    {/* {!!selectedSlot?.id && (
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            style={styles.scrollHint}
-                            onPress={scrollToConcernSection}
-                        >
-                            <TablerIcon name="chevron-down" size={16} color={Colors.primaryColor} />
-                            <Text style={styles.scrollHintText}>
-                                Add concern & upload prescription below
-                            </Text>
-                        </TouchableOpacity>
-                    )} */}
-
                     <View
-                        style={styles.section}
+                        style={styles.sectionCard}
                         onLayout={event => {
                             handleConcernSectionLayout(event.nativeEvent.layout.y);
                         }}
                     >
                         <Text style={styles.sectionTitle}>
-                            Concern
+                            Your concern
+                        </Text>
+                        <Text style={styles.sectionHint}>
+                            Optional — helps the doctor prepare for your visit
                         </Text>
 
                         <TextInput
@@ -539,22 +553,6 @@ const DoctorSlot = (props: any) => {
                             style={styles.input}
                             textAlignVertical="top"
                         />
-                        {/* 
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.uploadBtn}
-                            onPress={() => navigation.navigate('MedicalRecords')}
-                        >
-                            <Ionicons
-                                name="cloud-upload-outline"
-                                size={20}
-                                color={Colors.primaryColor}
-                            />
-
-                            <Text style={styles.uploadText}>
-                                Upload Medical Records
-                            </Text>
-                        </TouchableOpacity> */}
 
                         <PrescriptionUpload
                             records={patientsRecord}
@@ -578,25 +576,25 @@ const DoctorSlot = (props: any) => {
                 </ScrollView>
 
                 <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
-                    <View>
+                    <View style={styles.priceContainer}>
                         <Text style={styles.feeLabel}>Consult Fee</Text>
-                        <Text style={styles.price}>Rs {selectedSlot?.amount ?? doctorDetails?.consultation_fee ?? 0}</Text>
+                        <Text style={styles.price}>
+                            {selectedSlot?.amount ?? doctor?.consultation_fee ?? doctorDetails?.consultation_fee ?? 0}
+                        </Text>
                     </View>
 
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        disabled={loadingSlots || groupedSlots.length === 0}
+                        disabled={!selectedSlot?.id || loadingSlots || groupedSlots.length === 0}
                         style={[
                             styles.payBtn,
-                            (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) && {
-                                opacity: 0.5,
-                                backgroundColor: '#CBD5E1',
-                            },
+                            (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) &&
+                                styles.payBtnDisabled,
                         ]}
                         onPress={handleContinue}
                     >
-                        <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-                        <Text style={styles.payText}>
+                        <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
+                        <Text style={styles.payText} numberOfLines={1}>
                             {loadingSlots ? 'Loading...' : 'Continue'}
                         </Text>
                     </TouchableOpacity>
@@ -609,145 +607,260 @@ const DoctorSlot = (props: any) => {
 export default DoctorSlot;
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
-    scrollContent: { paddingBottom: 16, backgroundColor: '#FFFFFF' },
-    headerContainer: { backgroundColor: '#0D614E0D', borderBottomLeftRadius: 56, borderBottomRightRadius: 56, paddingHorizontal: 20, paddingBottom: 22 },
-    headerTop: { flexDirection: 'row', paddingHorizontal: 20, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'space-between', minHeight: 50 },
-    iconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-    backIcon: { width: 36, height: 36, resizeMode: 'contain' },
-    avatarBgWrapper: { justifyContent: 'center', alignItems: 'center', marginBottom: -10 },
-
-    avatarWrapper: { width: 105, height: 105, borderRadius: 24, borderWidth: 1, overflow: 'hidden', borderColor: '#DDEBE8', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginBottom: 12, padding: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
-    avatar: { width: 90, height: 90, borderRadius: 16, resizeMode: 'cover' },
-
+    container: { flex: 1, backgroundColor: '#F7FBF9' },
+    scrollContent: { paddingBottom: 20, backgroundColor: '#F7FBF9' },
+    heroCard: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        paddingTop: 28,
+        paddingBottom: 24,
+        paddingHorizontal: 20,
+        borderRadius: 28,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E8F2EE',
+    },
+    avatarRing: {
+        padding: 4,
+        borderRadius: 28,
+        borderWidth: 2,
+        borderColor: '#C8E6DC',
+        marginBottom: 4,
+    },
+    avatarWrapper: {
+        width: SCREEN_WIDTH * 0.28,
+        height: SCREEN_WIDTH * 0.28,
+        maxWidth: 112,
+        maxHeight: 112,
+        minWidth: 92,
+        minHeight: 92,
+        borderRadius: 24,
+        backgroundColor: '#F0F7F4',
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatar: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 22,
+        resizeMode: 'cover',
+    },
     avatarFallback: {
-        width: 90,
-        height: 90,
-        borderRadius: 16,
+        width: '100%',
+        height: '100%',
+        borderRadius: 22,
         backgroundColor: Colors.primaryColor,
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarLetter: {
-        fontSize: 32,
+        fontSize: 34,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsBold,
     },
-
-    headerTitle: { fontSize: 22, color: '#1E293B', fontFamily: Fonts.PoppinsSemiBold },
-    profileContainer: { alignItems: 'center', marginTop: 14 },
-    doctorName: { marginTop: 10, marginBottom: -5, fontSize: 20, fontFamily: Fonts.PoppinsSemiBold, color: '#1E293B' },
-    speciality: { fontSize: 14, color: Colors.primaryColor, fontFamily: Fonts.PoppinsMedium },
-    statsContainer: { flexDirection: 'row', marginTop: 22, marginHorizontal: 20, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
-    statBox: { flex: 1, alignItems: 'center', paddingVertical: 18 },
-    borderRight: { borderRightWidth: 1, borderRightColor: '#F1F5F9' },
-    statValue: { fontSize: 22, fontFamily: Fonts.PoppinsBold, color: '#1E293B' },
-    statLabel: { fontSize: 12, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
-    consultSection: { marginTop: 20, paddingHorizontal: 12 },
-    section: { marginTop: 24, paddingHorizontal: 20 },
-    rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    sectionTitle: { fontSize: 18, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
-
-    recordTitle: {
-        fontSize: 16,
-        marginBottom: 12,
+    doctorName: {
+        marginTop: 14,
+        fontSize: 24,
+        lineHeight: 32,
+        fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
+        textAlign: 'center',
+        paddingHorizontal: 8,
     },
-
-    recordCard: {
+    designationChip: {
+        marginTop: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 14,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        backgroundColor: '#FFF',
-        marginBottom: 10,
-    },
-
-    selectedRecordCard: {
-        borderColor: Colors.primaryColor,
-        backgroundColor: '#F0FDF4',
-    },
-
-    recordName: {
-        flex: 1,
-        marginLeft: 10,
-        color: '#334155',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    uploadBtn: {
-        marginTop: 16,
-        height: 56,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: Colors.primaryColor,
-        backgroundColor: '#F8FFFC',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-
-    uploadText: {
-        fontSize: 15,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    monthText: { fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor, marginRight: 4 },
-    daysContainer: { paddingTop: 18, paddingBottom: 8 },
-    dayCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12, paddingHorizontal: 6 },
-    activeDayCard: { backgroundColor: Colors.primaryColor, borderColor: Colors.background },
-    dayText: { fontSize: Math.round(CARD_WIDTH * 0.18), fontFamily: Fonts.PoppinsMedium, color: '#64748B' },
-    dateText: { fontSize: Math.round(CARD_WIDTH * 0.28), fontFamily: Fonts.PoppinsSemiBold, color: '#1E293B' },
-    monthDayText: { fontSize: Math.round(CARD_WIDTH * 0.12), marginTop: 2, color: '#64748B', fontFamily: Fonts.PoppinsMedium },
-    slotSection: { marginTop: 22 },
-    slotHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-    slotTitle: { marginLeft: 6, fontSize: 13, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase' },
-    slotGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    slotBtn: { width: '31%', minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 12, paddingHorizontal: 8 },
-    activeSlotBtn: { backgroundColor: Colors.primaryColor, borderColor: Colors.primaryColor },
-    slotText: { fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: '#475569', textAlign: 'center', includeFontPadding: false },
-    activeSlotText: { color: '#FFFFFF', fontFamily: Fonts.PoppinsMedium, fontSize: 14 },
-    emptyContainer: { marginTop: 35, alignItems: 'center', justifyContent: 'center' },
-    emptyTitle: { marginTop: 10, fontSize: 16, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
-    scrollHint: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
         gap: 6,
-        marginHorizontal: 20,
-        marginTop: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 12,
-        backgroundColor: '#F0FDF4',
-        borderWidth: 1,
-        borderColor: '#BBF7D0',
+        maxWidth: '92%',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: '#ECF8F3',
     },
-    scrollHintText: {
+    speciality: {
         fontSize: 13,
         fontFamily: Fonts.PoppinsMedium,
         color: Colors.primaryColor,
+        flexShrink: 1,
     },
-    slotStatus: { marginTop: 3, fontSize: 11, color: '#64748B', fontFamily: Fonts.PoppinsMedium },
-    input: { marginTop: 14, height: 120, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: 16, fontFamily: Fonts.PoppinsMedium, fontSize: 14, color: '#1E293B' },
-    footer: {
-        paddingHorizontal: 20,
-        paddingTop: 12,
+    heroFeeHint: {
+        marginTop: 12,
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+    },
+    heroFeeValue: {
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    statsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        marginTop: 14,
+        marginHorizontal: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E8F2EE',
+        overflow: 'hidden',
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 8,
+    },
+    divider: {
+        width: 1,
+        height: 36,
+        backgroundColor: '#E8F2EE',
+    },
+    statValue: {
+        fontSize: 20,
+        fontFamily: Fonts.PoppinsBold,
+        color: '#0F172A',
+    },
+    statLabel: {
+        marginTop: 2,
+        fontSize: 10,
+        letterSpacing: 0.4,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
+        textAlign: 'center',
+    },
+    sectionCard: {
+        marginTop: 14,
+        marginHorizontal: 16,
+        padding: 16,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E8F2EE',
+    },
+    sectionHint: {
+        marginTop: 4,
+        marginBottom: 4,
+        fontSize: 12,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 16, fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
+    monthText: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor },
+    daysContainer: { paddingTop: 16, paddingBottom: 4 },
+    dayCard: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#E8F2EE',
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+        paddingHorizontal: 6,
+    },
+    activeDayCard: {
+        backgroundColor: Colors.primaryColor,
+        borderColor: Colors.primaryColor,
+    },
+    dayText: { fontSize: Math.round(CARD_WIDTH * 0.18), fontFamily: Fonts.PoppinsMedium, color: '#64748B' },
+    dateText: { fontSize: Math.round(CARD_WIDTH * 0.28), fontFamily: Fonts.PoppinsSemiBold, color: '#0F172A' },
+    monthDayText: { fontSize: Math.round(CARD_WIDTH * 0.12), marginTop: 2, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
+    slotSection: { marginTop: 18 },
+    slotHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+    slotTitle: { marginLeft: 6, fontSize: 12, fontFamily: Fonts.PoppinsSemiBold, color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.4 },
+    slotGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+    slotBtn: {
+        width: '31%',
+        minHeight: 52,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#E8F2EE',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+    },
+    activeSlotBtn: {
+        backgroundColor: Colors.primaryColor,
+        borderColor: Colors.primaryColor,
+    },
+    slotText: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#334155',
+        textAlign: 'center',
+        includeFontPadding: false,
+    },
+    activeSlotText: {
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+        fontSize: 13,
+    },
+    emptyContainer: { marginTop: 28, alignItems: 'center', justifyContent: 'center' },
+    emptyTitle: { marginTop: 10, fontSize: 15, color: '#94A3B8', fontFamily: Fonts.PoppinsMedium },
+    slotStatus: { marginTop: 3, fontSize: 10, color: '#64748B', fontFamily: Fonts.PoppinsMedium },
+    input: {
+        marginTop: 12,
+        height: 110,
+        borderRadius: 16,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 14,
+        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 14,
+        color: '#0F172A',
+    },
+    footer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingTop: 12,
+        paddingHorizontal: 16,
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+        borderTopColor: '#E8F2EE',
         backgroundColor: '#FFFFFF',
     },
-    feeLabel: { fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: '#94A3B8' },
-    price: { fontSize: 28, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor },
-    payBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryColor, height: 56, paddingHorizontal: 36, borderRadius: 18, flex: 1 },
-    payBtnLocked: { backgroundColor: '#64748B' },
-    payText: { marginLeft: 8, fontSize: 16, fontFamily: Fonts.PoppinsSemiBold, color: '#FFFFFF' },
+    priceContainer: {
+        marginRight: 14,
+        minWidth: 96,
+    },
+    feeLabel: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
+    },
+    price: {
+        fontSize: 24,
+        fontFamily: Fonts.PoppinsBold,
+        color: Colors.primaryColor,
+    },
+    payBtn: {
+        flex: 1,
+        minHeight: 54,
+        borderRadius: 16,
+        backgroundColor: Colors.primaryColor,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+    },
+    payBtnDisabled: {
+        opacity: 0.55,
+        backgroundColor: '#94A3B8',
+    },
+    payText: {
+        marginLeft: 8,
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
+        flexShrink: 1,
+    },
 });

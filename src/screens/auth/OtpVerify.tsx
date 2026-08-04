@@ -21,12 +21,13 @@ import { Colors } from '../../common/Colors';
 import { ApiResponse, showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService'
 import { Utils } from '../../common/Utils';
-import { onLoginSuccess } from '../../services/guestAuth';
+import { markAsGuest, syncAccessFromProfile } from '../../services/guestAuth';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { AntDesign } from '../../common/Vector';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
+import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 
 // Constants matching Send OTP screen
 const C = {
@@ -240,15 +241,14 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             console.log("verify_otp_response--->", response);
 
             if (response?.success) {
-                await onLoginSuccess();
-                Utils.storeData('_USER_ID', response?.data?.user_id);
-                Utils.storeData('_TOKEN', response?.data?.access);
-                Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
+                // New register: token issued, still guest until AccessMode / onboarding done
+                await Utils.storeData('_USER_ID', response?.data?.user_id);
+                await Utils.storeData('_TOKEN', response?.data?.access);
+                await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
+                await markAsGuest();
 
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
-                resetRootToHomeStack(props.navigation, 'TermsCondition', {
-                  agreed: false,
-                });
+                resetRootToHomeStack(props.navigation, 'AccessMode');
             } else {
                 showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
                 shake();
@@ -287,17 +287,43 @@ const OtpVerify: React.FC<OTPVerificationProps> = (props) => {
             if (response?.success) {
                 showSuccessToast(response.message || 'OTP verified successfully', 'success');
 
-                await onLoginSuccess();
-                Utils.storeData('_USER_ID', response?.data?.user_id);
-                Utils.storeData('_TOKEN', response?.data?.access);
-                Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
+                await Utils.storeData('_USER_ID', response?.data?.user_id);
+                await Utils.storeData('_TOKEN', response?.data?.access);
+                await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
 
                 const customerOnboard = response?.data?.customer;
+                const hasCustomer =
+                    !!customerOnboard && customerOnboard.customer_id != null;
 
-                if (!customerOnboard || customerOnboard.customer_id == null) {
-                    resetRootToHomeStack(props.navigation, 'Onboarding');
-                } else {
-                    resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
+                if (!hasCustomer) {
+                    // Returning phone, no customer profile yet → guest + choose path
+                    await markAsGuest();
+                    resetRootToHomeStack(props.navigation, 'AccessMode');
+                    return;
+                }
+
+                // Existing customer: sync guest/full from profile
+                try {
+                    const profileRes: any = await _PROFILE_SERVICES.user_profile();
+                    if (profileRes?.data) {
+                        await Utils.storeData('_USER_INFO', profileRes.data);
+                    }
+                    const level = await syncAccessFromProfile(profileRes?.data);
+                    if (level === 'full') {
+                        resetRootToHomeStack(props.navigation, 'TabStack', {
+                            screen: 'Home',
+                        });
+                    } else {
+                        // Incomplete onboarding — still choose guest browse vs finish
+                        await markAsGuest();
+                        resetRootToHomeStack(props.navigation, 'AccessMode');
+                    }
+                } catch {
+                    // Profile sync failed — allow browse as guest; actions stay gated
+                    await markAsGuest();
+                    resetRootToHomeStack(props.navigation, 'TabStack', {
+                        screen: 'Home',
+                    });
                 }
             } else {
                 showSuccessToast(response?.message || 'Failed to verify OTP', 'error');

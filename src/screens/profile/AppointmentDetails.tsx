@@ -29,8 +29,6 @@ import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
 import FeedbackModal from '../../components/FeedbackModal';
 import TablerIcon from '../../components/TablerIcon';
-import { createReview } from '../../services/ProfileServices';
-import { buildReviewSubmitPayload } from '../../utils/reviewUtils';
 import {
   buildVideoCallNavParams,
   getAppointmentIds,
@@ -211,15 +209,15 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [token, setToken] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [isEditReview, setIsEditReview] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
-  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const alreadyReviewed = detail?.appointment?.review?.is_rated === true;
 
   const shouldShowReviewModal =
     detail?.appointment?.appointment_status?.toLowerCase() === 'completed' &&
-    detail?.appointment?.review?.is_rated === false;
+    !alreadyReviewed;
 
   useEffect(() => {
     if (!shouldShowReviewModal) return;
@@ -239,64 +237,27 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     navigation.setOptions({ gestureEnabled: !showModal });
   }, [navigation, showModal]);
 
-  const openShareExperience = (rating: number, editMode = isEditReview) => {
+  const openShareExperience = (rating: number) => {
+    if (alreadyReviewed) {
+      showSuccessToast('You have already reviewed this consultation', 'error');
+      return;
+    }
+
     navigation.navigate('ShareExperienceScreen', {
       entityType: 'doctor',
       entityName: detail?.doctor?.doctor_name ?? 'Doctor',
       entitySubtitle: detail?.doctor?.doctor_specialization ?? '',
       appointmentId: routeLookupId,
       initialRating: rating,
-      initialReview: detail?.appointment?.review?.review ?? '',
-      initialImages: detail?.appointment?.review?.attachments ?? [],
-      isEdit: editMode,
+      initialReview: '',
+      initialImages: [],
+      isEdit: false,
     });
-  };
-
-  const handleRatingSubmit = async (rating: number) => {
-    if (!routeLookupId) {
-      showSuccessToast('Appointment id missing', 'error');
-      return;
-    }
-
-    try {
-      setSubmittingReview(true);
-
-      const response = await createReview({
-        entityType: 'doctor',
-        appointmentId: routeLookupId,
-        method:
-          isEditReview || detail?.appointment?.review?.is_rated ? 'PATCH' : 'POST',
-        reviewData: buildReviewSubmitPayload({
-          rating,
-          entityType: 'doctor',
-          appointmentId: routeLookupId,
-          isEdit: isEditReview || detail?.appointment?.review?.is_rated,
-        }),
-      });
-
-      if (!response?.success) {
-        showSuccessToast(response?.message || 'Unable to submit rating', 'error');
-        return;
-      }
-
-      showSuccessToast(
-        response?.message || 'Thank you for your rating!',
-        'success',
-      );
-      setShowModal(false);
-      setIsEditReview(false);
-      await fetchDetail();
-    } catch {
-      showSuccessToast('Something went wrong while submitting', 'error');
-    } finally {
-      setSubmittingReview(false);
-    }
   };
 
   const handleRatingContinue = (rating: number) => {
     setShowModal(false);
-    setIsEditReview(false);
-    openShareExperience(rating, isEditReview);
+    openShareExperience(rating);
   };
 
   const fetchDetail = async () => {
@@ -628,30 +589,17 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                         {detail?.appointment?.review?.review}
                       </Text>
 
-                      <TouchableOpacity
-                        style={styles.editReviewBtn}
-                        onPress={() => {
-                          setIsEditReview(true);
-                          openShareExperience(
-                            detail?.appointment?.review?.rating || 0,
-                            true,
-                          );
-                        }}
-                      >
-                        <Ionicons
-                          name="create-outline"
-                          size={16}
-                          color="#0D614E"
-                        />
-                        <Text style={styles.editReviewText}>
-                          Edit Review
-                        </Text>
-                      </TouchableOpacity>
+                      {/* <Text style={styles.reviewSubmittedHint}>
+                        Review submitted — editing is not allowed
+                      </Text> */}
                     </View>
                   ) : (
-                    <Pressable style={styles.emptyReviewWrap} >
+                    <Pressable
+                      style={styles.emptyReviewWrap}
+                      onPress={() => setShowModal(true)}
+                    >
                       <Ionicons name="star-outline" size={26} color={Theme.divider} />
-                      <Text style={styles.emptyReview}>You have not submitted a review yet.</Text>
+                      <Text style={styles.emptyReview}>Tap to rate your consultation</Text>
                     </Pressable>
                   )}
                 </View>
@@ -702,16 +650,15 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
 
         <FeedbackModal
-          visible={showModal}
-          loading={submittingReview}
-          isEdit={isEditReview}
-          mode="submit"
-          initialRating={detail?.appointment?.review?.rating}
+          visible={showModal && !alreadyReviewed}
+          loading={false}
+          isEdit={false}
+          mode="continue"
+          initialRating={0}
           onClose={() => {
             setShowModal(false);
-            setIsEditReview(false);
           }}
-          onContinue={handleRatingSubmit}
+          onContinue={handleRatingContinue}
         />
 
 
@@ -1085,6 +1032,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Theme.ink,
     lineHeight: 20,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  reviewSubmittedHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: Theme.subInk,
     fontFamily: Fonts.PoppinsMedium,
   },
 

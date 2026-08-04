@@ -1346,8 +1346,12 @@ const Onboarding = (props: any) => {
     };
 
     const handleBack = () => {
-        props.navigation.goBack();
-        console.log('Back pressed');
+        if (props.navigation.canGoBack()) {
+            props.navigation.goBack();
+            return;
+        }
+        // Return to Guest vs Complete ask page instead of remounting Home
+        props.navigation.navigate('AccessMode');
     };
 const avatarAnim = useRef(new Animated.Value(0)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;

@@ -5,7 +5,7 @@ import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import * as _YOGA_SERVICES from '../../services/YogaServices';
 import * as _PATIENT_SERVICES from '../../services/PatientServices';
 import { fetchWithCache } from '../../services/apiCache';
-import { isAuthenticated } from '../../services/guestAuth';
+import { isAuthenticated, isGuestUser } from '../../services/guestAuth';
 import {
   getServiceCategoryIds,
   normalizeServiceCategories,
@@ -199,53 +199,87 @@ export const fetchHomeData = createAsyncThunk<
       const serviceIds = getServiceCategoryIds(categories);
       console.log('HOME_SERVICE_CATEGORY_IDS =>', serviceIds);
 
+      const safe = async <T,>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+        try {
+          return await fn();
+        } catch (error) {
+          console.log(`HOME_${label}_SAFE_SKIP =>`, error);
+          return fallback;
+        }
+      };
+
       const [doctors, medicineProducts, storeProducts, yoga, diet, customer] =
         await Promise.all([
-          fetchWithCache(
-            CACHE_KEYS.doctors,
-            async () => {
-              const res = await _HOME_SERVICES.getSuggestedDoctor();
-              return normalizeApiList(res);
-            },
-            { ttl: 120_000, force },
-          ),
-          fetchWithCache(
-            `${CACHE_KEYS.medicineProducts}_${serviceIds.medicine ?? 'none'}`,
+          safe(
+            'DOCTORS',
             () =>
-              loadProductsByServiceCategory(serviceIds.medicine, 'medicine'),
-            { ttl: 120_000, force },
+              fetchWithCache(
+                CACHE_KEYS.doctors,
+                async () => {
+                  const res = await _HOME_SERVICES.getSuggestedDoctor();
+                  return normalizeApiList(res);
+                },
+                { ttl: 120_000, force },
+              ),
+            [],
           ),
-          fetchWithCache(
-            `${CACHE_KEYS.storeProducts}_${serviceIds.products ?? 'none'}`,
+          safe(
+            'MEDICINE',
             () =>
-              loadProductsByServiceCategory(serviceIds.products, 'products'),
-            { ttl: 120_000, force },
+              fetchWithCache(
+                `${CACHE_KEYS.medicineProducts}_${serviceIds.medicine ?? 'none'}`,
+                () =>
+                  loadProductsByServiceCategory(serviceIds.medicine, 'medicine'),
+                { ttl: 120_000, force },
+              ),
+            [],
           ),
-          fetchWithCache(
-            CACHE_KEYS.yoga,
+          safe(
+            'PRODUCTS',
+            () =>
+              fetchWithCache(
+                `${CACHE_KEYS.storeProducts}_${serviceIds.products ?? 'none'}`,
+                () =>
+                  loadProductsByServiceCategory(serviceIds.products, 'products'),
+                { ttl: 120_000, force },
+              ),
+            [],
+          ),
+          safe(
+            'YOGA',
+            () =>
+              fetchWithCache(
+                CACHE_KEYS.yoga,
+                async () => {
+                  const res = await _YOGA_SERVICES.getYogaSession();
+                  if (Array.isArray(res?.data)) {
+                    return res.data;
+                  }
+                  return normalizeApiList(res);
+                },
+                { ttl: 120_000, force },
+              ),
+            [],
+          ),
+          safe('DIET', () => loadDietPlansForHome(), []),
+          safe(
+            'CUSTOMER',
             async () => {
-              const res = await _YOGA_SERVICES.getYogaSession();
-              if (Array.isArray(res?.data)) {
-                return res.data;
+              // Guest / incomplete profile must not break product/home APIs
+              if (!(await isAuthenticated()) || (await isGuestUser())) {
+                return null;
               }
-              return normalizeApiList(res);
+              return fetchWithCache(
+                CACHE_KEYS.customer,
+                async () => {
+                  const res = await _PROFILE_SERVICES.user_profile();
+                  return res?.status === 200 ? res?.data ?? null : null;
+                },
+                { ttl: 60_000, force },
+              );
             },
-            { ttl: 120_000, force },
+            null,
           ),
-          (async () => loadDietPlansForHome())(),
-          (async () => {
-            if (!(await isAuthenticated())) {
-              return null;
-            }
-            return fetchWithCache(
-              CACHE_KEYS.customer,
-              async () => {
-                const res = await _PROFILE_SERVICES.user_profile();
-                return res?.status === 200 ? res?.data ?? null : null;
-              },
-              { ttl: 60_000, force },
-            );
-          })(),
         ]);
 
       return {
@@ -283,7 +317,7 @@ export const fetchCustomerData = createAsyncThunk<any | null, boolean | undefine
   'home/fetchCustomer',
   async (force = true, { rejectWithValue }) => {
     try {
-      if (!(await isAuthenticated())) {
+      if (!(await isAuthenticated()) || (await isGuestUser())) {
         return null;
       }
       const customer = await fetchWithCache(

@@ -35,6 +35,7 @@ import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToCheckout } from '../../navigation/productNavigation';
 import SegmentTabs from '../../components/SegmentTabs';
+import { getScreenBottomPadding } from '../../constants/layout';
 
 
 
@@ -334,7 +335,19 @@ const MyCart = ({ navigation }: any) => {
     };
 
 
-    const footerBottomPad = Math.max(insets.bottom, 12);
+    // Tab MyCart needs space for bottom bar; stack MyCart (from product flow) does not
+    const navState = navigation.getState?.();
+    const isTabCart =
+      navState?.type === 'tab' ||
+      (Array.isArray(navState?.routeNames) &&
+        navState.routeNames.includes('Home') &&
+        navState.routeNames.includes('Products'));
+    const listBottomPad = isTabCart
+      ? getScreenBottomPadding(insets)
+      : Math.max(insets.bottom, 12) + 24;
+    const footerBottomPad = isTabCart
+      ? getScreenBottomPadding(insets)
+      : Math.max(insets.bottom, 12);
 
     return (
         <SafeAreaView
@@ -415,7 +428,7 @@ const MyCart = ({ navigation }: any) => {
                         }
                         contentContainerStyle={[
                             styles.scrollContent,
-                            { paddingBottom: 16 },
+                            { paddingBottom: listBottomPad },
                         ]}
                     >
 
@@ -588,7 +601,16 @@ const MyCart = ({ navigation }: any) => {
 
                     </ScrollView>
 
-                    <View style={[styles.checkoutFooter, { paddingBottom: footerBottomPad }]}>
+                    <View
+                      style={[
+                        styles.checkoutFooter,
+                        {
+                          paddingBottom: isTabCart
+                            ? footerBottomPad
+                            : Math.max(insets.bottom, 10),
+                        },
+                      ]}
+                    >
                         <TouchableOpacity
                             activeOpacity={0.9}
                             disabled={

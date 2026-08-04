@@ -140,16 +140,16 @@ export const useProductOnlinePayment = () => {
             );
 
             // Prefer Razorpay method; online default is upi
-            const paymentMethod =
-              getRazorpayPaymentMethod(razorpayResult) || 'upi';
+            // const paymentMethod =
+            //   getRazorpayPaymentMethod(razorpayResult) || 'upi';
 
             const verifyBody: Record<string, any> = {
               payment_id: paymentData?.payment_id,
               razorpay_order_id: paymentData?.razorpay_order_id,
               razorpay_payment_id: razorpayResult?.razorpay_payment_id,
               razorpay_signature: razorpayResult?.razorpay_signature,
-              payment_type: 'prepaid',
-              payment_method: paymentMethod,
+              // payment_type: 'prepaid',
+              // payment_method: paymentMethod,
             };
 
             console.log(

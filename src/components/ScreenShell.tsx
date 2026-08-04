@@ -54,7 +54,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
     <View
       style={[
         styles.content,
-        { paddingBottom, paddingHorizontal: paddingH },
+        { paddingHorizontal: paddingH },
         contentStyle,
       ]}
     >
@@ -79,7 +79,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
       {...scrollProps}
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingBottom, paddingHorizontal: paddingH },
+        { paddingHorizontal: paddingH },
         scrollProps?.contentContainerStyle,
         contentStyle,
       ]}
@@ -90,6 +90,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
     <View
       style={[
         styles.content,
+        // Tab screens: shell owns bottom pad — do not also pad child ScrollViews
         { paddingBottom, paddingHorizontal: paddingH },
         contentStyle,
       ]}

@@ -1,193 +1,304 @@
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Dimensions,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
 } from 'react-native';
-import React from 'react';
-import Animated from 'react-native-reanimated';
+import React, { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon, { TablerIconName } from './TablerIcon';
-import { useScrollHide } from '../context/ScrollHideContext';
-import { TAB_BAR_BOTTOM_OFFSET } from '../constants/layout';
+import {
+  TAB_BAR_BOTTOM_OFFSET,
+  TAB_BAR_HEIGHT,
+  TAB_CART_FAB_SIZE,
+  TAB_CONSULT_FAB_SIZE,
+} from '../constants/layout';
+import { useCartCount } from '../hooks/Cart';
 
 const { width } = Dimensions.get('window');
 const scale = Math.min(width / 400, 1);
 
-const TAB_HEIGHT = 64 * scale;
-const INNER_SIZE = TAB_HEIGHT - 14;
-const CONSULT_SIZE = 60 * scale;
+const BAR_HEIGHT = TAB_BAR_HEIGHT * scale;
+const CART_SIZE = TAB_CART_FAB_SIZE * scale;
+const CONSULT_SIZE = TAB_CONSULT_FAB_SIZE * scale;
 
 const TAB_ICONS: Record<string, TablerIconName> = {
-    Home: 'home',
-    Products: 'package',
-    Medicine: 'pill',
-    Profile: 'user',
+  Home: 'home',
+  Products: 'package',
+  Medicine: 'pill',
+  Profile: 'user',
 };
 
+const LEFT_TABS = ['Home', 'Products'] as const;
+const RIGHT_TABS = ['Medicine', 'Profile'] as const;
+
+type SideTab = (typeof LEFT_TABS)[number] | (typeof RIGHT_TABS)[number];
+
 const CustomeTab = (props: any) => {
-    const { state, navigation } = props;
-    const insets = useSafeAreaInsets();
-    const { tabBarAnimatedStyle } = useScrollHide();
-    const stackNavigation = navigation.getParent?.() || navigation;
-    const bottomInset = (insets.bottom || 0) + TAB_BAR_BOTTOM_OFFSET;
+  const { state, navigation } = props;
+  const insets = useSafeAreaInsets();
+  const cartCount = useCartCount();
+  const stackNavigation = navigation.getParent?.() || navigation;
+  const bottomPad = Math.max(insets.bottom || 0, 8) + TAB_BAR_BOTTOM_OFFSET;
 
-    const visibleRoutes = state.routes.filter(
-        (route: any) => route.name !== 'Consult',
-    );
+  const activeName = state.routes[state.index]?.name as string;
+  const isCartActive = activeName === 'MyCart';
+  const isConsultActive = activeName === 'Consult';
 
-    const isConsultActive = state.routes[state.index].name === 'Consult';
+  const routeByName = useMemo(() => {
+    const map: Record<string, any> = {};
+    state.routes.forEach((route: any) => {
+      map[route.name] = route;
+    });
+    return map;
+  }, [state.routes]);
+
+  const renderSideTab = (name: SideTab) => {
+    const route = routeByName[name];
+    if (!route) return null;
+
+    const isFocused = activeName === name;
+    const iconName = TAB_ICONS[name] ?? 'home';
+    const color = isFocused ? Colors.primaryColor : '#94A3B8';
 
     return (
-        <Animated.View
-            style={[
-                styles.wrapper,
-                { bottom: bottomInset },
-                tabBarAnimatedStyle,
-            ]}
-            pointerEvents="box-none"
+      <TouchableOpacity
+        key={route.key}
+        onPress={() => navigation.navigate(name)}
+        style={styles.sideTab}
+        activeOpacity={0.75}
+      >
+        <View style={[styles.iconCircle, isFocused && styles.iconCircleActive]}>
+          <TablerIcon name={iconName} size={20} color={color} />
+        </View>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.sideLabel,
+            {
+              color,
+              fontFamily: isFocused
+                ? Fonts.PoppinsSemiBold
+                : Fonts.PoppinsMedium,
+            },
+          ]}
         >
-            <View style={styles.container}>
-                {visibleRoutes.map((route: any) => {
-                    const isFocused =
-                        state.index ===
-                        state.routes.findIndex((r: any) => r.name === route.name);
-
-                    const iconName = TAB_ICONS[route.name] ?? 'home';
-
-                    return (
-                        <TouchableOpacity
-                            key={route.key}
-                            onPress={() => navigation.navigate(route.name)}
-                            style={styles.tab}
-                            activeOpacity={0.7}
-                        >
-                            <View
-                                style={[
-                                    styles.iconWrapper,
-                                    isFocused && styles.activeWrapper,
-                                ]}
-                            >
-                                <TablerIcon
-                                    name={iconName}
-                                    size={22}
-                                    color={isFocused ? Colors.primaryColor : '#A0AAB3'}
-                                />
-                                <Text
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={0.8}
-                                    style={[
-                                        styles.tabLabel,
-                                        {
-                                            color: isFocused ? Colors.primaryColor : '#A0AAB3',
-                                            fontFamily: isFocused
-                                                ? Fonts.PoppinsSemiBold
-                                                : Fonts.PoppinsMedium,
-                                        },
-                                    ]}
-                                >
-                                    {route.name}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
-
-            <TouchableOpacity
-                onPress={() => stackNavigation.navigate('ConsultScreen')}
-                activeOpacity={0.85}
-                style={[
-                    styles.consultBtn,
-                    isConsultActive && { backgroundColor: Colors.primaryColor },
-                ]}
-            >
-                <TablerIcon name="stethoscope" size={20} color="#fff" />
-                <Text style={styles.consultLabel}>Consult</Text>
-            </TouchableOpacity>
-        </Animated.View>
+          {name}
+        </Text>
+      </TouchableOpacity>
     );
+  };
+
+  return (
+    <View
+      style={[styles.wrapper, { paddingBottom: bottomPad }]}
+      pointerEvents="box-none"
+    >
+      {/* Only cover the safe-area strip under the pill — not a tall empty band */}
+      <View style={[styles.backdrop, { height: bottomPad + 8 }]} />
+
+      <View style={styles.row}>
+        <View style={styles.barWrap}>
+          <View style={styles.bar}>
+            <View style={styles.sideGroup}>{LEFT_TABS.map(renderSideTab)}</View>
+            <View style={styles.centerGap} />
+            <View style={styles.sideGroup}>{RIGHT_TABS.map(renderSideTab)}</View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('MyCart')}
+            activeOpacity={0.88}
+            style={[
+              styles.cartFab,
+              { bottom: BAR_HEIGHT / 2 - CART_SIZE / 2 + 12 },
+              isCartActive && styles.cartFabActive,
+            ]}
+          >
+            <TablerIcon name="shopping-cart" size={22} color="#FFFFFF" />
+            {cartCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {cartCount > 99 ? '99+' : String(cartCount)}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.plusHint}>
+                <TablerIcon name="plus" size={10} color={Colors.primaryColor} />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => stackNavigation.navigate('ConsultScreen')}
+          activeOpacity={0.85}
+          style={[
+            styles.consultFab,
+            isConsultActive && styles.consultFabActive,
+          ]}
+        >
+          <TablerIcon name="stethoscope" size={20} color="#fff" />
+          <Text style={styles.consultLabel}>Consult</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 };
 
 export default CustomeTab;
 
 const styles = StyleSheet.create({
-    wrapper: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 14,
-        zIndex: 100,
-        elevation: 12,
-    },
-    container: {
-        flex: 1,
-        height: TAB_HEIGHT,
-        borderRadius: 999,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 6,
-        backgroundColor: 'rgba(255,255,255,0.98)',
-        borderWidth: 1,
-        borderColor: 'rgba(230,236,240,0.95)',
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 4 },
-    },
-    tab: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    tabLabel: {
-        marginTop: 2,
-        fontSize: 10,
-        textAlign: 'center',
-        width: '100%',
-    },
-    iconWrapper: {
-        minWidth: 48,
-        minHeight: 48,
-        width: INNER_SIZE,
-        height: INNER_SIZE,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
-    },
-
-    activeWrapper: {
-        backgroundColor: 'rgba(13, 97, 78, 0.1)',
-        borderRadius: 10,
-    },
-    consultBtn: {
-        width: CONSULT_SIZE,
-        height: CONSULT_SIZE,
-        borderRadius: CONSULT_SIZE / 2,
-        marginLeft: 8,
-        backgroundColor: Colors.primaryColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 6,
-        shadowColor: Colors.primaryColor,
-        shadowOpacity: 0.22,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-    },
-    consultLabel: {
-        color: '#fff',
-        fontSize: 9 * scale,
-        marginTop: 2,
-        fontFamily: Fonts.PoppinsMedium,
-    },
+  wrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    elevation: 16,
+    paddingHorizontal: 10,
+  },
+  backdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FDFDFB',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  barWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  bar: {
+    height: BAR_HEIGHT,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EEF2F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    overflow: 'visible',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+  },
+  sideGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+  },
+  centerGap: {
+    width: CART_SIZE + 8,
+  },
+  sideTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircleActive: {
+    backgroundColor: 'rgba(13, 97, 78, 0.14)',
+    borderRadius: 18,
+  },
+  sideLabel: {
+    marginTop: 1,
+    fontSize: 10,
+    lineHeight: 13,
+    textAlign: 'center',
+  },
+  cartFab: {
+    position: 'absolute',
+    alignSelf: 'center',
+    width: CART_SIZE,
+    height: CART_SIZE,
+    borderRadius: CART_SIZE / 2,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    shadowColor: Colors.primaryColor,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 14,
+    zIndex: 2,
+  },
+  cartFabActive: {
+    backgroundColor: '#0A4F40',
+  },
+  consultFab: {
+    width: CONSULT_SIZE,
+    height: CONSULT_SIZE,
+    borderRadius: CONSULT_SIZE / 2,
+    marginLeft: 8,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: Colors.primaryColor,
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  consultFabActive: {
+    backgroundColor: '#0A4F40',
+  },
+  consultLabel: {
+    color: '#fff',
+    fontSize: 9 * scale,
+    marginTop: 2,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: '#F43F5E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    lineHeight: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  plusHint: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

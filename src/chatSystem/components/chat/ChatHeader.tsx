@@ -17,7 +17,7 @@ interface ChatHeaderProps {
 
 const THEME = '#0D614E';
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline, role, onBack }) => {
+export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline: _isOnline, role, onBack }) => {
   const navigation = useNavigation();
   const handleBack = () => (onBack ? onBack() : navigation.goBack());
 
@@ -39,13 +39,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline,
               <Text style={styles.avatarText}>{title?.charAt(0)?.toUpperCase() || '?'}</Text>
             </View>
           )}
-          <View style={[styles.statusDot, isOnline ? styles.statusOnline : styles.statusOffline]} />
+          <View style={[styles.statusDot, styles.statusOnline]} />
         </View>
 
         <View style={styles.titleContainer}>
           <Text style={styles.title} numberOfLines={1}>{title || 'Unknown'}</Text>
           <Text style={styles.subtitle}>
-            {isOnline ? 'Online' : 'Offline'} • {role === 'doctor' ? 'Doctor' : 'Patient'}
+            Connected • {role === 'doctor' ? 'Doctor' : 'Patient'}
           </Text>
         </View>
       </View>

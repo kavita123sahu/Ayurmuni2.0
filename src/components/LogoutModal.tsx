@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
 
     title: {
         fontSize: 22,
-        fontWeight: '700',
+        fontFamily: Fonts.PoppinsMedium,
         color: '#111827',
         textAlign: 'center',
     },
@@ -147,6 +147,8 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#6B7280',
         textAlign: 'center',
+        
+        fontFamily: Fonts.PoppinsSemiBold,
         marginTop: 10,
         lineHeight: 22,
     },
@@ -171,7 +173,7 @@ const styles = StyleSheet.create({
 
     cancelText: {
         fontSize: 15,
-        fontWeight: '600',
+        fontFamily:Fonts.PoppinsMedium,
         color: '#374151',
     },
 
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
 
     confirmText: {
         fontSize: 15,
-        fontWeight: '700',
+        fontFamily: Fonts.PoppinsMedium,
         color: '#FFFFFF',
     },
 });

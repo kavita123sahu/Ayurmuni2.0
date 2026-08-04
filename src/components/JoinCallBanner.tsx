@@ -35,6 +35,18 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
   const specialty = item.specialty || item.therapies || '';
   const dayLabel = formatAppointmentDayLabel(item.date);
   const timeLabel = formatAppointmentTimeLabel(item.time);
+  const endTimeLabel =
+    item.endTimeLabel ||
+    formatAppointmentTimeLabel(item.endTime) ||
+    null;
+
+  const scheduleTimeLabel = useMemo(() => {
+    if (timeLabel && endTimeLabel) {
+      return `${timeLabel} – ${endTimeLabel}`;
+    }
+    return timeLabel || endTimeLabel || '';
+  }, [timeLabel, endTimeLabel]);
+
   const imageUri = item.image?.trim?.() ? item.image : null;
 
   useEffect(() => {
@@ -135,10 +147,10 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
               </View>
             ) : null}
 
-            {timeLabel ? (
+            {scheduleTimeLabel ? (
               <View style={styles.timingItem}>
                 <TablerIcon name="clock" size={12} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.timingText}>{timeLabel}</Text>
+                <Text style={styles.timingText}>{scheduleTimeLabel}</Text>
               </View>
             ) : null}
           </View>

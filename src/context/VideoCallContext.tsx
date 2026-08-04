@@ -971,23 +971,32 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const minimizeCall = useCallback(() => {
-    if (!callParams) {
+    // Prefer appointment ref so minimize still works if callParams briefly lags
+    if (!appointmentIdRef.current && !callParams) {
       return;
     }
     setViewMode('minimized');
   }, [callParams]);
 
   const expandCall = useCallback(() => {
-    if (!callParams) {
+    const params = callParams;
+    if (!params?.appointmentId && !appointmentIdRef.current) {
       return;
     }
     setViewMode('fullscreen');
     if (navigationRef.isReady()) {
-      // @ts-expect-error nested stack screen
-      navigationRef.navigate('HomeStack', {
-        screen: 'PatientVideoCallScreen',
-        params: callParams,
-      });
+      try {
+        // @ts-expect-error nested stack screen
+        navigationRef.navigate('HomeStack', {
+          screen: 'PatientVideoCallScreen',
+          params: params ?? {
+            appointmentId: appointmentIdRef.current!,
+            role: callRoleRef.current,
+          },
+        });
+      } catch (e) {
+        console.log('[VideoCall] expand navigate failed:', e);
+      }
     }
   }, [callParams]);
 

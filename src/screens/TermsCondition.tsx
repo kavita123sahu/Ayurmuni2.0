@@ -58,11 +58,25 @@ const TermsCondition = (props: any) => {
 const insets = useSafeAreaInsets();
   const handleAgree = () => {
     showSuccessToast('Accepted Terms & Conditions', 'success');
-    props.navigation.replace('HomeStack', { screen: 'Onboarding' });
+    // Keep AccessMode under this screen so Back can return to the ask page
+    props.navigation.navigate('Onboarding');
   };
 
   const handleDisagree = () => {
     showSuccessToast('You need to accept terms to continue', 'error');
+  };
+
+  const handleBack = () => {
+    if (props.navigation.canGoBack()) {
+      props.navigation.goBack();
+      return;
+    }
+    // Onboarding entry with no stack → return to Guest vs Complete ask page
+    if (isOnboardingFlow) {
+      props.navigation.navigate('AccessMode');
+      return;
+    }
+    safeGoBack(props.navigation);
   };
 
   return (
@@ -71,7 +85,7 @@ const insets = useSafeAreaInsets();
 
       <AppHeader
         title={title}
-        onLeftPress={() => safeGoBack(props.navigation)}
+        onLeftPress={handleBack}
       />
 
       <View style={styles.banner}>

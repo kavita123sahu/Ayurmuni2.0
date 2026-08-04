@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
     View,
     Text,
@@ -100,7 +100,6 @@ const getItemPrice = (item: OrderItemType) =>
     formatCurrency(item.total_price ?? item.price);
 
 const OrderConfirmation: React.FC = (props: any) => {
-    const [showModal, setShowModal] = useState(false);
     const dispatch = useAppDispatch();
 
     const orderResult: OrderResult | undefined = props.route?.params?.orderResult;
@@ -202,22 +201,23 @@ const OrderConfirmation: React.FC = (props: any) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            props.navigation.navigate('OrderDetailsScreen',{
-                 order: orderResult,
-            })
-        }, 2000);
+            props.navigation.replace('OrderDetailsScreen', {
+                order: orderResult,
+                fromOrderSuccess: true,
+            });
+        }, 1800);
         return () => clearTimeout(timer);
-    }, []);
+    }, [orderResult, props.navigation]);
 
 
     useEffect(() => {
         const backAction = () => {
-            setShowModal(true);
+            props.navigation.navigate('TabStack', { screen: 'Home' });
             return true;
         };
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, []);
+    }, [props.navigation]);
 
     const items: OrderItemType[] = (() => {
         const orderItems = Array.isArray(orderResult?.items)
@@ -292,14 +292,25 @@ const OrderConfirmation: React.FC = (props: any) => {
                         will be on their way soon!
                     </Text>
 
-                    <TouchableOpacity style={styles.trackBtn} activeOpacity={0.8}>
+                    <TouchableOpacity
+                        style={styles.trackBtn}
+                        activeOpacity={0.8}
+                        onPress={() =>
+                            props.navigation.replace('OrderDetailsScreen', {
+                                order: orderResult,
+                                fromOrderSuccess: true,
+                            })
+                        }
+                    >
                         <Text style={styles.trackText}>Track Order</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.continueBtn}
                         activeOpacity={0.8}
-                        onPress={() => props.navigation.replace('HomeStack', { screen: 'Home' })}
+                        onPress={() =>
+                            props.navigation.navigate('TabStack', { screen: 'Home' })
+                        }
                     >
                         <Text style={styles.continueText}>Continue Shopping</Text>
                     </TouchableOpacity>

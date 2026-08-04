@@ -23,6 +23,7 @@ import {
   isChoiceSelected,
   toggleAnswer,
 } from './utils';
+import { promoteToFullUser } from '../../services/guestAuth';
 
 export const useQuestionnaireFlow = (
   navigation: any,
@@ -196,6 +197,11 @@ export const useQuestionnaireFlow = (
       if (!success) {
         showSuccessToast('Submission failed', 'error');
         return;
+      }
+
+      // Customer profile + prakriti complete → upgrade guest → full user
+      if (isPrakriti) {
+        await promoteToFullUser();
       }
 
       navigation.replace(setup.finishRoute, setup.finishParams);

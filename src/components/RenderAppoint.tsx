@@ -92,7 +92,7 @@ const RenderAppoint = ({
   const statusLabel =
     item.status === 'cancellation_requested'
       ? 'CONFIRMED'
-      : String(item.status || 'UPCOMING').toUpperCase();
+      : String(item.status).toUpperCase();
 
   const openAppointmentDetails = () => {
     navigation.navigate(

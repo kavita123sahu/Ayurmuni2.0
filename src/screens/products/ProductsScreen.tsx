@@ -226,7 +226,9 @@ const ProductsScreen = () => {
       />
 
       {showInitialSkeleton ? (
-        <ProductsScreenSkeleton />
+        <View style={styles.skeletonWrap}>
+          <ProductsScreenSkeleton />
+        </View>
       ) : (
         <FlatList
           data={products}
