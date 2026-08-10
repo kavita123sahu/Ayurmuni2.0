@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import TablerIcon, { TablerIconName } from './TablerIcon';
-import { CARD_SURFACE, CARD_RADIUS_LG } from '../constants/cardStyles';
+import {  CARD_RADIUS_LG } from '../constants/cardStyles';
 import { RootStackParamList } from '../../type';
 
 type CardType = {

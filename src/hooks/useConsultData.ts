@@ -3,12 +3,22 @@ import {
     useState,
     useCallback,
     useRef,
+    useMemo,
 } from 'react';
 
 import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
 import { Images } from '../common/Images';
 import { isAuthenticated } from '../services/guestAuth';
+import {
+    normalizeAppointmentListItem,
+    sortAppointmentsByDateTime,
+} from '../utils/appointmentUtils';
+import {
+    getHealthCategories,
+    mapProductCategory,
+    normalizeApiList,
+} from '../services/ProductServices';
 
 export type SlotItem = {
     id: string;
@@ -56,25 +66,30 @@ export const useConsultData = () => {
                     topDoctorRes,
                     AllfavDoctor
                 ]: any = await Promise.all([
-                    // _CONSULT_SERVICES.getConsultCategory(),
-                    _CONSULT_SERVICES.getConsultCategory(),
+                    getHealthCategories(),
                     _CONSULT_SERVICES.getTopDoctor(),
                     _CONSULT_SERVICES.AllDoctorData(),
 
                 ]);
 
-                console.log('ALL DOCTOR DATA ==>', AllfavDoctor);
+                console.log('ALLtopDoctorResDOCTOR DATA ==>', topDoctorRes);
 
                 setRecentDoctors(doctorRecent);
 
                 setFavDoctors(AllfavDoctor?.data?.results || []);
 
+                const healthCats = normalizeApiList(categoryRes)
+                    .map(mapProductCategory)
+                    .filter(item => item.id);
+
                 setCategories(
-                    categoryRes?.data || [],
+                    healthCats.length
+                        ? healthCats
+                        : categoryRes?.data || [],
                 );
 
                 setTopDoctors(
-                    topDoctorRes?.data || [],
+                    topDoctorRes?.data?.results || [],
                 );
 
             } catch (error) {
@@ -250,53 +265,177 @@ export const groupSlotsByTime = (
     );
 };
 
-export const useAllDoctors = (selectedFilters: any) => {
+export type DoctorListFilters = {
+    specialization?: string;
+    experience?: string;
+    from_date?: string;
+    to_date?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+    suggested?: boolean;
+    /** Filter doctors by health category (concern) */
+    health_category_id?: string;
+    /** Filter doctors by disease subcategory */
+    health_disease_id?: string;
+};
 
-
-    console.log("selectedfilerpayload", selectedFilters);
-
+export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [doctorData, setDoctorData] = useState<any[]>([]);
+    const requestIdRef = useRef(0);
 
-    const getAllDoctors = useCallback(async () => {
+    const getAllDoctors = useCallback(async (options?: { isRefresh?: boolean }) => {
+        const reqId = ++requestIdRef.current;
         try {
-            setLoading(true);
+            if (!options?.isRefresh) {
+                setLoading(true);
+            }
 
-
-            const payload = {
-                specialization: selectedFilters.speciality || '',
-                experience: selectedFilters.experience || '',
-                from_date: selectedFilters.availabilityFrom || '',
-                to_date: selectedFilters.availabilityTo || '',
+            // Only send defined filters — never force empty specialization (avoids fetching all)
+            const payload: DoctorListFilters = {
+                page: selectedFilters.page ?? 1,
+                page_size: selectedFilters.page_size ?? 20,
             };
-            console.log("payloadddddddddddd", payload);
+
+            if (selectedFilters.health_disease_id) {
+                payload.health_disease_id = selectedFilters.health_disease_id;
+            } else if (selectedFilters.health_category_id) {
+                payload.health_category_id = selectedFilters.health_category_id;
+            } else if (selectedFilters.specialization) {
+                payload.specialization = selectedFilters.specialization;
+            }
+
+            if (selectedFilters.experience) {
+                payload.experience = selectedFilters.experience;
+            }
+            if (selectedFilters.from_date) {
+                payload.from_date = selectedFilters.from_date;
+            }
+            if (selectedFilters.to_date) {
+                payload.to_date = selectedFilters.to_date;
+            }
+            if (selectedFilters.search?.trim()) {
+                payload.search = selectedFilters.search.trim();
+            }
+            if (selectedFilters.suggested) {
+                payload.suggested = selectedFilters.suggested;
+            }
 
             const res = await _CONSULT_SERVICES.getFilterTopDoctor(payload);
 
+            if (reqId !== requestIdRef.current) return;
+
             setDoctorData(res?.data?.results || []);
         } catch (e) {
-            console.log("ALL_DOCTOR_ERROR", e);
+            if (reqId !== requestIdRef.current) return;
+            console.log('ALL_DOCTOR_ERROR', e);
+            setDoctorData([]);
         } finally {
-            setLoading(false);
+            if (reqId === requestIdRef.current) {
+                if (!options?.isRefresh) {
+                    setLoading(false);
+                }
+            }
         }
     }, [
-        selectedFilters?.speciality?.id,
-        selectedFilters?.availabilityFrom,
-        selectedFilters?.availabilityTo,
-        selectedFilters?.experience,
+        selectedFilters.specialization,
+        selectedFilters.health_category_id,
+        selectedFilters.health_disease_id,
+        selectedFilters.experience,
+        selectedFilters.from_date,
+        selectedFilters.to_date,
+        selectedFilters.search,
+        selectedFilters.page,
+        selectedFilters.page_size,
+        selectedFilters.suggested,
     ]);
 
     useEffect(() => {
         getAllDoctors();
     }, [getAllDoctors]);
 
-    return { loading, doctorData, refetch: getAllDoctors };
+    const refresh = useCallback(async () => {
+        setRefreshing(true);
+        await getAllDoctors({ isRefresh: true });
+        setRefreshing(false);
+    }, [getAllDoctors]);
+
+    return { loading, refreshing, doctorData, refetch: getAllDoctors, refresh };
 };
 
 
 
 
-export const useAppointmentHistory = () => {
+/** Fetch size for home upcoming list — show all upcoming (sorted client-side). */
+const HOME_UPCOMING_PAGE_SIZE = 50;
+
+/** Lightweight fetch for home — all upcoming, sorted by date/time. */
+export const useUpcomingAppointmentsPreview = (
+    pageSize = HOME_UPCOMING_PAGE_SIZE,
+) => {
+    const [loading, setLoading] = useState(true);
+    const [appointments, setAppointments] = useState<any[]>([]);
+
+    const fetchPreview = useCallback(async (options?: { silent?: boolean }) => {
+        try {
+            if (!(await isAuthenticated())) {
+                setAppointments([]);
+                return;
+            }
+
+            if (!options?.silent) {
+                setLoading(true);
+            }
+
+            const res = await _CONSULT_SERVICES.getConsultHistory({
+                page: 1,
+                page_size: pageSize,
+                // Prefer confirmed upcoming for Home preview
+                appointment_status: 'confirmed',
+            });
+
+            const results = res?.data?.results || [];
+            // Home list: only confirmed appointments (exclude pending/reschedule/etc.)
+            const confirmedOnly = results
+                .map((item: any) => normalizeAppointmentListItem(item))
+                .filter((item: any) => {
+                    const status = String(item?.status || '')
+                        .trim()
+                        .toLowerCase();
+                    return status === 'confirmed';
+                });
+
+            setAppointments(sortAppointmentsByDateTime(confirmedOnly));
+        } catch (e) {
+            console.log('UPCOMING_PREVIEW_ERROR', e);
+            setAppointments([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [pageSize]);
+
+    useEffect(() => {
+        fetchPreview();
+    }, [fetchPreview]);
+
+    const refreshPreview = useCallback(
+        () => fetchPreview({ silent: true }),
+        [fetchPreview],
+    );
+
+    return {
+        loading,
+        appointments,
+        refreshPreview,
+    };
+};
+
+export const useAppointmentHistory = (filters?: {
+  appointment_status?: string;
+  follow_up?: string;
+}) => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -306,70 +445,116 @@ export const useAppointmentHistory = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
+    const pageRef = useRef(1);
+    const hasMoreRef = useRef(true);
+    const loadingMoreRef = useRef(false);
+    const appointDataRef = useRef<any[]>([]);
+
+    const filterKey = useMemo(
+        () =>
+            JSON.stringify({
+                appointment_status: filters?.appointment_status ?? '',
+                follow_up: filters?.follow_up ?? '',
+            }),
+        [filters?.appointment_status, filters?.follow_up],
+    );
+
     const getAllAppointment = useCallback(
         async (pageNo = 1, isLoadMore = false) => {
             try {
-                // Guests have no appointments; skip the authenticated call.
                 if (!(await isAuthenticated())) {
                     setAppointData([]);
+                    appointDataRef.current = [];
                     setHasMore(false);
+                    hasMoreRef.current = false;
                     setLoading(false);
                     setLoadingMore(false);
+                    loadingMoreRef.current = false;
                     return;
                 }
 
                 if (isLoadMore) {
+                    if (loadingMoreRef.current || !hasMoreRef.current) {
+                        return appointDataRef.current;
+                    }
+                    loadingMoreRef.current = true;
                     setLoadingMore(true);
                 } else {
                     setLoading(true);
                 }
 
+                const parsed = JSON.parse(filterKey) as {
+                    appointment_status?: string;
+                    follow_up?: string;
+                };
+
                 const res = await _CONSULT_SERVICES.getConsultHistory({
                     page: pageNo,
+                    page_size: 20,
+                    ...(parsed.appointment_status
+                        ? { appointment_status: parsed.appointment_status }
+                        : {}),
+                    ...(parsed.follow_up
+                        ? { follow_up: parsed.follow_up }
+                        : {}),
                 });
-
-                console.log("consult response", res);
+                console.log('APPOINTMENT_HISTORY_DATA', res?.data);
 
                 const results = res?.data?.results || [];
+                const nextExists = !!res?.data?.next;
+                const canLoadMore = nextExists && results.length > 0;
 
-                if (isLoadMore) {
-                    setAppointData(prev => [...prev, ...results]);
-                } else {
-                    setAppointData(results);
-                }
+                setAppointData(prev => {
+                    const merged = isLoadMore ? [...prev, ...results] : results;
+                    appointDataRef.current = merged;
+                    return merged;
+                });
 
-                setHasMore(!!res?.data?.next);
+                pageRef.current = pageNo;
+                hasMoreRef.current = canLoadMore;
+                setHasMore(canLoadMore);
                 setPage(pageNo);
 
+                return appointDataRef.current;
             } catch (e) {
-                console.log("ALL_DOCTOR_APPOINT_ERROR", e);
+                console.log('ALL_DOCTOR_APPOINT_ERROR', e);
+                return appointDataRef.current;
             } finally {
                 setLoading(false);
                 setLoadingMore(false);
+                loadingMoreRef.current = false;
             }
         },
-        [],
+        [filterKey],
     );
 
     const loadMore = useCallback(() => {
-        if (loadingMore || !hasMore) return;
-
-        getAllAppointment(page + 1, true);
-    }, [page, hasMore, loadingMore, getAllAppointment]);
+        if (loadingMoreRef.current || !hasMoreRef.current) {
+            return;
+        }
+        getAllAppointment(pageRef.current + 1, true);
+    }, [getAllAppointment]);
 
     const refreshUpcoming = useCallback(async () => {
         try {
             setRefreshing(true);
+            pageRef.current = 1;
+            hasMoreRef.current = true;
             setPage(1);
             setHasMore(true);
-
             await getAllAppointment(1, false);
+        } catch (e) {
+            console.log('REFRESH_APPOINTMENT_ERROR', e);
         } finally {
             setRefreshing(false);
         }
     }, [getAllAppointment]);
 
     useEffect(() => {
+        pageRef.current = 1;
+        hasMoreRef.current = true;
+        setPage(1);
+        setHasMore(true);
         getAllAppointment(1);
     }, [getAllAppointment]);
 

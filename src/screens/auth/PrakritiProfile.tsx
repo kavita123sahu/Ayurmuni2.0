@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,97 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import { Images } from '../../common/Images';
-import { Styles } from '../../common/Styles';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { PrakritiProfileSkeleton } from '../../simmerScreen/ShimmerHook';
-import { Feather } from '../../common/Vector';
 import BackIconButton from '../../components/BackIconButton';
 import TablerIcon from '../../components/TablerIcon';
 
 
 const { width } = Dimensions.get('window');
+
+const getDynamicTitle = (result: string) => {
+  switch (result?.toLowerCase()) {
+    case 'vata':
+      return 'The Visionary';
+    case 'pitta':
+      return 'The Leader';
+    case 'kapha':
+      return 'The Nurturer';
+    case 'vata-pitta':
+      return 'The Dynamic Creator';
+    case 'pitta-kapha':
+      return 'The Strategic Builder';
+    case 'vata-kapha':
+      return 'The Calm Innovator';
+    default:
+      return 'Balanced Soul';
+  }
+};
+
+const formatPrakritiData = (apiData: any) => {
+  const dominantType = apiData?.result || '';
+
+  const doshas = [
+    {
+      id: 1,
+      name: 'VATA',
+      percentage: apiData?.vata || 0,
+      color: '#2563EB',
+      icon: '༄',
+    },
+    {
+      id: 2,
+      name: 'PITTA',
+      percentage: apiData?.pitta || 0,
+      color: '#F59E0B',
+      icon: '🔥',
+    },
+    {
+      id: 3,
+      name: 'KAPHA',
+      percentage: apiData?.kapha || 0,
+      color: '#87ccea',
+      icon: '💧',
+    },
+  ];
+
+  return {
+    dominantType,
+    subtitle: 'Your unique Ayurvedic soul-print.',
+    doshas,
+    coreEssence: {
+      title: getDynamicTitle(dominantType),
+      description: apiData?.content?.core_essence || '',
+    },
+    lifestyleGuidelines: {
+      doList: apiData?.content?.lifestyle?.["do's"] || [],
+      dontList: apiData?.content?.lifestyle?.["don'ts"] || [],
+    },
+  };
+};
+
+const hasValidPrakritiPayload = (response: any) => {
+  if (!response || response.success !== true || !response?.data?.result) {
+    return false;
+  }
+
+  const apiData = response?.data;
+  if (!apiData || typeof apiData !== 'object') {
+    return false;
+  }
+
+  const hasResult = Boolean(apiData?.result);
+  const hasDoshas = [apiData?.vata, apiData?.pitta, apiData?.kapha].some(
+    value => value != null && value !== '',
+  );
+
+  return hasResult || hasDoshas;
+};
 
 interface GuidelineCardProps {
   title: string;
@@ -32,162 +110,40 @@ interface GuidelineCardProps {
 }
 
 const PrakritiProfile = (props: any) => {
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [hasPrakriti, setHasPrakriti] = useState(false);
 
-  const [analysisData, setAnalysisData] = React.useState<any>({
-    dominantType: '',
-    subtitle: '',
-    doshas: [],
-    coreEssence: {
-      title: '',
-      description: '',
-    },
-    lifestyleGuidelines: {
-      doList: [],
-      dontList: [],
-    },
-  });
-  const [loading, setLoading] = React.useState(true);
-
-  console.log("propssss", props)
-
-  useEffect(() => {
-    getPrakritiInfo();
-    // console.log('analysisData', analysisData);
-  }, []);
-
-  const getPrakritiInfo = async () => {
+  const getPrakritiInfo = useCallback(async () => {
     try {
       setLoading(true);
+      setHasPrakriti(false);
+      setAnalysisData(null);
 
-      const response: any =
-        await _PROFILE_SERVICES.get_prakriti_info();
-
-      console.log(
-        'prakriti-response',
-        response,
-      );
-
-      if (response?.success) {
-        const apiData = response?.data;
-
-        console.log("resposnesucess", response)
-
-        // ===== RESULT =====
-
-        const dominantType =
-          apiData?.result || '';
-
-        // ===== DOSHAS =====
-
-        const doshas = [
-          {
-            id: 1,
-            name: 'VATA',
-            percentage: apiData?.vata || 0,
-            color: '#2563EB',
-            icon: '༄',
-          },
-          {
-            id: 2,
-            name: 'PITTA',
-            percentage: apiData?.pitta || 0,
-            color: '#F59E0B',
-            icon: '🔥',
-          },
-          {
-            id: 3,
-            name: 'KAPHA',
-            percentage: apiData?.kapha || 0,
-            color: '#87ccea',
-            icon: '💧',
-          },
-        ];
-
-        // ===== TITLE =====
-
-        const getDynamicTitle = (
-          result: string,
-        ) => {
-          switch (
-          result?.toLowerCase()
-          ) {
-            case 'vata':
-              return 'The Visionary';
-
-            case 'pitta':
-              return 'The Leader';
-
-            case 'kapha':
-              return 'The Nurturer';
-
-            case 'vata-pitta':
-              return 'The Dynamic Creator';
-
-            case 'pitta-kapha':
-              return 'The Strategic Builder';
-
-            case 'vata-kapha':
-              return 'The Calm Innovator';
-
-            default:
-              return 'Balanced Soul';
-          }
-        };
-
-        // ===== FINAL FORMATTED DATA =====
-
-        const formattedData = {
-          dominantType,
-
-          subtitle:
-            'Your unique Ayurvedic soul-print.',
-
-          doshas,
-
-          coreEssence: {
-            title:
-              getDynamicTitle(
-                dominantType,
-              ),
-
-            description:
-              apiData?.content
-                ?.core_essence || '',
-          },
-
-          lifestyleGuidelines: {
-            doList:
-              apiData?.content
-                ?.lifestyle?.["do's"] ||
-              [],
-
-            dontList:
-              apiData?.content
-                ?.lifestyle?.["don'ts"] ||
-              [],
-          },
-        };
-
-        console.log(
-          'formattedData',
-          formattedData,
-        );
-
-        setAnalysisData(
-          formattedData,
-        );
+      const response: any = await _PROFILE_SERVICES.get_prakriti_info();
+      console.log("prakiirinanauluysysy", response);
+      if (!hasValidPrakritiPayload(response)) {
+        setHasPrakriti(false);
+        setAnalysisData(null);
+        return;
       }
+
+      setAnalysisData(formatPrakritiData(response.data));
+      setHasPrakriti(true);
     } catch (error) {
-      console.log(error);
-      console.log(
-        'prakriti-error',
-        error,
-      );
-    }
-    finally {
+      console.log('prakriti-error', error);
+      setHasPrakriti(false);
+      setAnalysisData(null);
+    } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      getPrakritiInfo();
+    }, [getPrakritiInfo]),
+  );
 
   const handleGoHome = () => {
     props.navigation.replace('HomeStack', {
@@ -195,191 +151,199 @@ const PrakritiProfile = (props: any) => {
     });
   };
 
+  const handleEditAssessment = () => {
+    props.navigation.navigate('PatientFAQ');
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconWrap}>
+        <Image
+          source={Images.FinalLogo}
+          style={{ height: 80, width: 80, tintColor: Colors.primaryColor }}
+        />
+      </View>
+
+      <Text style={styles.emptyTitle}>No Prakriti Assessment Yet</Text>
+
+      <Text style={styles.emptyDescription}>
+        Complete a short Ayurvedic assessment to discover your unique body
+        constitution and receive personalized health recommendations.
+      </Text>
+
+      <View style={styles.featureCard}>
+        <View style={styles.featureRow}>
+          <TablerIcon name="spoon" size={18} color={Colors.primaryColor} />
+          <Text style={styles.featureText}>Personalized Analysis</Text>
+        </View>
+
+        <View style={styles.featureRow}>
+          <TablerIcon name="briefcase" size={18} color={Colors.primaryColor} />
+          <Text style={styles.featureText}>Diet Recommendations</Text>
+        </View>
+
+        <View style={styles.featureRow}>
+          <TablerIcon name="heart" size={18} color={Colors.primaryColor} />
+          <Text style={styles.featureText}>Lifestyle Guidance</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.startBtn}
+        onPress={() => props.navigation.navigate('PatientFAQ')}
+      >
+        <Text style={styles.startBtnText}>Start Assessment</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderAnalysisContent = () => {
+    if (!analysisData) {
+      return renderEmptyState();
+    }
+
+    return (
+      <>
+        <View style={styles.topSection}>
+          <Text style={styles.completedText}>PRAKRITI ANALYSIS COMPLETE</Text>
+          <Text style={styles.mainTitle}>
+            {analysisData.dominantType || 'Your Prakriti Type'}
+          </Text>
+          <Text style={styles.subtitle}>
+            Your unique Ayurvedic soul-print, Priya.
+          </Text>
+        </View>
+
+        <View style={styles.doshaCard}>
+          {analysisData.doshas.map((item: any) => (
+            <View key={item.id} style={styles.doshaItem}>
+              <View style={[styles.iconCircle, { borderColor: item.color }]}>
+                <Text style={[styles.doshaIcon, { color: item.color }]}>
+                  {item.icon}
+                </Text>
+              </View>
+              <Text style={styles.doshaName}>{item.name}</Text>
+              <Text style={styles.doshaPercent}>{item.percentage}%</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.essenceCard}>
+          <Text style={styles.smallHeading}>CORE ESSENCE</Text>
+          <Text style={styles.essenceTitle}>
+            {analysisData.coreEssence.title}
+          </Text>
+          <Text style={styles.essenceDescription}>
+            {analysisData.coreEssence.description}
+          </Text>
+        </View>
+
+        <View style={styles.guidelineHeader}>
+          <Text style={styles.guidelineTitle}>Lifestyle Guidelines</Text>
+          <Text style={styles.personalizedText}>Personalized</Text>
+        </View>
+
+        <GuidelineCard
+          title="Daily Rituals (Do's)"
+          color={Colors.primaryColor}
+          icon={require('../../assets/images/check-icon.png')}
+          image={require('../../assets/images/bullettick.png')}
+          data={analysisData.lifestyleGuidelines.doList}
+        />
+
+        <GuidelineCard
+          title="To Avoid (Don'ts)"
+          color="#EA580C"
+          image={require('../../assets/images/crosstick.png')}
+          icon={require('../../assets/images/DontIcon.png')}
+          data={analysisData.lifestyleGuidelines.dontList}
+        />
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() =>
+              props.navigation.navigate('PatientFAQ')
+            }
+          >
+            <TablerIcon
+              name="edit"
+              size={14}
+              color={Colors.primaryColor}
+            />
+            <Text style={styles.actionText}>
+              Prakriti
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, { borderColor: '#FED7AA' }]}
+            onPress={() =>
+              props.navigation.navigate('MedicalHistory')
+            }
+          >
+            <TablerIcon
+              name="edit"
+              size={14}
+              color={Colors.primaryColor}
+            />
+            <Text style={styles.actionText}>
+              Medical
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.homeBtn}
+          onPress={handleGoHome}
+        >
+          <Text style={styles.homeBtnText}>Go to Home</Text>
+        </TouchableOpacity>
+      </>
+    );
+  };
+
+  const renderBody = () => {
+    if (loading) {
+      return <PrakritiProfileSkeleton />;
+    }
+
+    if (!hasPrakriti) {
+      return renderEmptyState();
+    }
+
+    return renderAnalysisContent();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
 
-      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.primaryColor} />
+      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
       {/* ===== HEADER ===== */}
       <View style={styles.header}>
         <BackIconButton onPress={() => props.navigation.goBack()} style={styles.iconBtn} />
 
         <Text style={styles.headerTitle}>Prakriti Analysis</Text>
 
-        <TouchableOpacity style={styles.iconBtn}>
-          <TablerIcon name="share" size={22} color={Colors.primaryColor} />
-        </TouchableOpacity>
+        {hasPrakriti && !loading ? (
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={handleEditAssessment}
+            activeOpacity={0.8}
+          >
+            <TablerIcon name="edit" size={22} color={Colors.primaryColor} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.iconBtnPlaceholder} />
+        )}
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {loading ? <PrakritiProfileSkeleton /> :
-
-          (<>
-            <View style={styles.topSection}>
-              <Text style={styles.completedText}>
-                PRAKRITI ANALYSIS COMPLETE
-              </Text>
-
-              <Text style={styles.mainTitle}>
-                {analysisData?.dominantType || 'Your Prakriti Type'}
-              </Text>
-
-              <Text style={styles.subtitle}>
-                Your unique Ayurvedic soul-print, Priya.
-              </Text>
-            </View>
-
-            {/* ===== DOSHA CARD ===== */}
-            <View style={styles.doshaCard}>
-              {analysisData.doshas.map((item: any) => (
-                <View key={item.id} style={styles.doshaItem}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      {
-                        borderColor: item.color,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.doshaIcon,
-                        {
-                          color: item.color,
-                        },
-                      ]}
-                    >
-                      {item.icon}
-                    </Text>
-                  </View>
-
-                  <Text style={styles.doshaName}>{item.name}</Text>
-
-                  <Text style={styles.doshaPercent}>
-                    {item.percentage}%
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* ===== CORE ESSENCE ===== */}
-            <View style={styles.essenceCard}>
-              <Text style={styles.smallHeading}>CORE ESSENCE</Text>
-
-              <Text style={styles.essenceTitle}>
-                {analysisData.coreEssence.title}
-              </Text>
-
-              <Text style={styles.essenceDescription}>
-                {analysisData.coreEssence.description}
-              </Text>
-            </View>
-
-            {/* ===== GUIDELINES ===== */}
-            <View style={styles.guidelineHeader}>
-              <Text style={styles.guidelineTitle}>
-                Lifestyle Guidelines
-              </Text>
-
-              <Text style={styles.personalizedText}>
-                Personalized
-              </Text>
-            </View>
-
-            {/* ===== DO CARD ===== */}
-            <GuidelineCard
-              title="Daily Rituals (Do's)"
-              color={Colors.primaryColor}
-              icon={require('../../assets/images/check-icon.png')}
-              image={require('../../assets/images/bullettick.png')}
-              data={analysisData.lifestyleGuidelines.doList}
-            />
-
-            {/* ===== DONT CARD ===== */}
-            <GuidelineCard
-              title="To Avoid (Don'ts)"
-              color="#EA580C"
-              image={require('../../assets/images/crosstick.png')}
-              icon={require('../../assets/images/DontIcon.png')}
-              data={analysisData.lifestyleGuidelines.dontList}
-            />
-          </>)}
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={{
-            backgroundColor: Colors.primaryColor,
-            paddingVertical: 14,
-            borderRadius: 12,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginHorizontal: 20,
-            marginTop: 20,
-          }}
-          onPress={handleGoHome}
-
-        >
-          <Text
-            style={{
-              color: '#FFF',
-              fontSize: 16,
-              fontFamily: Fonts.PoppinsSemiBold,
-            }}
-          >
-            Go to Home
-          </Text>
-        </TouchableOpacity>
-
-        {/* {analysisData?.dominantType && ( */}
-        <View style={styles.pendingCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.pendingTitle}>
-              Complete Your Health Profile
-            </Text>
-
-            <Text style={styles.pendingSubTitle}>
-              Prakriti Assessment & Medical History are pending.
-            </Text>
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() =>
-                props.navigation.navigate('PatientFAQ')
-              }
-            >
-              <Feather
-                name="edit-2"
-                size={14}
-                color={Colors.primaryColor}
-              />
-              <Text style={styles.actionText}>
-                Prakriti
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() =>
-                props.navigation.navigate('MedicalHistory')
-              }
-            >
-              <Feather
-                name="edit-2"
-                size={14}
-                color={Colors.primaryColor}
-              />
-              <Text style={styles.actionText}>
-                Medical
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        {/* )} */}
-
+        {renderBody()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -456,16 +420,19 @@ const GuidelineCard = React.memo(
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.background
+    // backgroundColor: '#F5F5F5',
   },
 
   scrollContent: {
     paddingBottom: 40,
+    backgroundColor: Colors.white
   },
 
   // ===== HEADER =====
   header: {
-    backgroundColor: '#0B7358',
+
+    backgroundColor: Colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -483,6 +450,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  iconBtnPlaceholder: {
+    width: 34,
+    height: 34,
+  },
+
   iconText: {
     fontSize: 20,
     color: '#1F2937',
@@ -492,15 +464,95 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#FFFFFF',
+    color: '#000000',
   },
 
+
+  //EMPTY CONATINER 
+  emptyContainer: {
+    // margin: 20,
+    // // backgroundColor: '#FFFFFF',
+    // borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    // elevation: 4,
+    // shadowColor: '#000',
+    // shadowOpacity: 0.08,
+    // shadowRadius: 10,
+  },
+
+  emptyIconWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#E8F8F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  emptyIcon: {
+    fontSize: 42,
+  },
+
+  emptyTitle: {
+    marginTop: 18,
+    fontSize: 24,
+    color: '#1F2937',
+    fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+  },
+
+  emptyDescription: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  featureCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    marginTop: 24,
+    padding: 18,
+  },
+
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+
+  featureText: {
+    marginLeft: 12,
+    fontSize: 15,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+  startBtn: {
+    marginTop: 28,
+    width: '100%',
+    backgroundColor: Colors.primaryColor,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+
+  startBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   // ===== TOP SECTION =====
   topSection: {
     backgroundColor: '#0B7358',
     paddingHorizontal: 20,
     // paddingBottom: 80,
     paddingTop: 30,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingBottom: 120
   },
 
@@ -634,6 +686,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  // Action Edit
+
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.primaryColor,
+  },
+
+  actionText: {
+    marginLeft: 5,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
 
   guidelineCard: {
     backgroundColor: '#FFFFFF',
@@ -707,49 +784,36 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '500',
   },
-  pendingCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1,
-    borderColor: '#FED7AA',
+  homeBtn: {
+    backgroundColor: Colors.primaryColor,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 12,
   },
-
-  pendingTitle: {
-    fontSize: 15,
-    color: '#C2410C',
+  homeBtnText: {
+    color: '#FFF',
+    fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
-  pendingSubTitle: {
-    fontSize: 12,
-    color: '#9A3412',
-    marginTop: 2,
-    fontFamily: Fonts.PoppinsRegular,
-  },
-
-  actionRow: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
-  },
-
-  actionBtn: {
+  editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: Colors.primaryColor,
+    backgroundColor: '#FFFFFF',
   },
-
-  actionText: {
-    marginLeft: 5,
+  editBtnText: {
     color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

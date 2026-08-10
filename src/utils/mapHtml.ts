@@ -83,3 +83,7 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
   </script>
 </body>
 </html>`;
+
+
+
+

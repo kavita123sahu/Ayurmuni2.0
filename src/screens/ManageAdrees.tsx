@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -24,11 +24,13 @@ import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TablerIcon from '../components/TablerIcon';
 import { useLocation } from '../context/LocationContext';
+import { savedAddressToParsed } from '../services/locationService';
 
 interface AddressItem {
     id: string;
     title: string;
     address: string;
+    is_default: boolean;
     city: string;
     address_line_1: string;
     address_line_2: string;
@@ -38,10 +40,14 @@ interface AddressItem {
 
 const ManageAddress: React.FC<any> = ({ navigation }) => {
 
+
+
+    const { currentAddress, deliveryLocation, loadingLocation, setDeliveryLocation } = useLocation();
+
     const [selectedId, setSelectedId] = useState('current');
     const [loading, setloading] = useState(false);
     const [addressData, setAddressData] = useState<AddressItem[]>([]);
-    const { currentAddress } = useLocation();
+    // const { currentAddress } = useLocation();
 
     const fetchAddresses = async () => {
 
@@ -65,7 +71,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 );
 
                 const defaultAddress =
-                    addresses.find((item: any) => item.is_default
+                    addresses.find((item: any) => item?.is_default
                     );
 
                 if (defaultAddress) {
@@ -114,56 +120,58 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
     };
 
-    const UpdateDefaultAddress = async (item: AddressItem) => {
+    const UpdateDefaultAddress = useCallback(
+        async (item: AddressItem) => {
+            if (item?.is_default) {
+                return;
+            }
 
-        try {
+            const previousAddresses = [...addressData];
+            const previousSelectedId = selectedId;
 
-            // UI instant update
-            setSelectedId(item.id);
-
-            const payload = {
-                is_default: true,
-            };
-
-            console.log(
-                'DEFAULT_ADDRESS_PAYLOAD',
-                payload,
+            // Optimistic local update
+            setAddressData(prev =>
+                prev.map(address => ({
+                    ...address,
+                    is_default: address.id === item.id,
+                })),
             );
 
-            const res: any =
-                await _PROFILE_SERVICES.UpdateAddresses(
-                    item.id,
+            setSelectedId(item?.id);
+
+            try {
+                const payload = {
+                    is_default: true,
+                };
+
+                console.log('DEFAULT_ADDRESS_PAYLOAD', payload);
+
+                const res: any = await _PROFILE_SERVICES.UpdateAddresses(
+                    item?.id,
                     payload,
                 );
 
-            console.log(
-                'DEFAULT_ADDRESS_RESPONSE',
-                res,
-            );
+                console.log('DEFAULT_ADDRESS_RESPONSE', res);
 
-            if (res?.success) {
+                if (res?.success || res?.status === 200) {
+                    await setDeliveryLocation(savedAddressToParsed(item));
+                    navigation.goBack();
+                    AddressEvents.emit(ADDRESS_UPDATED, res?.data ?? res);
 
+                    // showSuccessToast('Default address updated', 'success');
 
-                AddressEvents.emit(
-                    ADDRESS_UPDATED,
-                    res.data,
-                );
-                showSuccessToast(
-                    'Default address updated',
-                    'success',
-                );
-
-                fetchAddresses();
+                    // fetchAddresses();
+                } else {
+                    throw new Error('Failed to update default address');
+                }
+            } catch (error) {
+                setAddressData(previousAddresses);
+                setSelectedId(previousSelectedId);
+                console.log('DEFAULT_ADDRESS_ERROR', error);
             }
-
-        } catch (error) {
-
-            console.log(
-                'DEFAULT_ADDRESS_ERROR',
-                error,
-            );
-        }
-    };
+        },
+        [addressData, selectedId, fetchAddresses, setDeliveryLocation],
+    );
 
 
     const formatTitle = (text: string) => {
@@ -173,7 +181,6 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
     useEffect(() => {
 
-        // INITIAL API HIT
         fetchAddresses();
 
         const refreshAddress = () => {
@@ -207,7 +214,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
     }) => {
 
         const isSelected =
-            selectedId === item.id;
+            selectedId === item?.id;
 
 
         console.log("itemitemitemaddresss", item)
@@ -229,9 +236,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 {/* LEFT */}
 
                 <View style={styles.iconContainer}>
-
-                    <TablerIcon name="home" size={20} color={Colors.primaryColor} />
-
+                    <TablerIcon name="home" size={16} color={Colors.primaryColor} />
                 </View>
 
                 {/* CENTER */}
@@ -239,18 +244,18 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 <View style={styles.cardContent}>
 
                     <Text style={styles.cardTitle}>
-                        {formatTitle(item.address_type)}
+                        {formatTitle(item?.address_type)}
                     </Text>
 
                     <Text
                         style={styles.addressText}
                         numberOfLines={2}
                     >
-                        {item.address_line_1}, {item.address_line_2}
+                        {item?.address_line_1}, {item?.address_line_2}
                     </Text>
 
                     <Text style={styles.cityText}>
-                        {item.city}
+                        {item?.city}
                     </Text>
 
                     <View style={styles.actionRow}>
@@ -278,7 +283,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={{ marginLeft: 10, backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
-                            onPress={() => DeleteAddresses(item.id)}
+                            onPress={() => DeleteAddresses(item?.id)}
                             activeOpacity={0.7}
                         >
 
@@ -296,7 +301,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                 {
                     isSelected && (
-                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+                        <TablerIcon name="tick-icon" size={16} color={Colors.primaryColor} />
                     )
                 }
 
@@ -352,7 +357,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             style={styles.locationBox}
                         >
 
-                            <TablerIcon name="current-location" size={20} color={Colors.primaryColor} />
+                            <TablerIcon name="current-location" size={16} color={Colors.primaryColor} />
 
                         </View>
 
@@ -395,7 +400,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                         {
                             selectedId ===
                             'current' && (
-                                <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+                                <TablerIcon name="tick-icon" size={16} color={Colors.primaryColor} />
                             )
                         }
 
@@ -410,7 +415,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                     <FlatList
                         data={addressData}
                         keyExtractor={(item) =>
-                            item.id
+                            item?.id
                         }
                         renderItem={
                             renderAddressItem
@@ -470,181 +475,119 @@ const styles = StyleSheet.create({
     },
 
     scroll: {
-        padding: 20,
-        paddingBottom: 120,
+        padding: 16,
+        paddingBottom: 100,
     },
 
     currentCard: {
         flexDirection: 'row',
-
+        alignItems: 'flex-start',
         backgroundColor: '#FFFFFF',
-
-        borderRadius: 22,
-
-        padding: 16,
-
-        marginBottom: 24,
-
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 16,
         borderWidth: 1,
         borderColor: '#EEF2F6',
+        gap: 10,
     },
 
     selectedCard: {
-        borderColor:
-            Colors.primaryColor,
-
+        borderColor: Colors.primaryColor,
         backgroundColor: '#F0FDF9',
     },
 
     locationBox: {
-        height: 48,
-        width: 48,
-
-        borderRadius: 16,
-
+        height: 36,
+        width: 36,
+        borderRadius: 10,
         backgroundColor: '#ECFDF3',
-
         justifyContent: 'center',
         alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    locationIcon: {
-        height: 22,
-        width: 22,
-        resizeMode: 'contain',
     },
 
     currentTitle: {
-        fontSize: 15,
-
+        fontSize: 13,
         color: '#111827',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     heading: {
-        fontSize: 20,
-
-        marginBottom: 16,
-
+        fontSize: 16,
+        marginBottom: 10,
         color: '#111827',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     addressCard: {
         flexDirection: 'row',
-
+        alignItems: 'flex-start',
         backgroundColor: '#FFFFFF',
-
-        borderRadius: 22,
-
-        padding: 16,
-
-        marginBottom: 14,
-
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 10,
         borderWidth: 1,
         borderColor: '#EEF2F6',
+        gap: 10,
     },
 
     iconContainer: {
-        height: 46,
-        width: 46,
-
-        borderRadius: 14,
-
+        height: 36,
+        width: 36,
+        borderRadius: 10,
         backgroundColor: '#F5F7FA',
-
         justifyContent: 'center',
         alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    icon: {
-        height: 20,
-        width: 20,
-        resizeMode: 'contain',
     },
 
     cardContent: {
         flex: 1,
+        minWidth: 0,
     },
 
     cardTitle: {
-        fontSize: 15,
-
+        fontSize: 13,
         color: '#111827',
-
-        marginBottom: 2,
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     addressText: {
-        fontSize: 13,
-
-        lineHeight: 20,
-
+        fontSize: 12,
+        lineHeight: 17,
         color: '#667085',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsRegular,
+        marginTop: 2,
     },
 
     cityText: {
-        fontSize: 12,
-
+        fontSize: 11,
         marginTop: 2,
-
         color: '#98A2B3',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontFamily: Fonts.PoppinsRegular,
     },
 
     useLocation: {
-        marginTop: 8,
-
-        fontSize: 13,
-
-        color:
-            Colors.primaryColor,
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        marginTop: 6,
+        fontSize: 12,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     actionRow: {
         flexDirection: 'row',
-
-        marginTop: 10,
-
-        gap: 16,
+        marginTop: 8,
+        gap: 8,
     },
 
     editText: {
-        fontSize: 13,
-
-        color:
-            Colors.primaryColor,
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontSize: 12,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     deleteText: {
-        fontSize: 13,
-
+        fontSize: 12,
         color: '#EF4444',
-
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     tickIcon: {

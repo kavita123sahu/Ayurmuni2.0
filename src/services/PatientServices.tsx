@@ -66,11 +66,23 @@ export const PatientSwitch = async (id: string) => {
     }
 }
 
+export const deletePatientById = async (id: string) => {
+    try {
+        const response = await apiClient(`patients/?id=${id}`, {
+            method: 'DELETE',
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
 export const getAllMedicalRecord = async () => {
     try {
         const response = await apiClient('customers/medical-records/', {
             method: 'GET',
         });
+        console.log("responsemedicalrecord", response);
         return response;
     } catch (error) {
         throw error;
@@ -102,3 +114,197 @@ export const AddMedicalRecord = async (patientData: any) => {
         throw error;
     }
 }
+
+export const DIET_PLAN_PAGE_SIZE = 20;
+
+export const getDietPlans = async (params?: {
+    id?: string | number;
+    type?: 'all' | string;
+    page?: number;
+    page_size?: number;
+}) => {
+    try {
+        const query = new URLSearchParams();
+        if (params?.id != null && String(params.id).trim() !== '') {
+            query.set('id', String(params.id));
+        }
+        if (params?.type) {
+            query.set('type', String(params.type));
+        }
+        if (params?.page != null) {
+            query.set('page', String(params.page));
+        }
+        if (params?.page_size != null) {
+            query.set('page_size', String(params.page_size));
+        }
+        const qs = query.toString();
+        const path = qs
+            ? `patients/diet-plans/?${qs}`
+            : 'patients/diet-plans/';
+
+        const response = await apiClient(path, {
+            method: 'GET',
+        });
+        console.log('DIET_PLANS_API =>', response);
+        return response;
+    } catch (error) {
+        console.log('DIET_PLANS_API_ERROR =>', error);
+        throw error;
+    }
+};
+
+/** Whether diet-plans list response has another page */
+export const hasMoreDietPlanPages = (
+    response: any,
+    resultsLength: number,
+    pageSize: number = DIET_PLAN_PAGE_SIZE,
+    pageLoaded?: number,
+) => {
+    const data = response?.data ?? response;
+
+    if (Array.isArray(data)) {
+        // Bare array — assume more only if this page looks full
+        return resultsLength >= pageSize;
+    }
+
+    if (data && typeof data === 'object') {
+        if ('next' in data) {
+            return data.next != null && data.next !== '';
+        }
+        if (data?.pagination?.next != null) {
+            return Boolean(data.pagination.next);
+        }
+        if (data?.links?.next != null) {
+            return Boolean(data.links.next);
+        }
+
+        const total =
+            typeof data.count === 'number'
+                ? data.count
+                : typeof data.total === 'number'
+                  ? data.total
+                  : typeof data.total_count === 'number'
+                    ? data.total_count
+                    : null;
+        const page =
+            pageLoaded ??
+            (typeof data.page === 'number'
+                ? data.page
+                : typeof data.current_page === 'number'
+                  ? data.current_page
+                  : null);
+
+        if (total != null && page != null) {
+            return page * pageSize < total;
+        }
+        if (total != null) {
+            // Caller may pass cumulative length via resultsLength when appending —
+            // for single-page check, full page means likely more.
+            return resultsLength >= pageSize;
+        }
+    }
+
+    return resultsLength >= pageSize;
+};
+
+/** Start a diet plan for the patient (catalog diet plan id, not assignment id). */
+export const startDietPlan = async (diet_plan_id: string | number) => {
+    try {
+        const id = String(diet_plan_id).trim();
+        // API accepts diet_plan_id (Postman). Also send `id` — some envs validate that key.
+        const response = await apiClient('patients/diet-plans/start/', {
+            method: 'POST',
+            body: JSON.stringify({
+                diet_plan_id: id,
+                id,
+            }),
+        });
+        console.log('DIET_START_API =>', { diet_plan_id: id, response });
+        return response;
+    } catch (error) {
+        console.log('DIET_START_API_ERROR =>', error);
+        throw error;
+    }
+};
+
+/** GET current diet plan progress */
+export const getDietPlanProgress = async (patient_diet_plan_id?: string | number) => {
+    try {
+        const qs =
+            patient_diet_plan_id != null && String(patient_diet_plan_id).trim() !== ''
+                ? `?id=${encodeURIComponent(String(patient_diet_plan_id))}`
+                : '';
+        const response = await apiClient(`patients/diet-plans/progress/${qs}`, {
+            method: 'GET',
+        });
+        console.log('DIET_PROGRESS_GET =>', response);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * PATCH diet plan progress
+ * payload: { day: "day_1", meal: "morning", status: "completed", completed_at: "2026-07-15T07:15:00Z" }
+ */
+export const updateDietPlanProgress = async (payload: {
+    day: string;
+    meal: string;
+    status: 'completed' | 'pending' | string;
+    completed_at?: string | null;
+}) => {
+    try {
+        const body: Record<string, any> = {
+            day: payload.day,
+            meal: payload.meal,
+            status: payload.status,
+        };
+        // Always send completed_at when completing (required by API)
+        if (payload.status === 'completed') {
+            body.completed_at =
+                payload.completed_at ||
+                new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+        } else if (payload.completed_at !== undefined) {
+            body.completed_at = payload.completed_at;
+        }
+
+        console.log('DIET_PROGRESS_PATCH =>', body);
+        const response = await apiClient('patients/diet-plans/progress/', {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        });
+        console.log('DIET_PROGRESS_PATCH_RES =>', response);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export type DietPlanStatusAction = 'pause' | 'resume' | 'stop' | 'complete';
+
+/**
+ * Update patient diet plan assignment status
+ * /patients/diet-plans/status/?id={{patient_diet_plan_id}}
+ */
+export const updateDietPlanStatus = async (
+    patient_diet_plan_id: string | number,
+    payload: {
+        action: DietPlanStatusAction;
+        stop_reason?: string;
+    },
+) => {
+    try {
+        const id = encodeURIComponent(String(patient_diet_plan_id));
+        const response = await apiClient(
+            `patients/diet-plans/status/?id=${id}`,
+            {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            },
+        );
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};

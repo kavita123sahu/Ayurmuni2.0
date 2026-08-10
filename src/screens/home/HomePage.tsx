@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -21,7 +15,6 @@ import {
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { Colors } from '../../common/Colors';
-import PrakritiCard from '../../components/PrakritiCard';
 import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
 import SectionHeader from '../../components/SectionHeader';
@@ -31,6 +24,7 @@ import { product } from '../../common/DataInterface';
 import TopDoctorsCard from './TopDoctorsCard';
 import *as _ASSESSMENT_SERVICE from '../../services/AssesmentService'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useLocation } from '../../context/LocationContext';
 import HomeCategory from './HomeCategory';
 import SuggestedCard from '../../components/SuggestedCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,16 +33,28 @@ import { useScrollHide } from '../../context/ScrollHideContext';
 import {
   getHomeHeaderTotalHeight,
   getScreenBottomPadding,
+  HOME_CATEGORY_GAP,
+  HOME_SECTION_GAP,
+  SCREEN_PADDING_H,
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
+import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton, SuggestedCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
-import { useAppointmentHistory } from '../../hooks/useConsultData';
+import JoinCallBanner from '../../components/JoinCallBanner';
+import {
+  getJoinableAppointment,
+  sortAppointmentsByDateTime,
+} from '../../utils/appointmentUtils';
+import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
-import { useAuth } from '../../hooks/useAuth';
-import { requireAuth, navigateToLogin } from '../../services/guestAuth';
+import { requireAuth, } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
+import { navigateToSearchScreen } from '../../navigation/productNavigation';
+import DietScreen from '../mentor/DietScreen';
+import MealCard from '../../components/MealCard';
+import { useBanners } from '../../hooks/useBanners';
+import { CallEvents, CALL_ENDED } from '../../common/Utils';
 
 
 const { width } = Dimensions.get('window');
@@ -58,15 +64,22 @@ const HomePage: React.FC = (props: any) => {
 
   const hasFetched = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { images: bannerImages, refresh: refreshBanners } = useBanners('home');
+  const homeBannerImages =
+    bannerImages.length > 0 ? bannerImages : product.images;
 
   const {
     categories,
     SuggestDoctor,
-    productData,
+    medicineProducts,
+    storeProducts,
     customerData,
-    setProductData,
+    setMedicineProducts,
+    setStoreProducts,
     YogaSession,
-
+    dietProducts,
+    loadingDiet,
+    fetchDietPlans,
 
     loadingCategories,
     loadingDoctors,
@@ -75,13 +88,16 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
-  const { isGuest } = useAuth();
-  const { AppointData, refreshUpcoming, loading, } = useAppointmentHistory();
+  const { promptLocationOnHome } = useLocation();
+  const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
+    useUpcomingAppointmentsPreview();
   const insets = useSafeAreaInsets();
+
   const {
     onScroll,
     headerContentAnimatedStyle,
     searchBarAnimatedStyle,
+    categoryAnimatedStyle,
     headerShellAnimatedStyle,
   } = useScrollHide();
   const headerTotalHeight = getHomeHeaderTotalHeight(insets);
@@ -90,98 +106,147 @@ const HomePage: React.FC = (props: any) => {
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
 
   const handleSearchPress = useCallback(() => {
-    props.navigation.navigate('ProductsScreen');
+    const stackNav = props.navigation.getParent?.() || props.navigation;
+    navigateToSearchScreen(stackNav);
   }, [props.navigation]);
 
-  const normalizedData = useMemo(() => {
-    if (!Array.isArray(AppointData)) {
-      return [];
+  const handleViewAllProducts = useCallback(() => {
+    const stackNav = props.navigation.getParent?.() || props.navigation;
+    stackNav.navigate('ProductsScreen');
+  }, [props.navigation]);
+
+  const handleViewAllMedicines = useCallback(() => {
+    const stackNav = props.navigation.getParent?.() || props.navigation;
+    stackNav.navigate('MedicineScreen');
+  }, [props.navigation]);
+
+  console.log("YogaSessionYogaSessionYogaSession", dietProducts)
+
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(() => {
+        promptLocationOnHome();
+      }, 600);
+
+      // Only load diet once when empty — avoid refetch while Checkout is open above Home
+      if (!dietProducts?.length) {
+        fetchDietPlans(false);
+      }
+
+      return () => clearTimeout(timer);
+    }, [promptLocationOnHome, fetchDietPlans, dietProducts?.length]),
+  );
+
+  // Re-evaluate Join banner when the 5‑min window / end time crosses
+  const [joinBannerTick, setJoinBannerTick] = useState(0);
+  const [endedCallIds, setEndedCallIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Re-check join window often so banner appears as soon as ≤5 min left
+    const timer = setInterval(() => setJoinBannerTick(t => t + 1), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const sub = CallEvents.addListener(CALL_ENDED, (...args: unknown[]) => {
+      const payload = args[0] as {
+        appointmentId?: string;
+        consultationId?: string;
+      } | undefined;
+      const ids = [payload?.appointmentId, payload?.consultationId]
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+      if (ids.length) {
+        setEndedCallIds(prev => {
+          const next = new Set(prev);
+          ids.forEach(id => next.add(id));
+          return next;
+        });
+      }
+      refreshPreview();
+      setJoinBannerTick(t => t + 1);
+    });
+    return () => sub.remove();
+  }, [refreshPreview]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPreview();
+    }, [refreshPreview]),
+  );
+
+  /** Confirmed upcoming only — join banner never removes items from this list */
+  const sortedUpcomingAppointments = useMemo(
+    () =>
+      sortAppointmentsByDateTime(
+        upcomingAppointments.filter(item => {
+          const status = String(item?.status || '')
+            .trim()
+            .toLowerCase();
+          return status === 'confirmed';
+        }),
+      ),
+    [upcomingAppointments],
+  );
+
+  /**
+   * Join banner only (≤5 min / live). Uses a separate copy with ended flags
+   * so it never removes or changes items in `sortedUpcomingAppointments`.
+   */
+  const joinableAppointment = useMemo(() => {
+    const bannerSource = sortedUpcomingAppointments.map(item => {
+      const candidateIds = [
+        item?.appointment_id,
+        item?.consultation_id,
+        item?.rawData?.id,
+        item?.rawData?.appointment?.id,
+        item?.rawData?.consultation_id,
+      ]
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+      const wasEnded = candidateIds.some(id => endedCallIds.has(id));
+      if (!wasEnded) return item;
+      return {
+        ...item,
+        call_status: 'ended',
+        rawData: {
+          ...(item.rawData ?? item),
+          call_status: 'ended',
+          appointment: {
+            ...((item.rawData ?? item)?.appointment ?? {}),
+            call_status: 'ended',
+          },
+        },
+      };
+    });
+    return getJoinableAppointment(bannerSource, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick re-checks 5‑min window
+  }, [sortedUpcomingAppointments, endedCallIds, joinBannerTick]);
+
+  const homeAppointmentList = useMemo(() => {
+    if (!joinableAppointment) {
+      return sortedUpcomingAppointments;
     }
 
-    return AppointData.map(item => ({
-      consultation_id: item?.consultation_id,
-      doctorName: item?.doctor?.doctor_name || "",
-
-      therapies: Array.isArray(item?.rawData?.doctor?.health_diseases)
-        ? item.rawData.doctor.health_diseases
-          .map((disease: any) => disease.name)
-          .join(", ")
-        : "",
-      date: item?.appointment_date,
-      time: item?.start_time,
-      status: item?.appointment_status,
-      image: item?.doctor?.doctor_image,
-      rawData: item,
-    }));
-  }, [AppointData]);
-
-  const sortedUpcomingAppointments = useMemo(() => {
-    if (!Array.isArray(normalizedData)) {
-      return [];
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Today's date only
-
-    return normalizedData
-      .filter(item => {
-        const appointmentDate = new Date(item.date);
-        appointmentDate.setHours(0, 0, 0, 0);
-
-        return appointmentDate >= today;
-      })
-      .sort((a, b) => {
-        return (
-          new Date(a.date).getTime() -
-          new Date(b.date).getTime()
-        );
-      });
-  }, [normalizedData]);
-
+    const joinId = joinableAppointment.item.consultation_id;
+    return sortedUpcomingAppointments.filter(
+      item => item.consultation_id !== joinId,
+    );
+  }, [sortedUpcomingAppointments, joinableAppointment]);
 
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await refreshHomeData();
-      await refreshUpcoming();
+      await Promise.all([refreshHomeData(), refreshPreview(), refreshBanners()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshUpcoming]);
+  }, [refreshHomeData, refreshPreview, refreshBanners]);
 
 
-  // const data = useMemo(() => [
-  //   {
-  //     title: 'Prakriti',
-  //     status:
-  //       customerData?.prakriti_progress === 100
-  //         ? 'Profile Complete'
-  //         : 'Profile Pending',
-  //     screen: 'PatientFAQ',
-  //     progress: customerData?.prakriti_progress ?? 0,
-  //   },
-
-  //   {
-  //     title: 'Medical History',
-  //     status:
-  //       customerData?.medical_history_progress === 100
-  //         ? 'Profile Complete'
-  //         : 'Profile Pending',
-  //     screen: 'MedicalHistory',
-  //     progress:
-  //       customerData?.medical_history_progress ?? 0,
-  //   },
-  // ], [customerData]);
-  const progressPercentage = useMemo(() => {
-    if (customerData?.prakriti_progress != null) {
-      return Math.round(customerData.prakriti_progress);
-    }
-    return null;
-  }, [customerData]);
   useEffect(() => {
     if (
-      isGuest ||
       loadingCustomer ||
       prakritiModalShownThisSession ||
       !customerData ||
@@ -193,7 +258,7 @@ const HomePage: React.FC = (props: any) => {
 
     prakritiModalShownThisSession = true;
     setShowPrakritiModal(true);
-  }, [isGuest, loadingCustomer, customerData]);
+  }, [loadingCustomer, customerData]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -209,15 +274,16 @@ const HomePage: React.FC = (props: any) => {
         <Text style={styles.icon}>{icon}</Text>
       </View>
 
-      <Text style={styles.comingSoonTitle}>{title}</Text>
+      <View style={styles.comingSoonTextWrap}>
+        <Text style={styles.comingSoonTitle}>{title}</Text>
 
-      <Text style={styles.comingSoonSubtitle}>
-        We’re preparing personalized recommendations for you.
-        Stay tuned for upcoming Ayurvedic wellness features.
-      </Text>
+        <Text style={styles.comingSoonSubtitle} numberOfLines={2}>
+          We’re preparing personalized recommendations for you.
+        </Text>
 
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>Coming Soon</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Coming Soon</Text>
+        </View>
       </View>
     </View>
   );
@@ -229,7 +295,10 @@ const HomePage: React.FC = (props: any) => {
       <Animated.View
         style={[
           styles.headerShell,
-          { paddingTop: insets.top, paddingHorizontal: 16 },
+          {
+            paddingTop: insets.top || 0,
+            paddingHorizontal: SCREEN_PADDING_H,
+          },
           headerShellAnimatedStyle,
         ]}
       >
@@ -237,6 +306,7 @@ const HomePage: React.FC = (props: any) => {
           <HomeHeader
             progress1={Math.round(customerData?.prakriti_progress || 0)}
             progress2={Math.round(customerData?.medical_history_progress || 0)}
+            onSearchPress={handleSearchPress}
           />
         </Animated.View>
 
@@ -244,8 +314,28 @@ const HomePage: React.FC = (props: any) => {
           <SearchBar
             placeholder="Search doctors, medicine and products..."
             onPress={handleSearchPress}
+            showMicIcon
+            onMicPress={handleSearchPress}
             compact
           />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.categoryDock,
+            { marginTop: HOME_CATEGORY_GAP },
+            categoryAnimatedStyle,
+          ]}
+        >
+          {loadingCategories ? (
+            <HomeCategorySkeleton compact />
+          ) : (
+            <HomeCategory
+              data={categories}
+              navigation={props.navigation}
+              sticky
+            />
+          )}
         </Animated.View>
       </Animated.View>
 
@@ -261,10 +351,11 @@ const HomePage: React.FC = (props: any) => {
             onRefresh={onRefresh}
             tintColor={Colors.primaryColor}
             colors={[Colors.primaryColor]}
+            progressViewOffset={headerTotalHeight}
           />
         }
         contentContainerStyle={{
-          paddingTop: headerTotalHeight + 8,
+          paddingTop: headerTotalHeight,
           paddingBottom: bottomPadding,
         }}
         nestedScrollEnabled
@@ -272,221 +363,241 @@ const HomePage: React.FC = (props: any) => {
         removeClippedSubviews
         renderItem={() => (
           <View style={styles.sections}>
+            <View style={styles.homeSection}>
+              <Detailimages
+                images={homeBannerImages}
+                itemWidth={width - SCREEN_PADDING_H * 2}
+                DynamicResize="cover"
+                autoSlide
+                embedded
+                mode="banner"
+                enablePreview={false}
+              />
+            </View>
 
-            {/* <View style={styles.containerprakriti}>
-              {data.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.cardWrapper}
-                  onPress={() => props.navigation.navigate(item.screen, {
-                    update: true
-                  }
-                  )}
-                >
-                  <PrakritiCard
-                    title={item.title}
-                    status={item.status}
-                    progress={Math.round(item.progress)}
+            {(loadingAppointments ||
+              joinableAppointment ||
+              sortedUpcomingAppointments.length > 0) && (
+                <View style={styles.homeSection}>
+                  <SectionHeader
+                    home
+                    title="Upcoming Appointments"
+                    actionText={
+                      !loadingAppointments && sortedUpcomingAppointments.length > 1
+                        ? 'View all'
+                        : ''
+                    }
+                    onPress={async () => {
+                      if (await requireAuth('Please login to view appointments')) {
+                        props.navigation.navigate('Appointments', {
+                          mode: 'upcoming',
+                        });
+                      }
+                    }}
                   />
-                </TouchableOpacity>
-              ))}
-            </View> */}
-
-            {loadingCategories ? (
-              <HomeCategorySkeleton />
-            ) : (
-              <HomeCategory data={categories} navigation={props.navigation} />
-            )}
-
-            <Detailimages
-              images={product.images}
-              itemWidth={width - 40}
-              itemHeight={156}
-              DynamicResize="contain"
-              autoSlide
-            />
-
-
-            {(loading && !isGuest) ? (
-              <>
-                <SectionHeader
-                  title="Upcoming Appointments"
-                  actionText="View all"
-                  onPress={async () => {
-                    if (await requireAuth('Please login to view appointments')) {
-                      props.navigation.navigate('Appointments');
-                    }
-                  }}
-                />
-                <HorizontalAppointmentSkeleton />
-              </>
-            ) : sortedUpcomingAppointments?.length > 0 ? (
-              <>
-                <SectionHeader
-                  title="Upcoming Appointments"
-                  actionText={sortedUpcomingAppointments.length > 1
-                    ? 'View all'
-                    : ''
-                  }
-                  onPress={async () => {
-                    if (await requireAuth('Please login to view appointments')) {
-                      props.navigation.navigate('Appointments');
-                    }
-                  }}
-                />
-                <FlatList
-                  horizontal
-
-                  data={sortedUpcomingAppointments}
-                  keyExtractor={(item, index) =>
-                    `${item?.consultation_id || index}`
-                  }
-                  contentContainerStyle={{ marginBottom: 15 }}
-                  renderItem={({ item }) => (
-                    <RenderAppoint
-                      item={item}
-                      navigation={props.navigation}
-                      isHorizontal
-                    />
+                  {loadingAppointments ? (
+                    <HorizontalAppointmentSkeleton />
+                  ) : (
+                    <>
+                      {joinableAppointment ? (
+                        <JoinCallBanner
+                          joinable={joinableAppointment}
+                          navigation={props.navigation}
+                        />
+                      ) : null}
+                      {homeAppointmentList?.length > 0 ? (
+                        <FlatList
+                          horizontal
+                          data={homeAppointmentList}
+                          keyExtractor={(item, index) =>
+                            `${item?.consultation_id || index}`
+                          }
+                          contentContainerStyle={styles.horizontalList}
+                          renderItem={({ item }) => (
+                            <RenderAppoint
+                              item={item}
+                              navigation={props.navigation}
+                              isHorizontal
+                            />
+                          )}
+                          showsHorizontalScrollIndicator={false}
+                        />
+                      ) : null}
+                    </>
                   )}
-                  showsHorizontalScrollIndicator={false}
+                </View>
+              )}
+
+
+            {/* {(loadingAppointments ||
+              joinableAppointment ||
+              sortedUpcomingAppointments.length > 0) && (
+                <View style={styles.homeSection}>
+                  <SectionHeader
+                    home
+                    title="Upcoming Appointments"
+                    actionText={
+                      !loadingAppointments && sortedUpcomingAppointments.length > 0
+                        ? 'View all'
+                        : ''
+                    }
+                    onPress={async () => {
+                      if (await requireAuth('Please login to view appointments')) {
+                        props.navigation.navigate('Appointments', {
+                          mode: 'upcoming',
+                        });
+                      }
+                    }}
+                  />
+                  {loadingAppointments ? (
+                    <HorizontalAppointmentSkeleton />
+                  ) : (
+                    <>
+                      {joinableAppointment ? (
+                        <JoinCallBanner
+                          joinable={joinableAppointment}
+                          navigation={props.navigation}
+                        />
+                      ) : null}
+                      {loadingAppointments && sortedUpcomingAppointments.length > 0 ? (
+                        <FlatList
+                          horizontal
+                          data={sortedUpcomingAppointments}
+                          keyExtractor={(item, index) =>
+                            `${item?.consultation_id || item?.appointment_id || index}`
+                          }
+                          contentContainerStyle={styles.horizontalList}
+                          renderItem={({ item }) => (
+                            <RenderAppoint
+                              item={item}
+                              navigation={props.navigation}
+                              isHorizontal
+                            />
+                          )}
+                          showsHorizontalScrollIndicator={false}
+                        />
+                      ) : null}
+                    </>
+                  )}
+                </View>
+              )} */}
+
+            <View style={styles.homeSection}>
+              <SectionHeader
+                home
+                title="Suggested Doctors"
+                actionText={SuggestDoctor.length > 1 ? 'View all' : ''}
+                onPress={() =>
+                  props.navigation.navigate('AllDoctors', {
+                    all: true,
+                  })
+                }
+              />
+              {loadingDoctors ? (
+                <TopDoctorsCardSkeleton />
+              ) : (
+                <TopDoctorsCard
+                  data={SuggestDoctor}
+                  navigation={props.navigation}
+                  home
                 />
-              </>
-            ) : isGuest ? (
-              <>
-                <SectionHeader title="Upcoming Appointments" />
-                <TouchableOpacity
-                  style={styles.guestApptCard}
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    navigateToLogin('Login to view and book your appointments')
-                  }
-                >
-                  <View style={styles.guestApptIcon}>
-                    <TablerIcon name="calendar" size={22} color={Colors.primaryColor} />
-                  </View>
-                  <View style={styles.guestApptText}>
-                    <Text style={styles.guestApptTitle}>Login to manage appointments</Text>
-                    <Text style={styles.guestApptSub}>
-                      Browse doctors now — book after you sign in
-                    </Text>
-                  </View>
-                  <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
-                </TouchableOpacity>
-              </>
-            ) : null}
+              )}
+            </View>
 
-            <SectionHeader title="Suggested Doctors" actionText={SuggestDoctor.length > 1
-              ? 'View all'
-              : ''} onPress={() => props.navigation.navigate('AllDoctors', {
-                all: true
-              })} />
 
-            {loadingDoctors ? (
-              <TopDoctorsCardSkeleton />
-            ) : (
-              <>
-
-                <TopDoctorsCard data={SuggestDoctor} navigation={props.navigation} />
-
-              </>
-
-            )}
-
-            {productData?.length > 0 && (
-              <>
+            {storeProducts?.length > 0 && (
+              <View style={styles.homeSection}>
                 <SectionHeader
-                  title="Suggested Medicines"
-                  actionText={productData.length > 1
-                    ? 'View all'
-                    : ''}
+                  home
+                  title="Suggested Products"
+                  actionText={storeProducts.length > 1 ? 'View all' : ''}
+                  onPress={handleViewAllProducts}
                 />
-
                 {loadingProducts ? (
                   <TopSellingListSkeleton />
                 ) : (
                   <TopSellingList
-                    data={productData}
+                    data={storeProducts}
                     navigation={props.navigation}
-                    setProductData={setProductData}
+                    setProductData={setStoreProducts}
                     nested
+                    home
                   />
                 )}
-              </>
+              </View>
             )}
 
-
-
-            {loadingProducts ? (
-              <TopSellingListSkeleton />
-            ) : productData.length > 0 ? (
-              <>
+            {medicineProducts?.length > 0 && (
+              <View style={styles.homeSection}>
                 <SectionHeader
-                  title="Suggested Products"
-                  actionText={productData.length > 1
-                    ? 'View all'
-                    : ''}
+                  home
+                  title="Suggested Medicines"
+                  actionText={medicineProducts.length > 1 ? 'View all' : ''}
+                  onPress={handleViewAllMedicines}
                 />
+                {loadingProducts ? (
+                  <TopSellingListSkeleton />
+                ) : (
+                  <TopSellingList
+                    data={medicineProducts}
+                    navigation={props.navigation}
+                    setProductData={setMedicineProducts}
+                    nested
+                    home
+                  />
+                )}
+              </View>
+            )}
 
-                <TopSellingList
-                  data={productData}
-                  navigation={props.navigation}
-                  setProductData={setProductData}
-                  nested
+            {YogaSession.length > 0 && (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Yoga's"
+                  actionText={YogaSession.length > 1 ? 'View all' : ''}
+                  onPress={() =>
+                    props.navigation.navigate('YogaScreen', { viewAll: true })
+                  }
                 />
-              </>
+                <SuggestedCard
+                  data={YogaSession}
+                  navigation={props.navigation}
+                  home
+                />
+              </View>
+            )}
+
+            {loadingDiet && (!dietProducts || dietProducts?.length === 0) ? (
+              <View style={styles.homeSection}>
+                <SectionHeader home title="Diet's" actionText="" />
+                <SuggestedCardSkeleton />
+              </View>
+            ) : dietProducts?.length > 0 ? (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Diet's"
+                  actionText={'View all'}
+                  onPress={() =>
+                    props.navigation.navigate('DietScreen', { listType: 'all' })
+                  }
+                />
+                <SuggestedCard
+                  data={dietProducts}
+                  navigation={props.navigation}
+                  home
+                />
+              </View>
             ) : null}
 
-            {YogaSession.length > 0 && (
-              <>
-                <SectionHeader title="Yoga’s" actionText={YogaSession.length > 1
-                  ? 'View all'
-                  : ''} />
-
-
-                <SuggestedCard data={YogaSession} navigation={props.navigation} />
-              </>)}
-
-
-            {YogaSession.length > 0 && (
-              <>
-                <SectionHeader title="Suggested Diet Plan" actionText={YogaSession.length > 1
-                  ? 'View all'
-                  : ''} />
-
-
-                <SuggestedCard data={YogaSession} navigation={props.navigation} />
-              </>)}
-
-
-            {YogaSession.length > 0 && (
-              <>
-                <SectionHeader title="Panchakarma" actionText={YogaSession.length > 1
-                  ? 'View all'
-                  : ''} />
-
-                <SuggestedCard data={YogaSession} navigation={props.navigation} price={true} />
-              </>)}
-
-            <>
-            
-            {YogaSession.length ==0 && (
-                <ComingSoonCard
-                title="Personalized Diet Plans"
-                icon="🥗"
-              />
-            )}
-            </>
-
-            <>
-            
-            {YogaSession.length ==0 && (
-                <ComingSoonCard
-                title="Panchakarma"
-                icon="🌿"
-              />
-            )}
-            </>
+            <View style={[styles.homeSection, styles.comingSoonGroup]}>
+              {!loadingDiet &&
+                YogaSession.length === 0 &&
+                (!dietProducts || dietProducts.length === 0) && (
+                  <ComingSoonCard title="Personalized Diet Plans" icon="🥗" />
+                )}
+              <ComingSoonCard title="Panchakarma" icon="🌿" />
+            </View>
           </View>
         )}
       />
@@ -563,10 +674,26 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_PADDING_H,
   },
   sections: {
-    gap: 4,
+    gap: HOME_SECTION_GAP,
+    paddingBottom: 4,
+  },
+  homeSection: {
+    width: '100%',
+  },
+  horizontalList: {
+    paddingRight: 4,
+  },
+  comingSoonGroup: {
+    gap: 12,
+  },
+  appointmentLoadMore: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    minWidth: 48,
   },
   headerShell: {
     position: 'absolute',
@@ -576,15 +703,12 @@ const styles = StyleSheet.create({
     zIndex: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.borderColor,
-    shadowColor: '#0D614E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 6,
+    borderBottomColor: '#E2E8F0',
     overflow: 'hidden',
-    justifyContent: 'flex-end',
-    paddingBottom: 6,
+    justifyContent: 'flex-start',
+  },
+  categoryDock: {
+    width: '100%',
   },
   searchDock: {
     width: '100%',
@@ -833,58 +957,55 @@ const styles = StyleSheet.create({
   },
   comingSoonCard: {
     backgroundColor: '#F8FCF6',
-    marginHorizontal: 16,
-    marginBottom: 18,
-    borderRadius: 16,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#D8E8D4',
   },
-
   iconContainer: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: 12,
   },
-
   icon: {
-    fontSize: 28,
+    fontSize: 20,
   },
-
+  comingSoonTextWrap: {
+    flex: 1,
+  },
   comingSoonTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 2,
   },
-
   comingSoonSubtitle: {
-    fontSize: 13,
+    fontSize: 11.5,
     color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 15,
+    fontFamily: Fonts.PoppinsRegular,
   },
-
   badge: {
+    alignSelf: 'flex-start',
     backgroundColor: Colors.primaryColor,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 20,
+    marginTop: 6,
   },
-
   badgeText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 10,
   },
+
 
 });
 

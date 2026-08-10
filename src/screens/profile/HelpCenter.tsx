@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
-import SearchBar from "../../components/SearchBar";
+import { ExpandableSearch } from "../../components/SearchBar";
 import { Ionicons } from "../../common/Vector";
 import DynamicGrid from "../../components/DynamicGrid";
 import { Colors } from "../../common/Colors";
@@ -10,10 +10,15 @@ import SectionHeader from "../../components/SectionHeader";
 import { Fonts } from "../../common/Fonts";
 import FAQItem from "../../components/FAQItem";
 import TablerIcon, { TablerIconName } from "../../components/TablerIcon";
+import { useDebounce } from "../../hooks/useDebaunce";
 
 const HelpCenterScreen = (props: any) => {
 
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
+    const [searchText, setSearchText] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
+    const debouncedSearch = useDebounce(searchText, 400);
+
     const faqData = [
         {
             id: "1",
@@ -41,6 +46,24 @@ const HelpCenterScreen = (props: any) => {
         { id: "3", title: "Records", iconName: 'report' as TablerIconName },
         { id: "4", title: "Payments", iconName: 'credit-card' as TablerIconName },
     ];
+
+    const filteredCategories = useMemo(() => {
+        const q = debouncedSearch.trim().toLowerCase();
+        if (!q) return categoryData;
+        return categoryData.filter((item) =>
+            item.title.toLowerCase().includes(q),
+        );
+    }, [debouncedSearch]);
+
+    const filteredFaqs = useMemo(() => {
+        const q = debouncedSearch.trim().toLowerCase();
+        if (!q) return faqData;
+        return faqData.filter(
+            (item) =>
+                item.question.toLowerCase().includes(q) ||
+                item.answer.toLowerCase().includes(q),
+        );
+    }, [debouncedSearch]);
 
     const CategoryCard = ({ title, iconName }: { title: string; iconName: TablerIconName }) => {
         return (
@@ -85,40 +108,52 @@ const HelpCenterScreen = (props: any) => {
             <AppHeader
                 title="Help Center"
                 onLeftPress={() => props.navigation.goBack()}
-                rightIconName="search"
-                onRightPress={() => console.log('Search clicked')}
+                onSearchPress={() => setSearchExpanded(true)}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor:'#FDFDFB'}}>
                 <View style={styles.content}>
 
-                    <SearchBar
-                        placeholder="Search for reports, doctors..."
-                        />
-
-                    <SectionHeader title="Categories" />
-
-                    <DynamicGrid
-                        data={categoryData}
-                        columns={2}
-                        renderItem={(item) => (
-                            <CategoryCard title={item.title} iconName={item.iconName} />
-                        )}
+                    <ExpandableSearch
+                        placeholder="Search for help topics..."
+                        value={searchText}
+                        onChangeText={setSearchText}
+                        showTrigger={false}
+                        expanded={searchExpanded}
+                        onExpandedChange={setSearchExpanded}
                     />
 
-                    <SectionHeader title="Popular Questions" />
+                    {filteredCategories.length > 0 && (
+                        <>
+                            <SectionHeader title="Categories" />
 
-                    {faqData.map((item, index) => (
-                        <FAQItem
-                            key={item.id}
-                            question={item.question}
-                            answer={item.answer}
-                            isOpen={activeIndex === index}
-                            onPress={() =>
-                                setActiveIndex(activeIndex === index ? null : index)
-                            }
-                        />
-                    ))}
+                            <DynamicGrid
+                                data={filteredCategories}
+                                columns={2}
+                                renderItem={(item) => (
+                                    <CategoryCard title={item.title} iconName={item.iconName} />
+                                )}
+                            />
+                        </>
+                    )}
+
+                    {filteredFaqs.length > 0 && (
+                        <>
+                            <SectionHeader title="Popular Questions" />
+
+                            {filteredFaqs.map((item, index) => (
+                                <FAQItem
+                                    key={item.id}
+                                    question={item.question}
+                                    answer={item.answer}
+                                    isOpen={activeIndex === index}
+                                    onPress={() =>
+                                        setActiveIndex(activeIndex === index ? null : index)
+                                    }
+                                />
+                            ))}
+                        </>
+                    )}
 
                     <HelpSection />
 

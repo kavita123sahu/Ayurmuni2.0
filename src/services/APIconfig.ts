@@ -91,7 +91,14 @@ const refreshAccessToken = async (): Promise<string | null> => {
         );
 
 
-        if (!data.success) {
+        // Backend sometimes returns 401 "User not found" on refresh —
+        // do not treat that as a successful rotation; keep existing access token.
+        if (!response.ok || !data?.success) {
+            console.log(
+                'TOKEN REFRESH FAILED =>',
+                response.status,
+                data?.message || responseText,
+            );
             return null;
         }
 
@@ -103,6 +110,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
         const accessToken = data?.data?.access;
         const newRefreshToken = data?.data?.refresh;
+
+        console.log('accessTokenaccessTokenaccessToken',accessToken)
 
         if (!accessToken) {
             return null;
@@ -226,12 +235,8 @@ export const apiClient = async (
             token,
         );
 
-        // ✅ Refresh token bhi sirf auth APIs ke liye
-        if (
-            requireAuth &&
-            (response.status === 401 ||
-                response.status === 403)
-        ) {
+        // Refresh only on 401 — 403 is often "not allowed for this resource", not expired token.
+        if (requireAuth && response.status === 401) {
             console.log('TOKEN EXPIRED => REFRESHING');
             const freshToken =
                 await getFreshToken();

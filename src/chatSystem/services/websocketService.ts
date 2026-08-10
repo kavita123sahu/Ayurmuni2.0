@@ -2,36 +2,75 @@ import { WS_BASE } from './api';
 import { WebSocketMessage } from '../types/chat';
 
 type MessageHandler = (data: WebSocketMessage) => void;
+type TokenProvider = () => Promise<string | null | undefined>;
 
 export class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 2000;
+  private maxReconnectAttempts = 12;
+  private reconnectDelay = 1500;
+  private maxReconnectDelay = 30000;
   private handlers: Map<string, MessageHandler[]> = new Map();
   private isConnecting = false;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isIntentionalClose = false;
 
   constructor(
     private appointmentId: string,
     private token: string,
     private onConnect?: () => void,
-    private onDisconnect?: () => void
-  ) { }
+    private onDisconnect?: () => void,
+    /** Called before each connect/reconnect so URL always has the latest access token */
+    private getToken?: TokenProvider,
+  ) {}
 
-  connect(): void {
+  updateToken(token: string): void {
+    this.token = String(token || '').replace(/^Bearer\s+/i, '');
+  }
+
+  async connect(): Promise<void> {
     if (this.isConnecting) return;
     if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.ws?.readyState === WebSocket.CONNECTING) return;
+
+    // Drop stale socket before opening a new one
+    if (this.ws) {
+      try {
+        this.ws.onopen = null;
+        this.ws.onmessage = null;
+        this.ws.onclose = null;
+        this.ws.onerror = null;
+        this.ws.close();
+      } catch {
+        // ignore
+      }
+      this.ws = null;
+    }
 
     this.isConnecting = true;
     this.isIntentionalClose = false;
 
-    const url = `${WS_BASE}/ws/communication/appointments/${this.appointmentId}/?token=${this.token}`;
- console.log("urlllll", url);
- 
+    // Prefer fresh token from storage (HTTP refresh may have rotated it)
+    if (this.getToken) {
+      try {
+        const fresh = await this.getToken();
+        if (fresh) {
+          this.updateToken(fresh);
+        }
+      } catch {
+        // keep existing token
+      }
+    }
 
-    // console.log('🔌 Connecting WebSocket:', url.replace(this.token, '***'));
+    if (!this.token) {
+      this.isConnecting = false;
+      this.reconnect();
+      return;
+    }
+
+    const url = `${WS_BASE}/ws/communication/appointments/${this.appointmentId}/?token=${encodeURIComponent(this.token)}`;
+    console.log('🔌 WebSocket connecting =>', url.replace(this.token, '[token]'));
 
     try {
       this.ws = new WebSocket(url);
@@ -64,7 +103,6 @@ export class WebSocketService {
       const data: WebSocketMessage = JSON.parse(event.data);
       console.log('📩 WebSocket received:', data.type);
 
-      // ✅ Route message
       if (data.type === 'chat.connected') {
         this.emit('connected', data);
       } else if (data.type === 'chat.receive') {
@@ -87,76 +125,64 @@ export class WebSocketService {
     }
   }
 
-
   private handleClose(event: any): void {
-    console.log(`🔌 WebSocket closed: ${event.code} - ${event.reason || 'No reason'}`);
+    console.log(
+      `🔌 WebSocket closed: ${event.code} - ${event.reason || 'No reason'}`,
+    );
     this.isConnecting = false;
     this.stopPing();
+    this.ws = null;
     this.onDisconnect?.();
 
     if (this.isIntentionalClose) return;
-    if (event.code === 1000 || event.code === 1001) {
-      console.log('👋 Normal closure');
-      return;
-    }
     this.reconnect();
   }
 
-  private handleError(event: any): void {
-    console.error('❌ WebSocket error:', event);
+  private handleError(_event: any): void {
+    // RN surfaces handshake failures (502/500) as error + close; reconnect on close.
     this.isConnecting = false;
   }
 
   private reconnect(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      console.log(`🔄 Reconnecting in ${delay}ms... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      setTimeout(() => {
-        if (!this.isIntentionalClose) {
-          this.connect();
-        }
-      }, delay);
-    } else {
-      console.error('❌ Max reconnect attempts reached');
-      this.emit('error', { type: 'chat.error', error: 'Connection lost. Please refresh.' });
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('❌ Max WebSocket reconnect attempts reached');
+      this.emit('error', {
+        type: 'chat.error',
+        error: 'Realtime unavailable. Messages still send over network.',
+      });
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.maxReconnectDelay,
+    );
+    console.log(
+      `🔄 Reconnecting in ${delay}ms... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+    );
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.isIntentionalClose) {
+        void this.connect();
+      }
+    }, delay);
   }
 
-  // sendMessage(text: string): boolean {
-  //   if (this.isConnected()) {
-  //     try {
-  //       const payload = { type: 'chat.send', text };
-  //       this.ws?.send(JSON.stringify(payload));
-  //       console.log('📤 Sent:', payload);
-  //       return true;
-  //     } catch (error) {
-  //       console.error('❌ Send failed:', error);
-  //       return false;
-  //     }
-  //   }
-  //   console.warn('⚠️ WebSocket not open');
-  //   return false;
-  // }
-
-  sendMessage(text: string): boolean {
-    // ✅ GUARD: khaali text WS pe kabhi mat bhejo — backend chat.error return karta hai
-    if (!text || !text.trim()) {
-      console.warn('⚠️ Empty text — WebSocket se nahi bhejenge');
-      return false;
-    }
-    if (this.isConnected()) {
-      try {
-        const payload = { type: 'chat.send', text };
-        this.ws?.send(JSON.stringify(payload));
-        console.log('📤 Sent:', payload);
-        return true;
-      } catch (error) {
-        console.error('❌ Send failed:', error);
-        return false;
-      }
-    }
-    console.warn('⚠️ WebSocket not open');
+  /**
+   * Disabled on purpose. Sending chat text over WS AND HTTP made the server
+   * store / broadcast the same message twice to the doctor.
+   * Outbound chat text must go through HTTP only (`chatService.sendMessage`).
+   */
+  sendMessage(_text: string): boolean {
+    console.warn(
+      '⚠️ chat.send over WebSocket is disabled — use HTTP send only',
+    );
     return false;
   }
 
@@ -179,9 +205,8 @@ export class WebSocketService {
     if (this.isConnected()) {
       try {
         this.ws?.send(JSON.stringify({ type: 'pong' }));
-        console.log('💓 Pong sent');
-      } catch (error) {
-        console.error('❌ Pong failed:', error);
+      } catch {
+        // ignore
       }
     }
   }
@@ -192,9 +217,8 @@ export class WebSocketService {
       if (this.isConnected()) {
         try {
           this.ws?.send(JSON.stringify({ type: 'ping' }));
-          console.log('💓 Ping sent');
-        } catch (error) {
-          console.error('❌ Ping failed:', error);
+        } catch {
+          // ignore
         }
       }
     }, 30000);
@@ -221,24 +245,33 @@ export class WebSocketService {
   off(event: string, handler: MessageHandler): void {
     const handlers = this.handlers.get(event);
     if (handlers) {
-      this.handlers.set(event, handlers.filter((h) => h !== handler));
+      this.handlers.set(
+        event,
+        handlers.filter(h => h !== handler),
+      );
     }
   }
 
   private emit(event: string, data: WebSocketMessage): void {
     const handlers = this.handlers.get(event);
     if (handlers) {
-      handlers.forEach((handler) => handler(data));
+      handlers.forEach(handler => handler(data));
     }
   }
 
   disconnect(): void {
     this.isIntentionalClose = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.stopPing();
     if (this.ws) {
       try {
         this.ws.close(1000, 'Normal closure');
-      } catch (e) { }
+      } catch {
+        // ignore
+      }
       this.ws = null;
     }
     this.isConnecting = false;

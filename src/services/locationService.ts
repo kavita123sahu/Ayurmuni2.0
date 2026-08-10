@@ -29,11 +29,6 @@ export type PlaceSuggestion = {
   secondary_text: string;
 };
 
-export type GeocodeApiStatus = {
-  ok: boolean;
-  provider: 'google' | 'nominatim' | 'none';
-  message?: string;
-};
 
 const GOOGLE_KEYS = [
   GOOGLE_PLACES_API_KEY,
@@ -146,78 +141,137 @@ export const openLocationSettings = () => {
   }
 };
 
+
 const readPosition = (
   highAccuracy: boolean,
   timeout: number,
+  maxAccuracyMeters?: number,
+  maximumAge = 0,
 ): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
     Geolocation.getCurrentPosition(
       position => {
+        const accuracy = position.coords.accuracy;
+        if (
+          maxAccuracyMeters != null &&
+          accuracy != null &&
+          accuracy > maxAccuracyMeters
+        ) {
+          reject(new Error(`Low accuracy fix (${accuracy}m)`));
+          return;
+        }
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
       },
-      error => {
-        console.log('GPS_ERROR', error);
-        reject(error);
-      },
+      error => reject(error),
       {
         enableHighAccuracy: highAccuracy,
         timeout,
-        maximumAge: 15000,
+        maximumAge,
       },
     );
   });
 
+/** Fast cached fix first, then high-accuracy GPS. */
+export const getCurrentPosition = async (): Promise<Coordinates> => {
+  try {
+    return await readPosition(false, 4000, undefined, 120000);
+  } catch {
+    // continue
+  }
+
+  try {
+    return await readPosition(true, 12000, 200);
+  } catch {
+    return watchPositionOnce(15000);
+  }
+};
+
 const watchPositionOnce = (timeout: number): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
     let watchId: number | null = null;
+    let best: Coordinates | null = null;
+    let bestAccuracy = Infinity;
 
     const timer = setTimeout(() => {
       if (watchId != null) {
         Geolocation.clearWatch(watchId);
+      }
+      if (best) {
+        resolve(best);
+        return;
       }
       reject(new Error('Location watch timed out'));
     }, timeout);
 
     watchId = Geolocation.watchPosition(
       position => {
-        clearTimeout(timer);
-        if (watchId != null) {
-          Geolocation.clearWatch(watchId);
+        const accuracy = position.coords.accuracy ?? Infinity;
+        if (accuracy < bestAccuracy) {
+          bestAccuracy = accuracy;
+          best = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
         }
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
+        if (accuracy <= 50) {
+          clearTimeout(timer);
+          if (watchId != null) {
+            Geolocation.clearWatch(watchId);
+          }
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        }
       },
       error => {
         clearTimeout(timer);
         if (watchId != null) {
           Geolocation.clearWatch(watchId);
         }
+        if (best) {
+          resolve(best);
+          return;
+        }
         reject(error);
       },
       {
-        enableHighAccuracy: false,
+        enableHighAccuracy: true,
         distanceFilter: 0,
-        maximumAge: 15000,
+        maximumAge: 10000,
       },
     );
   });
 
-export const getCurrentPosition = async (): Promise<Coordinates> => {
-  try {
-    return await readPosition(false, 30000);
-  } catch {
-    try {
-      return await readPosition(true, 45000);
-    } catch {
-      return watchPositionOnce(30000);
-    }
-  }
+const scoreGeocodeResult = (result: any): number => {
+  let score = 0;
+  const types: string[] = result?.types || [];
+  const locType = result?.geometry?.location_type;
+
+  if (locType === 'ROOFTOP') score += 120;
+  else if (locType === 'RANGE_INTERPOLATED') score += 90;
+  else if (locType === 'GEOMETRIC_CENTER') score += 40;
+
+  if (types.includes('street_address')) score += 70;
+  if (types.includes('premise')) score += 60;
+  if (types.includes('subpremise')) score += 55;
+  if (types.includes('neighborhood')) score += 35;
+  if (types.includes('sublocality')) score += 30;
+  if (types.includes('sublocality_level_1')) score += 32;
+
+  const hasPostal = result?.address_components?.some((c: any) =>
+    c.types?.includes('postal_code'),
+  );
+  if (hasPostal) score += 25;
+
+  return score;
 };
+
+const pickBestGeocodeResult = (results: any[]) =>
+  [...results].sort((a, b) => scoreGeocodeResult(b) - scoreGeocodeResult(a))[0];
 
 const parseAddressComponents = (
   components: any[],
@@ -234,6 +288,7 @@ const parseAddressComponents = (
   const route = get('route');
   const sublocality =
     get('sublocality_level_1') ||
+    get('sublocality_level_2') ||
     get('sublocality') ||
     get('neighborhood');
   const city =
@@ -270,7 +325,7 @@ const reverseGeocodeNominatim = async (
   const url =
     `https://nominatim.openstreetmap.org/reverse` +
     `?format=json&lat=${coords.latitude}&lon=${coords.longitude}` +
-    `&addressdetails=1`;
+    `&addressdetails=1&zoom=18`;
 
   const response = await fetch(url, {
     headers: {
@@ -320,7 +375,7 @@ export const reverseGeocode = async (
   try {
     const { data } = await tryGoogleRequest(
       key =>
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${key}`,
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&language=en&region=in&key=${key}`,
     );
 
     if (data.status !== 'OK' || !data.results?.length) {
@@ -329,7 +384,7 @@ export const reverseGeocode = async (
       );
     }
 
-    const result = data.results[0];
+    const result = pickBestGeocodeResult(data.results);
     return parseAddressComponents(
       result.address_components,
       result.formatted_address,
@@ -350,14 +405,15 @@ export const geocodePincode = async (
   try {
     const { data } = await tryGoogleRequest(
       key =>
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleaned)}&components=country:IN&key=${key}`,
+        `https://maps.googleapis.com/maps/api/geocode/json?components=postal_code:${cleaned}|country:IN&language=en&region=in&key=${key}`,
     );
 
     if (data.status !== 'OK' || !data.results?.length) {
-      return null;
+      return geocodePincodeNominatim(cleaned);
     }
 
-    const result = data.results[0];
+    const result = pickBestGeocodeResult(data.results);
+
     const { lat, lng } = result.geometry.location;
     return parseAddressComponents(
       result.address_components,
@@ -365,8 +421,86 @@ export const geocodePincode = async (
       { latitude: lat, longitude: lng },
     );
   } catch {
+    return geocodePincodeNominatim(cleaned);
+  }
+};
+
+const geocodePincodeNominatim = async (
+  pincode: string,
+): Promise<ParsedAddress | null> => {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/search` +
+      `?postalcode=${encodeURIComponent(pincode)}` +
+      `&country=India&format=json&addressdetails=1&limit=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'AyurmuniApp/1.0',
+        Accept: 'application/json',
+      },
+    });
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      return null;
+    }
+
+    const item = data[0];
+    const addr = item.address || {};
+    const city =
+      addr.city ||
+      addr.town ||
+      addr.village ||
+      addr.suburb ||
+      addr.county ||
+      '';
+    const state = addr.state || '';
+
+    return {
+      address_line_1: city || pincode,
+      address_line_2: addr.suburb || '',
+      city,
+      state,
+      zipcode: pincode,
+      country: addr.country || 'India',
+      formatted_address: item.display_name || `${city}, ${state} ${pincode}`,
+      latitude: parseFloat(item.lat),
+      longitude: parseFloat(item.lon),
+    };
+  } catch {
     return null;
   }
+};
+
+/** Fill city/state (and coords) from a 6-digit pincode when GPS geocode is incomplete. */
+export const enrichAddressWithPincode = async (
+  address: ParsedAddress,
+): Promise<ParsedAddress> => {
+  const zip = address.zipcode?.replace(/[^0-9]/g, '') || '';
+  if (zip.length !== 6) {
+    return address;
+  }
+
+  const fromPin = await geocodePincode(zip);
+  if (!fromPin) {
+    return address;
+  }
+
+  return {
+    ...address,
+    city: fromPin.city || address.city,
+    state: fromPin.state || address.state,
+    zipcode: fromPin.zipcode || zip,
+    country: fromPin.country || address.country,
+    latitude: fromPin.latitude || address.latitude,
+    longitude: fromPin.longitude || address.longitude,
+    formatted_address:
+      address.formatted_address ||
+      fromPin.formatted_address ||
+      [address.address_line_1, fromPin.city, fromPin.state, zip]
+        .filter(Boolean)
+        .join(', '),
+  };
 };
 
 export const searchPlaces = async (
@@ -449,19 +583,19 @@ type SavedAddressInput = {
 export const savedAddressToParsed = (
   item: SavedAddressInput,
 ): ParsedAddress => {
-  const line1 = item.address_line_1 || '';
-  const city = item.city || '';
-  const state = item.state || '';
-  const zip = item.zipcode || '';
+  const line1 = item?.address_line_1 || '';
+  const city = item?.city || '';
+  const state = item?.state || '';
+  const zip = item?.zipcode || '';
   const formatted = [line1, city, state, zip].filter(Boolean).join(', ');
 
   return {
     address_line_1: line1,
-    address_line_2: item.address_line_2 || '',
+    address_line_2: item?.address_line_2 || '',
     city,
     state,
     zipcode: zip,
-    country: item.country || 'India',
+    country: item?.country || 'India',
     formatted_address: formatted || line1 || city || 'Saved address',
     latitude: 0,
     longitude: 0,

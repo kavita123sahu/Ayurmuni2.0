@@ -196,10 +196,10 @@ export default FilterTabs;
 export const styles = StyleSheet.create({
     tabsRow: {
         flexDirection: "row",
-        paddingHorizontal: 12,
+        paddingHorizontal: 4,
         paddingVertical: 10,
         backgroundColor: "#FFFFFF",
-        borderBottomWidth: 1,
+        // borderBottomWidth: 1,
         borderBottomColor: "#E5E7EB",
         gap: 10,
     },

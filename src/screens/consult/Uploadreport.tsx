@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../../components/TablerIcon';
@@ -39,6 +40,9 @@ const PrescriptionUpload: React.FC<Props> = ({
   onUpload,
   CameraUpload,
 }) => {
+  const insets = useSafeAreaInsets();
+  const footerBottomPad = Math.max(insets.bottom, 12);
+
   const selectedRecordData = records?.filter(item =>
     selectedRecords?.includes(item.id),
   );
@@ -59,7 +63,7 @@ const PrescriptionUpload: React.FC<Props> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Upload Prescription
+        Upload Documents
         <Text style={styles.optional}> (optional)</Text>
       </Text>
 
@@ -70,7 +74,7 @@ const PrescriptionUpload: React.FC<Props> = ({
           </View>
 
           <View style={styles.headerText}>
-            <Text style={styles.uploadTitle}>Attach prescription</Text>
+            <Text style={styles.uploadTitle}>Attach Documents</Text>
             <Text style={styles.uploadSubTitle}>
               Photo or PDF — helps your doctor prepare
             </Text>
@@ -90,7 +94,7 @@ const PrescriptionUpload: React.FC<Props> = ({
           >
             <TablerIcon name="upload" size={18} color={Colors.primaryColor} />
             <Text style={styles.uploadBtnText}>
-              {selectedRecordData?.length > 0 ? 'Add another file' : 'Upload prescription'}
+              {selectedRecordData?.length > 0 ? 'Add another file' : 'Upload Documents'}
             </Text>
           </TouchableOpacity>
         )}
@@ -120,7 +124,7 @@ const PrescriptionUpload: React.FC<Props> = ({
       </View>
 
       <Modal visible={showRecordModal} animationType="slide">
-        <View style={styles.recordModalContainer}>
+        <SafeAreaView style={styles.recordModalContainer} edges={['top', 'left', 'right']}>
           <View style={styles.recordModalHeader}>
             <Text style={styles.recordTitle}>Existing records</Text>
             <TouchableOpacity onPress={() => setShowRecordModal(false)}>
@@ -129,9 +133,11 @@ const PrescriptionUpload: React.FC<Props> = ({
           </View>
 
           <FlatList
+            style={styles.recordList}
             data={records}
             keyExtractor={item => item.id}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={styles.recordListContent}
+            showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
               const selected = selectedRecords?.includes(item.id);
               return (
@@ -171,12 +177,14 @@ const PrescriptionUpload: React.FC<Props> = ({
             }
           />
 
-          <PrimaryButton
-            TextFont="800"
-            onPress={() => setShowRecordModal(false)}
-            title="Done"
-          />
-        </View>
+          <View style={[styles.recordModalFooter, { paddingBottom: footerBottomPad }]}>
+            <PrimaryButton
+              TextFont={Fonts.PoppinsSemiBold}
+              onPress={() => setShowRecordModal(false)}
+              title="Done"
+            />
+          </View>
+        </SafeAreaView>
       </Modal>
 
       <Modal visible={showUploadOptions} transparent animationType="fade">
@@ -192,7 +200,8 @@ const PrescriptionUpload: React.FC<Props> = ({
               style={styles.optionItem}
               onPress={() => {
                 setShowUploadOptions(false);
-                setTimeout(() => CameraUpload?.(), 300);
+                // Wait for options modal to fully dismiss before opening camera
+                setTimeout(() => CameraUpload?.(), 450);
               }}
             >
               <View style={styles.optionIcon}>
@@ -408,9 +417,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+  },
+  recordList: {
+    flex: 1,
+  },
+  recordListContent: {
+    paddingTop: 4,
+    paddingBottom: 12,
+    flexGrow: 1,
+  },
+  recordModalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFF',
   },
   recordTitle: {
     fontSize: 18,
@@ -422,7 +446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 10,
     backgroundColor: '#FFF',
     borderRadius: 14,
     borderWidth: 1,

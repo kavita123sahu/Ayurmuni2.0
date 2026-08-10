@@ -1,25 +1,16 @@
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BaseUrl } from '../../config/Key';
 
-// ✅ Get base URL
-const getBaseUrl = (): string => {
-    if (__DEV__) {
-        // iOS Simulator
-        if (Platform.OS === 'ios') {
-            return 'http://localhost:8000';
-        }
-        // Android Emulator
-        if (Platform.OS === 'android') {
-            return 'http://10.0.2.2:8000';
-        }
-        // Physical device — use your computer's IP
-        return 'http://192.168.1.100:8000';
-    }
-    return 'https://your-api.ayurmuni.com';
-};
+/** Strip trailing slashes so WS paths don't become `//ws/...` */
+const normalizeBase = (url: string) => String(url || '').replace(/\/+$/, '');
 
-// ✅ Your actual API base
-const API_BASE = 'https://ayurmuni.aimantra.info';
-const WS_BASE = API_BASE.replace('https', 'ws');
+const API_BASE = normalizeBase(BaseUrl.base_url);
+
+/**
+ * https → wss, http → ws (never leave a trailing slash).
+ * Bug before: `https`.replace('https','ws') → `ws://` and then `/ws` → `//ws`.
+ */
+const WS_BASE = normalizeBase(API_BASE)
+  .replace(/^https:/i, 'wss:')
+  .replace(/^http:/i, 'ws:');
 
 export { API_BASE, WS_BASE };

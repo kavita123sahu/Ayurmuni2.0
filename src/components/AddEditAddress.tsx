@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import {
     View,
@@ -87,6 +87,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
         );
 
     const [pincodeLoading, setPincodeLoading] = useState(false);
+    const lastPincodeLookupRef = useRef('');
 
     const isDisabled =
         !address1 ||
@@ -107,14 +108,21 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
     useEffect(() => {
         const lookupPincode = async () => {
-            if (zip.length !== 6 || isEdit) return;
+            const cleaned = zip.replace(/[^0-9]/g, '');
+            if (cleaned.length !== 6 || cleaned === lastPincodeLookupRef.current) {
+                return;
+            }
+
             setPincodeLoading(true);
             try {
-                const result = await geocodePincode(zip);
+                const result = await geocodePincode(cleaned);
                 if (result) {
-                    if (!city) setCity(result.city || '');
-                    if (!stateValue) setStateValue(result.state || '');
-                    if (!address1) setAddress1(result.address_line_1 || '');
+                    lastPincodeLookupRef.current = cleaned;
+                    setCity(result.city || '');
+                    setStateValue(result.state || '');
+                    if (!address1.trim()) {
+                        setAddress1(result.address_line_1 || '');
+                    }
                 }
             } finally {
                 setPincodeLoading(false);
@@ -123,7 +131,13 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
         const timer = setTimeout(lookupPincode, 500);
         return () => clearTimeout(timer);
-    }, [zip, isEdit, city, stateValue, address1]);
+    }, [zip, address1]);
+
+    useEffect(() => {
+        if (zip.length < 6) {
+            lastPincodeLookupRef.current = '';
+        }
+    }, [zip]);
 
     const locationPreview = useMemo(() => {
         if (selectedLocation?.formatted_address) {
@@ -455,8 +469,10 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                 value={zip}
                                 onChangeText={(text) => {
                                     const cleanedText =
-                                        text.replace(/[^0-9]/g, '');
-
+                                        text.replace(/[^0-9]/g, '').slice(0, 6);
+                                    if (cleanedText !== zip) {
+                                        lastPincodeLookupRef.current = '';
+                                    }
                                     setZip(cleanedText);
                                 }}
                                 maxLength={6}

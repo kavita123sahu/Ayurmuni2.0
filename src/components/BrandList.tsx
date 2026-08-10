@@ -15,6 +15,8 @@ import { CARD_SURFACE, CARD_RADIUS_LG } from '../constants/cardStyles';
 type BrandType = {
   id: string;
   name: string;
+  logo?:
+  TablerIconName;
   image?: ImageSourcePropType;
   iconName?: TablerIconName;
   onPress?: () => void;
@@ -54,7 +56,7 @@ const BrandList: React.FC<Props> = ({ data = [] }) => {
               <TablerIcon name="pill" size={26} color="#0D614E" />
             )}
           </View>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={2}>
             {item.name}
           </Text>
         </TouchableOpacity>
@@ -76,15 +78,15 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: CARD_RADIUS_LG,
-    paddingVertical: 14,
+    // paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: 'rgba(13, 97, 78, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(13, 97, 78, 0.12)',
+    // backgroundColo r: 'rgba(13, 97, 78, 0.08)',
+    // borderWidth: 1,
+    // borderColor: 'rgba(13, 97, 78, 0.12)',
   },
   imageContainer: {
-    height: 56,
-    width: 56,
+    width: 100,
+    height: 100,
     borderRadius: 28,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
@@ -92,12 +94,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   image: {
-    height: 40,
-    width: 40,
-    resizeMode: 'contain',
+    width: 100,
+    height: 100,
+    resizeMode: 'cover',
+    borderRadius: 28
   },
   name: {
     fontSize: 13,
+    textAlign: 'center',
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0D614E',
   },

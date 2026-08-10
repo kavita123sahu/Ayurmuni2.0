@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react'
+import React from 'react'
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux'
 import Navigator from './src/navigation/Navigator'
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
@@ -7,11 +9,13 @@ import { store } from './src/store/store';
 import AppDataInitializer from './src/components/AppDataInitializer';
 import { Fonts } from './src/common/Fonts';
 import { LocationProvider } from './src/context/LocationContext';
+import { VideoCallProvider } from './src/context/VideoCallContext';
+import FloatingVideoOverlay from './src/components/FloatingVideoOverlay';
 
 
-// console.log = () => { };
-// console.warn = () => { };
-// console.error = () => { };
+console.log = () => { };
+console.warn = () => { };
+console.error = () => { };
 
 
 const toastConfig = {
@@ -70,21 +74,28 @@ const toastConfig = {
   ),
 };
 
+
 const App = () => {
 
   return (
 
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Provider store={store} >
-        <LocationProvider>
-          <AppDataInitializer />
-          <Navigator />
-          <Toast config={toastConfig} />
-        </LocationProvider>
-      </Provider>
+      <SafeAreaProvider>
+        <Provider store={store} >
+          <VideoCallProvider>
+            <LocationProvider>
+              <View style={{ flex: 1 }}>
+                <AppDataInitializer />
+                <Navigator />
+                <FloatingVideoOverlay />
+                <Toast config={toastConfig} />
+              </View>
+            </LocationProvider>
+          </VideoCallProvider>
+        </Provider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   )
 }
-
 
 export default App

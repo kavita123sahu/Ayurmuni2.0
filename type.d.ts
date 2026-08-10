@@ -9,12 +9,16 @@ export type RootStackParamList = {
     Otp: undefined;
     MentorCheckout: undefined;
     ChatScreen: {
-    // appointmentId: string;
-    // role: 'doctor' | 'patient';
-    doctorId: string;
-    doctorName: string;
-  };
+        // appointmentId: string;
+        // role: 'doctor' | 'patient';
+        doctorId: string;
+        doctorName: string;
+    };
+    ConsultScreen: undefined;
     Onboarding: undefined;
+    AccessMode: undefined;
+    CompleteDetails: { reason?: string } | undefined;
+    ProductRazorpayScreen : undefined;
     FavDoctors: undefined;
     AppointmentDetails: undefined;
     HomeStack: undefined;
@@ -29,7 +33,11 @@ export type RootStackParamList = {
     MultipleDoctorSlip: undefined;
     PrescriptionDetail: undefined;
     AuthStack: undefined;
-    DoctorSlot: undefined;
+    // DoctorSlot: undefined;
+    DoctorSlot: {
+        doctorDetails: string;
+    };
+    DoctorConsultationHistory : undefined;
     DoctorProfile: undefined;
     AddCalendar: undefined;
     SplashStack: undefined;
@@ -41,13 +49,24 @@ export type RootStackParamList = {
     OtpVerify: undefined;
     EditProfile: undefined;
     WeeklyMeal: WeeklyMeal;
-    MedicalReceipt: undefined;
+    // MedicalReceipt: undefined;
+    MedicalReceipt:{
+        consultationId : string
+    }
     AllDoctors: undefined;
-    CategoryDoctor: undefined;
+    CategoryDoctor: {
+        categoryName?: string;
+        categoryId?: string;
+    };
     Splash: undefined;
     BookingConfrimScreen: undefined;
-    Appointments: undefined;
+    Appointments:
+      | {
+          mode?: 'upcoming' | 'all';
+        }
+      | undefined;
     OrderHistory: undefined;
+    OrderDetailsScreen: { order?: any };
     TabStack: undefined;
     MentorOrder: undefined;
     PatientDetails: undefined;
@@ -60,6 +79,18 @@ export type RootStackParamList = {
     ProductDetails: undefined;
     TopCategories: undefined;
     ReviewPage: undefined;
+    ShareExperienceScreen: {
+        entityType?: 'doctor' | 'product';
+        entityName?: string;
+        entitySubtitle?: string;
+        appointmentId?: string;
+        variantId?: string;
+        orderId?: string;
+        initialRating?: number;
+        initialReview?: string;
+        initialImages?: string[];
+        isEdit?: boolean;
+    };
     YogaSession: undefined;
     MyCart: undefined;
     Mentor: undefined;
@@ -75,6 +106,7 @@ export type RootStackParamList = {
     HelpCenterScreen: undefined;
     Settings: undefined;
     PaymentsScreen: undefined;
+    TransactionDetailsScreen: { transaction?: any };
     EmergencySOS: undefined;
     SOSConfirmed: undefined;
     SOSCancel: undefined;
@@ -88,9 +120,22 @@ export type RootStackParamList = {
     Prescription: undefined;
     VerifyPresciption: undefined;
     SearchScreen: undefined;
+    CategoryProducts:
+      | {
+          categoryId?: string;
+          categoryName?: string;
+          categoryMode?: 'health' | 'product';
+          productSubcategoryId?: string;
+          healthCategoryId?: string;
+          healthDiseaseId?: string;
+          brand_name_id?: string;
+          brandName?: string;
+          serviceCategoryId?: string;
+        }
+      | undefined;
     OrderStatus: undefined;
     MedicineCheckOut: undefined;
-    consultHome: undefined;
+    ConsultHome: undefined;
     MedicalHistory: undefined;
     AssessmentType: undefined;
 };
@@ -107,7 +152,7 @@ export type RootBottomParamList = {
     Products: undefined;
     Profile: undefined;
     Consult: undefined;
-    consultHome: undefined;
+    // ConsultScreen: undefined;
     Mentor: undefined;
 };
 

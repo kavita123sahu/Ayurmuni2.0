@@ -1,21 +1,66 @@
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StatusBar, StyleSheet } from 'react-native';
+import {
+  FlatList,
+  StatusBar,
+  StyleSheet,
+  View,
+  Text,
+  RefreshControl,
+  Dimensions,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
 import RecentProductsList from '../../components/RecentProductsList';
 import CategoryList from '../../components/CategoryList';
-import TopSellingList from '../../components/TopSellingList';
 import SectionHeader from '../../components/SectionHeader';
 import ActionCards from '../../components/ActionCards';
 import BrandList from '../../components/BrandList';
+import ProductCard from '../../components/ProductCard';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { getScreenBottomPadding } from '../../constants/layout';
+import { useOrders } from '../../hooks/useOrders';
+import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
-import TablerIcon from '../../components/TablerIcon';
+import { Images } from '../../common/Images';
+import { Fonts } from '../../common/Fonts';
+import { safeGoBack } from '../../navigation/navigationUtils';
+import {
+  navigateToSearchScreen,
+  navigateToCategoryProducts,
+  navigateToProductDetails,
+} from '../../navigation/productNavigation';
+import { useBrands } from '../../hooks/useBrands';
+import { useHealthConcernCategories } from '../../hooks/useHealthConcernCategories';
+import { mapBrandItem } from '../../utils/orderUtils';
+import { useCategoryProducts } from '../../hooks/useCategoryProducts';
+import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { syncCartQuantity } from '../../store/slices/cartSlice';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
+import { showSuccessToast } from '../../config/Key';
+import { requireAuth } from '../../services/guestAuth';
+import Detailimages from '../../components/Detailimages';
+import { useBanners } from '../../hooks/useBanners';
+import {
+  ProductGridSkeleton,
+  MedicineScreenSkeleton,
+  CategoryRowSkeleton,
+  HorizontalChipSkeleton,
+} from '../../simmerScreen/ShimmerHook';
+import {
+  canAddProductQty,
+  isProductOutOfStock,
+} from '../../utils/productStockUtils';
+
+const H_PAD = 20;
+const GRID_GAP = 10;
+const GRID_CARD_WIDTH =
+  (Dimensions.get('window').width - H_PAD * 2 - GRID_GAP) / 2;
 
 type ActionItem = {
   id: string;
@@ -30,31 +75,85 @@ const MedicineScreen = (props: any) => {
   const stackNav = navigation.getParent?.() || navigation;
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
+  const dispatch = useAppDispatch();
+  const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
+  const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
+  const { images: bannerImages } = useBanners('medicine');
+  const screenWidth = Dimensions.get('window').width;
 
-  const { categories, productData, setProductData, loadingProducts } =
-    useHomeData();
+  const {
+    categories: dashboardCategories,
+    medicineProducts,
+  } = useHomeData();
 
-  const productImage = require('../../assets/images/RecentsImage.png');
-
-  const recentProducts = useMemo(
-    () => [
-      {
-        id: '1',
-        name: 'Foxtail millet (Kangni)',
-        price: 649,
-        image: productImage,
-        lastOrdered: '17 February',
-      },
-      {
-        id: '2',
-        name: 'Groundnut oil',
-        price: 499,
-        image: productImage,
-        lastOrdered: '17 February',
-      },
-    ],
-    [productImage],
+  const medicineCategoryId = useMemo(
+    () => getServiceCategoryId(dashboardCategories, 'medicine'),
+    [dashboardCategories],
   );
+
+  // All Medicines: customers/products/ with pagination (full catalog).
+  // Do not block on service_category_id — empty filter returns all products.
+  const productFilter = useMemo(() => ({}), []);
+
+  const {
+    products,
+    setProducts,
+    loading,
+    loadingMore,
+    refreshing,
+    refresh,
+    loadMore,
+  } = useCategoryProducts(productFilter, medicineProducts, {
+    enabled: true,
+  });
+
+  const {
+    categories: healthConcerns,
+    loading: healthConcernsLoading,
+    refresh: refreshHealthConcerns,
+  } = useHealthConcernCategories(null);
+
+  const { brands, refresh: refreshBrands } = useBrands();
+  const { recentProducts, loading: ordersLoading, refresh: refreshOrders } =
+    useOrders({ pageSize: 5 });
+
+  const brandListData = useMemo(
+    () =>
+      (Array.isArray(brands) ? brands : []).map((brand: any) => {
+        const mapped = mapBrandItem(brand);
+        return {
+          ...mapped,
+          onPress: () => {
+            if (!mapped.id) return;
+            navigateToCategoryProducts(navigation, {
+              categoryMode: 'product',
+              categoryName: mapped.name,
+              brand_name_id: mapped.id,
+              brandName: mapped.name,
+              serviceCategoryId: medicineCategoryId || undefined,
+            });
+          },
+        };
+      }),
+    [brands, navigation, medicineCategoryId],
+  );
+
+  const handleSearchPress = useCallback(() => {
+    navigateToSearchScreen(navigation);
+  }, [navigation]);
+
+  const handleViewOrderHistory = useCallback(() => {
+    navigation.navigate('OrderHistory');
+  }, [navigation]);
+
+  const onRefresh = useCallback(async () => {
+    await Promise.all([
+      refresh(),
+      refreshOrders(),
+      refreshBrands(),
+      refreshHealthConcerns(),
+    ]);
+  }, [refresh, refreshOrders, refreshBrands, refreshHealthConcerns]);
 
   const actionItems: ActionItem[] = useMemo(
     () => [
@@ -76,87 +175,214 @@ const MedicineScreen = (props: any) => {
     [],
   );
 
-  const brandData = useMemo(
-    () => [
-      { id: '1', name: 'Baidyanath', iconName: 'pill' as TablerIconName },
-      { id: '2', name: 'Himalaya', iconName: 'store' as TablerIconName },
-      { id: '3', name: 'Dabur', iconName: 'pill' as TablerIconName },
-    ],
-    [],
-  );
-
-  const safeCategories = Array.isArray(categories) ? categories : [];
-  const safeProducts = Array.isArray(productData) ? productData : [];
+  const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
 
   const handleActionPress = useCallback(
     (item: { screen?: keyof RootStackParamList }) => {
-      // Guests can open & browse these screens; the actual submit/upload
-      // inside is gated by requireAuth at the action point.
-      if (item?.screen) {
-        stackNav.navigate(item.screen);
-      }
+      if (item?.screen)
+        showSuccessToast('This feature is Coming Soon', 'success');
+      //  stackNav.navigate(item.screen);
     },
     [stackNav],
   );
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+  const handleCartUpdate = useCallback(
+    async (item: any, newQty: number) => {
+      if (!(await requireAuth('Please login to add items to cart'))) return;
+      const variantId = String(item?.variant_id);
+      if (!variantId) return;
 
-      <Header title="Medicine Store" subtitle="Health & Wellness" />
+      if (newQty > 0 && isProductOutOfStock(item)) {
+        showSuccessToast('This product is out of stock', 'error');
+        return;
+      }
+      if (!canAddProductQty(item, newQty)) {
+        showSuccessToast('Not enough stock available', 'error');
+        return;
+      }
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: bottomPadding },
-        ]}
-        nestedScrollEnabled
-      >
-        <SearchBar placeholder="Search seeds, oils..." />
+      const result = await dispatch(
+        syncCartQuantity({ variantId, quantity: newQty }),
+      );
+      if (syncCartQuantity.rejected.match(result)) {
+        showSuccessToast(
+          (result.payload as string) || 'Failed to update cart',
+          'error',
+        );
+      }
+    },
+    [dispatch],
+  );
+
+  useWishlistSync(setProducts);
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      const variantId = String(item?.variant_id);
+      const cartQty = variantQuantities[variantId] ?? 0;
+      return (
+        <View style={styles.cardWrap}>
+          <ProductCard
+            item={item}
+            variant="grid"
+            gridWidth={GRID_CARD_WIDTH}
+            cartQty={cartQty}
+            isAdding={addingVariantId === variantId}
+            onPress={() =>
+              navigateToProductDetails(navigation, item.variant_id)
+            }
+            onAdd={() => handleCartUpdate(item, cartQty + 1)}
+            onIncrement={() => handleCartUpdate(item, cartQty + 1)}
+            onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
+            onWishlist={() => handleWishlist(item)}
+          />
+        </View>
+      );
+    },
+    [
+      variantQuantities,
+      addingVariantId,
+      navigation,
+      handleCartUpdate,
+      handleWishlist,
+    ],
+  );
+
+  const ListHeader = useCallback(
+    () => (
+      <View>
+        {bannerImages.length > 0 ? (
+          <View style={{ marginBottom: 10 }}>
+            <Detailimages
+              images={bannerImages}
+              itemWidth={screenWidth - SCREEN_PADDING_H * 2}
+              DynamicResize="cover"
+              autoSlide
+              embedded
+              mode="banner"
+              enablePreview={false}
+            />
+          </View>
+        ) : null}
 
         <ActionCards data={actionItems} onpress={handleActionPress} />
 
-        <SectionHeader title="Recent Orders" actionText="View History" />
-        <RecentProductsList data={recentProducts} />
+        {(ordersLoading || recentProducts.length > 0) && (
+          <>
+            <SectionHeader
+              title="Recent Orders"
+              actionText="View History"
+              onPress={handleViewOrderHistory}
+            />
+            {ordersLoading && recentProducts.length === 0 ? (
+              <HorizontalChipSkeleton count={4} width={100} height={72} />
+            ) : (
+              <RecentProductsList
+                data={recentProducts}
+                navigation={navigation}
+              />
+            )}
+          </>
+        )}
 
         <SectionHeader title="Shop by Concern" />
-        <CategoryList
-          data={safeCategories}
-          navigation={stackNav}
-        />
+        {healthConcernsLoading && safeHealthConcerns.length === 0 ? (
+          <CategoryRowSkeleton />
+        ) : (
+          <CategoryList
+            data={safeHealthConcerns}
+            navigation={navigation}
+            mode="health"
+          />
+        )}
 
         <SectionHeader title="Trusted Brands" />
-        <BrandList data={brandData} />
-
-        {safeProducts.length > 0 && (
-          <>
-            <SectionHeader title="Medicines" actionText="View all" />
-            <TopSellingList
-              data={safeProducts}
-              navigation={stackNav}
-              setProductData={setProductData}
-              nested
-            />
-          </>
+        {brandListData.length === 0 ? (
+          <HorizontalChipSkeleton count={5} width={72} height={72} />
+        ) : (
+          <BrandList data={brandListData} />
         )}
 
-        {loadingProducts && safeProducts.length === 0 ? (
-          <SectionHeader title="Medicines" />
-        ) : null}
+        <SectionHeader title="All Medicines" actionText="" />
+      </View>
+    ),
+    [
+      actionItems,
+      handleActionPress,
+      ordersLoading,
+      recentProducts,
+      handleViewOrderHistory,
+      navigation,
+      healthConcernsLoading,
+      safeHealthConcerns,
+      brandListData,
+      bannerImages,
+      screenWidth,
+    ],
+  );
 
-        {safeProducts.length > 0 && (
-          <>
-            <SectionHeader title="Ayurveda" actionText="View all" />
-            <TopSellingList
-              data={safeProducts}
-              navigation={stackNav}
-              setProductData={setProductData}
-              nested
+  const showInitialSkeleton = loading && products.length === 0;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+
+      <Header
+        title="Medicine Store"
+        backIcon={Images.backIcon}
+        onBack={() => safeGoBack(props.navigation)}
+        subtitle="Health & Wellness"
+        onSearchPress={handleSearchPress}
+      />
+
+      {showInitialSkeleton ? (
+        <MedicineScreenSkeleton />
+      ) : (
+        <FlatList
+          data={products}
+          keyExtractor={(item, i) => String(item.variant_id || i)}
+          numColumns={2}
+          renderItem={renderItem}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomPadding },
+          ]}
+          columnWrapperStyle={styles.columnWrap}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primaryColor]}
+              tintColor={Colors.primaryColor}
             />
-          </>
-        )}
-      </ScrollView>
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.35}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerLoader}>
+                <ProductGridSkeleton
+                  cardWidth={GRID_CARD_WIDTH}
+                  gap={10}
+                  count={2}
+                />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No medicines available</Text>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -166,10 +392,28 @@ export default React.memo(MedicineScreen);
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: H_PAD,
     backgroundColor: '#FDFDFB',
   },
-  scrollContent: {
+  listContent: {
     paddingTop: 4,
+  },
+  columnWrap: {
+    justifyContent: 'space-between',
+    gap: GRID_GAP,
+  },
+  cardWrap: {
+    width: GRID_CARD_WIDTH,
+    marginBottom: GRID_GAP,
+  },
+  footerLoader: {
+    paddingVertical: 8,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 24,
+    fontSize: 14,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
   },
 });

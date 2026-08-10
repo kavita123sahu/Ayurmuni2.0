@@ -14,6 +14,8 @@ type Props = {
   quantity: number;
   isAdding?: boolean;
   locked?: boolean;
+  outOfStock?: boolean;
+  maxQuantity?: number | null;
   onAdd: () => void;
   onIncrement: () => void;
   onDecrement: () => void;
@@ -24,28 +26,40 @@ const BlinkitAddButton: React.FC<Props> = ({
   quantity,
   isAdding = false,
   locked = false,
+  outOfStock = false,
+  maxQuantity = null,
   onAdd,
   onIncrement,
   onDecrement,
   compact = false,
 }) => {
+  const atMax =
+    maxQuantity != null && Number.isFinite(maxQuantity) && quantity >= maxQuantity;
+
   if (quantity <= 0) {
+    const disabled = isAdding || locked || outOfStock;
     return (
       <TouchableOpacity
         onPress={onAdd}
-        disabled={isAdding || locked}
+        disabled={disabled}
         activeOpacity={0.75}
         style={[
           styles.addBtn,
           compact && styles.addBtnCompact,
-          locked && styles.addBtnLocked,
+          (locked || outOfStock) && styles.addBtnDisabled,
         ]}
       >
-        {isAdding ? (
+        {isAdding && !outOfStock ? (
           <ActivityIndicator size="small" color={Colors.primaryColor} />
         ) : (
-          <Text style={[styles.addText, compact && styles.addTextCompact, locked && styles.addTextLocked]}>
-            {locked ? 'LOGIN' : 'ADD'}
+          <Text
+            style={[
+              styles.addText,
+              compact && styles.addTextCompact,
+              (locked || outOfStock) && styles.addTextDisabled,
+            ]}
+          >
+            {locked && !outOfStock ? 'LOGIN' : 'ADD'}
           </Text>
         )}
       </TouchableOpacity>
@@ -63,19 +77,20 @@ const BlinkitAddButton: React.FC<Props> = ({
         <TablerIcon name="minus" size={compact ? 14 : 16} color="#fff" strokeWidth={2.5} />
       </TouchableOpacity>
 
-      {isAdding ? (
-        <ActivityIndicator size="small" color="#fff" style={styles.qtyLoader} />
-      ) : (
-        <Text style={[styles.qtyText, compact && styles.qtyTextCompact]}>{quantity}</Text>
-      )}
+      <Text style={[styles.qtyText, compact && styles.qtyTextCompact]}>{quantity}</Text>
 
       <TouchableOpacity
         onPress={onIncrement}
-        disabled={isAdding || locked}
-        style={styles.stepBtn}
+        disabled={isAdding || locked || atMax}
+        style={[styles.stepBtn, atMax && styles.stepBtnDisabled]}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <TablerIcon name="plus" size={compact ? 14 : 16} color="#fff" strokeWidth={2.5} />
+        <TablerIcon
+          name="plus"
+          size={compact ? 14 : 16}
+          color={atMax ? 'rgba(255,255,255,0.45)' : '#fff'}
+          strokeWidth={2.5}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -112,17 +127,20 @@ const styles = StyleSheet.create({
   addTextCompact: {
     fontSize: 11,
   },
-  addBtnLocked: {
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
+  addBtnDisabled: {
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
   },
-  addTextLocked: {
-    color: '#64748B',
-    fontSize: 10,
+  addTextDisabled: {
+    color: '#94A3B8',
+    fontSize: 11,
   },
   stepperLocked: {
     backgroundColor: '#94A3B8',
     opacity: 0.85,
+  },
+  stepBtnDisabled: {
+    opacity: 0.7,
   },
   stepper: {
     flexDirection: 'row',

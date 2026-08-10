@@ -25,29 +25,17 @@ export const ReviewGalleryScreen = ({
     route,
     navigation,
 }: any) => {
-    const [showViewer, setShowViewer] =
-        useState(false);
-
-    const [selectedIndex, setSelectedIndex] =
-        useState(0);
-    const { images } = route.params;
+    const { images = [], selectedIndex: initialIndex = 0 } = route.params ?? {};
+    const [showViewer, setShowViewer] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(Number(initialIndex) || 0);
 
     return (
         <SafeAreaView style={styles.container}>
-
-            {/* HEADER */}
-
-
-            <AppHeader title='Customer Reviews'
- onLeftPress={() => navigation.goBack()} />
-
-            {/* COUNT */}
+            <AppHeader title="Review media" onLeftPress={() => navigation.goBack()} />
 
             <Text style={styles.countText}>
-                {images?.length} Photos
+                {images?.length} Photos & videos
             </Text>
-
-            {/* GRID */}
 
             <FlatList
                 data={images}

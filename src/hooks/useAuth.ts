@@ -1,24 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  isGuestUser,
+  AccessLevel,
+  getAccessLevel,
   isAuthenticated,
+  isGuestUser,
   requireAuth,
   guardAuthenticatedAction,
   navigateToLogin,
+  navigateToCompleteDetails,
 } from '../services/guestAuth';
 
 export const useAuth = () => {
-  const [guest, setGuest] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const [accessLevel, setAccessLevel] = useState<AccessLevel>('logged_out');
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [guestFlag, authFlag] = await Promise.all([
-      isGuestUser(),
+    const [auth, guest, level] = await Promise.all([
       isAuthenticated(),
+      isGuestUser(),
+      getAccessLevel(),
     ]);
-    setGuest(guestFlag && !authFlag);
-    setLoggedIn(authFlag);
+    setLoggedIn(auth);
+    setIsGuest(guest);
+    setAccessLevel(level);
     setReady(true);
   }, []);
 
@@ -28,11 +34,17 @@ export const useAuth = () => {
 
   return {
     ready,
-    isGuest: guest,
+    /** Has API token (guest or full). */
     isLoggedIn: loggedIn,
+    /** Token + guest flag — browse OK, actions gated. */
+    isGuest,
+    accessLevel,
+    /** True only for full users (actions allowed). */
+    canPerformActions: loggedIn && !isGuest,
     refresh,
     requireAuth,
     guardAction: guardAuthenticatedAction,
     goToLogin: navigateToLogin,
+    goToCompleteDetails: navigateToCompleteDetails,
   };
 };

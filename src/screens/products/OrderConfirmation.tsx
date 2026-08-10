@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
-import FeedbackModal from '../FeedbackModal';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
     View,
     Text,
@@ -21,6 +20,12 @@ import OrderItem from '../../components/OrderItem';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../../components/TablerIcon';
+import { useAppDispatch } from '../../store/hooks';
+import {
+    removeOrderedItemsFromCart,
+    CartLineItem,
+} from '../../store/slices/cartSlice';
+import { resolveProductImageUri } from '../../utils/imageUtils';
 
 type DeliveryAddress = {
     id: string;
@@ -82,20 +87,55 @@ const formatDate = (dateStr?: string, addDays = 0) => {
 };
 
 const getItemTitle = (item: OrderItemType) =>
-    item?.variant?.variant_title || '';
+    item?.variant?.variant_title ||
+    item?.product_name ||
+    item?.name ||
+    item?.title ||
+    item?.product?.name ||
+    'Product';
 
 const getItemQty = (item: OrderItemType) => item.quantity ?? item.qty ?? 1;
-
-const getItemImage = (item: OrderItemType) =>
-    item?.variant?.image_url || item.product?.image;
 
 const getItemPrice = (item: OrderItemType) =>
     formatCurrency(item.total_price ?? item.price);
 
 const OrderConfirmation: React.FC = (props: any) => {
-    const [showModal, setShowModal] = useState(false);
+    const dispatch = useAppDispatch();
 
     const orderResult: OrderResult | undefined = props.route?.params?.orderResult;
+    const orderedCartItems: Array<
+        CartLineItem & { image?: string; name?: string; price?: number }
+    > = props.route?.params?.orderedCartItems ?? [];
+    const clearedCartRef = useRef(false);
+
+    const cartImageByVariant = useMemo(() => {
+        const map = new Map<string, string>();
+        orderedCartItems.forEach((item: any) => {
+            const vid = String(item?.variant_id ?? '');
+            const uri =
+                resolveProductImageUri(item) || String(item?.image ?? '');
+            if (vid && uri) map.set(vid, uri);
+        });
+        return map;
+    }, [orderedCartItems]);
+
+    const getItemImage = (item: OrderItemType) => {
+        const fromOrder = resolveProductImageUri(item);
+        if (fromOrder) return fromOrder;
+        const vid = String(
+            item?.variant?.variant_id ?? (item as any)?.variant_id ?? '',
+        );
+        return cartImageByVariant.get(vid) || String(item?.image ?? '');
+    };
+
+    useEffect(() => {
+        if (clearedCartRef.current || !orderedCartItems.length) {
+            return;
+        }
+
+        clearedCartRef.current = true;
+        dispatch(removeOrderedItemsFromCart(orderedCartItems));
+    }, [dispatch, orderedCartItems]);
 
     // ---- Animations ----
     const tickScale = useRef(new Animated.Value(0)).current;
@@ -161,21 +201,40 @@ const OrderConfirmation: React.FC = (props: any) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setShowModal(true);
+            props.navigation.replace('OrderDetailsScreen', {
+                order: orderResult,
+                fromOrderSuccess: true,
+            });
         }, 5000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [orderResult, props.navigation]);
+
 
     useEffect(() => {
         const backAction = () => {
-            setShowModal(true);
+            props.navigation.navigate('TabStack', { screen: 'Home' });
             return true;
         };
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, []);
+    }, [props.navigation]);
 
-    const items = orderResult?.items ?? [];
+    const items: OrderItemType[] = (() => {
+        const orderItems = Array.isArray(orderResult?.items)
+            ? orderResult.items
+            : [];
+        if (orderItems.length > 0) return orderItems;
+
+        // Fallback: show cart lines with images if order payload omitted items
+        return orderedCartItems.map((item: any, index: number) => ({
+            id: String(item.id ?? index),
+            variant: { variant_id: item.variant_id, variant_title: item.name },
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            image: item.image,
+        }));
+    })();
 
     const subtotal = items.reduce((sum, item) => {
         const price = Number(item.total_price ?? item.price ?? 0);
@@ -207,7 +266,7 @@ const OrderConfirmation: React.FC = (props: any) => {
 
             <AppHeader
                 title="Order Confirmation"
-                onLeftPress={() => props.navigation.goBack()}
+            // onLeftPress={() => props.navigation.goBack()}
             />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -223,7 +282,7 @@ const OrderConfirmation: React.FC = (props: any) => {
                             { transform: [{ scale: tickScale }] },
                         ]}
                     >
-                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
+                        <TablerIcon name="tick-icon" size={100} color={Colors.primaryColor} />
                     </Animated.View>
 
                     <Text style={styles.successTitle}>Order Placed Successfully!</Text>
@@ -233,14 +292,25 @@ const OrderConfirmation: React.FC = (props: any) => {
                         will be on their way soon!
                     </Text>
 
-                    <TouchableOpacity style={styles.trackBtn} activeOpacity={0.8}>
+                    <TouchableOpacity
+                        style={styles.trackBtn}
+                        activeOpacity={0.8}
+                        onPress={() =>
+                            props.navigation.replace('OrderDetailsScreen', {
+                                order: orderResult,
+                                fromOrderSuccess: true,
+                            })
+                        }
+                    >
                         <Text style={styles.trackText}>Track Order</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.continueBtn}
                         activeOpacity={0.8}
-                        onPress={() => props.navigation.navigate('Home')}
+                        onPress={() =>
+                            props.navigation.navigate('TabStack', { screen: 'Home' })
+                        }
                     >
                         <Text style={styles.continueText}>Continue Shopping</Text>
                     </TouchableOpacity>

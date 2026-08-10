@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChatContainer } from '../../chatSystem/components/chat/chatContainer';
+import { AppointmentChatLike } from '../../chatSystem/utils/chatAccessUtils';
+
 interface ChatScreenProps {
     route?: {
         params: {
@@ -11,21 +12,13 @@ interface ChatScreenProps {
             patientName: string;
             doctorAvatar?: string;
             patientAvatar?: string;
+            appointmentDate?: string;
+            chatContext?: AppointmentChatLike;
         };
     };
 }
 
 export default function ChatScreen({ route }: ChatScreenProps) {
-    // ✅ Your appointment details
-    // const params = {
-    //     appointmentId: 'a059b339-296b-42c0-8e4c-7cba0b62e4c5',
-    //     role: 'patient' as const,
-    //     doctorName: 'Dr. Mohit Beniwal',
-    //     patientName: 'Sonam Wangchu',
-    //     doctorAvatar: undefined,
-    //     patientAvatar: undefined,
-    // };
-
     const {
         appointmentId = '',
         role = 'patient' as const,
@@ -33,10 +26,12 @@ export default function ChatScreen({ route }: ChatScreenProps) {
         patientName = '',
         doctorAvatar,
         patientAvatar,
+        appointmentDate,
+        chatContext,
     } = route?.params || {};
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             <ChatContainer
                 appointmentId={appointmentId}
                 role={role}
@@ -44,8 +39,10 @@ export default function ChatScreen({ route }: ChatScreenProps) {
                 patientName={patientName}
                 doctorAvatar={doctorAvatar}
                 patientAvatar={patientAvatar}
+                appointmentDate={appointmentDate}
+                appointmentContext={chatContext}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

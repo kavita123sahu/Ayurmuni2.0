@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -6,14 +7,15 @@ import {
     TouchableOpacity,
     StatusBar,
     StyleSheet,
-    Alert,
     Image,
     Platform,
     ScrollView,
     ActivityIndicator,
     Keyboard,
-    TouchableWithoutFeedback,
     KeyboardAvoidingView,
+    Animated,
+    findNodeHandle,
+    UIManager,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
@@ -28,7 +30,7 @@ import { RouteProp, useIsFocused, useRoute } from '@react-navigation/native';
 import { genderOptions } from '../../common/DataInterface';
 import CommonButton from '../../components/CommonButton';
 import { Images } from '../../common/Images';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as _PROFILE_SERVICE from '../../services/ProfileServices';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import TablerIcon from '../../components/TablerIcon';
@@ -57,15 +59,70 @@ interface FormErrors {
 
 const Onboarding = (props: any) => {
 
+    const insets = useSafeAreaInsets();
     const [isLoading, setIsLoading] = useState(false);
     const [focusedField, setFocusedField] = useState<
         'day' | 'month' | 'year' | null
     >(null);
     const [isLoadingImage, setImageloding] = useState(false);
     const [Isloading, setUSERID] = useState('');
+    const scrollRef = useRef<ScrollView>(null);
     const dayRef = useRef<TextInput>(null);
     const monthRef = useRef<TextInput>(null);
     const yearRef = useRef<TextInput>(null);
+    const emailRef = useRef<TextInput>(null);
+    const firstNameRef = useRef<TextInput>(null);
+    const lastNameRef = useRef<TextInput>(null);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    /** Scroll focused field into view above keyboard + sticky Proceed button */
+    const scrollFieldIntoView = useCallback((target: TextInput | View | null) => {
+        if (!target || !scrollRef.current) return;
+
+        const scrollNode = findNodeHandle(scrollRef.current);
+        const fieldNode = findNodeHandle(target);
+        if (!scrollNode || !fieldNode) return;
+
+        requestAnimationFrame(() => {
+            UIManager.measureLayout(
+                fieldNode,
+                scrollNode,
+                () => { },
+                (_x, y, _w, h) => {
+                    const offset = Math.max(0, y - 24);
+                    scrollRef.current?.scrollTo({
+                        y: offset,
+                        animated: true,
+                    });
+                },
+            );
+        });
+    }, []);
+
+    const onFieldFocus = useCallback(
+        (ref: React.RefObject<TextInput | null>) => {
+            // Wait for keyboard animation, then scroll so field stays visible
+            setTimeout(() => scrollFieldIntoView(ref.current), Platform.OS === 'ios' ? 280 : 120);
+        },
+        [scrollFieldIntoView],
+    );
+
+    useEffect(() => {
+        const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvt, e => {
+            setKeyboardHeight(e.endCoordinates?.height ?? 0);
+        });
+        const hideSub = Keyboard.addListener(hideEvt, () => {
+            setKeyboardHeight(0);
+        });
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     const [formData, setFormData] = useState<FormData>({
         firstName: '',
@@ -104,11 +161,15 @@ const Onboarding = (props: any) => {
     };
 
     const handleBack = () => {
-        props.navigation.goBack();
-        console.log('Back pressed');
+        if (props.navigation.canGoBack()) {
+            props.navigation.goBack();
+            return;
+        }
+        // Return to Guest vs Complete ask page instead of remounting Home
+        props.navigation.navigate('AccessMode');
     };
-
-
+    const avatarAnim = useRef(new Animated.Value(0)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     const uploadProfileImage = async (
         image: Asset
@@ -429,32 +490,49 @@ const Onboarding = (props: any) => {
 
     return (
 
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
 
             <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.keyboardContainer}
+                behavior="padding"
+                keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
             >
-
-                {/* <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                    <TablerIcon name="arrow-left" size={22} color={Colors.primaryColor}
-                        style={styles.backIcon}
-                    />
-                </TouchableOpacity> */}
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <ScrollView
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.scrollContent}
+                <ScrollView
+                    ref={scrollRef}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    showsVerticalScrollIndicator={false}
+                    automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        {
+                            // Extra space so email/DOB clear keyboard + Proceed bar
+                            paddingBottom: 24 + (keyboardHeight > 0 ? Math.min(keyboardHeight * 0.35, 160) : 0),
+                        },
+                    ]}
+                >
+                    <LinearGradient
+                        colors={['#0D614E', '#14876A', '#1FA37D']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.heroBanner}
                     >
-                        <View style={styles.content}>
+                        <View style={styles.stepPill}>
+                            <Text style={styles.stepPillText}>Step 1 of 2</Text>
+                        </View>
+                        <Text style={styles.heroTitle}>Welcome to Ayurmuni</Text>
+                        <Text style={styles.heroSubtitle}>
+                            Create your profile to unlock personalized Ayurvedic care, orders, and consultations.
+                        </Text>
+                    </LinearGradient>
 
-                            {/* HEADER */}
+                    <View style={styles.formCard}>
+                        <View style={styles.content}>
 
                             <Text style={styles.title}>Create Account</Text>
                             <Text style={styles.subtitle}>
-                                Join our healthcare community today for better health management.
+                                Add your details below. This helps us tailor recommendations for you.
                             </Text>
 
                             {/* PROFILE IMAGE */}
@@ -464,36 +542,37 @@ const Onboarding = (props: any) => {
                                     onPress={handleAddImage}
                                     style={styles.profileContainer}
                                 >
-                                    <View style={styles.bigCircle}>
-                                        {isLoadingImage ? (
-                                            <ActivityIndicator size="small" color="#2E7D32" />
-                                        ) : formData?.profileImage?.uri ? (
-                                            <Image
-                                                source={{ uri: formData.profileImage.uri }}
-                                                style={styles.profileImage}
-                                            />
-                                        ) : (
-                                            <>
+                                    <View style={styles.ringOuter}>
+                                        <View style={styles.bigCircle}>
+                                            {isLoadingImage ? (
+                                                <ActivityIndicator size="small" color="#2E7D32" />
+                                            ) : formData?.profileImage?.uri ? (
+                                                <Image
+                                                    source={{ uri: formData.profileImage.uri }}
+                                                    style={styles.profileImage}
+                                                />
+                                            ) : formData?.firstName ? (
                                                 <View style={styles.placeholderContainer}>
                                                     <Text style={styles.placeholderText}>
-                                                        {formData?.firstName
-                                                            ? formData.firstName.charAt(0).toUpperCase()
-                                                            : ""}
+                                                        {formData.firstName.charAt(0).toUpperCase()}
                                                     </Text>
                                                 </View>
-
-                                                {/* Overlay Text */}
+                                            ) : (
                                                 <View style={styles.uploadOverlay}>
                                                     <Text style={styles.uploadText}>Upload Photo</Text>
                                                 </View>
-                                            </>
-                                        )}
+                                            )}
+                                        </View>
                                     </View>
 
-                                    {/* Camera Icon */}
-                                    <View style={styles.smallCircle}>
-                                        <TablerIcon name="camera" size={20} color={Colors.primaryColor} />
-                                    </View>
+                                    <Animated.View
+                                        style={[
+                                            styles.smallCircle,
+                                            { transform: [{ scale: pulseAnim }] },
+                                        ]}
+                                    >
+                                        <TablerIcon name="camera" size={20} color="#FFFFFF" />
+                                    </Animated.View>
                                 </TouchableOpacity>
                             </View>
 
@@ -502,10 +581,14 @@ const Onboarding = (props: any) => {
                                 <View style={styles.inputWrapper}>
                                     <Text style={styles.label}>First Name *</Text>
                                     <TextInput
+                                        ref={firstNameRef}
                                         placeholder="ABC"
                                         placeholderTextColor="#9CA3AF"
                                         value={formData.firstName}
                                         onChangeText={(t) => handleFieldChange('firstName', t)}
+                                        onFocus={() => onFieldFocus(firstNameRef)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => lastNameRef.current?.focus()}
                                         style={[
                                             styles.inputHalf,
                                             formData.firstName && styles.inputFilled
@@ -516,14 +599,17 @@ const Onboarding = (props: any) => {
 
                                 </View>
 
-                                {/* LAST NAME */}
                                 <View style={styles.inputWrapper}>
                                     <Text style={styles.label}>Last Name *</Text>
                                     <TextInput
+                                        ref={lastNameRef}
                                         placeholder="XYZ"
                                         placeholderTextColor="#9CA3AF"
                                         value={formData.lastName}
                                         onChangeText={(t) => handleFieldChange('lastName', t)}
+                                        onFocus={() => onFieldFocus(lastNameRef)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => emailRef.current?.focus()}
                                         style={[
                                             styles.inputHalf,
                                             formData.lastName && styles.inputFilled
@@ -533,6 +619,28 @@ const Onboarding = (props: any) => {
 
                                 </View>
 
+                            </View>
+
+                            {/* EMAIL — placed under name so it stays near top section & visible with keyboard */}
+                            <View style={styles.emailBlock}>
+                                <Text style={styles.label}>Email Address</Text>
+                                <TextInput
+                                    ref={emailRef}
+                                    placeholder="email@gmail.com"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={formData.email}
+                                    onChangeText={(t) => handleFieldChange('email', t)}
+                                    onFocus={() => onFieldFocus(emailRef)}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    returnKeyType="next"
+                                    style={[
+                                        styles.inputFull,
+                                        formData.email && styles.inputFilled
+                                    ]}
+                                />
+                                <Text style={styles.errorText}>{errors.email}</Text>
                             </View>
 
                             {/* GENDER */}
@@ -561,12 +669,12 @@ const Onboarding = (props: any) => {
 
                             </View>
 
+                            <Text style={styles.errorText}>{errors.gender}</Text>
+
                             {/* DOB */}
                             <Text style={styles.label}>Date of Birth *</Text>
 
                             <View style={styles.dobContainer}>
-
-                                {/* DAY */}
 
                                 <TextInput
                                     ref={dayRef}
@@ -592,16 +700,17 @@ const Onboarding = (props: any) => {
                                             day: value,
                                         });
 
-                                        // AUTO NEXT
                                         if (value.length === 2) {
                                             monthRef.current?.focus();
                                         }
                                     }}
-                                    onFocus={() => setFocusedField('day')}
+                                    onFocus={() => {
+                                        setFocusedField('day');
+                                        onFieldFocus(dayRef);
+                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     onKeyPress={({ nativeEvent }) => {
 
-                                        // BACK TO PREVIOUS
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.day.length === 0
@@ -610,8 +719,6 @@ const Onboarding = (props: any) => {
                                         }
                                     }}
                                 />
-
-                                {/* MONTH */}
 
                                 <TextInput
                                     ref={monthRef}
@@ -628,7 +735,10 @@ const Onboarding = (props: any) => {
                                         styles.dobInput,
                                         dob.month && styles.inputFilled,
                                     ]}
-                                    onFocus={() => setFocusedField('month')}
+                                    onFocus={() => {
+                                        setFocusedField('month');
+                                        onFieldFocus(monthRef);
+                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     onChangeText={(t) => {
 
@@ -639,14 +749,12 @@ const Onboarding = (props: any) => {
                                             month: value,
                                         });
 
-                                        // AUTO NEXT
                                         if (value.length === 2) {
                                             yearRef.current?.focus();
                                         }
                                     }}
                                     onKeyPress={({ nativeEvent }) => {
 
-                                        // BACK TO DAY
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.month.length === 0
@@ -655,9 +763,6 @@ const Onboarding = (props: any) => {
                                         }
                                     }}
                                 />
-
-                                {/* YEAR */}
-
 
                                 <TextInput
                                     ref={yearRef}
@@ -668,7 +773,10 @@ const Onboarding = (props: any) => {
                                             : ''
                                     }
                                     placeholderTextColor="#9CA3AF"
-                                    onFocus={() => setFocusedField('year')}
+                                    onFocus={() => {
+                                        setFocusedField('year');
+                                        onFieldFocus(yearRef);
+                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     keyboardType="number-pad"
                                     maxLength={4}
@@ -686,7 +794,6 @@ const Onboarding = (props: any) => {
                                     }}
                                     onKeyPress={({ nativeEvent }) => {
 
-                                        // BACK TO MONTH
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.year.length === 0
@@ -696,41 +803,20 @@ const Onboarding = (props: any) => {
                                     }}
                                 />
 
-
-
-
-
                             </View>
 
                             <Text style={[styles.errorText, { top: -15 }]}>{errors.dob}</Text>
-
-                            {/* EMAIL */}
-                            <Text style={styles.label}>Email Address</Text>
-                            <TextInput
-                                placeholder="email@gmail.com"
-                                placeholderTextColor="#9CA3AF"
-                                value={formData.email}
-                                onChangeText={(t) => handleFieldChange('email', t)}
-                                style={[
-                                    styles.inputFull,
-                                    formData.email && styles.inputFilled
-                                ]}
-                            />
-                            <Text style={styles.errorText}>{errors.email}</Text>
                         </View>
+                    </View>
+                </ScrollView>
 
-
-                        {/* BUTTON */}
-                        <View style={styles.bottom}>
-                            <CommonButton
-                                title="Proceed"
-                                onPress={handleProcees}
-                                loading={isLoading}
-                            />
-                        </View>
-
-                    </ScrollView>
-                </TouchableWithoutFeedback>
+                <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                    <CommonButton
+                        title="Proceed"
+                        onPress={handleProcees}
+                        loading={isLoading}
+                    />
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -742,8 +828,7 @@ export default Onboarding;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: 20,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#EEF4F2',
     },
 
     keyboardContainer: {
@@ -752,12 +837,66 @@ const styles = StyleSheet.create({
 
     scrollContent: {
         flexGrow: 1,
-        // paddingBottom: 40,
+    },
+
+    heroBanner: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        borderRadius: 24,
+        paddingHorizontal: 20,
+        paddingVertical: 22,
+    },
+
+    stepPill: {
+        alignSelf: 'flex-start',
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        marginBottom: 12,
+    },
+
+    stepPillText: {
+        color: '#E8FFF8',
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 0.3,
+    },
+
+    heroTitle: {
+        fontSize: 24,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+        lineHeight: 32,
+    },
+
+    heroSubtitle: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 8,
+        lineHeight: 20,
+        fontFamily: Fonts.PoppinsMedium,
+        paddingRight: 8,
+    },
+
+    formCard: {
+        marginHorizontal: 16,
+        marginTop: 14,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        paddingHorizontal: 18,
+        paddingTop: 18,
+        paddingBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E4ECE8',
+        // shadowColor: '#0D614E',
+        // shadowOpacity: 0.06,
+        // shadowRadius: 12,
+        // shadowOffset: { width: 0, height: 4 },
+        // elevation: 2,
     },
 
     content: {
-        // paddingHorizontal: 20,
-        // paddingTop: Platform.OS === 'android' ? 10 : 0,
     },
 
     /* ---------------- HEADER ---------------- */
@@ -789,19 +928,19 @@ const styles = StyleSheet.create({
     },
 
     title: {
-        fontSize: 30,
+        fontSize: 22,
         color: '#111827',
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 40,
+        lineHeight: 30,
     },
 
     subtitle: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginTop: 8,
-        lineHeight: 22,
+        fontSize: 13,
+        color: '#64748B',
+        marginTop: 6,
+        lineHeight: 20,
         fontFamily: Fonts.PoppinsRegular,
-        marginBottom: 30,
+        marginBottom: 22,
         paddingRight: 10,
     },
 
@@ -816,6 +955,18 @@ const styles = StyleSheet.create({
     profileContainer: {
         width: 150,
         height: 150,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    ringOuter: {
+        width: 145,
+        height: 145,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: '#0D614E35',
+        borderStyle: 'dashed',
+        padding: 5,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -905,6 +1056,10 @@ const styles = StyleSheet.create({
 
     inputWrapper: {
         flex: 1,
+    },
+
+    emailBlock: {
+        marginBottom: 18,
     },
 
     label: {
@@ -1043,8 +1198,11 @@ const styles = StyleSheet.create({
     /* ---------------- BUTTON ---------------- */
 
     bottom: {
-        // paddingHorizontal: 20,
-        marginTop: 26,
+        paddingTop: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#EEF4F2',
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
     },
 
     button: {

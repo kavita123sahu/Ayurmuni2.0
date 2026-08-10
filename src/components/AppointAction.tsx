@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Styles } from "../common/Styles";
 import { Colors } from "../common/Colors";
 import { Fonts } from "../common/Fonts";
+import { BUTTON, RADIUS, SPACING, TYPO } from "../constants/responsive";
 
 type Props = {
     status: string;
@@ -27,20 +28,27 @@ const AppointmentActions = ({
         "pending",
         "confirmed",
         "reschedule",
+        "rescheduled",
+        "upcoming",
+        "booked",
     ].includes(appointmentStatus);
 
     const showCancel = [
         "pending",
         "confirmed",
         "reschedule",
-        "rescheduled", // ✅ Added
+        "rescheduled",
+        "upcoming",
+        "booked",
     ].includes(appointmentStatus);
 
     const showViewDetails = [
         "completed",
         "cancelled",
         "missed",
-        // "rescheduled", ❌ Remove
+        "expired",
+        "no_show",
+        "noshow",
     ].includes(appointmentStatus);
 
     const showJoinCall =  call_status === "in_progress"; // future
@@ -114,17 +122,16 @@ const styles = StyleSheet.create({
 
     btnRow: {
         flexDirection: 'row',
-        marginTop: 14,
-        gap: 10,
+        marginTop: SPACING.md,
+        gap: SPACING.sm,
     },
 
     outlineBtn: {
         flex: 1,
-        height: 47,
+        minHeight: BUTTON.height,
         borderWidth: 1,
         borderColor: '#0F5B4D4D',
-        borderRadius: 10,
-        paddingVertical: 12,
+        borderRadius: RADIUS.sm,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -132,16 +139,15 @@ const styles = StyleSheet.create({
     outlineText: {
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 12,
+        fontSize: TYPO.sm,
     },
 
     primaryBtn: {
         flex: 1,
         backgroundColor: Colors.primaryColor,
-        borderRadius: 10,
-        height: 47,
-        marginTop: 14,
-        paddingVertical: 12,
+        borderRadius: RADIUS.sm,
+        minHeight: BUTTON.height,
+        marginTop: SPACING.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -150,26 +156,23 @@ const styles = StyleSheet.create({
         color: '#fff',
         textAlign: 'center',
         fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 14,
+        fontSize: TYPO.button,
     },
 
     cancelBtn: {
-
         backgroundColor: '#F43F5E0D',
         flex: 1,
-        borderRadius: 10,
-        height: 47,
-        marginTop: 14,
-        paddingVertical: 12,
+        borderRadius: RADIUS.sm,
+        minHeight: BUTTON.height,
+        marginTop: SPACING.md,
         alignItems: 'center',
         justifyContent: 'center',
-
     },
 
     cancelText: {
         color: '#EF4444',
         textAlign: 'center',
-        fontSize: 14,
+        fontSize: TYPO.button,
         fontFamily: Fonts.PoppinsMedium,
     },
 

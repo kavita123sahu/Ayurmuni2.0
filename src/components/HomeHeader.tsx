@@ -21,6 +21,7 @@ import { useLocation } from '../context/LocationContext';
 import { savedAddressToParsed } from '../services/locationService';
 import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
+import { useUnreadNotificationCount } from '../hooks/useNotification';
 
 interface Address {
     id: string;
@@ -30,11 +31,7 @@ interface Address {
     state: string;
     zipcode: string;
 }
-interface UserData {
-    first_name: string;
-    profile_picture?: string;
-    addresses: Address[];
-}
+
 
 interface AddressItem {
     id: string;
@@ -48,19 +45,22 @@ interface AddressItem {
     state?: string;
     zipcode?: string;
 }
-interface Props {
+type Props = {
     progress1?: number;
-    progress2?: number
-}
+    progress2?: number;
+    onSearchPress?: () => void;
+};
 
 const HomeHeader = ({
     progress1 = 0,
     progress2 = 0,
+    onSearchPress,
 }: Props) => {
     const navigation = useNavigation<any>();
     const stackNavigation = navigation.getParent?.() || navigation;
     const dispatch = useAppDispatch();
     const cartCount = useCartCount();
+    const { unreadCount, refreshUnreadCount } = useUnreadNotificationCount();
     const [localAddresses, setLocalAddresses] =
         useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
@@ -89,22 +89,17 @@ const HomeHeader = ({
 
 
     const activeLocation = useMemo(() => {
-        return currentAddress
-            ?? savedAddressToParsed(defaultAddress!)
-            ?? deliveryLocation
-            ?? null;
-    }, [currentAddress, defaultAddress, deliveryLocation]);
-    // const activeLocation = useMemo(() => {
-    //     if (deliveryLocation) {
-    //         return deliveryLocation;
-    //     }
-    //     if (defaultAddress) {
-    //         return savedAddressToParsed(defaultAddress);
-    //     }
-    //     return currentAddress;
-    // }, [deliveryLocation, defaultAddress, currentAddress]);
+        if (deliveryLocation) {
+            return deliveryLocation;
+        }
+        if (defaultAddress) {
+            return savedAddressToParsed(defaultAddress);
+        }
+        return currentAddress;
+    }, [deliveryLocation, defaultAddress, currentAddress]);
 
     const shortAddress = useMemo(() => {
+        console.log("adresssloationnn", activeLocation);
         if (loadingLocation && !activeLocation) {
             return 'Detecting location...';
         }
@@ -112,9 +107,9 @@ const HomeHeader = ({
             return 'Select location';
         }
         const area =
-            activeLocation.city ||
-            activeLocation.address_line_1?.split(',')[0] ||
-            activeLocation.formatted_address;
+            activeLocation.formatted_address || activeLocation.city ||
+            activeLocation.address_line_1
+            ;
         const suffix = activeLocation.state ? `, ${activeLocation.state}` : '';
         return `${area}${suffix}`.slice(0, 44);
     }, [activeLocation, loadingLocation]);
@@ -138,7 +133,8 @@ const HomeHeader = ({
         useCallback(() => {
             fetchCustomerData();
             dispatch(fetchCart(false));
-        }, [fetchCustomerData, dispatch]),
+            refreshUnreadCount();
+        }, [fetchCustomerData, dispatch, refreshUnreadCount]),
     );
 
 
@@ -222,15 +218,6 @@ const HomeHeader = ({
 
 
 
-    const isCompleted =
-        progress1 === 100 &&
-        progress2 === 100;
-
-    const shouldShowCard = (
-        progress1 === 100 &&
-        progress2 !== 100
-    );
-
     return (
         <View style={styles.container}>
             <View style={styles.topRow}>
@@ -294,11 +281,13 @@ const HomeHeader = ({
                 {/* RIGHT */}
                 <View style={styles.rightIcons}>
 
-                    {/* <TouchableOpacity
-                        onPress={() => navigation.navigate('EmergencySOS')}
+                    <TouchableOpacity
+                        style={styles.bellButton}
+                        onPress={onSearchPress}
+                        disabled={!onSearchPress}
                     >
-                        <TablerIcon name="alert-circle" size={24} color="#F43F5E" />
-                    </TouchableOpacity> */}
+                        <TablerIcon name="search" size={20} color={Colors.primaryColor} />
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.bellButton}
@@ -317,67 +306,12 @@ const HomeHeader = ({
                         }}
                     >
                         <TablerIcon name="bell" size={20} color="#000" />
-                        <View style={styles.dot} />
+                        <CartBadge count={unreadCount} />
                     </TouchableOpacity>
 
                 </View>
 
             </View>
-
-            {/* {shouldShowCard && (
-                <View style={[styles.profileCompletionCard, {
-                    backgroundColor: isCompleted
-                        ? '#ECFDF3'
-                        : '#FEF3F2',
-                    borderColor: isCompleted
-                        ? '#ABEFC6'
-                        : '#FDA29B',
-                },]}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.profileTitle, {
-                            color: isCompleted
-                                ? '#027A48'
-                                : '#B42318',
-                        },]}>
-                            {progress1 === 100 ? 'Prakriti Assessment Complete ✅' : 'Prakriti Assessment pending'}
-                        </Text>
-
-                        <Text
-                            numberOfLines={1}
-                            style={[
-                                styles.profileSubtitle,
-                                {
-                                    color: isCompleted
-                                        ? '#039855'
-                                        : '#D92D20',
-                                },
-                            ]}
-                        >
-                            Prakriti {progress1}% • Medical History {progress2}%
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity
-                        onPress={() =>
-                            navigation.navigate(
-                                progress1 < 100
-                                    ? 'PatientFAQ'
-                                    : 'MedicalHistory',
-                            )
-                        }
-                        style={styles.editButton}
-                    >
-                        <Feather
-                            name="edit-2"
-                            size={12}
-                            color={
-                                isCompleted
-                                    ? Colors.primaryColor
-                                    : '#D92D20'
-                            }
-                        />
-                    </TouchableOpacity>
-                </View>)} */}
 
 
             <LocationBottomSheet
@@ -405,7 +339,9 @@ export default React.memo(HomeHeader);
 const styles = StyleSheet.create({
 
     container: {
-        paddingVertical: 10,
+        // Keep equal top/bottom — matches HOME_HEADER_CONTENT_HEIGHT
+        paddingTop: 8,
+        paddingBottom: 8,
         backgroundColor: '#fff',
         paddingHorizontal: 0,
     },
@@ -526,28 +462,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+        marginRight:5,
     },
 
     bellButton: {
-        height: 38,
-        width: 38,
+        height: 35,
+        width: 35,
         borderRadius: 11,
         borderWidth: 1,
         borderColor: Colors.borderColor,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
+        overflow: 'visible',
     },
 
-    dot: {
-        position: 'absolute',
-        top: 6,
-        right: 8,
-        height: 8,
-        width: 8,
-        borderRadius: 4,
-        backgroundColor: '#F04438',
-    },
     // STYLES
 
     searchContainer: {

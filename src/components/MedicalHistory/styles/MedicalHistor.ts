@@ -31,8 +31,8 @@ export const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-        paddingHorizontal: scale(20),
-        paddingTop: scale(12),
+        paddingHorizontal: scale(16),
+        paddingTop: 0,
         backgroundColor: COLORS.screen,
     },
 
@@ -104,8 +104,8 @@ skipText: {
     /* ================= PROGRESS ================= */
 
     progressWrapper: {
-        marginTop: scale(28),
-        marginBottom: scale(24),
+        marginTop: scale(6),
+        marginBottom: scale(6),
         justifyContent: 'center',
     },
 
@@ -145,29 +145,21 @@ skipText: {
 
     title: {
         textAlign: 'center',
-        fontSize: scale(22),
-        lineHeight: scale(30),
-        marginTop: scale(20),
+        fontSize: scale(18),
+        lineHeight: scale(24),
+        marginTop: scale(4),
         color: COLORS.primary,
         fontFamily: Fonts.PoppinsBold,
-        marginBottom: scale(24),
+        marginBottom: scale(8),
     },
 
     description: {
-        // marginTop: scale(10),
-
-        fontSize: scale(14),
-
-        lineHeight: scale(24),
-
+        fontSize: scale(13),
+        lineHeight: scale(20),
         color: '#7A7F86',
-
         textAlign: 'center',
-
-        paddingHorizontal: scale(10),
-
-        fontFamily:
-            Fonts.PoppinsMedium,
+        paddingHorizontal: scale(8),
+        fontFamily: Fonts.PoppinsMedium,
     },
 
 
@@ -177,25 +169,15 @@ skipText: {
     ========================================= */
 
     multiSelectWrapper: {
-        marginTop: scale(20),
-
+        marginTop: scale(10),
         alignSelf: 'center',
-
         flexDirection: 'row',
         alignItems: 'center',
-
         backgroundColor: '#EDF7EF',
-
-        paddingHorizontal:
-            scale(16),
-
-        paddingVertical:
-            scale(10),
-
+        paddingHorizontal: scale(12),
+        paddingVertical: scale(6),
         borderRadius: scale(30),
-
         borderWidth: 1,
-
         borderColor: '#DDEEDF',
     },
 
@@ -213,27 +195,16 @@ skipText: {
 
     card: {
         width: '100%',
-
-        minHeight: scale(80),
-
-        borderRadius: scale(22),
-
+        minHeight: scale(64),
+        borderRadius: scale(16),
         backgroundColor: '#FFFFFF',
-
         borderWidth: 1,
-
         borderColor: '#EEF0EA',
-
-        paddingHorizontal: scale(10),
-
-        paddingVertical: scale(10),
-
-        marginBottom: scale(10),
-
+        paddingHorizontal: scale(8),
+        paddingVertical: scale(8),
+        marginBottom: scale(6),
         flexDirection: 'row',
-
         alignItems: 'center',
-
         justifyContent: 'space-between',
     },
 
@@ -255,56 +226,44 @@ skipText: {
 
     textWrapper: {
         flex: 1,
-
-        marginLeft: scale(14),
-
+        marginLeft: scale(10),
         justifyContent: 'center',
     },
     avatar: {
-        width: scale(64),
-
-        height: scale(64),
-
-        borderRadius: scale(32),
-
+        width: scale(48),
+        height: scale(48),
+        borderRadius: scale(24),
         borderWidth: 1,
         borderColor: '#F1F5F9',
         resizeMode: 'contain',
-
         backgroundColor: '#F8FAFC',
-
         flexShrink: 0,
     },
+    compactAvatar: {
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(20),
+    },
     medicalavatar: {
-        width: scale(64),
-
-        height: scale(64),
-
-
+        width: scale(48),
+        height: scale(48),
         borderWidth: 1,
         borderColor: '#F1F5F9',
         justifyContent: 'center',
-        borderRadius: scale(32),
+        borderRadius: scale(24),
         alignItems: 'center',
         resizeMode: 'contain',
-
         backgroundColor: '#F8FAFC',
-
-        flexShrink: 0
+        flexShrink: 0,
     },
 
 
     cardSubtitle: {
-        marginTop: scale(4),
-
-        fontSize: scale(12),
-
-        lineHeight: scale(18),
-
+        marginTop: scale(2),
+        fontSize: scale(11),
+        lineHeight: scale(16),
         color: COLORS.subText,
-
         fontFamily: Fonts.PoppinsMedium,
-
         flexWrap: 'wrap',
     },
 
@@ -314,14 +273,10 @@ skipText: {
     },
 
     cardTitle: {
-        fontSize: scale(14),
-
-        lineHeight: scale(21),
-
+        fontSize: scale(13),
+        lineHeight: scale(18),
         color: COLORS.text,
-
         fontFamily: Fonts.PoppinsSemiBold,
-
         flexWrap: 'wrap',
     },
 
@@ -377,32 +332,32 @@ skipText: {
     /* ================= INPUT ================= */
 
     input: {
-        minHeight: scale(120),
-        borderRadius: scale(20),
+        minHeight: scale(96),
+        borderRadius: scale(16),
         backgroundColor: '#fff',
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        paddingHorizontal: scale(18),
-        paddingVertical: scale(16),
+        paddingHorizontal: scale(14),
+        paddingVertical: scale(12),
         fontSize: scale(14),
         color: COLORS.text,
         textAlignVertical: 'top',
         fontFamily: Fonts.PoppinsMedium,
-        marginTop: scale(20),
+        marginTop: scale(12),
     },
 
 
     /* ================= BASIC INFO ================= */
 
     basicInfoWrapper: {
-        marginTop: scale(20),
+        marginTop: scale(10),
     },
 
     basicCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: scale(22),
-        padding: scale(16),
-        marginBottom: scale(18),
+        borderRadius: scale(16),
+        padding: scale(12),
+        marginBottom: scale(10),
         borderWidth: 1,
         borderColor: '#EEF1EC',
     },
@@ -413,23 +368,21 @@ skipText: {
     },
 
     iconCircle: {
-        width: scale(64),
-        height: scale(64),
-        borderRadius: scale(32),
-
+        width: scale(48),
+        height: scale(48),
+        borderRadius: scale(24),
         borderWidth: 1,
         borderColor: '#F1F5F9',
-
         resizeMode: 'contain',
         backgroundColor: '#F8FAFC',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: scale(14),
+        marginRight: scale(10),
     },
 
     basicIcon: {
-        width: scale(40),
-        height: scale(40),
+        width: scale(32),
+        height: scale(32),
         resizeMode: 'contain',
     },
 
@@ -457,13 +410,13 @@ skipText: {
 
     genderWrapper: {
         flexDirection: 'row',
-        marginTop: scale(18),
+        marginTop: scale(12),
         justifyContent: 'space-between',
     },
 
     genderBtn: {
         flex: 1,
-        height: scale(48),
+        height: scale(42),
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: scale(14),
@@ -492,30 +445,30 @@ skipText: {
     /* ======================================LAST OPTION =============*/
 
     infoCard: {
-        marginTop: 20,
+        marginTop: scale(10),
         backgroundColor: '#E7F0E2',
-        borderRadius: scale(18),
-        paddingVertical: scale(18),
-        paddingHorizontal: scale(16),
+        borderRadius: scale(14),
+        paddingVertical: scale(10),
+        paddingHorizontal: scale(12),
         flexDirection: 'row',
         alignItems: 'center',
     },
 
     infoLeft: {
-        width: scale(42),
-        height: scale(42),
-        borderRadius: scale(21),
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(18),
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: scale(14),
+        marginRight: scale(10),
     },
 
     infoText: {
         flex: 1,
         color: Colors.primaryColor,
-        fontSize: scale(11),
-        lineHeight: scale(20),
+        fontSize: scale(10),
+        lineHeight: scale(16),
         fontFamily: Fonts.PoppinsMedium,
     },
 
@@ -524,42 +477,19 @@ skipText: {
 
     bottomFixed: {
         backgroundColor: COLORS.screen,
-        paddingTop: 12,
-        paddingBottom: 10,
-        paddingHorizontal: 20,
+        paddingTop: 8,
+        paddingBottom: 8,
+        paddingHorizontal: 16,
     },
-    // nextBtn: {
-    //     position: 'absolute',
-    //     bottom: Platform.OS === 'ios'
-    //         ? scale(28)
-    //         : scale(20),
-
-    //     left: scale(20),
-    //     right: scale(20),
-
-    //     height: scale(58),
-    //     borderRadius: scale(16),
-    //     backgroundColor: COLORS.primary,
-
-    //     flexDirection: 'row',
-    //     alignItems: 'center',
-    //     justifyContent: 'center',
-    // },
-
 
     nextBtn: {
         width: '100%',
-        height: 62,
-
-        borderRadius: 16,
-
+        height: 52,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-
         flexDirection: 'row',
-
         backgroundColor: COLORS.primary,
-
         alignSelf: 'center',
     },
 

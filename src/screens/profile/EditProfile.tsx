@@ -12,19 +12,18 @@ import {
     ScrollView,
     StatusBar,
     ActivityIndicator,
-    ImageBackground,
     Image,
 } from 'react-native';
 
 import {
     SafeAreaView,
 } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import * as  _PROFILE_SERVICES from '../../services/ProfileServices';
 
 import TablerIcon from '../../components/TablerIcon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
@@ -32,6 +31,31 @@ import { Feather } from '../../common/Vector';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import { uploadImage } from '../../hooks/usePatientData';
 import { Utils } from '../../common/Utils';
+
+const toText = (value: unknown): string => {
+    if (value == null) return '';
+    if (typeof value === 'string' || typeof value === 'number') {
+        return String(value);
+    }
+    if (typeof value === 'object') {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.url === 'string') return obj.url;
+        if (typeof obj.uri === 'string') return obj.uri;
+        if (typeof obj.label === 'string') return obj.label;
+        if (typeof obj.value === 'string') return obj.value;
+    }
+    return '';
+};
+
+const normalizeProfileForm = (user: any) => ({
+    first_name: toText(user?.first_name),
+    last_name: toText(user?.last_name),
+    email: toText(user?.email),
+    profile_picture: toText(user?.profile_picture),
+    secondary_number: toText(user?.secondary_number),
+    gender: toText(user?.gender).toLowerCase(),
+    date_of_birth: toText(user?.date_of_birth),
+});
 
 
 const EditProfile = ({
@@ -79,10 +103,10 @@ const EditProfile = ({
             const CustomerInfo = await Utils.getData('_USER_INFO');
 
             if (CustomerInfo) {
-                setFormData(CustomerInfo); // pehle local data show hoga
+                setFormData(normalizeProfileForm(CustomerInfo));
             }
 
-            fetchProfile(); // phir API se latest data
+            fetchProfile();
         };
 
         loadUser();
@@ -141,15 +165,7 @@ const EditProfile = ({
 
                     console.log("userrr", user);
 
-                    setFormData({
-                        first_name: user?.first_name || '',
-                        last_name: user?.last_name || '',
-                        email: user?.email || '',
-                        profile_picture: user?.profile_picture || '',
-                        secondary_number: user?.secondary_number || '',
-                        gender: user?.gender || '',
-                        date_of_birth: user?.date_of_birth || '',
-                    });
+                    setFormData(normalizeProfileForm(user));
                 }
 
             } catch (error) {
@@ -256,6 +272,7 @@ const EditProfile = ({
             );
 
             if (res?.success) {
+                Utils.storeData('_USER_INFO', res?.data || {});
 
                 showSuccessToast(
                     'Profile updated successfully',
@@ -277,17 +294,8 @@ const EditProfile = ({
             setLoading(false);
         }
     };
-    /*
-    ---------------------------------
-    USE EFFECT
-    ---------------------------------
-    */
 
-    useEffect(() => {
 
-        fetchProfile();
-
-    }, []);
 
     /*
     ---------------------------------
@@ -346,413 +354,383 @@ const EditProfile = ({
                                 styles.scrollContent
                             }
                         >
+                            <LinearGradient
+                                colors={['#0D614E', '#12856A', '#abcbc2']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.hero}
+                            >
+                                <View style={styles.avatarWrapper}>
+                                    {formData?.profile_picture ? (
+                                        <Image
+                                            source={{
+                                                uri: formData.profile_picture,
+                                            }}
+                                            style={styles.avatar}
+                                        />
+                                    ) : (
+                                        <View style={styles.initialWrapper}>
+                                            <Text style={styles.initialText}>
+                                                {formData.first_name
+                                                    ?.charAt(0)
+                                                    ?.toUpperCase() || 'U'}
+                                            </Text>
+                                        </View>
+                                    )}
 
-
-                            <View style={styles.avatarBgWrapper}>
-
-                                <ImageBackground
-                                    source={Images.BackgroundImage}
-                                    style={styles.avatarBg}
-                                    imageStyle={{
-                                        borderRadius: 100,
-                                    }}
-                                >
-
-                                    <View
-                                        style={styles.avatarWrapper}
-                                    >
-
-                                        {/* IMAGE */}
-
-                                        {formData?.profile_picture ? (
-                                            <Image
-                                                source={{
-                                                    uri: formData.profile_picture,
-                                                }}
-                                                style={styles.avatar}
-                                                onLoad={() =>
-                                                    console.log('IMAGE LOADED')
-                                                }
-                                                onError={(e) =>
-                                                    console.log(
-                                                        'IMAGE ERROR',
-                                                        e.nativeEvent,
-                                                    )
-                                                }
+                                    {loadingImage && (
+                                        <View style={styles.loaderOverlay}>
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="#fff"
                                             />
-                                        ) : (
-                                            <View style={styles.initialWrapper}>
-                                                <Text style={styles.initialText}>
-                                                    {formData.first_name
-                                                        ?.charAt(0)
-                                                        ?.toUpperCase()}
-                                                </Text>
-                                            </View>
-                                        )}
-                                        {/* LOADER */}
-                                        {loadingImage && (
-                                            <View
-                                                style={
-                                                    styles.loaderOverlay
-                                                }
-                                            >
-                                                <ActivityIndicator
-                                                    size="small"
-                                                    color="#fff"
-                                                />
-                                            </View>
-                                        )}
-
-                                        {/* EDIT */}
-
+                                        </View>
+                                    )}
+                                    <View style={styles.profileContainer}>
                                         <TouchableOpacity
-                                            activeOpacity={0.8}
+                                            activeOpacity={0.85}
                                             style={styles.editIcon}
-                                            onPress={
-                                                handleAddImage
-                                            }
+                                            onPress={handleAddImage}
                                         >
-                                            <Image
-                                                source={
-                                                    Images.profileEdit
-                                                }
-                                                style={
-                                                    styles.IconSize
-                                                }
+                                            <TablerIcon
+                                                name="camera"
+                                                size={16}
+                                                color={Colors.primaryColor}
                                             />
-
-                                            {/* <TablerIcon name="edit" size={24} color={Colors.primaryColor} /> */}
-
                                         </TouchableOpacity>
-
                                     </View>
+                                </View>
 
-                                </ImageBackground>
-                            </View>
+                                <Text style={styles.heroName}>
+                                    {[formData.first_name, formData.last_name]
+                                        .filter(Boolean)
+                                        .join(' ') || 'Your Profile'}
+                                </Text>
+                                <Text style={styles.heroHint}>
+                                    Update your personal details below
+                                </Text>
+                            </LinearGradient>
 
-
-                            {/* FIRST NAME */}
-
-                            <Text
-                                style={
-                                    styles.label
-                                }
-                            >
-                                First Name
-                            </Text>
-
-                            <View
-                                style={
-                                    styles.inputContainer
-                                }
-                            >
-
-                                <TextInput
-                                    value={
-                                        formData.first_name
-                                    }
-                                    onChangeText={(
-                                        text,
-                                    ) =>
-                                        updateField(
-                                            'first_name',
-                                            text,
-                                        )
-                                    }
-                                    placeholder="Enter first name"
-                                    placeholderTextColor="#98A2B3"
-                                    style={
-                                        styles.input
-                                    }
-                                />
-
-                            </View>
-
-                            {/* LAST NAME */}
-
-                            <Text
-                                style={
-                                    styles.label
-                                }
-                            >
-                                Last Name
-                            </Text>
-
-                            <View
-                                style={
-                                    styles.inputContainer
-                                }
-                            >
-
-                                <TextInput
-                                    value={
-                                        formData.last_name
-                                    }
-                                    onChangeText={(
-                                        text,
-                                    ) =>
-                                        updateField(
-                                            'last_name',
-                                            text,
-                                        )
-                                    }
-                                    placeholder="Enter last name"
-                                    placeholderTextColor="#98A2B3"
-                                    style={
-                                        styles.input
-                                    }
-                                />
-
-                            </View>
-
-                            {/* EMAIL */}
-
-                            <Text
-                                style={
-                                    styles.label
-                                }
-                            >
-                                Email
-                            </Text>
-
-                            <View
-                                style={
-                                    styles.inputContainer
-                                }
-                            >
-
-                                <TextInput
-
-                                    value={
-                                        formData.email
-                                    }
-                                    onChangeText={(
-                                        text,
-                                    ) =>
-                                        updateField(
-                                            'email',
-                                            text,
-                                        )
-                                    }
-                                    placeholder="Enter email"
-                                    keyboardType="email-address"
-                                    placeholderTextColor="#98A2B3"
-                                    style={
-                                        styles.input
-                                    }
-                                />
-
-                            </View>
-
-                            {/* PHONE */}
-
-                            <Text
-                                style={
-                                    styles.label
-                                }
-                            >
-                                Secondary Number
-                            </Text>
-
-                            <View
-                                style={
-                                    styles.inputContainer
-                                }
-                            >
-
-                                <TextInput
-                                    value={
-                                        formData.secondary_number
-                                    }
-                                    onChangeText={(
-                                        text,
-                                    ) =>
-                                        updateField(
-                                            'secondary_number',
-                                            text,
-                                        )
-                                    }
-                                    placeholder="Enter number"
-                                    keyboardType="phone-pad"
-                                    maxLength={10}
-                                    placeholderTextColor="#98A2B3"
-                                    style={
-                                        styles.input
-                                    }
-                                />
-
-                            </View>
-
-                            {/* GENDER */}
-
-                            <Text
-                                style={
-                                    styles.label
-                                }
-                            >
-                                Gender
-                            </Text>
-
-                            <View
-                                style={
-                                    styles.genderRow
-                                }
-                            >
-
-                                {
-                                    [
-                                        'male',
-                                        'female',
-                                        'other',
-                                    ].map(
-                                        (
-                                            item,
-                                        ) => {
-
-                                            const active =
-                                                formData.gender ===
-                                                item;
-
-                                            return (
-
-                                                <TouchableOpacity
-                                                    key={
-                                                        item
-                                                    }
-                                                    activeOpacity={
-                                                        0.8
-                                                    }
-                                                    onPress={() =>
-                                                        updateField(
-                                                            'gender',
-                                                            item,
-                                                        )
-                                                    }
-                                                    style={[
-                                                        styles.genderButton,
-
-                                                        active &&
-                                                        styles.activeGenderButton,
-                                                    ]}
-                                                >
-
-                                                    <Text
-                                                        style={[
-                                                            styles.genderText,
-
-                                                            active &&
-                                                            styles.activeGenderText,
-                                                        ]}
-                                                    >
-                                                        {
-                                                            item
-                                                        }
-                                                    </Text>
-
-                                                </TouchableOpacity>
-                                            );
-                                        },
-                                    )
-                                }
-
-                            </View>
-
-                            {/* DOB */}
-
-                            <Text
-                                style={
-                                    styles.label
-                                }
-                            >
-                                Date of Birth
-                            </Text>
-
-                            <TouchableOpacity
-                                activeOpacity={
-                                    0.8
-                                }
-                                onPress={() =>
-                                    setShowDatePicker(
-                                        true,
-                                    )
-                                }
-                                style={
-                                    styles.inputContainer
-                                }
-                            >
+                            <View style={styles.formCard}>
 
                                 <Text
-                                    style={[
-                                        styles.dateText,
+                                    style={
+                                        styles.label
+                                    }
+                                >
+                                    First Name
+                                </Text>
 
-                                        !formData.date_of_birth && {
-                                            color:
-                                                '#98A2B3',
-                                        },
-                                    ]}
+                                <View
+                                    style={
+                                        styles.inputContainer
+                                    }
+                                >
+                                    <TablerIcon name="user" size={16} color="#94A3B8" />
+                                    <TextInput
+                                        value={
+                                            formData.first_name
+                                        }
+                                        onChangeText={(
+                                            text,
+                                        ) =>
+                                            updateField(
+                                                'first_name',
+                                                text,
+                                            )
+                                        }
+                                        placeholder="Enter first name"
+                                        placeholderTextColor="#98A2B3"
+                                        style={
+                                            styles.input
+                                        }
+                                    />
+
+                                </View>
+
+                                {/* LAST NAME */}
+
+                                <Text
+                                    style={
+                                        styles.label
+                                    }
+                                >
+                                    Last Name
+                                </Text>
+
+                                <View
+                                    style={
+                                        styles.inputContainer
+                                    }
+                                >
+                                    <TablerIcon name="user" size={16} color="#94A3B8" />
+                                    <TextInput
+                                        value={
+                                            formData.last_name
+                                        }
+                                        onChangeText={(
+                                            text,
+                                        ) =>
+                                            updateField(
+                                                'last_name',
+                                                text,
+                                            )
+                                        }
+                                        placeholder="Enter last name"
+                                        placeholderTextColor="#98A2B3"
+                                        style={
+                                            styles.input
+                                        }
+                                    />
+
+                                </View>
+
+                                {/* EMAIL */}
+
+                                <Text
+                                    style={
+                                        styles.label
+                                    }
+                                >
+                                    Email
+                                </Text>
+
+                                <View
+                                    style={
+                                        styles.inputContainer
+                                    }
+                                >
+                                    <TablerIcon name="mail" size={16} color="#94A3B8" />
+                                    <TextInput
+                                        value={formData.email}
+                                        onChangeText={(
+                                            text,
+                                        ) =>
+                                            updateField(
+                                                'email',
+                                                text,
+                                            )
+                                        }
+                                        placeholder="Enter email"
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        placeholderTextColor="#98A2B3"
+                                        style={
+                                            styles.input
+                                        }
+                                    />
+
+                                </View>
+
+                                {/* PHONE */}
+
+                                <Text
+                                    style={
+                                        styles.label
+                                    }
+                                >
+                                    Secondary Number
+                                </Text>
+
+                                <View
+                                    style={
+                                        styles.inputContainer
+                                    }
+                                >
+                                    <TablerIcon name="phone" size={16} color="#94A3B8" />
+                                    <TextInput
+                                        value={
+                                            formData.secondary_number
+                                        }
+                                        onChangeText={(
+                                            text,
+                                        ) =>
+                                            updateField(
+                                                'secondary_number',
+                                                text,
+                                            )
+                                        }
+                                        placeholder="Enter number"
+                                        keyboardType="phone-pad"
+                                        maxLength={10}
+                                        placeholderTextColor="#98A2B3"
+                                        style={
+                                            styles.input
+                                        }
+                                    />
+
+                                </View>
+
+                                {/* GENDER */}
+
+                                <Text
+                                    style={
+                                        styles.label
+                                    }
+                                >
+                                    Gender
+                                </Text>
+
+                                <View
+                                    style={
+                                        styles.genderRow
+                                    }
                                 >
 
                                     {
-                                        formData.date_of_birth ||
-                                        'Select DOB'
+                                        [
+                                            'male',
+                                            'female',
+                                            'others',
+                                        ].map(
+                                            (
+                                                item,
+                                            ) => {
+
+                                                const active =
+                                                    formData.gender ===
+                                                    item;
+
+                                                return (
+
+                                                    <TouchableOpacity
+                                                        key={
+                                                            item
+                                                        }
+                                                        activeOpacity={
+                                                            0.8
+                                                        }
+                                                        onPress={() =>
+                                                            updateField(
+                                                                'gender',
+                                                                item,
+                                                            )
+                                                        }
+                                                        style={[
+                                                            styles.genderButton,
+
+                                                            active &&
+                                                            styles.activeGenderButton,
+                                                        ]}
+                                                    >
+
+                                                        <Text
+                                                            style={[
+                                                                styles.genderText,
+
+                                                                active &&
+                                                                styles.activeGenderText,
+                                                            ]}
+                                                        >
+                                                            {
+                                                                item
+                                                            }
+                                                        </Text>
+
+                                                    </TouchableOpacity>
+                                                );
+                                            },
+                                        )
                                     }
 
+                                </View>
+
+                                {/* DOB */}
+
+                                <Text
+                                    style={
+                                        styles.label
+                                    }
+                                >
+                                    Date of Birth
                                 </Text>
 
-                                <Feather
-                                    name="calendar"
-                                    size={18}
-                                    color="#98A2B3"
-                                />
+                                <TouchableOpacity
+                                    activeOpacity={
+                                        0.8
+                                    }
+                                    onPress={() =>
+                                        setShowDatePicker(
+                                            true,
+                                        )
+                                    }
+                                    style={
+                                        styles.inputContainer
+                                    }
+                                >
 
-                            </TouchableOpacity>
+                                    <Text
+                                        style={[
+                                            styles.dateText,
 
-                            {
-                                showDatePicker && (
-                                    <DateTimePicker
-                                        value={
-                                            formData.date_of_birth
-                                                ? new Date(
-                                                    formData.date_of_birth,
-                                                )
-                                                : new Date()
+                                            !formData.date_of_birth && {
+                                                color:
+                                                    '#98A2B3',
+                                            },
+                                        ]}
+                                    >
+
+                                        {
+                                            formData.date_of_birth ||
+                                            'Select DOB'
                                         }
-                                        mode="date"
-                                        display="default"
-                                        maximumDate={
-                                            new Date()
-                                        }
-                                        onChange={(
-                                            event,
-                                            selectedDate,
-                                        ) => {
 
-                                            setShowDatePicker(
-                                                false,
-                                            );
+                                    </Text>
 
-                                            if (
-                                                selectedDate
-                                            ) {
-
-                                                const formattedDate =
-                                                    selectedDate
-                                                        .toISOString()
-                                                        .split(
-                                                            'T',
-                                                        )[0];
-
-                                                updateField(
-                                                    'date_of_birth',
-                                                    formattedDate,
-                                                );
-                                            }
-                                        }}
+                                    <Feather
+                                        name="calendar"
+                                        size={18}
+                                        color="#98A2B3"
                                     />
-                                )
-                            }
 
-                            {/* BUTTON */}
+                                </TouchableOpacity>
+
+                                {
+                                    showDatePicker && (
+                                        <DateTimePicker
+                                            value={
+                                                formData.date_of_birth
+                                                    ? new Date(
+                                                        formData.date_of_birth,
+                                                    )
+                                                    : new Date()
+                                            }
+                                            mode="date"
+                                            display="default"
+                                            maximumDate={
+                                                new Date()
+                                            }
+                                            onChange={(
+                                                event,
+                                                selectedDate,
+                                            ) => {
+
+                                                setShowDatePicker(
+                                                    false,
+                                                );
+
+                                                if (
+                                                    selectedDate
+                                                ) {
+
+                                                    const formattedDate =
+                                                        selectedDate
+                                                            .toISOString()
+                                                            .split(
+                                                                'T',
+                                                            )[0];
+
+                                                    updateField(
+                                                        'date_of_birth',
+                                                        formattedDate,
+                                                    );
+                                                }
+                                            }}
+                                        />
+                                    )
+                                }
+
+                            </View>
 
                             <TouchableOpacity
                                 activeOpacity={
@@ -803,235 +781,196 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-        backgroundColor:
-            '#F8FAFC',
+        backgroundColor: '#F4F7F6',
     },
 
-    avatarBgWrapper: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: -10,
+    scrollContent: {
+        paddingBottom: 28,
     },
 
-    avatarBg: {
-        padding: 30,
-        height: 150,
-        width: 200,
-        borderRadius: 100,
-        overflow: 'hidden',
-
+    hero: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        borderRadius: 18,
+        paddingVertical: 22,
+        paddingHorizontal: 16,
         alignItems: 'center',
-        justifyContent: 'center',
+    },
+
+    heroName: {
+        marginTop: 12,
+        fontSize: 18,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    heroHint: {
+        marginTop: 4,
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.88)',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+
+    formCard: {
+        marginHorizontal: 16,
+        marginTop: 14,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E8EDF2',
     },
 
     avatarWrapper: {
-        width: 105,
-        height: 105,
-
-        borderRadius: 24,
-
-        borderWidth: 1,
-        borderColor: '#DDEBE8',
-
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        borderWidth: 3,
+        borderColor: 'rgba(255,255,255,0.65)',
         backgroundColor: '#FFFFFF',
-
         justifyContent: 'center',
         alignItems: 'center',
-
-        marginBottom: 12,
-
         overflow: 'hidden',
-
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowRadius: 6,
-        elevation: 5,
     },
 
     avatar: {
         width: 90,
         height: 90,
-        borderRadius: 16,
+        borderRadius: 45,
     },
-
-
-    /*
-   =====================================================
-       FIRST LETTER UI
-   =====================================================
-   */
 
     initialWrapper: {
         width: 90,
         height: 90,
-
-        borderRadius: 18,
-
-        backgroundColor:
-            Colors.primaryColor,
-
+        borderRadius: 45,
+        backgroundColor: Colors.primaryColor,
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     initialText: {
         fontSize: 34,
-
         color: '#fff',
-
-        fontFamily:
-            Fonts.PoppinsBold,
+        fontFamily: Fonts.PoppinsBold,
     },
-
-    /*
-    =====================================================
-        LOADER
-    =====================================================
-    */
 
     loaderOverlay: {
         position: 'absolute',
-
         width: '100%',
         height: '100%',
-
-        backgroundColor:
-            'rgba(0,0,0,0.45)',
-
+        backgroundColor: 'rgba(0,0,0,0.35)',
         justifyContent: 'center',
         alignItems: 'center',
     },
 
+    profileContainer: {
+        //   width: 110,
+        //   height: 110,
+        alignSelf: 'center',
+        position: 'relative',
+    },
     editIcon: {
         position: 'absolute',
-        bottom: -2,
-        right: 1,
-
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    IconSize: {
+        bottom: 0,
+        left: 10,
         width: 30,
         height: 30,
+        borderRadius: 15,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#DDEBE8',
     },
-
 
     loaderContainer: {
         flex: 1,
-        justifyContent:
-            'center',
-        alignItems:
-            'center',
-    },
-
-    scrollContent: {
-        padding: 20,
-        paddingBottom: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     label: {
-        fontSize: 14,
-        color: '#111827',
+        fontSize: 13,
+        color: '#334155',
+        fontFamily: Fonts.PoppinsMedium,
         marginBottom: 8,
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        marginTop: 4,
     },
 
     inputContainer: {
-        height: 56,
-        borderWidth: 1,
-        borderColor:
-            '#E5E7EB',
-        backgroundColor:
-            '#FFFFFF',
-        borderRadius: 18,
-        paddingHorizontal: 16,
-        marginBottom: 18,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent:
-            'space-between',
+        gap: 10,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        minHeight: 48,
+        marginBottom: 12,
     },
 
     input: {
         flex: 1,
-        color: '#111827',
         fontSize: 14,
-        fontFamily:
-            Fonts.PoppinsMedium,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsMedium,
+        paddingVertical: 10,
     },
 
     genderRow: {
         flexDirection: 'row',
-        justifyContent:
-            'space-between',
-        marginBottom: 20,
+        gap: 8,
+        marginBottom: 12,
     },
 
     genderButton: {
         flex: 1,
-        height: 52,
-        borderRadius: 16,
+        paddingVertical: 11,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor:
-            '#E5E7EB',
-        backgroundColor:
-            '#FFFFFF',
-        justifyContent:
-            'center',
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
         alignItems: 'center',
-        marginHorizontal: 4,
     },
 
     activeGenderButton: {
-        backgroundColor:
-            Colors.BGIcon,
-        borderColor:
-            Colors.primaryColor,
+        backgroundColor: '#EAF8F4',
+        borderColor: Colors.primaryColor,
     },
 
     genderText: {
-        fontSize: 14,
-        color: '#6B7280',
-        textTransform:
-            'capitalize',
-        fontFamily:
-            Fonts.PoppinsMedium,
+        fontSize: 13,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+        textTransform: 'capitalize',
     },
 
     activeGenderText: {
-        color:
-            Colors.primaryColor,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     dateText: {
         flex: 1,
         fontSize: 14,
-        color: '#111827',
-        fontFamily:
-            Fonts.PoppinsMedium,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     button: {
-        height: 56,
-        borderRadius: 18,
-        backgroundColor:
-            Colors.primaryColor,
-        justifyContent:
-            'center',
+        marginHorizontal: 16,
+        marginTop: 16,
+        backgroundColor: Colors.primaryColor,
+        borderRadius: 14,
+        minHeight: 50,
         alignItems: 'center',
-        marginTop: 20,
+        justifyContent: 'center',
     },
 
     buttonText: {
         color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily:
-            Fonts.PoppinsSemiBold,
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 });

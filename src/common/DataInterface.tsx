@@ -1,4 +1,9 @@
+import { Platform, Text } from "react-native";
 import { Images } from "./Images";
+import { Colors } from "./Colors";
+import React from "react";
+import { resolveProductImageUri } from '../utils/imageUtils';
+import { resolvePayOnDelivery } from '../utils/payOnDeliveryUtils';
 
 
 export interface ProductItem {
@@ -12,6 +17,9 @@ export interface ProductItem {
   image: string;
   brand_name?: string;
   doctorName?: string;
+  source?: 'cart' | 'prescribed';
+  gift_wrap?: boolean;
+  pay_on_delivery?: boolean;
 }
 export type SectionType = {
   id: string;
@@ -30,18 +38,67 @@ export type CartItem = {
   variant_title?: string;
   variant?: {
     variant_id?: string;
+    id?: string;
     variant_title?: string;
+    title?: string;
     size?: string;
     selling_price?: number;
     brand_name?: string;
+    pay_on_delivery?: boolean;
     image_url?: string;
+    cover_image?: {
+      id?: string;
+      media_url?: string;
+      media_type?: string;
+      is_cover?: boolean;
+    };
+    media?: {
+      id?: string;
+      media_url?: string;
+      media_type?: string;
+      is_cover?: boolean;
+    }[];
+  };
+  pay_on_delivery?: boolean;
+  cover_image?: {
+    id?: string;
+    media_url?: string;
+    is_cover?: boolean;
   };
   media?: {
+    id?: string;
     media_url?: string;
+    is_cover?: boolean;
   }[];
-
 };
 
+
+export const renderCategoryName = (
+  name: string,
+  styles: any,
+  maxChars = 14,
+) => {
+  const words = name.trim().split(/\s+/);
+
+  let firstLine = '';
+  let secondLine = '';
+
+  words.forEach(word => {
+    const testLine = firstLine ? `${firstLine} ${word}` : word;
+
+    if (testLine.length <= maxChars || firstLine === '') {
+      firstLine = testLine;
+    } else {
+      secondLine += (secondLine ? ' ' : '') + word;
+    }
+  });
+
+  return (
+    <Text style={styles.text} numberOfLines={2}>
+      {secondLine ? `${firstLine}\n${secondLine}` : firstLine}
+    </Text>
+  );
+};
 
 export type OrderItem = {
   variant_id: string | number;
@@ -54,12 +111,19 @@ export type OrderItem = {
 export type PlaceOrderPayload = {
   delivery_address_id: string | number;
   payment_type: 'cod' | 'prepaid' | 'online';
-  payment_method: 'cash' | 'upi' | 'card' | 'netbanking';
+  /**
+   * COD → "cash".
+   * Prepaid → value from Razorpay SDK (upi / card / wallet / netbanking / …).
+   * Optional on place-order; set after user selects method in Razorpay.
+   */
+  payment_method?: string;
   shipping_method: 'STD' | 'EXPRESS';
   shipping_charges: number;
   cod_charges: number;
   prepaid_amount: number;
-  items: OrderItem[];
+  cart_item_ids: string[];
+  gift_wrap_item_ids: string[];
+  items?: OrderItem[];
 };
 
 export type PlaceOrderResponse = {
@@ -75,13 +139,22 @@ export type PlaceOrderResponse = {
 };
 
 
+/** Resolve cart/checkout thumbnail from common API shapes */
+export const resolveCartItemImage = (item: any): string =>
+  resolveProductImageUri(item);
+
 export const getProductData = (
   item: CartItem,
   doctorName?: string,
 ): ProductItem => ({
   id: item.id,
 
-  name: item.variant?.variant_title || '',
+  name:
+    item.variant?.variant_title ||
+    item.variant?.title ||
+    (item as any)?.product_name ||
+    (item as any)?.name ||
+    '',
 
   weight: item.variant?.size || '',
 
@@ -90,7 +163,10 @@ export const getProductData = (
   brand_name: item.variant?.brand_name || '',
 
   variant_id:
-    item.variant?.variant_id || '',
+    item.variant?.variant_id ||
+    item.variant?.id ||
+    (item as any)?.variant_id ||
+    '',
   price: Number(
     item.variant?.selling_price ||
     item.price ||
@@ -99,10 +175,12 @@ export const getProductData = (
 
   quantity: Number(item.quantity || 1),
 
-  image:
-    item.variant?.image_url || '',
+  // cover_image.media_url → media is_cover → legacy image fields
+  image: resolveCartItemImage(item),
 
   doctorName,
+  gift_wrap: Boolean((item as any)?.gift_wrap || (item as any)?.is_gift_wrap),
+  pay_on_delivery: resolvePayOnDelivery(item),
 });
 
 export interface GenderOption {
@@ -127,7 +205,25 @@ export const product = {
     Images.HomeBanner,
   ],
 };
+export const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'deliverd':
+    case 'delivered':
+      return '#1B5E54'; // Green
 
+    case 'pending':
+      return '#F59E0B'; // Orange
+
+    case 'cancelled':
+      return '#EF4444'; // Red
+
+    case 'processing':
+      return '#3366FF'; // Blue
+
+    default:
+      return '#3366FF';
+  }
+};
 
 
 export type Appointment = {
@@ -153,6 +249,7 @@ export const PAST_STATUS = [
   "completed",
   "cancelled",
   "missed",
+  "expired",
 ];
 
 export const PRAKRITI_IMAGES: Record<string, string> = {
@@ -210,13 +307,21 @@ export const getStatusStyle = (status: string) => {
       backgroundColor: "#F3F4F6",
       color: "#6B7280",
     },
+    expired: {
+      backgroundColor: "#F3F4F6",
+      color: "#6B7280",
+    },
+    no_show: {
+      backgroundColor: "#F3F4F6",
+      color: "#6B7280",
+    },
     reschedule: {
-      backgroundColor: "#DBEAFE",
-      color: "#2563EB",
+      backgroundColor: "#FEF3C7",
+      color: "#B45309",
     },
     rescheduled: {
-      backgroundColor: "#DBEAFE",
-      color: "#2563EB",
+      backgroundColor: "#FEF3C7",
+      color: "#B45309",
     },
   };
 
@@ -295,11 +400,12 @@ export const AVAILABILITY_OPTIONS = [
     label: 'Next Month',
     value: 'next_month',
   },
-  {
-    label: 'Select Date',
-    value: 'custom_date',
-  },
+  // {
+  //   label: 'Select Date',
+  //   value: 'custom_date',
+  // },
 ];
+
 
 
 export const reviews = [
@@ -336,6 +442,22 @@ export const generateDates = (daysBefore = 3, daysAfter = 10) => {
   }
 
   return dates;
+};
+
+
+export const formatTo12Hour = (time24: string) => {
+  if (!time24) return '';
+
+  const [hoursStr, minutesStr] = time24.split(':');
+  let hours = parseInt(hoursStr, 10);
+  const minutes = minutesStr;
+
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${meridiem}`;
 };
 
 export const formatDate = (
@@ -475,7 +597,36 @@ export const generateFutureDates = (
   return dates;
 };
 
+export const Theme = {
+  bg: '#FAF8F3',
+  cardBg: '#FFFFFF',
+  cardBorder: '#EFE6D8',
+  gold: '#B8933F',
+  goldSoft: '#F4E9D3',
+  emerald: Colors?.primaryColor || '#0A8F5A',
+  emeraldSoft: '#E8F3EC',
+  danger: Colors?.errorColor || '#D64545',
+  dangerSoft: '#FBEAEA',
+  ink: '#1F2A24',
+  subInk: '#8A8578',
+  divider: '#F0EBE0',
+};
 
+export const shadow = (strength: 'sm' | 'md' | 'lg' = 'md') => {
+  const map = {
+    sm: { h: 4, opacity: 0.06, radius: 8, elevation: 3 },
+    md: { h: 8, opacity: 0.1, radius: 16, elevation: 6 },
+    lg: { h: 14, opacity: 0.14, radius: 26, elevation: 12 },
+  } as const;
+  const cfg = map[strength];
+  return {
+    shadowColor: '#1F2A24',
+    shadowOffset: { width: 0, height: cfg.h },
+    shadowOpacity: cfg.opacity,
+    shadowRadius: cfg.radius,
+    elevation: Platform.OS === 'android' ? cfg.elevation : 0,
+  };
+};
 
 
 

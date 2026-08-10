@@ -15,6 +15,7 @@ build/
 !default.perspectivev3
 xcuserdata
 *.xccheckout
+
 *.moved-aside
 DerivedData
 *.hmap
@@ -60,8 +61,8 @@ yarn-error.log
 **/Pods/
 /vendor/bundle/
 
-# Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
+.metro-cache/
 .metro-cache/
 
 # testing

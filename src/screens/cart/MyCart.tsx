@@ -3,6 +3,7 @@ import React, {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
 
@@ -17,139 +18,188 @@ import {
     StatusBar,
     ActivityIndicator,
     TextInput,
+    RefreshControl,
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { useAllCartData } from '../../hooks/Cart';
 import { useAppDispatch } from '../../store/hooks';
-import { addToCart, fetchCart, setVariantQuantity } from '../../store/slices/cartSlice';
-import { getProductData, ProductItem, SectionType } from '../../common/DataInterface';
+import { syncCartQuantity } from '../../store/slices/cartSlice';
+import { getProductData, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
-import { navigateToLogin } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
+import { navigateToCheckout } from '../../navigation/productNavigation';
+import SegmentTabs from '../../components/SegmentTabs';
+import { getScreenBottomPadding } from '../../constants/layout';
 
 
 
 
 const MyCart = ({ navigation }: any) => {
 
-    const { isGuest, isLoggedIn } = useAuth();
     const dispatch = useAppDispatch();
 
-    const { CartData, loading, fetchAllData } =
+    const { CartData, loading, fetchAllData, hasCachedCart } =
         useAllCartData();
+    const [refreshing, setRefreshing] = useState(false);
 
-    useFocusEffect(
-        useCallback(() => {
-            if (isLoggedIn) {
-                fetchAllData(true);
-            }
-        }, [fetchAllData, isLoggedIn]),
-    );
+    const onRefresh = useCallback(async () => {
+
+        setRefreshing(true);
+        try {
+            await fetchAllData({ force: true, silent: true });
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchAllData]);
 
     const insets = useSafeAreaInsets();
-    const [sections, setSections] =
-        useState<SectionType[]>([]);
-
     const [selectedItems, setSelectedItems] =
         useState<string[]>([]);
 
     const [activeTab, setActiveTab] = useState<'cart' | 'prescribed'>('cart');
     const [showDetails, setShowDetails] =
         useState(false);
-    console.log('CartDataCartData', CartData);
+    /** On each visit (and when new lines appear), select all — user can uncheck after. */
+    const selectAllPendingRef = useRef(true);
+    const knownItemIdsRef = useRef<Set<string>>(new Set());
+    const didSetInitialTabRef = useRef(false);
+    const [focusTick, setFocusTick] = useState(0);
 
-    const mappedSections = useMemo<SectionType[]>(() => {
-        const sections: SectionType[] = [];
+    const sections = useMemo<SectionType[]>(() => {
+        const next: SectionType[] = [];
 
         if (CartData?.my_cart?.items?.length) {
-            sections.push({
+            next.push({
                 id: 'cart',
                 title: 'My Cart',
                 type: 'cart',
-                items: CartData.my_cart.items.map((item: any) => getProductData(item)),
+                items: CartData.my_cart.items.map((item: any) => ({
+                    ...getProductData(item),
+                    source: 'cart' as const,
+                })),
             });
         }
 
-        if (CartData?.prescription_cart?.items?.length) {
-            sections.push({
+        // Only line items inside prescription groups that have products
+        // API: prescription_cart.items[].items[].id → cart_item_ids
+        const prescribedLineItems = (
+            CartData?.prescription_cart?.items ?? []
+        ).flatMap((prescription: any) => {
+            const lineItems = Array.isArray(prescription?.items)
+                ? prescription.items
+                : [];
+            return lineItems
+                .filter((item: any) => item?.id)
+                .map((item: any) => {
+                    console.log("cart_item_id", item?.id,);
+                    const lineId = String(item.id);
+                    const product = getProductData(
+                        item,
+                        prescription?.doctor_name,
+                    );
+                    return {
+                        ...product,
+                        // Prefer nested prescription line id for place-order
+                        id: lineId,
+                        cart_item_id: lineId,
+                        source: 'prescribed' as const,
+                        prescription_id: prescription?.prescription_id,
+                        prescription_cart_id: prescription?.id,
+                    };
+                });
+        });
+
+        if (prescribedLineItems.length > 0) {
+            next.push({
                 id: 'prescribed',
                 title: 'Prescribed Medicines',
                 type: 'prescribed',
-                items: CartData.prescription_cart.items.flatMap(
-                    (prescription: any) =>
-                        prescription.items.map((item: any) =>
-                            getProductData(
-                                item,
-                                prescription.doctor_name,
-                            ),
-                        ),
-                ),
+                items: prescribedLineItems,
             });
         }
 
-        return sections;
+        return next;
     }, [CartData]);
 
+    const allItemIds = useMemo(
+        () =>
+            sections.flatMap(section =>
+                section.items.map(item => String(item.id)),
+            ),
+        [sections],
+    );
+
+    const cartItemCount = allItemIds.length;
+    const hasCartItems = cartItemCount > 0;
+
+    useFocusEffect(
+        useCallback(() => {
+            // Coming to cart (e.g. after add) → all items selected by default
+            selectAllPendingRef.current = true;
+            setFocusTick(tick => tick + 1);
+            fetchAllData({ force: true, silent: hasCachedCart });
+        }, [fetchAllData, hasCachedCart]),
+    );
 
     useEffect(() => {
-
-        setSections(mappedSections);
-    }, [mappedSections]);
-
-    useEffect(() => {
-        if (
-            sections.length &&
-            selectedItems.length === 0
-        ) {
-            setSelectedItems(
-                sections.flatMap(section =>
-                    section.items.map(
-                        item => item.id,
-                    ),
-                ),
-            );
+        if (!hasCartItems) {
+            selectAllPendingRef.current = true;
+            didSetInitialTabRef.current = false;
+            knownItemIdsRef.current = new Set();
+            setSelectedItems([]);
+            return;
         }
-    }, [sections]);
+
+        if (selectAllPendingRef.current) {
+            selectAllPendingRef.current = false;
+            knownItemIdsRef.current = new Set(allItemIds);
+            setSelectedItems(allItemIds);
+            return;
+        }
+
+        // Newly added lines while staying on cart → auto-select them
+        const newIds = allItemIds.filter(
+            id => !knownItemIdsRef.current.has(id),
+        );
+        knownItemIdsRef.current = new Set(allItemIds);
+
+        if (newIds.length) {
+            setSelectedItems(prev => [...new Set([...prev, ...newIds])]);
+            return;
+        }
+
+        // Drop selections for removed lines
+        setSelectedItems(prev =>
+            prev.filter(id => knownItemIdsRef.current.has(id)),
+        );
+    }, [allItemIds, hasCartItems, focusTick]);
 
     const toggleSectionSelection =
         useCallback(
             (section: SectionType) => {
+                const sectionIds = section.items.map(item =>
+                    String(item.id),
+                );
 
-                const sectionIds =
-                    section.items.map(
-                        item => item.id,
-                    );
-
-                const isSelected =
-                    sectionIds.every(id =>
-                        selectedItems.includes(id),
-                    );
+                const isSelected = sectionIds.every(id =>
+                    selectedItems.includes(id),
+                );
 
                 if (isSelected) {
-
                     setSelectedItems(prev =>
-                        prev.filter(
-                            id =>
-                                !sectionIds.includes(id),
-                        ),
+                        prev.filter(id => !sectionIds.includes(id)),
                     );
-
                     return;
                 }
 
                 setSelectedItems(prev => [
-                    ...new Set([
-                        ...prev,
-                        ...sectionIds,
-                    ]),
+                    ...new Set([...prev, ...sectionIds]),
                 ]);
             },
             [selectedItems],
@@ -157,22 +207,15 @@ const MyCart = ({ navigation }: any) => {
 
     /* ========================================================= */
 
-    const toggleItemSelection =
-        useCallback((id: string) => {
-
-            setSelectedItems(prev => {
-
-                if (prev.includes(id)) {
-
-                    return prev.filter(
-                        item => item !== id,
-                    );
-                }
-
-                return [...prev, id];
-            });
-
-        }, []);
+    const toggleItemSelection = useCallback((id: string) => {
+        const itemId = String(id);
+        setSelectedItems(prev => {
+            if (prev.includes(itemId)) {
+                return prev.filter(item => item !== itemId);
+            }
+            return [...prev, itemId];
+        });
+    }, []);
 
 
     const updateQuantity = useCallback(
@@ -184,7 +227,9 @@ const MyCart = ({ navigation }: any) => {
                 .flatMap(s => s.items)
                 .find(i => i.variant_id === variantId);
 
-            if (!selectedItem) return;
+            if (!selectedItem) {
+                return;
+            }
 
             const oldQty = selectedItem.quantity;
             const newQty =
@@ -194,40 +239,11 @@ const MyCart = ({ navigation }: any) => {
                         ? oldQty + 1
                         : oldQty - 1;
 
-            if (newQty === 0) {
-                setSections(prev =>
-                    prev.map(section => ({
-                        ...section,
-                        items: section.items.filter(
-                            item => item.variant_id !== variantId,
-                        ),
-                    })),
-                );
-            } else {
-                setSections(prev =>
-                    prev.map(section => ({
-                        ...section,
-                        items: section.items.map(item =>
-                            item.variant_id === variantId
-                                ? { ...item, quantity: newQty }
-                                : item,
-                        ),
-                    })),
-                );
-            }
-
-            dispatch(setVariantQuantity({ variantId, quantity: newQty }));
-
-            const result = await dispatch(
-                addToCart({ variantId, quantity: newQty }),
+            await dispatch(
+                syncCartQuantity({ variantId, quantity: newQty }),
             );
-
-            if (addToCart.rejected.match(result)) {
-                await dispatch(fetchCart(true));
-                fetchAllData();
-            }
         },
-        [sections, dispatch, fetchAllData],
+        [sections, dispatch],
     );
 
     const selectedProducts =
@@ -238,9 +254,7 @@ const MyCart = ({ navigation }: any) => {
                         section.items,
                 )
                 .filter(item =>
-                    selectedItems.includes(
-                        item.id,
-                    ),
+                    selectedItems.includes(String(item.id)),
                 );
         }, [sections, selectedItems]);
 
@@ -273,40 +287,92 @@ const MyCart = ({ navigation }: any) => {
         Math.round(Number(CartData?.my_cart?.subtotal || 0) +
             Number(CartData?.prescription_cart?.subtotal || 0));
 
+    const cartSection = sections.find(item => item.type === 'cart');
+    const prescribedSection = sections.find(item => item.type === 'prescribed');
+    const cartCount = cartSection?.items.length ?? 0;
+    const prescribedCount = prescribedSection?.items.length ?? 0;
+    const showTabs = hasCartItems;
+
+    const cartTabs = useMemo(
+        () => [
+            {
+                key: 'cart',
+                label: cartCount > 0 ? `My Cart (${cartCount})` : 'My Cart',
+            },
+            {
+                key: 'prescribed',
+                label:
+                    prescribedCount > 0
+                        ? `Prescribed (${prescribedCount})`
+                        : 'Prescribed',
+            },
+        ],
+        [cartCount, prescribedCount],
+    );
+
     const currentSection = sections.find(
         item =>
             item.type ===
-            (activeTab === 'cart'
-                ? 'cart'
-                : 'prescribed'),
+            (activeTab === 'cart' ? 'cart' : 'prescribed'),
     );
 
+    useEffect(() => {
+        if (!hasCartItems) {
+            return;
+        }
+
+        if (!didSetInitialTabRef.current) {
+            didSetInitialTabRef.current = true;
+            if (cartCount > 0) {
+                setActiveTab('cart');
+            } else if (prescribedCount > 0) {
+                setActiveTab('prescribed');
+            }
+            return;
+        }
+
+        if (activeTab === 'cart' && !cartCount && prescribedCount) {
+            setActiveTab('prescribed');
+            return;
+        }
+
+        if (activeTab === 'prescribed' && !prescribedCount && cartCount) {
+            setActiveTab('cart');
+        }
+    }, [activeTab, cartCount, prescribedCount, hasCartItems]);
+
     const handleCheckout = () => {
-
-        console.log("selctedproduct", selectedProducts);
-
         if (selectedProducts.length === 0) {
             return;
         }
 
-        navigation.navigate(
-            'Checkout',
-            {
-                selectedProducts,
-                totalSubtotal
-            },
-        );
+        navigateToCheckout(navigation, selectedProducts, totalSubtotal);
     };
 
+
+    // Tab MyCart needs space for bottom bar; stack MyCart (from product flow) does not
+    const navState = navigation.getState?.();
+    const isTabCart =
+        navState?.type === 'tab' ||
+        (Array.isArray(navState?.routeNames) &&
+            navState.routeNames.includes('Home') &&
+            navState.routeNames.includes('Products'));
+    const listBottomPad = isTabCart
+        ? getScreenBottomPadding(insets)
+        : Math.max(insets.bottom, 12) + 24;
+    const footerBottomPad = isTabCart
+        ? getScreenBottomPadding(insets)
+        : Math.max(insets.bottom, 12);
 
     return (
         <SafeAreaView
             style={styles.container}
+            edges={['top', 'left', 'right']}
         >
 
             <StatusBar
                 barStyle="dark-content"
-                backgroundColor="#F8FAF8"
+                backgroundColor="#FFFFFF"
             />
 
             <AppHeader
@@ -314,9 +380,10 @@ const MyCart = ({ navigation }: any) => {
                 onLeftPress={() =>
                     navigation.goBack()
                 }
+                onRefreshPress={onRefresh}
             />
 
-            {isGuest ? (
+            {/* {!isLoggedIn ? (
                 <View style={styles.emptyContainer}>
                     <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
 
@@ -337,9 +404,10 @@ const MyCart = ({ navigation }: any) => {
                         </Text>
                     </TouchableOpacity>
                 </View>
-            ) : loading ? (
+            ) :  */}
+            {loading ? (
                 <MyProductCardSkeleton />
-            ) : sections.length === 0 ? (
+            ) : !hasCartItems ? (
                 <View style={styles.emptyContainer}>
                     <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
 
@@ -353,7 +421,7 @@ const MyCart = ({ navigation }: any) => {
 
                     <TouchableOpacity
                         style={styles.shopNowBtn}
-                        onPress={() => navigation.navigate('Home')}
+                        onPress={() => navigation.replace('HomeStack', { screen: 'Home' })}
                     >
                         <Text style={styles.shopNowText}>
                             Shop Now
@@ -362,46 +430,41 @@ const MyCart = ({ navigation }: any) => {
                 </View>
             ) : (
                 <>
-                    (
                     <ScrollView
-                        showsVerticalScrollIndicator={
-                            false
+                        style={styles.scrollView}
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[Colors.primaryColor]}
+                                tintColor={Colors.primaryColor}
+                            />
                         }
-                        contentContainerStyle={{
-                            paddingBottom: 180,
-                            paddingHorizontal: 20,
-                        }}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingBottom: listBottomPad },
+                        ]}
                     >
 
-                        <View style={styles.tabContainer}>
-                            <TouchableOpacity
-                                style={styles.tabBtn}
-                                onPress={() => setActiveTab('cart')}>
-                                <Text
-                                    style={[
-                                        styles.tabText,
-                                        activeTab === 'cart' &&
-                                        styles.activeTabText,
-                                    ]}>
-                                    My Cart
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.tabBtn}
-                                onPress={() =>
-                                    setActiveTab('prescribed')
-                                }>
-                                <Text
-                                    style={[
-                                        styles.tabText,
-                                        activeTab === 'prescribed' &&
-                                        styles.activeTabText,
-                                    ]}>
-                                    Prescribed
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                        {showTabs ? (
+                            <SegmentTabs
+                                tabs={cartTabs}
+                                activeKey={activeTab}
+                                onChange={key => {
+                                    const nextTab = key as 'cart' | 'prescribed';
+                                    if (nextTab === 'cart' && cartCount === 0) {
+                                        return;
+                                    }
+                                    if (nextTab === 'prescribed' && prescribedCount === 0) {
+                                        return;
+                                    }
+                                    setActiveTab(nextTab);
+                                }}
+                                variant="underline"
+                                style={styles.tabContainer}
+                            />
+                        ) : null}
 
 
                         <View style={styles.infoCard}>
@@ -414,11 +477,11 @@ const MyCart = ({ navigation }: any) => {
                             </Text>
                         </View>
 
-                        {currentSection && (() => {
+                        {currentSection?.items.length ? (() => {
 
                             const sectionIds =
-                                currentSection.items.map(
-                                    item => item.id,
+                                currentSection.items.map(item =>
+                                    String(item.id),
                                 );
 
                             const isSectionSelected =
@@ -462,7 +525,7 @@ const MyCart = ({ navigation }: any) => {
                                             navigation={navigation}
                                             type={currentSection.type}
                                             isSelected={selectedItems.includes(
-                                                item.id,
+                                                String(item.id),
                                             )}
                                             toggleItemSelection={
                                                 toggleItemSelection
@@ -470,16 +533,15 @@ const MyCart = ({ navigation }: any) => {
                                             updateQuantity={
                                                 updateQuantity
                                             }
-                                            styles={styles}
                                         />
                                     ))}
                                 </View>
                             );
-                        })()}
+                        })() : null}
 
 
 
-                        <View style={styles.promoCard}>
+                        {/* <View style={styles.promoCard}>
 
                             <Text style={styles.promoTitle}>
                                 Got a promo code?
@@ -502,8 +564,7 @@ const MyCart = ({ navigation }: any) => {
 
                             </View>
 
-                        </View>
-                        {/* BILL */}
+                        </View> */}
 
                         <View style={styles.billBox}>
 
@@ -555,42 +616,49 @@ const MyCart = ({ navigation }: any) => {
 
                     </ScrollView>
 
-                    <TouchableOpacity
-                        activeOpacity={0.9}
-                        disabled={
-                            selectedProducts.length ===
-                            0
-                        }
-                        onPress={handleCheckout}
+                    <View
                         style={[
-                            styles.checkoutBtn,
+                            styles.checkoutFooter,
                             {
-                                bottom: insets.bottom > 0
-                                    ? insets.bottom : 10,
+                                paddingBottom: isTabCart
+                                    ? footerBottomPad
+                                    : Math.max(insets.bottom, 10),
                             },
                         ]}
                     >
-
-                        <Text
-                            style={
-                                styles.checkoutText} >
-                            Proceed To Checkout
-                        </Text>
-
-                        <View
-                            style={{
-                                minWidth: 70,
-                                alignItems: 'flex-end',
-                            }}
+                        <TouchableOpacity
+                            activeOpacity={0.9}
+                            disabled={
+                                selectedProducts.length ===
+                                0
+                            }
+                            onPress={handleCheckout}
+                            style={[
+                                styles.checkoutBtn,
+                                selectedProducts.length === 0 && styles.checkoutBtnDisabled,
+                            ]}
                         >
 
-                            <Text style={styles.checkoutPrice}>
-                                Rs. {Math.round(total)}
+                            <Text
+                                style={
+                                    styles.checkoutText} >
+                                Proceed
                             </Text>
 
-                        </View>
-                    </TouchableOpacity>
-                    )
+                            <View
+                                style={{
+                                    minWidth: 70,
+                                    alignItems: 'flex-end',
+                                }}
+                            >
+
+                                <Text style={styles.checkoutPrice}>
+                                    Rs. {Math.round(total)}
+                                </Text>
+
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </>
             )}
 
@@ -645,7 +713,16 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
+        paddingHorizontal: 20,
         backgroundColor: '#F8FAF8',
+    },
+
+    scrollView: {
+        flex: 1,
+    },
+
+    scrollContent: {
+        flexGrow: 1,
     },
 
     size: {
@@ -669,9 +746,6 @@ const styles = StyleSheet.create({
     },
 
     sectionCard: {
-        // backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 12,
         marginBottom: 12,
     },
     sectionHeader: {
@@ -679,45 +753,15 @@ const styles = StyleSheet.create({
         justifyContent:
             'space-between',
         alignItems: 'center',
-        marginBottom: 12,
-        paddingHorizontal: 4,
+        marginBottom: 8,
+        paddingHorizontal: 2,
     },
 
     sectionTitle: {
-        fontSize: 20,
+        fontSize: 16,
         color: '#1E293B',
         fontFamily:
             Fonts.PoppinsSemiBold,
-    },
-
-    productCard: {
-        // flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-        borderRadius: 20,
-        padding: 10,
-        marginBottom: 10,
-    },
-
-    productTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    prescribedWrapper: {
-        marginTop: 14,
-        paddingTop: 12,
-
-        borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
-
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    leftWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginRight: 12,
     },
 
     checkbox: {
@@ -784,27 +828,8 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
     },
     tabContainer: {
-        flexDirection: 'row',
-        marginTop: 10,
-        marginBottom: 20,
-    },
-
-    tabBtn: {
-        flex: 1,
-        alignItems: 'center',
-        paddingBottom: 10,
-        borderBottomWidth: 2,
-        borderBottomColor: '#E5E7EB',
-    },
-
-    tabText: {
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    activeTabText: {
-        color: '#0D614E',
-        fontFamily: Fonts.PoppinsSemiBold,
+        marginTop: 4,
+        marginBottom: 12,
     },
 
     infoCard: {
@@ -1036,19 +1061,25 @@ const styles = StyleSheet.create({
         marginVertical: 12,
     },
 
+    checkoutFooter: {
+        paddingTop: 12,
+        backgroundColor: '#F8FAF8',
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+    },
+
     checkoutBtn: {
-        position: 'absolute',
-        left: 20,
-        right: 20,
-        bottom: 20,
         height: 62,
         borderRadius: 18,
         backgroundColor: '#0D614E',
         flexDirection: 'row',
-        justifyContent:
-            'space-between',
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
+    },
+
+    checkoutBtnDisabled: {
+        opacity: 0.5,
     },
 
     checkoutText: {

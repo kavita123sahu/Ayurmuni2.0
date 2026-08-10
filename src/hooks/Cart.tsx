@@ -1,38 +1,57 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchCart, addToCart, selectCartCount } from '../store/slices/cartSlice';
+import { fetchCart, syncCartQuantity, selectCartCount } from '../store/slices/cartSlice';
 import { showSuccessToast } from '../config/Key';
 import { requireAuth } from '../services/guestAuth';
+
+type FetchCartOptions = boolean | { force?: boolean; silent?: boolean };
 
 export const useAllCartData = () => {
   const dispatch = useAppDispatch();
   const cart = useAppSelector(state => state.cart);
 
+  const hasCachedCart =
+    Boolean(cart.cartData?.my_cart) ||
+    Boolean(cart.cartData?.prescription_cart) ||
+    cart.itemCount > 0;
+
   const fetchAllData = useCallback(
-    async (force = true) => {
-      await dispatch(fetchCart(force));
+    async (arg: FetchCartOptions = true) => {
+      if (typeof arg === 'boolean') {
+        await dispatch(fetchCart({ force: arg, silent: false }));
+        return;
+      }
+      await dispatch(
+        fetchCart({
+          force: arg.force ?? true,
+          silent: arg.silent ?? false,
+        }),
+      );
     },
     [dispatch],
   );
 
-  const onRefresh = useCallback(() => {
-    fetchAllData(true);
-  }, [fetchAllData]);
+  const onRefresh = useCallback(async () => {
+    await dispatch(fetchCart({ force: true, silent: true }));
+  }, [dispatch]);
 
   return {
-    loading: cart.loading,
+    // Block UI with skeleton only on cold load (no cart payload yet)
+    loading: cart.loading && !hasCachedCart,
     refreshing: cart.loading,
     CartData: cart.cartData,
     favDoctor: [],
     fetchAllData,
     onRefresh,
     itemCount: cart.itemCount,
+    hasCachedCart,
   };
 };
 
 type UseCartActionsReturn = {
   isAdding: boolean;
   addToCart: (variantId: string | number, quantity: number) => Promise<boolean>;
+  updateCartQuantity: (variantId: string | number, quantity: number) => Promise<boolean>;
   cartCount: number;
 };
 
@@ -41,20 +60,43 @@ export const useCartActions = (): UseCartActionsReturn => {
   const cart = useAppSelector(state => state.cart);
   const cartCount = useAppSelector(selectCartCount);
 
+  const updateCartQuantityFn = useCallback(
+    async (variantId: string | number, quantity: number): Promise<boolean> => {
+      if (!variantId) {
+        return false;
+      }
+      if (!(await requireAuth('Please login to update cart'))) {
+        return false;
+      }
+
+      const result = await dispatch(syncCartQuantity({ variantId, quantity }));
+      if (syncCartQuantity.rejected.match(result)) {
+        if (result.payload === 'LOGIN_REQUIRED') {
+          return false;
+        }
+        return false;
+      }
+      return true;
+    },
+    [dispatch],
+  );
+
   const addToCartFn = useCallback(
     async (variantId: string | number, quantity: number): Promise<boolean> => {
-      if (!variantId) return false;
+      if (!variantId) {
+        return false;
+      }
       if (!(await requireAuth('Please login to add items to cart'))) {
         return false;
       }
 
-      const result = await dispatch(addToCart({ variantId, quantity }));
-      if (addToCart.rejected.match(result) && result.payload === 'LOGIN_REQUIRED') {
+      const result = await dispatch(syncCartQuantity({ variantId, quantity }));
+      if (syncCartQuantity.rejected.match(result)) {
         return false;
       }
-      if (addToCart.fulfilled.match(result)) {
-        showSuccessToast(result.payload.message || 'Added to cart', 'success');
-        dispatch(fetchCart(true));
+      console.log("cartttttAPIIIIIIIIIIIIIII", result);
+      if (syncCartQuantity.fulfilled.match(result)) {
+        showSuccessToast(result.payload?.message || 'Added to cart', 'success');
         return true;
       }
       return false;
@@ -65,6 +107,7 @@ export const useCartActions = (): UseCartActionsReturn => {
   return {
     isAdding: !!cart.addingVariantId,
     addToCart: addToCartFn,
+    updateCartQuantity: updateCartQuantityFn,
     cartCount,
   };
 };

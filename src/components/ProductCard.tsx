@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   StyleSheet,
-  TouchableOpacity,
   Dimensions,
   Pressable,
 } from 'react-native';
@@ -13,10 +12,16 @@ import { CARD_SURFACE } from '../constants/cardStyles';
 import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import WishlistButton from './WishlistButton';
+import {
+  getProductStockQty,
+  isProductOutOfStock,
+} from '../utils/productStockUtils';
+import { resolveProductImageUri } from '../utils/imageUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-export const GRID_CARD_WIDTH = (SCREEN_W - 52) / 2;
+/** Default 2-col grid width for full-width screens (16px pad + 10 gap) */
+export const GRID_CARD_WIDTH = (SCREEN_W - 42) / 2;
 export const HORIZONTAL_CARD_WIDTH = 158;
 const IMAGE_HEIGHT_GRID = 136;
 const IMAGE_HEIGHT_HORIZONTAL = 124;
@@ -31,6 +36,8 @@ type Props = {
   isAdding: boolean;
   showWishlist?: boolean;
   actionsLocked?: boolean;
+  /** Required for proper grid fit — parent should pass measured column width */
+  gridWidth?: number;
   onPress: () => void;
   onAdd: () => void;
   onIncrement: () => void;
@@ -45,6 +52,7 @@ const ProductCard: React.FC<Props> = ({
   isAdding,
   showWishlist = true,
   actionsLocked = false,
+  gridWidth,
   onPress,
   onAdd,
   onIncrement,
@@ -52,30 +60,63 @@ const ProductCard: React.FC<Props> = ({
   onWishlist,
 }) => {
   const isGrid = variant === 'grid';
-  const cardWidth = isGrid ? GRID_CARD_WIDTH : HORIZONTAL_CARD_WIDTH;
-  const cardHeight = isGrid ? GRID_CARD_HEIGHT : HORIZONTAL_CARD_HEIGHT;
-  const imageHeight = isGrid ? IMAGE_HEIGHT_GRID : IMAGE_HEIGHT_HORIZONTAL;
+  const cardWidth = isGrid
+    ? gridWidth ?? GRID_CARD_WIDTH
+    : HORIZONTAL_CARD_WIDTH;
+  const scale = isGrid && gridWidth ? gridWidth / GRID_CARD_WIDTH : 1;
+  const cardHeight = isGrid
+    ? GRID_CARD_HEIGHT * Math.min(Math.max(scale, 0.85), 1.15)
+    : HORIZONTAL_CARD_HEIGHT;
+  const imageHeight = isGrid
+    ? IMAGE_HEIGHT_GRID * Math.min(Math.max(scale, 0.85), 1.15)
+    : IMAGE_HEIGHT_HORIZONTAL;
 
   const discount =
     item?.mrp > item?.selling_price
       ? Math.round(((item.mrp - item.selling_price) / item.mrp) * 100)
       : 0;
 
+  const stockQty = getProductStockQty(item);
+  const isOutOfStock = isProductOutOfStock(item);
+  const maxQuantity =
+    stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
+  const productImageUri = resolveProductImageUri(item);
+
+  const handleAdd = () => {
+    if (isOutOfStock || actionsLocked) return;
+    onAdd();
+  };
+
+  const handleIncrement = () => {
+    if (isOutOfStock || actionsLocked) return;
+    if (maxQuantity != null && cartQty >= maxQuantity) return;
+    onIncrement();
+  };
+
+  const handleDecrement = () => {
+    if (isOutOfStock || actionsLocked) return;
+    onDecrement();
+  };
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { width: cardWidth, height: cardHeight },
+        isGrid ? styles.cardGrid : styles.cardHorizontal,
+        {
+          width: cardWidth,
+          height: cardHeight,
+        },
         pressed && styles.cardPressed,
       ]}
     >
       <View style={[styles.imageZone, { height: imageHeight }]}>
-        {item?.image_url ? (
+        {productImageUri ? (
           <Image
-            source={{ uri: item.image_url }}
-            style={styles.productImage}
-            resizeMode="contain"
+            source={{ uri: productImageUri }}
+            style={[styles.productImage, isOutOfStock && styles.imageDimmed]}
+            resizeMode="cover"
           />
         ) : (
           <View style={styles.imagePlaceholder}>
@@ -83,11 +124,15 @@ const ProductCard: React.FC<Props> = ({
           </View>
         )}
 
-        {discount > 0 && (
+        {isOutOfStock ? (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockText}>Out of Stock</Text>
+          </View>
+        ) : discount > 0 ? (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discount}% OFF</Text>
           </View>
-        )}
+        ) : null}
 
         {showWishlist && onWishlist && !actionsLocked && (
           <WishlistButton
@@ -98,20 +143,22 @@ const ProductCard: React.FC<Props> = ({
 
         <View style={styles.addOverlay} pointerEvents="box-none">
           <BlinkitAddButton
-            quantity={cartQty}
+            quantity={isOutOfStock ? 0 : cartQty}
             isAdding={isAdding}
             locked={actionsLocked}
+            outOfStock={isOutOfStock}
+            maxQuantity={maxQuantity}
             compact
-            onAdd={onAdd}
-            onIncrement={onIncrement}
-            onDecrement={onDecrement}
+            onAdd={handleAdd}
+            onIncrement={handleIncrement}
+            onDecrement={handleDecrement}
           />
         </View>
       </View>
 
       <View style={styles.infoZone}>
         <Text numberOfLines={2} style={styles.title}>
-          {item.product_name || 'Product'}
+          {item.product_name || item.name || 'Product'}
         </Text>
 
         <Text numberOfLines={1} style={styles.subtitle}>
@@ -121,9 +168,9 @@ const ProductCard: React.FC<Props> = ({
         <View style={styles.bottomRow}>
           <View style={styles.priceBlock}>
             <Text style={styles.price}>
-              ₹{Math.floor(Number(item?.selling_price || 0))}
+              ₹{Math.floor(Number(item?.selling_price || item?.price || 0))}
             </Text>
-            {item?.mrp > item?.selling_price && (
+            {Number(item?.mrp) > Number(item?.selling_price || 0) && (
               <Text style={styles.oldPrice}>₹{item.mrp}</Text>
             )}
           </View>
@@ -144,7 +191,16 @@ const styles = StyleSheet.create({
   card: {
     ...CARD_SURFACE,
     borderRadius: 14,
-    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  /** Spacing handled by parent FlatList / cardWrap */
+  cardGrid: {
+    marginRight: 0,
+    marginBottom: 0,
+  },
+  cardHorizontal: {
+    marginRight: 10,
+    marginBottom: 0,
   },
   cardPressed: {
     opacity: 0.96,
@@ -157,11 +213,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
-    padding: 8,
   },
   productImage: {
     width: '100%',
     height: '100%',
+  },
+  imageDimmed: {
+    opacity: 0.55,
   },
   imagePlaceholder: {
     flex: 1,
@@ -184,6 +242,21 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  outOfStockBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderBottomRightRadius: 10,
+    zIndex: 5,
+  },
+  outOfStockText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   addOverlay: {
     position: 'absolute',
     bottom: 8,
@@ -200,7 +273,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 12,
     lineHeight: 16,
-    height: 32,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
   },
@@ -221,6 +293,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
+    flexShrink: 1,
   },
   price: {
     fontSize: 14,

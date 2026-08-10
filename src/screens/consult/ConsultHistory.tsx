@@ -1,19 +1,16 @@
 import React, {
     useCallback,
     useEffect,
+    useMemo,
     useState,
 } from 'react';
 
 import {
     View,
-    Text,
     StyleSheet,
-    TouchableOpacity,
     FlatList,
     StatusBar,
-    Dimensions,
-    PixelRatio,
-    ListRenderItem,
+    RefreshControl,
 } from 'react-native';
 
 import {
@@ -24,56 +21,24 @@ import {
     useNavigation,
 } from '@react-navigation/native';
 
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import AppointmentCard, { Appointment } from '../../components/AppointmnetCard';
+import SegmentTabs from '../../components/SegmentTabs';
 
 import {
     getConsultHistory,
 } from '../../services/ConsultServce';
 import EmptyState from '../../components/EmptyState';
 import { AppointmentSkeletonList } from '../../simmerScreen/ShimmerHook';
-
-
-// ─────────────────────────────────────────────
-// Responsive Helpers
-// ─────────────────────────────────────────────
-
-const { width: SCREEN_W } =
-    Dimensions.get('window');
-
-const scale = (size: number) =>
-    (SCREEN_W / 375) * size;
-
-const fs = (
-    size: number,
-    min = size - 2,
-    max = size + 4,
-) =>
-    Math.min(
-        max,
-        Math.max(
-            min,
-            PixelRatio.roundToNearestPixel(
-                scale(size),
-            ),
-        ),
-    );
-
-
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
-
-type AppointmentStatus =
-    | 'COMPLETED'
-    | 'CANCELLED'
-    | 'UPCOMING';
-
-
+import {
+  buildAppointmentDetailsParams,
+  resolveAppointmentLookupId,
+} from '../../utils/appointmentUtils';
+import { useDebounce } from '../../hooks/useDebaunce';
+import { getScreenPaddingH, SPACING } from '../../constants/responsive';
 
 type ActionKey =
     | 'view_receipt'
@@ -82,183 +47,76 @@ type ActionKey =
     | 'reschedule';
 
 const TABS = [
-    'All',
-    'Last 30 Days',
-    'Last 6 Months',
+    { key: 'All', label: 'All' },
+    { key: 'Last 30 Days', label: 'Last 30 Days' },
+    { key: 'Last 90 Days', label: 'Last 90 Days' },
 ] as const;
 
-type Tab =
-    (typeof TABS)[number];
+type Tab = (typeof TABS)[number]['key'];
 
-
-// ─────────────────────────────────────────────
-// Utils
-// ─────────────────────────────────────────────
-
-const getPayload = (
-    tab: Tab,
-) => {
-
+const getPayload = (tab: Tab) => {
     const payloadMap = {
-
-        All: {
-            period: 'all',
-        },
-
-        'Last 30 Days': {
-            period: 'last_30_days',
-        },
-
-        'Last 6 Months': {
-            period: 'last_6_months',
-        },
-
+        All: { period: 'all' },
+        'Last 30 Days': { period: 'last_30_days' },
+        'Last 90 Days': { period: 'last_90_days' },
     };
-
     return payloadMap[tab];
 };
 
+const ConsultHistory = (props: any) => {
+    const navigation = useNavigation<any>();
+    const [searchText, setSearchText] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
+    const debouncedSearch = useDebounce(searchText, 400);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<Tab>('All');
+    const [history, setHistory] = useState([]);
 
-// ─────────────────────────────────────────────
-// Screen
-// ─────────────────────────────────────────────
+    const fetchConsultHistory = useCallback(async (payload: object, isRefresh = false) => {
+        try {
+            if (!isRefresh) {
+                setLoading(true);
+            }
+            const response = await getConsultHistory(payload);
+            setHistory(response?.data?.results || []);
+        } catch (error) {
+            console.log('CONSULT HISTORY ERROR => ', error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
 
-const ConsultHistory = (
-    props: any,
-) => {
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchConsultHistory(getPayload(activeTab), true);
+    }, [activeTab, fetchConsultHistory]);
 
-    const navigation =
-        useNavigation<any>();
-    const [searchText, setSearchText] =
-        useState('');
-    const [loading, setLoading] =
-        useState(false);
+    const filteredHistory = useMemo(() => {
+        const keyword = debouncedSearch.trim().toLowerCase();
+        if (!keyword) return history || [];
 
-    const [activeTab, setActiveTab] =
-        useState<Tab>('All');
-
-    const [history, setHistory] =
-        useState([]);
-
-
-    // ─────────────────────────────────────────
-    // API
-    // ─────────────────────────────────────────
-
-
-
-    const fetchConsultHistory =
-        useCallback(
-            async (
-                payload: object,
-            ) => {
-
-                try {
-
-                    setLoading(true);
-
-                    const response =
-                        await getConsultHistory(
-                            payload,
-                        );
-
-                    console.log(
-                        'CONSULTHISTORY => ',
-                        response,
-                    );
-
-                    setHistory(
-                        response?.data?.results ||
-                        [],
-                    );
-
-                } catch (error) {
-
-                    console.log(
-                        'CONSULT HISTORY ERROR => ',
-                        error,
-                    );
-
-                } finally {
-
-                    setLoading(false);
-                }
-            },
-
-            [],
-        );
-
-
-    const filteredHistory =
-        history?.filter(
-            (item: any) => {
-
-                const doctorName =
-                    item?.doctor?.doctor_name
-                        ?.toLowerCase?.() || '';
-
-                return doctorName.includes(
-                    searchText.toLowerCase(),
-                );
-            },
-        ) || [];
-
-
-    // ─────────────────────────────────────────
-    // Effects
-    // ─────────────────────────────────────────
+        return (history || []).filter((item: any) => {
+            const doctorName = item?.doctor?.doctor_name?.toLowerCase?.() || '';
+            const concern = item?.concern?.toLowerCase?.() || '';
+            return doctorName.includes(keyword) || concern.includes(keyword);
+        });
+    }, [history, debouncedSearch]);
 
     useEffect(() => {
+        fetchConsultHistory(getPayload(activeTab));
+    }, [activeTab, fetchConsultHistory]);
 
-        const payload =
-            getPayload(
-                activeTab,
-            );
-
-        fetchConsultHistory(
-            payload,
-        );
-
-    }, [
-        activeTab,
-    ]);
-
-
-    // ─────────────────────────────────────────
-    // Handlers
-    // ─────────────────────────────────────────
-
-    const handleTabPress = (
-        tab: Tab,
-    ) => {
-
-        setActiveTab(tab);
-    };
-
-
-    const handleAction = (
-        actionKey: ActionKey,
-        item: Appointment,
-    ) => {
-        console.log("itemhistory", item);
+    const handleAction = (actionKey: ActionKey, item: Appointment) => {
         switch (actionKey) {
-
             case 'view_receipt':
-
-                navigation.navigate(
-                    'MedicalReceipt',
-                    {
-                        consultationId:
-                            item.consultation_id,
-                    },
-                );
-
+                navigation.navigate('MedicalReceipt', {
+                    consultationId: item.consultation_id,
+                });
                 break;
-
             case 'book_again':
-
-                navigation.navigate(
-                    'DoctorSlot', {
+                navigation.navigate('DoctorSlot', {
                     doctorDetails: {
                         ...item.doctor,
                         id: item.doctor?.doctor_id,
@@ -269,260 +127,102 @@ const ConsultHistory = (
                         designation: (item.doctor as any)?.qualification,
                     },
                 });
-
                 break;
-
             case 'view_details':
-
                 navigation.navigate(
                     'AppointmentDetails',
-                    {
-                        consultation_id:
-                            item.consultation_id,
-                    },
+                    buildAppointmentDetailsParams(item),
                 );
-
                 break;
-
             case 'reschedule':
-
-                navigation.navigate(
-                    'Reschedule',
-                    {
-                        appointmentId:
-                            item.consultation_id,
+                navigation.navigate('DoctorSlot', {
+                    doctorDetails: {
+                        ...item.doctor,
+                        id: item.doctor?.doctor_id,
+                        full_name: item.doctor?.doctor_name,
+                        profile_image: item.doctor?.doctor_image,
+                        designation: (item.doctor as any)?.qualification,
                     },
-                );
-
+                    appointmentId: resolveAppointmentLookupId(item),
+                });
                 break;
         }
     };
 
-
-    // ─────────────────────────────────────────
-    // Render Item
-    // ─────────────────────────────────────────
-
-    const renderItem = ({
-        item,
-    }: {
-        item: Appointment;
-    }) => (
-
-        <AppointmentCard
-            item={item}
-            onAction={handleAction}
-            style={styles.cardStyle}
-        />
+    const renderItem = ({ item }: { item: Appointment }) => (
+        <AppointmentCard item={item}  navigation={navigation} onAction={handleAction} />
     );
-    // ─────────────────────────────────────────
-    // UI
-    // ─────────────────────────────────────────
 
     return (
-
-        <SafeAreaView
-            style={
-                styles.container
-            }
-        >
-
-            <StatusBar
-                barStyle="dark-content"
-                backgroundColor={
-                    Colors.background
-                }
-            />
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
             <Header
                 title="Consultation History"
                 subtitle="Track your medical journey"
-                onBack={() =>
-                    props.navigation.goBack()
-                }
+                onBack={() => props.navigation.goBack()}
+                onSearchPress={() => setSearchExpanded(true)}
+                onRefreshPress={onRefresh}
             />
 
-            <SearchBar
+            <ExpandableSearch
                 placeholder="Search doctors..."
                 value={searchText}
                 onChangeText={setSearchText}
+                showTrigger={false}
+                expanded={searchExpanded}
+                onExpandedChange={setSearchExpanded}
             />
 
-
-            {/* Tabs */}
-
-            <View style={styles.tabs}>
-
-                {TABS.map(
-                    (
-                        tab,
-                        index,
-                    ) => (
-
-                        <TouchableOpacity
-                            key={tab}
-                            activeOpacity={
-                                0.75
-                            }
-                            onPress={() =>
-                                handleTabPress(
-                                    tab,
-                                )
-                            }
-                            style={[
-                                styles.tabBtn,
-
-                                activeTab ===
-                                tab &&
-                                styles.activeTab,
-
-                                index <
-                                TABS.length -
-                                1 &&
-                                styles.tabBtnGap,
-                            ]}
-                        >
-
-                            <Text
-                                style={[
-                                    styles.tabText,
-
-                                    activeTab ===
-                                    tab &&
-                                    styles.activeTabText,
-                                ]}
-                            >
-                                {tab}
-                            </Text>
-
-                        </TouchableOpacity>
-                    ),
-                )}
-            </View>
-
-
-            {/* List */}
-
+            <SegmentTabs
+                tabs={[...TABS]}
+                activeKey={activeTab}
+                onChange={key => setActiveTab(key as Tab)}
+                variant="pill"
+            />
 
             {loading ? (
                 <AppointmentSkeletonList />
             ) : filteredHistory?.length === 0 ? (
                 <EmptyState
-                    title={
-                        history?.length === 0
-                            ? "No Appointments Yet"
-                            : "Appointment Not Found"
-                    }
+                    title={history?.length === 0 ? 'No Appointments Yet' : 'Appointment Not Found'}
                     subtitle={
                         history?.length === 0
-                            ? "Your consultations will appear here."
-                            : "Try another doctor name."
+                            ? 'Your consultations will appear here.'
+                            : 'Try another doctor name.'
                     }
                 />
             ) : (
                 <FlatList
                     data={filteredHistory}
                     renderItem={renderItem}
-                    keyExtractor={(item) => item.consultation_id}
+                    keyExtractor={item => item.consultation_id}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[Colors.primaryColor]}
+                            tintColor={Colors.primaryColor}
+                        />
+                    }
                 />
             )}
-
         </SafeAreaView>
     );
 };
 
 export default ConsultHistory;
 
-
-// ─────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-
     container: {
         flex: 1,
-        backgroundColor:
-            Colors.background,
-        paddingHorizontal:
-            scale(16),
+        backgroundColor: Colors.background,
+        paddingHorizontal: getScreenPaddingH(),
     },
-
-
-    // Tabs
-
-    tabs: {
-        flexDirection: 'row',
-        marginTop: scale(8),
-        marginBottom:
-            scale(12),
-    },
-
-    tabBtn: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent:
-            'center',
-
-        paddingVertical:
-            scale(10),
-
-        paddingHorizontal:
-            scale(6),
-
-        borderRadius:
-            scale(10),
-
-        borderWidth: 1,
-
-        borderColor:
-            Colors.borderColor,
-
-        backgroundColor:
-            '#FFFFFF',
-    },
-
-    tabBtnGap: {
-        marginRight:
-            scale(6),
-    },
-
-    activeTab: {
-        backgroundColor:
-            '#065F46',
-
-        borderColor:
-            '#065F46',
-    },
-
-    tabText: {
-        fontSize: fs(
-            12,
-            10,
-            14,
-        ),
-
-        color: '#334155',
-
-        fontFamily:
-            Fonts.PoppinsMedium,
-    },
-
-    activeTabText: {
-        color: '#FFFFFF',
-    },
-
-
-    // List
-
     listContent: {
-        gap: scale(12),
-        paddingBottom:
-            scale(24),
-    },
-    cardStyle: {
-        marginBottom: 12,
+        gap: SPACING.md,
+        paddingBottom: SPACING.xxl,
     },
 });

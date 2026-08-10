@@ -22,15 +22,20 @@ const AppInputField = ({
   options = [],
   onSelect,
   onChangeText,
+   disabled = false,
   containerStyle,
 }: any) => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const isDropdownField = options.length > 0;
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  console.log("value", value);
 
   const isDateField =
-    label?.toLowerCase() === 'date of birth' ||
-    label?.toLowerCase() === 'valid thru';
+    label?.toLowerCase().includes('date of birth') ||
+    label?.toLowerCase().includes('valid thru');
+  // const isDateField =
+  //   label?.toLowerCase() === 'date of birth' ||
+  //   label?.toLowerCase() === 'valid thru';
 
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
@@ -45,20 +50,27 @@ const AppInputField = ({
   };
 
   const handlePress = () => {
-    if (isDateField) {
-      setDatePickerVisibility(true);
-      return;
-    }
-    if (isDropdownField) {
-      setDropdownVisible(true);
-    }
+     if (disabled) return;
+
+  if (isDateField) {
+    setDatePickerVisibility(true);
+    return;
+  }
+
+  if (isDropdownField) {
+    setDropdownVisible(true);
+  }
+
+
+
+   
   };
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
+      <TouchableOpacity   activeOpacity={disabled ? 2 : 0.7} onPress={handlePress}>
         <View style={styles.inputContainer}>
           {leftIconName && (
             <TablerIcon
@@ -151,7 +163,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
+
     color: Colors.textColor,
     paddingVertical: 0,
   },

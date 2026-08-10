@@ -1,89 +1,135 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   FlatList,
   StatusBar,
   View,
   Text,
   StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import SearchBar from '../../components/SearchBar';
 import PromoCard from '../../components/PromoCard';
-import ProductCard, { GRID_CARD_WIDTH } from '../../components/ProductCard';
+import ProductCard from '../../components/ProductCard';
 import SectionHeader from '../../components/SectionHeader';
+import Detailimages from '../../components/Detailimages';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
+import { ProductGridSkeleton, ProductsScreenSkeleton, CategoryRowSkeleton } from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
-import { getScreenBottomPadding } from '../../constants/layout';
+import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addToCart, fetchCart } from '../../store/slices/cartSlice';
-import { updateProductItem } from '../../store/slices/homeSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
+import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
+import { Images } from '../../common/Images';
+import { safeGoBack } from '../../navigation/navigationUtils';
+import {
+  navigateToSearchScreen,
+  navigateToCategoryProducts,
+  navigateToProductDetails,
+} from '../../navigation/productNavigation';
+import { useProductCategories } from '../../hooks/useProductCategories';
+import CategoryList from '../../components/CategoryList';
+import {
+  canAddProductQty,
+  isProductOutOfStock,
+} from '../../utils/productStockUtils';
+import { useCategoryProducts } from '../../hooks/useCategoryProducts';
+import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+import { useBanners } from '../../hooks/useBanners';
+
+const H_PAD = 20;
+const GRID_GAP = 10;
+const GRID_CARD_WIDTH =
+  (Dimensions.get('window').width - H_PAD * 2 - GRID_GAP) / 2;
 
 const ProductsScreen = () => {
   const navigation = useNavigation<any>();
-  const stackNav = navigation.getParent?.() || navigation;
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
-  const { productData, setProductData, loadingProducts } = useHomeData();
+  const { categories: dashboardCategories, loading: homeLoading } = useHomeData();
+  const { images: bannerImages } = useBanners('product');
+  const screenWidth = Dimensions.get('window').width;
+
+  const productsCategoryId = useMemo(
+    () => getServiceCategoryId(dashboardCategories, 'products'),
+    [dashboardCategories],
+  );
+
+  const productFilter = useMemo(
+    () =>
+      productsCategoryId
+        ? { service_category_id: productsCategoryId }
+        : {},
+    [productsCategoryId],
+  );
+
+  const {
+    products,
+    setProducts,
+    loading,
+    loadingMore,
+    refreshing,
+    refresh,
+    loadMore,
+  } = useCategoryProducts(productFilter, [], {
+    // Full catalog when service id missing; otherwise filter by products service
+    enabled: Boolean(productsCategoryId) || !homeLoading,
+  });
+
+  const { categories: productCategories, loading: categoriesLoading } =
+    useProductCategories(null);
   const { onScroll } = useScrollHide();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
-  const { isGuest } = useAuth();
+
+  const handleSearchPress = useCallback(() => {
+    navigateToSearchScreen(navigation);
+  }, [navigation]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
       const variantId = String(item?.variant_id);
       if (!variantId) return;
-      const result = await dispatch(addToCart({ variantId, quantity: newQty }));
-      if (addToCart.fulfilled.match(result)) {
-        showSuccessToast(result.payload.message || 'Cart updated', 'success');
-        dispatch(fetchCart(true));
-        setProductData(prev =>
-          prev.map(p =>
-            String(p.variant_id) === variantId ? { ...p, quantity: newQty } : p,
-          ),
+
+      if (newQty > 0 && isProductOutOfStock(item)) {
+        showSuccessToast('This product is out of stock', 'error');
+        return;
+      }
+      if (!canAddProductQty(item, newQty)) {
+        showSuccessToast('Not enough stock available', 'error');
+        return;
+      }
+
+      const result = await dispatch(
+        syncCartQuantity({ variantId, quantity: newQty }),
+      );
+      if (syncCartQuantity.rejected.match(result)) {
+        showSuccessToast(
+          (result.payload as string) || 'Failed to update cart',
+          'error',
         );
-        dispatch(updateProductItem({ variantId, updates: { quantity: newQty } }));
       }
     },
-    [dispatch, setProductData],
+    [dispatch],
   );
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const old = item?.is_wishlist_item;
-      setProductData(prev =>
-        prev.map(p =>
-          p.variant_id === item.variant_id
-            ? { ...p, is_wishlist_item: !old }
-            : p,
-        ),
-      );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        setProductData(prev =>
-          prev.map(p =>
-            p.variant_id === item.variant_id
-              ? { ...p, is_wishlist_item: old }
-              : p,
-          ),
-        );
-      }
-    },
-    [setProductData],
-  );
+  useWishlistSync(setProducts);
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -94,11 +140,11 @@ const ProductsScreen = () => {
           <ProductCard
             item={item}
             variant="grid"
+            gridWidth={GRID_CARD_WIDTH}
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
-            actionsLocked={isGuest}
             onPress={() =>
-              stackNav.navigate('ProductDetails', { varientID: item.variant_id })
+              navigateToProductDetails(navigation, item.variant_id)
             }
             onAdd={() => handleCartUpdate(item, cartQty + 1)}
             onIncrement={() => handleCartUpdate(item, cartQty + 1)}
@@ -111,56 +157,118 @@ const ProductsScreen = () => {
     [
       variantQuantities,
       addingVariantId,
-      stackNav,
+      navigation,
       handleCartUpdate,
       handleWishlist,
-      isGuest,
     ],
   );
 
-  const ListHeader = () => (
-    <View style={styles.headerContent}>
-      <SearchBar placeholder="Search seeds, oils, supplements..." />
-      <PromoCard
-        title="Up to 40% OFF on Supplements"
-        desc="Keep your immunity strong this season."
-        tag="SUMMER SALE"
-        buttontext="Shop Now"
-        showButton
-        onPress={() => {}}
-      />
-      <SectionHeader title="Top Selling Products" actionText="View all" />
-    </View>
+  const ListHeader = useCallback(
+    () => (
+      <View style={styles.headerContent}>
+        {bannerImages.length > 0 ? (
+          <View style={styles.bannerWrap}>
+            <Detailimages
+              images={bannerImages}
+              itemWidth={screenWidth - SCREEN_PADDING_H * 2}
+              DynamicResize="cover"
+              autoSlide
+              embedded
+              mode="banner"
+              enablePreview={false}
+            />
+          </View>
+        ) : (
+          <PromoCard
+            title="Up to 40% OFF on Supplements"
+            desc="Keep your immunity strong this season."
+            tag="SUMMER SALE"
+            buttontext="Shop Now"
+            showButton
+            onPress={() => {}}
+          />
+        )}
+
+        <SectionHeader
+          title="Shop by Category"
+          actionText={productCategories.length > 0 ? 'View all' : ''}
+          onPress={() =>
+            navigateToCategoryProducts(navigation, { categoryMode: 'product' })
+          }
+        />
+        {categoriesLoading && productCategories.length === 0 ? (
+          <CategoryRowSkeleton />
+        ) : productCategories.length > 0 ? (
+          <CategoryList
+            data={productCategories}
+            navigation={navigation}
+            mode="product"
+          />
+        ) : null}
+
+        <SectionHeader title="All Products" actionText="" />
+      </View>
+    ),
+    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth],
   );
 
+  const showInitialSkeleton = loading && products.length === 0;
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
         title="Products"
+        backIcon={Images.backIcon}
+        onBack={() => safeGoBack(navigation)}
         subtitle="Choose best product"
+        onSearchPress={handleSearchPress}
       />
 
-      {loadingProducts && productData.length === 0 ? (
+      {showInitialSkeleton ? (
         <View style={styles.skeletonWrap}>
-          <TopSellingListSkeleton />
+          <ProductsScreenSkeleton />
         </View>
       ) : (
         <FlatList
-          data={productData}
+          data={products}
           keyExtractor={(item, i) => String(item.variant_id || i)}
           numColumns={2}
           renderItem={renderItem}
           ListHeaderComponent={ListHeader}
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomPadding },
+          ]}
           columnWrapperStyle={styles.columnWrap}
           showsVerticalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              colors={[Colors.primaryColor]}
+              tintColor={Colors.primaryColor}
+            />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.35}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={7}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerLoader}>
+                <ProductGridSkeleton
+                  cardWidth={GRID_CARD_WIDTH}
+                  gap={10}
+                  count={2}
+                />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <Text style={styles.emptyText}>No products available</Text>
           }
@@ -176,23 +284,23 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FDFDFB',
+    paddingHorizontal: H_PAD,
   },
-  headerContent: {
-    paddingHorizontal: 20,
+  headerContent: {},
+  bannerWrap: {
+    marginBottom: 8,
   },
-  listContent: {
-    paddingHorizontal: 14,
-  },
+  listContent: {},
   columnWrap: {
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
+    gap: GRID_GAP,
   },
   cardWrap: {
     width: GRID_CARD_WIDTH,
-    marginBottom: 4,
+    marginBottom: GRID_GAP,
   },
   skeletonWrap: {
-    paddingHorizontal: 20,
+    flex: 1,
   },
   emptyText: {
     textAlign: 'center',
@@ -200,5 +308,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  footerLoader: {
+    paddingVertical: 8,
   },
 });

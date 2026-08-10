@@ -117,40 +117,29 @@ const BasicInfoSection = ({
   }, [questions]);
 
   const heightQuestion = useMemo(() => {
-
     return questions.find((item: any) =>
-      item?.question
-        ?.toLowerCase()
-        ?.includes('height'),
+      item?.question?.toLowerCase()?.includes('height'),
     );
-
   }, [questions]);
 
+  if (!ageQuestion || !genderQuestion || !heightQuestion) {
+    return null;
+  }
 
-
-  /* ===================================================== */
+  const ageId = String(ageQuestion.id);
+  const genderId = String(genderQuestion.id);
+  const heightId = String(heightQuestion.id);
 
   return (
     <View style={styles.basicInfoWrapper}>
 
-      {/* ================= AGE ================= */}
-
       <InputCard
-        label="Age"
+        label="Age *"
         placeholder="Enter your age"
-        value={
-          selectedAnswers?.[
-          ageQuestion?.id
-          ] || ''
-        }
-        onChangeText={(text: any) => {
-          onChange(ageQuestion.id, text);
-        }}
+        value={selectedAnswers?.[ageId] || ''}
+        onChangeText={(text: any) => onChange(ageId, text)}
         unit="Years"
-        icon={
-          require('../../assets/images/SVG.png')
-
-        }
+        icon={require('../../assets/images/SVG.png')}
       />
 
       {/* ================= GENDER ================= */}
@@ -194,21 +183,13 @@ const BasicInfoSection = ({
             genderQuestion?.choices?.map(
               (item: any) => {
 
-                const active =
-                  selectedAnswers?.[
-                  genderQuestion?.id
-                  ] === item?.index;
+                const active = selectedAnswers?.[genderId] === item?.index;
 
                 return (
                   <TouchableOpacity
                     key={item?.index}
                     activeOpacity={0.8}
-                    onPress={() => {
-                      onChange(
-                        genderQuestion.id,
-                        item.index,
-                      );
-                    }}
+                    onPress={() => onChange(genderId, item.index)}
                     style={[
                       styles.genderBtn,
 
@@ -240,46 +221,19 @@ const BasicInfoSection = ({
       <InputCard
         label="Height *"
         placeholder="Enter height"
-        value={
-          selectedAnswers?.[
-          `${heightQuestion?.id}_height`
-          ] || ''
-        }
-        onChangeText={(text: string) => {
-
-          onChange(
-            `${heightQuestion.id}_height`,
-            text,
-          );
-        }}
+        value={selectedAnswers?.[`${heightId}_height`] || ''}
+        onChangeText={(text: string) => onChange(`${heightId}_height`, text)}
         unit="cm"
-        // icon={
-        //   heightQuestion?.image_path ||
-        //   'resize-outline'
-        // }
         icon={require('../../assets/images/SVG2.png')}
       />
-
-      {/* ================= WEIGHT ================= */}
 
       <InputCard
         label="Weight *"
         placeholder="Enter weight"
-        value={
-          selectedAnswers?.[
-          `${heightQuestion?.id}_weight`
-          ] || ''
-        }
-        onChangeText={(text: string) => {
-
-          onChange(
-            `${heightQuestion.id}_weight`,
-            text,
-          );
-        }}
+        value={selectedAnswers?.[`${heightId}_weight`] || ''}
+        onChangeText={(text: string) => onChange(`${heightId}_weight`, text)}
         unit="kg"
         icon={require('../../assets/images/SVG3.png')}
-      // icon={heightQuestion?.image_path || "barbell-outline"}
       />
     </View>
   );

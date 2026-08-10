@@ -1,8 +1,6 @@
 import React, {
     useCallback,
-    useEffect,
     useMemo,
-    useRef,
     useState,
 } from 'react';
 
@@ -16,6 +14,7 @@ import {
     StatusBar,
     ActivityIndicator,
     Modal,
+    RefreshControl,
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -32,7 +31,7 @@ import { Images } from '../../common/Images';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
-import SearchBar from '../../components/SearchBar';
+import { ExpandableSearch } from '../../components/SearchBar';
 import { generateDates, formatDate, AVAILABILITY_OPTIONS, EXPERIENCE_OPTIONS } from '../../common/DataInterface';
 import { useAllDoctors, useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
@@ -53,18 +52,27 @@ type SelectedFilters = {
 const AllDoctors = (props: any) => {
     const insets = useSafeAreaInsets();
     const all = props?.route?.params?.all ?? false;
+    const initialSpecialization =
+        props?.route?.params?.specialization != null &&
+        String(props.route.params.specialization).trim() !== ''
+            ? String(props.route.params.specialization)
+            : null;
+    const initialHealthCategoryId =
+        props?.route?.params?.health_category_id != null &&
+        String(props.route.params.health_category_id).trim() !== ''
+            ? String(props.route.params.health_category_id)
+            : null;
+    const initialHealthDiseaseId =
+        props?.route?.params?.health_disease_id != null &&
+        String(props.route.params.health_disease_id).trim() !== ''
+            ? String(props.route.params.health_disease_id)
+            : null;
 
-
-    const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<string | null>(null);
-
-    useEffect(() => {
-        console.log("PARENT ACTIVE TAB CHANGED =>", activeTab);
-    }, [activeTab]);
 
     const [selectedFilters, setSelectedFilters] =
         useState<SelectedFilters>({
-            specialization: null,
+            specialization: initialSpecialization,
             date_range: '',
             from_date: '',
             to_date: '',
@@ -76,39 +84,38 @@ const AllDoctors = (props: any) => {
     const [tempToDate, setTempToDate] = useState<Date | null>(null);
     const [calendarStep, setCalendarStep] = useState<'from' | 'to'>('from');
     const [selectedDateLabel, setSelectedDateLabel] = useState('');
+    const [searchText, setSearchText] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
 
     const { categories } = useConsultData();
 
-    const apiFilters = useMemo(() => ({
-        specialization: selectedFilters.specialization || '',
-        experience: selectedFilters.experience || '',
-        from_date: selectedFilters.from_date || '',
-        to_date: selectedFilters.to_date || '',
-    }), [selectedFilters]);
+    const debouncedSearch = useDebounce(searchText, 400);
 
-    const debouncedFilters = useDebounce(apiFilters, 500);
+    const apiFilters = useMemo(
+        () => ({
+            specialization: selectedFilters.specialization || undefined,
+            experience: selectedFilters.experience || undefined,
+            from_date: selectedFilters.from_date || undefined,
+            to_date: selectedFilters.to_date || undefined,
+            search: debouncedSearch.trim() || undefined,
+            health_category_id: initialHealthCategoryId || undefined,
+            health_disease_id: initialHealthDiseaseId || undefined,
+        }),
+        [
+            selectedFilters.specialization,
+            selectedFilters.experience,
+            selectedFilters.from_date,
+            selectedFilters.to_date,
+            debouncedSearch,
+            initialHealthCategoryId,
+            initialHealthDiseaseId,
+        ],
+    );
 
-    const {
-        loading,
-        doctorData,
-    } = useAllDoctors(debouncedFilters);
-
-    console.log('doctorDatadoctorData', doctorData)
+    const { loading, doctorData, refresh, refreshing } = useAllDoctors(apiFilters);
     const handleTabPress = (tab: string | null) => {
-        console.log("CLICKED =>", tab);
-
-        setActiveTab(prev => {
-            const next = prev === tab ? null : tab;
-
-            console.log("PREV =>", prev);
-            console.log("NEXT =>", next);
-
-            return next;
-        });
+        setActiveTab(prev => (prev === tab ? null : tab));
     };
-
-
-    console.log("RENDER activeTab =>", activeTab);
     const FILTER_OPTIONS = useMemo(() => ({
         speciality: categories.map((c: any) => ({
             label: c.name,
@@ -263,6 +270,7 @@ const AllDoctors = (props: any) => {
                     onPress={() =>
                         handleDoctorPress(item)
                     }
+                // refrsh={props?.route?.params?.refrsh}
                 />
 
             ),
@@ -287,23 +295,26 @@ const AllDoctors = (props: any) => {
                     }
                 />
 
-                <AppHeader
-                    title="All Doctors"
-                    onLeftPress={() =>
-                        props.navigation.goBack()
-                    }
-                    rightIconName="bell"
-                />
-
-                <View style={{ flex: 1, paddingHorizontal: 20 }}>
-                    <SearchBar
-                        placeholder="Search doctors..."
-                        value={search}
-                        onChangeText={
-                            setSearch
+                <View style={styles.headerWrap}>
+                    <AppHeader
+                        title="All Doctors"
+                        leftIconName='arrow-left'
+                        onLeftPress={() =>
+                            props.navigation.goBack()
                         }
+                        onSearchPress={() => setSearchExpanded(true)}
+                        // onRefreshPress={refresh}
+                    />
+                </View>
 
-
+                <View style={styles.body}>
+                    <ExpandableSearch
+                        placeholder="Search doctors..."
+                        value={searchText}
+                        onChangeText={setSearchText}
+                        showTrigger={false}
+                        expanded={searchExpanded}
+                        onExpandedChange={setSearchExpanded}
                     />
 
                     <FilterTabs
@@ -341,7 +352,14 @@ const AllDoctors = (props: any) => {
                                 styles.listContent,
                                 { paddingBottom: insets.bottom + 24 },
                             ]}
-
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={refresh}
+                                    colors={[Colors.primaryColor]}
+                                    tintColor={Colors.primaryColor}
+                                />
+                            }
 
                             renderItem={renderDoctorItem}
 
@@ -460,6 +478,16 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+    },
+
+    body: {
+        flex: 1,
+        marginTop:10,
+        paddingHorizontal: 20,
+    },
+
+    headerWrap: {
+        paddingHorizontal: 20,
     },
 
     listContent: {

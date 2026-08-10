@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -9,173 +9,104 @@ import {
     Image,
     ScrollView,
     ActivityIndicator,
+    Linking,
+    RefreshControl,
 } from 'react-native';
 import TablerIcon from '../../components/TablerIcon';
 import SelectedUploadCard from '../../components/SelectedUploadCard';
 import SearchBar from '../../components/SearchBar';
 import Header from '../../components/Header';
 import { Images } from '../../common/Images';
-import { pick } from '@react-native-documents/picker';
-
+import UploadRecordModal from '../../components/UploadRecordModal';
 import { Fonts } from '../../common/Fonts';
 import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import OrderCard from '../../components/OrderCard';
 import MedicalRecordCard from '../consult/MedicalRecordCard';
 import PreviewModal from '../consult/PreviewModal';
 import { useMedicalRecord, useMedicalUpload, usePatientData } from '../../hooks/usePatientData';
-import { AddMedicalRecord, deleteMedicalRecord } from '../../services/PatientServices';
+import { deleteMedicalRecord } from '../../services/PatientServices';
+import { useDebounce } from '../../hooks/useDebaunce';
+import { matchesSearch } from '../../utils/searchUtils';
 
-// ✅ Tab-wise alag DATA
-const ALL_DATA = [
-    {
-        id: '1',
-        title: 'General Prescription',
-        subtitle: 'Dr. Emily Stone • 12 Oct 2023',
-        iconName: 'file-medical',
-        type: 'Prescriptions',
-    },
-    {
-        id: '2',
-        title: 'Blood Test Report',
-        subtitle: 'City Lab Center • 05 Oct 2023',
-        iconName: 'file-medical',
-        type: 'Lab Reports',
-    },
-    {
-        id: '3',
-        title: 'Covid Vaccination',
-        subtitle: 'Apollo Hospital • 20 Sep 2023',
-        iconName: 'file-medical',
-        type: 'Prescriptions',
-    },
-];
 
 const MedicalRecords = (props: any) => {
     const [activeTab, setActiveTab] = useState('All Records');
+    const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebounce(searchText, 400);
 
     const {
         patientsRecord,
         fetchPatientsRecord,
+        onRefresh,
+        refreshing,
     } = useMedicalRecord();
 
-    // const {
-    //     selectedFiles,
-    //     uploading,
-    //     selectFile,
-    //     submitFiles,
-    //     removeFile,
-    // } = useMedicalUpload(fetchPatientsRecord,);
-    const [uploading, setUploading] = useState(false);
-    const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+    console.log("patientsRecordpatientsRecord", patientsRecord);
+
+
+
+    const TAB_TYPE_MAP: Record<string, string | null> = {
+        'All Records': null,
+        'Prescriptions': 'prescription',
+        'Lab Reports': 'lab_report',
+    };
 
     const {
         selectFile,
         CameraUpload,
         removeFile,
+        pickedFile,
+        uploading,
+        modalVisible,
+        submitRecord,
+        closeUploadModal,
     } = useMedicalUpload(
         fetchPatientsRecord,
         (recordId) => {
             setSelectedRecords(prev => [...prev, recordId]);
         },
     );
+    console.log("patientsRecordpatientsRecord", patientsRecord);
 
-    console.log("patientsRecordpatientsRecord", patientsRecord)
     const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
-    const [records, setRecords] = useState(patientsRecord);
-    const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-
     const [previewVisible, setPreviewVisible] = useState(false);
     const [previewUrl, setPreviewUrl] = useState('');
-    const formatStatus = (status: string): 'DELIVERED' | 'IN PROGRESS' => {
-        const s = status?.toUpperCase();
 
-        if (s === 'DELIVERED') return 'DELIVERED';
+    // const selectedRecordItems = (patientsRecord || []).filter((item: any) =>
+    //     selectedRecords?.includes(item.id),
+    // );
 
-        return 'IN PROGRESS';
-    };
 
-    const selectedRecordItems = (patientsRecord || []).filter((item: any) =>
+    const filteredRecords = React.useMemo(() => {
+        const targetType = TAB_TYPE_MAP[activeTab];
+        let list = patientsRecord || [];
+
+        if (targetType) {
+            list = list.filter(
+                (item: any) => item?.medical_record_type === targetType,
+            );
+        }
+
+        const q = debouncedSearch.trim();
+        if (!q) return list;
+
+        return list.filter((item: any) =>
+            matchesSearch(
+                q,
+                item?.title,
+                item?.description,
+                item?.medical_record_type,
+                item?.file_name,
+            ),
+        );
+    }, [patientsRecord, activeTab, debouncedSearch]);
+
+
+    const selectedRecordItems = (filteredRecords || []).filter((item: any) =>
         selectedRecords?.includes(item.id),
     );
-    const filteredData =
-        activeTab === 'All Records'
-            ? records
-            : records.filter(
-                item => item.medical_record_type === activeTab,
-            );
-
-    const renderAllItem = ({ item }: any) => (
-        <TouchableOpacity style={styles.card}>
-            <View
-                style={[
-                    styles.iconContainer,
-                    { backgroundColor: '#E8F3F1' },
-                ]}
-            >
-                <Image
-                    source={item.icon}
-                    style={[
-                        styles.icon,
-                        { tintColor: '#1B5E54' },
-                    ]}
-                />
-            </View>
-
-            <View style={{ flex: 1 }}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle}>{item.subtitle}</Text>
-            </View>
-
-            <TablerIcon name="chevron-right" size={20} color={Colors.primaryColor} />
-        </TouchableOpacity>
-    );
-
-    const renderPrescriptionItem = ({ item }: any) => (
-        // <TouchableOpacity style={styles.card}>
-        //     <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
-        //         <Image source={item.icon} style={[styles.icon, { tintColor: '#1B5E54' }]} />
-        //     </View>
-        //     <View style={{ flex: 1 }}>
-        //         <Text style={styles.title}>{item.title}</Text>
-        //         <Text style={styles.subtitle}>{item.subtitle}</Text>
-        //     </View>
-        //     {/* ✅ Prescription badge */}
-        //     <View style={styles.prescriptionBadge}>
-        //         <Text style={styles.prescriptionBadgeText}>Rx</Text>
-        //     </View>
-        //     <Ionicons name="chevron-forward" size={20} color={Colors.primaryColor} />
-        // </TouchableOpacity>
-
-
-        <OrderCard title={item.title}
-            id={item.id}
-            status={formatStatus(item.status)} // ✅ FIX
-            date={'20 Oct 2023'}
-            amount={"2,999.00"} />
-    );
-
-
-    // ✅ Lab Reports ka alag card
-    const renderLabItem = ({ item }: any) => (
-        <TouchableOpacity style={[styles.card, { borderLeftWidth: 4, borderLeftColor: '#0D9488' }]}>
-            <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
-                <Image source={item.icon} style={[styles.icon, { tintColor: '#D97706' }]} />
-            </View>
-            <View style={{ flex: 1 }}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle}>{item.subtitle}</Text>
-            </View>
-            {/* ✅ Lab badge */}
-            <View style={styles.labBadge}>
-                <Text style={styles.labBadgeText}>Lab</Text>
-            </View>
-            <TablerIcon name="chevron-right" size={20} color={Colors.primaryColor} />
-        </TouchableOpacity>
-    );
-
 
     const TabButton = () => {
 
@@ -203,6 +134,7 @@ const MedicalRecords = (props: any) => {
             </View>
         )
     }
+
     const toggleRecord = (id: string) => {
         setSelectedRecords(prev =>
             prev.includes(id)
@@ -230,18 +162,19 @@ const MedicalRecords = (props: any) => {
     const renderItem = ({ item }: any) => (
         <MedicalRecordCard
             item={item}
-            selected={selectedRecords.includes(
+            selected={selectedRecords?.includes(
                 item.id,
             )}
             onSelect={() =>
                 toggleRecord(item.id)
             }
             onPreview={() => {
-                setPreviewUrl(item.uri || item.file_url);
-                setPreviewVisible(true);
+                setPreviewUrl(item?.file_url);
+                // setPreviewVisible(true);
+                Linking.openURL(item?.file_url)
             }}
             onDelete={() =>
-                deleteRecord(item.id)
+                deleteRecord(item?.id)
             }
         />
     );
@@ -252,16 +185,27 @@ const MedicalRecords = (props: any) => {
                 title="Medical Records"
                 subtitle="Manage your health documents"
                 onBack={() => { props.navigation.goBack() }}
+                onRefreshPress={onRefresh}
             />
 
             <SearchBar
-                placeholder="Search for help topics..."
-
-                />
+                placeholder="Search records by title or type..."
+                value={searchText}
+                onChangeText={setSearchText}
+            />
 
             <TabButton />
 
-            <ScrollView>
+            <ScrollView
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[Colors.primaryColor]}
+                        tintColor={Colors.primaryColor}
+                    />
+                }
+            >
 
                 {uploading ? (
                     <View
@@ -306,7 +250,7 @@ const MedicalRecords = (props: any) => {
                             </Text>
                         </TouchableOpacity>
 
-                        {selectedRecordItems?.length > 0 && (
+                        {/* {selectedRecordItems?.length > 0 && (
                             <View style={styles.selectedSection}>
                                 <Text style={styles.selectedLabel}>
                                     Selected ({selectedRecordItems?.length})
@@ -330,24 +274,18 @@ const MedicalRecords = (props: any) => {
                                     ))}
                                 </ScrollView>
                             </View>
-                        )}
+                        )} */}
 
-                        <View style={styles.selectedCountBox}>
-                            <TablerIcon name="file-medical" size={18} color="#065F46" />
-                            <Text style={styles.selectedCountText}>
-                                Selected records: {selectedRecords?.length}
-                            </Text>
-                        </View>
+
                     </>
                 )}
+
                 <SectionHeader title="Recent Documents" />
-
-
 
                 <FlatList
                     // data={patientsRecord}
                     data={[
-                        ...(patientsRecord || []),
+                        ...(filteredRecords || []),
                     ]}
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id}
@@ -407,8 +345,6 @@ const MedicalRecords = (props: any) => {
                         />
                     )} */}
                 </View>
-
-
             </ScrollView>
 
             {previewVisible && (
@@ -423,6 +359,14 @@ const MedicalRecords = (props: any) => {
                     }}
                 />
             )}
+
+            <UploadRecordModal
+                visible={modalVisible}
+                file={pickedFile}
+                uploading={uploading}
+                onClose={closeUploadModal}
+                onSubmit={submitRecord}
+            />
 
 
         </SafeAreaView>
@@ -469,6 +413,7 @@ const styles = StyleSheet.create({
     tabs: {
         flexDirection: 'row',
         marginBottom: 16,
+        marginTop:10,
 
     },
 
@@ -584,6 +529,7 @@ const styles = StyleSheet.create({
         paddingVertical: 28,
         alignItems: 'center',
         marginTop: 16,
+     marginBottom:20,
     },
 
     uploadIcon: {

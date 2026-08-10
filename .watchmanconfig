@@ -9,7 +9,6 @@
     "ios/Pods",
     "ios/DerivedData",
     ".git",
-    ".metro-cache",
     "node_modules",
     "coverage",
     ".idea"

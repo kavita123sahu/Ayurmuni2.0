@@ -20,7 +20,6 @@ import { generateDates } from '../../common/DataInterface';
 import TimeSlot from '../../components/TimeSlot';
 import TablerIcon from '../../components/TablerIcon';
 import { requireAuth } from '../../services/guestAuth';
-import { useAuth } from '../../hooks/useAuth';
 
 
 // ✅ TYPES
@@ -99,7 +98,6 @@ const MentorHeader = memo(() => (
 
 // ✅ MAIN SCREEN
 export default function ConsultMentor({ navigation }: Props) {
-    const { isGuest } = useAuth();
     const [selectedService, setSelectedService] = useState(0);
     const [selectedTime, setSelectedTime] = useState('');
 
@@ -174,7 +172,7 @@ export default function ConsultMentor({ navigation }: Props) {
                 ListFooterComponent={
                     <SafeAreaView edges={['bottom']} style={styles.footer} >
                         <TouchableOpacity
-                            style={[styles.btn, isGuest && styles.btnLocked]}
+                            style={styles.btn}
                             onPress={async () => {
                                 if (!(await requireAuth('Please login to book a mentor session'))) {
                                     return;
@@ -182,9 +180,7 @@ export default function ConsultMentor({ navigation }: Props) {
                                 navigation.navigate('MentorCheckout');
                             }}
                         >
-                            <Text style={styles.btnText}>
-                                {isGuest ? 'Login to Book' : 'Confirm and Pay'}
-                            </Text>
+                            <Text style={styles.btnText}>Confirm and Pay</Text>
                         </TouchableOpacity>
 
                         <View style={styles.termsContainer}>

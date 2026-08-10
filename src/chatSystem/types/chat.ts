@@ -25,6 +25,8 @@ export interface Message {
   is_read_by_me?: boolean;
   created_at: string;
   updated_at?: string;
+  /** Local-only flag for optimistic messages before server ack. */
+  _pending?: boolean;
 }
 
 export interface ChatAccess {
@@ -65,4 +67,20 @@ export interface WebSocketMessage {
   message?: Message;
   participant_role?: 'doctor' | 'patient';
   error?: string;
+}
+
+export interface MessagesResponse {
+  messages: Message[];
+  chat_access: ChatAccess | null;
+  read_receipt?: unknown;
+  /** True when send is blocked (e.g. 403) but history may still be returned. */
+  sendBlocked?: boolean;
+}
+
+export interface ChatApiError extends Error {
+  httpStatus?: number;
+  code?: string;
+  errors?: Record<string, unknown>;
+  chat_access?: Partial<ChatAccess>;
+  messages?: Message[];
 }

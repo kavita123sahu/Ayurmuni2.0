@@ -1,14 +1,18 @@
 import { View, Text, Image, StyleSheet, StatusBar, Dimensions, Animated, Easing } from 'react-native';
 import React, { useEffect, useRef } from 'react';
-import * as Animatable from 'react-native-animatable';
 import { useIsFocused } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import { Utils } from '../../common/Utils';
-import { isGuestUser } from '../../services/guestAuth';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICES from '../../services/AuthService';
 import LinearGradient from 'react-native-linear-gradient';
+import { resetRootToHomeStack } from '../../navigation/navigationUtils';
+import {
+  isGuestUser,
+  markAsGuest,
+  syncAccessFromProfile,
+} from '../../services/guestAuth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -195,60 +199,54 @@ const Splash = (props: any) => {
   const getUser = async () => {
     try {
       const token = await Utils.getData('_TOKEN');
-      const guest = await isGuestUser();
 
-      // if (!token) {
-      //   props.navigation.replace('AuthStack', {
-      //     screen: 'Login',
-      //   });
-      //   return;
-      // }
+      if (!token) {
+        props.navigation.replace('Welcome');
+        return;
+      }
 
       const result: any = await _PROFILE_SERVICES.user_profile();
-
       console.log('PROFILE RESULT =>', result);
+
+      if (result?.data) {
+        await Utils.storeData('_USER_INFO', result.data);
+      }
+
+      // Server says onboarded → full user + Home
+      if (result?.data?.is_onboarded) {
+        await syncAccessFromProfile(result.data);
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
+        return;
+      }
+
+      // Guest browse session (post-OTP choice) → Home, never force assessment
+      if (await isGuestUser()) {
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
+        return;
+      }
 
       const isCustomer = result?.data?.user_roles?.includes('customer');
 
-      console.log('isCustomerisCustomer', isCustomer);
-
       if (!isCustomer) {
-        props.navigation.replace('Welcome');
-        // props.navigation.replace('AuthStack', {
-        //   screen: 'Login',
-        // });
+        await markAsGuest();
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
         return;
       }
 
-      if (!result?.data?.is_onboarded && !result?.data?.is_skipped) {
-        props.navigation.replace('HomeStack', {
-          screen: 'AssessmentType',
-        });
-        return;
-      }
-
+      // Skipped assessment earlier → Home as guest (actions still gated)
       if (result?.data?.is_skipped) {
-        props.navigation.replace('HomeStack', {
-          screen: 'Home',
-        });
+        await markAsGuest();
+        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
         return;
       }
 
-      if (!result?.success) {
-        showSuccessToast(
-          result?.message || 'Something went wrong',
-          'error',
-        );
+      // Not guest flag + customer + incomplete → resume assessment
+      if (!result?.data?.is_onboarded) {
+        resetRootToHomeStack(props.navigation, 'AssessmentType');
         return;
       }
 
-      console.log('PROFILE DATA =>', result);
-
-      await Utils.storeData('_USER_INFO', result?.data);
-
-      props.navigation.replace('HomeStack', {
-        screen: 'Home',
-      });
+      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     } catch (error: any) {
       console.log('GET USER ERROR =>', error);
 
@@ -259,7 +257,9 @@ const Splash = (props: any) => {
         return;
       }
 
-      showSuccessToast('Network Error', 'error');
+      // Soft fallback: token present → guest Home
+      await markAsGuest();
+      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     }
   };
 

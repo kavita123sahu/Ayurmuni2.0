@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Pressable,
 } from 'react-native';
-import { Styles } from '../../common/Styles';
 import { Feather, FontAwesome5, Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
@@ -28,69 +27,99 @@ const SelectedPatientCard: React.FC<Props> = ({
   image,
   navigation,
   relation,
-  avatarGroup = [
-    { initials: 'AS', color: '#CBD5E1' },
-    { initials: 'PS', color: '#BAE6FD' },
-    { initials: 'AA', color: '#BBF7D0' },
-  ],
+  avatarGroup = [],
   onViewRecords,
 }) => {
+  const initial = name?.trim()?.charAt(0)?.toUpperCase() || 'P';
+  const familyCount = avatarGroup.length;
+
   return (
     <View style={styles.card}>
-      {/* Avatar + Info + View Records */}
+      <View style={styles.accentBar} />
+
       <View style={styles.topRow}>
-        {/* Avatar with SELF badge */}
         <View style={styles.avatarWrapper}>
           {image ? (
-            <Image
-              source={{ uri: image }}
-              style={styles.avatar}
-            />
+            <Image source={{ uri: image }} style={styles.avatar} />
           ) : (
-            <Text style={styles.avatarText}>
-              {name?.charAt(0)?.toUpperCase()}
-            </Text>
+            <View style={styles.avatarFallback}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
           )}
         </View>
 
-        {/* Name & Phone */}
         <View style={styles.info}>
-          <View style={styles.selfBadge}>
-            <Text style={styles.selfBadgeText}>SELF</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.selfBadge}>
+              <Text style={styles.selfBadgeText}>
+                {(relation || 'Self').toUpperCase()}
+              </Text>
+            </View>
+            {familyCount > 0 ? (
+              <Text style={styles.familyHint}>
+                {familyCount} family {familyCount === 1 ? 'member' : 'members'}
+              </Text>
+            ) : null}
           </View>
-          <Text style={Styles.name}>{name}</Text>
-          <Text style={[Styles.value, { color: '#64748B', fontFamily: Fonts.PoppinsRegular }]}>{phone}</Text>
+
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
+          </Text>
+
+          {!!phone && (
+            <View style={styles.metaRow}>
+              <Ionicons name="call-outline" size={13} color="#64748B" />
+              <Text style={styles.phone} numberOfLines={1}>
+                {phone}
+              </Text>
+            </View>
+          )}
         </View>
 
-        <Pressable onPress={() => navigation.navigate('EditProfile')} style={styles.BadgeEdit}>
-          <Feather name='edit' size={20} />
+        <Pressable
+          onPress={() => navigation.navigate('EditProfile')}
+          style={styles.editBtn}
+          hitSlop={8}
+        >
+          <Feather name="edit-2" size={15} color={Colors.primaryColor} />
         </Pressable>
       </View>
 
-      {/* Divider */}
-      <View style={styles.divider} />
-
-      {/* Bottom row: avatar group + view records */}
-      <View style={styles.bottomRow}>
-        {/* Initials avatar group */}
+      <View style={styles.footer}>
         <View style={styles.avatarGroup}>
-          {avatarGroup.map((item, index) => (
-            <View
-              key={index}
-              style={[
-                styles.initialsCircle,
-                { backgroundColor: item.color, marginLeft: index === 0 ? 0 : -8 },
-              ]}
-            >
-              <Text style={styles.initialsText}>{item.initials}</Text>
+          {familyCount > 0 ? (
+            avatarGroup.slice(0, 4).map((item, index) => (
+              <View
+                key={`${item.initials}-${index}`}
+                style={[
+                  styles.initialsCircle,
+                  {
+                    backgroundColor: item.color,
+                    marginLeft: index === 0 ? 0 : -8,
+                    zIndex: 4 - index,
+                  },
+                ]}
+              >
+                <Text style={styles.initialsText}>{item.initials}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyPatients}>No family members yet</Text>
+          )}
+          {familyCount > 4 ? (
+            <View style={[styles.initialsCircle, styles.moreCircle, { marginLeft: -8 }]}>
+              <Text style={styles.initialsText}>+{familyCount - 4}</Text>
             </View>
-          ))}
+          ) : null}
         </View>
 
-        {/* View Records */}
-        <TouchableOpacity onPress={onViewRecords} style={styles.viewRecordsBtn}>
-          <Text style={Styles.addBtn}>View Records  </Text>
-          <FontAwesome5 name='arrow-right' color={Colors.primaryColor} />
+        <TouchableOpacity
+          onPress={onViewRecords}
+          style={styles.viewRecordsBtn}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.viewRecordsText}>View Records</Text>
+          <FontAwesome5 name="arrow-right" size={11} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </View>
@@ -101,127 +130,177 @@ export default SelectedPatientCard;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.borderColor
+    borderColor: '#E8F2EE',
+    overflow: 'hidden',
   },
 
-  // ── Top Row ──
+  accentBar: {
+    height: 3,
+    backgroundColor: Colors.primaryColor,
+  },
+
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    marginBottom: 14,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
+
   avatarWrapper: {
-    position: 'relative',
-    marginRight: 14,
-    width: 80,
-    height: 80,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    borderRadius: 10,
-
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
-
-  },
-  selfBadge: {
-    alignSelf: "flex-start",
-    // left: 16,
-    backgroundColor: '#E8F3F1',
+    width: 58,
+    height: 58,
     borderRadius: 14,
-    padding: 5,
-    marginBottom: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    overflow: 'hidden',
+    backgroundColor: '#F0F7F4',
+    borderWidth: 1,
+    borderColor: '#D7EBE3',
+    marginRight: 12,
   },
 
-  BadgeEdit: {
-    alignSelf: "flex-start",
-    // left: 16,
-    top: 2,
-    right: 10,
-    position: 'absolute',
-    padding: 5,
-    marginBottom: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
+
+  avatarFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryColor,
+  },
+
+  avatarText: {
+    fontSize: 22,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#FFFFFF',
+  },
+
+  info: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
+
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
+
+  selfBadge: {
+    backgroundColor: '#E8F3F1',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+
   selfBadgeText: {
     color: Colors.primaryColor,
     fontSize: 10,
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
-  info: {
-    flex: 1,
+
+  familyHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
   },
+
   name: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
-    marginBottom: 4,
-  },
-  phone: {
-    fontSize: 13,
-    color: '#64748B',
+    marginBottom: 2,
   },
 
-  // ── Divider ──
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 12,
-  },
-
-  // ── Bottom Row ──
-  bottomRow: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    justifyContent: 'space-between',
+    gap: 5,
   },
+
+  phone: {
+    flex: 1,
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  editBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F0F7F4',
+    borderWidth: 1,
+    borderColor: '#D7EBE3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    backgroundColor: '#FAFCFB',
+  },
+
   avatarGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
   },
+
   initialsCircle: {
-    width: 35,
-    height: 35,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#FFFFFF',
   },
+
+  moreCircle: {
+    backgroundColor: '#E2E8F0',
+  },
+
   initialsText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
   },
-  viewRecordsBtn: {
-    paddingVertical: 4,
-    paddingLeft: 8,
-    flexDirection: 'row',
-    alignItems: 'center'
+
+  emptyPatients: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
   },
+
+  viewRecordsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryColor,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+
   viewRecordsText: {
-    fontSize: 13,
-    color: '#0F766E',
-    fontWeight: '600',
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
+import { navigateToCategoryProducts } from '../navigation/productNavigation';
+import { renderCategoryName } from '../common/DataInterface';
 
 const { width } = Dimensions.get('window');
 
-// 🔥 Dynamic sizing (5 items visible approx)
 const ITEM_SIZE = width / 5;
 
 interface Category {
@@ -22,21 +23,39 @@ interface Category {
   image_url: any;
 }
 
-const CategoryList = ({ data = [], navigation, doctor }: any) => {
+const CategoryList = ({
+  data = [],
+  navigation,
+  doctor,
+  mode = 'product',
+}: any) => {
+  const handlePress = useCallback(
+    (item: Category) => {
+      if (doctor) {
+        navigation.navigate('CategoryDoctor', {
+          categoryName: item.name,
+          categoryId: item.id,
+        });
+        return;
+      }
 
-  const handlePress = useCallback((item: Category) => {
-    if (doctor) {
-      navigation.navigate('CategoryDoctor', {
+      if (mode === 'health') {
+        navigateToCategoryProducts(navigation, {
+          categoryName: item.name,
+          healthCategoryId: item.id,
+          categoryMode: 'health',
+        });
+        return;
+      }
+
+      navigateToCategoryProducts(navigation, {
+        categoryId: item.id,
         categoryName: item.name,
+        categoryMode: 'product',
       });
-      return;
-    }
-    navigation.navigate('TopCategories', {
-      categoryName: item.name,
-    });
-    console.log('Pressed:', item.name);
-  }, [navigation]);
-
+    },
+    [navigation, doctor, mode],
+  );
 
   const renderItem = ({ item }: { item: Category }) => (
     <TouchableOpacity
@@ -55,9 +74,17 @@ const CategoryList = ({ data = [], navigation, doctor }: any) => {
         />
       </View>
 
-      <Text style={styles.text}>
-        {item.name}
+      {/* <Text style={styles.text}>{item.name}</Text> */}
+      <Text
+        style={styles.text}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >
+        {/* {item.name} */}
+        {renderCategoryName(item.name, styles.text)}
       </Text>
+
+
     </TouchableOpacity>
   );
 
@@ -87,38 +114,36 @@ export default React.memo(CategoryList);
 
 const styles = StyleSheet.create({
   container: {
-    paddingLeft: -10
-    // paddingHorizontal: 8,
+    paddingLeft: -10,
+    marginBottom: 10
   },
-
   item: {
     alignItems: 'center',
     marginHorizontal: 2,
   },
-
   circle: {
     borderRadius: 24,
     backgroundColor: '#0D614E1A',
     justifyContent: 'center',
     alignItems: 'center',
-  },
 
+  },
   icon: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
+    // width: 28,
+    // height: 28,
+    borderRadius: 20,
+    width: ITEM_SIZE - 10, height: ITEM_SIZE - 10,
+    resizeMode: 'cover',
   },
   text: {
     marginTop: 6,
-
     fontSize: 12,
-
     color: '#1E293B',
-
     fontFamily: Fonts.PoppinsSemiBold,
-
     textAlign: 'center',
-
     width: ITEM_SIZE - 8,
+    lineHeight: 16,
+    flexWrap: 'wrap',
+    includeFontPadding: false,
   },
 });

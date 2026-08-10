@@ -7,49 +7,65 @@ import {
   TouchableOpacity,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Dimensions,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
 import { Colors } from '../common/Colors';
-import { TogglewishlistProduct } from '../services/ProductServices';
 import ProductCard from './ProductCard';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addToCart, fetchCart } from '../store/slices/cartSlice';
-import { updateProductItem } from '../store/slices/homeSlice';
+import { syncCartQuantity } from '../store/slices/cartSlice';
 import { showSuccessToast } from '../config/Key';
 import { useScrollHide } from '../context/ScrollHideContext';
 import { requireAuth } from '../services/guestAuth';
-import { useAuth } from '../hooks/useAuth';
+import { navigateToProductDetails, navigateToSearchScreen } from '../navigation/productNavigation';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../hooks/useWishlistSync';
+import {
+  canAddProductQty,
+  isProductOutOfStock,
+} from '../utils/productStockUtils';
+import { resolveProductImageUri } from '../utils/imageUtils';
 
 interface Props {
   data: any[];
   isGrid?: boolean;
   fav?: boolean;
+  isWishlistScreen?: boolean;
   setProductData: React.Dispatch<React.SetStateAction<any[]>>;
   header?: boolean;
   navigation: any;
   nested?: boolean;
   onExternalScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  home?: boolean;
+  onViewAllPress?: () => void;
 }
 
 const SPACING = 12;
+const { width: SCREEN_W } = Dimensions.get('window');
+/** 2-col width inside TopSellingList grid (12px side pad + 12 gap) */
+const LIST_GRID_CARD_WIDTH = (SCREEN_W - SPACING * 2 - SPACING) / 2;
 
 const TopSellingList: React.FC<Props> = ({
   data,
   fav = true,
+  isWishlistScreen = false,
   setProductData,
   isGrid = false,
   header = false,
   navigation,
   nested = false,
   onExternalScroll,
+  home = false,
+  onViewAllPress,
 }) => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(state => state.cart.variantQuantities);
   const addingVariantId = useAppSelector(state => state.cart.addingVariantId);
   const { onScroll: hideOnScroll } = useScrollHide();
-  const { isGuest } = useAuth();
   const stackNav = navigation?.getParent?.() || navigation;
 
   const safeData = Array.isArray(data) ? data : [];
@@ -69,55 +85,55 @@ const TopSellingList: React.FC<Props> = ({
     [hideOnScroll, onExternalScroll],
   );
 
+  const resolveVariantId = useCallback((item: any) => {
+    return (
+      item?.variant_id ??
+      item?.variant?.variant_id ??
+      item?.variant?.id ??
+      item?.id ??
+      null
+    );
+  }, []);
+
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
-      const variantId = String(item?.variant_id);
-      if (!variantId) return;
+      const variantId = String(resolveVariantId(item) ?? '');
+      if (!variantId || variantId === 'undefined' || variantId === 'null') return;
 
-      const result = await dispatch(addToCart({ variantId, quantity: newQty }));
-
-      if (addToCart.fulfilled.match(result)) {
-        showSuccessToast(result.payload.message || 'Cart updated', 'success');
-        dispatch(fetchCart(true));
-        setProductData(prev =>
-          prev.map(product =>
-            String(product.variant_id) === variantId
-              ? { ...product, quantity: newQty }
-              : product,
-          ),
-        );
-        dispatch(updateProductItem({ variantId, updates: { quantity: newQty } }));
+      if (newQty > 0 && isProductOutOfStock(item)) {
+        showSuccessToast('This product is out of stock', 'error');
+        return;
       }
-    },
-    [dispatch, setProductData],
-  );
+      if (!canAddProductQty(item, newQty)) {
+        showSuccessToast('Not enough stock available', 'error');
+        return;
+      }
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const oldValue = item?.is_wishlist_item;
-      setProductData(prev =>
-        prev.map(product =>
-          product.variant_id === item.variant_id
-            ? { ...product, is_wishlist_item: !oldValue }
-            : product,
-        ),
+      // Seed variant image cache so cart/checkout can show cover after add
+      resolveProductImageUri(item);
+
+      const result = await dispatch(
+        syncCartQuantity({ variantId, quantity: newQty }),
       );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        setProductData(prev =>
-          prev.map(product =>
-            product.variant_id === item.variant_id
-              ? { ...product, is_wishlist_item: oldValue }
-              : product,
-          ),
+
+      if (syncCartQuantity.rejected.match(result)) {
+        showSuccessToast(
+          (result.payload as string) || 'Failed to update cart',
+          'error',
         );
       }
     },
-    [setProductData],
+    [dispatch, resolveVariantId],
   );
+
+  useWishlistSync(setProductData, {
+    removeWhenUnwishlisted: isWishlistScreen,
+  });
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -125,39 +141,49 @@ const TopSellingList: React.FC<Props> = ({
         return <View style={styles.emptyCard} />;
       }
 
-      const variantId = String(item?.variant_id);
-      const cartQty = variantQuantities[variantId] ?? item?.quantity ?? 0;
+      const variantId = String(resolveVariantId(item) ?? '');
+      const cartQty = variantQuantities[variantId] ?? 0;
 
       return (
-        <View style={!isGrid ? styles.horizontalWrap : undefined}>
-          <ProductCard
-          item={item}
-          variant={isGrid ? 'grid' : 'horizontal'}
-          cartQty={cartQty}
-          isAdding={addingVariantId === variantId}
-          showWishlist={fav}
-          actionsLocked={isGuest}
-          onPress={() =>
-            stackNav.navigate('ProductDetails', { varientID: item?.variant_id })
+        <View
+          style={
+            isGrid
+              ? styles.gridWrap
+              : [styles.horizontalWrap, home && styles.horizontalWrapHome]
           }
-          onAdd={() => handleCartUpdate(item, cartQty + 1)}
-          onIncrement={() => handleCartUpdate(item, cartQty + 1)}
-          onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
-          onWishlist={() => handleWishlist(item)}
-        />
+        >
+          <ProductCard
+            item={item}
+            variant={isGrid ? 'grid' : 'horizontal'}
+            gridWidth={isGrid ? LIST_GRID_CARD_WIDTH : undefined}
+            cartQty={cartQty}
+            isAdding={addingVariantId === variantId}
+            showWishlist={fav}
+            onPress={() => {
+              const id = resolveVariantId(item);
+              if (id == null || id === '') {
+                return;
+              }
+              navigateToProductDetails(navigation, id);
+            }}
+            onAdd={() => handleCartUpdate(item, cartQty + 1)}
+            onIncrement={() => handleCartUpdate(item, cartQty + 1)}
+            onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
+            onWishlist={() => handleWishlist(item)}
+          />
         </View>
       );
     },
     [
       navigation,
-      stackNav,
+      resolveVariantId,
       isGrid,
       fav,
       variantQuantities,
       addingVariantId,
       handleCartUpdate,
       handleWishlist,
-      isGuest,
+      home,
     ],
   );
 
@@ -169,7 +195,11 @@ const TopSellingList: React.FC<Props> = ({
         tag="CURATED EXCELLENCE"
         showButton={false}
       />
-      <SectionHeader title="Top Selling Products" actionText="View all" />
+      <SectionHeader
+        title="Top Selling Products"
+        actionText="View all"
+        onPress={onViewAllPress ?? (() => navigateToSearchScreen(stackNav))}
+      />
     </>
   );
 
@@ -191,11 +221,16 @@ const TopSellingList: React.FC<Props> = ({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={[
         styles.listContent,
+        home && styles.listContentHome,
         isGrid && styles.gridContent,
       ]}
       columnWrapperStyle={
         isGrid
-          ? { justifyContent: 'space-between', paddingHorizontal: SPACING }
+          ? {
+              justifyContent: 'space-between',
+              paddingHorizontal: SPACING,
+              gap: SPACING,
+            }
           : undefined
       }
       renderItem={renderItem}
@@ -219,21 +254,32 @@ const TopSellingList: React.FC<Props> = ({
   );
 };
 
+
 export default React.memo(TopSellingList);
 
 const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 20,
   },
+  listContentHome: {
+    paddingBottom: 0,
+  },
   gridContent: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   horizontalWrap: {
     marginLeft: 8,
   },
+  horizontalWrapHome: {
+    marginLeft: 0,
+  },
+  gridWrap: {
+    width: LIST_GRID_CARD_WIDTH,
+    marginBottom: SPACING,
+  },
   emptyCard: {
-    width: '48%',
-    marginBottom: 12,
+    width: LIST_GRID_CARD_WIDTH,
+    marginBottom: SPACING,
   },
   footerContainer: {
     width: '100%',

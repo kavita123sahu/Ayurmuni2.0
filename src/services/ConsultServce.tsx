@@ -2,6 +2,7 @@
 import { BaseUrl, Method } from "../config/Key";
 import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";
+import { formatExperienceParam } from "../utils/searchUtils";
 
 export const filteredParams = (
     params?: Record<string, any>,
@@ -16,6 +17,22 @@ export const filteredParams = (
                     value !== '',
             ),
     );
+};
+
+/** Builds query string for GET /customers/doctors/ with correct encoding. */
+export const buildDoctorsQueryString = (
+    params?: Record<string, any>,
+): string => {
+    const clean = filteredParams(params);
+    if (clean.experience) {
+        clean.experience = formatExperienceParam(String(clean.experience));
+    }
+    return Object.entries(clean)
+        .map(
+            ([key, value]) =>
+                `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+        )
+        .join('&');
 };
 export const getHomePage = async () => {
     return new Promise(async (resolve, reject) => {
@@ -43,40 +60,13 @@ export const getHomePage = async () => {
 
 export const getAllDoctor = async (payload: object) => {
     try {
-
-        const cleanPayload =
-            Object.fromEntries(
-                Object.entries(payload)
-                    .filter(
-                        ([_, value]) =>
-                            value !== undefined &&
-                            value !== null &&
-                            value !== '',
-                    ),
-            );
-
-        const query =
-            new URLSearchParams(
-                cleanPayload as any,
-            ).toString();
-
-        console.log(
-            'Final Query Paramsurllll:',
-            query,
+        const query = buildDoctorsQueryString(payload as Record<string, any>);
+        const response = await apiClient(
+            query ? `customers/doctors/?${query}` : 'customers/doctors/',
+            { method: 'GET' },
         );
-
-        const response =
-            await apiClient(
-                `customers/doctors/?${query}`,
-                {
-                    method: 'GET',
-                },
-            );
-
         return response;
-
     } catch (error) {
-
         throw error;
     }
 }
@@ -84,7 +74,7 @@ export const getAllDoctor = async (payload: object) => {
 
 export const getTopDoctor = async () => {
     try {
-        const response = await apiClient('customers/topdoctors/', {
+        const response = await apiClient('customers/doctors/', {
             method: 'GET'
         });
 
@@ -95,29 +85,6 @@ export const getTopDoctor = async () => {
 }
 
 
-export const getDoctorSlip = async (DoctorID: string) => {
-    try {
-        const response = await apiClient(`customers/doctor-slip/?doctor_id=${DoctorID}`, {
-            method: 'GET'
-        });
-
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
-
-
-export const fetchAgoraToken = async (consultationId: string) => {
-    try {
-        const response = await apiClient(`doctors/appointments/${consultationId}/call/token/`, {
-            method: 'POST'
-        });
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
 
 export const ToggleFavDoctor = async (doctorID: string, method: 'POST') => {
     try {
@@ -131,16 +98,6 @@ export const ToggleFavDoctor = async (doctorID: string, method: 'POST') => {
     }
 }
 
-export const AllFavDoctor = async () => {
-    try {
-        const response = await apiClient('favorites/doctors/', {
-            method: 'GET'
-        });
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
 
 export const AllDoctorData = async () => {
     try {
@@ -154,18 +111,6 @@ export const AllDoctorData = async () => {
 }
 
 
-
-export const getDoctorSpecialities = async () => {
-    try {
-        const response = await apiClient('customers/topdoctors/', {
-            method: 'GET'
-        });
-
-        return response;
-    } catch (error) {
-        throw error;
-    }
-}
 export const getMedicalReceipt = async (appointmentId: string) => {
     try {
         const response = await apiClient(`customers/doctors/consultation-receipt/?consultation_id=${appointmentId}`, {
@@ -180,18 +125,63 @@ export const getMedicalReceipt = async (appointmentId: string) => {
 }
 
 
-export const getAppointmentDetail = async (appointmentId: string) => {
+// export const getAppointmentDetail = async (appointmentId: string) => {
+
+
+//     const fetchByParam = (param: 'appointment_id' | 'consultation_id') =>
+//         apiClient(
+//             `customers/patient/consultation/?appointment_id${param}=${encodeURIComponent(id)}`,
+//             { method: 'GET' },
+//         );
+
+//     let response = await fetchByParam('appointment_id');
+//     if (response?.success) {
+//         return response;
+//     }
+
+//     const message = String(response?.message || '').toLowerCase();
+//     const notFound =
+//         response?.status === 404 ||
+//         message.includes('not found') ||
+//         message.includes('does not exist');
+
+//     if (notFound) {
+//         response = await fetchByParam('consultation_id');
+//     }
+
+//     return response;
+// };
+
+
+export const getAppointmentDetail = async (lookupId: string) => {
+    const tryFetch = async (param: 'appointment_id' | 'consultation_id') =>
+        apiClient(
+            `customers/patient/consultation/?${param}=${encodeURIComponent(lookupId)}`,
+            { method: 'GET' },
+        );
+
     try {
-        const response = await apiClient(`customers/patient/consultation/?appointment_id=${appointmentId}`, {
-            method: 'GET'
-        });
-        console.log("getAppointmentAPIresponse", response)
+        let response = await tryFetch('appointment_id');
+        if (response?.success) {
+            return response;
+        }
+
+        const message = String(response?.message || '').toLowerCase();
+        const notFound =
+            response?.status === 404 ||
+            message.includes('not found') ||
+            message.includes('does not exist');
+
+        if (notFound) {
+            response = await tryFetch('consultation_id');
+        }
 
         return response;
     } catch (error) {
         throw error;
     }
-}
+};
+
 
 
 export const getPrescriptionDetail = async (doctor_id: string) => {
@@ -207,36 +197,49 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
     }
 }
 
+export const RecentConsultHistory = async () => {
+    try {
 
+        const response = await apiClient(
+            'customers/doctors/consultation-history/',
+            {
+                method: 'GET',
+            },
+        );
 
-export const getConsultHistory = async (payload: any) => {
-  try {
-    const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(
-        ([_, value]) =>
-          value !== undefined &&
-          value !== null &&
-          value !== '',
-      ),
-    );
-
-    const query = new URLSearchParams(
-      cleanPayload as Record<string, string>,
-    ).toString();
-
-    const response = await apiClient(
-      `customers/doctors/consultation-history/?${query}`,
-      {
-        method: 'GET',
-      },
-    );
-
-    return response;
-  } catch (error) {
-    throw error;
-  }
+        return response;
+    } catch (error) {
+        throw error;
+    }
 };
 
+export const getConsultHistory = async (payload: any) => {
+    try {
+        const cleanPayload = Object.fromEntries(
+            Object.entries(payload).filter(
+                ([_, value]) =>
+                    value !== undefined &&
+                    value !== null &&
+                    value !== '',
+            ),
+        );
+
+        const query = new URLSearchParams(
+            cleanPayload as Record<string, string>,
+        ).toString();
+
+        const response = await apiClient(
+            `customers/doctors/consultation-history/?${query}`,
+            {
+                method: 'GET',
+            },
+        );
+
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
 
 
 export const getDoctorSlots = async (
@@ -283,6 +286,8 @@ export const getDoctorSlots = async (
         throw error;
     }
 };
+
+
 export const appointmentActionAPI = async ({
     appointmentId,
     payload,
@@ -310,36 +315,17 @@ export const appointmentActionAPI = async ({
     }
 };
 
+
 export const getFilterTopDoctor = async (
     payload: object,
 ) => {
 
     try {
-
-        const cleanPayload =
-            Object.fromEntries(
-                Object.entries(payload)
-                    .filter(
-                        ([_, value]) =>
-                            value !== undefined &&
-                            value !== null &&
-                            value !== '',
-                    ),
-            );
-
-        const query =
-            new URLSearchParams(
-                cleanPayload as any,
-            ).toString();
-
-        console.log(
-            'Final Query Params:',
-            query,
-        );
+        const query = buildDoctorsQueryString(payload as Record<string, any>);
 
         const response =
             await apiClient(
-                `customers/doctors/?${query}`,
+                query ? `customers/doctors/?${query}` : 'customers/doctors/',
                 {
                     method: 'GET',
                 },
@@ -377,74 +363,6 @@ export const getConsultCategory = async () => {
     })
 }
 
-export const getPatient = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            console.log(BaseUrl.base_url + 'healthcare/patient/')
-
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/patient/', fetchParameter);
-            let response = await serverResponse.json();
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-export const getBookingOrder = async () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.GET,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            console.log(BaseUrl.base_url + '/healthcare/appointments/consultations-with-orders/')
-
-            let serverResponse = await fetch(BaseUrl.base_url + '/healthcare/appointments/consultations-with-orders/', fetchParameter);
-            let response = await serverResponse.json();
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    })
-}
-
-export const addPatient = async (data: Object) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let fetchParameter = {
-                method: Method.POST,
-                body: JSON.stringify(data),
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            }
-
-            console.log('Add Patient Fetch Params:', BaseUrl.base_url + 'ecom/patient/', fetchParameter);
-            let serverResponse = await fetch(BaseUrl.base_url + 'healthcare/patient/', fetchParameter);
-            resolve(serverResponse);
-        }
-
-        catch (error) {
-            reject(error);
-        }
-    })
-}
 
 
 export const createConsultationPayment = async (data: object) => {
@@ -475,12 +393,30 @@ export const verifyConsultationPayment = async (data: object) => {
 }
 
 
-
-export const getNotification = async (payload: any) => {
-    const query = new URLSearchParams(payload).toString();
+export const getNotification = async (payload: Record<string, string | number | boolean>) => {
+    const query = new URLSearchParams(
+        Object.entries(payload).reduce<Record<string, string>>((acc, [key, value]) => {
+            acc[key] = String(value);
+            return acc;
+        }, {}),
+    ).toString();
 
     return apiClient(`notifications/?${query}`, {
         method: "GET",
+    });
+};
+
+/** POST actions: read, clear, delete (per API: ?action=read&notification_id=… or &all=true) */
+export const manageNotification = async (payload: Record<string, string | number | boolean>) => {
+    const query = new URLSearchParams(
+        Object.entries(payload).reduce<Record<string, string>>((acc, [key, value]) => {
+            acc[key] = String(value);
+            return acc;
+        }, {}),
+    ).toString();
+
+    return apiClient(`notifications/?${query}`, {
+        method: "POST",
     });
 };
 

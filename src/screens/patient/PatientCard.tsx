@@ -28,21 +28,34 @@ interface Props {
   patient: Patient;
   navigation: any,
   onSelect: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
+const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation, onDelete }) => {
 
   const full_name = patient?.first_name + " " + patient?.last_name;
 
 
   console.log('patient_card_patient', patient);
+
+  const isSelf = String(patient?.relation ?? '').toLowerCase() === 'self';
+
   return (
     <TouchableOpacity
       style={[styles.item, patient.selected && styles.itemSelected]}
       onPress={() => onSelect(patient.id)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: patient?.profile_picture || 'https://i.pravatar.cc/100?img=5' }}  style={styles.avatar} />
+
+      {patient?.profile_picture ? (
+        <View style={[styles.avatarPlaceholder, { backgroundColor: Colors.bgcolor }]}>
+          <Image source={{ uri: patient?.profile_picture }} style={styles.avatar} />
+        </View>
+      ) : <View style={styles.avatarPlaceholder}>
+        <Text style={styles.avatarLetter}>
+          {full_name.charAt(0).toUpperCase()}
+        </Text>
+      </View>}
 
       <View style={styles.info}>
         <Text style={[styles.name, { marginBottom: -4 }]}>{full_name}</Text>
@@ -51,20 +64,45 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation }) => {
 
       <View style={styles.actions}>
         <TouchableOpacity
+          disabled={isSelf}
           onPress={() => {
-            navigation.navigate(
-              'AddEditPatientDetail',
-              {
-                mode: 'edit',
-                patientId: patient?.id,
-              },
-            );
+            if (isSelf) {
+              return;
+            }
+
+            navigation.navigate('AddEditPatientDetail', {
+              mode: 'edit',
+              patientId: patient?.id,
+            });
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <TablerIcon name="edit" size={20} color={Colors.primaryColor} />
-          {/* <Feather  name='edit' color={Colors.primaryColor} /> */}
+          {isSelf ? <TablerIcon
+            name="edit"
+            size={20}
+            color={
+
+              Colors.primaryColor
+            }
+          /> : null}
+          {/* <TablerIcon
+            name="edit"
+            size={20}
+            color={
+             
+                 Colors.primaryColor
+            }
+          /> */}
         </TouchableOpacity>
+
+        {!isSelf && onDelete ? (
+          <TouchableOpacity
+            onPress={() => onDelete(patient.id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <TablerIcon name="trash" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        ) : null}
 
         {patient.selected ? (
           <TablerIcon name="verify" size={22} color={Colors.primaryColor} />
@@ -96,14 +134,30 @@ const styles = StyleSheet.create({
 
   },
   avatar: {
-    width: 50,
-   
-    resizeMode: 'contain',
-    height: 50,
+    width: 40,
+    height: 40,
+    resizeMode: 'cover',
+    // height: 50,
     borderRadius: 10,
-    marginRight: 12,
+    // marginRight: 12,
     backgroundColor: Colors.bgcolor
   },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    marginRight: 10,
+    borderRadius: 10,
+    backgroundColor: Colors.primaryColor, // Any color
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  avatarLetter: {
+    color: '#FFF',
+    fontSize: 20,
+    fontFamily: Fonts.PoppinsMedium
+  },
+
   info: {
     flex: 1,
   },

@@ -54,48 +54,22 @@ const OptionCard = ({
         'knowPrakriti';
 
     const getImageSource = () => {
-
-        /*
-        YES IMAGE
-        */
-
-        if (
-            isYesNoQuestion &&
-            item?.value === 'Yes'
-        ) {
-
+        if (isYesNoQuestion && item?.value === 'Yes') {
             return Images.yesHuman;
         }
 
-        /*
-        NO IMAGE
-        */
-
-        if (
-            isYesNoQuestion &&
-            item?.value === 'No'
-        ) {
-
+        if (isYesNoQuestion && item?.value === 'No') {
             return Images.noHuman;
         }
 
-        /*
-        API IMAGE
-        */
-
         if (item?.image_path) {
-
-            return {
-                uri: item?.image_path,
-            };
+            return { uri: item.image_path };
         }
 
-        /*
-        FALLBACK
-        */
-
-        return ;
+        return null;
     };
+
+    const imageSource = getImageSource();
 
     return (
         <TouchableOpacity
@@ -114,18 +88,33 @@ const OptionCard = ({
 
                 {/* IMAGE */}
 
-                {medical ?
+                {medical ? (
                     <View style={styles.medicalavatar}>
-                        <Image
-                            source={getImageSource()}
-                            style={{ height: 40, width: 40, alignContent:'center', resizeMode: 'contain' }}
-                        />
+                        {imageSource ? (
+                            <Image
+                                source={imageSource}
+                                style={{ height: 32, width: 32, resizeMode: 'contain' }}
+                            />
+                        ) : (
+                            <View style={{ height: 32, width: 32 }} />
+                        )}
                     </View>
-                    :
+                ) : imageSource ? (
                     <Image
-                        source={getImageSource()}
-                        style={styles.avatar}
-                    />}
+                        source={imageSource}
+                        style={[
+                            styles.avatar,
+                            isYesNoQuestion && styles.compactAvatar,
+                        ]}
+                    />
+                ) : (
+                    <View
+                        style={[
+                            styles.avatar,
+                            isYesNoQuestion && styles.compactAvatar,
+                        ]}
+                    />
+                )}
 
 
 

@@ -1,737 +1,6 @@
-// import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   Image,
-//   TouchableOpacity,
-//   ScrollView,
-//   StatusBar,
-//   Linking,
-//   BackHandler,
-// } from 'react-native';
-// import AppHeader from '../../components/AppHeader';
-// import { useNavigation } from '@react-navigation/native';
-// import { Styles } from '../../common/Styles';
-// import { Fonts } from '../../common/Fonts';
-// import { Ionicons } from '../../common/Vector';
-// import { Colors } from '../../common/Colors';
-// import { Images } from '../../common/Images';
-// import * as _CONSULT_SERVICE from '../../services/ConsultServce';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-// import { AppointmentDetailSkeleton } from '../../simmerScreen/ShimmerHook';
-// import RescheduleModal from '../../components/RescheduleModal';
-// import CancelAppointmentModal from '../../components/CancelAppointModal';
-// import { handleAppointmentAction } from '../../hooks/AppointmentData';
-// import { showSuccessToast } from '../../config/Key';
-// import { Utils } from '../../common/Utils';
-// import { doctorsData } from '../../common/DataInterface';
-// import FeedbackModal from '../FeedbackModal';
-// import { useCreateReview } from '../../hooks/useCreateReview';
 
-
-
-// const PrimaryButton = ({
-//   title,
-//   onPress,
-//   page
-// }: {
-//   title: string;
-//   page: string
-//   onPress?: () => void;
-// }) => {
-//   return (
-//     <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: page == 'appoint' ? Colors.primaryColor : Colors.errorColor }]} onPress={onPress}>
-//       <View style={styles.content}>
-//         <Ionicons name="videocam" size={18} color="#fff" />
-//         <Text style={styles.primaryText}>{title}</Text>
-//       </View>
-//     </TouchableOpacity>
-//   );
-// };
-
-// type Props = {
-//   data: any;
-//   refreshData: () => void;
-//   navigation: any;
-//   token: any;
-// }
-
-
-// const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
-//   console.log("data?.appointment?.call_status", data)
-//   const appointmentData = {
-//     doctorName:
-//       data?.doctor?.doctor_name || "",
-
-//     doctor_image: data?.doctor?.doctor_image || "",
-
-//     consultationId:
-//       data?.appointment?.consultation_id,
-
-//   };
-
-//   const [showModal, setShowModal] = useState(false);
-//   const { loading, submitReview } = useCreateReview();
-
-
-//   const shouldShowReviewModal =
-//     data?.appointment?.appointment_status?.toLowerCase() === "completed" &&
-//     data?.appointment?.review?.is_rated === false;
-
-//   useEffect(() => {
-//     if (!shouldShowReviewModal) return;
-
-//     const timer = setTimeout(() => {
-//       setShowModal(true);
-//     }, 5000);
-
-//     return () => clearTimeout(timer);
-//   }, [shouldShowReviewModal]);
-
-//   useEffect(() => {
-//     if (!showModal) return;
-
-//     const backHandler = BackHandler.addEventListener(
-//       "hardwareBackPress",
-//       () => true // back disable
-//     );
-
-//     return () => backHandler.remove();
-//   }, [showModal]);
-
-//   useLayoutEffect(() => {
-//     navigation.setOptions({
-//       gestureEnabled: !showModal,
-//     });
-//   }, [navigation, showModal]);
-
-//   const handleReviewSubmit = async ({
-//     rating,
-//     review,
-//   }: {
-//     rating: number;
-//     review: string;
-//   }) => {
-//     const response = await submitReview({
-//       entityType: "doctor",
-//       appointmentId: appointmentData?.consultationId,
-//       reviewData: {
-//         rating,
-//         review,
-//         image_urls: [], // optional
-//       },
-//     });
-
-//     console.log("responseeeeeee--->>", response);
-
-//     if (response?.success) {
-//       showSuccessToast(response?.message, "success");
-
-//       setShowModal(false);
-
-//       refreshData();
-
-//       return;
-//     }
-
-//     showSuccessToast(
-//       response?.message || "Unable to submit review",
-//       "error"
-//     );
-//   };
-//   console.log("appointmentDatacallsrtsst--->", data?.appointment);
-
-
-//   return (
-//     <View style={styles.card}>
-//       <View style={styles.row}>
-
-//         <Image source={data?.doctor?.doctor_image ? { uri: data?.doctor?.doctor_image } : Images.doctorImage} style={styles.avatar} />
-
-//         <View>
-//           <Text style={Styles.name}>{data?.doctor?.doctor_name}</Text>
-//           <Text style={[Styles.specialty, { color: Colors.primaryColor }]}>{data?.doctor?.doctor_specialization}</Text>
-//         </View>
-//       </View>
-
-
-//       <View style={styles.dateTimeBox}>
-
-//         <View style={styles.dtItem}>
-//           <View style={styles.iconCircle}>
-//             <Image source={Images.calender} style={Styles.IconSize} />
-//           </View>
-
-//           <View style={styles.textContainer}>
-//             <Text style={styles.label}>DATE</Text>
-//             <Text style={styles.value}>{data?.appointment?.appointment_date}</Text>
-//           </View>
-//         </View>
-//         {/* TIME */}
-//         <View style={styles.dtItem}>
-//           <View style={styles.iconCircle}>
-//             <Image source={Images.clock} style={Styles.IconSize} />
-//           </View>
-
-
-
-//           <View style={styles.textContainer}>
-//             <Text style={styles.label}>TIME</Text>
-//             <Text style={styles.value}>{data?.appointment?.start_time}</Text>
-//           </View>
-//         </View>
-//       </View>
-
-
-
-//       {data?.appointment?.call_status === 'in_progress' && (
-
-//         <View style={{ paddingHorizontal: 10 }}>
-
-//           <PrimaryButton title="Join Video Call" page='appoint' onPress={() => {
-//             console.log("appointmentData?.consultationId", appointmentData?.consultationId)
-//             navigation.navigate('PatientVideoCallScreen', {
-//               appointmentId: appointmentData?.consultationId,
-//               // call_status: data?.appointment?.call_status,
-//               role: "patient",
-//               otherPartyImage: appointmentData?.doctor_image,
-//               // doctorID: data?.doctor?.doctor_id,
-//               otherPartyName: appointmentData?.doctorName,
-//               // onExit: () => navigation.goBack()
-//             })
-//           }} />
-
-//           {/* <PrimaryButton title="Join Video Call" page='appoint' onPress={async () => {
-//             const url = `https://3twgj6xg-3000.inc1.devtunnels.ms/patvideocall/${token}/${appointmentData?.consultationId}`;
-
-//             if (url) {
-//               const supported =
-//                 await Linking.canOpenURL(url);
-
-//               if (supported) {
-//                 await Linking.openURL(url);
-//               }
-//             }
-//           }} /> */}
-
-//           <TouchableOpacity style={styles.secondaryBtn} onPress={() => {
-//             navigation.navigate('ChatScreen', {
-//               // doctorId: data?.doctor?.doctor_id,
-//               otherPartyName: data?.doctor?.doctor_name,
-//               otherPartyAvatarUrl: data?.doctor?.doctor_image,
-//               appointment_id: data?.appointment?.consultation_id,
-//             })
-//           }}>
-
-
-//             <Text style={styles.secondaryText}>Chat with Doctor</Text>
-//           </TouchableOpacity>
-//         </View>
-//       )}
-
-//       <FeedbackModal
-//         visible={showModal}
-//         loading={loading}
-//         onClose={() => setShowModal(false)}
-//         onSubmit={handleReviewSubmit}
-//       />
-
-//     </View>
-//   )
-// }
-
-
-// const AppointmentDetailScreen = ({ route, navigation }: any) => {
-//   const { consultation_id } = route.params;
-
-//   console.log("consultation_idconsultation_idconsultation_id", consultation_id)
-
-//   const [loading, setLoading] = React.useState(true);
-//   const [detail, setDetail] = React.useState<any>(null);
-//   const [showRescheduleModal, setShowRescheduleModal] =
-//     useState(false);
-//   const [token, setToken] = useState('');
-
-//   const [showCancelModal, setShowCancelModal] =
-//     useState(false);
-
-//   const fetchDetail = async () => {
-//     try {
-//       setLoading(true);
-
-//       const res = await _CONSULT_SERVICE.getAppointmentDetail(consultation_id);
-
-//       console.log("DETAILRES", res);
-
-//       setDetail(res?.data);
-
-//     } catch (error) {
-//       showSuccessToast("Something went wrong", "error");
-//       console.log("DETAIL ERROR", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-
-//   useEffect(() => {
-//     const init = async () => {
-//       const userToken =
-//         await Utils.getData('_TOKEN');
-//       console.log("tokennn", userToken)
-
-//       setToken(userToken);
-
-//     };
-
-//     init();
-//     fetchDetail();
-//   }, [])
-
-
-
-
-//   const normalizedAppointment = useMemo(() => {
-//     if (!detail?.appointment) return null;
-
-//     const item = detail;
-
-//     return {
-//       consultation_id: consultation_id,
-//       doctorName: item.doctor?.doctor_name || "",
-//       specialty:
-//         item.doctor?.doctor_specialization ||
-//         "General Physician",
-//       date: item.appointment?.appointment_date,
-//       time: item?.appointment?.start_time,
-//       status: item?.appointment?.appointment_status,
-//       call_status: item?.appointment?.call_status,
-//       image: item.doctor?.doctor_image,
-//       availability: item.availability || [],
-//       rawData: item,
-//     };
-//   }, [detail]);
-
-
-//   const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
-
-//   const showButtons = ![
-//     'cancelled',
-//     'completed',
-//     'rescheduled',
-//   ].includes(appointmentStatus);
-
-//   const isRescheduleRequest =
-//     appointmentStatus === 'reschedule';
-
-
-//   const handleReschedule = async (
-//     appointmentId: string,
-//     payload: {
-//       action: string;
-//       availability: number;
-//       reschedule_reason: string;
-//       cancellation_reason?: string;
-//     }
-//   ) => {
-//     console.log("appointmentIdpayload", appointmentId);
-//     console.log("payload--->>", payload);
-
-//     let payloadSend: any = {
-//       action: payload.action,
-//     };
-
-//     switch (payload.action) {
-//       case "reschedule":
-//         payloadSend.availability = payload.availability;
-//         payloadSend.reschedule_reason = payload.reschedule_reason;
-//         break;
-
-//       case "confirm_reschedule":
-//         payloadSend.availability = payload.availability;
-//         payloadSend.reschedule_reason = payload.reschedule_reason;
-//         break;
-
-//       case "cancel":
-//         payloadSend.cancellation_reason = payload.cancellation_reason;
-//         break;
-//     }
-//     console.log("payloadSend--->>", payloadSend);
-
-//     const res = await handleAppointmentAction({
-//       appointmentId,
-//       payload: payloadSend,
-//     });
-//     console.log("res--->>", res);
-
-//     if (res?.success) {
-//       fetchDetail?.();
-//       setShowRescheduleModal(false);
-//       showSuccessToast(res.message, "success");
-//       return;
-//     }
-
-//     showSuccessToast(
-//       res?.message || "You cannot reschedule multiple times",
-//       "error"
-//     );
-//   };
-
-
-
-//   const handleCancel = async (
-//     appointmentId: string,
-//     payload: {
-//       action: string;
-//       cancellation_reason: string;
-//     }
-//   ) => {
-//     console.log("appointmentId", appointmentId);
-//     console.log("payloadcanclee", payload);
-
-//     let payloadSend: any = {
-//       action: payload.action,
-//       cancellation_reason: payload.cancellation_reason,
-//     };
-
-//     console.log("payloadSendcancel--->>", payloadSend);
-
-//     const res = await handleAppointmentAction({
-//       appointmentId,
-//       payload: payloadSend
-//     });
-
-//     console.log("rescancel---->>", res);
-
-//     if (res?.success) {
-//       navigation.navigate('Appointments')
-//       setShowCancelModal(false);
-//       showSuccessToast(res?.message, "success");
-//       return;
-//     }
-
-//     setShowCancelModal(false);
-//     showSuccessToast(res?.message || "Something went wrong", "error");
-//   };
-
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-
-//       <StatusBar barStyle={'dark-content'} backgroundColor={"#FFFFFF"} />
-
-//       <AppHeader
-//         title="Appointment Details"
-//
-//         onLeftPress={() => navigation.goBack()}
-//         rightIconName="search"
-//         onRightPress={() => console.log('Search clicked')}
-//       />
-
-//       <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: '#FDFDFB' }}>
-
-
-//         {loading ? <AppointmentDetailSkeleton />
-//           :
-//           <>
-//             <DoctorDetail refreshData={() => fetchDetail?.()} data={detail} token={token} navigation={navigation} />
-
-//             <Text style={styles.sectionTitle}>Patient Information</Text>
-
-//             <View style={styles.card}>
-
-//               <View style={styles.infoRow}>
-//                 <Text style={Styles.label}>Name</Text>
-//                 <Text style={Styles.value}>{detail?.appointment?.patient?.patient_name}</Text>
-//               </View>
-
-//               <View style={styles.infoRow}>
-//                 <Text style={Styles.label}>Age</Text>
-//                 <Text style={Styles.value}>{detail?.appointment?.patient?.age}</Text>
-//               </View>
-
-//               <View style={styles.infoRow}>
-//                 <Text style={Styles.label}>Gender</Text>
-//                 <Text style={Styles.value}>{detail?.appointment?.patient?.gender}</Text>
-//               </View>
-
-//             </View>
-
-//             <Text style={styles.sectionTitle}>Reason for Visit</Text>
-
-//             <View style={styles.card}>
-//               <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
-//             </View>
-
-//                  <Text style={styles.sectionTitle}>Your Review</Text>
-//             <View style={styles.card}>
-//               {detail?.appointment?.review?.is_rated ? (
-//                 <View>
-//                   <Text style={Styles.label}>Rating</Text>
-//                   <Text style={Styles.value}>{detail?.appointment?.review?.rating}</Text>
-
-//                   <Text style={Styles.label}>Review</Text>
-//                   <Text style={Styles.value}>{detail?.appointment?.review?.review}</Text>
-//                 </View>
-
-//               ) : (
-//                 <Text style={Styles.value}>You have not submitted a review yet.</Text>
-//               )}
-//             </View>
-
-//             {showButtons && (
-//               <View style={{ paddingHorizontal: 10 }}>
-
-//                 <TouchableOpacity
-//                   style={styles.outlineBtn}
-//                   onPress={() => {
-//                     setShowRescheduleModal(true);
-//                   }}
-//                 >
-//                   <Text style={Styles.outlineText}>
-//                     {isRescheduleRequest
-//                       ? 'Request To Change'
-//                       : 'Reschedule'}
-//                   </Text>
-//                 </TouchableOpacity>
-
-//                 <TouchableOpacity
-//                   style={styles.cancelBtn}
-//                   onPress={() => {
-//                     setShowCancelModal(true);
-//                   }}
-//                 >
-//                   <Text style={Styles.cancelText}>
-//                     Cancel Appointment
-//                   </Text>
-//                 </TouchableOpacity>
-
-//               </View>
-//             )}
-//           </>}
-
-//         <RescheduleModal
-//           visible={showRescheduleModal}
-//           appointment={normalizedAppointment}
-//           // slots={normalizedAppointment}
-//           isRescheduleRequest={isRescheduleRequest}
-//           onClose={() => {
-//             setShowRescheduleModal(false);
-//             // navigation.goback();
-//             // setSelectedAppointment(null);
-//           }}
-//           onSubmit={(payload) => {
-//             console.log("payload--->>>", payload);
-
-//             handleReschedule(
-//               normalizedAppointment?.consultation_id,
-//               payload
-//             );
-//             setShowRescheduleModal(false);
-//           }}
-//         />
-
-//         <CancelAppointmentModal
-//           visible={showCancelModal}
-//           onClose={() => {
-//             setShowCancelModal(false);
-//             // navigation.goBack()
-
-//           }}
-//           onSubmit={(payload: any) => {
-//             handleCancel(
-//               normalizedAppointment?.consultation_id,
-//               payload
-//             );
-
-//             setShowCancelModal(false);
-//           }}
-//         />
-
-
-
-//       </ScrollView>
-//     </SafeAreaView>
-//   );
-// };
-
-// export default AppointmentDetailScreen;
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     // paddingBottom: 80,
-//     backgroundColor: '#FFFFFF',
-//   },
-
-//   sectionTitle: {
-//     marginTop: 15,
-//     marginHorizontal: 20,
-//     marginBottom: 6,
-//     fontSize: 16,
-//     fontFamily: Fonts.PoppinsSemiBold,
-//     color: Colors.black,
-//   },
-
-//   card: {
-//     backgroundColor: '#fff',
-//     marginHorizontal: 16,
-//     marginTop: 16,
-//     padding: 16,
-//     borderRadius: 18,
-//     borderWidth: 1,
-//     borderColor: Colors.borderColor
-
-//   },
-
-//   row: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//   },
-
-//   avatar: {
-//     width: 55,
-//     height: 55,
-//     borderWidth: 1,
-//     borderColor: Colors.borderColor,
-//     backgroundColor: Colors.cardBackground,
-//     borderRadius: 16,
-//     marginRight: 12,
-//   },
-
-//   dateTimeBox: {
-//     flex: 1,
-//     borderRadius: 12,
-//     paddingVertical: 14,
-//     paddingHorizontal: 14,
-//   },
-
-//   dtItem: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     paddingVertical: 10
-//   },
-
-//   iconCircle: {
-//     width: 32,
-//     height: 32,
-//     borderRadius: 8,
-//     backgroundColor: Colors.bgcolor,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginRight: 8,
-//   },
-
-//   icon: {
-//     fontSize: 18,
-//     marginRight: 10,
-//   },
-
-//   textContainer: {
-//     flexDirection: 'column',
-//   },
-
-//   label: {
-//     marginBottom: 2,
-//     fontSize: 12,
-//     color: '#94A3B8',
-//     fontFamily: Fonts.PoppinsMedium,
-//   },
-
-//   value: {
-//     fontFamily: Fonts.PoppinsMedium,
-//     fontSize: 14,
-//     color: '#0F172A',
-//   },
-
-//   primaryBtn: {
-//     backgroundColor: Colors.primaryColor,
-//     borderRadius: 12,
-//     paddingVertical: 12,
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-
-//   content: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-
-//   primaryText: {
-//     color: '#fff',
-//     marginLeft: 8,
-//     fontSize: 16,
-//     fontFamily: Fonts.PoppinsMedium,
-//   },
-
-//   secondaryBtn: {
-//     backgroundColor: '#E6F4EE',
-//     marginTop: 10,
-//     paddingVertical: 13,
-//     borderRadius: 12,
-//     alignItems: 'center',
-//   },
-
-//   secondaryText: {
-//     color: '#0A8F5A',
-//     fontSize: 16,
-//     fontFamily: Fonts.PoppinsMedium,
-//   },
-
-//   techText: {
-//     marginTop: 10,
-//     fontSize: 14,
-//     fontFamily: Fonts.PoppinsMedium,
-//     color: '#0A8F5A',
-//     textAlign: 'center',
-//   },
-
-
-
-//   infoRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginVertical: 6,
-//   },
-
-
-
-//   reason: {
-//     fontSize: 14,
-//     color: '#374151',
-//     lineHeight: 20,
-//     fontFamily: Fonts.PoppinsMedium,
-//     fontStyle: 'italic'
-//   },
-
-//   outlineBtn: {
-//     marginHorizontal: 16,
-//     marginTop: 12,
-//     borderWidth: 1,
-//     borderColor: '#0D614E99',
-//     padding: 14,
-//     borderRadius: 12,
-//     alignItems: 'center',
-//   },
-
-//   cancelBtn: {
-//     marginHorizontal: 16,
-//     marginTop: 15,
-//     marginBottom: 30,
-//     padding: 14,
-//     borderRadius: 12,
-//     alignItems: 'center',
-//   },
-
-
-// });
-
-
-
-
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -740,16 +9,14 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Linking,
   BackHandler,
   Platform,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
-import { useNavigation } from '@react-navigation/native';
-import { Styles } from '../../common/Styles';
 import { Fonts } from '../../common/Fonts';
-import { AntDesign, Foundation, Ionicons } from '../../common/Vector';
+import { Foundation, Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
 import { Images } from '../../common/Images';
 import * as _CONSULT_SERVICE from '../../services/ConsultServce';
@@ -760,47 +27,15 @@ import CancelAppointmentModal from '../../components/CancelAppointModal';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
-import FeedbackModal from '../FeedbackModal';
-import { useCreateReview } from '../../hooks/useCreateReview';
+import FeedbackModal from '../../components/FeedbackModal';
 import TablerIcon from '../../components/TablerIcon';
-
-// ---------------------------------------------------------------------
-// LUXURY THEME TOKENS
-// Agar tere Colors.ts me already yeh values hain toh unhi ko use kar lena,
-// warna yeh fallback palette use karle — warm cream + deep emerald + gold.
-// ---------------------------------------------------------------------
-const Theme = {
-  bg: '#FAF8F3',
-  cardBg: '#FFFFFF',
-  cardBorder: '#EFE6D8',
-  gold: '#B8933F',
-  goldSoft: '#F4E9D3',
-  emerald: Colors?.primaryColor || '#0A8F5A',
-  emeraldSoft: '#E8F3EC',
-  danger: Colors?.errorColor || '#D64545',
-  dangerSoft: '#FBEAEA',
-  ink: '#1F2A24',
-  subInk: '#8A8578',
-  divider: '#F0EBE0',
-};
-
-// Layered, premium-feeling elevation. `strength` roughly maps to how
-// "floated" a card should feel — use higher values for hero/primary cards.
-const shadow = (strength: 'sm' | 'md' | 'lg' = 'md') => {
-  const map = {
-    sm: { h: 4, opacity: 0.06, radius: 8, elevation: 3 },
-    md: { h: 8, opacity: 0.1, radius: 16, elevation: 6 },
-    lg: { h: 14, opacity: 0.14, radius: 26, elevation: 12 },
-  } as const;
-  const cfg = map[strength];
-  return {
-    shadowColor: '#1F2A24',
-    shadowOffset: { width: 0, height: cfg.h },
-    shadowOpacity: cfg.opacity,
-    shadowRadius: cfg.radius,
-    elevation: Platform.OS === 'android' ? cfg.elevation : 0,
-  };
-};
+import {
+  buildVideoCallNavParams,
+  getAppointmentIds,
+  resolveAppointmentLookupId,
+} from '../../utils/appointmentUtils';
+import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
+import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
 
 const PrimaryButton = ({
   title,
@@ -839,15 +74,158 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
   const appointmentData = {
     doctorName: data?.doctor?.doctor_name || '',
     doctor_image: data?.doctor?.doctor_image || '',
-    consultationId: data?.appointment?.consultation_id,
+    consultationId: resolveAppointmentLookupId({
+      rawData: data,
+      appointment: data?.appointment,
+    }),
+    patientName: data?.appointment?.patient?.patient_name || '',
+    patientAvatar: data?.appointment?.patient?.patient_image || '',
   };
 
+  const isLive = data?.appointment?.call_status === 'in_progress';
+  const canOpenChat = !!appointmentData.consultationId;
+
+  return (
+    <View style={styles.heroCard}>
+      <View style={styles.heroTopRow}>
+        <Image
+          source={
+            data?.doctor?.doctor_image
+              ? { uri: data?.doctor?.doctor_image }
+              : Images.doctorImage
+          }
+          style={styles.heroAvatar}
+        />
+        <View style={styles.heroInfo}>
+          <View style={styles.heroNameRow}>
+            <Text numberOfLines={2} style={styles.doctorName}>
+              {data?.doctor?.doctor_name}
+            </Text>
+            {isLive ? (
+              <View style={styles.liveBadge}>
+                <View style={styles.liveBadgeDot} />
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+            ) : null}
+          </View>
+          {!!data?.doctor?.doctor_specialization && (
+            <Text numberOfLines={1} style={styles.specialtyText}>
+              {Array.isArray(data?.doctor?.doctor_specialization)
+                ? data.doctor.doctor_specialization.join(', ')
+                : data?.doctor?.doctor_specialization}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.heroBody}>
+        <View style={styles.dateTimeBox}>
+          <View style={styles.dtItem}>
+            <View style={styles.iconCircle}>
+              <TablerIcon name="calendar" size={16} color={Colors.primaryColor} />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.label}>DATE</Text>
+              <Text style={styles.value} numberOfLines={1}>
+                {data?.appointment?.appointment_date}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.dtDividerVertical} />
+
+          <View style={styles.dtItem}>
+            <View style={styles.iconCircle}>
+              <TablerIcon name="clock" size={16} color={Colors.primaryColor} />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.label}>TIME</Text>
+              <Text style={styles.value} numberOfLines={1}>
+                {data?.appointment?.start_time}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.heroActions}>
+          {isLive && (
+            <PrimaryButton
+              title="Join Video Call"
+              page="appoint"
+              onPress={() => {
+                navigation.navigate(
+                  'PatientVideoCallScreen',
+                  buildVideoCallNavParams(
+                    { rawData: data, appointment: data?.appointment },
+                    {
+                      role: 'patient',
+                      otherPartyName: appointmentData.doctorName,
+                      otherPartyImage: appointmentData.doctor_image,
+                    },
+                  ),
+                );
+              }}
+            />
+          )}
+
+          {canOpenChat && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.secondaryBtn}
+              onPress={() => {
+                navigation.navigate('ChatScreen', {
+                  doctorName: data?.doctor?.doctor_name,
+                  doctorAvatar: data?.doctor?.doctor_image,
+                  patientName: data?.appointment?.patient?.patient_name,
+                  patientAvatar: data?.appointment?.patient?.patient_image,
+                  appointmentId: appointmentData.consultationId,
+                  role: 'patient',
+                  appointmentDate: data?.appointment?.appointment_date,
+                  chatContext: {
+                    call_status: data?.appointment?.call_status,
+                    appointment_status: data?.appointment?.appointment_status,
+                    appointment_date: data?.appointment?.appointment_date,
+                    follow_up: data?.appointment?.follow_up,
+                  },
+                });
+              }}
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={17}
+                color={Theme.emerald}
+              />
+              <Text style={styles.secondaryText}>Chat with Doctor</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+      </View>
+
+    </View>
+  );
+};
+
+const AppointmentDetailScreen = ({ route, navigation }: any) => {
+  const routeLookupId = resolveAppointmentLookupId({
+    consultation_id: route.params?.consultation_id,
+    appointment_id: route.params?.appointment_id,
+  });
+
+  const [loading1, setLoading] = React.useState(true);
+  const [detail, setDetail] = React.useState<any>(null);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [token, setToken] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
-  const { loading, submitReview } = useCreateReview();
+
+  const alreadyReviewed = detail?.appointment?.review?.is_rated === true;
 
   const shouldShowReviewModal =
-    data?.appointment?.appointment_status?.toLowerCase() === 'completed' &&
-    data?.appointment?.review?.is_rated === false;
+    detail?.appointment?.appointment_status?.toLowerCase() === 'completed' &&
+    !alreadyReviewed;
 
   useEffect(() => {
     if (!shouldShowReviewModal) return;
@@ -867,180 +245,47 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
     navigation.setOptions({ gestureEnabled: !showModal });
   }, [navigation, showModal]);
 
-  const handleReviewSubmit = async ({
-    rating,
-    review,
-  }: {
-    rating: number;
-    review: string;
-  }) => {
-    const response = await submitReview({
-      entityType: 'doctor',
-      appointmentId: appointmentData?.consultationId,
-      reviewData: { rating, review, appointment: appointmentData?.consultationId ?? '' },
-    });
-
-    if (response?.success) {
-      showSuccessToast(response?.message, 'success');
-      setShowModal(false);
-      refreshData();
+  const openShareExperience = (rating: number) => {
+    if (alreadyReviewed) {
+      showSuccessToast('You have already reviewed this consultation', 'error');
       return;
     }
 
-    showSuccessToast(response?.message || 'Unable to submit review', 'error');
+    navigation.navigate('ShareExperienceScreen', {
+      entityType: 'doctor',
+      entityName: detail?.doctor?.doctor_name ?? 'Doctor',
+      entitySubtitle: detail?.doctor?.doctor_specialization ?? '',
+      appointmentId: routeLookupId,
+      initialRating: rating,
+      initialReview: '',
+      initialImages: [],
+      isEdit: false,
+    });
   };
 
-  const isLive = data?.appointment?.call_status === 'in_progress';
-
-  const isEnded = data?.appointment?.call_status === 'ended';
-
-  const today = new Date();
-
-  // Follow-up date
-  const followUpDate = data?.appointment?.follow_up?.date
-    ? new Date(data?.appointment.follow_up.date)
-    : null;
-
-  // Appointment date + 7 days
-  const appointmentDate = new Date(data?.appointment?.appointment_date);
-  const sevenDaysAfterAppointment = new Date(appointmentDate);
-  sevenDaysAfterAppointment.setDate(sevenDaysAfterAppointment.getDate() + 7);
-
-  // Chat visibility
-  const isChatVisible =
-    isLive ||
-    (isEnded &&
-      (
-        // Follow-up scheduled and not expired
-        (data?.appointment?.follow_up?.schedule &&
-          followUpDate &&
-          followUpDate >= today) ||
-
-        // No follow-up -> allow for 7 days
-        (!data?.appointment?.follow_up?.schedule &&
-          today <= sevenDaysAfterAppointment)
-      ));
-
-  return (
-    <View style={styles.heroCard}>
-      {/* ---------- Banner ---------- */}
-      <View style={styles.banner}>
-        <Image
-          source={data?.doctor?.doctor_image ? { uri: data?.doctor?.doctor_image } : Images.doctorImage}
-          style={styles.bannerImage}
-        />
-        {/* scrim layers to fake a gradient without extra deps */}
-        <View style={styles.scrimTop} />
-        <View style={styles.scrimBottom} />
-
-        {isLive && (
-          <View style={styles.liveBadge}>
-            <View style={styles.liveBadgeDot} />
-            <Text style={styles.liveBadgeText}>LIVE NOW</Text>
-          </View>
-        )}
-
-        <View style={styles.bannerTextWrap}>
-          <Text style={styles.doctorName}>{data?.doctor?.doctor_name}</Text>
-          <View style={styles.specialtyPill}>
-            <Ionicons name="medkit-outline" size={12} color={Theme.gold} />
-            <Text style={styles.specialtyText}>{data?.doctor?.doctor_specialization}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ---------- Content ---------- */}
-      <View style={styles.heroBody}>
-        <View style={styles.dateTimeBox}>
-          <View style={styles.dtItem}>
-            <View style={styles.iconCircle}>
-              <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.label}>DATE</Text>
-              <Text style={styles.value}>{data?.appointment?.appointment_date}</Text>
-            </View>
-          </View>
-
-          <View style={styles.dtDividerVertical} />
-
-          <View style={styles.dtItem}>
-            <View style={styles.iconCircle}>
-              <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.label}>TIME</Text>
-              <Text style={styles.value}>{data?.appointment?.start_time}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={{ marginTop: 4 }}>
-          {isLive && (
-            <PrimaryButton
-              title="Join Video Call"
-              page="appoint"
-              onPress={() => {
-                navigation.navigate('PatientVideoCallScreen', {
-                  appointmentId: appointmentData?.consultationId,
-                  role: 'patient',
-                  otherPartyImage: appointmentData?.doctor_image,
-                  otherPartyName: appointmentData?.doctorName,
-                });
-              }}
-            />
-          )}
-
-          {isChatVisible && (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={styles.secondaryBtn}
-              onPress={() => {
-                navigation.navigate('ChatScreen', {
-                  doctorAvatar: data?.doctor?.doctor_image,
-                  appointmentId: data?.appointment?.consultation_id,
-                  patientName: data?.appointment?.patient?.patient_name,
-                  role: 'patient',
-                  patientAvatar: data?.appointment?.patient?.patient_image,
-                });
-              }}
-            >
-              <Ionicons
-                name="chatbubble-ellipses-outline"
-                size={17}
-                color={Theme.emerald}
-              />
-              <Text style={styles.secondaryText}>Chat with Doctor</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-      </View>
-
-      <FeedbackModal
-        visible={showModal}
-        loading={loading}
-        onClose={() => setShowModal(false)}
-        onSubmit={handleReviewSubmit}
-      />
-    </View>
-  );
-};
-
-const AppointmentDetailScreen = ({ route, navigation }: any) => {
-  const { consultation_id } = route.params;
-
-  const [loading, setLoading] = React.useState(true);
-  const [detail, setDetail] = React.useState<any>(null);
-  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
-  const [token, setToken] = useState('');
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const handleRatingContinue = (rating: number) => {
+    setShowModal(false);
+    openShareExperience(rating);
+  };
 
   const fetchDetail = async () => {
+    if (!routeLookupId) {
+      showSuccessToast('Appointment id missing', 'error');
+      setLoading(false);
+      setDetail(null);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await _CONSULT_SERVICE.getAppointmentDetail(consultation_id);
-      setDetail(res?.data);
+      const res = await _CONSULT_SERVICE.getAppointmentDetail(routeLookupId);
+      console.log("apponitdetaillss", res);
+      if (!res?.success) {
+        showSuccessToast(res?.message || 'Appointment not found', 'error');
+        setDetail(null);
+        return;
+      }
+      setDetail(res?.data ?? null);
     } catch (error) {
       showSuccessToast('Something went wrong', 'error');
     } finally {
@@ -1055,13 +300,27 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     };
     init();
     fetchDetail();
-  }, []);
+  }, [routeLookupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (routeLookupId) {
+        fetchDetail();
+      }
+    }, [routeLookupId]),
+  );
 
   const normalizedAppointment = useMemo(() => {
     if (!detail?.appointment) return null;
     const item = detail;
+    const ids = getAppointmentIds({
+      rawData: detail,
+      appointment: detail?.appointment,
+    });
+
     return {
-      consultation_id: consultation_id,
+      consultation_id: ids.consultationId || ids.appointmentId,
+      appointment_id: ids.appointmentId || ids.consultationId,
       doctorName: item.doctor?.doctor_name || '',
       specialty: item.doctor?.doctor_specialization || 'General Physician',
       date: item.appointment?.appointment_date,
@@ -1088,7 +347,14 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     confirmed: { bg: Theme.emeraldSoft, text: Theme.emerald },
     pending: { bg: '#F1EEE7', text: Theme.subInk },
   };
-  const statusStyle = statusStyleMap[appointmentStatus || ''] || statusStyleMap.pending;
+  // const statusStyle = statusStyleMap[appointmentStatus || ''] || statusStyleMap.pending;
+
+  const statusStyle = useMemo(
+    () => getStatusStyle(appointmentStatus),
+    [appointmentStatus]
+
+
+  );
 
   const handleReschedule = async (
     appointmentId: string,
@@ -1149,6 +415,74 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     showSuccessToast(res?.message || 'Something went wrong', 'error');
   };
 
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchDetail?.();
+    } catch (error) {
+      console.log('REFRESH_ERROR', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchDetail]);
+
+  const patient = detail?.appointment?.patient;
+  const appointment = detail?.appointment;
+
+  const formatLabel = (value?: string | null) => {
+    if (!value) return '';
+    return String(value)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  };
+
+  const patientFields = [
+    { icon: 'person-outline', label: 'Name', value: patient?.patient_name },
+    { icon: 'people-outline', label: 'Relation', value: patient?.relation ?? patient?.patient_relation },
+    { icon: 'calendar-outline', label: 'Age', value: patient?.age },
+    { icon: 'body-outline', label: 'Gender', value: formatLabel(patient?.gender) },
+    { icon: 'call-outline', label: 'Phone', value: patient?.phone ?? patient?.phone_number },
+    { icon: 'mail-outline', label: 'Email', value: patient?.email },
+  ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
+
+  const appointmentFields = [
+    { icon: 'document-text-outline', label: 'Appointment ID', value: appointment?.appointment_id ?? appointment?.id },
+    // { icon: 'id-card-outline', label: 'Consultation ID', value: appointment?.consultation_id },
+    { icon: 'calendar-outline', label: 'Date', value: appointment?.appointment_date },
+    { icon: 'time-outline', label: 'Start Time', value: appointment?.start_time },
+    { icon: 'time-outline', label: 'End Time', value: appointment?.end_time },
+    { icon: 'flag-outline', label: 'Status', value: formatLabel(appointment?.appointment_status) },
+    { icon: 'videocam-outline', label: 'Call Status', value: formatLabel(appointment?.call_status) },
+    {
+      icon: 'medkit-outline',
+      label: 'Consultation Type',
+      value: formatLabel(appointment?.consultation_type ?? appointment?.mode),
+    },
+    { icon: 'cash-outline', label: 'Payment', value: formatLabel(appointment?.payment_status) },
+    { icon: 'repeat-outline', label: 'Follow-up', value: appointment?.follow_up?.date ?? appointment?.follow_up_date },
+    { icon: 'close-circle-outline', label: 'Cancellation Reason', value: appointment?.cancellation_reason },
+    { icon: 'refresh-outline', label: 'Reschedule Reason', value: appointment?.reschedule_reason },
+  ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
+
+  const renderInfoFields = (fields: typeof patientFields) =>
+    fields.map((field, index) => (
+      <React.Fragment key={field.label}>
+        {index > 0 ? <View style={styles.infoDivider} /> : null}
+        <View style={styles.infoRow}>
+          <View style={styles.infoLabelWrap}>
+            <View style={styles.infoIconCircle}>
+              <Ionicons name={field.icon as any} size={14} color={Theme.emerald} />
+            </View>
+            <Text style={styles.infoLabel}>{field.label}</Text>
+          </View>
+          <Text style={styles.infoValue} numberOfLines={2}>
+            {String(field.value)}
+          </Text>
+        </View>
+      </React.Fragment>
+    ));
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
@@ -1156,20 +490,27 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       <AppHeader
         title="Appointment Details"
         onLeftPress={() => navigation.goBack()}
-        rightIconName="search"
-        onRightPress={() => console.log('Search clicked')}
+      // rightIconName="search"
+      // onRightPress={() => console.log('Search clicked')}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: Theme.bg }}>
-        {loading ? (
+      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: Theme.bg }} refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#0D614E']}
+          tintColor="#0D614E"
+        />
+      }>
+        {loading1 ? (
           <AppointmentDetailSkeleton />
         ) : (
           <>
             {normalizedAppointment?.status && (
               <View style={styles.statusRow}>
-                <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-                  <View style={[styles.statusDot, { backgroundColor: statusStyle.text }]} />
-                  <Text style={[styles.statusPillText, { color: statusStyle.text }]}>
+                <View style={[styles.statusPill, { backgroundColor: statusStyle.backgroundColor }]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusStyle.color }]} />
+                  <Text style={[styles.statusPillText, { color: statusStyle.color }]}>
                     {normalizedAppointment.status}
                   </Text>
                 </View>
@@ -1188,45 +529,42 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               <Text style={styles.sectionTitle}>Patient Information</Text>
             </View>
             <View style={styles.card}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoLabelWrap}>
-                  <View style={styles.infoIconCircle}>
-                    <Ionicons name="person-outline" size={14} color={Theme.emerald} />
-                  </View>
-                  <Text style={styles.infoLabel}>Name</Text>
-                </View>
-                <Text style={styles.infoValue}>{detail?.appointment?.patient?.patient_name}</Text>
-              </View>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoLabelWrap}>
-                  <View style={styles.infoIconCircle}>
-                    <Ionicons name="calendar-outline" size={14} color={Theme.emerald} />
-                  </View>
-                  <Text style={styles.infoLabel}>Age</Text>
-                </View>
-                <Text style={styles.infoValue}>{detail?.appointment?.patient?.age}</Text>
-              </View>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoLabelWrap}>
-                  <View style={styles.infoIconCircle}>
-                    <Ionicons name="body-outline" size={14} color={Theme.emerald} />
-                  </View>
-                  <Text style={styles.infoLabel}>Gender</Text>
-                </View>
-                <Text style={styles.infoValue}>{detail?.appointment?.patient?.gender}</Text>
-              </View>
+              {renderInfoFields(patientFields)}
             </View>
 
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="document-text-outline" size={15} color={Theme.gold} />
-              <Text style={styles.sectionTitle}>Reason for Visit</Text>
-            </View>
-            <View style={styles.card}>
-              <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} />
-              <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
-            </View>
+            {appointmentFields.length > 0 && (
+              <>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="clipboard-outline" size={15} color={Theme.gold} />
+                  <Text style={styles.sectionTitle}>Appointment Details</Text>
+                </View>
+                <View style={styles.card}>
+                  {renderInfoFields(appointmentFields)}
+                </View>
+              </>
+            )}
+
+            {detail?.appointment?.concern && (
+              <>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="document-text-outline" size={15} color={Theme.gold} />
+                  <Text style={styles.sectionTitle}>Reason for Visit</Text>
+                </View>
+
+                <View style={styles.card}>
+                  {/* <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} /> */}
+                  <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
+                </View>
+              </>)}
+
+            {/* {!!detail?.doctor?.doctor_id && (
+              <View style={styles.consultSectionWrap}>
+                <DoctorConsultationSection
+                  doctorId={detail.doctor.doctor_id}
+                  navigation={navigation}
+                />
+              </View>
+            )} */}
 
             {appointmentStatus === 'completed' && (
               <>
@@ -1243,24 +581,78 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Ionicons
                             key={i}
-                            name={i < (detail?.appointment?.review?.rating || 0) ? 'star' : 'star-outline'}
+                            name={
+                              i < (detail?.appointment?.review?.rating || 0)
+                                ? 'star'
+                                : 'star-outline'
+                            }
                             size={18}
                             color={Theme.gold}
                             style={{ marginRight: 3 }}
                           />
                         ))}
                       </View>
-                      <Text style={styles.reviewText}>{detail?.appointment?.review?.review}</Text>
+
+                      <Text style={styles.reviewText}>
+                        {detail?.appointment?.review?.review}
+                      </Text>
+
+                      {/* <Text style={styles.reviewSubmittedHint}>
+                        Review submitted — editing is not allowed
+                      </Text> */}
                     </View>
                   ) : (
-                    <Pressable style={styles.emptyReviewWrap} >
+                    <Pressable
+                      style={styles.emptyReviewWrap}
+                      onPress={() => setShowModal(true)}
+                    >
                       <Ionicons name="star-outline" size={26} color={Theme.divider} />
-                      <Text style={styles.emptyReview}>You have not submitted a review yet.</Text>
+                      <Text style={styles.emptyReview}>Tap to rate your consultation</Text>
                     </Pressable>
                   )}
                 </View>
               </>
             )}
+
+            <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 0 : 8 }}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.outlineBtn}
+                onPress={() => {
+                  const appt = detail?.appointment ?? {};
+                  const doctor = detail?.doctor ?? {};
+                  const specialization = Array.isArray(
+                    doctor?.doctor_specialization,
+                  )
+                    ? doctor.doctor_specialization.join(', ')
+                    : doctor?.doctor_specialization ||
+                    doctor?.specialization ||
+                    doctor?.speciality ||
+                    '';
+                  navigation.navigate('AddCalendar', {
+                    appointment: {
+                      doctorName: doctor?.doctor_name,
+                      doctorImage: doctor?.doctor_image,
+                      specialization,
+                      date: appt?.appointment_date || appt?.date,
+                      startTime: appt?.start_time || appt?.time,
+                      endTime: appt?.end_time,
+                      concern: appt?.concern,
+                      hospitalName:
+                        doctor?.hospital_name || appt?.hospital_name,
+                      bookingId:
+                        appt?.consultation_id ||
+                        appt?.appointment_id ||
+                        appt?.id,
+                      status: appt?.appointment_status || appt?.status,
+                    },
+                  });
+                }}
+              >
+                <Ionicons name="calendar-outline" size={17} color={Theme.emerald} />
+                <Text style={styles.outlineBtnText}>Add to Calendar</Text>
+              </TouchableOpacity>
+            </View>
 
             {showButtons && (
               <View style={{ paddingHorizontal: 16 }}>
@@ -1284,6 +676,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </TouchableOpacity>
               </View>
             )}
+
           </>
         )}
 
@@ -1293,16 +686,40 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           isRescheduleRequest={isRescheduleRequest}
           onClose={() => setShowRescheduleModal(false)}
           onSubmit={(payload) => {
-            handleReschedule(normalizedAppointment?.consultation_id, payload);
+            const appointmentId =
+              normalizedAppointment?.appointment_id ||
+              normalizedAppointment?.consultation_id ||
+              routeLookupId;
+            if (!appointmentId) return;
+            handleReschedule(appointmentId, payload);
             setShowRescheduleModal(false);
           }}
         />
+
+
+        <FeedbackModal
+          visible={showModal && !alreadyReviewed}
+          loading={false}
+          isEdit={false}
+          mode="continue"
+          initialRating={0}
+          onClose={() => {
+            setShowModal(false);
+          }}
+          onContinue={handleRatingContinue}
+        />
+
 
         <CancelAppointmentModal
           visible={showCancelModal}
           onClose={() => setShowCancelModal(false)}
           onSubmit={(payload: any) => {
-            handleCancel(normalizedAppointment?.consultation_id, payload);
+            const appointmentId =
+              normalizedAppointment?.appointment_id ||
+              normalizedAppointment?.consultation_id ||
+              routeLookupId;
+            if (!appointmentId) return;
+            handleCancel(appointmentId, payload);
             setShowCancelModal(false);
           }}
         />
@@ -1321,16 +738,16 @@ const styles = StyleSheet.create({
 
   // ---------- Status pill (top) ----------
   statusRow: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   statusPill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
   },
   statusDot: {
     width: 6,
@@ -1339,91 +756,87 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
     textTransform: 'capitalize',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    marginHorizontal: 20,
-    marginBottom: 10,
+    marginTop: 16,
+    marginHorizontal: 16,
+    marginBottom: 6,
+  },
+
+  consultSectionWrap: {
+    marginHorizontal: 6,
+    marginTop: 8,
   },
 
   sectionTitle: {
     marginLeft: 6,
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.ink,
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
 
   card: {
     backgroundColor: Theme.cardBg,
     marginHorizontal: 16,
-    marginTop: 16,
-    padding: 18,
-    borderRadius: 20,
+    marginTop: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Theme.cardBorder,
-    // ...shadow('md'),
   },
 
   // ---------- Hero (Doctor) card ----------
   heroCard: {
     backgroundColor: Theme.cardBg,
     marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 24,
+    marginTop: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Theme.cardBorder,
-    overflow: 'hidden',
-    ...shadow('lg'),
+    padding: 12,
+    ...shadow('md'),
   },
 
-  banner: {
-    width: '100%',
-    height: 168,
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  heroAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: '#EFE9DC',
   },
 
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  heroInfo: {
+    flex: 1,
+    marginLeft: 12,
+    minWidth: 0,
   },
 
-  scrimTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-
-  scrimBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 92,
-    backgroundColor: 'rgba(15,20,17,0.55)',
-  },
-
-  bannerTextWrap: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 14,
+  heroNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 
   heroBody: {
-    padding: 18,
+    marginTop: 12,
+  },
+
+  heroActions: {
+    marginTop: 10,
   },
 
   row: {
@@ -1432,122 +845,108 @@ const styles = StyleSheet.create({
   },
 
   doctorName: {
-    fontSize: 19,
+    flex: 1,
+    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#fff',
-    marginBottom: 8,
-  },
-
-  specialtyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(244,233,211,0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    color: Theme.ink,
+    marginBottom: 2,
   },
 
   specialtyText: {
-    marginLeft: 5,
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#F4E9D3',
+    color: Theme.subInk,
   },
 
   liveBadge: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(239,68,68,0.92)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
 
   liveBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: '#fff',
-    marginRight: 5,
+    marginRight: 4,
   },
 
   liveBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#fff',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
   },
 
   divider: {
     height: 1,
     backgroundColor: Theme.divider,
-    marginVertical: 16,
+    marginVertical: 10,
   },
 
   dateTimeBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FBF9F4',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Theme.divider,
-    paddingVertical: 4,
   },
 
   dtItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
 
   dtDividerVertical: {
     width: 1,
-    height: 34,
+    height: 28,
     backgroundColor: Theme.divider,
   },
 
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: Theme.goldSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 8,
   },
 
   textContainer: {
     flexDirection: 'column',
+    flex: 1,
+    minWidth: 0,
   },
 
   label: {
-    marginBottom: 2,
-    fontSize: 11,
+    marginBottom: 1,
+    fontSize: 10,
     color: Theme.subInk,
     fontFamily: Fonts.PoppinsMedium,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
 
   value: {
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 14,
+    fontSize: 12,
     color: Theme.ink,
   },
 
   primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    marginTop: 4,
     ...shadow('md'),
   },
 
@@ -1560,17 +959,17 @@ const styles = StyleSheet.create({
   primaryText: {
     color: '#fff',
     marginLeft: 8,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
   secondaryBtn: {
     flexDirection: 'row',
     backgroundColor: Theme.emeraldSoft,
-    marginTop: 10,
-    paddingVertical: 13,
-    borderRadius: 14,
+    marginTop: 8,
+    paddingVertical: 11,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1578,7 +977,7 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: Theme.emerald,
     marginLeft: 8,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
@@ -1586,7 +985,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
 
   infoLabelWrap: {
@@ -1595,9 +994,9 @@ const styles = StyleSheet.create({
   },
 
   infoIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     backgroundColor: Theme.emeraldSoft,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1610,21 +1009,24 @@ const styles = StyleSheet.create({
   },
 
   infoLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: Theme.subInk,
     fontFamily: Fonts.PoppinsMedium,
   },
 
   infoValue: {
-    fontSize: 14,
+    flexShrink: 1,
+    marginLeft: 10,
+    textAlign: 'right',
+    fontSize: 13,
     color: Theme.ink,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   reason: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#4B5563',
-    lineHeight: 21,
+    lineHeight: 19,
     fontFamily: Fonts.PoppinsMedium,
     fontStyle: 'italic',
   },
@@ -1634,10 +1036,36 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  editReviewBtn: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+  },
+
+  editReviewText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   reviewText: {
     fontSize: 14,
     color: Theme.ink,
     lineHeight: 20,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  reviewSubmittedHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: Theme.subInk,
     fontFamily: Fonts.PoppinsMedium,
   },
 
@@ -1656,11 +1084,11 @@ const styles = StyleSheet.create({
 
   outlineBtn: {
     flexDirection: 'row',
-    marginTop: 14,
-    borderWidth: 1.4,
+    marginTop: 10,
+    borderWidth: 1.2,
     borderColor: Theme.emerald,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
@@ -1668,22 +1096,22 @@ const styles = StyleSheet.create({
 
   outlineBtnText: {
     marginLeft: 8,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.emerald,
   },
 
   cancelBtn: {
-    marginTop: 12,
-    marginBottom: 30,
-    paddingVertical: 14,
-    borderRadius: 14,
+    marginTop: 8,
+    marginBottom: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
     backgroundColor: Theme.dangerSoft,
   },
 
   cancelBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.danger,
   },

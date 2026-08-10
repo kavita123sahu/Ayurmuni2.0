@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import {
   View,
   Text,
@@ -15,21 +15,41 @@ type Props = {
   title: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
+  onSearchPress?: () => void;
+  onRefreshPress?: () => void;
+  /** Extra action shown to the left of the primary right icon (e.g. wishlist) */
+  onSecondaryRightPress?: () => void;
   useLocalBackIcon?: boolean;
   leftIconName?: TablerIconName;
   rightIconName?: TablerIconName;
+  rightIconColor?: string;
+  secondaryRightIconName?: TablerIconName;
+  secondaryRightIconColor?: string;
   rightLabel?: string;
+  /** Custom right-side content (e.g. Mark all / Clear) */
+  rightContent?: ReactNode;
 };
 
 const AppHeader: React.FC<Props> = ({
   title,
   onLeftPress,
   onRightPress,
+  onSearchPress,
+  onSecondaryRightPress,
+  // onRefreshPress,
   useLocalBackIcon = true,
   leftIconName = 'arrow-left',
   rightIconName,
+  rightIconColor,
+  secondaryRightIconName,
+  secondaryRightIconColor,
   rightLabel,
+  rightContent,
 }) => {
+  const hasRightActions = Boolean(
+    onSearchPress || rightIconName || secondaryRightIconName,
+  );
+
   return (
     <View style={styles.shell}>
       <View style={styles.container}>
@@ -51,16 +71,44 @@ const AppHeader: React.FC<Props> = ({
           {title || ' '}
         </Text>
 
-        {rightLabel ? (
+        {rightContent ? (
+          <View style={styles.rightContent}>{rightContent}</View>
+        ) : rightLabel ? (
           <TouchableOpacity onPress={onRightPress} style={styles.labelBox}>
             <Text style={styles.rightLabel}>{rightLabel}</Text>
           </TouchableOpacity>
-        ) : rightIconName ? (
-          <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
-            <TablerIcon name={rightIconName} size={22} color={Colors.primaryColor} />
-          </TouchableOpacity>
         ) : (
-          <View style={styles.iconPlaceholder} />
+          <View style={styles.rightActions}>
+            {onSearchPress ? (
+              <TouchableOpacity onPress={onSearchPress} style={styles.iconBox}>
+                <TablerIcon name="search" size={22} color={Colors.primaryColor} />
+              </TouchableOpacity>
+            ) : null}
+            {secondaryRightIconName ? (
+              <TouchableOpacity
+                onPress={onSecondaryRightPress}
+                style={styles.iconBox}
+                disabled={!onSecondaryRightPress}
+              >
+                <TablerIcon
+                  name={secondaryRightIconName}
+                  size={22}
+                  color={secondaryRightIconColor || Colors.primaryColor}
+                />
+              </TouchableOpacity>
+            ) : null}
+            {rightIconName ? (
+              <TouchableOpacity onPress={onRightPress} style={styles.iconBox}>
+                <TablerIcon
+                  name={rightIconName}
+                  size={22}
+                  color={rightIconColor || Colors.primaryColor}
+                />
+              </TouchableOpacity>
+            ) : !hasRightActions ? (
+              <View style={styles.iconPlaceholder} />
+            ) : null}
+          </View>
         )}
       </View>
       <View style={styles.divider} />
@@ -72,7 +120,7 @@ export default AppHeader;
 
 const styles = StyleSheet.create({
   shell: {
-    backgroundColor: '#FFFFFF',
+    // backgroundColor: '#FFFFFF',
   },
   container: {
     flexDirection: 'row',
@@ -97,6 +145,16 @@ const styles = StyleSheet.create({
   iconPlaceholder: {
     width: 44,
     height: 44,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rightContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    maxWidth: '48%',
   },
   labelBox: {
     paddingHorizontal: 4,

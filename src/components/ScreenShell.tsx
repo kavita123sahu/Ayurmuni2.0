@@ -22,6 +22,8 @@ type ScreenShellProps = {
   withTabBar?: boolean;
   /** Use ScrollView wrapper */
   scroll?: boolean;
+  /** Renders above scroll content; only children scroll */
+  fixedHeader?: React.ReactNode;
   scrollProps?: ScrollViewProps;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
@@ -34,6 +36,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
   children,
   withTabBar = false,
   scroll = false,
+  fixedHeader,
   scrollProps,
   style,
   contentStyle,
@@ -47,14 +50,36 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
     ? getScreenBottomPadding(insets)
     : getDetailBottomPadding(insets);
 
-  const inner = scroll ? (
+  const inner = fixedHeader ? (
+    <View
+      style={[
+        styles.content,
+        { paddingHorizontal: paddingH },
+        contentStyle,
+      ]}
+    >
+      {fixedHeader}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.flex}
+        {...scrollProps}
+        contentContainerStyle={[
+          styles.scrollContent,
+          scrollProps?.contentContainerStyle,
+        ]}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  ) : scroll ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       {...scrollProps}
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingBottom, paddingHorizontal: paddingH },
+        { paddingHorizontal: paddingH },
         scrollProps?.contentContainerStyle,
         contentStyle,
       ]}
@@ -65,6 +90,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
     <View
       style={[
         styles.content,
+        // Tab screens: shell owns bottom pad — do not also pad child ScrollViews
         { paddingBottom, paddingHorizontal: paddingH },
         contentStyle,
       ]}
@@ -91,6 +117,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flex: 1,
+  },
+  flex: {
     flex: 1,
   },
   scrollContent: {

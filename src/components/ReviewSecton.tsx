@@ -2,15 +2,34 @@ import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
+import { collectReviewImageUrls, getAverageRating, isReviewVideoUrl, normalizeReviewsForDisplay } from "../utils/reviewUtils";
+import TablerIcon from "./TablerIcon";
 
-const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigation: any }) => {
+const ReviewSection = ({
+  reviews = [],
+  navigation,
+  entityType,
+  doctorId,
+  variantId,
+  title = 'Customer Reviews',
+}: {
+  reviews?: any[];
+  navigation: any;
+  entityType?: 'doctor' | 'product';
+  doctorId?: string;
+  variantId?: string;
+  title?: string;
+}) => {
   const renderStars = (count: number) => {
     return "⭐".repeat(count); // simple star render
   };
 
   console.log("reviewsalll", reviews);
-  const visibleReviews = reviews?.slice(0, 3);
-  console.log("vissblereviewww", visibleReviews)
+  const normalizedReviews = useMemo(
+    () => normalizeReviewsForDisplay(reviews),
+    [reviews],
+  );
+  const visibleReviews = normalizedReviews?.slice(0, 3);
 
   const getInitials = (name: string) => {
     return name?.split(" ")?.map((n) => n[0])?.join("").toUpperCase();
@@ -37,14 +56,7 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
       percent: total ? Math.round((counts[star] / total) * 100) : 0,
     }));
 
-    const average =
-      total > 0
-        ? Number(
-          (
-            reviews?.reduce((sum, r) => sum + Number(r.rating), 0) / total
-          ).toFixed(1)
-        )
-        : 0;
+    const average = getAverageRating(reviews);
 
     return {
       average,
@@ -56,13 +68,8 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
   const MAX_VISIBLE_IMAGES = 4;
 
   const allImages = useMemo(() => {
-    const reviewImages = reviews?.flatMap((item: any) => item?.image_urls || []);
-
-    const mediaImages = reviews?.map((item: any) => item?.media_url ?? '')
-      .filter(Boolean);
-
-    return [...mediaImages, ...reviewImages];
-  }, [reviews]);
+    return collectReviewImageUrls(normalizedReviews);
+  }, [normalizedReviews]);
 
 
   return (
@@ -70,11 +77,16 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
       {/* Header */}
       <TouchableOpacity
         style={styles.reviewHeader}
-        onPress={() => navigation.navigate("ReviewPage", {
-          reviews: reviews,
-        })}
+        onPress={() =>
+          navigation.navigate('ReviewPage', {
+            reviews: normalizedReviews,
+            entityType,
+            doctorId,
+            variantId,
+          })
+        }
       >
-        <Text style={styles.sectionTitle}>Customer Reviews</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
 
         <Text style={styles.viewAll}>View All</Text>
       </TouchableOpacity>
@@ -129,6 +141,12 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
                   style={styles.reviewImage}
                 />
 
+                {isReviewVideoUrl(item) ? (
+                  <View style={styles.videoBadge}>
+                    <TablerIcon name="video" size={12} color="#FFFFFF" />
+                  </View>
+                ) : null}
+
                 {isLastVisible && (
                   <View style={styles.overlay}>
                     <Text style={styles.overlayText}>
@@ -148,14 +166,23 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
 
             {/* Avatar */}
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {getInitials(item?.patient_name ?? '')}
-              </Text>
+              {item?.reviewer_profile_image ? (
+                <Image
+                  source={{ uri: item.reviewer_profile_image }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {getInitials(item?.reviewer_name || item?.patient_name || '')}
+                </Text>
+              )}
             </View>
 
             <View style={{ flex: 1, marginLeft: 10 }}>
               <View style={styles.nameRow}>
-                <Text style={styles.name}>{item?.patient_name ?? ''}</Text>
+                <Text style={styles.name}>
+                  {item?.reviewer_name || item?.patient_name || 'Patient'}
+                </Text>
                 <Text style={styles.stars}>
                   {renderStars(item?.rating ?? '')} ( {item?.rating ?? ''} )
                 </Text>
@@ -163,8 +190,35 @@ const ReviewSection = ({ reviews = [], navigation }: { reviews?: any[], navigati
             </View>
           </View>
 
-          {/* Review Text */}
-          <Text style={styles.reviewText}>{item?.review ?? ''}</Text>
+          {!!item?.review?.trim?.() ? (
+            <Text style={styles.reviewText}>{item.review}</Text>
+          ) : null}
+
+          {!!item?.image_urls?.length && (
+            <View style={styles.cardImageRow}>
+              {item.image_urls.slice(0, 4).map((uri: string, idx: number) => (
+                <TouchableOpacity
+                  key={`${item.id}-${idx}`}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    navigation.navigate('ReviewGalleryScreen', {
+                      images: item.image_urls,
+                      selectedIndex: idx,
+                    })
+                  }
+                >
+                  <Image source={{ uri }} style={styles.cardImage} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {!!item?.doctor_reply?.trim?.() && (
+            <View style={styles.doctorReplyBox}>
+              <Text style={styles.doctorReplyLabel}>Doctor replied</Text>
+              <Text style={styles.doctorReplyText}>{item.doctor_reply}</Text>
+            </View>
+          )}
         </View>
       ))}
 
@@ -211,6 +265,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
+  videoBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
   overlay: {
     position: 'absolute',
     width: 80,
@@ -301,5 +367,42 @@ const styles = StyleSheet.create({
     color: "#4B5563",
     fontFamily: Fonts.PoppinsMedium,
     lineHeight: 18,
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  cardImageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  cardImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: '#E2E8F0',
+  },
+  doctorReplyBox: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8F2EE',
+  },
+  doctorReplyLabel: {
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 4,
+  },
+  doctorReplyText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
   },
 })
