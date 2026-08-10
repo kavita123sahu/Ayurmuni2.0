@@ -16,7 +16,11 @@ import { Images } from '../../common/Images';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TablerIcon from '../../components/TablerIcon';
 import * as _PATIENT from '../../services/PatientServices';
-import { nowIso } from '../../utils/dietPlanUtils';
+import {
+  nowIso,
+  normalizeDietFoodItem,
+  resolveMealImage,
+} from '../../utils/dietPlanUtils';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
 import { resolveImageSource } from '../../utils/imageUtils';
@@ -31,10 +35,15 @@ const MealDetails = (props: any) => {
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState(item?.status === 'done');
 
-  const mealTitle = item?.title || 'Meal';
+  const mealTitle =
+    typeof item?.title === 'string'
+      ? item.title
+      : normalizeDietFoodItem(item?.title)?.label || 'Meal';
   const mealType = String(item?.type || 'Meal');
   const imageSource =
-    resolveImageSource(item?.image) || FALLBACK_IMAGE;
+    resolveImageSource(item?.image) ||
+    resolveMealImage(item?.raw) ||
+    FALLBACK_IMAGE;
 
   const stats = [
     { label: 'Calories', value: String(item?.kcal ?? '—') },
@@ -44,17 +53,37 @@ const MealDetails = (props: any) => {
   ];
 
   const ingredients =
-    Array.isArray(item?.dietItems) && item.dietItems.length
-      ? item.dietItems.map((title: string, index: number) => ({
-        id: String(index),
-        title,
-        subtitle: '',
-      }))
-      : [];
+    Array.isArray(item?.dietItemDetails) && item.dietItemDetails.length
+      ? item.dietItemDetails.map((food: any, index: number) => ({
+          id: String(index),
+          title: String(food?.name || food?.label || ''),
+          subtitle: [food?.quantity, food?.notes].filter(Boolean).join(' · '),
+        }))
+      : Array.isArray(item?.dietItems) && item.dietItems.length
+        ? item.dietItems
+            .map((entry: any, index: number) => {
+              const normalized = normalizeDietFoodItem(entry);
+              if (!normalized) return null;
+              return {
+                id: String(index),
+                title: normalized.name || normalized.label,
+                subtitle: [normalized.quantity, normalized.notes]
+                  .filter(Boolean)
+                  .join(' · '),
+              };
+            })
+            .filter(Boolean)
+        : [];
 
   const steps =
     Array.isArray(item?.preparationSteps) && item.preparationSteps.length
       ? item.preparationSteps
+          .map((step: any) =>
+            typeof step === 'string'
+              ? step
+              : normalizeDietFoodItem(step)?.label || String(step?.name ?? ''),
+          )
+          .filter(Boolean)
       : [];
 
   const onLogMeal = async () => {

@@ -131,7 +131,7 @@ const Detailimages: React.FC<Props> = ({
         disableIntervalMomentum
         bounces={false}
         removeClippedSubviews
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingHorizontal: !isBanner ? SPACING : undefined }]}
         onMomentumScrollEnd={e => {
           const index = Math.round(
             e.nativeEvent.contentOffset.x / slideSize,
@@ -282,6 +282,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   listContent: {
+
     paddingRight: SPACING,
   },
   slide: {
@@ -292,6 +293,7 @@ const styles = StyleSheet.create({
     borderColor: '#E8EDF2',
   },
   slideBanner: {
+
     // backgroundColor: '#0B2E26',
     borderRadius: 18,
     borderWidth: 0,

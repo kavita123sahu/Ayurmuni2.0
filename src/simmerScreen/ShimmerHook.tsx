@@ -814,7 +814,7 @@ export const AppointmentSkeletonList = () => {
             </SkeletonPlaceholder.Item>
 
             {/* BUTTONS (IMPORTANT FIX) */}
-            <SkeletonPlaceholder.Item
+            {/* <SkeletonPlaceholder.Item
               marginTop={14}
               flexDirection="row"
               justifyContent="space-between"
@@ -830,7 +830,7 @@ export const AppointmentSkeletonList = () => {
                 height={47}
                 borderRadius={10}
               />
-            </SkeletonPlaceholder.Item>
+            </SkeletonPlaceholder.Item> */}
           </SkeletonPlaceholder>
         </View>
       ))}
@@ -1438,35 +1438,35 @@ export const MyProductCardSkeleton = () => {
 export const PrakritiProfileSkeleton = () => {
   return (
     <ScrollView>
-      <View style={{height:220, backgroundColor:'#E5E7EB'}} />
+      <View style={{ height: 220, backgroundColor: '#E5E7EB' }} />
 
       <View
         style={{
-          height:120,
-          margin:16,
-          borderRadius:20,
-          backgroundColor:'#E5E7EB',
+          height: 120,
+          margin: 16,
+          borderRadius: 20,
+          backgroundColor: '#E5E7EB',
         }}
       />
 
       <View
         style={{
-          height:180,
-          margin:16,
-          borderRadius:20,
-          backgroundColor:'#E5E7EB',
+          height: 180,
+          margin: 16,
+          borderRadius: 20,
+          backgroundColor: '#E5E7EB',
         }}
       />
 
-      {[1,2].map(item => (
+      {[1, 2].map(item => (
         <View
           key={item}
           style={{
-            height:220,
-            marginHorizontal:16,
-            marginBottom:16,
-            borderRadius:20,
-            backgroundColor:'#E5E7EB',
+            height: 220,
+            marginHorizontal: 16,
+            marginBottom: 16,
+            borderRadius: 20,
+            backgroundColor: '#E5E7EB',
           }}
         />
       ))}
@@ -1777,4 +1777,55 @@ export const DietActiveSkeleton = () => (
       ))}
     </SkeletonPlaceholder>
   </ScrollView>
+);
+
+/** Order History list skeleton (matches OrderCard layout). */
+export const OrderHistorySkeleton = ({ count = 6 }: { count?: number }) => (
+  <View style={{ paddingTop: 8 }}>
+    {Array.from({ length: count }).map((_, index) => (
+      <View
+        key={`order-skel-${index}`}
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 16,
+          padding: 14,
+          marginBottom: 12,
+          borderWidth: 1,
+          borderColor: '#EEF2F6',
+        }}
+      >
+        <SkeletonPlaceholder borderRadius={12} speed={1200}>
+          <SkeletonPlaceholder.Item flexDirection="row" alignItems="flex-start">
+            <SkeletonPlaceholder.Item width={52} height={52} borderRadius={12} />
+            <SkeletonPlaceholder.Item flex={1} marginLeft={12}>
+              <SkeletonPlaceholder.Item
+                width="72%"
+                height={14}
+                borderRadius={6}
+              />
+              <SkeletonPlaceholder.Item
+                width="48%"
+                height={12}
+                borderRadius={5}
+                marginTop={8}
+              />
+            </SkeletonPlaceholder.Item>
+            <SkeletonPlaceholder.Item
+              width={72}
+              height={24}
+              borderRadius={12}
+            />
+          </SkeletonPlaceholder.Item>
+          <SkeletonPlaceholder.Item
+            flexDirection="row"
+            justifyContent="space-between"
+            marginTop={14}
+          >
+            <SkeletonPlaceholder.Item width="40%" height={12} borderRadius={5} />
+            <SkeletonPlaceholder.Item width="28%" height={14} borderRadius={5} />
+          </SkeletonPlaceholder.Item>
+        </SkeletonPlaceholder>
+      </View>
+    ))}
+  </View>
 );

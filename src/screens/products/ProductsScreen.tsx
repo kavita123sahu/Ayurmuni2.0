@@ -14,18 +14,22 @@ import Header from '../../components/Header';
 import PromoCard from '../../components/PromoCard';
 import ProductCard from '../../components/ProductCard';
 import SectionHeader from '../../components/SectionHeader';
+import Detailimages from '../../components/Detailimages';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { ProductGridSkeleton, ProductsScreenSkeleton, CategoryRowSkeleton } from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
-import { getScreenBottomPadding } from '../../constants/layout';
+import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
 import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
 import {
@@ -41,6 +45,7 @@ import {
 } from '../../utils/productStockUtils';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+import { useBanners } from '../../hooks/useBanners';
 
 const H_PAD = 20;
 const GRID_GAP = 10;
@@ -52,6 +57,8 @@ const ProductsScreen = () => {
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
   const { categories: dashboardCategories, loading: homeLoading } = useHomeData();
+  const { images: bannerImages } = useBanners('product');
+  const screenWidth = Dimensions.get('window').width;
 
   const productsCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'products'),
@@ -118,31 +125,11 @@ const ProductsScreen = () => {
     [dispatch],
   );
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const old = item?.is_wishlist_item;
-      setProducts(prev =>
-        prev.map(p =>
-          p.variant_id === item.variant_id
-            ? { ...p, is_wishlist_item: !old }
-            : p,
-        ),
-      );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        setProducts(prev =>
-          prev.map(p =>
-            p.variant_id === item.variant_id
-              ? { ...p, is_wishlist_item: old }
-              : p,
-          ),
-        );
-      }
-    },
-    [setProducts],
-  );
+  useWishlistSync(setProducts);
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -179,14 +166,28 @@ const ProductsScreen = () => {
   const ListHeader = useCallback(
     () => (
       <View style={styles.headerContent}>
-        <PromoCard
-          title="Up to 40% OFF on Supplements"
-          desc="Keep your immunity strong this season."
-          tag="SUMMER SALE"
-          buttontext="Shop Now"
-          showButton
-          onPress={() => {}}
-        />
+        {bannerImages.length > 0 ? (
+          <View style={styles.bannerWrap}>
+            <Detailimages
+              images={bannerImages}
+              itemWidth={screenWidth - SCREEN_PADDING_H * 2}
+              DynamicResize="cover"
+              autoSlide
+              embedded
+              mode="banner"
+              enablePreview={false}
+            />
+          </View>
+        ) : (
+          <PromoCard
+            title="Up to 40% OFF on Supplements"
+            desc="Keep your immunity strong this season."
+            tag="SUMMER SALE"
+            buttontext="Shop Now"
+            showButton
+            onPress={() => {}}
+          />
+        )}
 
         <SectionHeader
           title="Shop by Category"
@@ -208,13 +209,13 @@ const ProductsScreen = () => {
         <SectionHeader title="All Products" actionText="" />
       </View>
     ),
-    [productCategories, categoriesLoading, navigation],
+    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth],
   );
 
   const showInitialSkeleton = loading && products.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
@@ -286,6 +287,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: H_PAD,
   },
   headerContent: {},
+  bannerWrap: {
+    marginBottom: 8,
+  },
   listContent: {},
   columnWrap: {
     justifyContent: 'space-between',

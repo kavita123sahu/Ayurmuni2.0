@@ -200,7 +200,8 @@ const PrescriptionUpload: React.FC<Props> = ({
               style={styles.optionItem}
               onPress={() => {
                 setShowUploadOptions(false);
-                setTimeout(() => CameraUpload?.(), 300);
+                // Wait for options modal to fully dismiss before opening camera
+                setTimeout(() => CameraUpload?.(), 450);
               }}
             >
               <View style={styles.optionIcon}>

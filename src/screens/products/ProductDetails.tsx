@@ -965,6 +965,7 @@ import { Colors } from '../../common/Colors';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
+import { TogglewishlistProduct } from '../../services/ProductServices';
 import {
     buildVariantGallery,
     cacheVariantImage,
@@ -1024,7 +1025,10 @@ const ProductDetails = (props: any) => {
     const [quantity, setQuantity] = useState(1);
     const [descExpanded, setDescExpanded] = useState(false);
     const [activeSheet, setActiveSheet] = useState<DetailSheetKey>(null);
+    const [isWishlisted, setIsWishlisted] = useState(false);
+    const [wishlistBusy, setWishlistBusy] = useState(false);
 
+    console.log("selectedVariantselectedVariantselectedVariant", selectedVariant)
     useEffect(() => {
         if (defaultVariant) setSelectedVariant(defaultVariant);
     }, [ProductData]);
@@ -1032,6 +1036,19 @@ const ProductDetails = (props: any) => {
     useEffect(() => {
         setQuantity(1);
     }, [selectedVariant?.id]);
+
+    useEffect(() => {
+        const wishlisted = Boolean(
+            selectedVariant?.is_wishlist_item ??
+            ProductData?.is_wishlist_item ??
+            false,
+        );
+        setIsWishlisted(wishlisted);
+    }, [
+        selectedVariant?.id,
+        selectedVariant?.is_wishlist_item,
+        ProductData?.is_wishlist_item,
+    ]);
 
     const galleryImages = useMemo(
         () => buildVariantGallery(selectedVariant),
@@ -1065,6 +1082,48 @@ const ProductDetails = (props: any) => {
             props.navigation.navigate('MyCart');
         } else {
             showSuccessToast('Try again to add into cart', 'error');
+        }
+    };
+
+    const handleToggleWishlist = async () => {
+        if (wishlistBusy) return;
+        if (!(await requireAuth('Please login to save wishlist items'))) return;
+
+        const variantId = String(
+            selectedVariant?.variant_id ??
+            selectedVariant?.id ??
+            varientID ??
+            '',
+        );
+        if (!variantId) {
+            showSuccessToast('Product variant unavailable', 'error');
+            return;
+        }
+
+        const previous = isWishlisted;
+        setIsWishlisted(!previous);
+        setWishlistBusy(true);
+
+        try {
+            const response = await TogglewishlistProduct(variantId as any, 'POST');
+            if (response?.success === false) {
+                throw new Error(response?.message || 'Wishlist update failed');
+            }
+
+            setSelectedVariant((prev: any) =>
+                prev
+                    ? { ...prev, is_wishlist_item: !previous }
+                    : prev,
+            );
+            showSuccessToast(
+                previous ? 'Removed from wishlist' : 'Added to wishlist',
+                'success',
+            );
+        } catch {
+            setIsWishlisted(previous);
+            showSuccessToast('Unable to update wishlist', 'error');
+        } finally {
+            setWishlistBusy(false);
         }
     };
 
@@ -1189,6 +1248,11 @@ const ProductDetails = (props: any) => {
 
             <AppHeader
                 title="Product Details"
+                secondaryRightIconName={isWishlisted ? 'heart-filled' : 'heart'}
+                secondaryRightIconColor={
+                    isWishlisted ? Colors.primaryColor : Colors.primaryColor
+                }
+                onSecondaryRightPress={handleToggleWishlist}
                 rightIconName="share"
                 onLeftPress={() => props.navigation.goBack()}
                 onRightPress={() =>
@@ -1205,7 +1269,7 @@ const ProductDetails = (props: any) => {
             >
                 <Detailimages
                     itemHeight={300}
-                    DynamicResize="contain"
+                    DynamicResize="cover"
                     images={galleryImages}
                 />
 
@@ -1421,6 +1485,9 @@ const ProductDetails = (props: any) => {
                     <ReviewSection
                         navigation={props.navigation}
                         reviews={ReviewAll}
+                        entityType="product"
+                        variantId={String(varientID || '')}
+                        title="Product Reviews"
                     />
                 </View>
 

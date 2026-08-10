@@ -2,17 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as _PATIENT from '../services/PatientServices';
 import {
   calculateDietNutrition,
+  extractDietApiError,
   extractDietPlanDetail,
   isDietPlanStarted,
+  isNoActiveDietPlanError,
   mapDietPlanSummary,
   buildDietDayChips,
   extractProgressPayload,
   getPlanJsonDays,
   mapPlanJsonMeals,
+  mergePlanJsonWithGalleries,
   normalizeDietPlanList,
   normalizeProgressList,
   nowIso,
   resolveCurrentDayKey,
+  getDietListStatus,
   DietDayChip,
   DietMeal,
   DietNutrition,
@@ -22,6 +26,7 @@ import {
 import { showSuccessToast } from '../config/Key';
 import { requireAuth } from '../services/guestAuth';
 import type { DietPlanStatusAction } from '../services/PatientServices';
+import { DIET_PLAN_PAGE_SIZE } from '../services/PatientServices';
 
 type Options = {
   /** Open this plan detail when screen mounts */
@@ -35,7 +40,8 @@ type Options = {
 };
 
 export const useDietPlans = (options: Options = {}) => {
-  const { initialPlanId = null, listType = 'all' } = options;
+  /** Default: suggested (no type). Pass listType: 'all' for View all catalog. */
+  const { initialPlanId = null, listType = null } = options;
 
   const [plans, setPlans] = useState<DietPlanSummary[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(
@@ -57,8 +63,14 @@ export const useDietPlans = (options: Options = {}) => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loggingMealId, setLoggingMealId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
   const currentDayKeyRef = useRef(currentDayKey);
   const hasInitializedDayRef = useRef(false);
+  const loadingMoreLockRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const pageRef = useRef(1);
   currentDayKeyRef.current = currentDayKey;
 
   const nutrition: DietNutrition = useMemo(
@@ -99,8 +111,8 @@ export const useDietPlans = (options: Options = {}) => {
       const requestedRaw = forceDay
         ? preferredDayKey || todayKey
         : preferredDayKey ||
-          currentDayKeyRef.current ||
-          todayKey;
+        currentDayKeyRef.current ||
+        todayKey;
       const requested = String(requestedRaw || '').toLowerCase();
       const dayKey =
         days.find(d => d.toLowerCase() === requested) ||
@@ -136,105 +148,313 @@ export const useDietPlans = (options: Options = {}) => {
     [planDetail, progress, todayDayKey],
   );
 
-  const loadProgress = useCallback(async (patientDietPlanId?: string | null) => {
-    try {
-      const res = await _PATIENT.getDietPlanProgress(
-        patientDietPlanId || undefined,
-      );
-      if (res?.success === false) {
-        return {
-          progressList: [] as DietProgressItem[],
-          planJson: null,
-          startedAt: null,
-          assignmentId: null,
-          dietPlanId: null,
-          status: null,
-          raw: res,
-        };
+  const emptyProgress = useCallback(
+    (raw: any = null) => ({
+      progressList: [] as DietProgressItem[],
+      planJson: null as any,
+      startedAt: null as string | null,
+      assignmentId: null as string | null,
+      dietPlanId: null as string | null,
+      status: null as string | null,
+      raw,
+    }),
+    [],
+  );
+
+  const loadProgress = useCallback(
+    async (patientDietPlanId?: string | null) => {
+      try {
+        // Never hit progress without assignment id — API returns no_active_plan 404
+        if (
+          patientDietPlanId == null ||
+          String(patientDietPlanId).trim() === ''
+        ) {
+          return emptyProgress();
+        }
+
+        const res = await _PATIENT.getDietPlanProgress(patientDietPlanId);
+        if (res?.success === false) {
+          // Paused / no active assignment — silent empty (do not toast)
+          if (isNoActiveDietPlanError(res)) {
+            console.log('DIET_PROGRESS_NO_ACTIVE => silent');
+            return emptyProgress(res);
+          }
+          return emptyProgress(res);
+        }
+        const payload = extractProgressPayload(res);
+        console.log('DIET_PROGRESS_PARSED =>', payload.progressList);
+        return { ...payload, raw: res };
+      } catch (e) {
+        console.log('DIET_PROGRESS_ERROR', e);
+        return emptyProgress();
       }
-      const payload = extractProgressPayload(res);
-      console.log('DIET_PROGRESS_PARSED =>', payload.progressList);
-      return { ...payload, raw: res };
-    } catch (e) {
-      console.log('DIET_PROGRESS_ERROR', e);
-      return {
-        progressList: [] as DietProgressItem[],
-        planJson: null,
-        startedAt: null,
-        assignmentId: null,
-        dietPlanId: null,
-        status: null,
-        raw: null,
-      };
-    }
-  }, []);
+    },
+    [emptyProgress],
+  );
+
+  const fetchListPage = useCallback(
+    async (pageToLoad: number, mode: 'replace' | 'append') => {
+      if (mode === 'append') {
+        if (loadingMoreLockRef.current || !hasMoreRef.current) return;
+        loadingMoreLockRef.current = true;
+        setLoadingMore(true);
+      } else {
+        setLoadingList(true);
+      }
+
+      try {
+        const res = await _PATIENT.getDietPlans({
+          ...(listType ? { type: listType } : {}),
+          // page: pageToLoad,
+          // page_size: DIET_PLAN_PAGE_SIZE,
+        });
+
+        if (res?.success === false) {
+          if (mode === 'replace') {
+            setPlans([]);
+            setHasMore(false);
+            hasMoreRef.current = false;
+          }
+          return;
+        }
+
+        const mapped = normalizeDietPlanList(res);
+        let more = _PATIENT.hasMoreDietPlanPages(
+          res,
+          mapped.length,
+          DIET_PLAN_PAGE_SIZE,
+          pageToLoad,
+        );
+
+        setPlans(prev => {
+          if (mode !== 'append') return mapped;
+          const seen = new Set(prev.map(p => String(p.id)));
+          const unique = mapped.filter(p => {
+            const id = String(p.id);
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          });
+          // Empty unique page → no more. Partial page → end of list.
+          if (unique.length === 0 || mapped.length < DIET_PLAN_PAGE_SIZE) {
+            more = false;
+          }
+          return [...prev, ...unique];
+        });
+
+        // Replace mode: short first page means end
+        if (mode === 'replace' && mapped.length < DIET_PLAN_PAGE_SIZE) {
+          more = false;
+        }
+
+        setPage(pageToLoad);
+        pageRef.current = pageToLoad;
+        setHasMore(more);
+        hasMoreRef.current = more;
+      } catch (e) {
+        console.log('DIET_LIST_ERROR', e);
+        if (mode === 'replace') {
+          setPlans([]);
+          setHasMore(false);
+          hasMoreRef.current = false;
+        }
+      } finally {
+        setLoadingList(false);
+        setLoadingMore(false);
+        loadingMoreLockRef.current = false;
+      }
+    },
+    [listType],
+  );
 
   const loadList = useCallback(async () => {
-    try {
-      setLoadingList(true);
-      const res = await _PATIENT.getDietPlans(
-        listType ? { type: listType } : undefined,
-      );
-      if (res?.success === false) {
-        setPlans([]);
-        return;
-      }
-      setPlans(normalizeDietPlanList(res));
-    } catch (e) {
-      console.log('DIET_LIST_ERROR', e);
-      setPlans([]);
-    } finally {
-      setLoadingList(false);
+    pageRef.current = 1;
+    hasMoreRef.current = true;
+    setPage(1);
+    setHasMore(true);
+    await fetchListPage(1, 'replace');
+  }, [fetchListPage]);
+
+  const loadMore = useCallback(() => {
+    if (
+      loadingList ||
+      loadingMore ||
+      !hasMoreRef.current ||
+      loadingMoreLockRef.current
+    ) {
+      return;
     }
-  }, [listType]);
+    fetchListPage(pageRef.current + 1, 'append');
+  }, [fetchListPage, loadingList, loadingMore]);
+
+  /**
+   * All-diet catalog (`type=all`): keep loading pages until the API ends
+   * so the list shows the full catalog (with a safety page cap).
+   */
+  useEffect(() => {
+    if (listType !== 'all') return;
+    if (loadingList || loadingMore || !hasMore) return;
+    if (page >= 20) return;
+    const timer = setTimeout(() => {
+      if (hasMoreRef.current && !loadingMoreLockRef.current) {
+        loadMore();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [listType, loadingList, loadingMore, hasMore, page, loadMore]);
 
   const loadDetail = useCallback(
     async (planId: string) => {
       if (!planId) return null;
       try {
         setLoadingDetail(true);
-        const detailRes = await _PATIENT.getDietPlans({ id: planId });
-        let detail =
-          extractDietPlanDetail(detailRes) ||
-          mapDietPlanSummary({ id: planId });
+
+        /**
+         * Detail fetch:
+         * 1) GET ?id=  (suggested / assigned plans)
+         * 2) GET ?id=&type=all  (full catalog — needed for View-all / paid plans)
+         * Without the type=all fallback, non-suggested plans return 404
+         * and Start/Switch never get plan_json / assignment fields.
+         */
+        const listSummary =
+          plans.find(p => String(p.id) === String(planId)) || null;
+
+        // View-all catalog → type=all first; suggested → try plain id then fallback
+        const preferAll = listType === 'all';
+        let detailRes = preferAll
+          ? await _PATIENT.getDietPlans({ id: planId, type: 'all' })
+          : await _PATIENT.getDietPlans({ id: planId });
+        let detail = extractDietPlanDetail(detailRes);
+
+        if (!detail || detailRes?.success === false) {
+          const fallback = preferAll
+            ? { id: planId }
+            : { id: planId, type: 'all' as const };
+          console.log('DIET_DETAIL_RETRY =>', fallback, detailRes?.message);
+          detailRes = await _PATIENT.getDietPlans(fallback);
+          detail = extractDietPlanDetail(detailRes);
+        }
+
+        if (!detail || detailRes?.success === false) {
+          console.log('DIET_DETAIL_FAILED =>', detailRes);
+          // Keep list summary so Start / Switch can still use catalog + assignment ids
+          if (listSummary) {
+            detail = { ...listSummary };
+          } else {
+            showSuccessToast(
+              extractDietApiError(detailRes, 'Diet plan not found.'),
+              'error',
+            );
+            detail = mapDietPlanSummary({ id: planId });
+          }
+        } else if (listSummary) {
+          // Prefer detail body; keep assignment fields from list if detail omits them
+          detail = {
+            ...listSummary,
+            ...detail,
+            patient_diet_plan_id:
+              detail?.patient_diet_plan_id ?? listSummary.patient_diet_plan_id,
+            patient_assignment_status:
+              detail?.patient_assignment_status ??
+              listSummary.patient_assignment_status,
+          };
+        }
+
+        // Keep catalog diet_plan id (never swap with patient assignment id)
+        const catalogId = String(
+          detail?.diet_plan_id || detail?.id || planId,
+        );
+        // If API nested diet_plan_id and id is assignment, prefer diet_plan_id
+        const assignmentFromDetail = detail?.patient_diet_plan_id
+          ? String(detail.patient_diet_plan_id)
+          : '';
+        const safeCatalogId =
+          catalogId && catalogId !== assignmentFromDetail
+            ? catalogId
+            : String(planId);
+
+        const catalogPlanJson = detail?.plan_json || null;
+        detail = {
+          ...detail,
+          id: safeCatalogId,
+        };
 
         const assignmentId = detail?.patient_diet_plan_id || null;
-        const progressPayload = await loadProgress(assignmentId);
+        let progressList: DietProgressItem[] = [];
+        const listStatus = getDietListStatus(detail);
 
-        // Merge plan_json / started_at from progress API when present
-        if (progressPayload.planJson && !detail?.plan_json) {
-          detail = { ...detail, plan_json: progressPayload.planJson };
-        } else if (progressPayload.planJson) {
-          detail = { ...detail, plan_json: progressPayload.planJson };
-        }
-        if (progressPayload.startedAt) {
-          detail = { ...detail, started_at: progressPayload.startedAt };
-        }
-        if (progressPayload.assignmentId) {
-          detail = {
-            ...detail,
-            patient_diet_plan_id: progressPayload.assignmentId,
-          };
-        }
-        if (progressPayload.status) {
-          detail = {
-            ...detail,
-            patient_assignment_status: progressPayload.status,
-          };
+        /**
+         * Progress only for active assignments.
+         * Paused / completed / stopped → API returns no_active_plan (404) — skip call.
+         */
+        if (assignmentId && listStatus === 'active') {
+          const progressPayload = await loadProgress(assignmentId);
+          // If API says not active, treat as paused and skip meal tracking
+          if (isNoActiveDietPlanError(progressPayload.raw)) {
+            detail = {
+              ...detail,
+              patient_assignment_status:
+                detail?.patient_assignment_status || 'paused',
+            };
+            progressList = [];
+          } else {
+          const sameAssignment =
+            !progressPayload.assignmentId ||
+            String(progressPayload.assignmentId) === String(assignmentId);
+          const sameDietPlan =
+            !progressPayload.dietPlanId ||
+            String(progressPayload.dietPlanId) === String(safeCatalogId);
+
+          if (sameAssignment && sameDietPlan) {
+            if (progressPayload.planJson) {
+              detail = {
+                ...detail,
+                plan_json: mergePlanJsonWithGalleries(
+                  catalogPlanJson,
+                  progressPayload.planJson,
+                ),
+              };
+            }
+            if (progressPayload.startedAt) {
+              detail = { ...detail, started_at: progressPayload.startedAt };
+            }
+            if (progressPayload.status) {
+              detail = {
+                ...detail,
+                patient_assignment_status: progressPayload.status,
+              };
+            }
+            progressList = progressPayload.progressList;
+          } else {
+            console.log('DIET_PROGRESS_SKIP_MISMATCH', {
+              planId: safeCatalogId,
+              assignmentId,
+              progressAssignment: progressPayload.assignmentId,
+              progressDiet: progressPayload.dietPlanId,
+            });
+          }
+          }
         }
 
-        const progressList = progressPayload.progressList;
         setPlanDetail(detail);
         setProgress(progressList);
-        const todayKey = resolveCurrentDayKey(detail, progressList);
-        const forceToday = !hasInitializedDayRef.current;
-        if (forceToday) hasInitializedDayRef.current = true;
-        rebuildMeals(
-          detail,
-          progressList,
-          forceToday ? todayKey : currentDayKeyRef.current || todayKey,
-          forceToday,
-        );
+
+        // Tracking meals only when this assignment is actively running
+        if (isDietPlanStarted(detail)) {
+          const todayKey = resolveCurrentDayKey(detail, progressList);
+          const forceToday = !hasInitializedDayRef.current;
+          if (forceToday) hasInitializedDayRef.current = true;
+          rebuildMeals(
+            detail,
+            progressList,
+            forceToday ? todayKey : currentDayKeyRef.current || todayKey,
+            forceToday,
+          );
+        } else {
+          setMeals([]);
+          setMealsByDay([]);
+          setShowAllDays(false);
+        }
         return detail;
       } catch (e) {
         console.log('DIET_DETAIL_ERROR', e);
@@ -245,7 +465,7 @@ export const useDietPlans = (options: Options = {}) => {
         setLoadingDetail(false);
       }
     },
-    [loadProgress, rebuildMeals],
+    [loadProgress, rebuildMeals, plans, listType],
   );
 
   useEffect(() => {
@@ -281,6 +501,12 @@ export const useDietPlans = (options: Options = {}) => {
   }, [loadList, loadDetail, selectedPlanId]);
 
   const selectPlan = useCallback((planId: string | null) => {
+    hasInitializedDayRef.current = false;
+    setPlanDetail(null);
+    setMeals([]);
+    setMealsByDay([]);
+    setProgress([]);
+    setShowAllDays(false);
     setSelectedPlanId(planId);
   }, []);
 
@@ -289,35 +515,130 @@ export const useDietPlans = (options: Options = {}) => {
     setPlanDetail(null);
     setMeals([]);
     setMealsByDay([]);
+    setProgress([]);
     setShowAllDays(false);
     hasInitializedDayRef.current = false;
   }, []);
 
   const startPlan = useCallback(
     async (planId?: string) => {
-      const id = planId || selectedPlanId;
-      if (!id) return false;
+      /**
+       * Start expects catalog diet plan id only.
+       * Never send patient_diet_plan_id — backend returns
+       * { id: ['This diet plan is not available for the patient.'] }.
+       */
+      const summary = plans.find(p => String(p.id) === String(planId || selectedPlanId));
+      const assignmentId = String(
+        planDetail?.patient_diet_plan_id ||
+          summary?.patient_diet_plan_id ||
+          '',
+      ).trim();
+
+      const rawDetailId = String(planDetail?.id || '').trim();
+      const detailCatalogId = String(planDetail?.diet_plan_id || '').trim();
+      const safeDetailId =
+        rawDetailId && rawDetailId !== assignmentId ? rawDetailId : '';
+
+      const id = String(
+        planId ||
+          selectedPlanId ||
+          detailCatalogId ||
+          safeDetailId ||
+          '',
+      ).trim();
+
+      if (!id || id === assignmentId) {
+        showSuccessToast('Invalid diet plan id', 'error');
+        return false;
+      }
       if (!(await requireAuth('Please login to start a diet plan'))) return false;
+
+      const resumeAssignment = async (patientAssignmentId: string) => {
+        const resumeRes = await _PATIENT.updateDietPlanStatus(
+          patientAssignmentId,
+          { action: 'resume' },
+        );
+        if (resumeRes?.success === false) {
+          showSuccessToast(
+            extractDietApiError(resumeRes, 'Unable to resume plan'),
+            'error',
+          );
+          return false;
+        }
+        showSuccessToast(
+          typeof resumeRes?.message === 'string' && resumeRes.message.trim()
+            ? resumeRes.message.trim()
+            : 'Plan resumed',
+          'success',
+        );
+        await loadList();
+        await loadDetail(id);
+        return true;
+      };
 
       try {
         setStarting(true);
+
+        // Already assigned → resume instead of start (avoids "not available")
+        const assignmentStatus = String(
+          planDetail?.patient_assignment_status ||
+            summary?.patient_assignment_status ||
+            '',
+        ).toLowerCase();
+        if (
+          assignmentId &&
+          (assignmentStatus.includes('pause') ||
+            assignmentStatus.includes('stop') ||
+            !assignmentStatus)
+        ) {
+          return await resumeAssignment(assignmentId);
+        }
+
+        console.log('DIET_START_PAYLOAD =>', { id, diet_plan_id: id });
         const res = await _PATIENT.startDietPlan(id);
         if (res?.success === false) {
-          showSuccessToast(res?.message || 'Unable to start plan', 'error');
+          const errMsg = extractDietApiError(
+            res,
+            'This diet plan is not available for the patient.',
+          );
+          const lower = errMsg.toLowerCase();
+          if (assignmentId && lower.includes('not available')) {
+            const resumed = await resumeAssignment(assignmentId);
+            if (resumed) return true;
+          }
+          // Another plan is active — let UI open pause/switch modal (no toast spam)
+          if (
+            lower.includes('already') ||
+            lower.includes('active') ||
+            lower.includes('pause') ||
+            isNoActiveDietPlanError(res)
+          ) {
+            await loadList();
+            return false;
+          }
+          showSuccessToast(errMsg, 'error');
           return false;
         }
-        showSuccessToast(res?.message || 'Diet plan started', 'success');
+        showSuccessToast(
+          typeof res?.message === 'string' && res.message.trim()
+            ? res.message.trim()
+            : 'Diet plan started',
+          'success',
+        );
         await loadList();
-        await loadDetail(String(id));
+        await loadDetail(id);
         return true;
       } catch (e: any) {
-        showSuccessToast(e?.message || 'Unable to start plan', 'error');
+        showSuccessToast(
+          extractDietApiError(e, e?.message || 'Unable to start plan'),
+          'error',
+        );
         return false;
       } finally {
         setStarting(false);
       }
     },
-    [selectedPlanId, loadDetail, loadList],
+    [selectedPlanId, planDetail, plans, loadDetail, loadList],
   );
 
   const logMeal = useCallback(
@@ -341,6 +662,16 @@ export const useDietPlans = (options: Options = {}) => {
 
         const res = await _PATIENT.updateDietPlanProgress(payload);
         if (res?.success === false) {
+          if (isNoActiveDietPlanError(res)) {
+            // Plan was paused/completed elsewhere — refresh list, no error toast spam
+            await loadList();
+            if (selectedPlanId) await loadDetail(selectedPlanId);
+            showSuccessToast(
+              'This diet plan is not active. Resume or start it to track meals.',
+              'error',
+            );
+            return;
+          }
           showSuccessToast(res?.message || 'Unable to update progress', 'error');
           return;
         }
@@ -395,12 +726,12 @@ export const useDietPlans = (options: Options = {}) => {
           const nextDetail =
             fromApi.planJson || fromApi.startedAt
               ? {
-                  ...planDetail,
-                  ...(fromApi.planJson ? { plan_json: fromApi.planJson } : {}),
-                  ...(fromApi.startedAt
-                    ? { started_at: fromApi.startedAt }
-                    : {}),
-                }
+                ...planDetail,
+                ...(fromApi.planJson ? { plan_json: fromApi.planJson } : {}),
+                ...(fromApi.startedAt
+                  ? { started_at: fromApi.startedAt }
+                  : {}),
+              }
               : planDetail;
           setPlanDetail(nextDetail);
           rebuildMeals(nextDetail, merged);
@@ -416,7 +747,7 @@ export const useDietPlans = (options: Options = {}) => {
         setLoggingMealId(null);
       }
     },
-    [planDetail, progress, loadProgress, rebuildMeals],
+    [planDetail, progress, loadProgress, rebuildMeals, loadList, loadDetail, selectedPlanId],
   );
 
   const adjustWater = useCallback((deltaMl: number) => {
@@ -425,21 +756,56 @@ export const useDietPlans = (options: Options = {}) => {
 
   const selectedSummary =
     plans.find(p => p.id === selectedPlanId) ||
-    (planDetail ? mapDietPlanSummary(planDetail) : null);
+    (planDetail && String(planDetail.id) === String(selectedPlanId)
+      ? mapDietPlanSummary(planDetail)
+      : null);
 
-  const isStarted =
-    isDietPlanStarted(selectedSummary) || isDietPlanStarted(planDetail);
+  /**
+   * Tracking UI only when THIS selected plan is active.
+   * Prefer list status for pause/stop so a stale progress merge can't open tracking.
+   */
+  const isStarted = useMemo(() => {
+    const statusOf = (plan?: any) =>
+      String(plan?.patient_assignment_status || plan?.status || '').toLowerCase();
 
-  const patientDietPlanId =
-    planDetail?.patient_diet_plan_id ||
-    selectedSummary?.patient_diet_plan_id ||
-    null;
+    const summaryStatus = statusOf(selectedSummary);
+    const detailStatus = statusOf(planDetail);
+    const blocked = (s: string) =>
+      s.includes('pause') ||
+      s.includes('stop') ||
+      s.includes('complete') ||
+      s.includes('cancel');
+
+    if (blocked(summaryStatus) || blocked(detailStatus)) {
+      return false;
+    }
+
+    // Detail must belong to the selected catalog plan (free + subscription)
+    if (planDetail && selectedPlanId) {
+      const detailPlanId = String(planDetail.id || planDetail.diet_plan_id || '');
+      if (detailPlanId && detailPlanId !== String(selectedPlanId)) {
+        return isDietPlanStarted(selectedSummary);
+      }
+    }
+
+    return isDietPlanStarted(planDetail) || isDietPlanStarted(selectedSummary);
+  }, [planDetail, selectedSummary, selectedPlanId]);
+
+  const patientDietPlanId = useMemo(() => {
+    const fromSummary = selectedSummary?.patient_diet_plan_id || null;
+    const fromDetail =
+      planDetail && String(planDetail.id) === String(selectedPlanId)
+        ? planDetail?.patient_diet_plan_id
+        : null;
+    return fromDetail || fromSummary || null;
+  }, [planDetail, selectedSummary, selectedPlanId]);
 
   const updateStatus = useCallback(
     async (
       action: DietPlanStatusAction,
       stop_reason?: string,
       patientId?: string | null,
+      options?: { silent?: boolean },
     ) => {
       const id = patientId || patientDietPlanId;
       if (!id) {
@@ -454,24 +820,39 @@ export const useDietPlans = (options: Options = {}) => {
           action,
         };
         if (stop_reason) payload.stop_reason = stop_reason;
+        console.log('swicthpannn', id, payload);
 
         const res = await _PATIENT.updateDietPlanStatus(id, payload);
-        console.log("swicthpannnresposnee", res);
+        console.log('swicthpannnresposnee', res);
         if (res?.success === false) {
+          if (isNoActiveDietPlanError(res)) {
+            await loadList();
+            if (selectedPlanId) await loadDetail(selectedPlanId);
+            showSuccessToast(
+              extractDietApiError(
+                res,
+                'This diet plan is not currently active.',
+              ),
+              'error',
+            );
+            return false;
+          }
           showSuccessToast(res?.message || 'Unable to update plan status', 'error');
           return false;
         }
-        showSuccessToast(
-          res?.message ||
-            (action === 'pause'
-              ? 'Plan paused'
-              : action === 'resume'
-                ? 'Plan resumed'
-                : action === 'stop'
-                  ? 'Plan stopped'
-                  : 'Plan completed'),
-          'success',
-        );
+        if (!options?.silent) {
+          showSuccessToast(
+            res?.message ||
+              (action === 'pause'
+                ? 'Plan paused'
+                : action === 'resume'
+                  ? 'Plan resumed'
+                  : action === 'stop'
+                    ? 'Plan stopped'
+                    : 'Plan completed'),
+            'success',
+          );
+        }
         await loadList();
         if (selectedPlanId) {
           await loadDetail(selectedPlanId);
@@ -487,6 +868,176 @@ export const useDietPlans = (options: Options = {}) => {
     [patientDietPlanId, loadList, loadDetail, selectedPlanId],
   );
 
+  /** Currently active assignment (only one allowed at a time). */
+  const activePlan = useMemo(() => {
+    return (
+      plans.find(p => {
+        const status = String(p?.patient_assignment_status || '').toLowerCase();
+        return status === 'active' || status.includes('start');
+      }) || null
+    );
+  }, [plans]);
+
+  /**
+   * If another plan is active, resume needs a confirm (pause active → resume this).
+   * Returns { needsConfirm, activePlan } when a modal should open.
+   */
+  const prepareResume = useCallback(() => {
+    const resumeId = patientDietPlanId;
+    if (!resumeId) {
+      return { needsConfirm: false as const, canResume: false as const };
+    }
+    const otherActive =
+      activePlan &&
+      String(activePlan.patient_diet_plan_id || '') !== String(resumeId)
+        ? activePlan
+        : null;
+
+    if (otherActive?.patient_diet_plan_id) {
+      return {
+        needsConfirm: true as const,
+        canResume: true as const,
+        activePlan: otherActive,
+        resumeId: String(resumeId),
+      };
+    }
+    return {
+      needsConfirm: false as const,
+      canResume: true as const,
+      resumeId: String(resumeId),
+    };
+  }, [activePlan, patientDietPlanId]);
+
+  /** Start another plan while one is already active → confirm pause first. */
+  const prepareStart = useCallback(() => {
+    const catalogId = selectedPlanId;
+    if (!catalogId) {
+      return { needsConfirm: false as const, canStart: false as const };
+    }
+    const otherActive =
+      activePlan && String(activePlan.id) !== String(catalogId) ? activePlan : null;
+
+    if (otherActive?.patient_diet_plan_id) {
+      return {
+        needsConfirm: true as const,
+        canStart: true as const,
+        activePlan: otherActive,
+        startPlanId: String(catalogId),
+      };
+    }
+    return {
+      needsConfirm: false as const,
+      canStart: true as const,
+      startPlanId: String(catalogId),
+    };
+  }, [activePlan, selectedPlanId]);
+
+  /** Pause the active plan, then resume the target via status API. */
+  const pauseActiveAndResume = useCallback(
+    async (activeAssignmentId: string | number, resumeAssignmentId: string | number) => {
+      if (!(await requireAuth('Please login to update diet plan'))) return false;
+
+      try {
+        setUpdatingStatus(true);
+
+        const pauseRes = await _PATIENT.updateDietPlanStatus(activeAssignmentId, {
+          action: 'pause',
+        });
+        if (pauseRes?.success === false) {
+          showSuccessToast(
+            pauseRes?.message || 'Unable to pause the active plan',
+            'error',
+          );
+          return false;
+        }
+
+        const resumeRes = await _PATIENT.updateDietPlanStatus(resumeAssignmentId, {
+          action: 'resume',
+        });
+        if (resumeRes?.success === false) {
+          showSuccessToast(
+            resumeRes?.message || 'Unable to resume this plan',
+            'error',
+          );
+          await loadList();
+          return false;
+        }
+
+        showSuccessToast(
+          resumeRes?.message || 'Active plan paused. This plan is now resumed.',
+          'success',
+        );
+        await loadList();
+        if (selectedPlanId) {
+          await loadDetail(selectedPlanId);
+        }
+        return true;
+      } catch (e: any) {
+        showSuccessToast(e?.message || 'Unable to switch diet plan', 'error');
+        return false;
+      } finally {
+        setUpdatingStatus(false);
+      }
+    },
+    [loadList, loadDetail, selectedPlanId],
+  );
+
+  /** Pause active assignment, then start the selected catalog plan (free or paid). */
+  const pauseActiveAndStart = useCallback(
+    async (activeAssignmentId: string | number, catalogPlanId: string) => {
+      if (!(await requireAuth('Please login to start a diet plan'))) return false;
+
+      try {
+        setUpdatingStatus(true);
+        setStarting(true);
+
+        const pauseRes = await _PATIENT.updateDietPlanStatus(activeAssignmentId, {
+          action: 'pause',
+        });
+        if (pauseRes?.success === false) {
+          showSuccessToast(
+            pauseRes?.message || 'Unable to pause the active plan',
+            'error',
+          );
+          return false;
+        }
+
+        console.log('DIET_START_PAYLOAD =>', {
+          diet_plan_id: String(catalogPlanId),
+        });
+        const startRes = await _PATIENT.startDietPlan(String(catalogPlanId));
+        if (startRes?.success === false) {
+          showSuccessToast(
+            extractDietApiError(
+              startRes,
+              'This diet plan is not available for the patient.',
+            ),
+            'error',
+          );
+          await loadList();
+          return false;
+        }
+
+        showSuccessToast(
+          typeof startRes?.message === 'string' && startRes.message.trim()
+            ? startRes.message.trim()
+            : 'Active plan paused. New plan started.',
+          'success',
+        );
+        await loadList();
+        await loadDetail(String(catalogPlanId));
+        return true;
+      } catch (e: any) {
+        showSuccessToast(e?.message || 'Unable to switch diet plan', 'error');
+        return false;
+      } finally {
+        setUpdatingStatus(false);
+        setStarting(false);
+      }
+    },
+    [loadList, loadDetail],
+  );
+
   /** Pause/stop current assignment so user can pick another plan */
   const switchPlan = useCallback(
     async (action: 'pause' | 'stop' = 'pause', stop_reason?: string) => {
@@ -498,6 +1049,28 @@ export const useDietPlans = (options: Options = {}) => {
     },
     [updateStatus, clearSelection],
   );
+
+  /** True when every meal in the plan is logged complete */
+  const isPlanFullyComplete = useMemo(() => {
+    if (!planDetail || !isStarted) return false;
+    const days = getPlanJsonDays(planDetail);
+    if (!days.length) return false;
+    return days.every(dayKey => {
+      const dayMeals = mapPlanJsonMeals(planDetail, dayKey, progress);
+      return (
+        dayMeals.length > 0 && dayMeals.every(m => m.status === 'done')
+      );
+    });
+  }, [planDetail, progress, isStarted]);
+
+  const listStatus = useMemo(
+    () => getDietListStatus(selectedSummary || planDetail),
+    [selectedSummary, planDetail],
+  );
+
+  const completePlan = useCallback(async () => {
+    return updateStatus('complete');
+  }, [updateStatus]);
 
   return {
     plans,
@@ -518,18 +1091,29 @@ export const useDietPlans = (options: Options = {}) => {
     selectAllDays,
     progress,
     isStarted,
+    isPlanFullyComplete,
+    listStatus,
     patientDietPlanId,
+    activePlan,
     loadingList,
     loadingDetail,
+    loadingMore,
+    hasMore,
     starting,
     updatingStatus,
     loggingMealId,
     refreshing,
     refresh,
+    loadMore,
     startPlan,
     logMeal,
     adjustWater,
     updateStatus,
+    completePlan,
+    prepareResume,
+    prepareStart,
+    pauseActiveAndResume,
+    pauseActiveAndStart,
     switchPlan,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator,
   BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,10 +24,13 @@ import {
   getOrderItemReview,
   isOrderItemRated,
 } from '../../utils/orderDetailUtils';
-import { getOrders } from '../../services/OrderService';
+import { getReviewsAll } from '../../services/ProductServices';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { resolveProductImageUri } from '../../utils/imageUtils';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
+import { extractReviewsList } from '../../utils/reviewUtils';
+import { consumePendingProductReview } from '../../utils/pendingProductReview';
+import { getStatusColor } from '../../common/DataInterface';
 
 type OrderItemRow = {
   id: string;
@@ -52,20 +54,28 @@ const formatCurrency = (value?: string | number) => {
   return `Rs. ${num.toFixed(2)}`;
 };
 
-const mapOrderItems = (order: any): OrderItemRow[] => {
+const mapOrderItems = (
+  order: any,
+  fetchedByVariant?: Record<string, any> | null,
+): OrderItemRow[] => {
   const items = Array.isArray(order?.items) ? order.items : [];
 
-  return items.map((item: any, index: number) => ({
-    id: String(item?.id ?? index),
-    variantId: String(item?.variant?.variant_id ?? item?.variant_id ?? ''),
-    name: String(item?.variant?.variant_title ?? item?.product_name ?? 'Product'),
-    subtitle: `Qty: ${item?.quantity ?? 1}`,
-    price: formatCurrency(item?.selling_price ?? item?.variant?.selling_price ?? item?.price),
-    image: resolveProductImageUri(item),
-    raw: item,
-    review: getOrderItemReview(item, order),
-    rated: isOrderItemRated(item, order),
-  }));
+  return items.map((item: any, index: number) => {
+    const review = getOrderItemReview(item, order, fetchedByVariant);
+    return {
+      id: String(item?.id ?? index),
+      variantId: String(item?.variant?.variant_id ?? item?.variant_id ?? ''),
+      name: String(item?.variant?.variant_title ?? item?.product_name ?? 'Product'),
+      subtitle: `Qty: ${item?.quantity ?? 1}`,
+      price: formatCurrency(
+        item?.selling_price ?? item?.variant?.selling_price ?? item?.price,
+      ),
+      image: resolveProductImageUri(item),
+      raw: item,
+      review,
+      rated: isOrderItemRated(item, order) || Boolean(review?.isRated),
+    };
+  });
 };
 
 const DetailRow = ({
@@ -94,14 +104,68 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const bottomPadding = getScreenBottomPadding(insets);
 
   const [order, setOrder] = useState<any>(initialOrder);
-  const [refreshing, setRefreshing] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<OrderItemRow | null>(null);
+  /** variant_id → review for THIS order (from GET review/) */
+  const [fetchedReviewsByVariant, setFetchedReviewsByVariant] = useState<
+    Record<string, any>
+  >({});
+  const reviewFetchAttemptedRef = useRef<Set<string>>(new Set());
+
+  const applyLocalReview = useCallback(
+    (payload: {
+      variantId: string;
+      orderId?: string;
+      rating: number;
+      review?: string;
+      image_urls?: string[];
+    }) => {
+      const variantId = String(payload.variantId);
+      if (!variantId) return;
+
+      reviewFetchAttemptedRef.current.add(variantId);
+
+      setFetchedReviewsByVariant(prev => ({
+        ...prev,
+        [variantId]: {
+          order_id: String(payload.orderId ?? order?.id ?? ''),
+          variant_id: variantId,
+          rating: Number(payload.rating ?? 0),
+          review: String(payload.review ?? ''),
+          image_urls: Array.isArray(payload.image_urls) ? payload.image_urls : [],
+          is_reviewed: true,
+        },
+      }));
+
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        const items = Array.isArray(prev.items) ? prev.items : [];
+        return {
+          ...prev,
+          items: items.map((item: any) => {
+            const vid = String(
+              item?.variant?.variant_id ?? item?.variant_id ?? '',
+            );
+            if (vid !== variantId) return item;
+            return {
+              ...item,
+              is_reviewed: true,
+              variant: {
+                ...(item?.variant ?? {}),
+                is_reviewed: true,
+              },
+            };
+          }),
+        };
+      });
+    },
+    [order?.id],
+  );
 
   const goBackFromDetails = useCallback(() => {
-    if (fromOrderSuccess) {
-      resetRootToHomeStack(navigation, 'TabStack', { screen: 'Home' });
-      return;
-    }
+    // if (fromOrderSuccess) {
+    //   resetRootToHomeStack(navigation, 'TabStack', { screen: 'Home' });
+    //   return;
+    // }
     if (navigation.canGoBack?.()) {
       navigation.goBack();
       return;
@@ -111,6 +175,16 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
 
   useFocusEffect(
     useCallback(() => {
+      // After Share Experience goBack — refresh rating UI only (instant)
+      const pending = consumePendingProductReview();
+      if (
+        pending?.variantId &&
+        (!pending.orderId ||
+          String(pending.orderId) === String(order?.id ?? initialOrder?.id ?? ''))
+      ) {
+        applyLocalReview(pending);
+      }
+
       if (!fromOrderSuccess) {
         return undefined;
       }
@@ -119,48 +193,98 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
         return true;
       });
       return () => sub.remove();
-    }, [fromOrderSuccess, goBackFromDetails]),
+    }, [
+      applyLocalReview,
+      fromOrderSuccess,
+      goBackFromDetails,
+      initialOrder?.id,
+      order?.id,
+    ]),
   );
 
-  const refreshOrder = useCallback(async () => {
-    if (!initialOrder?.id && !initialOrder?.order_code) {
+  useEffect(() => {
+    if (!initialOrder) return;
+    reviewFetchAttemptedRef.current = new Set();
+    setFetchedReviewsByVariant({});
+    setOrder(initialOrder);
+  }, [initialOrder?.id, initialOrder?.order_code]);
+
+  // Load star rating for reviewed items (skip variants already filled instantly)
+  useEffect(() => {
+    const orderId = String(order?.id ?? '');
+    const lineItems = Array.isArray(order?.items) ? order.items : [];
+    if (!orderId || !lineItems.length) {
       return;
     }
 
-    try {
-      setRefreshing(true);
-      const response = await getOrders();
-      const list = Array.isArray(response?.data) ? response.data : [];
-      const updated = list.find(
-        (entry: any) =>
-          String(entry?.id) === String(initialOrder?.id) ||
-          String(entry?.order_code) === String(initialOrder?.order_code),
+    const targets = lineItems
+      .map((item: any) => ({
+        variantId: String(item?.variant?.variant_id ?? item?.variant_id ?? ''),
+        isReviewed:
+          item?.variant?.is_reviewed === true || item?.is_reviewed === true,
+      }))
+      .filter(
+        (row: { variantId: string; isReviewed: boolean }) =>
+          row.variantId &&
+          row.isReviewed &&
+          !reviewFetchAttemptedRef.current.has(row.variantId),
       );
-      if (updated) {
-        setOrder(updated);
-      }
-    } catch {
-      // keep existing order data
-    } finally {
-      setRefreshing(false);
+
+    if (!targets.length) {
+      return;
     }
-  }, [initialOrder?.id, initialOrder?.order_code]);
 
-  useEffect(() => {
-    setOrder(initialOrder);
-  }, [initialOrder]);
+    targets.forEach(({ variantId }: { variantId: string }) => {
+      reviewFetchAttemptedRef.current.add(variantId);
+    });
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshOrder();
-    }, [refreshOrder]),
+    let cancelled = false;
+
+    (async () => {
+      const entries = await Promise.all(
+        targets.map(async ({ variantId }: { variantId: string }) => {
+          try {
+            const response = await getReviewsAll({
+              entity_type: 'product',
+              variant_id: variantId,
+            });
+            const list = extractReviewsList(response);
+            const forOrder = list.find(
+              (review: any) => String(review?.order_id ?? '') === orderId,
+            );
+
+            return forOrder ? ([variantId, forOrder] as const) : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+
+      setFetchedReviewsByVariant(prev => {
+        const next = { ...prev };
+        entries.forEach(entry => {
+          if (entry) {
+            next[entry[0]] = entry[1];
+          }
+        });
+        return next;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order?.id, order?.items]);
+
+  const items = useMemo(
+    () => mapOrderItems(order, fetchedReviewsByVariant),
+    [order, fetchedReviewsByVariant],
   );
 
-  const items = useMemo(() => mapOrderItems(order), [order]);
-
-
-  console.log("itemsitemsitemsitems", items)
-  const status = formatOrderStatus(order?.order_status);
+  console.log('itemsitemsitemsitems =>', items);
+  const status = (order?.order_status);
   const canReview = status === 'DELIVERED';
   const trackingSteps = useMemo(() => buildOrderTrackingSteps(order), [order]);
   const address = formatDeliveryAddress(order?.delivery_address);
@@ -190,8 +314,12 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       return;
     }
 
-    // One review per product — never open edit/PATCH flow
-    if (reviewTarget.rated || reviewTarget.review?.isRated) {
+    // One review per product — variant.is_reviewed → never reopen
+    if (
+      reviewTarget.rated ||
+      reviewTarget.raw?.variant?.is_reviewed === true ||
+      reviewTarget.raw?.is_reviewed === true
+    ) {
       setReviewTarget(null);
       return;
     }
@@ -204,6 +332,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       entityName: target.name,
       entitySubtitle: `Order #${order?.order_code ?? order?.id ?? ''}`,
       variantId: target.variantId,
+      orderId: String(order?.id ?? ''),
       initialRating: rating,
       initialReview: '',
       initialImages: [],
@@ -237,9 +366,10 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
               <Text style={styles.label}>ORDER ID</Text>
               <Text style={styles.orderId}>#{order?.order_code ?? order?.id}</Text>
             </View>
-            <View style={[styles.statusBadge, status === 'DELIVERED' ? styles.delivered : styles.progress]}>
-              <Text style={[styles.statusText, status === 'DELIVERED' ? styles.deliveredText : styles.progressText]}>
-                {status}
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) }]}>
+              <Text style={[styles.statusText, { color: '#FFFFFF' }]}>
+                {status?.toUpperCase()}
+
               </Text>
             </View>
           </View>
@@ -322,26 +452,26 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
               </View>
             </View>
 
-            {/* {item.rated ? ( */}
-            <View style={styles.ratedPill}>
-              <TablerIcon name="star-filled" size={14} color="#F59E0B" />
-              <Text style={styles.ratedText} numberOfLines={1}>
-                Rated {item.review?.rating ?? ''}
-                {item.review?.review ? ` · Review submitted` : ' · Review submitted'}
-              </Text>
-            </View>
-            {/* ) : 
-            canReview && !!item.variantId ? ( */}
-            <TouchableOpacity
-              style={styles.reviewBtn}
-              activeOpacity={0.88}
-              onPress={() => setReviewTarget(item)}
-            >
-              <TablerIcon name="star" size={16} color="#FFFFFF" />
-              <Text style={styles.reviewBtnText}>Rate Product</Text>
-            </TouchableOpacity>
-            {/* ) 
-            : null} */}
+            {item.rated || item?.raw?.variant?.is_reviewed === true ? (
+              <View style={styles.ratedPill}>
+                <TablerIcon name="star-filled" size={14} color="#F59E0B" />
+                <Text style={styles.ratedText} numberOfLines={1}>
+                  {Number(item.review?.rating) > 0
+                    ? `Rated ${item.review?.rating} · Review submitted`
+                    : 'Review submitted'}
+                </Text>
+              </View>
+              //  canReview &&
+            ) : !!item.variantId ? (
+              <TouchableOpacity
+                style={styles.reviewBtn}
+                activeOpacity={0.88}
+                onPress={() => setReviewTarget(item)}
+              >
+                <TablerIcon name="star" size={16} color="#FFFFFF" />
+                <Text style={styles.reviewBtnText}>Rate Product</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ))}
 
@@ -359,14 +489,14 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
             <Text style={styles.totalValue}>{formatCurrency(order?.total_amount)}</Text>
           </View>
         </View>
-
+        {/* 
         {refreshing ? (
           <ActivityIndicator
             size="small"
             color={Colors.primaryColor}
             style={styles.refreshLoader}
           />
-        ) : null}
+        ) : null} */}
       </ScrollView>
 
       <FeedbackModal

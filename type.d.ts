@@ -85,6 +85,7 @@ export type RootStackParamList = {
         entitySubtitle?: string;
         appointmentId?: string;
         variantId?: string;
+        orderId?: string;
         initialRating?: number;
         initialReview?: string;
         initialImages?: string[];

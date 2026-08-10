@@ -174,23 +174,15 @@ export class WebSocketService {
     }, delay);
   }
 
-  sendMessage(text: string): boolean {
-    if (!text || !text.trim()) {
-      console.warn('⚠️ Empty text — WebSocket se nahi bhejenge');
-      return false;
-    }
-    if (this.isConnected()) {
-      try {
-        const payload = { type: 'chat.send', text };
-        this.ws?.send(JSON.stringify(payload));
-        console.log('📤 Sent:', payload);
-        return true;
-      } catch (error) {
-        console.error('❌ Send failed:', error);
-        return false;
-      }
-    }
-    console.warn('⚠️ WebSocket not open');
+  /**
+   * Disabled on purpose. Sending chat text over WS AND HTTP made the server
+   * store / broadcast the same message twice to the doctor.
+   * Outbound chat text must go through HTTP only (`chatService.sendMessage`).
+   */
+  sendMessage(_text: string): boolean {
+    console.warn(
+      '⚠️ chat.send over WebSocket is disabled — use HTTP send only',
+    );
     return false;
   }
 

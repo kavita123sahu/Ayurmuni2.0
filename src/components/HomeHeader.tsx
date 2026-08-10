@@ -339,7 +339,9 @@ export default React.memo(HomeHeader);
 const styles = StyleSheet.create({
 
     container: {
-        paddingVertical: 10,
+        // Keep equal top/bottom — matches HOME_HEADER_CONTENT_HEIGHT
+        paddingTop: 8,
+        paddingBottom: 8,
         backgroundColor: '#fff',
         paddingHorizontal: 0,
     },

@@ -1,19 +1,26 @@
 import { View, StyleSheet, StatusBar } from 'react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import AppHeader from '../../components/AppHeader';
 import TopSellingList from '../../components/TopSellingList';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WishlistSkeleton } from '../../simmerScreen/ShimmerHook';
 import EmptyState from '../../components/EmptyState';
 import * as _PRODUCT_SERVICES from '../../services/ProductServices';
+import { useWishlistSync } from '../../hooks/useWishlistSync';
 
 const Wishlist = (props: any) => {
   const [wishlistData, setWishlistData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const hasLoadedRef = useRef(false);
 
-  const fetchWishlist = useCallback(async () => {
+  useWishlistSync(setWishlistData, { removeWhenUnwishlisted: true });
+
+  const fetchWishlist = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
 
       const res = await _PRODUCT_SERVICES.getProduct();
       const data = res?.data?.results || [];
@@ -33,13 +40,19 @@ const Wishlist = (props: any) => {
     } catch (error) {
       console.log(error);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    fetchWishlist();
-  }, [fetchWishlist]);
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh on every focus (including back from product details)
+      fetchWishlist(hasLoadedRef.current);
+      hasLoadedRef.current = true;
+    }, [fetchWishlist]),
+  );
 
   const hasItems = wishlistData.length > 0;
 
@@ -87,7 +100,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 20,
-    paddingHorizontal: 15,
+    // paddingHorizontal: 15,
     backgroundColor: '#FDFDFB',
   },
 });

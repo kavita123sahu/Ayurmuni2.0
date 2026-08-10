@@ -14,11 +14,21 @@ export type DietMeal = {
   carbs: number;
   protein: number;
   fat: number;
+  /** Display labels for list UI (always strings) */
   dietItems: string[];
+  /** Structured items when API sends { name, notes, quantity } */
+  dietItemDetails: DietFoodItem[];
   preparationSteps: string[];
   image?: any;
   status: 'log' | 'done';
   raw?: any;
+};
+
+export type DietFoodItem = {
+  name: string;
+  notes: string;
+  quantity: string;
+  label: string;
 };
 
 export type DietPlanSummary = {
@@ -84,19 +94,257 @@ const MEAL_TIMES: Record<string, string> = {
   dinner: '07:45 PM',
 };
 
-export const resolveDietImage = (item?: any) => {
+/** API may send diet as strings OR { name, notes, quantity } objects. */
+export const normalizeDietFoodItem = (item: any): DietFoodItem | null => {
+  if (item == null) return null;
+
+  if (typeof item === 'string' || typeof item === 'number') {
+    const name = String(item).trim();
+    if (!name) return null;
+    return { name, notes: '', quantity: '', label: name };
+  }
+
+  if (typeof item === 'object') {
+    const name = String(
+      item.name ?? item.title ?? item.food ?? item.item ?? '',
+    ).trim();
+    const quantity = String(
+      item.quantity ?? item.qty ?? item.amount ?? '',
+    ).trim();
+    const notes = String(item.notes ?? item.note ?? item.description ?? '').trim();
+
+    const parts = [
+      name,
+      quantity ? `(${quantity})` : '',
+      notes,
+    ].filter(Boolean);
+    const label = parts.join(' ').trim();
+    if (!label) return null;
+
+    return { name: name || label, notes, quantity, label };
+  }
+
+  return null;
+};
+
+export const normalizeDietFoodItems = (diet: any): DietFoodItem[] => {
+  if (!Array.isArray(diet)) return [];
+  return diet
+    .map(normalizeDietFoodItem)
+    .filter((item): item is DietFoodItem => !!item?.label);
+};
+
+const toSafeText = (value: any): string => {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+  if (typeof value === 'object') {
+    return (
+      normalizeDietFoodItem(value)?.label ||
+      String(value.name ?? value.title ?? value.label ?? '')
+    );
+  }
+  return '';
+};
+
+export type DietGalleryItem = {
+  image_url: string;
+  caption?: string;
+  is_cover?: boolean;
+  media_url?: string;
+};
+
+/** Plan-level gallery: API uses diet_plan_gallery (list) and/or diet_gallery (detail). */
+const getPlanGalleryArray = (item?: any): any[] => {
+  if (Array.isArray(item?.diet_plan_gallery) && item.diet_plan_gallery.length) {
+    return item.diet_plan_gallery;
+  }
+  if (Array.isArray(item?.diet_gallery) && item.diet_gallery.length) {
+    return item.diet_gallery;
+  }
+  if (Array.isArray(item?.gallery) && item.gallery.length) {
+    return item.gallery;
+  }
+  return [];
+};
+
+const galleryItemUrl = (g: any): string =>
+  String(
+    g?.image_url || g?.media_url || g?.url || g?.image || '',
+  ).trim();
+
+/** Prefer cover from diet_plan_gallery / diet_gallery, else legacy fields. */
+export const getDietPlanCoverUrl = (item?: any): string => {
+  const gallery = getPlanGalleryArray(item);
+
+  const cover =
+    gallery.find((g: any) => g?.is_cover && galleryItemUrl(g)) ||
+    gallery.find((g: any) => galleryItemUrl(g));
+
   const uri =
+    galleryItemUrl(cover) ||
     item?.thumbnail_url ||
     item?.image_url ||
     item?.cover_image ||
     item?.banner_url ||
-    item?.image ||
-    null;
-  if (typeof uri === 'string' && uri.trim()) {
-    return { uri: uri.trim() };
+    (typeof item?.image === 'string' ? item.image : null) ||
+    '';
+
+  return String(uri || '').trim();
+};
+
+/** Full plan gallery for detail carousel (Detailimages-compatible). */
+export const getDietPlanGallery = (item?: any): DietGalleryItem[] => {
+  const gallery = getPlanGalleryArray(item);
+
+  const fromGallery = gallery
+    .map((g: any) => {
+      const url = galleryItemUrl(g);
+      return {
+        image_url: url,
+        caption: String(g?.caption || ''),
+        is_cover: Boolean(g?.is_cover),
+        media_url: url,
+      };
+    })
+    .filter((g: any) => !!g.image_url);
+
+  if (fromGallery.length) {
+    return [...fromGallery].sort(
+      (a, b) => Number(b.is_cover) - Number(a.is_cover),
+    );
   }
-  if (uri && typeof uri === 'object') return uri;
+
+  const fallback = getDietPlanCoverUrl(item);
+  return fallback
+    ? [{ image_url: fallback, caption: '', is_cover: true, media_url: fallback }]
+    : [];
+};
+
+export const resolveDietImage = (item?: any) => {
+  const uri = getDietPlanCoverUrl(item);
+  if (uri) return { uri };
+  if (item?.image && typeof item.image === 'object') return item.image;
   return FALLBACK_MEAL_IMAGE;
+};
+
+/** Meal-level gallery from plan_json.*.diet_gallery */
+export const getMealGalleryUrl = (mealRaw?: any): string => {
+  if (!mealRaw || typeof mealRaw !== 'object') return '';
+
+  const gallery = Array.isArray(mealRaw?.diet_gallery)
+    ? mealRaw.diet_gallery
+    : Array.isArray(mealRaw?.gallery)
+      ? mealRaw.gallery
+      : [];
+
+  const first = gallery.find((g: any) => galleryItemUrl(g));
+  const fromGallery = galleryItemUrl(first);
+  if (fromGallery) return fromGallery;
+
+  return String(
+    mealRaw?.image_url ||
+      mealRaw?.thumbnail_url ||
+      (typeof mealRaw?.image === 'string' ? mealRaw.image : '') ||
+      '',
+  ).trim();
+};
+
+export const resolveMealImage = (mealRaw?: any) => {
+  const uri = getMealGalleryUrl(mealRaw);
+  if (uri) return { uri };
+  return FALLBACK_MEAL_IMAGE;
+};
+
+/**
+ * Progress plan_json often omits diet_gallery — copy meal images from catalog detail.
+ */
+export const mergePlanJsonWithGalleries = (
+  catalogJson: any,
+  progressJson: any,
+): any => {
+  if (!progressJson || typeof progressJson !== 'object') {
+    return catalogJson || progressJson;
+  }
+  if (!catalogJson || typeof catalogJson !== 'object') {
+    return progressJson;
+  }
+
+  const merged: Record<string, any> = { ...progressJson };
+
+  Object.keys(progressJson).forEach(dayKey => {
+    const pDay = progressJson[dayKey];
+    const cDay = catalogJson[dayKey];
+    if (!pDay || typeof pDay !== 'object' || Array.isArray(pDay) || !cDay) {
+      return;
+    }
+
+    const dayMerged: Record<string, any> = { ...pDay };
+    Object.keys(pDay).forEach(mealKey => {
+      const pMeal = pDay[mealKey];
+      const cMeal = cDay?.[mealKey];
+      if (!pMeal || typeof pMeal !== 'object' || Array.isArray(pMeal)) return;
+      if (!cMeal || typeof cMeal !== 'object') return;
+
+      const hasGallery = !!getMealGalleryUrl(pMeal);
+      if (!hasGallery && getMealGalleryUrl(cMeal)) {
+        dayMerged[mealKey] = {
+          ...pMeal,
+          diet_gallery: cMeal.diet_gallery || cMeal.gallery,
+        };
+      }
+    });
+    merged[dayKey] = dayMerged;
+  });
+
+  return merged;
+};
+
+/** Flatten API error shapes like { id: ['…'] } or message: ['…'] */
+export const extractDietApiError = (
+  res: any,
+  fallback = 'Something went wrong',
+): string => {
+  const pickString = (value: any): string => {
+    if (typeof value === 'string') return value.trim();
+    return '';
+  };
+  /** DRF validation: only arrays are field errors (avoid treating UUID `id` as message). */
+  const pickFieldError = (value: any): string => {
+    if (Array.isArray(value) && value.length) return String(value[0]).trim();
+    return '';
+  };
+
+  const GENERIC = new Set([
+    'something went wrong',
+    'network error',
+    'session expired',
+  ]);
+
+  const bodies = [res?.data, res].filter(
+    (b): b is Record<string, any> =>
+      !!b && typeof b === 'object' && !Array.isArray(b),
+  );
+
+  for (const body of bodies) {
+    for (const key of ['diet_plan_id', 'id', 'non_field_errors']) {
+      const msg = pickFieldError(body[key]);
+      if (msg) return msg;
+    }
+    const detail = pickString(body.detail) || pickFieldError(body.detail);
+    if (detail) return detail;
+    const err = pickString(body.error) || pickFieldError(body.error);
+    if (err) return err;
+  }
+
+  for (const body of bodies) {
+    const msg =
+      pickString(body.message) || pickFieldError(body.message);
+    if (msg && !GENERIC.has(msg.toLowerCase())) return msg;
+  }
+
+  return fallback;
 };
 
 export const isDietPlanStarted = (plan?: any): boolean => {
@@ -121,6 +369,54 @@ export const isDietPlanStarted = (plan?: any): boolean => {
     status.includes('in_progress') ||
     status.includes('ongoing')
   );
+};
+
+/** Display status for diet plan list cards */
+export type DietListStatus =
+  | 'active'
+  | 'paused'
+  | 'completed'
+  | 'stopped'
+  | 'not_started';
+
+export const getDietListStatus = (plan?: any): DietListStatus => {
+  const status = String(
+    plan?.patient_assignment_status || plan?.status || '',
+  ).toLowerCase();
+  if (status.includes('complete')) return 'completed';
+  if (status.includes('pause')) return 'paused';
+  if (status.includes('stop') || status.includes('cancel')) return 'stopped';
+  if (
+    status === 'active' ||
+    status.includes('start') ||
+    status.includes('in_progress') ||
+    status.includes('ongoing')
+  ) {
+    return 'active';
+  }
+  if (plan?.patient_diet_plan_id && !status) return 'paused';
+  return 'not_started';
+};
+
+export const isNoActiveDietPlanError = (res: any): boolean => {
+  if (!res) return false;
+  const code = String(
+    res?.code || res?.data?.code || res?.errors?.code || '',
+  ).toLowerCase();
+  if (code === 'no_active_plan') return true;
+  const msg = String(res?.message || res?.data?.message || '').toLowerCase();
+  if (msg.includes('no active diet') || msg.includes('not currently active')) {
+    return true;
+  }
+  const idErr = res?.errors?.id || res?.data?.errors?.id;
+  if (Array.isArray(idErr)) {
+    return idErr.some((e: any) =>
+      String(e || '')
+        .toLowerCase()
+        .includes('not currently active'),
+    );
+  }
+  return res?.status === 404 && msg.includes('diet');
 };
 
 export const mapDietPlanSummary = (item: any): DietPlanSummary => {
@@ -158,7 +454,13 @@ export const normalizeDietPlanList = (response: any): DietPlanSummary[] => {
 
   if (data && typeof data === 'object') {
     const list =
-      data.results || data.diet_plans || data.plans || data.items || null;
+      data.results ||
+      data.diet_plans ||
+      data.plans ||
+      data.items ||
+      data.all ||
+      data.catalog ||
+      null;
     if (Array.isArray(list)) {
       return list.map(mapDietPlanSummary).filter(p => p.id);
     }
@@ -181,7 +483,10 @@ export const normalizeDietPlanList = (response: any): DietPlanSummary[] => {
 
 export const extractDietPlanDetail = (response: any): any | null => {
   if (!response) return null;
+  if (response.success === false) return null;
   const data = response?.data ?? response;
+  if (!data || typeof data !== 'object') return null;
+  if (data.success === false && !data.plan_json && !data.name) return null;
   if (Array.isArray(data)) return data[0] ?? null;
   if (data?.diet_plan) return data.diet_plan;
   if (data?.plan) return data.plan;
@@ -498,9 +803,10 @@ export const mapPlanJsonMeals = (
 
   return mealKeys.map(mealKey => {
     const raw = dayData[mealKey] || {};
-    const dietItems: string[] = Array.isArray(raw.diet) ? raw.diet : [];
+    const dietItemDetails = normalizeDietFoodItems(raw.diet);
+    const dietItems = dietItemDetails.map(item => item.label);
     const steps: string[] = Array.isArray(raw.preparation_steps)
-      ? raw.preparation_steps
+      ? raw.preparation_steps.map(toSafeText).filter(Boolean)
       : [];
     const nutrition = raw.nutrition || {};
     const kcal = nutritionValue(nutrition, 'total_calories');
@@ -508,6 +814,7 @@ export const mapPlanJsonMeals = (
     const protein = nutritionValue(nutrition, 'protein');
     const fat = nutritionValue(nutrition, 'fat');
     const done = isMealCompleted(progress, dayKey, mealKey);
+    const mealImage = resolveMealImage(raw);
 
     return {
       id: `${dayKey}-${mealKey}`,
@@ -522,8 +829,9 @@ export const mapPlanJsonMeals = (
       protein,
       fat,
       dietItems,
+      dietItemDetails,
       preparationSteps: steps,
-      image: FALLBACK_MEAL_IMAGE,
+      image: mealImage,
       status: done ? 'done' : 'log',
       raw,
     };

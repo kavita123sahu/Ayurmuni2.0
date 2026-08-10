@@ -77,15 +77,22 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation, onDelete 
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <TablerIcon
+          {isSelf ? <TablerIcon
             name="edit"
             size={20}
             color={
-              isSelf
-                ? Colors.grey1
-                : Colors.primaryColor
+
+              Colors.primaryColor
             }
-          />
+          /> : null}
+          {/* <TablerIcon
+            name="edit"
+            size={20}
+            color={
+             
+                 Colors.primaryColor
+            }
+          /> */}
         </TouchableOpacity>
 
         {!isSelf && onDelete ? (

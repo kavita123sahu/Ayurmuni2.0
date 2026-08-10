@@ -10,7 +10,10 @@ import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
 import { Images } from '../common/Images';
 import { isAuthenticated } from '../services/guestAuth';
-import { filterUpcomingAppointments } from '../utils/appointmentUtils';
+import {
+    normalizeAppointmentListItem,
+    sortAppointmentsByDateTime,
+} from '../utils/appointmentUtils';
 import {
     getHealthCategories,
     mapProductCategory,
@@ -365,10 +368,13 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
 
 
 
-const HOME_UPCOMING_LIMIT = 5;
+/** Fetch size for home upcoming list — show all upcoming (sorted client-side). */
+const HOME_UPCOMING_PAGE_SIZE = 50;
 
-/** Lightweight fetch for home — upcoming only, no pagination. */
-export const useUpcomingAppointmentsPreview = (limit = HOME_UPCOMING_LIMIT) => {
+/** Lightweight fetch for home — all upcoming, sorted by date/time. */
+export const useUpcomingAppointmentsPreview = (
+    pageSize = HOME_UPCOMING_PAGE_SIZE,
+) => {
     const [loading, setLoading] = useState(true);
     const [appointments, setAppointments] = useState<any[]>([]);
 
@@ -385,19 +391,30 @@ export const useUpcomingAppointmentsPreview = (limit = HOME_UPCOMING_LIMIT) => {
 
             const res = await _CONSULT_SERVICES.getConsultHistory({
                 page: 1,
-                page_size: limit,
-                appointment_status: 'upcoming',
+                page_size: pageSize,
+                // Prefer confirmed upcoming for Home preview
+                appointment_status: 'confirmed',
             });
 
             const results = res?.data?.results || [];
-            setAppointments(filterUpcomingAppointments(results, limit));
+            // Home list: only confirmed appointments (exclude pending/reschedule/etc.)
+            const confirmedOnly = results
+                .map((item: any) => normalizeAppointmentListItem(item))
+                .filter((item: any) => {
+                    const status = String(item?.status || '')
+                        .trim()
+                        .toLowerCase();
+                    return status === 'confirmed';
+                });
+
+            setAppointments(sortAppointmentsByDateTime(confirmedOnly));
         } catch (e) {
             console.log('UPCOMING_PREVIEW_ERROR', e);
             setAppointments([]);
         } finally {
             setLoading(false);
         }
-    }, [limit]);
+    }, [pageSize]);
 
     useEffect(() => {
         fetchPreview();

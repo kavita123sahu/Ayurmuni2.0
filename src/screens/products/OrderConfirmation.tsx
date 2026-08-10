@@ -205,7 +205,7 @@ const OrderConfirmation: React.FC = (props: any) => {
                 order: orderResult,
                 fromOrderSuccess: true,
             });
-        }, 1800);
+        }, 5000);
         return () => clearTimeout(timer);
     }, [orderResult, props.navigation]);
 

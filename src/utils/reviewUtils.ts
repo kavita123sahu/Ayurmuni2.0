@@ -4,15 +4,17 @@ import { UploadProfilePhoto } from '../services/ProfileServices';
 export type ReviewEntityType = 'doctor' | 'product';
 
 export const REVIEW_UPLOAD_DIRS = {
-  doctor: 'doctor-review',
-  product: 'product-review',
+  doctor: 'review_files',
+  product: 'review_files',
 } as const;
 
 export type ReviewSubmitPayload = {
   rating: number;
   review: string;
   image_urls?: string[];
-  appointment?: string;
+  appointment_id?: string;
+  order_id?: string;
+  variant_id?: string;
   tags?: string[];
 };
 
@@ -44,7 +46,8 @@ export const buildReviewSubmitPayload = ({
   imageUrls = [],
   entityType,
   appointmentId,
-  isEdit = false,
+  orderId,
+  variantId,
   tags,
 }: {
   rating: number;
@@ -52,6 +55,8 @@ export const buildReviewSubmitPayload = ({
   imageUrls?: string[];
   entityType: ReviewEntityType;
   appointmentId?: string;
+  orderId?: string;
+  variantId?: string;
   isEdit?: boolean;
   tags?: string[];
 }): ReviewSubmitPayload => {
@@ -65,8 +70,13 @@ export const buildReviewSubmitPayload = ({
     payload.image_urls = cleanedUrls;
   }
 
-  if (entityType === 'doctor' && appointmentId && !isEdit) {
-    payload.appointment = appointmentId;
+  if (entityType === 'doctor' && appointmentId) {
+    payload.appointment_id = appointmentId;
+  }
+
+  if (entityType === 'product') {
+    if (orderId) payload.order_id = orderId;
+    if (variantId) payload.variant_id = variantId;
   }
 
   if (tags?.length) {
@@ -74,6 +84,16 @@ export const buildReviewSubmitPayload = ({
   }
 
   return payload;
+};
+
+/** Normalize GET /review/ list payloads into a flat array. */
+export const extractReviewsList = (response: any): any[] => {
+  const data = response?.data ?? response;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.reviews)) return data.reviews;
+  if (Array.isArray(response?.results)) return response.results;
+  return [];
 };
 
 export const uploadReviewAsset = async (

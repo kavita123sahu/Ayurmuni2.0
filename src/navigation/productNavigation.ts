@@ -1,6 +1,7 @@
 import { resolveImageUri } from '../utils/imageUtils';
 import { resolveCartItemImage } from '../common/DataInterface';
 import { navigateToStackScreen } from './navigationUtils';
+import { resolvePayOnDelivery } from '../utils/payOnDeliveryUtils';
 
 export const navigateToSearchScreen = (
   navigation: any,
@@ -57,6 +58,7 @@ export const navigateToCheckout = (
     discount?: number;
     gift_wrap?: boolean;
     source?: 'cart' | 'prescribed';
+    pay_on_delivery?: boolean;
   }>,
   totalSubtotal?: number,
 ) => {
@@ -80,6 +82,7 @@ export const navigateToCheckout = (
       discount: item.discount ?? 0,
       gift_wrap: Boolean(item.gift_wrap),
       source: item.source,
+      pay_on_delivery: resolvePayOnDelivery(item),
     };
   });
 
@@ -108,6 +111,7 @@ export const navigateToCheckoutWithProduct = (
     name: string;
     price: number;
     image?: any;
+    pay_on_delivery?: boolean;
   },
 ) => {
   const variantId = String(item.variantId ?? item.id ?? '');
@@ -127,6 +131,7 @@ export const navigateToCheckoutWithProduct = (
       name: item.name,
       image: imageUri,
       discount: 0,
+      pay_on_delivery: resolvePayOnDelivery(item),
     },
   ];
 

@@ -6,6 +6,7 @@ import { Fonts } from '../../common/Fonts'
 import { Colors } from '../../common/Colors'
 import {
     collectReviewImageUrls,
+    extractReviewsList,
     isReviewVideoUrl,
     normalizeReviewsForDisplay,
 } from '../../utils/reviewUtils'
@@ -17,30 +18,36 @@ const ReviewPage = (props: any) => {
     const rawReviews = routeParams.reviews ?? [];
     const entityType = routeParams.entityType;
     const doctorId = routeParams.doctorId;
+    const variantId = routeParams.variantId;
     const [fetchedReviews, setFetchedReviews] = useState<any[] | null>(null);
 
     useEffect(() => {
-        const loadDoctorReviews = async () => {
-            if (entityType !== 'doctor' || !doctorId) return;
+        const loadReviews = async () => {
             try {
-                const res = await getReviewsAll({
-                    entity_type: 'doctor',
-                    doctor_id: String(doctorId),
-                });
-                const list =
-                    res?.data?.results ||
-                    res?.data?.reviews ||
-                    res?.data ||
-                    [];
-                if (Array.isArray(list)) {
-                    setFetchedReviews(list);
+                if (entityType === 'doctor' && doctorId) {
+                    // GET review/?entity_type=doctor&doctor_id=
+                    const res = await getReviewsAll({
+                        entity_type: 'doctor',
+                        doctor_id: String(doctorId),
+                    });
+                    setFetchedReviews(extractReviewsList(res));
+                    return;
+                }
+
+                if (entityType === 'product' && variantId) {
+                    // GET review/?entity_type=product&variant_id=
+                    const res = await getReviewsAll({
+                        entity_type: 'product',
+                        variant_id: String(variantId),
+                    });
+                    setFetchedReviews(extractReviewsList(res));
                 }
             } catch (error) {
-                console.log('ReviewPage doctor fetch error', error);
+                console.log('ReviewPage fetch error', error);
             }
         };
-        loadDoctorReviews();
-    }, [entityType, doctorId]);
+        loadReviews();
+    }, [entityType, doctorId, variantId]);
 
     const reviews = useMemo(
         () =>

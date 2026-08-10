@@ -8,6 +8,8 @@ import {
   Dimensions,
   RefreshControl,
   ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
@@ -31,11 +33,30 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import TablerIcon from '../../components/TablerIcon';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const H_PADDING = 16;
 const GRID_GAP = 10;
 const GRID_CARD_WIDTH = (SCREEN_W - H_PADDING * 2 - GRID_GAP) / 2;
+
+type RatingFilter = 0 | 2 | 3 | 4;
+
+const RATING_FILTERS: { value: RatingFilter; label: string }[] = [
+  { value: 0, label: 'All' },
+  { value: 4, label: '4★ & up' },
+  { value: 3, label: '3★ & up' },
+  { value: 2, label: '2★ & up' },
+];
+
+const getProductRating = (item: any) =>
+  Number(
+    item?.avg_rating ??
+    item?.average_rating ??
+    item?.rating ??
+    item?.variant?.avg_rating ??
+    0,
+  );
 
 const ProductSearchScreen = (props: any) => {
   const insets = useSafeAreaInsets();
@@ -46,6 +67,7 @@ const ProductSearchScreen = (props: any) => {
 
   const routeParams = props.route?.params ?? {};
   const [searchText, setSearchText] = useState('');
+  const [minRating, setMinRating] = useState<RatingFilter>(0);
   const debouncedSearch = useDebounce(searchText, 350);
 
   // Search → whole catalog (`?search=` only). No search → optional browse filters from route / all products.
@@ -163,12 +185,17 @@ const ProductSearchScreen = (props: any) => {
     [variantQuantities, addingVariantId, props.navigation, handleCartUpdate, handleWishlist],
   );
 
+  const filteredProducts = useMemo(() => {
+    if (minRating <= 0) return products;
+    return products.filter(item => getProductRating(item) >= minRating);
+  }, [products, minRating]);
+
   const resultLabel = debouncedSearch.trim()
-    ? `${products.length} result${products.length === 1 ? '' : 's'}`
-    : `${products.length} product${products.length === 1 ? '' : 's'}`;
+    ? `${filteredProducts.length} result${filteredProducts.length === 1 ? '' : 's'}`
+    : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'}`;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <View style={styles.headerWrap}>
@@ -185,6 +212,38 @@ const ProductSearchScreen = (props: any) => {
           onChangeText={setSearchText}
           autoFocus
         />
+
+        <View style={styles.filterHeader}>
+          <TablerIcon name="star" size={14} color={Colors.primaryColor} />
+          <Text style={styles.filterTitle}>Filter by Rating</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.ratingFilterRow}
+        >
+          {RATING_FILTERS.map(option => {
+            const active = minRating === option.value;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                activeOpacity={0.85}
+                onPress={() => setMinRating(option.value)}
+                style={[styles.ratingChip, active && styles.ratingChipActive]}
+              >
+                <Text
+                  style={[
+                    styles.ratingChipText,
+                    active && styles.ratingChipTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         {!loading && (
           <Text style={styles.resultCount}>{resultLabel}</Text>
         )}
@@ -199,7 +258,7 @@ const ProductSearchScreen = (props: any) => {
         />
       ) : (
         <FlatList
-          data={products}
+          data={filteredProducts}
           keyExtractor={(item, i) => String(item.variant_id || i)}
           numColumns={2}
           renderItem={renderProductItem}
@@ -229,12 +288,16 @@ const ProductSearchScreen = (props: any) => {
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>
-                {debouncedSearch.trim() ? 'No matching products' : 'No products yet'}
+                {debouncedSearch.trim() || minRating > 0
+                  ? 'No matching products'
+                  : 'No products yet'}
               </Text>
               <Text style={styles.emptyText}>
-                {debouncedSearch.trim()
-                  ? `Try another keyword for "${debouncedSearch.trim()}"`
-                  : 'Products will appear here once available.'}
+                {minRating > 0
+                  ? `No products with ${minRating}★ or higher. Try another rating filter.`
+                  : debouncedSearch.trim()
+                    ? `Try another keyword for "${debouncedSearch.trim()}"`
+                    : 'Products will appear here once available.'}
               </Text>
             </View>
           }
@@ -254,6 +317,44 @@ const styles = StyleSheet.create({
   headerWrap: {
     paddingHorizontal: H_PADDING,
     paddingBottom: 4,
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  filterTitle: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  ratingFilterRow: {
+    gap: 8,
+    paddingRight: 4,
+    paddingBottom: 2,
+  },
+  ratingChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  ratingChipActive: {
+    borderColor: Colors.primaryColor,
+    backgroundColor: '#E8F5F1',
+  },
+  ratingChipText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  ratingChipTextActive: {
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   resultCount: {
     marginTop: 8,

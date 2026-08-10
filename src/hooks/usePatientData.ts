@@ -11,7 +11,20 @@ import { AddMedicalRecord } from '../services/PatientServices';
 import {
     launchCamera,
 } from 'react-native-image-picker';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import { extractUploadUrl } from '../utils/reviewUtils';
+
+const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+    try {
+        const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.CAMERA,
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch {
+        return false;
+    }
+};
 
 
 export const usePatientData = () => {
@@ -360,24 +373,46 @@ export const useMedicalUpload = (
 
     const CameraUpload = async () => {
         try {
+            const hasPermission = await requestCameraPermission();
+            if (!hasPermission) {
+                Alert.alert(
+                    'Camera permission needed',
+                    'Please allow camera access to take a prescription photo.',
+                );
+                return;
+            }
+
             const result = await launchCamera({
                 mediaType: 'photo',
                 quality: 0.8,
                 saveToPhotos: false,
+                cameraType: 'back',
+                includeBase64: false,
             });
 
-            if (!result.assets?.length) return;
+            if (result.didCancel) return;
 
-            const file = result.assets[0];
+            if (result.errorCode) {
+                console.log('CAMERA ERROR =>', result.errorCode, result.errorMessage);
+                Alert.alert(
+                    'Camera unavailable',
+                    result.errorMessage || 'Could not open the camera. Please try again.',
+                );
+                return;
+            }
+
+            const file = result.assets?.[0];
+            if (!file?.uri) return;
+
             setPickedFile({
                 uri: file.uri,
                 name: file.fileName || `photo_${Date.now()}.jpg`,
                 type: file.type || 'image/jpeg',
             });
             setModalVisible(true);
-
         } catch (error) {
             console.log('CAMERA ERROR =>', error);
+            Alert.alert('Camera error', 'Could not open the camera. Please try again.');
         }
     };
 

@@ -96,3 +96,18 @@ export const AddressEvents = new SimpleEventEmitter();
 
 export const ADDRESS_UPDATED =
     'ADDRESS_UPDATED';
+
+/** Broadcast wishlist heart changes so every product list updates instantly. */
+export const WishlistEvents = new SimpleEventEmitter();
+
+export const WISHLIST_UPDATED = 'WISHLIST_UPDATED';
+
+export type WishlistUpdatedPayload = {
+  variantId: string;
+  isWishlisted: boolean;
+};
+
+/** Home Join banner should refresh / hide after call ends. */
+export const CallEvents = new SimpleEventEmitter();
+
+export const CALL_ENDED = 'CALL_ENDED';

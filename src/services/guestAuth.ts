@@ -60,25 +60,49 @@ export async function promoteToFullUser(): Promise<void> {
   await Utils.removeData(ACCESS_KEYS.IS_GUEST);
 }
 
+/** True when profile looks finished enough to leave guest mode. */
+export function isProfileComplete(profile?: {
+  is_onboarded?: boolean;
+  prakriti_progress?: number | string | null;
+  first_name?: string | null;
+  customer_id?: string | number | null;
+  id?: string | number | null;
+} | null): boolean {
+  if (!profile) return false;
+  if (profile.is_onboarded === true) return true;
+  if (Number(profile.prakriti_progress) >= 100) return true;
+  // Completed customer onboarding (name + id) — clears stuck guest flag
+  if (profile.first_name && (profile.customer_id || profile.id)) return true;
+  return false;
+}
+
 /**
  * Keep local access flag in sync with profile API.
- * - is_onboarded → full user
- * - otherwise keep/create guest (token already present)
+ * - completed / onboarded / has customer profile → full user
+ * - guest + no profile → stay guest
+ * - never demote a full user just because is_onboarded is missing
  */
 export async function syncAccessFromProfile(profile?: {
   is_onboarded?: boolean;
+  prakriti_progress?: number | string | null;
+  first_name?: string | null;
+  customer_id?: string | number | null;
+  id?: string | number | null;
 } | null): Promise<AccessLevel> {
   if (!(await isAuthenticated())) return 'logged_out';
 
-  if (profile?.is_onboarded) {
+  if (isProfileComplete(profile)) {
     await promoteToFullUser();
     return 'full';
   }
 
-  // Incomplete profile/assessments → guest browse mode
-  if (!(await isGuestUser())) {
-    await markAsGuest();
+  // Already marked guest and still incomplete → keep guest
+  if (await isGuestUser()) {
+    return 'guest';
   }
+
+  // Authenticated with no profile yet → guest browse
+  await markAsGuest();
   return 'guest';
 }
 

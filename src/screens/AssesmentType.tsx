@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  BackHandler,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../common/Colors';
@@ -70,6 +72,34 @@ const AssessmentType = (props: any) => {
   const showMedical = form === 'medical' || form === 'all';
   const showPrakriti = form === 'prakriti' || form === 'all';
 
+  const handleBackPress = () => {
+  Alert.alert(
+    'Exit Assessment?',
+    'Are you sure you want to exit the assessment?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Exit',
+        style: 'destructive',
+        onPress: () => BackHandler.exitApp(),
+      },
+    ],
+  );
+
+  return true;
+};
+
+useEffect(() => {
+  const subscription = BackHandler.addEventListener(
+    'hardwareBackPress',
+    handleBackPress,
+  );
+
+  return () => subscription.remove();
+}, []);
   const handleSkip = async () => {
     try {
       const response: any = await _ASSESS_SERVICE.SkipAssesment({ is_skipped: true });

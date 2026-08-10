@@ -18,8 +18,16 @@ import {
   AppointmentChatLike,
   shouldSuppressChatError,
 } from '../utils/chatAccessUtils';
+import { dedupeMessages } from '../utils/messageUtils';
 
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = 2500;
+/** Drop identical outbound texts within this window (double tap / double invoke). */
+const SEND_DEDUPE_MS = 5000;
+
+type RecentSend = { key: string; at: number };
+let recentOutboundSend: RecentSend | null = null;
+/** Global sync lock — blocks a second sendMessage enter before any await. */
+let sendEnterLocked = false;
 
 export function useChat(
   appointmentId: string,
@@ -45,6 +53,8 @@ export function useChat(
   const loadMessagesRef = useRef<((markRead?: boolean | string) => Promise<void>) | null>(null);
   const hasLoadedOnceRef = useRef(false);
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Prevents overlapping sends (double tap / enter+button). */
+  const sendingLockRef = useRef(false);
   const chatAccessRef = useRef(state.chatAccess);
   chatAccessRef.current = state.chatAccess;
   const appointmentDateRef = useRef(appointmentDate);
@@ -61,17 +71,20 @@ export function useChat(
   const appendOrReplaceMessage = useCallback(
     (prevMessages: Message[], incoming: Message): Message[] => {
       const exists = prevMessages.some(m => m.id === incoming.id);
+      let next: Message[];
       if (exists) {
-        return prevMessages.map(m => (m.id === incoming.id ? incoming : m));
+        next = prevMessages.map(m => (m.id === incoming.id ? incoming : m));
+      } else {
+        const withoutMatchingTemp = prevMessages.filter(m => {
+          if (!m.id.startsWith('temp-')) return true;
+          return !(
+            m.sender_role === incoming.sender_role &&
+            (m.text || '') === (incoming.text || '')
+          );
+        });
+        next = [...withoutMatchingTemp, incoming];
       }
-      const withoutMatchingTemp = prevMessages.filter(m => {
-        if (!m.id.startsWith('temp-')) return true;
-        return !(
-          m.sender_role === incoming.sender_role &&
-          (m.text || '') === (incoming.text || '')
-        );
-      });
-      return [...withoutMatchingTemp, incoming];
+      return dedupeMessages(next);
     },
     [],
   );
@@ -109,16 +122,11 @@ export function useChat(
               );
               if (!matched) nextMessages.push(temp);
             });
-            nextMessages.sort(
-              (a, b) =>
-                new Date(a.created_at).getTime() -
-                new Date(b.created_at).getTime(),
-            );
           }
 
           return {
             ...prev,
-            messages: nextMessages,
+            messages: dedupeMessages(nextMessages),
             chatAccess: data.chat_access ?? prev.chatAccess,
             followUpActive:
               data.chat_access?.follow_up_active ?? prev.followUpActive,
@@ -198,16 +206,27 @@ export function useChat(
       const result = await chatService.sendMessage(appointmentId, payload);
       if (!mountedRef.current) return;
 
+      const raw = result as unknown as Record<string, unknown> | null;
+      const nested =
+        raw && typeof raw === 'object' && raw.message && typeof raw.message === 'object'
+          ? (raw.message as Message)
+          : null;
+      const flat =
+        raw && typeof raw === 'object' && ('id' in raw || 'text' in raw) && !nested
+          ? (raw as unknown as Message)
+          : null;
+      const serverMessage = nested || flat;
+
       setState(prev => ({
         ...prev,
-        messages: prev.messages.map(m =>
-          m.id === tempId
-            ? result?.message ?? {
-                ...m,
-                id: `sent-${Date.now()}`,
-                _pending: false,
-              }
-            : m,
+        messages: dedupeMessages(
+          prev.messages.map(m =>
+            m.id === tempId
+              ? serverMessage
+                ? { ...serverMessage, _pending: false }
+                : { ...m, _pending: false }
+              : m,
+          ),
         ),
       }));
     },
@@ -219,6 +238,23 @@ export function useChat(
       const trimmedText = (text || '').trim();
       const hasAttachments = !!attachments && attachments.length > 0;
       if (!trimmedText && !hasAttachments) return;
+
+      // Sync gate first — before any await / state update
+      if (sendEnterLocked || sendingLockRef.current) return;
+
+      const dedupeKey = `${appointmentId}|${role}|${trimmedText}|${
+        hasAttachments
+          ? attachments!.map(a => a.file_url).join(',')
+          : ''
+      }`;
+      const now = Date.now();
+      if (
+        recentOutboundSend &&
+        recentOutboundSend.key === dedupeKey &&
+        now - recentOutboundSend.at < SEND_DEDUPE_MS
+      ) {
+        return;
+      }
 
       if (
         !isChatSendEnabled(
@@ -237,7 +273,11 @@ export function useChat(
         return;
       }
 
-      const tempId = `temp-${Date.now()}`;
+      sendEnterLocked = true;
+      sendingLockRef.current = true;
+      recentOutboundSend = { key: dedupeKey, at: now };
+
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const tempMessage: Message = {
         id: tempId,
         appointment_id: appointmentId,
@@ -254,28 +294,34 @@ export function useChat(
         _pending: true,
       };
 
-      setState(prev => ({ ...prev, messages: [...prev.messages, tempMessage] }));
+      setState(prev => ({
+        ...prev,
+        messages: dedupeMessages([...prev.messages, tempMessage]),
+      }));
 
-      // Always persist via HTTP so peer receives reliably.
-      // Also push on WS when open for realtime.
-      if (!hasAttachments && wsRef.current?.isConnected() && trimmedText) {
-        wsRef.current.sendMessage(trimmedText);
-      }
-
+      // One HTTP POST only — never WebSocket chat.send
       try {
         await sendViaHttp(tempId, trimmedText, attachments);
-        // Pull latest immediately, then burst-poll so peer messages arrive faster
-        // even when WebSocket realtime is down.
-        loadMessagesRef.current?.();
-        setTimeout(() => loadMessagesRef.current?.(), 400);
-        setTimeout(() => loadMessagesRef.current?.(), 1000);
-        setTimeout(() => loadMessagesRef.current?.(), 2000);
+        // Single delayed refresh (no burst) — avoids races that re-echo the send
+        setTimeout(() => loadMessagesRef.current?.(), 800);
       } catch (error: unknown) {
+        const apiError = error as ChatApiError;
+
+        if (apiError.code === 'DUPLICATE_SEND') {
+          setState(prev => ({
+            ...prev,
+            messages: prev.messages.filter(m => m.id !== tempId),
+          }));
+          return;
+        }
+
+        if (recentOutboundSend?.key === dedupeKey) {
+          recentOutboundSend = null;
+        }
         setState(prev => ({
           ...prev,
           messages: prev.messages.filter(m => m.id !== tempId),
         }));
-        const apiError = error as ChatApiError;
         if (apiError.httpStatus === 403) {
           setState(prev => ({
             ...prev,
@@ -293,6 +339,9 @@ export function useChat(
           return;
         }
         showTransientError('Unable to send message. Please try again.');
+      } finally {
+        sendingLockRef.current = false;
+        sendEnterLocked = false;
       }
     },
     [appointmentId, role, showTransientError, sendViaHttp],

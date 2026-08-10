@@ -150,6 +150,7 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
       Extrapolation.CLAMP,
     );
 
+    // Total chrome height (safe-area + header row + gaps + categories + bottom pad)
     return {
       height:
         (insets.top || 0) +

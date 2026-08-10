@@ -6,13 +6,12 @@ import {
   StatusBar,
   TouchableOpacity,
   Animated,
-  Platform,
   Image,
-  Dimensions,
   Easing,
   FlatList,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  useWindowDimensions,
 } from 'react-native';
 import Video from 'react-native-video';
 import LinearGradient from 'react-native-linear-gradient';
@@ -22,57 +21,70 @@ import { Images } from '../../common/Images';
 import { Videos } from '../../common/Videos';
 import { Ionicons } from '../../common/Vector';
 
-const { width: SW, height: SH } = Dimensions.get('window');
-
 type StorySlide =
   | {
-      key: string;
-      kind: 'video';
-      title: string;
-      body: string;
-    }
+    key: string;
+    kind: 'video';
+    title: string;
+    body: string;
+  }
   | {
-      key: string;
-      kind: 'image';
-      source: any;
-      title: string;
-      body: string;
-    };
+    key: string;
+    kind: 'image';
+    source: any;
+    title: string;
+    body: string;
+  };
 
+/** Journey: consult → medicine → delivery → lab → diet → yoga */
 const STORIES: StorySlide[] = [
   {
     key: 'video',
     kind: 'video',
-    title: 'Your Ayurveda companion',
-    body: 'A calm digital path that brings Prakriti wisdom, doctors, and remedies into one place.',
+    title: 'Your Ayurmuni journey',
+    body: 'Consult, medicine, delivery, labs, diet, and yoga — one calm path from care to daily practice.',
   },
   {
     key: 'consult',
     kind: 'image',
-    source: Images.login1,
-    title: 'Consult with clarity',
-    body: 'Meet Ayurvedic doctors for concerns that matter — guided by your body nature, not generic advice.',
+    source: Images.journeyConsult,
+    title: 'Consult with a doctor',
+    body: 'Meet Ayurvedic doctors for concerns that matter — guided by your Prakriti, not generic advice.',
   },
   {
-    key: 'remedy',
+    key: 'medicine',
     kind: 'image',
-    source: Images.login14,
-    title: 'Remedies that fit you',
-    body: 'Discover medicines and routines matched to your constitution and daily balance.',
+    source: Images.journeyMedicine,
+    title: 'Medicines that fit you',
+    body: 'Discover authentic Ayurvedic medicines matched to your constitution and care plan.',
   },
   {
-    key: 'practice',
+    key: 'delivery',
     kind: 'image',
-    source: Images.login6,
-    title: 'Practice & restore',
-    body: 'Yoga, diet, and mindful care — designed to keep mind, body, and spirit in harmony.',
+    source: Images.journeyDelivery,
+    title: 'Delivery to your door',
+    body: 'Remedies arrive with care — so healing reaches you without the rush.',
   },
   {
-    key: 'journey',
+    key: 'lab',
     kind: 'image',
-    source: Images.login7,
-    title: 'Begin with intention',
-    body: 'Ancient science. Modern care. Start your Ayurmuni journey in a few quiet steps.',
+    source: Images.lab,
+    title: 'Lab tests & clarity',
+    body: 'Book diagnostics and follow results that keep your wellness journey informed.',
+  },
+  {
+    key: 'diet',
+    kind: 'image',
+    source: Images.journeyDiet,
+    title: 'Follow your diet',
+    body: 'Personalized meal guidance to balance doshas and support everyday vitality.',
+  },
+  {
+    key: 'yoga',
+    kind: 'image',
+    source: Images.journeyYoga,
+    title: 'Practice yoga',
+    body: 'Guided yoga and mindful movement to restore mind, body, and spirit.',
   },
 ];
 
@@ -80,18 +92,29 @@ const STORIES: StorySlide[] = [
  * Elegant Welcome — sliding story (video + images) explaining the app,
  * brand-forward, tight composition.
  */
+const IMAGE_AUTO_MS = 4200;
+
 const WelcomeScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
+  const { width: SW, height: SH } = useWindowDimensions();
   const listRef = useRef<FlatList>(null);
   const [index, setIndex] = useState(0);
   const [videoReady, setVideoReady] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [videoKey, setVideoKey] = useState(0);
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(24)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const indexRef = useRef(0);
+
+  const videoIndex = STORIES.findIndex(s => s.kind === 'video');
+
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
 
   useEffect(() => {
     Animated.parallel([
@@ -113,13 +136,13 @@ const WelcomeScreen = ({ navigation }: any) => {
       Animated.sequence([
         Animated.timing(logoPulse, {
           toValue: 1.04,
-          duration: 2200,
+          duration: 2000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(logoPulse, {
           toValue: 1,
-          duration: 2200,
+          duration: 2000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -131,27 +154,66 @@ const WelcomeScreen = ({ navigation }: any) => {
 
   const goTo = useCallback((next: number) => {
     const clamped = ((next % STORIES.length) + STORIES.length) % STORIES.length;
+    if (clamped === videoIndex) {
+      setVideoReady(false);
+      setVideoKey(k => k + 1);
+    }
     listRef.current?.scrollToIndex({ index: clamped, animated: true });
     setIndex(clamped);
-  }, []);
+  }, [videoIndex]);
 
+  // Auto-scroll images only — never skip the video before it finishes
   useEffect(() => {
+    if (autoTimer.current) {
+      clearInterval(autoTimer.current);
+      autoTimer.current = null;
+    }
+
+    const slide = STORIES[index];
+    const onVideoSlide = slide?.kind === 'video' && !videoFailed;
+    if (onVideoSlide) {
+      return;
+    }
+
     autoTimer.current = setInterval(() => {
       setIndex(prev => {
         const next = (prev + 1) % STORIES.length;
+        if (next === videoIndex) {
+          setVideoReady(false);
+          setVideoKey(k => k + 1);
+        }
         listRef.current?.scrollToIndex({ index: next, animated: true });
         return next;
       });
-    }, 4200);
+    }, IMAGE_AUTO_MS);
+
     return () => {
-      if (autoTimer.current) clearInterval(autoTimer.current);
+      if (autoTimer.current) {
+        clearInterval(autoTimer.current);
+        autoTimer.current = null;
+      }
     };
-  }, []);
+  }, [index, videoFailed, videoIndex]);
+
+  const onVideoEnd = useCallback(() => {
+    if (indexRef.current !== videoIndex) {
+      return;
+    }
+    const next = (videoIndex + 1) % STORIES.length;
+    listRef.current?.scrollToIndex({ index: next, animated: true });
+    setIndex(next);
+  }, [videoIndex]);
 
   const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const next = Math.round(x / SW);
-    if (next !== index) setIndex(next);
+    if (next !== index && next >= 0 && next < STORIES.length) {
+      if (next === videoIndex && index !== videoIndex) {
+        setVideoReady(false);
+        setVideoKey(k => k + 1);
+      }
+      setIndex(next);
+    }
   };
 
   const handleGetStarted = () => {
@@ -176,21 +238,20 @@ const WelcomeScreen = ({ navigation }: any) => {
   const active = STORIES[index] ?? STORIES[0];
 
   const renderSlide = ({ item }: { item: StorySlide }) => (
-    <View style={styles.slide}>
+    <View style={[styles.slide, { width: SW, height: SH, backgroundColor: '#04201A' }]}>
       {item.kind === 'video' && !videoFailed ? (
         <>
-          <Image
-            source={Images.BackgroundImage}
-            style={styles.slideMedia}
-            resizeMode="cover"
-          />
+          {!videoReady && (
+            <View style={[styles.slideMedia, { width: SW, height: SH, backgroundColor: '#04201A' }]} />
+          )}
           <Video
+            key={`welcome-video-${videoKey}`}
             source={Videos.welcome}
-            style={[styles.slideMedia, { opacity: videoReady ? 1 : 0 }]}
-            resizeMode="cover"
-            repeat
+            style={[styles.slideMedia, { width: SW, height: SH, opacity: videoReady ? 1 : 0 }]}
+            resizeMode="contain"
+            repeat={false}
             muted
-            paused={index !== 0}
+            paused={index !== videoIndex}
             playInBackground={false}
             playWhenInactive={false}
             ignoreSilentSwitch="obey"
@@ -198,24 +259,34 @@ const WelcomeScreen = ({ navigation }: any) => {
             disableFocus
             shutterColor="transparent"
             onReadyForDisplay={() => setVideoReady(true)}
+            onEnd={onVideoEnd}
             onError={() => setVideoFailed(true)}
           />
         </>
       ) : (
         <Image
           source={item.kind === 'image' ? item.source : Images.BackgroundImage}
-          style={styles.slideMedia}
+          style={[styles.slideMedia, { width: SW, height: SH }]}
           resizeMode="cover"
         />
       )}
       <LinearGradient
-        colors={[
-          'rgba(3, 22, 18, 0.15)',
-          'rgba(3, 22, 18, 0.45)',
-          'rgba(3, 22, 18, 0.92)',
-        ]}
-        locations={[0, 0.45, 1]}
+        colors={
+          item.kind === 'video'
+            ? [
+                'rgba(3, 22, 18, 0.02)',
+                'rgba(3, 22, 18, 0.12)',
+                'rgba(3, 22, 18, 0.82)',
+              ]
+            : [
+                'rgba(3, 22, 18, 0.05)',
+                'rgba(3, 22, 18, 0.2)',
+                'rgba(3, 22, 18, 0.88)',
+              ]
+        }
+        locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
       />
     </View>
   );
@@ -239,7 +310,11 @@ const WelcomeScreen = ({ navigation }: any) => {
           offset: SW * i,
           index: i,
         })}
-        onScrollToIndexFailed={() => {}}
+        onScrollToIndexFailed={() => { }}
+        windowSize={3}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        removeClippedSubviews={false}
       />
 
       <Animated.View
@@ -270,8 +345,8 @@ const WelcomeScreen = ({ navigation }: any) => {
           <Text style={styles.storyKicker}>
             {String(index + 1).padStart(2, '0')} / {String(STORIES.length).padStart(2, '0')}
           </Text>
-          <Text style={styles.storyTitle}>{active.title}</Text>
-          <Text style={styles.storyBody}>{active.body}</Text>
+          <Text style={[styles.storyTitle, { maxWidth: SW * 0.9 }]}>{active.title}</Text>
+          <Text style={[styles.storyBody, { maxWidth: SW * 0.92 }]}>{active.body}</Text>
 
           <View style={styles.progressRow}>
             {STORIES.map((s, i) => (
@@ -315,13 +390,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#04201A',
   },
   slide: {
-    width: SW,
-    height: SH,
+    overflow: 'hidden',
   },
   slideMedia: {
     ...StyleSheet.absoluteFillObject,
-    width: SW,
-    height: SH,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -365,14 +437,12 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
-    maxWidth: SW * 0.9,
   },
   storyBody: {
     fontSize: 14,
     lineHeight: 21,
-    color: 'rgba(247, 244, 236, 0.86)',
+    color: 'rgba(247, 244, 236, 0.9)',
     fontFamily: Fonts.PoppinsRegular,
-    maxWidth: SW * 0.92,
     marginBottom: 4,
   },
   progressRow: {

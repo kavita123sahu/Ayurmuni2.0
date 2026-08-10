@@ -58,22 +58,6 @@ const MyCart = ({ navigation }: any) => {
         }
     }, [fetchAllData]);
 
-    useFocusEffect(
-        useCallback(() => {
-            // First visit: full load. Later visits: silent sync, keep UI.
-            fetchAllData({ force: true, silent: hasCachedCart });
-        }, [fetchAllData, hasCachedCart])
-    );
-
-
-    // useFocusEffect(
-    //     useCallback(() => {
-    //         if (isLoggedIn) {
-    //             fetchAllData(true);
-    //         }
-    //     }, [fetchAllData, isLoggedIn]),
-    // );
-
     const insets = useSafeAreaInsets();
     const [selectedItems, setSelectedItems] =
         useState<string[]>([]);
@@ -81,8 +65,11 @@ const MyCart = ({ navigation }: any) => {
     const [activeTab, setActiveTab] = useState<'cart' | 'prescribed'>('cart');
     const [showDetails, setShowDetails] =
         useState(false);
-    const didAutoSelectRef = useRef(false);
+    /** On each visit (and when new lines appear), select all — user can uncheck after. */
+    const selectAllPendingRef = useRef(true);
+    const knownItemIdsRef = useRef<Set<string>>(new Set());
     const didSetInitialTabRef = useRef(false);
+    const [focusTick, setFocusTick] = useState(0);
 
     const sections = useMemo<SectionType[]>(() => {
         const next: SectionType[] = [];
@@ -99,83 +86,120 @@ const MyCart = ({ navigation }: any) => {
             });
         }
 
-        if (CartData?.prescription_cart?.items?.length) {
+        // Only line items inside prescription groups that have products
+        // API: prescription_cart.items[].items[].id → cart_item_ids
+        const prescribedLineItems = (
+            CartData?.prescription_cart?.items ?? []
+        ).flatMap((prescription: any) => {
+            const lineItems = Array.isArray(prescription?.items)
+                ? prescription.items
+                : [];
+            return lineItems
+                .filter((item: any) => item?.id)
+                .map((item: any) => {
+                    console.log("cart_item_id", item?.id,);
+                    const lineId = String(item.id);
+                    const product = getProductData(
+                        item,
+                        prescription?.doctor_name,
+                    );
+                    return {
+                        ...product,
+                        // Prefer nested prescription line id for place-order
+                        id: lineId,
+                        cart_item_id: lineId,
+                        source: 'prescribed' as const,
+                        prescription_id: prescription?.prescription_id,
+                        prescription_cart_id: prescription?.id,
+                    };
+                });
+        });
+
+        if (prescribedLineItems.length > 0) {
             next.push({
                 id: 'prescribed',
                 title: 'Prescribed Medicines',
                 type: 'prescribed',
-                items: CartData.prescription_cart.items.flatMap(
-                    (prescription: any) =>
-                        prescription.items.map((item: any) => ({
-                            ...getProductData(
-                                item,
-                                prescription.doctor_name,
-                            ),
-                            source: 'prescribed' as const,
-                        })),
-                ),
+                items: prescribedLineItems,
             });
         }
 
         return next;
     }, [CartData]);
 
-    const cartItemCount = useMemo(
-        () => sections.reduce((count, section) => count + section.items.length, 0),
+    const allItemIds = useMemo(
+        () =>
+            sections.flatMap(section =>
+                section.items.map(item => String(item.id)),
+            ),
         [sections],
     );
 
+    const cartItemCount = allItemIds.length;
     const hasCartItems = cartItemCount > 0;
+
+    useFocusEffect(
+        useCallback(() => {
+            // Coming to cart (e.g. after add) → all items selected by default
+            selectAllPendingRef.current = true;
+            setFocusTick(tick => tick + 1);
+            fetchAllData({ force: true, silent: hasCachedCart });
+        }, [fetchAllData, hasCachedCart]),
+    );
 
     useEffect(() => {
         if (!hasCartItems) {
-            didAutoSelectRef.current = false;
+            selectAllPendingRef.current = true;
             didSetInitialTabRef.current = false;
+            knownItemIdsRef.current = new Set();
             setSelectedItems([]);
             return;
         }
 
-        if (!didAutoSelectRef.current) {
-            didAutoSelectRef.current = true;
-            setSelectedItems(
-                sections.flatMap(section =>
-                    section.items.map(item => item.id),
-                ),
-            );
+        if (selectAllPendingRef.current) {
+            selectAllPendingRef.current = false;
+            knownItemIdsRef.current = new Set(allItemIds);
+            setSelectedItems(allItemIds);
+            return;
         }
-    }, [sections, hasCartItems]);
+
+        // Newly added lines while staying on cart → auto-select them
+        const newIds = allItemIds.filter(
+            id => !knownItemIdsRef.current.has(id),
+        );
+        knownItemIdsRef.current = new Set(allItemIds);
+
+        if (newIds.length) {
+            setSelectedItems(prev => [...new Set([...prev, ...newIds])]);
+            return;
+        }
+
+        // Drop selections for removed lines
+        setSelectedItems(prev =>
+            prev.filter(id => knownItemIdsRef.current.has(id)),
+        );
+    }, [allItemIds, hasCartItems, focusTick]);
 
     const toggleSectionSelection =
         useCallback(
             (section: SectionType) => {
+                const sectionIds = section.items.map(item =>
+                    String(item.id),
+                );
 
-                const sectionIds =
-                    section.items.map(
-                        item => item.id,
-                    );
-
-                const isSelected =
-                    sectionIds.every(id =>
-                        selectedItems.includes(id),
-                    );
+                const isSelected = sectionIds.every(id =>
+                    selectedItems.includes(id),
+                );
 
                 if (isSelected) {
-
                     setSelectedItems(prev =>
-                        prev.filter(
-                            id =>
-                                !sectionIds.includes(id),
-                        ),
+                        prev.filter(id => !sectionIds.includes(id)),
                     );
-
                     return;
                 }
 
                 setSelectedItems(prev => [
-                    ...new Set([
-                        ...prev,
-                        ...sectionIds,
-                    ]),
+                    ...new Set([...prev, ...sectionIds]),
                 ]);
             },
             [selectedItems],
@@ -183,22 +207,15 @@ const MyCart = ({ navigation }: any) => {
 
     /* ========================================================= */
 
-    const toggleItemSelection =
-        useCallback((id: string) => {
-
-            setSelectedItems(prev => {
-
-                if (prev.includes(id)) {
-
-                    return prev.filter(
-                        item => item !== id,
-                    );
-                }
-
-                return [...prev, id];
-            });
-
-        }, []);
+    const toggleItemSelection = useCallback((id: string) => {
+        const itemId = String(id);
+        setSelectedItems(prev => {
+            if (prev.includes(itemId)) {
+                return prev.filter(item => item !== itemId);
+            }
+            return [...prev, itemId];
+        });
+    }, []);
 
 
     const updateQuantity = useCallback(
@@ -237,9 +254,7 @@ const MyCart = ({ navigation }: any) => {
                         section.items,
                 )
                 .filter(item =>
-                    selectedItems.includes(
-                        item.id,
-                    ),
+                    selectedItems.includes(String(item.id)),
                 );
         }, [sections, selectedItems]);
 
@@ -338,16 +353,16 @@ const MyCart = ({ navigation }: any) => {
     // Tab MyCart needs space for bottom bar; stack MyCart (from product flow) does not
     const navState = navigation.getState?.();
     const isTabCart =
-      navState?.type === 'tab' ||
-      (Array.isArray(navState?.routeNames) &&
-        navState.routeNames.includes('Home') &&
-        navState.routeNames.includes('Products'));
+        navState?.type === 'tab' ||
+        (Array.isArray(navState?.routeNames) &&
+            navState.routeNames.includes('Home') &&
+            navState.routeNames.includes('Products'));
     const listBottomPad = isTabCart
-      ? getScreenBottomPadding(insets)
-      : Math.max(insets.bottom, 12) + 24;
+        ? getScreenBottomPadding(insets)
+        : Math.max(insets.bottom, 12) + 24;
     const footerBottomPad = isTabCart
-      ? getScreenBottomPadding(insets)
-      : Math.max(insets.bottom, 12);
+        ? getScreenBottomPadding(insets)
+        : Math.max(insets.bottom, 12);
 
     return (
         <SafeAreaView
@@ -465,8 +480,8 @@ const MyCart = ({ navigation }: any) => {
                         {currentSection?.items.length ? (() => {
 
                             const sectionIds =
-                                currentSection.items.map(
-                                    item => item.id,
+                                currentSection.items.map(item =>
+                                    String(item.id),
                                 );
 
                             const isSectionSelected =
@@ -510,7 +525,7 @@ const MyCart = ({ navigation }: any) => {
                                             navigation={navigation}
                                             type={currentSection.type}
                                             isSelected={selectedItems.includes(
-                                                item.id,
+                                                String(item.id),
                                             )}
                                             toggleItemSelection={
                                                 toggleItemSelection
@@ -602,14 +617,14 @@ const MyCart = ({ navigation }: any) => {
                     </ScrollView>
 
                     <View
-                      style={[
-                        styles.checkoutFooter,
-                        {
-                          paddingBottom: isTabCart
-                            ? footerBottomPad
-                            : Math.max(insets.bottom, 10),
-                        },
-                      ]}
+                        style={[
+                            styles.checkoutFooter,
+                            {
+                                paddingBottom: isTabCart
+                                    ? footerBottomPad
+                                    : Math.max(insets.bottom, 10),
+                            },
+                        ]}
                     >
                         <TouchableOpacity
                             activeOpacity={0.9}

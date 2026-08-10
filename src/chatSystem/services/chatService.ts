@@ -51,11 +51,32 @@ const findChatAccessInPayload = (value: unknown, depth = 0): ChatAccess | null =
   return null;
 };
 
+const collapseNearDuplicates = (messages: Message[]): Message[] => {
+  const result: Message[] = [];
+  for (const msg of messages) {
+    const idx = result.findIndex(existing => {
+      if (existing.id && msg.id && existing.id === msg.id) return true;
+      if (existing.sender_role !== msg.sender_role) return false;
+      if ((existing.text || '').trim() !== (msg.text || '').trim()) return false;
+      const ta = new Date(existing.created_at).getTime();
+      const tb = new Date(msg.created_at).getTime();
+      if (Number.isNaN(ta) || Number.isNaN(tb)) return false;
+      return Math.abs(ta - tb) < 2500;
+    });
+    if (idx === -1) {
+      result.push(msg);
+    } else if (msg.is_seen && !result[idx].is_seen) {
+      result[idx] = msg;
+    }
+  }
+  return result;
+};
+
 const normalizeMessagesResponse = (
   body: unknown,
   sendBlocked = false,
 ): MessagesResponse => {
-  const messages = findMessagesInPayload(body) ?? [];
+  const messages = collapseNearDuplicates(findMessagesInPayload(body) ?? []);
   const chatAccess = findChatAccessInPayload(body);
 
   return {
@@ -63,6 +84,28 @@ const normalizeMessagesResponse = (
     chat_access: chatAccess,
     sendBlocked,
   };
+};
+
+/** Module-level guards — survive remounts / double handlers. */
+const outboundPostInFlight = new Map<string, Promise<{ message: Message }>>();
+let lastOutboundPost: { fingerprint: string; at: number } | null = null;
+/** Synchronous lock — set before any await so double-enter cannot slip through. */
+let syncPostLock = false;
+
+const extractSentMessage = (body: unknown): Message | null => {
+  if (!body || typeof body !== 'object') return null;
+  const root = body as Record<string, unknown>;
+  const data = (root.data && typeof root.data === 'object'
+    ? root.data
+    : root) as Record<string, unknown>;
+
+  if (data.message && typeof data.message === 'object') {
+    return data.message as Message;
+  }
+  if (looksLikeMessage(data)) {
+    return data as Message;
+  }
+  return null;
 };
 
 export const chatService = {
@@ -143,25 +186,61 @@ export const chatService = {
     appointmentId: string,
     payload: SendMessagePayload,
   ): Promise<{ message: Message }> => {
-    const token = await Utils.getData('_TOKEN');
-    const response = await fetch(
-      `${API_BASE}/communication/appointments/${appointmentId}/messages/`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      },
-    );
-
-    if (!response.ok) {
-      throw await parseApiError(response);
+    // Hard sync gate first — must run before any await
+    if (syncPostLock || outboundPostInFlight.has(appointmentId)) {
+      const err = new Error('Send already in progress') as ChatApiError;
+      err.code = 'DUPLICATE_SEND';
+      throw err;
     }
 
-    const data = await response.json();
-    return data.data;
+    const fingerprint = `${appointmentId}|${JSON.stringify(payload)}`;
+    const now = Date.now();
+    if (
+      lastOutboundPost &&
+      lastOutboundPost.fingerprint === fingerprint &&
+      now - lastOutboundPost.at < 5000
+    ) {
+      const err = new Error('Duplicate send blocked') as ChatApiError;
+      err.code = 'DUPLICATE_SEND';
+      throw err;
+    }
+
+    syncPostLock = true;
+    lastOutboundPost = { fingerprint, at: now };
+
+    const request = (async () => {
+      const token = await Utils.getData('_TOKEN');
+      const response = await fetch(
+        `${API_BASE}/communication/appointments/${appointmentId}/messages/`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        throw await parseApiError(response);
+      }
+
+      const body = await response.json();
+      const message = extractSentMessage(body);
+      if (!message) {
+        throw new Error('Invalid send response');
+      }
+      return { message };
+    })();
+
+    outboundPostInFlight.set(appointmentId, request);
+    try {
+      return await request;
+    } finally {
+      outboundPostInFlight.delete(appointmentId);
+      syncPostLock = false;
+    }
   },
 
   uploadAttachment: async (

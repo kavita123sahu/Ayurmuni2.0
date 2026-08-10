@@ -3,6 +3,7 @@ import { Images } from "./Images";
 import { Colors } from "./Colors";
 import React from "react";
 import { resolveProductImageUri } from '../utils/imageUtils';
+import { resolvePayOnDelivery } from '../utils/payOnDeliveryUtils';
 
 
 export interface ProductItem {
@@ -18,6 +19,7 @@ export interface ProductItem {
   doctorName?: string;
   source?: 'cart' | 'prescribed';
   gift_wrap?: boolean;
+  pay_on_delivery?: boolean;
 }
 export type SectionType = {
   id: string;
@@ -42,6 +44,7 @@ export type CartItem = {
     size?: string;
     selling_price?: number;
     brand_name?: string;
+    pay_on_delivery?: boolean;
     image_url?: string;
     cover_image?: {
       id?: string;
@@ -56,6 +59,7 @@ export type CartItem = {
       is_cover?: boolean;
     }[];
   };
+  pay_on_delivery?: boolean;
   cover_image?: {
     id?: string;
     media_url?: string;
@@ -176,6 +180,7 @@ export const getProductData = (
 
   doctorName,
   gift_wrap: Boolean((item as any)?.gift_wrap || (item as any)?.is_gift_wrap),
+  pay_on_delivery: resolvePayOnDelivery(item),
 });
 
 export interface GenderOption {
@@ -200,7 +205,25 @@ export const product = {
     Images.HomeBanner,
   ],
 };
+export const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'deliverd':
+    case 'delivered':
+      return '#1B5E54'; // Green
 
+    case 'pending':
+      return '#F59E0B'; // Orange
+
+    case 'cancelled':
+      return '#EF4444'; // Red
+
+    case 'processing':
+      return '#3366FF'; // Blue
+
+    default:
+      return '#3366FF';
+  }
+};
 
 
 export type Appointment = {

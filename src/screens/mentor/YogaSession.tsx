@@ -10,24 +10,17 @@ import MentorCard from '../../components/MentorCard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TablerIcon from '../../components/TablerIcon';
 
-const resolveSessionVideo = (item: any): string | null => {
-  const candidates = [
-    item?.video_url,
-    item?.session_video,
-    item?.session_video_url,
-    item?.preview_video,
-    item?.preview_video_url,
-    item?.media_url,
-    item?.video,
-  ];
-  for (const value of candidates) {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-};
+import {
+  resolveYogaThumbnailUri,
+  resolveYogaVideoUri,
+} from '../../utils/yogaUtils';
+
+const resolveSessionVideo = resolveYogaVideoUri;
 
 export default function YogaSession(props: any) {
   const sessionItem = props?.route?.params?.item;
+
+  console.log('sessionItemsessionItemsessionItem', sessionItem);
   const videoUri = useMemo(
     () => resolveSessionVideo(sessionItem),
     [sessionItem],
@@ -65,8 +58,8 @@ export default function YogaSession(props: any) {
             <View style={styles.videoFallback}>
               <Image
                 source={
-                  sessionItem?.thumbnail_url
-                    ? { uri: sessionItem.thumbnail_url }
+                  resolveYogaThumbnailUri(sessionItem)
+                    ? { uri: resolveYogaThumbnailUri(sessionItem) }
                     : Images.doctorImage
                 }
                 style={styles.video}

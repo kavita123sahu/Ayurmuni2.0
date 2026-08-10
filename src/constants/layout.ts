@@ -13,16 +13,19 @@ export const HOME_SECTION_HEADER_MB = 10;
 export const CARD_PADDING = 14;
 export const CARD_RADIUS = 16;
 
-export const HOME_HEADER_CONTENT_HEIGHT = 64;
+/** Profile row (~42) + equal vertical padding (8+8) */
+export const HOME_HEADER_CONTENT_HEIGHT = 58;
 export const HOME_SEARCH_BAR_HEIGHT = 40;
 /** Gap below status bar when search sticks on scroll */
 export const HOME_STICKY_TOP_GAP = 8;
 /** Gap between search bar and category row */
-export const HOME_HEADER_SEARCH_GAP = HOME_SECTION_GAP;
-export const HOME_CATEGORY_GAP = HOME_SECTION_GAP;
+export const HOME_HEADER_SEARCH_GAP = 8;
+/** Equal gap under header row / above categories */
+export const HOME_CATEGORY_GAP = 8;
 /** Blinkit-style category row (tile + label) */
 export const HOME_CATEGORY_ROW_HEIGHT = 82;
-export const HOME_HEADER_BOTTOM_GAP = 0;
+/** Equal bottom padding under category row in header chrome */
+export const HOME_HEADER_BOTTOM_GAP = 8;
 
 const homeStickyChromeHeight =
   HOME_STICKY_TOP_GAP +
@@ -32,10 +35,11 @@ const homeStickyChromeHeight =
   HOME_HEADER_BOTTOM_GAP;
 
 export const getHomeHeaderTotalHeight = (insets: EdgeInsets) =>
+  (insets.top || 0) +
   HOME_HEADER_CONTENT_HEIGHT +
   HOME_CATEGORY_GAP +
   HOME_CATEGORY_ROW_HEIGHT +
-  (insets.top || 0);
+  HOME_HEADER_BOTTOM_GAP;
 
 /** Collapsed: search + categories pinned */
 export const getHomeHeaderCollapsedHeight = (insets: EdgeInsets) =>

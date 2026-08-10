@@ -208,30 +208,144 @@ export function normalizeAppointmentListItem(item: any) {
   };
 }
 
+/** Local calendar date parts — avoids UTC midnight shift on `YYYY-MM-DD`. */
+const parseLocalDateParts = (
+  dateStr?: string,
+): { year: number; month: number; day: number } | null => {
+  if (!dateStr) return null;
+  const raw = String(dateStr).trim();
+
+  let match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+    };
+  }
+
+  // DD-MM-YYYY / DD/MM/YYYY
+  match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (match) {
+    return {
+      year: Number(match[3]),
+      month: Number(match[2]),
+      day: Number(match[1]),
+    };
+  }
+
+  const fallback = new Date(raw);
+  if (Number.isNaN(fallback.getTime())) return null;
+  return {
+    year: fallback.getFullYear(),
+    month: fallback.getMonth() + 1,
+    day: fallback.getDate(),
+  };
+};
+
+const parseTimeParts = (
+  timeStr?: string,
+): { hours: number; minutes: number; seconds: number } | null => {
+  if (!timeStr) return null;
+  const raw = String(timeStr).trim();
+
+  // Full ISO / datetime → let Date parse (keeps timezone)
+  if (/T/.test(raw) || /^\d{4}-\d{2}-\d{2}\s+\d{1,2}:/.test(raw)) {
+    const iso = new Date(raw);
+    if (!Number.isNaN(iso.getTime())) {
+      return {
+        hours: iso.getHours(),
+        minutes: iso.getMinutes(),
+        seconds: iso.getSeconds(),
+      };
+    }
+  }
+
+  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (!match) return null;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || 0);
+  const meridiem = match[4]?.toUpperCase();
+
+  if (meridiem === 'PM' && hours < 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+
+  return { hours, minutes, seconds };
+};
+
+const parseAppointmentStart = (dateStr?: string, timeStr?: string): Date | null => {
+  const timeRaw = timeStr != null ? String(timeStr).trim() : '';
+
+  // Prefer full datetime on the time field
+  if (timeRaw && (/T/.test(timeRaw) || /^\d{4}-\d{2}-\d{2}/.test(timeRaw))) {
+    const iso = new Date(timeRaw);
+    if (!Number.isNaN(iso.getTime())) {
+      return iso;
+    }
+  }
+
+  const parts = parseLocalDateParts(dateStr);
+  if (!parts) {
+    if (timeRaw) {
+      const onlyTime = new Date(timeRaw);
+      if (!Number.isNaN(onlyTime.getTime())) return onlyTime;
+    }
+    return null;
+  }
+
+  const timeParts = parseTimeParts(timeRaw);
+  const hours = timeParts?.hours ?? 0;
+  const minutes = timeParts?.minutes ?? 0;
+  const seconds = timeParts?.seconds ?? 0;
+
+  return new Date(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    hours,
+    minutes,
+    seconds,
+    0,
+  );
+};
+
+/** Soonest upcoming first (date + start time). */
+export function sortAppointmentsByDateTime(items: any[] = []): any[] {
+  return [...items].sort((a, b) => {
+    const aStart =
+      parseAppointmentStart(a?.date, a?.time)?.getTime() ??
+      new Date(a?.date || 0).getTime();
+    const bStart =
+      parseAppointmentStart(b?.date, b?.time)?.getTime() ??
+      new Date(b?.date || 0).getTime();
+    return aStart - bStart;
+  });
+}
+
 export function filterUpcomingAppointments(items: any[] = [], limit?: number) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const upcoming = items
-    .map(item => normalizeAppointmentListItem(item))
-    .filter(item => {
-      const status = String(item.status || '').toLowerCase();
-      if (!UPCOMING_STATUS.includes(status)) {
-        return false;
-      }
+  const upcoming = sortAppointmentsByDateTime(
+    items
+      .map(item => normalizeAppointmentListItem(item))
+      .filter(item => {
+        const status = String(item.status || '').toLowerCase();
+        if (!UPCOMING_STATUS.includes(status)) {
+          return false;
+        }
 
-      const appointmentDate = new Date(item.date);
-      if (Number.isNaN(appointmentDate.getTime())) {
-        return false;
-      }
+        const appointmentDate = new Date(item.date);
+        if (Number.isNaN(appointmentDate.getTime())) {
+          return false;
+        }
 
-      appointmentDate.setHours(0, 0, 0, 0);
-      return appointmentDate >= today;
-    })
-    .sort(
-      (a, b) =>
-        new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
+        appointmentDate.setHours(0, 0, 0, 0);
+        return appointmentDate >= today;
+      }),
+  );
 
   if (typeof limit === 'number') {
     return upcoming.slice(0, limit);
@@ -240,39 +354,45 @@ export function filterUpcomingAppointments(items: any[] = [], limit?: number) {
   return upcoming;
 }
 
-const parseAppointmentStart = (dateStr?: string, timeStr?: string): Date | null => {
-  if (!dateStr) {
-    return null;
+const ENDED_CALL_STATUSES = new Set([
+  'ended',
+  'left',
+  'completed',
+  'cancelled',
+  'canceled',
+  'no_show',
+  'missed',
+  'rejected',
+]);
+
+/** True when appointment should leave Home "Upcoming" (ended call or past end_time). */
+export function isAppointmentFinished(raw: any): boolean {
+  const item = normalizeAppointmentListItem(raw);
+  const callStatus = String(item.call_status || '').toLowerCase().trim();
+  if (ENDED_CALL_STATUSES.has(callStatus)) {
+    return true;
   }
 
-  const base = new Date(dateStr);
-  if (Number.isNaN(base.getTime())) {
-    return null;
+  const now = Date.now();
+  const end = parseAppointmentStart(item.date, item.endTime || undefined);
+  if (end && now >= end.getTime()) {
+    return true;
   }
 
-  if (!timeStr) {
-    return base;
+  // No end_time: drop ~60 min after start so cards don't linger
+  const start = parseAppointmentStart(item.date, item.time);
+  if (start && !item.endTime && now >= start.getTime() + 60 * 60 * 1000) {
+    return true;
   }
 
-  const match = String(timeStr).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
-  if (!match) {
-    return base;
-  }
+  return false;
+}
 
-  let hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const meridiem = match[4]?.toUpperCase();
-
-  if (meridiem === 'PM' && hours < 12) {
-    hours += 12;
-  }
-  if (meridiem === 'AM' && hours === 12) {
-    hours = 0;
-  }
-
-  base.setHours(hours, minutes, 0, 0);
-  return base;
-};
+export function filterActiveHomeAppointments(items: any[] = []): any[] {
+  return sortAppointmentsByDateTime(
+    items.filter(item => !isAppointmentFinished(item)),
+  );
+}
 
 export const formatAppointmentDayLabel = (dateStr?: string) => {
   if (!dateStr) {
@@ -418,19 +538,28 @@ export type JoinableAppointment = {
   isLive: boolean;
 };
 
-/** Appointment the patient can join now or within the pre-call window. */
+const DEFAULT_JOIN_WINDOW_MINUTES = 5;
+
+/**
+ * Home "Join Now" banner rules:
+ * - Hide ONLY when: end_time has passed, OR call_status is completed/ended
+ * - Show when call_status is `in_progress` (and not past end)
+ * - Or show within `windowMinutes` (default 5) before start until end_time
+ */
 export function getJoinableAppointment(
   items: any[] = [],
-  windowMinutes = 15,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
 ): JoinableAppointment | null {
   const now = Date.now();
+  const windowMs = windowMinutes * 60 * 1000;
 
   for (const raw of items) {
     const item = normalizeAppointmentListItem(raw);
-    const callStatus = String(item.call_status || '').toLowerCase();
+    const callStatus = String(item.call_status || '').toLowerCase().trim();
 
-    if (callStatus === 'in_progress') {
-      return { item, minutesLeft: 0, isLive: true };
+    // Hide when call is completed / ended (only this call-status condition)
+    if (ENDED_CALL_STATUSES.has(callStatus)) {
+      continue;
     }
 
     const start = parseAppointmentStart(item.date, item.time);
@@ -438,9 +567,38 @@ export function getJoinableAppointment(
       continue;
     }
 
-    const diffMin = Math.ceil((start.getTime() - now) / 60000);
-    if (diffMin >= 0 && diffMin <= windowMinutes) {
-      return { item, minutesLeft: diffMin, isLive: false };
+    const end = item.endTime
+      ? parseAppointmentStart(item.date, item.endTime)
+      : null;
+    const validEnd =
+      end && end.getTime() > start.getTime() ? end : null;
+
+    // Hide when appointment end_time is reached / matched
+    if (validEnd && now >= validEnd.getTime()) {
+      continue;
+    }
+
+    if (callStatus === 'in_progress') {
+      return { item, minutesLeft: 0, isLive: true };
+    }
+
+    const msUntilStart = start.getTime() - now;
+
+    // Show from 5 min before start until end_time (or short grace if no end)
+    const withinPreWindow =
+      msUntilStart >= 0 && msUntilStart <= windowMs;
+    const afterStartBeforeEnd =
+      msUntilStart < 0 &&
+      (validEnd
+        ? now < validEnd.getTime()
+        : msUntilStart >= -15 * 60 * 1000);
+
+    if (withinPreWindow || afterStartBeforeEnd) {
+      return {
+        item,
+        minutesLeft: Math.max(0, Math.ceil(msUntilStart / 60000)),
+        isLive: msUntilStart <= 0 || callStatus === 'in_progress',
+      };
     }
   }
 

@@ -642,6 +642,7 @@ import {
   ClientRoleType,
 } from 'react-native-agora';
 import { navigationRef } from '../navigation/navigationRef';
+import { popVideoCallAndGoToAppointments } from '../navigation/navigationUtils';
 import {
   apiEndCall,
   apiGetCallStatus,
@@ -652,6 +653,7 @@ import {
   requestCallPermissions,
   TokenInfo,
 } from '../services/videoCallApi';
+import { CallEvents, CALL_ENDED } from '../common/Utils';
 
 export type VideoCallParams = {
   appointmentId: string;
@@ -736,12 +738,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   const agoraEngineRef = useRef<IRtcEngine | null>(null);
   const tokenInfoRef = useRef<TokenInfo | null>(null);
   const endedByUserRef = useRef(false);
+  const endingRemoteRef = useRef(false);
+  const hadRemoteParticipantRef = useRef(false);
   const sessionIdRef = useRef<string | undefined>(undefined);
   const isSettingUpRef = useRef(false);
   const appointmentIdRef = useRef<string | null>(null);
   const callRoleRef = useRef<'doctor' | 'patient'>('patient');
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const statusPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isJoinedRef = useRef(false);
+  const endCallDueToRemoteRef = useRef<(reason?: string) => Promise<void>>(
+    async () => {},
+  );
 
   const displayName =
     callParams?.otherPartyName ||
@@ -793,11 +801,49 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     appointmentIdRef.current = null;
     sessionIdRef.current = undefined;
     isSettingUpRef.current = false;
+    hadRemoteParticipantRef.current = false;
+    endingRemoteRef.current = false;
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (statusPollIntervalRef.current) {
+      clearInterval(statusPollIntervalRef.current);
+      statusPollIntervalRef.current = null;
+    }
   }, []);
+
+  const navigateAwayFromCall = useCallback(() => {
+    if (!navigationRef.isReady()) {
+      return;
+    }
+    popVideoCallAndGoToAppointments(navigationRef);
+  }, []);
+
+  const endCallDueToRemote = useCallback(
+    async (_reason = 'The doctor has ended the call.') => {
+      if (endedByUserRef.current || endingRemoteRef.current) {
+        return;
+      }
+      endingRemoteRef.current = true;
+      endedByUserRef.current = true;
+
+      const appointmentId = appointmentIdRef.current;
+      if (appointmentId) {
+        await apiPostCallEvent(appointmentId, 'left', sessionIdRef.current);
+      }
+
+      releaseAgoraEngine();
+      resetCallState();
+      CallEvents.emit(CALL_ENDED, { appointmentId, call_status: 'ended' });
+      navigateAwayFromCall();
+    },
+    [navigateAwayFromCall, releaseAgoraEngine, resetCallState],
+  );
+
+  useEffect(() => {
+    endCallDueToRemoteRef.current = endCallDueToRemote;
+  }, [endCallDueToRemote]);
 
   const joinAgoraChannel = useCallback(
     async (tokenInfo: TokenInfo, appointmentId: string) => {
@@ -819,10 +865,16 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
             apiPostCallEvent(appointmentId, 'joined', sessionId);
           },
           onUserJoined: (_connection, uid) => {
+            hadRemoteParticipantRef.current = true;
             setRemoteUid(uid);
           },
           onUserOffline: (_connection, uid) => {
             setRemoteUid(prev => (prev === uid ? null : prev));
+            if (hadRemoteParticipantRef.current && !endedByUserRef.current) {
+              endCallDueToRemoteRef.current(
+                'The doctor has ended the call.',
+              );
+            }
           },
           onLeaveChannel: () => {
             setIsJoined(false);
@@ -887,6 +939,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     isSettingUpRef.current = true;
     endedByUserRef.current = false;
+    endingRemoteRef.current = false;
+    hadRemoteParticipantRef.current = false;
     setErrorMsg(null);
 
     try {
@@ -1015,6 +1069,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     releaseAgoraEngine();
     resetCallState();
+    CallEvents.emit(CALL_ENDED, { appointmentId, call_status: 'ended' });
   }, [releaseAgoraEngine, resetCallState]);
 
   const retryCall = useCallback(() => {
@@ -1092,6 +1147,45 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
   }, [remoteUid]);
+
+  useEffect(() => {
+    if (viewMode === 'idle' || !appointmentIdRef.current || !isJoined) {
+      if (statusPollIntervalRef.current) {
+        clearInterval(statusPollIntervalRef.current);
+        statusPollIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const pollRemoteStatus = async () => {
+      const appointmentId = appointmentIdRef.current;
+      if (!appointmentId || endedByUserRef.current) {
+        return;
+      }
+
+      try {
+        const statusRes = await apiGetCallStatus(appointmentId);
+        const callStatus = String(statusRes?.call_status ?? '').toLowerCase();
+        if (callStatus === 'ended' || callStatus === 'completed') {
+          await endCallDueToRemoteRef.current(
+            'The doctor has ended the call.',
+          );
+        }
+      } catch (e) {
+        console.log('[API] call status poll failed:', e);
+      }
+    };
+
+    pollRemoteStatus();
+    statusPollIntervalRef.current = setInterval(pollRemoteStatus, 5000);
+
+    return () => {
+      if (statusPollIntervalRef.current) {
+        clearInterval(statusPollIntervalRef.current);
+        statusPollIntervalRef.current = null;
+      }
+    };
+  }, [viewMode, isJoined]);
 
   const value = useMemo(
     (): VideoCallContextValue => ({

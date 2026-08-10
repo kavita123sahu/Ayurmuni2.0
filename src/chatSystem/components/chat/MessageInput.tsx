@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -13,17 +12,20 @@ import {
 import { launchImageLibrary, Asset } from 'react-native-image-picker';
 import { chatService } from '../../services/chatService';
 import { Attachment } from '../../types/chat';
-import { AntDesign, MaterialIcons } from '../../../common/Vector';
+import { MaterialIcons } from '../../../common/Vector';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MessageInputProps {
-  onSend: (text: string, attachments?: Attachment[]) => void;
+  onSend: (text: string, attachments?: Attachment[]) => void | Promise<void>;
   isConnected: boolean;
   isDisabled?: boolean;
   placeholder?: string;
 }
 
 const THEME = '#0D614E';
+
+/** Survives remount — blocks a second press from ever starting another send. */
+let globalInputSendLock = false;
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
@@ -35,12 +37,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [pickedAsset, setPickedAsset] = useState<Asset | null>(null);
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const sendGuardRef = useRef(false);
 
-const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
 
-  const canInteract = !isDisabled && !isSending;
+  const canInteract = !isDisabled && !isSending && !globalInputSendLock;
 
-  // ✅ Sirf pick karo, upload/send abhi mat karo — preview dikhao
   const handlePickImage = async () => {
     if (!canInteract) return;
     try {
@@ -61,35 +63,42 @@ const insets = useSafeAreaInsets();
 
   const handleSend = async () => {
     const trimmed = text.trim();
-    if (!canInteract) return;
+    if (!canInteract || sendGuardRef.current || globalInputSendLock) return;
     if (!trimmed && !pickedAsset) return;
 
-    if (!pickedAsset) {
-      onSend(trimmed);
-      setText('');
-      Keyboard.dismiss();
-      return;
-    }
-
-    // ✅ Attachment hai — upload karo, phir text+attachment ek saath bhejo
+    sendGuardRef.current = true;
+    globalInputSendLock = true;
     setIsSending(true);
+
+    const asset = pickedAsset;
+    const toSend = trimmed;
+    // Clear immediately so a second press has nothing to send
+    setText('');
+    setPickedAsset(null);
+    Keyboard.dismiss();
+
     try {
-      const url = await chatService.uploadAttachment(
-        pickedAsset.uri!,
-        pickedAsset.fileName || 'image.jpg'
-      );
-      const attachment: Attachment = {
-        file_url: url,
-        file_type: 'image',
-        file_name: pickedAsset.fileName || 'image.jpg',
-      };
-      onSend(trimmed, [attachment]);
-      setText('');
-      setPickedAsset(null);
-      Keyboard.dismiss();
+      if (!asset) {
+        await Promise.resolve(onSend(toSend));
+      } else {
+        const url = await chatService.uploadAttachment(
+          asset.uri!,
+          asset.fileName || 'image.jpg',
+        );
+        const attachment: Attachment = {
+          file_url: url,
+          file_type: 'image',
+          file_name: asset.fileName || 'image.jpg',
+        };
+        await Promise.resolve(onSend(toSend, [attachment]));
+      }
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('Send failed:', error);
+      setText(toSend);
+      if (asset) setPickedAsset(asset);
     } finally {
+      sendGuardRef.current = false;
+      globalInputSendLock = false;
       setIsSending(false);
     }
   };
@@ -97,13 +106,20 @@ const insets = useSafeAreaInsets();
   const hasContent = !!text.trim() || !!pickedAsset;
 
   return (
-    <View style={[styles.container,{
-  paddingBottom: Math.max(insets.bottom, 10)}]}>
-      {/* ✅ Selected image preview — WhatsApp style */}
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, 10) },
+      ]}
+    >
       {pickedAsset && (
         <View style={styles.previewRow}>
           <Image source={{ uri: pickedAsset.uri }} style={styles.previewImage} />
-          <TouchableOpacity style={styles.previewRemove} onPress={removePickedAsset}>
+          <TouchableOpacity
+            style={styles.previewRemove}
+            onPress={removePickedAsset}
+            disabled={isSending}
+          >
             <MaterialIcons name="close" size={14} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -128,9 +144,9 @@ const insets = useSafeAreaInsets();
             placeholderTextColor="#9CA3AF"
             editable={canInteract}
             multiline
+            blurOnSubmit={false}
             style={[styles.input, !canInteract && styles.inputDisabled]}
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
+            returnKeyType="default"
           />
         </View>
 
@@ -139,7 +155,9 @@ const insets = useSafeAreaInsets();
           disabled={!hasContent || !canInteract}
           style={[
             styles.sendButton,
-            hasContent && canInteract ? styles.sendButtonActive : styles.sendButtonDisabled,
+            hasContent && canInteract
+              ? styles.sendButtonActive
+              : styles.sendButtonDisabled,
           ]}
           activeOpacity={0.7}
         >
@@ -150,8 +168,6 @@ const insets = useSafeAreaInsets();
           )}
         </TouchableOpacity>
       </View>
-
-      {/* Chat works over HTTP even when WS is down — don't block UI with Connecting */}
     </View>
   );
 };
@@ -162,14 +178,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 8,
   },
-  // container: {
-  //   backgroundColor: '#FFFFFF',
-  //   borderTopWidth: 1,
-  //   borderTopColor: '#E5E7EB',
-  //   paddingHorizontal: 12,
-  //   paddingVertical: 8,
-  //   paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-  // },
   previewRow: {
     flexDirection: 'row',
     marginBottom: 8,
@@ -237,11 +245,4 @@ const styles = StyleSheet.create({
   },
   sendButtonActive: { backgroundColor: THEME },
   sendButtonDisabled: { backgroundColor: '#E5E7EB' },
-  statusBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
-  },
-  statusText: { fontSize: 12, color: '#D97706', marginLeft: 8 },
 });

@@ -1,469 +1,302 @@
-import React, { useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, FlatList, Image, StatusBar } from 'react-native';
-import SectionHeader from '../../components/SectionHeader';
-import SearchBar from '../../components/SearchBar';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  FlatList,
+  Image,
+  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import Video from 'react-native-video';
 import Header from '../../components/Header';
-import { Images } from '../../common/Images';
-import StyleCard from '../../components/StyleCard';
-import { Ionicons } from '../../common/Vector';
+import SearchBar from '../../components/SearchBar';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
+import TablerIcon from '../../components/TablerIcon';
+import * as _YOGA_SERVICES from '../../services/YogaServices';
+import {
+  normalizeYogaSessionList,
+  resolveYogaThumbnailUri,
+  resolveYogaVideoUri,
+} from '../../utils/yogaUtils';
 
-const DATA = [
-    {
-        id: '1',
-        type: 'featured',
-        title: 'Morning Vitality Flow',
-        subtitle: '12/20 mins remaining',
-        progress: 30,
-    },
-    {
-        id: '2',
-        type: 'practice',
-        title: 'Mindful Breathing',
-        subtitle: 'Beginner • 5 min',
-        progress: 40,
-    },
-    {
-        id: '3',
-        type: 'practice',
-        title: 'Hatha Foundations',
-        subtitle: 'Beginner • 10 min',
-        progress: 25,
-    },
-];
+const YogaListVideoThumb = ({ item }: { item: any }) => {
+  const videoUri = resolveYogaVideoUri(item);
+  const thumbUri = resolveYogaThumbnailUri(item);
+  const [failed, setFailed] = useState(false);
 
-const MENTORS = [
-    {
-        id: '1',
-        name: 'Muskan Yadav',
-        role: 'Vinyasa Specialist',
-        image: 'https://randomuser.me/api/portraits/women/1.jpg',
-    },
-    {
-        id: '2',
-        name: 'Muskan Yadav',
-        role: 'Hatha Master',
-        image: 'https://randomuser.me/api/portraits/women/2.jpg',
-    },
-    {
-        id: '3',
-        name: 'Muskan Yadav',
-        role: 'Hatha Master',
-        image: 'https://randomuser.me/api/portraits/women/3.jpg',
-    },
-];
-const STYLES_DATA = [
-    {
-        id: '1',
-        title: 'Vinyasa',
-        subtitle: 'Dynamic flow to build strength',
-        image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3',
-    },
-    {
-        id: '2',
-        title: 'Hatha',
-        subtitle: 'Balance body and mind',
-        image: 'https://images.unsplash.com/photo-1599447421416-3414500d18a5',
-    },
-    {
-        id: '3',
-        title: 'Restorative',
-        subtitle: 'Gentle and relaxing',
-        image: 'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7',
-    },
-    {
-        id: '4',
-        title: 'Yin Yoga',
-        subtitle: 'Deep stretch and flexibility',
-        image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b',
-    },
-];
+  if (!videoUri || failed) {
+    return (
+      <Image
+        source={
+          thumbUri
+            ? { uri: thumbUri }
+            : require('../../assets/images/login/7.jpg')
+        }
+        style={styles.thumb}
+        resizeMode="cover"
+      />
+    );
+  }
 
-
-const featuredData = {
-    title: 'Morning Vitality Flow',
-    desc: 'Awaken your senses and align your breath with a high-intensity Vinyasa sequence designed for peak focus.',
-    duration: '45 Mins',
-    level: 'Advanced',
+  return (
+    <View style={styles.thumbWrap}>
+      {thumbUri ? (
+        <Image
+          source={{ uri: thumbUri }}
+          style={[styles.thumb, styles.thumbPoster]}
+          resizeMode="cover"
+        />
+      ) : null}
+      <Video
+        source={{ uri: videoUri }}
+        style={styles.thumb}
+        resizeMode="cover"
+        muted
+        repeat
+        paused={false}
+        controls={false}
+        playInBackground={false}
+        playWhenInactive={false}
+        ignoreSilentSwitch="obey"
+        disableFocus
+        shutterColor="transparent"
+        onError={() => setFailed(true)}
+      />
+      <View style={styles.videoBadge} pointerEvents="none">
+        <TablerIcon name="video" size={14} color="#FFFFFF" />
+      </View>
+    </View>
+  );
 };
 
-
-type Dataprops = {
-    title: string;
-    desc: string;
-    duration: string;
-    level: string;
-}
 const YogaScreen = (props: any) => {
-    const [searchText, setSearchText] = useState('');
-    const debouncedSearch = useDebounce(searchText, 400);
+  const [searchText, setSearchText] = useState('');
+  const debouncedSearch = useDebounce(searchText, 400);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-    const filteredPractice = useMemo(() => {
-        const q = debouncedSearch.trim();
-        if (!q) return DATA;
-        return DATA.filter((item) =>
-            matchesSearch(q, item.title, item.subtitle, item.type),
-        );
-    }, [debouncedSearch]);
-
-    const filteredStyles = useMemo(() => {
-        const q = debouncedSearch.trim();
-        if (!q) return STYLES_DATA;
-        return STYLES_DATA.filter((item) =>
-            matchesSearch(q, item.title, item.subtitle),
-        );
-    }, [debouncedSearch]);
-
-    const filteredMentors = useMemo(() => {
-        const q = debouncedSearch.trim();
-        if (!q) return MENTORS;
-        return MENTORS.filter((item) =>
-            matchesSearch(q, item.name, item.role),
-        );
-    }, [debouncedSearch]);
-
-    const showFeatured = useMemo(() => {
-        const q = debouncedSearch.trim();
-        if (!q) return true;
-        return matchesSearch(
-            q,
-            featuredData.title,
-            featuredData.desc,
-            featuredData.level,
-        );
-    }, [debouncedSearch]);
-
-    const FeaturedCard = ({ title, desc, duration, level }: Dataprops) => {
-        console.log('FeaturedCard data:', { title, desc, duration, level });
-
-        return (
-            <View style={styles.card}>
-
-                <View style={styles.topRow}>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeText}>Recommended</Text>
-                    </View>
-
-                    <Text style={styles.meta}>
-                        {duration} • {level}
-                    </Text>
-                </View>
-
-                <Text style={styles.title}>{title}</Text>
-
-                <Text style={styles.desc}>{desc}</Text>
-
-                {/* Button */}
-                <TouchableOpacity style={styles.button}>
-                    <Ionicons name="play" size={18} color="#fff" />
-                    <Text style={styles.buttonText}>Start Practice</Text>
-                </TouchableOpacity>
-
-            </View>
-        )
+  const loadSessions = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const res = await _YOGA_SERVICES.getYogaSession();
+      setSessions(normalizeYogaSessionList(res));
+    } catch (e) {
+      console.log('YOGA_LIST_ERROR', e);
+      setSessions([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
 
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
-    const renderItem = ({ item }: { item: any }) => {
-        return (
-            <TouchableOpacity style={styles.card1} onPress={() => props.navigation.navigate('DietScreen')}>
-
-                {/* Left Image */}
-                <Image source={Images.doctorImage} style={styles.image} />
-
-                {/* Middle Content */}
-                <View style={styles.content}>
-                    <Text numberOfLines={2} style={styles.title1}>{item.title}</Text>
-                    <Text style={styles.subtitle}>{item.subtitle}</Text>
-
-                    <View style={styles.progressBar}>
-                        <View
-                            style={[styles.progress, { width: `${item.progress}%` }]}
-                        />
-                    </View>
-                </View>
-
-                {/* Right Play Button */}
-                <TouchableOpacity style={styles.playBtn}>
-                    <Ionicons name="play" size={18} color="#1F7A63" />
-                </TouchableOpacity>
-
-            </TouchableOpacity>
-        )
-    }
-
-
-    const MentorCard = ({ data, isActive }: any) => {
-        return (
-            <View style={[styles.card2]}>
-
-                {/* Profile Image */}
-                <Image source={{ uri: data.image }} style={styles.image1} />
-
-                {/* Name */}
-                <Text style={styles.name}>{data.name}</Text>
-
-                {/* Role */}
-                <Text style={styles.role}>{data.role}</Text>
-
-            </View>
-        );
-    };
-
-    return (
-        <SafeAreaView style={styles.container}>
-            
-            <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
-
-            <Header
-                title="Yoga"
-                subtitle="Find best doctor"
-                onBack={() => { props.navigation.goBack() }}
-            />
-
-            <SearchBar
-                placeholder="Search sessions, styles, mentors..."
-                value={searchText}
-                onChangeText={setSearchText}
-            />
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
-
-                {showFeatured && <FeaturedCard {...featuredData} />}
-
-                {filteredPractice.length > 0 && (
-                    <>
-                        <SectionHeader title="Continue Practicing" actionText="View History" />
-
-                        <FlatList
-                            data={filteredPractice}
-                            keyExtractor={(item) => item.id}
-                            renderItem={renderItem}
-                            showsVerticalScrollIndicator={false}
-                            scrollEnabled={false}
-                        />
-                    </>
-                )}
-
-                {filteredStyles.length > 0 && (
-                    <>
-                        <SectionHeader title="Explore Styles" />
-
-                        <FlatList
-                            data={filteredStyles}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item, index }) => (
-                                <StyleCard
-                                    data={item}
-                                    index={index}
-                                />
-                            )}
-                            scrollEnabled={false}
-                        />
-                    </>
-                )}
-
-                {filteredMentors.length > 0 && (
-                    <>
-                        <SectionHeader title="Expert Mentors" />
-
-                        <FlatList
-                            data={filteredMentors}
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item, index }) => (
-                                <MentorCard
-                                    data={item}
-                                    isActive={index === 0}
-                                />
-                            )}
-                            scrollEnabled={false}
-                        />
-                    </>
-                )}
-
-            </ScrollView>
-        </SafeAreaView>
+  const filtered = useMemo(() => {
+    const q = debouncedSearch.trim();
+    if (!q) return sessions;
+    return sessions.filter(item =>
+      matchesSearch(
+        q,
+        item.title,
+        item.name,
+        item.short_description,
+        item.difficulty,
+        item.duration,
+      ),
     );
+  }, [debouncedSearch, sessions]);
+
+  const renderItem = ({ item }: { item: any }) => {
+    const meta = [item.difficulty, item.duration].filter(Boolean).join(' • ');
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.9}
+        onPress={() =>
+          props.navigation.navigate('YogaSession', { item })
+        }
+      >
+        <YogaListVideoThumb item={item} />
+        <View style={styles.content}>
+          <Text numberOfLines={2} style={styles.title}>
+            {item.title || item.name}
+          </Text>
+          {!!meta && <Text style={styles.subtitle}>{meta}</Text>}
+          {!!item.short_description && (
+            <Text numberOfLines={1} style={styles.desc}>
+              {item.short_description}
+            </Text>
+          )}
+        </View>
+        <View style={styles.playBtn}>
+          <TablerIcon name="video" size={18} color={Colors.primaryColor} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <Header
+        title="Yoga Sessions"
+        subtitle="Practice with guided videos"
+        onBack={() => props.navigation.goBack()}
+      />
+
+      <View style={styles.searchWrap}>
+        <SearchBar
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Search yoga sessions..."
+        />
+      </View>
+
+      {loading && sessions.length === 0 ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.primaryColor} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item, index) => String(item.id || index)}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadSessions(true)}
+              tintColor={Colors.primaryColor}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={styles.emptyTitle}>No yoga sessions</Text>
+              <Text style={styles.emptySub}>
+                {debouncedSearch.trim()
+                  ? 'Try another search.'
+                  : 'Sessions will appear here when available.'}
+              </Text>
+            </View>
+          }
+        />
+      )}
+    </SafeAreaView>
+  );
 };
 
 export default YogaScreen;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F8F9FB',
-        paddingHorizontal: 20,
-    },
-    card: {
-        backgroundColor: '#E8F3EF',
-        borderRadius: 20,
-        padding: 18,
-        borderWidth: 1,
-        borderColor: '#CFE3DC',
-    },
-
-    topRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-
-    badge: {
-        backgroundColor: '#0D614E',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        padding: 5,
-        borderRadius: 8,
-    },
-
-    badgeText: {
-        color: '#fff',
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-    meta: {
-        marginLeft: 10,
-        color: '#2f423e',
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium
-
-    },
-
-    title: {
-        fontSize: 20,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#1B2B2B',
-        marginBottom: 6,
-    },
-
-    desc: {
-        color: '#5F7D79',
-        fontSize: 14,
-        lineHeight: 23,
-        fontFamily: Fonts.PoppinsMedium,
-        marginBottom: 30,
-    },
-
-    button: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: Colors.primaryColor,
-        paddingVertical: 14,
-        borderRadius: 16,
-    },
-
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsMedium,
-        marginLeft: 8,
-    },
-    card1: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F1F3F2',
-        borderRadius: 20,
-        paddingVertical: 20,
-        paddingHorizontal: 20,
-        marginBottom: 14,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-    },
-
-    image: {
-        width: 70,
-        height: 70,
-        backgroundColor: '#0D614E1A',
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#0D614E1A',
-    },
-
-    content: {
-        flex: 1,
-        marginHorizontal: 12,
-    },
-
-    title1: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: Colors.black,
-        // marginBottom:-2
-    },
-
-    subtitle: {
-        fontSize: 12,
-        color: '#6B7A78',
-
-        // marginVertical: 4,
-    },
-
-    progressBar: {
-        height: 6,
-        backgroundColor: '#DADADA',
-        borderRadius: 10,
-        marginTop: 10,
-    },
-
-    progress: {
-        height: 6,
-        backgroundColor: '#F4B400', // yellow
-        borderRadius: 10,
-    },
-
-    playBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: '#DDE5E2',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    card2: {
-        width: 140,
-        backgroundColor: '#E9F1EF',
-        borderRadius: 24,
-        paddingVertical: 18,
-        paddingHorizontal: 10,
-        alignItems: 'center',
-        marginRight: 12,
-    },
-
-    activeCard: {
-        borderWidth: 2,
-        borderColor: '#4A90E2', // blue highlight
-    },
-
-    image1: {
-        width: 70,
-        height: 70,
-        borderRadius: 40,
-        marginBottom: 10,
-        backgroundColor: '#0D614E1A',
-        borderWidth: 1,
-        borderColor: '#0D614E1A',
-    },
-
-    name: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#1B2B2B',
-        textAlign: 'center',
-    },
-
-    role: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsRegular,
-        color: '#6B7A78',
-        marginTop: 4,
-        textAlign: 'center',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  searchWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EEF2F6',
+    padding: 10,
+    marginBottom: 12,
+    gap: 12,
+  },
+  thumbWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+  },
+  thumb: {
+    width: 88,
+    height: 88,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  thumbPoster: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.5,
+    borderRadius: 12,
+  },
+  videoBadge: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(13, 97, 78, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.textColor,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
+    color: Colors.primaryColor,
+  },
+  desc: {
+    marginTop: 2,
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+  },
+  playBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0D614E14',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    minHeight: 220,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.textColor,
+  },
+  emptySub: {
+    marginTop: 6,
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+    textAlign: 'center',
+  },
 });

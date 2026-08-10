@@ -115,9 +115,13 @@ export const AddMedicalRecord = async (patientData: any) => {
     }
 }
 
+export const DIET_PLAN_PAGE_SIZE = 20;
+
 export const getDietPlans = async (params?: {
     id?: string | number;
     type?: 'all' | string;
+    page?: number;
+    page_size?: number;
 }) => {
     try {
         const query = new URLSearchParams();
@@ -126,6 +130,12 @@ export const getDietPlans = async (params?: {
         }
         if (params?.type) {
             query.set('type', String(params.type));
+        }
+        if (params?.page != null) {
+            query.set('page', String(params.page));
+        }
+        if (params?.page_size != null) {
+            query.set('page_size', String(params.page_size));
         }
         const qs = query.toString();
         const path = qs
@@ -143,15 +153,76 @@ export const getDietPlans = async (params?: {
     }
 };
 
-/** Start a diet plan for the patient */
+/** Whether diet-plans list response has another page */
+export const hasMoreDietPlanPages = (
+    response: any,
+    resultsLength: number,
+    pageSize: number = DIET_PLAN_PAGE_SIZE,
+    pageLoaded?: number,
+) => {
+    const data = response?.data ?? response;
+
+    if (Array.isArray(data)) {
+        // Bare array — assume more only if this page looks full
+        return resultsLength >= pageSize;
+    }
+
+    if (data && typeof data === 'object') {
+        if ('next' in data) {
+            return data.next != null && data.next !== '';
+        }
+        if (data?.pagination?.next != null) {
+            return Boolean(data.pagination.next);
+        }
+        if (data?.links?.next != null) {
+            return Boolean(data.links.next);
+        }
+
+        const total =
+            typeof data.count === 'number'
+                ? data.count
+                : typeof data.total === 'number'
+                  ? data.total
+                  : typeof data.total_count === 'number'
+                    ? data.total_count
+                    : null;
+        const page =
+            pageLoaded ??
+            (typeof data.page === 'number'
+                ? data.page
+                : typeof data.current_page === 'number'
+                  ? data.current_page
+                  : null);
+
+        if (total != null && page != null) {
+            return page * pageSize < total;
+        }
+        if (total != null) {
+            // Caller may pass cumulative length via resultsLength when appending —
+            // for single-page check, full page means likely more.
+            return resultsLength >= pageSize;
+        }
+    }
+
+    return resultsLength >= pageSize;
+};
+
+/** Start a diet plan for the patient (catalog diet plan id, not assignment id). */
 export const startDietPlan = async (diet_plan_id: string | number) => {
     try {
+        const id = String(diet_plan_id).trim();
+        // API accepts diet_plan_id (Postman). Also send `id` — some envs validate that key.
         const response = await apiClient('patients/diet-plans/start/', {
             method: 'POST',
-            body: JSON.stringify({ diet_plan_id }),
+            body: JSON.stringify({
+                diet_plan_id: id,
+                id,
+            }),
         });
+        console.log('DIET_START_API =>', { diet_plan_id: id, response });
         return response;
     } catch (error) {
+        console.log('DIET_START_API_ERROR =>', error);
         throw error;
     }
 };

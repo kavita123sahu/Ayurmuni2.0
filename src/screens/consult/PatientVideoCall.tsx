@@ -545,10 +545,7 @@ const PatientVideoCallScreen: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', e => {
-      if (endingCallRef.current) {
-        return;
-      }
-      if (viewMode === 'minimized') {
+      if (endingCallRef.current || viewMode === 'idle' || viewMode === 'minimized') {
         return;
       }
       e.preventDefault();
@@ -557,6 +554,19 @@ const PatientVideoCallScreen: React.FC = () => {
     });
     return unsubscribe;
   }, [navigation, minimizeCall, viewMode]);
+
+  const prevViewModeRef = useRef<string>('idle');
+  useEffect(() => {
+    const prev = prevViewModeRef.current;
+    prevViewModeRef.current = viewMode;
+    if (
+      (prev === 'fullscreen' || prev === 'minimized') &&
+      viewMode === 'idle'
+    ) {
+      endingCallRef.current = true;
+      popVideoCallAndGoToAppointments(navigation);
+    }
+  }, [viewMode, navigation]);
 
   useEffect(() => {
     const onBack = () => {

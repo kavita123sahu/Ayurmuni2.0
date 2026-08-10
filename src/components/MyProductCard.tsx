@@ -91,7 +91,9 @@ const MyProductCard = ({
                     <View style={styles.prescribedPill}>
                         <TablerIcon name="stethoscope" size={12} color="#047857" />
                         <Text numberOfLines={1} style={styles.prescribedText}>
-                            Dr. {item.doctorName}
+                            {/^dr\.?\s/i.test(String(item.doctorName).trim())
+                                ? item.doctorName
+                                : `Dr. ${item.doctorName}`}
                         </Text>
                     </View>
                 )}

@@ -39,6 +39,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
     },
     [navigation],
   );
+  console.log('TopDoctorsCard data:', data);
 
   const renderItem = useCallback(
     ({ item }: { item: Doctor }) => {
@@ -65,7 +66,35 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
         >
           <View style={styles.bodyRow}>
             <View style={styles.imageWrapper}>
-              <Image
+              {item?.profile_image ? (
+                <Image
+                  source={{ uri: item?.profile_image?.trim() }}
+                  style={[
+                    styles.image,
+                    !isAvailable && styles.imageMuted,
+                  ]}
+                // onError={() => setImageError(true)}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.image,
+                    styles.initialAvatar,
+                    !isAvailable && styles.imageMuted,
+                  ]}
+                >
+                  <Text style={styles.initialText}>
+                    {item?.first_name?.charAt(0).toUpperCase() || ''}
+                  </Text>
+                </View>
+              )}
+
+              {isAvailable ? <View style={styles.liveDot} /> : null}
+            </View>
+
+            {/* <View style={styles.imageWrapper}>
+            
+            {}  <Image
                 source={
                   item?.profile_image?.trim?.()
                     ? { uri: item.profile_image }
@@ -74,7 +103,7 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
                 style={[styles.image, !isAvailable && styles.imageMuted]}
               />
               {isAvailable ? <View style={styles.liveDot} /> : null}
-            </View>
+            </View> */}
 
             <View style={styles.content}>
               <View style={styles.tagRow}>
@@ -191,6 +220,19 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  initialAvatar: {
+    backgroundColor: Colors.bgcolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  initialText: {
+    fontSize: 20,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.primaryColor,
+    textTransform: 'uppercase',
+  },
+
   imageMuted: {
     opacity: 0.75,
   },

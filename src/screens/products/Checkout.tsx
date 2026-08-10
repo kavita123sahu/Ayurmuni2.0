@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import {
 
@@ -22,8 +22,6 @@ import {
 
 } from 'react-native';
 
-import { useFocusEffect } from '@react-navigation/native';
-
 import { Ionicons } from '../../common/Vector';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,7 +31,7 @@ import { Fonts } from '../../common/Fonts';
 
 import { Colors } from '../../common/Colors';
 
-import { useHomeData } from '../../hooks/UseHomeData';
+import { useCustomerProfile } from '../../hooks/useCustomerProfile';
 
 import { usePlaceOrder } from '../../hooks/UsePlaceOrder';
 
@@ -171,27 +169,12 @@ const Checkout: React.FC = (props: any) => {
 
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cod');
 
-
-
-    const { customerData, refreshHomeData } = useHomeData();
+    // Profile/addresses only — avoid full home API bundle on checkout
+    const { customerData } = useCustomerProfile({ refreshOnFocus: true });
 
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
 
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
-
-
-
-    useFocusEffect(
-
-        useCallback(() => {
-
-            refreshHomeData();
-
-        }, [refreshHomeData]),
-
-    );
-
-
 
     const defaultAddress =
 
@@ -340,7 +323,8 @@ const Checkout: React.FC = (props: any) => {
             address: defaultAddress,
             customerInfo: customerData ?? {},
             shippingFee,
-            codCharges: codChargeDefault,
+            codCharges: 0,
+            shippingMethod: deliveryMethod === 'express' ? 'EXPRESS' : 'STD',
 
             onSuccess: (orderResult, orderedCartItems) => {
 
@@ -387,13 +371,9 @@ const Checkout: React.FC = (props: any) => {
 
 
         if (selectedMethod === 'cod') {
-
             handleCOD();
-
         } else {
-
             handleOnline();
-
         }
 
     };
@@ -574,7 +554,10 @@ const Checkout: React.FC = (props: any) => {
 
                 <TouchableOpacity
 
-                    style={[styles.methodCard, selectedMethod === 'cod' && styles.methodCardSelected]}
+                    style={[
+                        styles.methodCard,
+                        selectedMethod === 'cod' && styles.methodCardSelected,
+                    ]}
 
                     onPress={() => setSelectedMethod('cod')}
 
@@ -1266,6 +1249,12 @@ const styles = StyleSheet.create({
         borderColor: '#0D614E',
 
         backgroundColor: '#F0FAF6',
+
+    },
+
+    methodCardDisabled: {
+
+        opacity: 0.55,
 
     },
 

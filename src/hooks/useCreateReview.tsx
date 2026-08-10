@@ -11,12 +11,14 @@ export const useCreateReview = () => {
     entityType,
     appointmentId,
     variantId,
+    orderId,
     reviewData,
     method = 'POST',
   }: {
     entityType: 'doctor' | 'product' | string;
     appointmentId?: string;
     variantId?: string;
+    orderId?: string;
     reviewData: ReviewPayload;
     method?: 'POST' | 'PATCH';
   }) => {
@@ -28,6 +30,7 @@ export const useCreateReview = () => {
         entityType,
         appointmentId: entityType === 'doctor' ? appointmentId : undefined,
         variantId: entityType === 'product' ? variantId : undefined,
+        orderId: entityType === 'product' ? orderId : undefined,
         reviewData,
         method,
       });

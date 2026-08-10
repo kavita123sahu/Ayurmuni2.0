@@ -26,6 +26,7 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
 
   const handleReorder = useCallback(
     async (item: Product) => {
+      console.log('itemitem', item)
       const variantId = String(item?.variantId ?? '');
 
       if (!variantId) {
@@ -38,6 +39,7 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
       }
 
       setReorderingId(item.id);
+      return 0;
 
       try {
         navigateToCheckoutWithProduct(navigation, {
@@ -73,7 +75,7 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
 
             <View style={styles.rightSection}>
               <View>
-                <Text style={styles.name} numberOfLines={1}>
+                <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">
                   {item.name}
                 </Text>
 
@@ -86,7 +88,7 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
                 <Text style={styles.price}>
                   Rs. {item.price.toFixed(2)}
                 </Text>
-
+{/* 
                 <TouchableOpacity
                   style={styles.btn}
                   disabled={isLoading}
@@ -97,7 +99,7 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
                   ) : (
                     <Text style={styles.btnText}>Reorder</Text>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
             </View>
           </View>
@@ -132,8 +134,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   img: {
-    width: 52,
-    height: 56,
+    width: 72,
+    height: 72,
+    borderRadius: 14,
     resizeMode: 'contain',
   },
   rightSection: {
@@ -176,4 +179,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
   },
+  
 });

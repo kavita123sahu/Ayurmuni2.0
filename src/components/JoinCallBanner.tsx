@@ -81,26 +81,27 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
   }, [isLive, minutesLeft]);
 
   const handleJoin = useCallback(() => {
-    const isCallLive =
-      isLive || String(item.call_status || '').toLowerCase() === 'in_progress';
+    const callStatus = String(item.call_status || '').toLowerCase();
+    const isCallLive = isLive || callStatus === 'in_progress';
 
-    if (!isCallLive) {
+    // Video join only when call is actually in progress
+    if (isCallLive) {
       navigateToStackScreen(
         navigation,
-        'AppointmentDetails',
-        buildAppointmentDetailsParams(item.rawData ?? item),
+        'PatientVideoCallScreen',
+        buildVideoCallNavParams(item.rawData ?? item, {
+          role: 'patient',
+          otherPartyName: doctorName,
+          otherPartyImage: item.image,
+        }),
       );
       return;
     }
 
     navigateToStackScreen(
       navigation,
-      'PatientVideoCallScreen',
-      buildVideoCallNavParams(item.rawData ?? item, {
-        role: 'patient',
-        otherPartyName: doctorName,
-        otherPartyImage: item.image,
-      }),
+      'AppointmentDetails',
+      buildAppointmentDetailsParams(item.rawData ?? item),
     );
   }, [navigation, item, doctorName, isLive]);
 

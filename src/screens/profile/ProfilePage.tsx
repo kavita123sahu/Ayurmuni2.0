@@ -1018,6 +1018,7 @@ import {
     ScrollView,
     StatusBar,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 
 import ProfileHeader from '../../components/ProfileHeader';
@@ -1033,7 +1034,13 @@ import CommonModal from '../../components/LogoutModal';
 import { getScreenBottomPadding, SECTION_GAP } from '../../constants/layout';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { isGuestUser, navigateToCompleteDetails } from '../../services/guestAuth';
+import {
+    isGuestUser,
+    isProfileComplete,
+    navigateToCompleteDetails,
+    promoteToFullUser,
+    syncAccessFromProfile,
+} from '../../services/guestAuth';
 import LinearGradient from 'react-native-linear-gradient';
 
 
@@ -1061,46 +1068,83 @@ const ProfilePage = ({ navigation }: any) => {
 
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [user, setUser] = useState(null);
-    const [isGuest, setIsGuest] = useState(false);
+    /** null = resolving access; avoids flashing wrong UI */
+    const [isGuest, setIsGuest] = useState<boolean | null>(null);
 
     useFocusEffect(
         useCallback(() => {
+            let cancelled = false;
+
             const loadUser = async () => {
-                const guest = await isGuestUser();
-                setIsGuest(guest);
+                try {
+                    const token = await Utils.getData('_TOKEN');
+                    if (!token) {
+                        if (!cancelled) {
+                            setIsGuest(true);
+                            setUser(null);
+                        }
+                        return;
+                    }
 
-                // Incomplete guests: do not load / show full profile
-                if (guest) {
-                    setUser(null);
-                    return;
+                    let profile = await Utils.getData('_USER_INFO');
+
+                    try {
+                        const res: any = await ProfileServices.user_profile();
+                        if (res?.data) {
+                            profile = res.data;
+                            await Utils.storeData('_USER_INFO', res.data);
+                        }
+                    } catch (error) {
+                        console.log('Profile Error:', error);
+                    }
+
+                    if (cancelled) return;
+
+                    // Sync guest/full safely from server profile (never demote completed users)
+                    const level = await syncAccessFromProfile(profile);
+                    const guest =
+                        level === 'guest' &&
+                        (await isGuestUser()) &&
+                        !isProfileComplete(profile);
+
+                    // Extra safety: completed profile always shows full UI
+                    if (isProfileComplete(profile) || level === 'full') {
+                        await promoteToFullUser();
+                        if (!cancelled) {
+                            setIsGuest(false);
+                            setUser(profile);
+                        }
+                        return;
+                    }
+
+                    if (!cancelled) {
+                        setIsGuest(guest);
+                        setUser(guest ? null : profile);
+                    }
+                } catch (error) {
+                    console.log('Profile access resolve error:', error);
+                    if (!cancelled) {
+                        // Prefer full UI if we already have cached user info
+                        const cached = await Utils.getData('_USER_INFO');
+                        if (isProfileComplete(cached) || cached?.first_name) {
+                            await promoteToFullUser();
+                            setIsGuest(false);
+                            setUser(cached);
+                        } else {
+                            const guest = await isGuestUser();
+                            setIsGuest(guest);
+                            setUser(guest ? null : cached);
+                        }
+                    }
                 }
-
-                const CustomerInfo = await Utils.getData('_USER_INFO');
-
-                if (CustomerInfo) {
-                    setUser(CustomerInfo);
-                }
-
-                await fetchUserData();
             };
 
             loadUser();
+            return () => {
+                cancelled = true;
+            };
         }, [])
     );
-
-    const fetchUserData = async () => {
-        try {
-            if (await isGuestUser()) return;
-            const token = await Utils.getData('_TOKEN');
-            const CustomerInfo = await Utils.getData('_USER_INFO');
-            if (!token) return;
-            const res: any = await ProfileServices.user_profile();
-            console.log('USERPROFILE =>', res?.data);
-            setUser(CustomerInfo || res?.data);
-        } catch (error) {
-            console.log('Profile Error:', error);
-        }
-    };
 
     const logout = () => setLogoutVisible(true);
 
@@ -1252,6 +1296,21 @@ const ProfilePage = ({ navigation }: any) => {
             <View>{children}</View>
         </View>
     );
+
+    if (isGuest === null) {
+        return (
+            <View
+                style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: Colors.background,
+                }}
+            >
+                <ActivityIndicator size="small" color={Colors.primaryColor} />
+            </View>
+        );
+    }
 
     if (isGuest) {
         const unlockSteps = [
@@ -1813,10 +1872,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginTop: SECTION_GAP,                                                      
+        marginTop: SECTION_GAP,
         paddingVertical: 14,
         borderRadius: 14,
-        backgroundColor: '#FEF2F2',                                  
+        backgroundColor: '#FEF2F2',
         borderWidth: 1,
         borderColor: '#FFCECE',
     },

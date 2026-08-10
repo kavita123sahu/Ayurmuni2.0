@@ -9,17 +9,19 @@ import {
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
+import { getStatusColor } from '../common/DataInterface';
 
 type Props = {
   title: string;
   id: string;
-  status: 'DELIVERED' | 'IN PROGRESS';
+  status: string;
   date: string;
   amount: string;
   image?: string | null;
   moreCount?: number;
   onPress?: () => void;
 };
+
 
 const OrderCard: React.FC<Props> = ({
   title,
@@ -31,7 +33,7 @@ const OrderCard: React.FC<Props> = ({
   moreCount = 0,
   onPress,
 }) => {
-  const isDelivered = status === 'DELIVERED';
+  const isDelivered = status === 'deliverd';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
@@ -69,13 +71,21 @@ const OrderCard: React.FC<Props> = ({
           <Text
             style={[
               styles.statusText,
+              { color: getStatusColor(status) },
+            ]}
+          >
+            {status.toUpperCase()}
+          </Text>
+          {/* <Text
+            style={[
+              styles.statusText,
               {
-                color: isDelivered ? '#1B5E54' : '#3366FF',
+                color: isDelivered ?  status === 'pending' ? '#1B5E54' : '#3366FF ' : '#3366FF',
               },
             ]}
           >
-            {status}
-          </Text>
+            {status.toUpperCase()}
+          </Text> */}
         </View>
       </View>
 

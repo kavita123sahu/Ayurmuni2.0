@@ -253,8 +253,9 @@ const RazorpayScreen = ({
         return (
             <View style={styles.infoRow}>
                 <Text style={styles.label}>{label}</Text>
-
-                <Text style={styles.label}>{value}</Text>
+                <Text style={styles.value} numberOfLines={1}>
+                    {value}
+                </Text>
             </View>
         );
     };
@@ -301,20 +302,13 @@ const RazorpayScreen = ({
 
                     </View>
                     <ScrollView
-                        contentContainerStyle={{
-                            flexGrow: 1,
-                            paddingBottom: 30,
-                        }}
+                        contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* DOCTOR CARD */}
-
                         <View style={styles.card}>
-
                             <View style={styles.row}>
-
                                 {doctorInfo?.profile_image ? (
-                                    <View style={[styles.avatarFallback, { backgroundColor: Colors.bgcolor }]}>
+                                    <View style={[styles.avatarFallback, styles.avatarImageWrap]}>
                                         <Image
                                             source={{ uri: doctorInfo?.profile_image }}
                                             style={styles.avatar}
@@ -328,42 +322,27 @@ const RazorpayScreen = ({
                                     </View>
                                 )}
 
-                                {/* <Image
-                                    source={Images.doctorImage}
-                                    style={styles.avatar}
-                                /> */}
-
-                                <View style={{ flex: 1 }}>
-
-                                    <Text style={styles.doctorName}>
+                                <View style={styles.doctorMeta}>
+                                    <Text style={styles.doctorName} numberOfLines={2}>
                                         {doctorInfo?.full_name}
                                     </Text>
-
-                                    <Text style={styles.speciality}>
-                                        {doctorInfo?.designation}
-                                    </Text>
-
+                                    {!!doctorInfo?.designation && (
+                                        <Text style={styles.speciality} numberOfLines={1}>
+                                            {doctorInfo?.designation}
+                                        </Text>
+                                    )}
                                 </View>
-
                             </View>
 
                             <View style={styles.divider} />
 
                             <View style={styles.infoRow}>
-                                <Text style={styles.label}>
-                                    Appointment Date
-                                </Text>
-
-                                <Text style={styles.value}>
-                                    {date}
-                                </Text>
+                                <Text style={styles.label}>Date</Text>
+                                <Text style={styles.value}>{date}</Text>
                             </View>
 
                             <View style={styles.infoRow}>
-                                <Text style={styles.label}>
-                                    Consultation Time
-                                </Text>
-
+                                <Text style={styles.label}>Time</Text>
                                 <Text style={styles.value}>
                                     {formatTo12Hour(selectedTime)}
                                 </Text>
@@ -371,124 +350,69 @@ const RazorpayScreen = ({
 
                             {concern ? (
                                 <View style={styles.concernSection}>
-                                    <Text style={styles.label}>
-                                        Concern
-                                    </Text>
-                                    <Text style={styles.concernValue}>
-                                        {concern}
-                                    </Text>
+                                    <Text style={styles.label}>Concern</Text>
+                                    <Text style={styles.concernValue}>{concern}</Text>
                                 </View>
                             ) : null}
 
                             <View style={styles.divider} />
 
-
-                            <Text style={styles.label1}>
-                                Patient Detail
-                            </Text>
-
-                            <CommonLabelText label="Name" value={patientsList?.first_name + ' ' + patientsList?.last_name} />
-
-
+                            <Text style={styles.label1}>Patient</Text>
+                            <CommonLabelText
+                                label="Name"
+                                value={`${patientsList?.first_name || ''} ${patientsList?.last_name || ''}`.trim()}
+                            />
                             <CommonLabelText label="Mobile" value={patientsList?.phone_number} />
-
-
                             <CommonLabelText label="Relation" value={patientsList?.relation} />
-
-
-
-
                         </View>
-
-                        {/* PAYMENT CARD */}
 
                         <View style={styles.paymentCard}>
-
                             <View style={styles.amountRow}>
-
-                                <Text style={styles.totalLabel}>
-                                    Total Amount
-                                </Text>
-
-                                <Text style={styles.totalAmount}>
-                                    ₹ {totalAmount}
-                                </Text>
-
+                                <View>
+                                    <Text style={styles.totalLabel}>Total Amount</Text>
+                                    <View style={styles.paymentInfo}>
+                                        <Ionicons
+                                            name="shield-checkmark"
+                                            size={14}
+                                            color={Colors.primaryColor}
+                                        />
+                                        <Text style={styles.paymentInfoText}>
+                                            Secure Razorpay checkout
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.totalAmount}>₹{totalAmount}</Text>
                             </View>
-
-                            <View style={styles.paymentInfo}>
-
-                                <Ionicons
-                                    name="shield-checkmark"
-                                    size={18}
-                                    color={Colors.primaryColor}
-                                />
-
-                                <Text style={styles.paymentInfoText}>
-                                    Secure payment powered by Razorpay
-                                </Text>
-
-                            </View>
-
                         </View>
 
-                        {/* BUTTON */}
-
                         <View style={styles.footer}>
-
                             <TouchableOpacity
                                 activeOpacity={0.9}
                                 disabled={loading}
                                 onPress={handlePayment}
-                                style={[
-                                    styles.payButton,
-
-                                    loading && {
-                                        opacity: 0.7,
-                                    },
-                                ]}
+                                style={[styles.payButton, loading && styles.payButtonDisabled]}
                             >
-
-                                {
-                                    loading ? (
-
-                                        <View style={styles.loaderRow}>
-
-                                            <ActivityIndicator
-                                                size="small"
-                                                color="#FFFFFF"
-                                            />
-
-                                            <Text style={styles.payText}>
-                                                Processing Payment...
-                                            </Text>
-
-                                        </View>
-
-                                    ) : (
-
-                                        <View style={styles.buttonContent}>
-                                            <Ionicons
-                                                name="card-outline"
-                                                size={20}
-                                                color="#FFFFFF"
-                                            />
-
-                                            <Text style={styles.payText}>
-                                                Pay Now
-                                            </Text>
-                                        </View>
-                                    )
-                                }
-
+                                {loading ? (
+                                    <View style={styles.loaderRow}>
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                        <Text style={styles.payText}>Processing...</Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.buttonContent}>
+                                        <Ionicons name="card-outline" size={18} color="#FFFFFF" />
+                                        <Text style={styles.payText}>Pay Now</Text>
+                                    </View>
+                                )}
                             </TouchableOpacity>
 
-                            <TouchableOpacity activeOpacity={0.8} style={styles.cancelButton} onPress={() => navigation.goBack()}>
-                                <Text style={styles.cancelText}> Cancel Payment </Text>
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                style={styles.cancelButton}
+                                onPress={() => navigation.goBack()}
+                            >
+                                <Text style={styles.cancelText}>Cancel</Text>
                             </TouchableOpacity>
-
                         </View>
-
                     </ScrollView>
 
 
@@ -546,19 +470,18 @@ export default RazorpayScreen;
 /* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
-
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F5F8F6',
     },
 
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-
-        paddingHorizontal: 20,
-        paddingTop: 10,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 4,
     },
 
     backIcon: {
@@ -567,21 +490,22 @@ const styles = StyleSheet.create({
     },
 
     headerTitle: {
-        fontSize: 20,
+        fontSize: 17,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
+    scrollContent: {
+        flexGrow: 1,
+        paddingBottom: 20,
+    },
+
     card: {
         backgroundColor: '#FFFFFF',
-
-        marginHorizontal: 20,
-        marginTop: 30,
-
-        borderRadius: 24,
-
-        padding: 18,
-
+        marginHorizontal: 16,
+        marginTop: 12,
+        borderRadius: 16,
+        padding: 14,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
@@ -592,88 +516,96 @@ const styles = StyleSheet.create({
     },
 
     avatar: {
-        width: 70,
-        height: 70,
+        width: '100%',
+        height: '100%',
+        borderRadius: 14,
+    },
 
-        borderRadius: 18,
+    avatarImageWrap: {
+        backgroundColor: Colors.bgcolor || '#F0F7F4',
+        overflow: 'hidden',
+        padding: 0,
     },
 
     avatarFallback: {
-        width: 90,
-        height: 90,
-        borderRadius: 16,
+        width: 56,
+        height: 56,
+        borderRadius: 14,
         backgroundColor: Colors.primaryColor,
         justifyContent: 'center',
-
-        marginRight: 15,
+        marginRight: 12,
         alignItems: 'center',
     },
+
     avatarLetter: {
-        fontSize: 32,
+        fontSize: 22,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsBold,
     },
 
+    doctorMeta: {
+        flex: 1,
+        minWidth: 0,
+    },
+
     doctorName: {
-        fontSize: 18,
+        fontSize: 15,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     speciality: {
-        marginTop: -4,
-
-        fontSize: 14,
+        marginTop: 2,
+        fontSize: 12,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsMedium,
     },
 
     divider: {
         height: 1,
-
-        backgroundColor: '#E2E8F0',
-
-        marginVertical: 18,
+        backgroundColor: '#E8EEF2',
+        marginVertical: 12,
     },
 
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-
-        marginBottom: 14,
+        alignItems: 'center',
+        marginBottom: 8,
     },
 
     label: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
     },
+
     label1: {
-        fontSize: 16,
-        color: '#0000',
-        marginBottom: 5,
-        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 12,
+        color: '#0F172A',
+        marginBottom: 6,
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     value: {
         flex: 1,
-
         textAlign: 'right',
-
-        fontSize: 14,
+        fontSize: 13,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     concernSection: {
-        marginTop: 14,
-        paddingTop: 14,
+        marginTop: 4,
+        paddingTop: 10,
         borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
+        borderTopColor: '#E8EEF2',
     },
 
     concernValue: {
-        marginTop: 8,
+        marginTop: 4,
         fontSize: 13,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsRegular,
@@ -682,14 +614,11 @@ const styles = StyleSheet.create({
 
     paymentCard: {
         backgroundColor: '#FFFFFF',
-
-        marginHorizontal: 20,
-        marginTop: 20,
-
-        borderRadius: 24,
-
-        padding: 18,
-
+        marginHorizontal: 16,
+        marginTop: 12,
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
@@ -701,13 +630,13 @@ const styles = StyleSheet.create({
     },
 
     totalLabel: {
-        fontSize: 16,
+        fontSize: 13,
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
     },
 
     totalAmount: {
-        fontSize: 28,
+        fontSize: 24,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsBold,
     },
@@ -715,37 +644,35 @@ const styles = StyleSheet.create({
     paymentInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-
-        marginTop: 14,
+        marginTop: 4,
     },
 
     paymentInfoText: {
-        marginLeft: 8,
-
-        fontSize: 13,
+        marginLeft: 5,
+        fontSize: 11,
         color: '#64748B',
-
         fontFamily: Fonts.PoppinsMedium,
     },
 
     footer: {
         marginTop: 'auto',
-
-        paddingHorizontal: 20,
-        paddingBottom: 24,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 16,
     },
 
     payButton: {
-        height: 58,
-
-        borderRadius: 18,
-
+        height: 50,
+        borderRadius: 14,
         backgroundColor: Colors.primaryColor,
-
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 20
+        paddingHorizontal: 16,
+    },
+
+    payButtonDisabled: {
+        opacity: 0.7,
     },
 
     loaderRow: {
@@ -762,54 +689,51 @@ const styles = StyleSheet.create({
 
     payText: {
         marginLeft: 8,
-        fontSize: 16,
+        fontSize: 15,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     paymentProcessingContainer: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        paddingVertical: 24,
-        paddingHorizontal: 20,
+        borderRadius: 16,
+        paddingVertical: 20,
+        paddingHorizontal: 16,
         alignItems: 'center',
-        marginTop: 20,
-        marginHorizontal: 20,
-
+        marginTop: 12,
+        marginHorizontal: 16,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 3,
     },
 
     processingTitle: {
-        marginTop: 16,
-        fontSize: 18,
+        marginTop: 12,
+        fontSize: 16,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     cancelButton: {
-        marginTop: 20,
-        height: 46,
-        minWidth: 160,
+        marginTop: 10,
+        height: 44,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#EF4444',
+        borderColor: '#FECACA',
+        backgroundColor: '#FEF2F2',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
     },
 
     cancelText: {
         color: '#EF4444',
-        fontSize: 14,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
     },
+
     verificationScreen: {
         flex: 1,
         backgroundColor: '#FFFFFF',
@@ -819,40 +743,39 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 30,
+        paddingHorizontal: 28,
     },
 
     verificationTitle: {
-        marginTop: 24,
-        fontSize: 22,
+        marginTop: 20,
+        fontSize: 20,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     verificationSubtitle: {
-        marginTop: 10,
-        fontSize: 14,
+        marginTop: 8,
+        fontSize: 13,
         color: '#64748B',
         textAlign: 'center',
-        lineHeight: 22,
+        lineHeight: 20,
         fontFamily: Fonts.PoppinsRegular,
     },
 
     verificationInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 30,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        marginTop: 22,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F5F8F6',
     },
 
     verificationInfoText: {
         marginLeft: 8,
         color: '#475569',
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsMedium,
     },
-
 });

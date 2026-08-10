@@ -724,7 +724,10 @@ import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
@@ -980,41 +983,14 @@ const CategoryProductsScreen = (props: any) => {
     [dispatch],
   );
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
+  useWishlistSync(setProducts);
 
-      const variantId = String(item?.variant_id ?? '');
-      if (!variantId) return;
-
-      const old = !!item?.is_wishlist_item;
-
-      setProducts(prev =>
-        prev.map(p =>
-          String(p?.variant_id) === variantId
-            ? { ...p, is_wishlist_item: !old }
-            : p,
-        ),
-      );
-
-      try {
-        const response = await TogglewishlistProduct(item.variant_id, 'POST');
-        if (response?.success === false) {
-          throw new Error(response?.message || 'Wishlist update failed');
-        }
-      } catch {
-        setProducts(prev =>
-          prev.map(p =>
-            String(p?.variant_id) === variantId
-              ? { ...p, is_wishlist_item: old }
-              : p,
-          ),
-        );
-        showSuccessToast('Unable to update wishlist', 'error');
-      }
-    },
-    [],
-  );
+  const handleWishlist = useCallback(async (item: any) => {
+    const ok = await toggleWishlistItem(item);
+    if (!ok && item?.variant_id) {
+      showSuccessToast('Unable to update wishlist', 'error');
+    }
+  }, []);
 
   const renderProductItem = useCallback(
     ({ item }: { item: any }) => {
@@ -1103,7 +1079,7 @@ const CategoryProductsScreen = (props: any) => {
   const showSubcategories = activeCategoryId && subcategories.length > 0 && !subcategoriesLoading;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <View style={styles.headerWrap}>

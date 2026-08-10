@@ -87,42 +87,48 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
   return (
     <View style={styles.heroCard}>
-      {/* ---------- Banner ---------- */}
-      <View style={styles.banner}>
+      <View style={styles.heroTopRow}>
         <Image
-          source={data?.doctor?.doctor_image ? { uri: data?.doctor?.doctor_image } : Images.doctorImage}
-          style={styles.bannerImage}
+          source={
+            data?.doctor?.doctor_image
+              ? { uri: data?.doctor?.doctor_image }
+              : Images.doctorImage
+          }
+          style={styles.heroAvatar}
         />
-        {/* scrim layers to fake a gradient without extra deps */}
-        <View style={styles.scrimTop} />
-        <View style={styles.scrimBottom} />
-
-        {isLive && (
-          <View style={styles.liveBadge}>
-            <View style={styles.liveBadgeDot} />
-            <Text style={styles.liveBadgeText}>LIVE NOW</Text>
+        <View style={styles.heroInfo}>
+          <View style={styles.heroNameRow}>
+            <Text numberOfLines={2} style={styles.doctorName}>
+              {data?.doctor?.doctor_name}
+            </Text>
+            {isLive ? (
+              <View style={styles.liveBadge}>
+                <View style={styles.liveBadgeDot} />
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+            ) : null}
           </View>
-        )}
-
-        <View style={styles.bannerTextWrap}>
-          <Text style={styles.doctorName}>{data?.doctor?.doctor_name}</Text>
-          <View style={styles.specialtyPill}>
-            <Ionicons name="medkit-outline" size={12} color={Theme.gold} />
-            <Text style={styles.specialtyText}>{data?.doctor?.doctor_specialization}</Text>
-          </View>
+          {!!data?.doctor?.doctor_specialization && (
+            <Text numberOfLines={1} style={styles.specialtyText}>
+              {Array.isArray(data?.doctor?.doctor_specialization)
+                ? data.doctor.doctor_specialization.join(', ')
+                : data?.doctor?.doctor_specialization}
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* ---------- Content ---------- */}
       <View style={styles.heroBody}>
         <View style={styles.dateTimeBox}>
           <View style={styles.dtItem}>
             <View style={styles.iconCircle}>
-              <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
+              <TablerIcon name="calendar" size={16} color={Colors.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.label}>DATE</Text>
-              <Text style={styles.value}>{data?.appointment?.appointment_date}</Text>
+              <Text style={styles.value} numberOfLines={1}>
+                {data?.appointment?.appointment_date}
+              </Text>
             </View>
           </View>
 
@@ -130,16 +136,18 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
           <View style={styles.dtItem}>
             <View style={styles.iconCircle}>
-              <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
+              <TablerIcon name="clock" size={16} color={Colors.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.label}>TIME</Text>
-              <Text style={styles.value}>{data?.appointment?.start_time}</Text>
+              <Text style={styles.value} numberOfLines={1}>
+                {data?.appointment?.start_time}
+              </Text>
             </View>
           </View>
         </View>
 
-        <View style={{ marginTop: 4 }}>
+        <View style={styles.heroActions}>
           {isLive && (
             <PrimaryButton
               title="Join Video Call"
@@ -544,7 +552,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </View>
 
                 <View style={styles.card}>
-                  <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} />
+                  {/* <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} /> */}
                   <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
                 </View>
               </>)}
@@ -605,6 +613,46 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </View>
               </>
             )}
+
+            <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 0 : 8 }}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.outlineBtn}
+                onPress={() => {
+                  const appt = detail?.appointment ?? {};
+                  const doctor = detail?.doctor ?? {};
+                  const specialization = Array.isArray(
+                    doctor?.doctor_specialization,
+                  )
+                    ? doctor.doctor_specialization.join(', ')
+                    : doctor?.doctor_specialization ||
+                    doctor?.specialization ||
+                    doctor?.speciality ||
+                    '';
+                  navigation.navigate('AddCalendar', {
+                    appointment: {
+                      doctorName: doctor?.doctor_name,
+                      doctorImage: doctor?.doctor_image,
+                      specialization,
+                      date: appt?.appointment_date || appt?.date,
+                      startTime: appt?.start_time || appt?.time,
+                      endTime: appt?.end_time,
+                      concern: appt?.concern,
+                      hospitalName:
+                        doctor?.hospital_name || appt?.hospital_name,
+                      bookingId:
+                        appt?.consultation_id ||
+                        appt?.appointment_id ||
+                        appt?.id,
+                      status: appt?.appointment_status || appt?.status,
+                    },
+                  });
+                }}
+              >
+                <Ionicons name="calendar-outline" size={17} color={Theme.emerald} />
+                <Text style={styles.outlineBtnText}>Add to Calendar</Text>
+              </TouchableOpacity>
+            </View>
 
             {showButtons && (
               <View style={{ paddingHorizontal: 16 }}>
@@ -690,16 +738,16 @@ const styles = StyleSheet.create({
 
   // ---------- Status pill (top) ----------
   statusRow: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   statusPill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
   },
   statusDot: {
     width: 6,
@@ -708,18 +756,18 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
     textTransform: 'capitalize',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    marginHorizontal: 20,
-    marginBottom: 10,
+    marginTop: 16,
+    marginHorizontal: 16,
+    marginBottom: 6,
   },
 
   consultSectionWrap: {
@@ -729,75 +777,66 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     marginLeft: 6,
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.ink,
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
 
   card: {
     backgroundColor: Theme.cardBg,
     marginHorizontal: 16,
-    marginTop: 16,
-    padding: 18,
-    borderRadius: 20,
+    marginTop: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Theme.cardBorder,
-    // ...shadow('md'),
   },
 
   // ---------- Hero (Doctor) card ----------
   heroCard: {
     backgroundColor: Theme.cardBg,
     marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 24,
+    marginTop: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Theme.cardBorder,
-    overflow: 'hidden',
-    ...shadow('lg'),
+    padding: 12,
+    ...shadow('md'),
   },
 
-  banner: {
-    width: '100%',
-    height: 168,
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  heroAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: '#EFE9DC',
   },
 
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  heroInfo: {
+    flex: 1,
+    marginLeft: 12,
+    minWidth: 0,
   },
 
-  scrimTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-
-  scrimBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 92,
-    backgroundColor: 'rgba(15,20,17,0.55)',
-  },
-
-  bannerTextWrap: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 14,
+  heroNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 
   heroBody: {
-    padding: 18,
+    marginTop: 12,
+  },
+
+  heroActions: {
+    marginTop: 10,
   },
 
   row: {
@@ -806,122 +845,108 @@ const styles = StyleSheet.create({
   },
 
   doctorName: {
-    fontSize: 19,
+    flex: 1,
+    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#fff',
-    marginBottom: 8,
-  },
-
-  specialtyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(244,233,211,0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    color: Theme.ink,
+    marginBottom: 2,
   },
 
   specialtyText: {
-    marginLeft: 5,
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#F4E9D3',
+    color: Theme.subInk,
   },
 
   liveBadge: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(239,68,68,0.92)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
 
   liveBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: '#fff',
-    marginRight: 5,
+    marginRight: 4,
   },
 
   liveBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#fff',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
   },
 
   divider: {
     height: 1,
     backgroundColor: Theme.divider,
-    marginVertical: 16,
+    marginVertical: 10,
   },
 
   dateTimeBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FBF9F4',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Theme.divider,
-    paddingVertical: 4,
   },
 
   dtItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
 
   dtDividerVertical: {
     width: 1,
-    height: 34,
+    height: 28,
     backgroundColor: Theme.divider,
   },
 
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: Theme.goldSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 8,
   },
 
   textContainer: {
     flexDirection: 'column',
+    flex: 1,
+    minWidth: 0,
   },
 
   label: {
-    marginBottom: 2,
-    fontSize: 11,
+    marginBottom: 1,
+    fontSize: 10,
     color: Theme.subInk,
     fontFamily: Fonts.PoppinsMedium,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
 
   value: {
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 14,
+    fontSize: 12,
     color: Theme.ink,
   },
 
   primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    marginTop: 4,
     ...shadow('md'),
   },
 
@@ -934,17 +959,17 @@ const styles = StyleSheet.create({
   primaryText: {
     color: '#fff',
     marginLeft: 8,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
   secondaryBtn: {
     flexDirection: 'row',
     backgroundColor: Theme.emeraldSoft,
-    marginTop: 10,
-    paddingVertical: 13,
-    borderRadius: 14,
+    marginTop: 8,
+    paddingVertical: 11,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -952,7 +977,7 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: Theme.emerald,
     marginLeft: 8,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
@@ -960,7 +985,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
 
   infoLabelWrap: {
@@ -969,9 +994,9 @@ const styles = StyleSheet.create({
   },
 
   infoIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     backgroundColor: Theme.emeraldSoft,
     justifyContent: 'center',
     alignItems: 'center',
@@ -984,21 +1009,24 @@ const styles = StyleSheet.create({
   },
 
   infoLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: Theme.subInk,
     fontFamily: Fonts.PoppinsMedium,
   },
 
   infoValue: {
-    fontSize: 14,
+    flexShrink: 1,
+    marginLeft: 10,
+    textAlign: 'right',
+    fontSize: 13,
     color: Theme.ink,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   reason: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#4B5563',
-    lineHeight: 21,
+    lineHeight: 19,
     fontFamily: Fonts.PoppinsMedium,
     fontStyle: 'italic',
   },
@@ -1056,11 +1084,11 @@ const styles = StyleSheet.create({
 
   outlineBtn: {
     flexDirection: 'row',
-    marginTop: 14,
-    borderWidth: 1.4,
+    marginTop: 10,
+    borderWidth: 1.2,
     borderColor: Theme.emerald,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
@@ -1068,22 +1096,22 @@ const styles = StyleSheet.create({
 
   outlineBtnText: {
     marginLeft: 8,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.emerald,
   },
 
   cancelBtn: {
-    marginTop: 12,
-    marginBottom: 30,
-    paddingVertical: 14,
-    borderRadius: 14,
+    marginTop: 8,
+    marginBottom: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
     backgroundColor: Theme.dangerSoft,
   },
 
   cancelBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.danger,
   },

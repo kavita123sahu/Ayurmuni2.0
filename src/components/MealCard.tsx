@@ -9,6 +9,8 @@ import {
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
 import TablerIcon from "./TablerIcon";
+import { normalizeDietFoodItem, resolveMealImage } from "../utils/dietPlanUtils";
+import { resolveImageSource } from "../utils/imageUtils";
 
 interface MealProps {
     data: any;
@@ -16,9 +18,23 @@ interface MealProps {
     onLog?: () => void;
 }
 
+const toDisplayText = (value: any, fallback = '') => {
+    if (value == null) return fallback;
+    if (typeof value === 'string' || typeof value === 'number') {
+        return String(value);
+    }
+    return normalizeDietFoodItem(value)?.label || fallback;
+};
+
 const MealCard = ({ data, navigation, onLog }: MealProps) => {
     const imageSource =
-        data?.image || require('../assets/images/login/7.jpg');
+        resolveImageSource(data?.image) ||
+        resolveMealImage(data?.raw) ||
+        require('../assets/images/login/7.jpg');
+    const title = toDisplayText(data?.title, 'Meal');
+    const subtitle = toDisplayText(data?.subtitle);
+    const type = toDisplayText(data?.type, 'MEAL');
+    const time = toDisplayText(data?.time);
 
     return (
         <TouchableOpacity
@@ -30,24 +46,26 @@ const MealCard = ({ data, navigation, onLog }: MealProps) => {
 
             <View style={styles.content}>
                 <View style={styles.topRow}>
-                    <Text style={styles.type}>{data.type}</Text>
+                    <Text style={styles.type}>{type}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <TablerIcon name="clock" size={20} color="#6B7280" />
-                        <Text style={styles.time}>  {data.time}</Text>
+                        <Text style={styles.time}>  {time}</Text>
                     </View>
                 </View>
 
                 <Text style={styles.title} numberOfLines={2}>
-                    {data?.title}
+                    {title}
                 </Text>
 
-                <Text style={styles.subtitle} numberOfLines={1}>
-                    {data?.subtitle}
-                </Text>
+                {!!subtitle && (
+                    <Text style={styles.subtitle} numberOfLines={1}>
+                        {subtitle}
+                    </Text>
+                )}
 
                 <View style={styles.bottomRow}>
                     <Text style={styles.kcal}>
-                        {data?.kcal} <Text style={styles.kcalText}>KCAL</Text>
+                        {Number(data?.kcal) || 0} <Text style={styles.kcalText}>KCAL</Text>
                     </Text>
 
                     {data?.status === "log" ? (
@@ -124,14 +142,14 @@ const styles = StyleSheet.create({
     },
 
     title: {
-        fontSize: 16,
+        fontSize: 14,
         color: Colors.black,
         fontFamily: Fonts.PoppinsSemiBold,
         marginBottom: -5
     },
 
     subtitle: {
-        fontSize: 13,
+        fontSize: 12,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsRegular,
     },

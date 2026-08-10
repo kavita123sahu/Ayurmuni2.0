@@ -1,4 +1,5 @@
 import React from 'react'
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux'
@@ -83,10 +84,12 @@ const App = () => {
         <Provider store={store} >
           <VideoCallProvider>
             <LocationProvider>
-              <AppDataInitializer />
-              <Navigator />
-              <FloatingVideoOverlay />
-              <Toast config={toastConfig} />
+              <View style={{ flex: 1 }}>
+                <AppDataInitializer />
+                <Navigator />
+                <FloatingVideoOverlay />
+                <Toast config={toastConfig} />
+              </View>
             </LocationProvider>
           </VideoCallProvider>
         </Provider>

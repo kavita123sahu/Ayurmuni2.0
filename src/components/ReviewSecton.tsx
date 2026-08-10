@@ -8,9 +8,17 @@ import TablerIcon from "./TablerIcon";
 const ReviewSection = ({
   reviews = [],
   navigation,
+  entityType,
+  doctorId,
+  variantId,
+  title = 'Customer Reviews',
 }: {
   reviews?: any[];
   navigation: any;
+  entityType?: 'doctor' | 'product';
+  doctorId?: string;
+  variantId?: string;
+  title?: string;
 }) => {
   const renderStars = (count: number) => {
     return "⭐".repeat(count); // simple star render
@@ -69,11 +77,16 @@ const ReviewSection = ({
       {/* Header */}
       <TouchableOpacity
         style={styles.reviewHeader}
-        onPress={() => navigation.navigate("ReviewPage", {
-          reviews: normalizedReviews,
-        })}
+        onPress={() =>
+          navigation.navigate('ReviewPage', {
+            reviews: normalizedReviews,
+            entityType,
+            doctorId,
+            variantId,
+          })
+        }
       >
-        <Text style={styles.sectionTitle}>Customer Reviews</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
 
         <Text style={styles.viewAll}>View All</Text>
       </TouchableOpacity>

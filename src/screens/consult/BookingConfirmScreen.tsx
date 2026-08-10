@@ -1,4 +1,4 @@
-import React, { memo, useRef, useState, useEffect, useLayoutEffect } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,53 +10,35 @@ import {
   Dimensions,
   Pressable,
   BackHandler,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
-import { Styles } from '../../common/Styles';
-import { Ionicons } from '../../common/Vector';
-import { Animated } from 'react-native';
-import { formatDate } from '../../common/DataInterface';
 import { getAppointmentShareMessage } from '../../helper/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
-import { createDoctorReview, createReview } from '../../services/ProfileServices';
-import { showSuccessToast } from '../../config/Key';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import {
+  formatAppointmentDateFull,
+  formatAppointmentTimeLabel,
+  formatAppointmentWeekday,
+  formatAppointmentDayLabel,
+} from '../../utils/appointmentUtils';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const SHEET_HEIGHT = height / 1.85;
 
-/* -------------------------------------------------------------------------- */
-/*                                   TYPES                                    */
-/* -------------------------------------------------------------------------- */
+type AppointmentStatus = 'CANCELLED' | 'CONFIRMED' | 'UPCOMING' | string;
 
-type AppointmentStatus =
-  | 'CANCELLED'
-  | 'CONFIRMED'
-  | 'UPCOMING';
-
-interface BadgeProps {
-  appointment_status: AppointmentStatus;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                   CONFIG                                   */
-/* -------------------------------------------------------------------------- */
-
-
-
-const { height } = Dimensions.get('window');
-
-const SHEET_HEIGHT = height / 1.9;
 const shareOptions = [
   {
     id: 1,
     title: 'WhatsApp',
     type: 'whatsapp',
     iconName: 'whatsapp' as TablerIconName,
-    bg: '#0D614E26',
-    Color: Colors.primaryColor,
+    bg: '#E8F5F1',
+    color: Colors.primaryColor,
   },
   {
     id: 2,
@@ -64,7 +46,7 @@ const shareOptions = [
     type: 'message',
     iconName: 'chat-support' as TablerIconName,
     bg: '#DBEAFE',
-    Color: '#2563EB',
+    color: '#2563EB',
   },
   {
     id: 3,
@@ -72,174 +54,224 @@ const shareOptions = [
     type: 'email',
     iconName: 'mail' as TablerIconName,
     bg: '#FFEDD5',
-    Color: '#EA580C',
+    color: '#EA580C',
   },
   {
     id: 4,
     title: 'Copy Link',
     type: 'copy',
     iconName: 'share' as TablerIconName,
-    bg: '#F3F4F6',
-    Color: '#475569',
+    bg: '#F1F5F9',
+    color: '#475569',
   },
 ];
 
-const BADGE_CONFIG = {
-  CONFIRMED: {
-    bg: '#DCFCE7',
-    color: '#16A34A',
-  },
-
-
-
-  CANCELLED: {
-    bg: '#FEE2E2',
-    color: '#DC2626',
-  },
-
-  UPCOMING: {
-    bg: '#FEF3C7',
-    color: '#D97706',
-  },
+const BADGE_CONFIG: Record<
+  string,
+  { bg: string; color: string; label: string }
+> = {
+  CONFIRMED: { bg: '#DCFCE7', color: '#15803D', label: 'Confirmed' },
+  CANCELLED: { bg: '#FEE2E2', color: '#DC2626', label: 'Cancelled' },
+  UPCOMING: { bg: '#FEF3C7', color: '#D97706', label: 'Upcoming' },
+  BOOKED: { bg: '#DCFCE7', color: '#15803D', label: 'Booked' },
+  PENDING: { bg: '#FEF3C7', color: '#D97706', label: 'Pending' },
 };
 
-/* -------------------------------------------------------------------------- */
-/*                              REUSABLE COMPONENTS                           */
-/* -------------------------------------------------------------------------- */
+const pickFirst = (...values: any[]) => {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return '';
+};
 
-const Badge = memo(({ appointment_status }: BadgeProps) => {
-  const config = BADGE_CONFIG[appointment_status];
+const Badge = memo(({ status }: { status: AppointmentStatus }) => {
+  const key = String(status || 'CONFIRMED').toUpperCase();
+  const config = BADGE_CONFIG[key] || BADGE_CONFIG.CONFIRMED;
 
   return (
-    <View
-      style={[
-        styles.badge,
-        {
-          backgroundColor: config.bg,
-        },
-      ]}
-    >
-      <Text
-        style={[
-          styles.badgeText,
-          {
-            color: config.color,
-          },
-        ]}
-      >
-        {appointment_status}
+    <View style={[styles.badge, { backgroundColor: config.bg }]}>
+      <View style={[styles.badgeDot, { backgroundColor: config.color }]} />
+      <Text style={[styles.badgeText, { color: config.color }]}>
+        {config.label}
       </Text>
     </View>
   );
 });
 
-interface DetailRowProps {
-  iconName: TablerIconName;
-  label: string;
-  value: string;
-}
-
 const DetailRow = memo(
-  ({ iconName, label, value }: DetailRowProps) => {
+  ({
+    iconName,
+    label,
+    value,
+    last,
+  }: {
+    iconName: TablerIconName;
+    label: string;
+    value: string;
+    last?: boolean;
+  }) => {
+    if (!value) return null;
+
     return (
-      <View style={styles.detailRow}>
+      <View style={[styles.detailRow, last && styles.detailRowLast]}>
         <View style={styles.iconWrapper}>
-          <TablerIcon name={iconName} size={20} color={Colors.primaryColor} />
+          <TablerIcon name={iconName} size={18} color={Colors.primaryColor} />
         </View>
-
         <View style={styles.detailContent}>
-          <Text style={styles.detailLabel}>
-            {label}
-          </Text>
-
-          <Text
-            style={styles.detailValue}
-            numberOfLines={2}
-          >
-            {value}
-          </Text>
+          <Text style={styles.detailLabel}>{label}</Text>
+          <Text style={styles.detailValue}>{value}</Text>
         </View>
       </View>
     );
   },
 );
 
-/* -------------------------------------------------------------------------- */
-/*                              MAIN COMPONENT                                */
-/* -------------------------------------------------------------------------- */
-
 const BookingConfrimScreen = ({ navigation, route }: any) => {
   const { SlotsDetail } = route?.params || {};
-
-
-console.log("slotdetailsssssssssssss", SlotsDetail);
   const [visible, setVisible] = useState(false);
 
+  const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const overlayAnim = useRef(new Animated.Value(0)).current;
 
+  const booking = useMemo(() => {
+    const slot = SlotsDetail?.slot ?? SlotsDetail?.appointment ?? {};
+    const info = SlotsDetail?.info ?? SlotsDetail?.doctor ?? {};
 
-  const slideAnim = useRef(
-    new Animated.Value(SHEET_HEIGHT),
-  ).current;
+    const dateRaw = pickFirst(
+      slot?.date,
+      SlotsDetail?.date,
+      SlotsDetail?.appointment_date,
+      slot?.appointment_date,
+    );
+    const timeRaw = pickFirst(
+      slot?.slot_time,
+      slot?.start_time,
+      slot?.time,
+      SlotsDetail?.slot_time,
+      SlotsDetail?.start_time,
+      SlotsDetail?.time,
+    );
+    const endTimeRaw = pickFirst(slot?.end_time, SlotsDetail?.end_time);
 
-  const overlayAnim = useRef(
-    new Animated.Value(0),
-  ).current;
+    const weekday = formatAppointmentWeekday(dateRaw, false);
+    const dayLabel = formatAppointmentDayLabel(dateRaw);
+    const dateLabel = formatAppointmentDateFull(dateRaw);
+    const timeLabel = formatAppointmentTimeLabel(timeRaw);
+    const endTimeLabel = endTimeRaw
+      ? formatAppointmentTimeLabel(endTimeRaw)
+      : '';
 
+    const specialization = Array.isArray(SlotsDetail?.doctor_specialization)
+      ? SlotsDetail.doctor_specialization.filter(Boolean).join(', ')
+      : pickFirst(
+        SlotsDetail?.doctor_specialization,
+        info?.specialization,
+        info?.speciality,
+        SlotsDetail?.specialization,
+      );
 
-  const shareMessage =
-    getAppointmentShareMessage({
-      doctorName:
-        SlotsDetail?.info?.doctor_name,
+    const status = pickFirst(
+      SlotsDetail?.appointment_status,
+      SlotsDetail?.status,
+      slot?.appointment_status,
+      'CONFIRMED',
+    );
 
-      specialization:
-        SlotsDetail?.doctor_specialization?.join(', '),
-
-      date: formatDate(
-        SlotsDetail?.slot?.date,
+    return {
+      doctorName: pickFirst(
+        info?.doctor_name,
+        SlotsDetail?.doctor_name,
+        SlotsDetail?.doctor?.doctor_name,
+        'Doctor',
       ),
-
-      time:
-        SlotsDetail?.slot?.slot_time,
-
-      status:
-        SlotsDetail?.status,
-
-      hospitalName:
+      doctorImage: pickFirst(
+        SlotsDetail?.doctor_image,
+        info?.doctor_image,
+        SlotsDetail?.doctor?.doctor_image,
+      ),
+      specialization,
+      dateRaw,
+      weekday,
+      dayLabel,
+      dateLabel,
+      timeLabel,
+      endTimeLabel,
+      timeRange: endTimeLabel ? `${timeLabel} – ${endTimeLabel}` : timeLabel,
+      concern: pickFirst(
+        slot?.concern,
+        SlotsDetail?.concern,
+        SlotsDetail?.appointment?.concern,
+      ),
+      patientName: pickFirst(
+        SlotsDetail?.patient?.patient_name,
+        SlotsDetail?.patient_name,
+        slot?.patient?.patient_name,
+        SlotsDetail?.appointment?.patient?.patient_name,
+      ),
+      hospitalName: pickFirst(
         SlotsDetail?.hospital_name,
-    });
+        info?.hospital_name,
+        SlotsDetail?.clinic_name,
+      ),
+      consultationMode: pickFirst(
+        SlotsDetail?.consultation_mode,
+        SlotsDetail?.mode,
+        slot?.consultation_mode,
+        'Video consultation',
+      ),
+      bookingId: pickFirst(
+        SlotsDetail?.consultation_id,
+        SlotDetailId(SlotsDetail),
+        SlotsDetail?.appointment_id,
+        SlotsDetail?.id,
+        slot?.id,
+      ),
+      status,
+      amount: pickFirst(
+        SlotsDetail?.amount,
+        SlotsDetail?.consultation_fee,
+        SlotsDetail?.total_amount,
+        slot?.amount,
+      ),
+    };
+  }, [SlotsDetail]);
 
+  const shareMessage = getAppointmentShareMessage({
+    doctorName: booking.doctorName,
+    specialization: booking.specialization,
+    date: [booking.weekday, booking.dateLabel].filter(Boolean).join(', '),
+    time: booking.timeRange,
+    status: booking.status,
+    hospitalName: booking.hospitalName,
+  });
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
       'hardwareBackPress',
-      () => {
-        return true;
-      },
+      () => true,
     );
+    return () => subscription.remove();
+  }, []);
 
-    return () => {
+  const closeBottomSheet = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SHEET_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setVisible(false));
+  }, [overlayAnim, slideAnim]);
 
-      subscription.remove();
-    };
-  }, [navigation]);
-
-
-  const onPressShareOption = async (
-    type: string,
-  ) => {
-    await handleShareAction({
-      type,
-      message: shareMessage,
-      onComplete:
-        closeBottomSheet,
-    });
-  };
-
-
-  const openBottomSheet = () => {
+  const openBottomSheet = useCallback(() => {
     setVisible(true);
-
-
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -252,963 +284,701 @@ console.log("slotdetailsssssssssssss", SlotsDetail);
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [overlayAnim, slideAnim]);
 
-  const
-    closeBottomSheet = () => {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: SHEET_HEIGHT,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-
-        Animated.timing(overlayAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setVisible(false);
+  const onPressShareOption = useCallback(
+    async (type: string) => {
+      await handleShareAction({
+        type,
+        message: shareMessage,
+        onComplete: closeBottomSheet,
       });
-    };
+    },
+    [closeBottomSheet, shareMessage],
+  );
 
+  const goHome = useCallback(() => {
+    navigation.replace('HomeStack', { screen: 'Home' });
+  }, [navigation]);
+
+  const viewAppointments = useCallback(() => {
+    navigation.navigate('Appointments');
+  }, [navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar
-        backgroundColor="#FFFFFF"
-        barStyle="dark-content"
-      />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor="#F4F8F6" barStyle="dark-content" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
-        {/* SUCCESS ICON */}
-
-        <View style={styles.successWrapper}>
-          <View style={styles.successCircle}>
-            <TablerIcon name="tick-icon" size={120} color={Colors.primaryColor} />
-          </View>
-        </View>
-
-        {/* TITLE */}
-
-        <Text style={styles.title}>
-          Booking Confirmed!
-        </Text>
-
-        <Text style={styles.subtitle}>
-          Your appointment with the specialist
-          has been successfully secured.
-        </Text>
-
-        {/* CARD */}
-
-        <View style={styles.card}>
-          {/* BADGE */}
-
-          <View style={styles.badgeWrapper}>
-            <Badge appointment_status={SlotsDetail?.appointment_status?.toUpperCase()} />
-          </View>
-
-          {/* DOCTOR INFO */}
-
-          <View style={styles.doctorRow}>
-            <Image
-              source={SlotsDetail?.doctor_image ? {
-                uri: SlotsDetail?.doctor_image
-              } : Images.doctorImage}
-              style={styles.avatar}
-            />
-
-            <View style={styles.doctorInfo}>
-              <Text
-                style={styles.doctorName}
-                numberOfLines={2}
-              >
-                {SlotsDetail?.info?.doctor_name}
-              </Text>
-
-              <Text
-                style={styles.speciality}
-                numberOfLines={1}
-              >
-                {SlotsDetail?.doctor_specialization?.join(', ')}
-              </Text>
+        {/* Success hero */}
+        <View style={styles.hero}>
+          <View style={styles.successRingOuter}>
+            <View style={styles.successRingInner}>
+              <TablerIcon name="check" size={36} color="#FFFFFF" />
             </View>
           </View>
 
-          {/* DETAILS */}
+          <Text style={styles.title}>Booking Confirmed</Text>
+          <Text style={styles.subtitle}>
+            Your consultation is secured. We’ve saved all appointment details
+            below.
+          </Text>
+
+          <Badge status={booking.status} />
+        </View>
+
+        {/* Schedule highlight */}
+        <View style={styles.scheduleCard}>
+          <Text style={styles.scheduleEyebrow}>APPOINTMENT SCHEDULE</Text>
+
+          <View style={styles.scheduleGrid}>
+            <View style={styles.scheduleCell}>
+              <View style={styles.scheduleIcon}>
+                <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
+              </View>
+              <Text style={styles.scheduleLabel}>Day</Text>
+              <Text style={styles.scheduleValue} numberOfLines={1}>
+                {booking.weekday || booking.dayLabel || '—'}
+              </Text>
+              {!!booking.dayLabel &&
+                booking.dayLabel !== booking.weekday &&
+                (booking.dayLabel === 'Today' ||
+                  booking.dayLabel === 'Tomorrow') && (
+                  <Text style={styles.scheduleHint}>{booking.dayLabel}</Text>
+                )}
+            </View>
+
+            <View style={styles.scheduleDivider} />
+
+            <View style={styles.scheduleCell}>
+              <View style={styles.scheduleIcon}>
+                <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
+              </View>
+              <Text style={styles.scheduleLabel}>Date</Text>
+              <Text style={styles.scheduleValue} numberOfLines={2}>
+                {booking.dateLabel || '—'}
+              </Text>
+            </View>
+
+            <View style={styles.scheduleDivider} />
+
+            <View style={styles.scheduleCell}>
+              <View style={styles.scheduleIcon}>
+                <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
+              </View>
+              <Text style={styles.scheduleLabel}>Time</Text>
+              <Text style={styles.scheduleValue} numberOfLines={2}>
+                {booking.timeRange || '—'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Doctor + details */}
+        <View style={styles.card}>
+          <View style={styles.doctorRow}>
+            <Image
+              source={
+                booking.doctorImage
+                  ? { uri: booking.doctorImage }
+                  : Images.doctorImage
+              }
+              style={styles.avatar}
+            />
+            <View style={styles.doctorInfo}>
+              <Text style={styles.doctorName} numberOfLines={2}>
+                {booking.doctorName}
+              </Text>
+              {!!booking.specialization && (
+                <Text style={styles.speciality} numberOfLines={2}>
+                  {booking.specialization}
+                </Text>
+              )}
+              {!!booking.hospitalName && (
+                <Text style={styles.hospitalText} numberOfLines={1}>
+                  {booking.hospitalName}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.detailsDivider} />
 
           <View style={styles.detailsContainer}>
             <DetailRow
               iconName="calendar"
-              label="DATE"
-              value={formatDate(SlotsDetail?.slot?.date)}
+              label="Full date"
+              value={
+                [booking.weekday, booking.dateLabel].filter(Boolean).join(', ')
+              }
             />
-
             <DetailRow
               iconName="clock"
-              label="TIME"
-              value={SlotsDetail?.slot?.slot_time}
+              label="Consultation time"
+              value={booking.timeRange}
             />
-
-            {SlotsDetail?.slot?.concern && (
+            <DetailRow
+              iconName="video"
+              label="Mode"
+              value={booking.consultationMode}
+            />
+            <DetailRow
+              iconName="user"
+              label="Patient"
+              value={booking.patientName}
+            />
+            <DetailRow
+              iconName="stethoscope"
+              label="Health concern"
+              value={booking.concern}
+            />
+            <DetailRow
+              iconName="building"
+              label="Clinic / Hospital"
+              value={booking.hospitalName}
+            />
+            <DetailRow
+              iconName="receipt"
+              label="Booking ID"
+              value={booking.bookingId}
+              last={!booking.amount}
+            />
+            {!!booking.amount && (
               <DetailRow
-                iconName="clock"
-                label="CONCERN"
-                value={SlotsDetail?.slot?.concern}
+                iconName="cash"
+                label="Amount paid"
+                value={
+                  String(booking.amount).startsWith('₹') ||
+                    String(booking.amount).startsWith('Rs')
+                    ? String(booking.amount)
+                    : `₹ ${booking.amount}`
+                }
+                last
               />
             )}
-
           </View>
         </View>
 
-        {/* ACTION BUTTONS */}
-
-        <View style={styles.actionRow}>
-          {/* <TouchableOpacity
-            onPress={() => navigation.navigate('AddCalendar')}
-            activeOpacity={0.8}
-            style={styles.secondaryBtn}
-          >
-            <TablerIcon name="calendar" size={20} color={Colors.primaryColor} />
-
-            <Text
-              style={styles.secondaryText}
-              numberOfLines={1}
-            >
-              Add to Calendar
-            </Text>
-          </TouchableOpacity> */}
+        <View style={styles.actionPair}>
 
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={openBottomSheet}
-            style={styles.secondaryBtn}
+            activeOpacity={0.85}
+            onPress={() =>
+              navigation.navigate('AddCalendar', {
+                appointment: {
+                  doctorName: booking.doctorName,
+                  doctorImage: booking.doctorImage,
+                  specialization: booking.specialization,
+                  date: booking.dateRaw,
+                  dateLabel: booking.dateLabel,
+                  weekday: booking.weekday,
+                  startTime: booking.timeLabel,
+                  endTime: booking.endTimeLabel,
+                  timeRange: booking.timeRange,
+                  concern: booking.concern,
+                  hospitalName: booking.hospitalName,
+                  bookingId: booking.bookingId,
+                  status: booking.status,
+                },
+              })
+            }
+            style={[styles.secondaryBtn, styles.actionHalf]}
           >
-            <TablerIcon name="share" size={14} color={Colors.primaryColor} />
+            <TablerIcon name="calendar" size={16} color={Colors.primaryColor} />
+            <Text style={styles.secondaryText}>Add to Calendar</Text>
+          </TouchableOpacity>
 
-            <Text
-              style={styles.secondaryText}
-              numberOfLines={1}
-            >
-              Share Details
-            </Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={openBottomSheet}
+            style={[styles.secondaryBtn, styles.actionHalf]}
+          >
+            <TablerIcon name="share" size={16} color={Colors.primaryColor} />
+            <Text style={styles.secondaryText}>Share</Text>
           </TouchableOpacity>
         </View>
-
-        {/* PRIMARY BUTTON */}
 
         <TouchableOpacity
           activeOpacity={0.9}
           style={styles.primaryBtn}
-          onPress={() =>
-            navigation.replace('HomeStack', { screen: 'Home' })
-
-          }
+          onPress={goHome}
         >
-          <Text style={styles.primaryText}>
-            Go to Home
-          </Text>
+          <Text style={styles.primaryText}>Go to Home</Text>
         </TouchableOpacity>
 
-        {/* LINK */}
-
-        {/* <TouchableOpacity activeOpacity={0.7}>
-          <Text style={styles.bottomText}>
-            View Appointment Details
-          </Text>
-        </TouchableOpacity> */}
+        <TouchableOpacity activeOpacity={0.75} onPress={viewAppointments}>
+          <Text style={styles.bottomText}>View my appointments</Text>
+        </TouchableOpacity>
       </ScrollView>
 
-
-      {
-        visible && (
-
-          <View
-            style={
-              styles.absoluteContainer
-            }
-          >
-
-            {/* OVERLAY */}
-
-            <Pressable
-              style={
-                StyleSheet.absoluteFill
-              }
-              onPress={
-                closeBottomSheet
-              }
-            >
-
-              <Animated.View
-                style={[
-                  styles.overlay,
-                  {
-                    opacity:
-                      overlayAnim,
-                  },
-                ]}
-              />
-
-            </Pressable>
-
-            {/* SHEET */}
-
+      {visible && (
+        <View style={styles.absoluteContainer}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeBottomSheet}>
             <Animated.View
-              style={[
-                styles.bottomSheet,
-                {
-                  transform: [
-                    {
-                      translateY:
-                        slideAnim,
-                    },
-                  ],
-                },
-              ]}
-            >
+              style={[styles.overlay, { opacity: overlayAnim }]}
+            />
+          </Pressable>
 
-              {/* HANDLE */}
+          <Animated.View
+            style={[
+              styles.bottomSheet,
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Share details</Text>
+            <Text style={styles.sheetSubtitle}>
+              Send this appointment summary to someone you trust.
+            </Text>
 
-              <View
-                style={styles.handle}
+            <View style={styles.shareCard}>
+              <Image
+                source={
+                  booking.doctorImage
+                    ? { uri: booking.doctorImage }
+                    : Images.doctorImage
+                }
+                style={styles.doctorImage}
               />
-
-              {/* TITLE */}
-
-              <Text
-                style={
-                  styles.sheetTitle
-                }
-              >
-                Share Details
-              </Text>
-
-              <Text
-                style={
-                  styles.sheetSubtitle
-                }
-              >
-                Share appointment
-                information with
-                your contacts.
-              </Text>
-
-              {/* CARD */}
-
-              <View
-                style={
-                  styles.shareCard
-                }
-              >
-
-                <Image
-                  source={
-                    SlotsDetail?.doctor_image
-                      ? {
-                        uri:
-                          SlotsDetail?.doctor_image,
-                      }
-                      : Images.doctorImage
-                  }
-                  style={
-                    styles.doctorImage
-                  }
-                />
-
-                <View
-                  style={{
-                    flex: 1,
-                  }}
-                >
-
-                  <Text
-                    style={
-                      styles.doctorName1
-                    }
-                  >
-                    {
-                      SlotsDetail?.info?.doctor_name
-                    }
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.speciality
-                    }
-                  >
-                    {
-                      SlotsDetail?.doctor_specialization?.join(
-                        ', ',
-                      )
-                    }
-                  </Text>
-
-                  <View
-                    style={
-                      styles.dateRow
-                    }
-                  >
-
-                    <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
-
-                    <Text
-                      style={
-                        styles.dateText
-                      }
-                    >
-                      {
-                        formatDate(
-                          SlotsDetail?.slot?.date,
-                        )
-                      }
-
-                      {' - '}
-
-                      {
-                        SlotsDetail?.slot?.slot_time
-                      }
-                    </Text>
-
-                  </View>
-
-                </View>
-
-              </View>
-
-              {/* OPTIONS */}
-
-              <View
-                style={
-                  styles.optionsRow
-                }
-              >
-
-                {
-                  shareOptions.map(
-                    item => {
-
-                      return (
-
-                        <TouchableOpacity
-                          key={
-                            item.id
-                          }
-                          activeOpacity={
-                            0.8
-                          }
-                          style={
-                            styles.optionWrapper
-                          }
-                          onPress={() =>
-                            onPressShareOption(
-                              item.type,
-                            )
-                          }
-                        >
-
-                          <View
-                            style={[
-                              styles.iconBox,
-                              {
-                                backgroundColor:
-                                  item.bg,
-                              },
-                            ]}
-                          >
-
-                            <TablerIcon
-                              name={item.iconName}
-                              size={22}
-                              color={item.Color}
-                            />
-
-                          </View>
-
-                          <Text
-                            style={
-                              styles.optionText
-                            }
-                          >
-                            {
-                              item.title
-                            }
-                          </Text>
-
-                        </TouchableOpacity>
-                      );
-                    },
-                  )
-                }
-
-              </View>
-
-              {/* CANCEL */}
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={
-                  styles.cancelBtn
-                }
-                onPress={
-                  closeBottomSheet
-                }
-              >
-
-                <Text
-                  style={
-                    styles.cancelText
-                  }
-                >
-                  Cancel
+              <View style={{ flex: 1 }}>
+                <Text style={styles.doctorName1} numberOfLines={1}>
+                  {booking.doctorName}
                 </Text>
+                {!!booking.specialization && (
+                  <Text style={styles.speciality} numberOfLines={1}>
+                    {booking.specialization}
+                  </Text>
+                )}
+                <View style={styles.dateRow}>
+                  <TablerIcon
+                    name="calendar"
+                    size={16}
+                    color={Colors.primaryColor}
+                  />
+                  <Text style={styles.dateText} numberOfLines={2}>
+                    {[booking.weekday, booking.dateLabel, booking.timeRange]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                </View>
+              </View>
+            </View>
 
-              </TouchableOpacity>
+            <View style={styles.optionsRow}>
+              {shareOptions.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.8}
+                  style={styles.optionWrapper}
+                  onPress={() => onPressShareOption(item.type)}
+                >
+                  <View
+                    style={[styles.iconBox, { backgroundColor: item.bg }]}
+                  >
+                    <TablerIcon
+                      name={item.iconName}
+                      size={22}
+                      color={item.color}
+                    />
+                  </View>
+                  <Text style={styles.optionText}>{item.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-            </Animated.View>
-
-          </View>
-        )
-      }
-      {/* <DoctorReviewModal
-        visible={showModal}
-        doctorName={SlotsDetail?.info?.doctor_name}
-        doctorSpeciality={
-          SlotsDetail?.doctor_specialization?.join(', ')
-        }
-        doctorImage={SlotsDetail?.doctor_image}
-        onClose={() => setShowModal(false)}
-        onSubmit={async data => {
-          submitDoctorReview(data)
-        }}
-      /> */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.cancelBtn}
+              onPress={closeBottomSheet}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
 
-export default BookingConfrimScreen;
+/** Prefer readable short ids when API sends nested ids. */
+function SlotDetailId(detail: any) {
+  return pickFirst(
+    detail?.booking_id,
+    detail?.booking_code,
+    detail?.order_code,
+    detail?.reference_code,
+  );
+}
 
-/* -------------------------------------------------------------------------- */
-/*                                   STYLES                                   */
-/* -------------------------------------------------------------------------- */
+export default BookingConfrimScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F4F8F6',
   },
-
   scrollContainer: {
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 40,
+    paddingTop: 12,
+    paddingBottom: 50,
   },
 
-  /* SUCCESS */
-
-  successWrapper: {
+  hero: {
     alignItems: 'center',
-    marginTop: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
-
-  successCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 48,
-
-    backgroundColor: '#FFFFFF',
-
+  successRingOuter: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  successRingInner: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: Colors.primaryColor,
     alignItems: 'center',
-
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowRadius: 8,
-
-    elevation: 4,
+    justifyContent: 'center',
   },
-
-  successIcon: {
-    width: 74,
-    height: 74,
-    resizeMode: 'contain',
-  },
-
-  /* TEXT */
-
   title: {
     marginTop: 18,
-
-    fontSize: 28,
-    lineHeight: 36,
-
+    fontSize: 26,
+    lineHeight: 34,
     textAlign: 'center',
-
     color: '#0F172A',
-
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
   subtitle: {
     marginTop: 8,
-
-    fontSize: 15,
-    lineHeight: 24,
-
+    marginBottom: 14,
+    fontSize: 14,
+    lineHeight: 22,
     textAlign: 'center',
-
     color: '#64748B',
-
-    fontFamily: Fonts.PoppinsMedium,
-
-    paddingHorizontal: 10,
-  },
-
-  /* CARD */
-
-  card: {
-    marginTop: 28,
-
-    backgroundColor: '#FFFFFF',
-
-    borderRadius: 28,
-
-    padding: 18,
-
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-
-
-  },
-
-  badgeWrapper: {
-    alignItems: 'flex-end',
-    marginBottom: 10,
+    fontFamily: Fonts.PoppinsRegular,
+    paddingHorizontal: 12,
   },
 
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    gap: 6,
   },
-
+  badgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
   badgeText: {
-    fontSize: 10,
-
-    textTransform: 'uppercase',
-
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
-  /* DOCTOR */
+  scheduleCard: {
+    marginTop: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DCE8E3',
+  },
+  scheduleEyebrow: {
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 14,
+  },
+  scheduleGrid: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  scheduleCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  scheduleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#E8F5F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  scheduleLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 4,
+  },
+  scheduleValue: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  scheduleHint: {
+    marginTop: 4,
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  scheduleDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: '#D7E3DE',
+    marginVertical: 4,
+  },
 
+  card: {
+    marginTop: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
   doctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   avatar: {
-    width: width * 0.2,
-    height: width * 0.2,
-
-    minWidth: 72,
-    minHeight: 72,
-
-    maxWidth: 84,
-    maxHeight: 84,
-
+    width: Math.min(width * 0.18, 72),
+    height: Math.min(width * 0.18, 72),
     borderRadius: 18,
-
     marginRight: 14,
+    backgroundColor: '#E2E8F0',
+  },
+  doctorInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  doctorName: {
+    fontSize: 18,
+    lineHeight: 26,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  speciality: {
+    marginTop: 2,
+    fontSize: 12,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  hospitalText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  detailsDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 16,
+  },
+  detailsContainer: {
+    gap: 0,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  detailRowLast: {
+    marginBottom: 0,
+  },
+  iconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#E8F5F1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  detailContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 1,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginBottom: 2,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  detailValue: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsMedium,
   },
 
+  actionPair: {
+    marginTop: 18,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionHalf: {
+    flex: 1,
+    marginTop: 0,
+  },
+  secondaryBtn: {
+    marginTop: 18,
+    minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#0D614E33',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+  },
+  secondaryText: {
+    fontSize: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  primaryBtn: {
+    marginTop: 12,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: Colors.primaryColor,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  bottomText: {
+    marginTop: 16,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
 
   absoluteContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
   },
-
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
   },
-
-  /* BOTTOM SHEET */
-
   bottomSheet: {
     backgroundColor: '#FFFFFF',
-
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 25,
-
-    minHeight: height / 2,
+    paddingBottom: 28,
+    minHeight: height / 2.1,
   },
-
   handle: {
-    width: 46,
+    width: 42,
     height: 5,
-
     borderRadius: 20,
-
     backgroundColor: '#D1D5DB',
-
     alignSelf: 'center',
-
-    marginBottom: 20,
+    marginBottom: 18,
   },
-
   sheetTitle: {
-    fontSize: 28,
-    marginTop: 8,
-    color: '#1E293B',
+    fontSize: 22,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
   sheetSubtitle: {
-    fontSize: 14,
+    marginTop: 4,
+    fontSize: 13,
     lineHeight: 20,
     color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsRegular,
   },
-
-  /* CARD */
-
-  // card: {
-  //   marginTop: 22,
-
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-
-  //   backgroundColor: '#EEF4F1',
-
-  //   borderRadius: 18,
-
-  //   padding: 14,
-
-  //   borderWidth: 1,
-  //   borderColor: '#DCE5E1',
-  // },
-
-
   shareCard: {
-    marginTop: 22,
+    marginTop: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D614E1A',
+    backgroundColor: '#E8F5F1',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#0D614E33',
+    borderColor: '#0D614E22',
   },
   doctorImage: {
     width: 54,
     height: 54,
-
     borderRadius: 14,
-
     marginRight: 12,
   },
-
-
-
-  speciality: {
-    marginTop: 2,
-
-    fontSize: 11,
-
-    color: Colors.primaryColor,
-
+  doctorName1: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
   },
-
-  dateIcon: {
-    width: 14,
-    height: 14,
-
-    resizeMode: 'contain',
-
-    tintColor: '#64748B',
-
-    marginRight: 6,
-  },
-
   dateText: {
-    fontSize: 12,
     flex: 1,
-
-    color: '#64748B',
-
+    fontSize: 12,
+    color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
   },
-
-  /* OPTIONS */
-
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-
-    marginTop: 28,
-  },
-
-  optionWrapper: {
-    width: '20%',
-
-    alignItems: 'center',
-
-    marginBottom: 18,
-  },
-
-  iconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  optionIcon: {
-    width: 24,
-    height: 24,
-
-    resizeMode: 'contain',
-  },
-
-  optionText: {
-    marginTop: 10,
-
-    fontSize: 12,
-
-    color: '#475569',
-
-    textAlign: 'center',
-
-    flexShrink: 1,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  /* CANCEL */
-
-  cancelBtn: {
-    marginTop: 12,
-
-    height: 56,
-
-    borderRadius: 18,
-
-    backgroundColor: '#F1F5F9',
-
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  cancelText: {
-    fontSize: 16,
-
-    color: '#374151',
-
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  doctorInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  doctorName: {
-    fontSize: 20,
-    lineHeight: 28,
-
-    color: '#1E293B',
-
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-
-  doctorName1: {
-    fontSize: 18,
-    lineHeight: 24,
-
-    color: '#1E293B',
-
-    fontFamily: Fonts.PoppinsSemiBold,
-
-    flexShrink: 1,
-  },
-
-
-  /* DETAILS */
-
-  detailsContainer: {
-    marginTop: 18,
-  },
-
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-
-    marginBottom: 16,
-  },
-
-  iconWrapper: {
-    width: 46,
-    height: 46,
-
-    borderRadius: 14,
-
-    backgroundColor: Colors.bgcolor,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    marginRight: 12,
-  },
-
-  detailIcon: {
-    width: 22,
-    height: 22,
-    resizeMode: 'contain',
-  },
-
-  detailContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  detailLabel: {
-    fontSize: 12,
-
-    color: '#94A3B8',
-
-    marginBottom: 2,
-
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  detailValue: {
-    fontSize: 14,
-    lineHeight: 22,
-
-    color: '#0F172A',
-
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  /* ACTIONS */
-
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-
-    marginTop: 22,
-  },
-
-  secondaryBtn: {
-    flex: 1,
-gap : 5,
-    minHeight: 52,
-
-    borderRadius: 16,
-
-    borderWidth: 1,
-    borderColor: '#0D614E33',
-
-    backgroundColor: '#FFFFFF',
-
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-  },
-
-  secondaryIcon: {
-    width: 18,
-    height: 18,
-
-    resizeMode: 'contain',
-
-    tintColor: Colors.primaryColor,
-
-    marginRight: 8,
-  },
-
-  shareIcon: {
-    width: 14,
-    height: 14,
-
-    resizeMode: 'contain',
-
-    marginRight: 8,
-  },
-
-  secondaryText: {
-    flexShrink: 1,
-
-    fontSize: 13,
-
-    color: Colors.primaryColor,
-
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  /* PRIMARY */
-
-  primaryBtn: {
     marginTop: 24,
-
+  },
+  optionWrapper: {
+    width: '22%',
+    alignItems: 'center',
+  },
+  iconBox: {
+    width: 56,
     height: 56,
-
-    borderRadius: 18,
-
-    backgroundColor: Colors.primaryColor,
-
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  primaryText: {
-    fontSize: 16,
-
-    color: '#FFFFFF',
-
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  /* BOTTOM */
-
-  bottomText: {
-    marginTop: 18,
-
+  optionText: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#475569',
     textAlign: 'center',
-
-    fontSize: 14,
-
-    color: '#94A3B8',
-
     fontFamily: Fonts.PoppinsMedium,
+  },
+  cancelBtn: {
+    marginTop: 18,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 15,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

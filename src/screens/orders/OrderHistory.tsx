@@ -19,12 +19,22 @@ import { matchesSearch } from '../../utils/searchUtils';
 import { useOrders } from '../../hooks/useOrders';
 import { formatOrderStatus } from '../../utils/orderUtils';
 import { Fonts } from '../../common/Fonts';
+import { OrderHistorySkeleton } from '../../simmerScreen/ShimmerHook';
 
 const OrderHistory = (props: any) => {
   const [searchText, setSearchText] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const debouncedSearch = useDebounce(searchText, 400);
-  const { orderListItems, loading, refreshing, error, refresh } = useOrders();
+  const {
+    orderListItems,
+    loading,
+    loadingMore,
+    refreshing,
+    error,
+    hasMore,
+    refresh,
+    loadMore,
+  } = useOrders();
 
   const filteredOrders = useMemo(() => {
     const q = debouncedSearch.trim();
@@ -43,6 +53,8 @@ const OrderHistory = (props: any) => {
       ),
     );
   }, [debouncedSearch, orderListItems]);
+
+  const searching = debouncedSearch.trim().length > 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -68,9 +80,7 @@ const OrderHistory = (props: any) => {
       />
 
       {loading && orderListItems.length === 0 ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={Colors.primaryColor} />
-        </View>
+        <OrderHistorySkeleton />
       ) : (
         <FlatList
           data={filteredOrders}
@@ -79,7 +89,7 @@ const OrderHistory = (props: any) => {
             <OrderCard
               title={item.title}
               id={item.orderCode}
-              status={formatOrderStatus(item.status)}
+              status={item.status}
               date={item.date}
               amount={item.amount}
               image={item.image}
@@ -102,6 +112,19 @@ const OrderHistory = (props: any) => {
               onRefresh={refresh}
               colors={[Colors.primaryColor]}
             />
+          }
+          onEndReached={() => {
+            if (!searching) {
+              loadMore();
+            }
+          }}
+          onEndReachedThreshold={0.35}
+          ListFooterComponent={
+            loadingMore && hasMore && !searching ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={Colors.primaryColor} />
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             !loading ? (
@@ -141,9 +164,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
   },
-  centerState: {
-    flex: 1,
-    justifyContent: 'center',
+  footerLoader: {
+    paddingVertical: 16,
     alignItems: 'center',
   },
   errorText: {

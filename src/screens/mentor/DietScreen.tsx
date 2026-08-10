@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import SectionHeader from '../../components/SectionHeader';
@@ -18,15 +19,22 @@ import Header from '../../components/Header';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import MealCard from '../../components/MealCard';
+import Detailimages from '../../components/Detailimages';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDietPlans } from '../../hooks/useDietPlans';
 import TablerIcon from '../../components/TablerIcon';
-import { resolveDietImage } from '../../utils/dietPlanUtils';
+import {
+  getDietListStatus,
+  getDietPlanGallery,
+  resolveDietImage,
+} from '../../utils/dietPlanUtils';
 import {
   DietActiveSkeleton,
   DietDetailSkeleton,
   DietListSkeleton,
 } from '../../simmerScreen/ShimmerHook';
+import CommonModal from '../../components/LogoutModal';
+import LinearGradient from 'react-native-linear-gradient';
 
 const MACRO_COLORS = {
   Carbs: '#1FA77A',
@@ -41,9 +49,28 @@ const litersLabel = (ml: number) => `${((Number(ml) || 0) / 1000).toFixed(1)}L`;
 
 const DietScreen = (props: any) => {
   const routeItem = props?.route?.params?.item;
-  const initialPlanId = routeItem?.id ? String(routeItem.id) : null;
-  /** View-all / search → type=all; home default list still uses no type elsewhere */
-  const listType = 'all' as const;
+  const routeWantsAll =
+    props?.route?.params?.listType === 'all' ||
+    props?.route?.params?.viewAll === true;
+  // Prefer catalog diet_plan_id; never open detail with patient assignment id
+  const initialPlanId = (() => {
+    const catalog =
+      routeItem?.diet_plan_id ||
+      (routeItem?.id &&
+      routeItem?.id !== routeItem?.patient_diet_plan_id
+        ? routeItem.id
+        : null) ||
+      routeItem?.id;
+    return catalog ? String(catalog) : null;
+  })();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [prakritiFilter, setPrakritiFilter] = useState<string>('all');
+  /**
+   * GET /patients/diet-plans/ — suggested (common + doctor-suggested)
+   * GET ?type=all — View all / search catalog
+   */
+  const listType =
+    routeWantsAll || searchQuery.trim() ? ('all' as const) : null;
 
   const {
     plans,
@@ -73,9 +100,63 @@ const DietScreen = (props: any) => {
     adjustWater,
     switchPlan,
     updateStatus,
+    completePlan,
+    prepareResume,
+    prepareStart,
+    pauseActiveAndResume,
+    pauseActiveAndStart,
     updatingStatus,
     patientDietPlanId,
+    activePlan,
+    isPlanFullyComplete,
+    listStatus,
+    loadingMore,
+    hasMore,
+    loadMore,
   } = useDietPlans({ initialPlanId, listType });
+
+  const [switchModalVisible, setSwitchModalVisible] = useState(false);
+  const [congratsVisible, setCongratsVisible] = useState(false);
+  const [switchConflict, setSwitchConflict] = useState<{
+    mode: 'resume' | 'start';
+    activeName: string;
+    activeId: string;
+    targetId: string;
+  } | null>(null);
+
+  const prakritiOptions = useMemo(() => {
+    const set = new Set<string>();
+    plans.forEach(p => {
+      const value = String(p?.prakriti || '').trim();
+      if (value) set.add(value);
+    });
+    return ['all', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [plans]);
+
+  const filteredPlans = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return plans.filter(plan => {
+      const prakriti = String(plan?.prakriti || '').trim().toLowerCase();
+      if (prakritiFilter !== 'all' && prakriti !== prakritiFilter.toLowerCase()) {
+        return false;
+      }
+      if (!q) return true;
+      const haystack = [
+        plan?.name,
+        plan?.title,
+        plan?.prakriti,
+        plan?.season,
+        plan?.short_description,
+        ...(Array.isArray(plan?.health_diseases)
+          ? plan.health_diseases.map((d: any) => d?.name)
+          : []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [plans, searchQuery, prakritiFilter]);
 
   // Soft refresh on focus — keep selected day (handled in hook)
   const refreshRef = useRef(refresh);
@@ -88,12 +169,75 @@ const DietScreen = (props: any) => {
     }, [selectedPlanId, isStarted]),
   );
 
+  // Prefer list status so a stale detail payload can't hide Resume for paused plans
   const assignmentStatus = String(
-    planDetail?.patient_assignment_status ||
     selectedSummary?.patient_assignment_status ||
+    planDetail?.patient_assignment_status ||
     '',
   ).toLowerCase();
-  const isPaused = assignmentStatus.includes('pause');
+  const isPaused = listStatus === 'paused' || assignmentStatus.includes('pause');
+  const isCompletedPlan =
+    listStatus === 'completed' || assignmentStatus.includes('complete');
+
+  const onResumePress = useCallback(async () => {
+    const prep = prepareResume();
+    if (!prep.canResume) {
+      return;
+    }
+    if (prep.needsConfirm && prep.activePlan?.patient_diet_plan_id) {
+      setSwitchConflict({
+        mode: 'resume',
+        activeName: prep.activePlan.name || 'your active plan',
+        activeId: String(prep.activePlan.patient_diet_plan_id),
+        targetId: prep.resumeId,
+      });
+      setSwitchModalVisible(true);
+      return;
+    }
+    await updateStatus('resume');
+  }, [prepareResume, updateStatus]);
+
+  const onStartPress = useCallback(async () => {
+    const prep = prepareStart();
+    if (!prep.canStart) {
+      return;
+    }
+    if (prep.needsConfirm && prep.activePlan?.patient_diet_plan_id) {
+      setSwitchConflict({
+        mode: 'start',
+        activeName: prep.activePlan.name || 'your active plan',
+        activeId: String(prep.activePlan.patient_diet_plan_id),
+        targetId: prep.startPlanId,
+      });
+      setSwitchModalVisible(true);
+      return;
+    }
+    const catalogId = String(
+      selectedPlanId ||
+        planDetail?.diet_plan_id ||
+        planDetail?.id ||
+        '',
+    );
+    await startPlan(catalogId);
+  }, [prepareStart, startPlan, selectedPlanId, planDetail]);
+
+  const onConfirmSwitchPlan = useCallback(async () => {
+    if (!switchConflict) return;
+    const ok =
+      switchConflict.mode === 'resume'
+        ? await pauseActiveAndResume(
+          switchConflict.activeId,
+          switchConflict.targetId,
+        )
+        : await pauseActiveAndStart(
+          switchConflict.activeId,
+          switchConflict.targetId,
+        );
+    if (ok) {
+      setSwitchModalVisible(false);
+      setSwitchConflict(null);
+    }
+  }, [switchConflict, pauseActiveAndResume, pauseActiveAndStart]);
 
   const onSwitchPlan = () => {
     Alert.alert(
@@ -114,6 +258,13 @@ const DietScreen = (props: any) => {
       ],
     );
   };
+
+  const onCompletePlan = useCallback(async () => {
+    const ok = await completePlan();
+    if (ok) {
+      setCongratsVisible(true);
+    }
+  }, [completePlan]);
 
   const todayLabel = useMemo(
     () =>
@@ -255,35 +406,65 @@ const DietScreen = (props: any) => {
     const diseases =
       item.health_diseases?.map((d: any) => d.name).filter(Boolean).join(', ') ||
       '';
-    const price =
-      item.is_paid === false || Number(item.price) === 0
-        ? 'Free'
-        : `₹${item.price}`;
-    const active = String(item.patient_assignment_status || '').toLowerCase() === 'active';
+    const isFree = item.is_paid === false || Number(item.price) === 0;
+    const cardStatus = getDietListStatus(item);
 
     return (
       <TouchableOpacity
-        style={styles.planCard}
-        activeOpacity={0.85}
+        style={[styles.planCard, isFree ? styles.planCardFree : styles.planCardPaid]}
+        activeOpacity={0.88}
         onPress={() => selectPlan(item.id)}
       >
-        <Image source={resolveDietImage(item)} style={styles.planThumb} />
+        <View style={styles.planThumbWrap}>
+          <Image source={resolveDietImage(item)} style={styles.planThumb} />
+          {!isFree && (
+            <LinearGradient
+              colors={['#C9A227', '#E8C77B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.planPremiumBadge}
+            >
+              <TablerIcon name="star" size={10} color="#5E4200" />
+              <Text style={styles.planPremiumBadgeText}>PRO</Text>
+            </LinearGradient>
+          )}
+        </View>
+
         <View style={styles.planBody}>
           <View style={styles.planTitleRow}>
             <Text style={styles.planTitle} numberOfLines={2}>
               {item.name}
             </Text>
-            {active && (
+            {cardStatus === 'active' ? (
               <View style={styles.activePill}>
+                <View style={styles.activePillDot} />
                 <Text style={styles.activePillText}>Active</Text>
+              </View>
+            ) : cardStatus === 'paused' ? (
+              <View style={styles.resumePill}>
+                <Text style={styles.resumePillText}>Resume</Text>
+              </View>
+            ) : cardStatus === 'completed' ? (
+              <View style={styles.completedPill}>
+                <Text style={styles.completedPillText}>Completed</Text>
+              </View>
+            ) : cardStatus === 'stopped' ? (
+              <View style={styles.stoppedPill}>
+                <Text style={styles.stoppedPillText}>Stopped</Text>
+              </View>
+            ) : (
+              <View style={styles.notStartedPill}>
+                <Text style={styles.notStartedPillText}>Not started</Text>
               </View>
             )}
           </View>
+
           {!!diseases && (
             <Text style={styles.planMeta} numberOfLines={1}>
               {diseases}
             </Text>
           )}
+
           <View style={styles.planTags}>
             {!!item.prakriti && (
               <View style={styles.tag}>
@@ -295,12 +476,21 @@ const DietScreen = (props: any) => {
                 <Text style={styles.tagText}>{item.season}</Text>
               </View>
             )}
-            <View style={[styles.tag, styles.priceTag]}>
-              <Text style={[styles.tagText, styles.priceTagText]}>{price}</Text>
+            <View style={[styles.tag, isFree ? styles.freeTag : styles.paidTag]}>
+              <Text style={[styles.tagText, isFree ? styles.freeTagText : styles.paidTagText]}>
+                {isFree ? 'Free plan' : `₹${item.price}`}
+              </Text>
             </View>
           </View>
         </View>
-        <TablerIcon name="chevron-right" size={18} color="#94A3B8" />
+
+        <View style={[styles.planChevron, isFree ? styles.planChevronFree : styles.planChevronPaid]}>
+          <TablerIcon
+            name="chevron-right"
+            size={16}
+            color={isFree ? Colors.primaryColor : '#8B6914'}
+          />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -312,19 +502,96 @@ const DietScreen = (props: any) => {
         <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
         <Header
           title="Diet Plans"
-          subtitle="Personalized nutrition plans"
+          subtitle={
+            listType === 'all'
+              ? 'All diet plans'
+              : 'Suggested for you'
+          }
           onBack={() => props.navigation.goBack()}
         />
+
+        <View style={styles.searchWrap}>
+          <View style={styles.searchBox}>
+            <TablerIcon name="search" size={18} color="#94A3B8" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search diet plans..."
+              placeholderTextColor="#94A3B8"
+              style={styles.searchInput}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
+                <TablerIcon name="x" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.prakritiRow}
+          >
+            {prakritiOptions.map(option => {
+              const selected = prakritiFilter === option;
+              const label = option === 'all' ? 'All Prakriti' : option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.prakritiChip,
+                    selected && styles.prakritiChipActive,
+                  ]}
+                  onPress={() => setPrakritiFilter(option)}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.prakritiChipText,
+                      selected && styles.prakritiChipTextActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {loadingList ? (
           <DietListSkeleton />
         ) : (
           <FlatList
-            data={plans}
+            data={filteredPlans}
             keyExtractor={(item, index) => item.id || String(index)}
             renderItem={renderPlanCard}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onEndReached={() => {
+              if (hasMore && !loadingMore && !loadingList) {
+                loadMore();
+              }
+            }}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.listFooter}>
+                  <ActivityIndicator color={Colors.primaryColor} />
+                  <Text style={styles.listFooterText}>
+                    {listType === 'all'
+                      ? 'Loading all diet plans…'
+                      : 'Loading more…'}
+                  </Text>
+                </View>
+              ) : !hasMore && filteredPlans.length > 0 ? (
+                <Text style={styles.listEndText}>
+                  All diet plans loaded ({filteredPlans.length})
+                </Text>
+              ) : null
+            }
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -336,7 +603,11 @@ const DietScreen = (props: any) => {
               <View style={styles.empty}>
                 <Text style={styles.emptyTitle}>No diet plans</Text>
                 <Text style={styles.emptySub}>
-                  Plans suggested for you will appear here.
+                  {searchQuery || prakritiFilter !== 'all'
+                    ? 'Try another search or prakriti filter.'
+                    : listType === 'all'
+                      ? 'No diet plans in the catalog yet.'
+                      : 'Plans suggested for you will appear here.'}
                 </Text>
               </View>
             }
@@ -346,7 +617,7 @@ const DietScreen = (props: any) => {
     );
   }
 
-  // —— DETAIL (not started) ——
+  // —— DETAIL (not started / paused / completed) ——
   if (!isStarted) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -378,10 +649,28 @@ const DietScreen = (props: any) => {
             }
           >
             <View style={styles.detailHeroWrap}>
-              <Image
-                source={resolveDietImage(planDetail || selectedSummary)}
-                style={styles.detailImage}
-              />
+              {(() => {
+                const gallery = getDietPlanGallery(
+                  planDetail || selectedSummary,
+                );
+                if (gallery.length > 0) {
+                  return (
+                    <Detailimages
+                      images={gallery}
+                      itemHeight={200}
+                      DynamicResize="cover"
+                      mode="product"
+                      enablePreview
+                    />
+                  );
+                }
+                return (
+                  <Image
+                    source={resolveDietImage(planDetail || selectedSummary)}
+                    style={styles.detailImage}
+                  />
+                );
+              })()}
             </View>
 
             <View style={styles.detailCard}>
@@ -433,10 +722,26 @@ const DietScreen = (props: any) => {
               </View>
             </View>
 
-            {isPaused && patientDietPlanId ? (
+            {isCompletedPlan ? (
+              <View style={styles.congratsCard}>
+                <Text style={styles.congratsEmoji}>🎉</Text>
+                <Text style={styles.congratsTitle}>Congratulations!</Text>
+                <Text style={styles.congratsSub}>
+                  You completed "{selectedSummary?.name || planDetail?.name}".
+                  Keep up the healthy habits.
+                </Text>
+                <TouchableOpacity
+                  style={styles.startBtn}
+                  onPress={clearSelection}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.startBtnText}>Browse other plans</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isPaused && patientDietPlanId ? (
               <TouchableOpacity
                 style={styles.startBtn}
-                onPress={() => updateStatus('resume')}
+                onPress={onResumePress}
                 disabled={updatingStatus}
                 activeOpacity={0.9}
               >
@@ -449,24 +754,77 @@ const DietScreen = (props: any) => {
             ) : (
               <TouchableOpacity
                 style={styles.startBtn}
-                onPress={() => startPlan(selectedPlanId)}
-                disabled={starting}
+                onPress={onStartPress}
+                disabled={starting || updatingStatus}
                 activeOpacity={0.9}
               >
-                {starting ? (
+                {starting || updatingStatus ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={styles.startBtnText}>Start plan</Text>
                 )}
               </TouchableOpacity>
             )}
-            <Text style={styles.startHint}>
-              {isPaused
-                ? 'This plan is paused. Resume to continue tracking meals.'
-                : 'After starting, you’ll track today’s meals and nutrition from this plan.'}
-            </Text>
+            {!isCompletedPlan ? (
+              <Text style={styles.startHint}>
+                {isPaused
+                  ? activePlan &&
+                    String(activePlan.patient_diet_plan_id) !==
+                      String(patientDietPlanId)
+                    ? `"${activePlan.name}" is active. Resume will ask which plan to pause first.`
+                    : 'This plan is paused. Resume to continue tracking meals.'
+                  : activePlan && String(activePlan.id) !== String(selectedPlanId)
+                    ? `"${activePlan.name}" is active. Start will ask to pause it first.`
+                    : 'After starting, you’ll track today’s meals and nutrition from this plan.'}
+              </Text>
+            ) : null}
           </ScrollView>
         )}
+
+        <CommonModal
+          visible={switchModalVisible}
+          icon="⏸️"
+          title={
+            switchConflict?.mode === 'resume'
+              ? 'Pause active plan to resume?'
+              : 'Pause active plan to start?'
+          }
+          subtitle={
+            switchConflict
+              ? switchConflict.mode === 'resume'
+                ? `"${switchConflict.activeName}" is currently active. Pause it to resume this plan? Only one diet can be active.`
+                : `"${switchConflict.activeName}" is currently active. Pause it to start this new plan? Only one diet can be active.`
+              : 'Only one diet can be active at a time.'
+          }
+          cancelText="Keep current"
+          confirmText={
+            switchConflict?.mode === 'start' ? 'Pause & start' : 'Pause & resume'
+          }
+          loading={updatingStatus || starting}
+          onClose={() => {
+            if (updatingStatus || starting) return;
+            setSwitchModalVisible(false);
+            setSwitchConflict(null);
+          }}
+          onConfirm={onConfirmSwitchPlan}
+        />
+
+        <CommonModal
+          visible={congratsVisible}
+          icon="🎉"
+          title="Congratulations!"
+          subtitle={`You completed "${
+            selectedSummary?.name || planDetail?.name || 'this diet plan'
+          }". Keep building healthy habits.`}
+          cancelText="Stay here"
+          confirmText="Browse plans"
+          loading={false}
+          onClose={() => setCongratsVisible(false)}
+          onConfirm={() => {
+            setCongratsVisible(false);
+            clearSelection();
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -548,21 +906,24 @@ const DietScreen = (props: any) => {
                   activeOpacity={0.85}
                   onPress={selectAllDays}
                 >
-                  <Text
-                    style={[
-                      styles.dayChipLabel,
-                      showAllDays && styles.dayChipLabelSelected,
-                    ]}
-                  >
-                    All
-                  </Text>
+                  <View style={styles.dayChipTop}>
+                    <Text
+                      style={[
+                        styles.dayChipLabel,
+                        showAllDays && styles.dayChipLabelSelected,
+                      ]}
+                    >
+                      All
+                    </Text>
+                    {showAllDays ? <View style={styles.dayChipDot} /> : null}
+                  </View>
                   <Text
                     style={[
                       styles.dayChipMeta,
                       showAllDays && styles.dayChipMetaSelected,
                     ]}
                   >
-                    {planDays.length || mealsByDay.length} days
+                    {planDays.length || mealsByDay.length}d
                   </Text>
                   <View style={styles.dayChipTrack}>
                     <View
@@ -584,6 +945,9 @@ const DietScreen = (props: any) => {
                     !showAllDays &&
                     item.dayKey.toLowerCase() ===
                     String(currentDayKey || '').toLowerCase();
+                  const shortLabel = String(item.label || '')
+                    .replace(/day\s*/i, 'D')
+                    .trim();
                   return (
                     <TouchableOpacity
                       key={item.dayKey}
@@ -595,14 +959,34 @@ const DietScreen = (props: any) => {
                       activeOpacity={0.85}
                       onPress={() => selectDay(item.dayKey)}
                     >
-                      <Text
-                        style={[
-                          styles.dayChipLabel,
-                          selected && styles.dayChipLabelSelected,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
+                      <View style={styles.dayChipTop}>
+                        <Text
+                          style={[
+                            styles.dayChipLabel,
+                            selected && styles.dayChipLabelSelected,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {shortLabel}
+                        </Text>
+                        {item.isToday ? (
+                          <View
+                            style={[
+                              styles.dayChipTodayPill,
+                              selected && styles.dayChipTodayPillOn,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.dayChipTodayText,
+                                selected && styles.dayChipTodayTextOn,
+                              ]}
+                            >
+                              Now
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
                       <Text
                         style={[
                           styles.dayChipMeta,
@@ -709,8 +1093,50 @@ const DietScreen = (props: any) => {
               />
             ))
           )}
+
+          {isPlanFullyComplete ? (
+            <View style={styles.completeBanner}>
+              <Text style={styles.completeBannerEmoji}>🏆</Text>
+              <Text style={styles.completeBannerTitle}>
+                All meals tracked — amazing!
+              </Text>
+              <Text style={styles.completeBannerSub}>
+                You’ve finished every meal in this plan. Complete it to save your
+                achievement.
+              </Text>
+              <TouchableOpacity
+                style={styles.startBtn}
+                onPress={onCompletePlan}
+                disabled={updatingStatus}
+                activeOpacity={0.9}
+              >
+                {updatingStatus ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.startBtnText}>Complete diet plan</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </ScrollView>
       )}
+
+      <CommonModal
+        visible={congratsVisible}
+        icon="🎉"
+        title="Congratulations!"
+        subtitle={`You completed "${
+          selectedSummary?.name || planDetail?.name || 'this diet plan'
+        }". Keep building healthy habits.`}
+        cancelText="Stay here"
+        confirmText="Browse plans"
+        loading={false}
+        onClose={() => setCongratsVisible(false)}
+        onConfirm={() => {
+          setCongratsVisible(false);
+          clearSelection();
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -729,25 +1155,110 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 40,
     paddingTop: 8,
-    gap: 12,
+    gap: 14,
+  },
+
+  searchWrap: {
+    marginTop: 4,
+    marginBottom: 8,
+    gap: 10,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 46,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsMedium,
+    paddingVertical: 0,
+  },
+  prakritiRow: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  prakritiChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  prakritiChipActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: Colors.primaryColor,
+  },
+  prakritiChipText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  prakritiChipTextActive: {
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   planCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E8EEF2',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1.5,
+    shadowColor: '#0B3D32',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+
+  planCardFree: {
+    backgroundColor: '#F7FBFA',
+    borderColor: '#C6E7DF',
+  },
+
+  planCardPaid: {
+    backgroundColor: '#FFFCF5',
+    borderColor: '#E8D5A3',
+  },
+
+  planThumbWrap: {
+    marginRight: 12,
+    position: 'relative',
   },
 
   planThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 72,
+    height: 72,
+    borderRadius: 16,
     backgroundColor: Colors.cardBackground,
-    marginRight: 12,
+  },
+
+  planPremiumBadge: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+
+  planPremiumBadgeText: {
+    fontSize: 9,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#5E4200',
+    letterSpacing: 0.4,
   },
 
   planBody: { flex: 1 },
@@ -760,16 +1271,27 @@ const styles = StyleSheet.create({
 
   planTitle: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 21,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#1E293B',
+    color: '#14231F',
   },
 
   activePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: '#E6F4F0',
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
+  },
+
+  activePillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primaryColor,
   },
 
   activePillText: {
@@ -778,18 +1300,149 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
   },
 
+  listFooter: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  listFooterText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  listEndText: {
+    textAlign: 'center',
+    paddingVertical: 14,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  completedPill: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  completedPillText: {
+    fontSize: 10,
+    color: '#4338CA',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  stoppedPill: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  stoppedPillText: {
+    fontSize: 10,
+    color: '#B91C1C',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  notStartedPill: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  notStartedPillText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  congratsCard: {
+    marginTop: 8,
+    marginHorizontal: 4,
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    alignItems: 'center',
+  },
+  congratsEmoji: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  congratsTitle: {
+    fontSize: 18,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#065F46',
+    marginBottom: 6,
+  },
+  congratsSub: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#047857',
+    textAlign: 'center',
+    marginBottom: 14,
+    lineHeight: 20,
+  },
+  completeBanner: {
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    alignItems: 'center',
+  },
+  completeBannerEmoji: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  completeBannerTitle: {
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#92400E',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  completeBannerSub: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#B45309',
+    marginBottom: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  resumePill: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  resumePillText: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#4338CA',
+  },
+  pausedPill: {
+    backgroundColor: '#FFF4E5',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+
+  pausedPillText: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#B45309',
+  },
+
   planMeta: {
     fontSize: 12,
     fontFamily: Fonts.PoppinsRegular,
-    color: '#64748B',
-    marginTop: 2,
+    color: '#6B7C76',
+    marginTop: 3,
   },
 
   planTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 8,
+    marginTop: 10,
   },
 
   tag: {
@@ -806,14 +1459,44 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
 
-  priceTag: { backgroundColor: '#E6F4F0' },
-  priceTagText: { color: Colors.primaryColor },
+  freeTag: {
+    backgroundColor: '#E6F4F0',
+  },
+
+  freeTagText: {
+    color: Colors.primaryColor,
+  },
+
+  paidTag: {
+    backgroundColor: '#F8EBC4',
+  },
+
+  paidTagText: {
+    color: '#8B6914',
+  },
+
+  planChevron: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+  },
+
+  planChevronFree: {
+    backgroundColor: '#E8F3EF',
+  },
+
+  planChevronPaid: {
+    backgroundColor: '#F8EBC4',
+  },
 
   detailHeroWrap: {
     marginTop: 8,
     borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: Colors.cardBackground,
+    // backgroundColor: Colors.cardBackground,
   },
 
   detailImage: {
@@ -914,63 +1597,106 @@ const styles = StyleSheet.create({
   },
 
   dayChipRow: {
-    gap: 10,
-    paddingRight: 8,
-    paddingBottom: 4,
+    gap: 8,
+    paddingRight: 4,
+    paddingBottom: 2,
   },
 
   dayChip: {
-    width: 88,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    width: 76,
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8EEF2',
+    borderColor: '#E4EDE9',
+    shadowColor: '#0E4B3A',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
 
   dayChipSelected: {
     backgroundColor: Colors.primaryColor,
     borderColor: Colors.primaryColor,
+    shadowOpacity: 0.16,
   },
 
   dayChipToday: {
-    borderColor: Colors.primaryColor,
-    backgroundColor: '#E6F4F0',
+    borderColor: '#9DD4C4',
+    backgroundColor: '#F1FAF6',
+  },
+
+  dayChipTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+    minHeight: 18,
   },
 
   dayChipLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
+    color: '#16352C',
+    flexShrink: 1,
   },
 
   dayChipLabelSelected: {
     color: '#FFFFFF',
   },
 
+  dayChipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#D4A84B',
+  },
+
+  dayChipTodayPill: {
+    backgroundColor: '#D4A84B',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+
+  dayChipTodayPillOn: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+
+  dayChipTodayText: {
+    fontSize: 8,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#1A2E28',
+  },
+
+  dayChipTodayTextOn: {
+    color: '#FFFFFF',
+  },
+
   dayChipMeta: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#64748B',
-    marginTop: 2,
+    color: '#6B7C76',
+    marginTop: 3,
   },
 
   dayChipMetaSelected: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.88)',
   },
 
   dayChipTrack: {
-    height: 4,
-    borderRadius: 4,
-    backgroundColor: 'rgba(15,23,42,0.08)',
+    height: 3,
+    borderRadius: 3,
+    backgroundColor: 'rgba(14,75,58,0.1)',
     overflow: 'hidden',
-    marginTop: 10,
+    marginTop: 7,
   },
 
   dayChipFill: {
-    height: 4,
-    borderRadius: 4,
+    height: 3,
+    borderRadius: 3,
   },
 
   daySection: {

@@ -1,15 +1,22 @@
-
-
-
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, Linking, StyleSheet } from 'react-native';
+import React, { memo } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  Linking,
+  StyleSheet,
+} from 'react-native';
 import { Message } from '../../types/chat';
 import { formatMessageTime } from '../../utils/dateFormatter';
 import { Colors } from '../../../common/Colors';
 import { Fonts } from '../../../common/Fonts';
 import TablerIcon from '../../../components/TablerIcon';
+import { isTempMessage } from '../../utils/messageUtils';
 
 const THEME = '#0D614E';
+const TICK_READ = '#3B82F6';
+const TICK_UNREAD = '#94A3B8';
 
 interface MessageBubbleProps {
   message: Message;
@@ -17,9 +24,15 @@ interface MessageBubbleProps {
   senderName: string;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, senderName }) => {
+const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
+  message,
+  isOwn,
+  senderName,
+}) => {
   const openAttachment = (url: string) => {
-    Linking.openURL(url).catch((err) => console.error('Failed to open URL:', err));
+    Linking.openURL(url).catch(err =>
+      console.error('Failed to open URL:', err),
+    );
   };
 
   const renderAttachments = () => {
@@ -33,7 +46,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, se
             activeOpacity={0.9}
             style={styles.attachmentWrapper}
           >
-            <Image source={{ uri: attachment.file_url }} style={styles.attachmentImage} resizeMode="cover" />
+            <Image
+              source={{ uri: attachment.file_url }}
+              style={styles.attachmentImage}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
         );
       }
@@ -43,107 +60,108 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, se
           onPress={() => openAttachment(attachment.file_url)}
           style={styles.attachmentFile}
         >
-          <Text style={styles.attachmentFileText}>📎 {attachment.file_name || 'Download'}</Text>
+          <Text style={styles.attachmentFileText}>
+            📎 {attachment.file_name || 'Download'}
+          </Text>
         </TouchableOpacity>
       );
     });
   };
 
-  const isLeft = !isOwn;
+  const timeLabel = formatMessageTime(message.created_at);
+  const pending = isTempMessage(message);
+  const seen = Boolean(message.is_seen);
 
   return (
-    <View style={[styles.container, isLeft ? styles.containerLeft : styles.containerRight]}>
-      {isLeft && (
-        <Text style={styles.senderName} numberOfLines={1}>{senderName}</Text>
-      )}
+    <View
+      style={[
+        styles.container,
+        isOwn ? styles.containerRight : styles.containerLeft,
+      ]}
+    >
+      {!isOwn ? (
+        <Text style={styles.senderName} numberOfLines={1}>
+          {senderName}
+        </Text>
+      ) : null}
 
-      <View style={[styles.bubble, isLeft ? styles.bubbleLeft : styles.bubbleRight]}>
+      <View style={[styles.bubble, isOwn ? styles.bubbleRight : styles.bubbleLeft]}>
         {message.text ? (
-          <Text style={[styles.messageText, isOwn ? styles.messageTextOwn : styles.messageTextOther]}>
+          <Text
+            style={[
+              styles.messageText,
+              isOwn ? styles.messageTextOwn : styles.messageTextOther,
+            ]}
+          >
             {message.text}
           </Text>
         ) : null}
-
         {renderAttachments()}
-
-      
-
-        {/* <View style={styles.timestampContainer}>
-          <Text style={styles.timestamp}>{formatMessageTime(message.created_at)}</Text>
-          {isOwn && (
-            <Text style={[styles.timestamp, message.is_seen && styles.seenTick]}>
-              {message.is_seen ? '✓✓' : '✓'}
-            </Text>
-          )}
-        </View> */}
       </View>
-      <View style={{flexDirection:'row',}}>
-        
-        <View style={styles.timestampContainer}>
-          <Text style={styles.timestamp}>
-            {formatMessageTime(message.created_at)}
-          </Text>
 
-        
-        </View>
+      {/* Time + ticks below the card */}
+      <View
+        style={[
+          styles.metaRow,
+          isOwn ? styles.metaRowOwn : styles.metaRowOther,
+        ]}
+      >
+        <Text style={styles.timestamp}>{timeLabel.toUpperCase()}</Text>
 
-          {isOwn && (
-              <View style={{ flexDirection: 'row',gap:15,marginRight:10,
-    marginTop: 8}}>
-                <TablerIcon
-                  name="check"
-                  size={12}
-                  color={message.is_seen ? '#3B82F6' : '#888c92'}
-                />
-                {message.is_seen && (
-                  <TablerIcon
-                    name="check"
-                    size={12}
-                    color="#3B82F6"
-                    style={{ marginLeft: -5 }}
-                  />
-                )}
-              </View>
+        {isOwn ? (
+          <View style={styles.ticksWrap}>
+            {pending ? (
+              <TablerIcon name="clock" size={14} color={TICK_UNREAD} strokeWidth={2.2} />
+            ) : seen ? (
+              <TablerIcon name='tick-icon' size={16} color={TICK_READ} strokeWidth={2.4} />
+            ) : (
+              <TablerIcon name="tick-icon" size={15} color={TICK_UNREAD} strokeWidth={2.2} />
             )}
+          </View>
+        ) : null}
       </View>
     </View>
   );
 };
 
+export const MessageBubble = memo(MessageBubbleComponent);
+
 const styles = StyleSheet.create({
-  container: { marginBottom: 8, paddingHorizontal: 4 },
-  containerLeft: { alignItems: 'flex-start' },
-  containerRight: { alignItems: 'flex-end' },
+  container: {
+    marginBottom: 10,
+    paddingHorizontal: 4,
+    maxWidth: '100%',
+  },
+  containerLeft: {
+    alignItems: 'flex-start',
+  },
+  containerRight: {
+    alignItems: 'flex-end',
+  },
   senderName: {
-    fontSize: 11, color: '#6B7280', fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 2, marginLeft: 4, maxWidth: '70%',
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 3,
+    marginLeft: 6,
+    maxWidth: '78%',
   },
   bubble: {
-    maxWidth: '78%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
+    maxWidth: '78%',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
   },
   bubbleLeft: {
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 4,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E8EEF2',
   },
   bubbleRight: {
     backgroundColor: Colors.primaryColor,
     borderBottomRightRadius: 4,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomLeftRadius: 16,
   },
-  // bubbleLeft: {
-  //   backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB',
-  //   borderBottomLeftRadius: 4,
-  // },
-  // bubbleRight: {
-  //   backgroundColor: OWN_BUBBLE, borderBottomRightRadius: 4,
-  // },
   messageText: {
     fontSize: 14,
     fontFamily: Fonts.PoppinsMedium,
@@ -156,31 +174,51 @@ const styles = StyleSheet.create({
   messageTextOther: {
     color: '#111827',
   },
-  timestampContainer: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
     marginTop: 4,
+    gap: 4,
+    maxWidth: '78%',
   },
-
+  metaRowOwn: {
+    alignSelf: 'flex-end',
+    justifyContent: 'flex-end',
+  },
+  metaRowOther: {
+    alignSelf: 'flex-start',
+    justifyContent: 'flex-start',
+    paddingLeft: 4,
+  },
   timestamp: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#888c92',
+    color: '#94A3B8',
+    includeFontPadding: false,
   },
-
-  tick: {
-    fontSize: 11,
-    marginLeft: 4,
+  ticksWrap: {
+    marginLeft: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attachmentWrapper: {
+    marginTop: 6,
+  },
+  attachmentImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+  },
+  attachmentFile: {
+    marginTop: 6,
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 8,
+  },
+  attachmentFileText: {
+    fontSize: 13,
+    color: THEME,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#888c92',
   },
-
-  tickSeen: {
-    color: 'blue',
-  },
-  attachmentWrapper: { marginTop: 6 },
-  attachmentImage: { width: 200, height: 150, borderRadius: 10, backgroundColor: '#F3F4F6' },
-  attachmentFile: { marginTop: 6, padding: 8, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 8 },
-  attachmentFileText: { fontSize: 13, color: THEME, fontFamily: Fonts.PoppinsMedium },
 });

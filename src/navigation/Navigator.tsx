@@ -103,7 +103,6 @@ import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
 import ChatScreen from "../screens/profile/ChatScreen";
 // import ConfirmScreen from "../screens/products/ConfirmScreen";
 
-
 const TabStack = () => {
   return (
     <ScrollHideProvider>
@@ -121,7 +120,7 @@ const TabStack = () => {
           component={MyCart}
           options={{ tabBarLabel: 'Cart' }}
         />
-        <Tab.Screen name="Medicine" component={MedicineScreen} />
+        <Tab.Screen name="Consult" component={ConsultHome} />
         <Tab.Screen name="Profile" component={ProfilePage} />
       </Tab.Navigator>
     </ScrollHideProvider>

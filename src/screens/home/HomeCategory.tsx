@@ -206,12 +206,13 @@ const styles = StyleSheet.create({
   },
   tile: {
     width: TILE_SIZE,
-    height: TILE_SIZE,
+    height: TILE_SIZE / 1.5,
     borderRadius: 16,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     // borderWidth: 1,
+    marginBottom: -2,
     borderColor: 'transparent',
   },
   tileActive: {
@@ -222,7 +223,7 @@ const styles = StyleSheet.create({
     height: '58%',
   },
   label: {
-    marginTop: 2,
+    // marginTop: 2,
     fontSize: 11,
     lineHeight: 14,
     height: 14,

@@ -48,7 +48,8 @@ const DoctorConsultationHistoryScreen = ({ route, navigation }: any) => {
           contentContainerStyle={styles.scrollContent}
         >
           {/* After View all: only city/location under doctor name — no full doctor detail card */}
-          <DoctorCityHeader doctor={doctor} />
+          {/* <DoctorCi
+          tyHeader doctor={doctor} /> */}
 
           <SectionHeader title="All consultations" />
 

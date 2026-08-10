@@ -23,7 +23,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Message } from '../../types/chat';
 
 import { getChatDisabledReason, AppointmentChatLike, shouldSuppressChatError } from '../../utils/chatAccessUtils';
-
+import { dedupeMessages } from '../../utils/messageUtils';
 import { Colors } from '../../../common/Colors';
 
 
@@ -158,20 +158,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
 
 
-    const handleSend = (text: string, attachments?: any[]) => {
-
+    const handleSend = async (text: string, attachments?: any[]) => {
         if (!isChatEnabled) {
-
             return;
-
         }
-
         if (text?.trim() || (attachments && attachments.length > 0)) {
-
-            sendMessage(text, attachments);
-
+            await sendMessage(text, attachments);
         }
-
     };
 
 
@@ -304,11 +297,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                     ref={flatListRef}
 
-                    data={messages}
+                    data={dedupeMessages(messages)}
 
                     renderItem={renderMessage}
 
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => `${item.id}-${index}`}
 
                     style={styles.messageList}
 

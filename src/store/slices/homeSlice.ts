@@ -11,6 +11,7 @@ import {
   normalizeServiceCategories,
 } from '../../utils/serviceCategoryUtils';
 import { normalizeApiList } from '../../services/ProductServices';
+import { normalizeYogaSessionList } from '../../utils/yogaUtils';
 
 const CACHE_KEYS = {
   categories: 'home_categories',
@@ -123,6 +124,7 @@ export const mapDietPlanForHome = (item: any) => {
 
 const loadDietPlansForHome = async (): Promise<any[]> => {
   try {
+    // Available plans only (common + doctor-suggested) — these can be started
     const res = await _PATIENT_SERVICES.getDietPlans();
     console.log('HOME_DIET_PLANS_RESPONSE =>', res);
     if (res?.success === false) {
@@ -252,10 +254,7 @@ export const fetchHomeData = createAsyncThunk<
                 CACHE_KEYS.yoga,
                 async () => {
                   const res = await _YOGA_SERVICES.getYogaSession();
-                  if (Array.isArray(res?.data)) {
-                    return res.data;
-                  }
-                  return normalizeApiList(res);
+                  return normalizeYogaSessionList(res);
                 },
                 { ttl: 120_000, force },
               ),

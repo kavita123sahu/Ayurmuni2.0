@@ -109,61 +109,6 @@ const SectionHeader = ({ title }: { title: string }) => (
 );
 
 /* ------------------------------------------------------------------ */
-/*  SUMMARY / HEADER CARD                                              */
-/* ------------------------------------------------------------------ */
-
-const SummaryCard = ({
-    total,
-    unread,
-    onMarkAllRead,
-    onClearAll,
-    isSmallDevice,
-}: {
-    total: number;
-    unread: number;
-    onMarkAllRead: () => void;
-    onClearAll: () => void;
-    isSmallDevice: boolean;
-}) => (
-    <View style={[styles.summaryCard, isSmallDevice && styles.summaryCardCompact]}>
-        <View style={styles.summaryLeft}>
-            <View style={styles.summaryIconBox}>
-                <Text style={styles.summaryIconGlyph}>🔔</Text>
-            </View>
-            <View style={{ flexShrink: 1 }}>
-                <Text style={styles.summaryTitle} numberOfLines={1}>Notifications</Text>
-                <Text style={styles.summarySubtitle} numberOfLines={1}>
-                    You have {total} notification{total === 1 ? '' : 's'}
-                </Text>
-            </View>
-            {unread > 0 && (
-                <View style={styles.unreadPill}>
-                    <Text style={styles.unreadPillText}>{unread} unread</Text>
-                </View>
-            )}
-        </View>
-
-        <View style={[styles.summaryRight, isSmallDevice && styles.summaryRightCompact]}>
-            <TouchableOpacity
-                style={[styles.markAllBtn, isSmallDevice && styles.actionBtnFull]}
-                onPress={onMarkAllRead}
-            >
-                <TablerIcon name="tick" color="white" size={15} />
-                <Text style={styles.markAllBtnText} numberOfLines={1}>
-                    Mark all as read
-                </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.clearAllBtn, isSmallDevice && styles.actionBtnFull]}
-                onPress={onClearAll}
-            >
-                <Text style={styles.clearAllBtnText} numberOfLines={1}>✕  Clear all</Text>
-            </TouchableOpacity>
-        </View>
-    </View>
-);
-
-/* ------------------------------------------------------------------ */
 /*  FILTER TABS (All / Unread / Read + type chips)                     */
 /* ------------------------------------------------------------------ */
 
@@ -176,7 +121,7 @@ const FILTERS: { key: 'all' | 'unread' | 'read'; label: string }[] = [
 const TYPE_FILTERS: { key: string; label: string }[] = [
     { key: 'all', label: 'All types' },
     { key: 'appointment', label: 'Appointments' },
-    { key: 'follow_up', label: 'Follow-ups' },
+    { key: 'prescription', label: 'Follow-ups' },
 ];
 
 const FilterTabs = ({
@@ -434,7 +379,7 @@ const NotificationDetailModal = ({
                         <View style={[styles.modalButtonRow, isSmallDevice && styles.modalButtonRowCompact]}>
                             {item.appointmentId ? (
                                 <TouchableOpacity
-                                    style={[styles.modalViewBtn, isSmallDevice && styles.actionBtnFull]}
+                                    style={[styles.modalViewBtn, isSmallDevice && styles.modalActionFull]}
                                     onPress={() => onViewAppointment(item)}
                                 >
                                     <Text style={styles.modalViewBtnText} numberOfLines={1}>View Appointment</Text>
@@ -444,7 +389,7 @@ const NotificationDetailModal = ({
                                 style={[
                                     styles.modalMarkBtn,
                                     !isUnread && styles.modalMarkBtnDisabled,
-                                    isSmallDevice && styles.actionBtnFull,
+                                    isSmallDevice && styles.modalActionFull,
                                 ]}
                                 disabled={!isUnread}
                                 onPress={() => onMarkRead(item)}
@@ -508,7 +453,6 @@ const NotificationsScreen = (props: any) => {
         loadingMore,
         refreshing,
         loadMore,
-        unreadCount,
         filter,
         typeFilter,
         setFilter,
@@ -521,7 +465,7 @@ const NotificationsScreen = (props: any) => {
 
     const { width } = useWindowDimensions();
     const isSmallDevice = width < 360;
-
+    console.log('notificationsnotifications', notifications)
     const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -586,14 +530,36 @@ const NotificationsScreen = (props: any) => {
             .filter(section => section.data.length > 0);
     }, [notifications]);
 
-    const total = notifications?.length ?? 0;
-    const unread = unreadCount ?? 0;
-
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={'#FFFFFFCC'} />
 
-            <AppHeader title="Notifications" onLeftPress={() => props.navigation.goBack()} />
+            <AppHeader
+                title="Notifications"
+                onLeftPress={() => props.navigation.goBack()}
+                rightContent={
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity
+                            onPress={handleMarkAllRead}
+                            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                            style={styles.headerActionBtn}
+                        >
+                            <Text style={styles.headerActionPrimary} numberOfLines={1}>
+                                Mark all
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleClearAll}
+                            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                            style={styles.headerActionBtn}
+                        >
+                            <Text style={styles.headerActionMuted} numberOfLines={1}>
+                                Clear
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                }
+            />
 
             <SectionList
                 sections={sections}
@@ -633,21 +599,12 @@ const NotificationsScreen = (props: any) => {
                     ) : null
                 }
                 ListHeaderComponent={
-                    <>
-                        <SummaryCard
-                            total={total}
-                            unread={unread}
-                            onMarkAllRead={handleMarkAllRead}
-                            onClearAll={handleClearAll}
-                            isSmallDevice={isSmallDevice}
-                        />
-                        <FilterTabs
-                            activeFilter={filter}
-                            onChangeFilter={setFilter}
-                            activeType={typeFilter}
-                            onChangeType={setTypeFilter}
-                        />
-                    </>
+                    <FilterTabs
+                        activeFilter={filter}
+                        onChangeFilter={setFilter}
+                        activeType={typeFilter}
+                        onChangeType={setTypeFilter}
+                    />
                 }
             />
 
@@ -675,123 +632,40 @@ const styles = StyleSheet.create({
     },
 
     sectionHeader: {
-        marginTop: 20,
-        marginBottom: 12,
+        marginTop: 12,
+        marginBottom: 8,
         color: '#64748B',
         fontSize: 12,
         fontWeight: '600',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
-    /* ---------- Summary Card ---------- */
-    summaryCard: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 16,
-        marginTop: 12,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 1,
-    },
-    summaryLeft: {
+    /* ---------- Header actions ---------- */
+    headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
+        paddingRight: 4,
     },
-    summaryIconBox: {
-        height: 44,
-        width: 44,
-        borderRadius: 14,
-        backgroundColor: '#0D614E',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
+    headerActionBtn: {
+        paddingVertical: 4,
+        paddingHorizontal: 2,
     },
-    summaryIconGlyph: {
-        fontSize: 18,
-    },
-    summaryTitle: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-    },
-    summarySubtitle: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsRegular,
-        marginTop: 2,
-    },
-    summaryCardCompact: {
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        padding: 14,
-    },
-    summaryRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 8,
-    },
-    summaryRightCompact: {
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        marginTop: 14,
-    },
-    actionBtnFull: {
-        width: '100%',
-        marginRight: 0,
-        marginBottom: 8,
-        paddingVertical: 12,
-        alignItems: 'center',
-    },
-    unreadPill: {
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 20,
-        backgroundColor: '#0D614E14',
-        marginRight: 8,
-    },
-    unreadPillText: {
-        fontSize: 11,
+    headerActionPrimary: {
+        fontSize: 13,
         color: '#0D614E',
         fontFamily: Fonts.PoppinsSemiBold,
     },
-    markAllBtn: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 10,
-        backgroundColor: '#0D614E',
-        marginRight: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    markAllBtnText: {
-        color: '#fff',
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    clearAllBtn: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 10,
-        backgroundColor: '#F1F5F9',
-    },
-    clearAllBtnText: {
-        color: '#334155',
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsSemiBold,
+    headerActionMuted: {
+        fontSize: 13,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     /* ---------- Filters ---------- */
     filtersWrap: {
-        marginTop: 16,
+        marginTop: 8,
+        marginBottom: 4,
     },
     filterTabsRow: {
         flexDirection: 'row',
@@ -1264,6 +1138,10 @@ const styles = StyleSheet.create({
     },
     modalButtonRowCompact: {
         flexDirection: 'column',
+    },
+    modalActionFull: {
+        width: '100%',
+        flex: 0,
     },
     modalViewBtn: {
         flex: 1,

@@ -30,6 +30,7 @@ import {
   buildReviewSubmitPayload,
   uploadReviewAsset,
 } from '../../utils/reviewUtils';
+import { setPendingProductReview } from '../../utils/pendingProductReview';
 
 export type ShareExperienceParams = {
   entityType: 'doctor' | 'product';
@@ -37,6 +38,7 @@ export type ShareExperienceParams = {
   entitySubtitle?: string;
   appointmentId?: string;
   variantId?: string;
+  orderId?: string;
   initialRating?: number;
   initialReview?: string;
   initialImages?: string[];
@@ -60,6 +62,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
     entitySubtitle = '',
     appointmentId = '',
     variantId = '',
+    orderId = '',
     initialRating = 0,
   } = params;
 
@@ -73,7 +76,10 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const lookupId = entityType === 'product' ? variantId : appointmentId;
+  const canSubmitRefs =
+    entityType === 'doctor'
+      ? !!appointmentId
+      : !!variantId && !!orderId;
 
   const headerTitle = useMemo(
     () => (entityType === 'doctor' ? 'Rate Your Consultation' : 'Rate This Product'),
@@ -148,15 +154,20 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
       return;
     }
 
-    if (!lookupId) {
-      showSuccessToast('Missing review reference', 'error');
+    if (!canSubmitRefs) {
+      showSuccessToast(
+        entityType === 'product'
+          ? 'Missing order or product reference'
+          : 'Missing appointment reference',
+        'error',
+      );
       return;
     }
 
     try {
       setUploading(true);
 
-      // 1. Upload media and get AWS URLs
+      // 1) Select media → upload each file → collect URLs
       const uploadedUrls = await Promise.all(
         mediaItems.map(async item => {
           if (item.uploadedUrl) {
@@ -174,30 +185,45 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         }),
       );
 
-      // 2. Prepare payload object
+      // 2) POST review/?entity_type=doctor|product with body IDs + image_urls
       const reviewPayload = buildReviewSubmitPayload({
         rating,
         review,
         imageUrls: uploadedUrls,
         entityType,
-        appointmentId: lookupId,
+        appointmentId,
+        orderId,
+        variantId,
         isEdit,
       });
-      console.log("'reviewPayloadreviewPayloadreviewPayload", reviewPayload)
+      console.log('reviewPayload', reviewPayload);
 
       const response = await submitReview({
         entityType,
-        appointmentId: entityType === 'doctor' ? lookupId : undefined,
-        variantId: entityType === 'product' ? lookupId : undefined,
+        appointmentId: entityType === 'doctor' ? appointmentId : undefined,
+        variantId: entityType === 'product' ? variantId : undefined,
+        orderId: entityType === 'product' ? orderId : undefined,
         method: 'POST',
         reviewData: reviewPayload,
       });
-      console.log("reposneeeeeeeeeeeeeeee", response);
+      console.log('reviewSubmitResponse', response);
       if (response?.success) {
         showSuccessToast(
           response.message || 'Thank you for sharing your experience!',
           'success',
         );
+
+        // Hand rating back to Order Details — only goBack, no new screen
+        if (entityType === 'product' && variantId && orderId) {
+          setPendingProductReview({
+            variantId: String(variantId),
+            orderId: String(orderId),
+            rating,
+            review: review.trim(),
+            image_urls: uploadedUrls.filter(Boolean),
+          });
+        }
+
         navigation.goBack();
         return;
       }

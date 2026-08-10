@@ -8,10 +8,10 @@
  *   cart_item_ids: [], gift_wrap_item_ids: []
  * }
  *
- * Prepaid (online):
+ * Prepaid (online) — place order BEFORE Razorpay:
  * {
  *   delivery_address_id, payment_type: "prepaid",
- *   payment_method: "upi",
+ *   // no payment_method — user picks UPI/card/etc in Razorpay
  *   shipping_method, shipping_charges, cod_charges, prepaid_amount,
  *   cart_item_ids: [], gift_wrap_item_ids: []
  * }
@@ -251,7 +251,10 @@ type PrepaidArgs = CommonArgs & {
   payment_method?: string | null;
 };
 
-/** Complete prepaid / online order payload */
+/**
+ * Complete prepaid / online order payload.
+ * Do not send payment_method on create — Razorpay sets the method after pay.
+ */
 export const buildPrepaidOrderPayload = ({
   delivery_address_id,
   cartItems,
@@ -259,9 +262,9 @@ export const buildPrepaidOrderPayload = ({
   cod_charges = 0,
   shipping_method = 'STD',
   prepaid_amount,
-  payment_method,
 }: PrepaidArgs): OrderPayload => {
-  const payload: OrderPayload = {
+  // Intentionally ignore payment_method for place-order (online).
+  return {
     delivery_address_id,
     payment_type: 'prepaid',
     shipping_method,
@@ -271,12 +274,6 @@ export const buildPrepaidOrderPayload = ({
     cart_item_ids: buildCartItemIds(cartItems),
     gift_wrap_item_ids: buildGiftWrapItemIds(cartItems),
   };
-
-  if (payment_method != null && String(payment_method).trim() !== '') {
-    payload.payment_method = String(payment_method).trim().toLowerCase();
-  }
-
-  return payload;
 };
 
 /** Unified builder used by hooks */

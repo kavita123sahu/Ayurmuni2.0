@@ -97,10 +97,10 @@ export const mapOrdersToRecentProducts = (orders: any[] = [], limit = 3) => {
         id: String(item?.id ?? item?.variant?.variant_id ?? recentItems.length),
         variantId: String(
           item?.variant?.variant_id ??
-            item?.variant_id ??
-            item?.product_variant_id ??
-            item?.variant?.id ??
-            '',
+          item?.variant_id ??
+          item?.product_variant_id ??
+          item?.variant?.id ??
+          '',
         ),
         name: item?.variant?.variant_title ?? 'Product',
         price: Number(item?.selling_price ?? item?.variant?.selling_price ?? 0),

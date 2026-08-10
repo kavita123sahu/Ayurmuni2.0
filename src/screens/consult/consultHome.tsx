@@ -37,6 +37,9 @@ import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { useConsultData } from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
+import Detailimages from '../../components/Detailimages';
+import { useBanners } from '../../hooks/useBanners';
+import { SCREEN_PADDING_H } from '../../constants/layout';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
@@ -50,7 +53,10 @@ import {
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
 import {
@@ -70,6 +76,7 @@ type NavigationProp =
   >;
 
 const ConsultHome = () => {
+  const { images: bannerImages } = useBanners('consult');
 
   const navigation =
     useNavigation<NavigationProp>();
@@ -164,31 +171,11 @@ const ConsultHome = () => {
     navigateToSearchScreen(navigation);
   }, [navigation]);
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const old = item?.is_wishlist_item;
-      setProductList(prev =>
-        prev.map(p =>
-          p.variant_id === item.variant_id
-            ? { ...p, is_wishlist_item: !old }
-            : p,
-        ),
-      );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        setProductList(prev =>
-          prev.map(p =>
-            p.variant_id === item.variant_id
-              ? { ...p, is_wishlist_item: old }
-              : p,
-          ),
-        );
-      }
-    },
-    [setProductList],
-  );
+  useWishlistSync(setProductList);
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const renderProduct = useCallback(
     ({ item }: { item: any }) => {
@@ -380,17 +367,30 @@ const ConsultHome = () => {
               onExpandedChange={setSearchExpanded}
             />
 
-            <PromoCard
-              title="Consult with Specialists"
-              desc="Over 50+ Medical Experts"
-              imageLeftIconName="consult"
-              image={require('../../assets/images/doctorbanner.png')}
-              buttontext="Book an appointment online"
-              approved
-              showButton
-              onPress={() => navigation.navigate('AllDoctors')}
-            // onPress={()}
-            />
+            {bannerImages.length > 0 ? (
+              <View style={{ marginBottom: 8 }}>
+                <Detailimages
+                  images={bannerImages}
+                  itemWidth={Dimensions.get('window').width - SCREEN_PADDING_H * 2}
+                  DynamicResize="cover"
+                  autoSlide
+                  embedded
+                  mode="banner"
+                  enablePreview={false}
+                />
+              </View>
+            ) : (
+              <PromoCard
+                title="Consult with Specialists"
+                desc="Over 50+ Medical Experts"
+                imageLeftIconName="consult"
+                image={require('../../assets/images/doctorbanner.png')}
+                buttontext="Book an appointment online"
+                approved
+                showButton
+                onPress={() => navigation.navigate('AllDoctors')}
+              />
+            )}
 
             {/* <SectionHeader
               title="Recent Consultation"

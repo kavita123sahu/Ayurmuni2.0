@@ -57,7 +57,7 @@ export function useProfileDashboardStats() {
     try {
       const [consultRes, ordersRes, recordsRes] = await Promise.allSettled([
         getConsultHistory({ page: 1 }),
-        getOrders(),
+        getOrders({ page: 1, page_size: 1 }),
         getAllMedicalRecord(),
       ]);
 

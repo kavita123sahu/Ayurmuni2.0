@@ -13,6 +13,10 @@ import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
 import TablerIcon from './TablerIcon';
+import {
+  resolveYogaThumbnailUri,
+  resolveYogaVideoUri,
+} from '../utils/yogaUtils';
 
 interface Props {
   data: any[];
@@ -23,26 +27,6 @@ interface Props {
   ListHeaderComponent?: React.ReactNode;
   home?: boolean;
 }
-
-const resolveYogaVideoUri = (item: any): string | null => {
-  const candidates = [
-    item?.video_url,
-    item?.session_video,
-    item?.session_video_url,
-    item?.preview_video,
-    item?.preview_video_url,
-    item?.media_url,
-    item?.video,
-    item?.media?.video_url,
-    item?.media?.url,
-  ];
-  for (const value of candidates) {
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-  return null;
-};
 
 const YogaPreviewVideo = ({
   uri,
@@ -110,6 +94,7 @@ const SuggestedCard: React.FC<Props> = ({
 
   const displayData = showAll ? data : data.slice(0, 6);
 
+
   const formattedData =
     isGrid && displayData.length % 2 !== 0
       ? [...displayData, { id: 'empty', empty: true }]
@@ -144,9 +129,9 @@ const SuggestedCard: React.FC<Props> = ({
       columnWrapperStyle={
         isGrid
           ? {
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }
+            justifyContent: 'space-between',
+            marginBottom: 14,
+          }
           : undefined
       }
       renderItem={({ item }) => {
@@ -157,7 +142,7 @@ const SuggestedCard: React.FC<Props> = ({
         }
 
         const isDiet = item?.type === 'diet';
-        const isYoga = !isDiet;
+        const isYoga = item?.type === 'yoga' || !isDiet;
         const title = item?.title || item?.name || '';
         const subtitle =
           item?.short_description ||
@@ -168,7 +153,15 @@ const SuggestedCard: React.FC<Props> = ({
           '';
         const badgeText =
           item?.difficulty || item?.prakriti || item?.season || '';
-        const imageUri = item?.thumbnail_url || item?.image_url || '';
+        const imageUri = isYoga
+          ? resolveYogaThumbnailUri(item)
+          : (
+              item?.thumbnail_url ||
+              item?.image_url ||
+              item?.diet_plan_gallery?.find((img: any) => img.is_cover)
+                ?.image_url ||
+              ''
+            ).trim();
         const videoUri = isYoga ? resolveYogaVideoUri(item) : null;
 
         return (
@@ -190,7 +183,8 @@ const SuggestedCard: React.FC<Props> = ({
                 <Image
                   source={
                     imageUri
-                      ? { uri: imageUri }
+                      ?
+                      { uri: imageUri }
                       : require('../assets/images/login/7.jpg')
                   }
                   style={styles.image}

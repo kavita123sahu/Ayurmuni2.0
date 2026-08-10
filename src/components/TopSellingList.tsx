@@ -13,15 +13,17 @@ import { Fonts } from '../common/Fonts';
 import PromoCard from './PromoCard';
 import SectionHeader from './SectionHeader';
 import { Colors } from '../common/Colors';
-import { TogglewishlistProduct } from '../services/ProductServices';
 import ProductCard from './ProductCard';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { syncCartQuantity } from '../store/slices/cartSlice';
-import { updateProductItem } from '../store/slices/homeSlice';
 import { showSuccessToast } from '../config/Key';
 import { useScrollHide } from '../context/ScrollHideContext';
 import { requireAuth } from '../services/guestAuth';
 import { navigateToProductDetails, navigateToSearchScreen } from '../navigation/productNavigation';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../hooks/useWishlistSync';
 import {
   canAddProductQty,
   isProductOutOfStock,
@@ -125,63 +127,13 @@ const TopSellingList: React.FC<Props> = ({
     [dispatch, resolveVariantId],
   );
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
+  useWishlistSync(setProductData, {
+    removeWhenUnwishlisted: isWishlistScreen,
+  });
 
-      const oldValue = item?.is_wishlist_item;
-      const variantId = String(item?.variant_id);
-
-      if (isWishlistScreen) {
-        setProductData(prev =>
-          prev.filter(product => product.variant_id !== item.variant_id),
-        );
-      } else {
-        setProductData(prev =>
-          prev.map(product =>
-            product.variant_id === item.variant_id
-              ? { ...product, is_wishlist_item: !oldValue }
-              : product,
-          ),
-        );
-      }
-
-      dispatch(
-        updateProductItem({
-          variantId,
-          updates: { is_wishlist_item: !oldValue },
-        }),
-      );
-
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        if (isWishlistScreen) {
-          setProductData(prev => {
-            const exists = prev.some(p => p.variant_id === item.variant_id);
-            if (exists) return prev;
-            return [{ ...item, is_wishlist_item: true }, ...prev];
-          });
-        } else {
-          setProductData(prev =>
-            prev.map(product =>
-              product.variant_id === item.variant_id
-                ? { ...product, is_wishlist_item: oldValue }
-                : product,
-            ),
-          );
-        }
-
-        dispatch(
-          updateProductItem({
-            variantId,
-            updates: { is_wishlist_item: oldValue },
-          }),
-        );
-      }
-    },
-    [setProductData, isWishlistScreen, dispatch],
-  );
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {

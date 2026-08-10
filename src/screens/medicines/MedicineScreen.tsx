@@ -20,7 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { useOrders } from '../../hooks/useOrders';
-import { getScreenBottomPadding } from '../../constants/layout';
+import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
@@ -38,9 +38,14 @@ import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
+import Detailimages from '../../components/Detailimages';
+import { useBanners } from '../../hooks/useBanners';
 import {
   ProductGridSkeleton,
   MedicineScreenSkeleton,
@@ -73,6 +78,8 @@ const MedicineScreen = (props: any) => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
+  const { images: bannerImages } = useBanners('medicine');
+  const screenWidth = Dimensions.get('window').width;
 
   const {
     categories: dashboardCategories,
@@ -108,7 +115,7 @@ const MedicineScreen = (props: any) => {
 
   const { brands, refresh: refreshBrands } = useBrands();
   const { recentProducts, loading: ordersLoading, refresh: refreshOrders } =
-    useOrders();
+    useOrders({ pageSize: 5 });
 
   const brandListData = useMemo(
     () =>
@@ -172,7 +179,9 @@ const MedicineScreen = (props: any) => {
 
   const handleActionPress = useCallback(
     (item: { screen?: keyof RootStackParamList }) => {
-      if (item?.screen) stackNav.navigate(item.screen);
+      if (item?.screen)
+        showSuccessToast('This feature is Coming Soon', 'success');
+      //  stackNav.navigate(item.screen);
     },
     [stackNav],
   );
@@ -205,31 +214,11 @@ const MedicineScreen = (props: any) => {
     [dispatch],
   );
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const old = item?.is_wishlist_item;
-      setProducts(prev =>
-        prev.map(p =>
-          p.variant_id === item.variant_id
-            ? { ...p, is_wishlist_item: !old }
-            : p,
-        ),
-      );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        setProducts(prev =>
-          prev.map(p =>
-            p.variant_id === item.variant_id
-              ? { ...p, is_wishlist_item: old }
-              : p,
-          ),
-        );
-      }
-    },
-    [setProducts],
-  );
+  useWishlistSync(setProducts);
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -266,6 +255,20 @@ const MedicineScreen = (props: any) => {
   const ListHeader = useCallback(
     () => (
       <View>
+        {bannerImages.length > 0 ? (
+          <View style={{ marginBottom: 10 }}>
+            <Detailimages
+              images={bannerImages}
+              itemWidth={screenWidth - SCREEN_PADDING_H * 2}
+              DynamicResize="cover"
+              autoSlide
+              embedded
+              mode="banner"
+              enablePreview={false}
+            />
+          </View>
+        ) : null}
+
         <ActionCards data={actionItems} onpress={handleActionPress} />
 
         {(ordersLoading || recentProducts.length > 0) && (
@@ -317,13 +320,15 @@ const MedicineScreen = (props: any) => {
       healthConcernsLoading,
       safeHealthConcerns,
       brandListData,
+      bannerImages,
+      screenWidth,
     ],
   );
 
   const showInitialSkeleton = loading && products.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header

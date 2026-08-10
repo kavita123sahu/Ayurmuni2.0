@@ -33,6 +33,7 @@ import { useScrollHide } from '../../context/ScrollHideContext';
 import {
   getHomeHeaderTotalHeight,
   getScreenBottomPadding,
+  HOME_CATEGORY_GAP,
   HOME_SECTION_GAP,
   SCREEN_PADDING_H,
 } from '../../constants/layout';
@@ -40,7 +41,10 @@ import { useHomeData } from '../../hooks/UseHomeData';
 import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton, SuggestedCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
 import JoinCallBanner from '../../components/JoinCallBanner';
-import { getJoinableAppointment } from '../../utils/appointmentUtils';
+import {
+  getJoinableAppointment,
+  sortAppointmentsByDateTime,
+} from '../../utils/appointmentUtils';
 import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
@@ -49,6 +53,8 @@ import TablerIcon from '../../components/TablerIcon';
 import { navigateToSearchScreen } from '../../navigation/productNavigation';
 import DietScreen from '../mentor/DietScreen';
 import MealCard from '../../components/MealCard';
+import { useBanners } from '../../hooks/useBanners';
+import { CallEvents, CALL_ENDED } from '../../common/Utils';
 
 
 const { width } = Dimensions.get('window');
@@ -58,6 +64,9 @@ const HomePage: React.FC = (props: any) => {
 
   const hasFetched = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { images: bannerImages, refresh: refreshBanners } = useBanners('home');
+  const homeBannerImages =
+    bannerImages.length > 0 ? bannerImages : product.images;
 
   const {
     categories,
@@ -79,7 +88,6 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData
   } = useHomeData();
 
-  console.log("homeproductsssssssss",storeProducts );
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -112,27 +120,108 @@ const HomePage: React.FC = (props: any) => {
     stackNav.navigate('MedicineScreen');
   }, [props.navigation]);
 
+  console.log("YogaSessionYogaSessionYogaSession", dietProducts)
+
   useFocusEffect(
     useCallback(() => {
       const timer = setTimeout(() => {
         promptLocationOnHome();
       }, 600);
 
-      fetchDietPlans(false);
+      // Only load diet once when empty — avoid refetch while Checkout is open above Home
+      if (!dietProducts?.length) {
+        fetchDietPlans(false);
+      }
 
       return () => clearTimeout(timer);
-    }, [promptLocationOnHome, fetchDietPlans]),
+    }, [promptLocationOnHome, fetchDietPlans, dietProducts?.length]),
   );
 
+  // Re-evaluate Join banner when the 5‑min window / end time crosses
+  const [joinBannerTick, setJoinBannerTick] = useState(0);
+  const [endedCallIds, setEndedCallIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Re-check join window often so banner appears as soon as ≤5 min left
+    const timer = setInterval(() => setJoinBannerTick(t => t + 1), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const sub = CallEvents.addListener(CALL_ENDED, (...args: unknown[]) => {
+      const payload = args[0] as {
+        appointmentId?: string;
+        consultationId?: string;
+      } | undefined;
+      const ids = [payload?.appointmentId, payload?.consultationId]
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+      if (ids.length) {
+        setEndedCallIds(prev => {
+          const next = new Set(prev);
+          ids.forEach(id => next.add(id));
+          return next;
+        });
+      }
+      refreshPreview();
+      setJoinBannerTick(t => t + 1);
+    });
+    return () => sub.remove();
+  }, [refreshPreview]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPreview();
+    }, [refreshPreview]),
+  );
+
+  /** Confirmed upcoming only — join banner never removes items from this list */
   const sortedUpcomingAppointments = useMemo(
-    () => upcomingAppointments,
+    () =>
+      sortAppointmentsByDateTime(
+        upcomingAppointments.filter(item => {
+          const status = String(item?.status || '')
+            .trim()
+            .toLowerCase();
+          return status === 'confirmed';
+        }),
+      ),
     [upcomingAppointments],
   );
 
-  const joinableAppointment = useMemo(
-    () => getJoinableAppointment(sortedUpcomingAppointments),
-    [sortedUpcomingAppointments],
-  );
+  /**
+   * Join banner only (≤5 min / live). Uses a separate copy with ended flags
+   * so it never removes or changes items in `sortedUpcomingAppointments`.
+   */
+  const joinableAppointment = useMemo(() => {
+    const bannerSource = sortedUpcomingAppointments.map(item => {
+      const candidateIds = [
+        item?.appointment_id,
+        item?.consultation_id,
+        item?.rawData?.id,
+        item?.rawData?.appointment?.id,
+        item?.rawData?.consultation_id,
+      ]
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+      const wasEnded = candidateIds.some(id => endedCallIds.has(id));
+      if (!wasEnded) return item;
+      return {
+        ...item,
+        call_status: 'ended',
+        rawData: {
+          ...(item.rawData ?? item),
+          call_status: 'ended',
+          appointment: {
+            ...((item.rawData ?? item)?.appointment ?? {}),
+            call_status: 'ended',
+          },
+        },
+      };
+    });
+    return getJoinableAppointment(bannerSource, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick re-checks 5‑min window
+  }, [sortedUpcomingAppointments, endedCallIds, joinBannerTick]);
 
   const homeAppointmentList = useMemo(() => {
     if (!joinableAppointment) {
@@ -146,15 +235,14 @@ const HomePage: React.FC = (props: any) => {
   }, [sortedUpcomingAppointments, joinableAppointment]);
 
 
-
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await Promise.all([refreshHomeData(), refreshPreview()]);
+      await Promise.all([refreshHomeData(), refreshPreview(), refreshBanners()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshPreview]);
+  }, [refreshHomeData, refreshPreview, refreshBanners]);
 
 
   useEffect(() => {
@@ -207,7 +295,10 @@ const HomePage: React.FC = (props: any) => {
       <Animated.View
         style={[
           styles.headerShell,
-          { paddingTop: insets.top, paddingHorizontal: SCREEN_PADDING_H },
+          {
+            paddingTop: insets.top || 0,
+            paddingHorizontal: SCREEN_PADDING_H,
+          },
           headerShellAnimatedStyle,
         ]}
       >
@@ -229,7 +320,13 @@ const HomePage: React.FC = (props: any) => {
           />
         </Animated.View>
 
-        <Animated.View style={[styles.categoryDock, categoryAnimatedStyle]}>
+        <Animated.View
+          style={[
+            styles.categoryDock,
+            { marginTop: HOME_CATEGORY_GAP },
+            categoryAnimatedStyle,
+          ]}
+        >
           {loadingCategories ? (
             <HomeCategorySkeleton compact />
           ) : (
@@ -258,7 +355,7 @@ const HomePage: React.FC = (props: any) => {
           />
         }
         contentContainerStyle={{
-          paddingTop: headerTotalHeight + 8,
+          paddingTop: headerTotalHeight,
           paddingBottom: bottomPadding,
         }}
         nestedScrollEnabled
@@ -268,7 +365,7 @@ const HomePage: React.FC = (props: any) => {
           <View style={styles.sections}>
             <View style={styles.homeSection}>
               <Detailimages
-                images={product.images}
+                images={homeBannerImages}
                 itemWidth={width - SCREEN_PADDING_H * 2}
                 DynamicResize="cover"
                 autoSlide
@@ -277,7 +374,6 @@ const HomePage: React.FC = (props: any) => {
                 enablePreview={false}
               />
             </View>
-
 
             {(loadingAppointments ||
               joinableAppointment ||
@@ -331,6 +427,60 @@ const HomePage: React.FC = (props: any) => {
                   )}
                 </View>
               )}
+
+
+            {/* {(loadingAppointments ||
+              joinableAppointment ||
+              sortedUpcomingAppointments.length > 0) && (
+                <View style={styles.homeSection}>
+                  <SectionHeader
+                    home
+                    title="Upcoming Appointments"
+                    actionText={
+                      !loadingAppointments && sortedUpcomingAppointments.length > 0
+                        ? 'View all'
+                        : ''
+                    }
+                    onPress={async () => {
+                      if (await requireAuth('Please login to view appointments')) {
+                        props.navigation.navigate('Appointments', {
+                          mode: 'upcoming',
+                        });
+                      }
+                    }}
+                  />
+                  {loadingAppointments ? (
+                    <HorizontalAppointmentSkeleton />
+                  ) : (
+                    <>
+                      {joinableAppointment ? (
+                        <JoinCallBanner
+                          joinable={joinableAppointment}
+                          navigation={props.navigation}
+                        />
+                      ) : null}
+                      {loadingAppointments && sortedUpcomingAppointments.length > 0 ? (
+                        <FlatList
+                          horizontal
+                          data={sortedUpcomingAppointments}
+                          keyExtractor={(item, index) =>
+                            `${item?.consultation_id || item?.appointment_id || index}`
+                          }
+                          contentContainerStyle={styles.horizontalList}
+                          renderItem={({ item }) => (
+                            <RenderAppoint
+                              item={item}
+                              navigation={props.navigation}
+                              isHorizontal
+                            />
+                          )}
+                          showsHorizontalScrollIndicator={false}
+                        />
+                      ) : null}
+                    </>
+                  )}
+                </View>
+              )} */}
 
             <View style={styles.homeSection}>
               <SectionHeader
@@ -405,7 +555,9 @@ const HomePage: React.FC = (props: any) => {
                   home
                   title="Yoga's"
                   actionText={YogaSession.length > 1 ? 'View all' : ''}
-                  onPress={() => props.navigation.navigate('YogaScreen')}
+                  onPress={() =>
+                    props.navigation.navigate('YogaScreen', { viewAll: true })
+                  }
                 />
                 <SuggestedCard
                   data={YogaSession}
@@ -425,8 +577,10 @@ const HomePage: React.FC = (props: any) => {
                 <SectionHeader
                   home
                   title="Diet's"
-                  actionText={dietProducts?.length > 1 ? 'View all' : ''}
-                  onPress={() => props.navigation.navigate('DietScreen')}
+                  actionText={'View all'}
+                  onPress={() =>
+                    props.navigation.navigate('DietScreen', { listType: 'all' })
+                  }
                 />
                 <SuggestedCard
                   data={dietProducts}
@@ -551,8 +705,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E2E8F0',
     overflow: 'hidden',
-    justifyContent: 'flex-end',
-    paddingBottom: 0,
+    justifyContent: 'flex-start',
   },
   categoryDock: {
     width: '100%',

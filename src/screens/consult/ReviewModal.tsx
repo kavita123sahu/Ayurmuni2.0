@@ -95,11 +95,13 @@ const ReviewModal = ({
                     entityType,
                     appointmentId: entityType === 'doctor' ? appointmentId : undefined,
                     variantId: entityType === 'product' ? variantId : undefined,
+                    orderId: undefined,
                     reviewData: buildReviewSubmitPayload({
                         rating,
                         review,
                         entityType,
                         appointmentId,
+                        variantId,
                         tags: selectedTags,
                     }),
                 });

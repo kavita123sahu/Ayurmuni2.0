@@ -238,6 +238,7 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
       >
         {/* Currently Selected Section */}
         <View style={styles.section}>
+          
           <SelectedPatientCard
             name={fullName || "Not set"}
             phone={user?.phone_number || ""}
@@ -362,14 +363,15 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   section: {
-    marginBottom: 8,
+    marginTop: 4,
+    marginBottom: 12,
   },
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
-    marginTop: 10,
+    marginBottom: 8,
+    marginTop: 4,
   },
   patientListContainer: {
     marginBottom: 10,

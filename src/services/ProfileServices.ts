@@ -82,29 +82,29 @@ export const createDoctorReview = async (
 };
 
 
+/**
+ * POST create review:
+ *   review/?entity_type=doctor
+ *   review/?entity_type=product
+ * (IDs go in the body — not the query string.)
+ *
+ * GET list reviews (use ProductServices.getReviewsAll):
+ *   review/?entity_type=doctor&doctor_id=
+ *   review/?entity_type=product&variant_id=
+ */
 export const buildReviewEndpoint = ({
   entityType,
-  appointmentId,
-  variantId,
 }: {
   entityType: 'doctor' | 'product' | string;
-  appointmentId?: string;
-  variantId?: string;
 }) => {
   const normalizedType = String(entityType).toLowerCase();
 
   if (normalizedType === 'doctor') {
-    if (!appointmentId) {
-      throw new Error('appointment_id is required for doctor reviews');
-    }
-    return `review/?entity_type=doctor&appointment_id=${encodeURIComponent(appointmentId)}`;
+    return 'review/?entity_type=doctor';
   }
 
   if (normalizedType === 'product') {
-    if (!variantId) {
-      throw new Error('variant_id is required for product reviews');
-    }
-    return `review/?entity_type=product&variant_id=${encodeURIComponent(variantId)}`;
+    return 'review/?entity_type=product';
   }
 
   throw new Error('Unsupported review entity type');
@@ -114,32 +114,66 @@ export const createReview = async ({
   entityType,
   appointmentId,
   variantId,
+  orderId,
   reviewData,
   method: _method = 'POST',
 }: {
   entityType: 'doctor' | 'product' | string;
   appointmentId?: string;
   variantId?: string;
+  orderId?: string;
   reviewData: {
     rating: number;
     review: string;
     image_urls?: string[];
+    appointment_id?: string;
     appointment?: string;
+    order_id?: string;
+    variant_id?: string;
     tags?: string[];
   };
   method?: 'POST' | 'PATCH';
 }) => {
   try {
-    const endpoint = buildReviewEndpoint({ entityType, appointmentId, variantId });
-    const payload = {
+    const normalizedType = String(entityType).toLowerCase();
+    const endpoint = buildReviewEndpoint({ entityType: normalizedType });
+
+    const payload: Record<string, unknown> = {
       rating: reviewData.rating,
       review: reviewData.review,
-      ...(reviewData.image_urls?.length ? { image_urls: reviewData.image_urls } : {}),
-      ...(entityType === 'doctor' && reviewData.appointment
-        ? { appointment: reviewData.appointment }
-        : {}),
-      ...(reviewData.tags?.length ? { tags: reviewData.tags } : {}),
     };
+
+    if (reviewData.image_urls?.length) {
+      payload.image_urls = reviewData.image_urls;
+    }
+
+    if (normalizedType === 'doctor') {
+      const appointment_id =
+        appointmentId ||
+        reviewData.appointment_id ||
+        reviewData.appointment;
+      if (!appointment_id) {
+        throw new Error('appointment_id is required for doctor reviews');
+      }
+      payload.appointment_id = appointment_id;
+    }
+
+    if (normalizedType === 'product') {
+      const variant_id = variantId || reviewData.variant_id;
+      const order_id = orderId || reviewData.order_id;
+      if (!variant_id) {
+        throw new Error('variant_id is required for product reviews');
+      }
+      if (!order_id) {
+        throw new Error('order_id is required for product reviews');
+      }
+      payload.variant_id = variant_id;
+      payload.order_id = order_id;
+    }
+
+    if (reviewData.tags?.length) {
+      payload.tags = reviewData.tags;
+    }
 
     // One review per entity — never PATCH/edit from the app
     return await apiClient(endpoint, {
