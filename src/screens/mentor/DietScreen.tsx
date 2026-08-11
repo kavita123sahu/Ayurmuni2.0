@@ -3042,13 +3042,11 @@ const DietScreen = (props: any) => {
                     <Text style={styles.congratsSub}>
                       You completed "{selectedSummary?.name || planDetail?.name}".
                       Tap Repeat to start a new tracked run
-                      {getDietRepeatCount(selectedSummary || planDetail) > 0
-                        ? ` (next: ${getDietRunLabel({
-                            repeat_count:
-                              getDietRepeatCount(selectedSummary || planDetail) +
-                              1,
-                          })})`
-                        : ' (this will be Repeat #1)'}
+                      {getDietRepeatCount(selectedSummary || planDetail) >= 0
+                        ? ` (next: Repeat #${
+                            getDietRepeatCount(selectedSummary || planDetail) + 1
+                          })`
+                        : ''}
                       .
                     </Text>
                   </View>
@@ -3165,14 +3163,17 @@ const DietScreen = (props: any) => {
           icon="🎉"
           title="Congratulations!"
           subtitle={`You completed "${selectedSummary?.name || planDetail?.name || 'this diet plan'
-            }". Keep building healthy habits.`}
-          cancelText="Stay here"
-          confirmText="Browse plans"
-          loading={false}
-          onClose={() => setCongratsVisible(false)}
-          onConfirm={() => {
+            }". Repeat to start a fresh tracked run, or browse other plans.`}
+          cancelText="Browse plans"
+          confirmText="Repeat plan"
+          loading={updatingStatus}
+          onClose={() => {
             setCongratsVisible(false);
             clearSelection();
+          }}
+          onConfirm={() => {
+            setCongratsVisible(false);
+            onRepeatPress();
           }}
         />
 
@@ -3590,24 +3591,32 @@ const DietScreen = (props: any) => {
               <TouchableOpacity
                 style={[styles.completeModalBtn, styles.completeModalBtnGhost]}
                 activeOpacity={0.85}
-                onPress={() => setCongratsVisible(false)}
+                onPress={() => {
+                  setCongratsVisible(false);
+                  clearSelection();
+                }}
               >
                 <Text style={styles.completeModalBtnGhostText}>
-                  Stay here
+                  Browse plans
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.completeModalBtn, styles.completeModalBtnPrimary]}
                 activeOpacity={0.9}
+                disabled={updatingStatus}
                 onPress={() => {
                   setCongratsVisible(false);
-                  clearSelection();
+                  onRepeatPress();
                 }}
               >
-                <Text style={styles.completeModalBtnPrimaryText}>
-                  Browse plans
-                </Text>
+                {updatingStatus ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.completeModalBtnPrimaryText}>
+                    Repeat plan
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </Pressable>

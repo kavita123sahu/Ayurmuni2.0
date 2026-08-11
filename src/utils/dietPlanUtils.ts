@@ -44,6 +44,7 @@ export type DietPlanSummary = {
   patient_diet_plan_id?: string | null;
   patient_assignment_status?: string | null;
   started_at?: string | null;
+  repeat_count?: number | null;
   ended_at?: string | null;
   health_diseases?: { id: string; name: string }[];
   [key: string]: any;
@@ -456,6 +457,11 @@ export const mapDietPlanSummary = (item: any): DietPlanSummary => {
     patient_diet_plan_id: item?.patient_diet_plan_id ?? null,
     patient_assignment_status: item?.patient_assignment_status ?? null,
     started_at: item?.started_at ?? null,
+    repeat_count:
+      item?.repeat_count ??
+      item?.patient_repeat_count ??
+      item?.times_repeated ??
+      0,
   };
 };
 
