@@ -2027,7 +2027,7 @@ const DietScreen = (props: any) => {
     title: string;
     subtitle: string;
     confirmText: string;
-    onConfirm: () => void | Promise<void>;
+    action: 'pause' | 'stop' | 'reset' | 'repeat' | 'switch-pause';
   } | null>(null);
   const [switchConflict, setSwitchConflict] = useState<{
     mode: 'resume' | 'start';
@@ -2337,12 +2337,10 @@ const DietScreen = (props: any) => {
   const onSwitchPlan = () => {
     setConfirmModal({
       title: 'Switch diet plan',
-      subtitle: 'Pause your current plan before starting another, or stop it permanently.',
+      subtitle:
+        'Pause your current plan before starting another, or stop it permanently.',
       confirmText: 'Pause & switch',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        await switchPlan('pause');
-      },
+      action: 'switch-pause',
     });
   };
 
@@ -2358,24 +2356,18 @@ const DietScreen = (props: any) => {
       title: 'Pause plan?',
       subtitle: 'You can resume anytime. Meal tracking will wait.',
       confirmText: 'Pause',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        await pausePlan();
-      },
+      action: 'pause',
     });
-  }, [pausePlan]);
+  }, []);
 
   const onStopPress = useCallback(() => {
     setConfirmModal({
       title: 'Stop this run?',
       subtitle: 'Stopping ends the current run. You can repeat the plan later.',
       confirmText: 'Stop plan',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        await stopPlan('Stopped by user');
-      },
+      action: 'stop',
     });
-  }, [stopPlan]);
+  }, []);
 
   const onResetPress = useCallback(() => {
     setConfirmModal({
@@ -2383,12 +2375,9 @@ const DietScreen = (props: any) => {
       subtitle:
         'Tracking restarts from day 1 for this same run. Repeat count stays the same.',
       confirmText: 'Reset',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        await resetPlan();
-      },
+      action: 'reset',
     });
-  }, [resetPlan]);
+  }, []);
 
   const onRepeatPress = useCallback(() => {
     const next = getDietRepeatCount(selectedSummary || planDetail) + 1;
@@ -2396,31 +2385,44 @@ const DietScreen = (props: any) => {
       title: 'Repeat this diet plan?',
       subtitle: `Starts a new tracked run with fresh meal tracking. This will count as Repeat #${next}.`,
       confirmText: 'Repeat plan',
-      onConfirm: async () => {
-        const run = confirmModal?.onConfirm;
-        // Keep a stable call — modal state may clear before await finishes
-        const ok = await repeatPlan();
-        setConfirmModal(null);
-        if (ok) {
-          setCongratsVisible(false);
-        }
-      },
+      action: 'repeat',
     });
-  }, [repeatPlan, selectedSummary, planDetail]);
+  }, [selectedSummary, planDetail]);
 
-  const onConfirmRepeat = useCallback(async () => {
-    if (updatingStatus) return;
-    const action = confirmModal;
+  const onConfirmDietAction = useCallback(async () => {
+    if (!confirmModal || updatingStatus) return;
+    const action = confirmModal.action;
     setConfirmModal(null);
-    if (!action) return;
-    // Re-run the stored handler body without depending on cleared state
-    if (action.confirmText === 'Repeat plan') {
+
+    if (action === 'pause') {
+      await pausePlan();
+      return;
+    }
+    if (action === 'stop') {
+      await stopPlan('Stopped by user');
+      return;
+    }
+    if (action === 'reset') {
+      await resetPlan();
+      return;
+    }
+    if (action === 'repeat') {
       const ok = await repeatPlan();
       if (ok) setCongratsVisible(false);
       return;
     }
-    await action.onConfirm();
-  }, [confirmModal, updatingStatus, repeatPlan]);
+    if (action === 'switch-pause') {
+      await switchPlan('pause');
+    }
+  }, [
+    confirmModal,
+    updatingStatus,
+    pausePlan,
+    stopPlan,
+    resetPlan,
+    repeatPlan,
+    switchPlan,
+  ]);
 
   const todayLabel = useMemo(
     () =>
@@ -3031,7 +3033,69 @@ const DietScreen = (props: any) => {
               </View>
             </View>
 
-            {listStatus === 'not_started' || !patientDietPlanId ? (
+            {isCompletedPlan || listStatus === 'stopped' ? (
+              <View style={{ gap: 12 }}>
+                {isCompletedPlan ? (
+                  <View style={styles.congratsCard}>
+                    <Text style={styles.congratsEmoji}>🎉</Text>
+                    <Text style={styles.congratsTitle}>Congratulations!</Text>
+                    <Text style={styles.congratsSub}>
+                      You completed "{selectedSummary?.name || planDetail?.name}".
+                      Tap Repeat to start a new tracked run
+                      {getDietRepeatCount(selectedSummary || planDetail) > 0
+                        ? ` (next: ${getDietRunLabel({
+                            repeat_count:
+                              getDietRepeatCount(selectedSummary || planDetail) +
+                              1,
+                          })})`
+                        : ' (this will be Repeat #1)'}
+                      .
+                    </Text>
+                  </View>
+                ) : (
+                  <DietPlanActionPanel
+                    status={listStatus}
+                    plan={selectedSummary || planDetail}
+                    loading={updatingStatus}
+                    canComplete={false}
+                    onPause={onPausePress}
+                    onResume={onResumePress}
+                    onStop={onStopPress}
+                    onReset={onResetPress}
+                    onRepeat={onRepeatPress}
+                    onComplete={onCompletePlan}
+                  />
+                )}
+
+                <TouchableOpacity
+                  style={styles.startBtn}
+                  onPress={onRepeatPress}
+                  disabled={updatingStatus}
+                  activeOpacity={0.9}
+                >
+                  {updatingStatus ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.startBtnText}>
+                      {isCompletedPlan ? 'Repeat this plan' : 'Start again'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.startHint}>
+                  {isCompletedPlan
+                    ? 'Repeat creates a fresh run and increases your repeat count.'
+                    : 'Start a new run of this plan with fresh meal tracking.'}
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.startBtn, { backgroundColor: '#64748B' }]}
+                  onPress={clearSelection}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.startBtnText}>Browse other plans</Text>
+                </TouchableOpacity>
+              </View>
+            ) : listStatus === 'not_started' || !patientDietPlanId ? (
               <>
                 <TouchableOpacity
                   style={styles.startBtn}
@@ -3052,39 +3116,18 @@ const DietScreen = (props: any) => {
                 </Text>
               </>
             ) : (
-              <View style={{ gap: 12 }}>
-                {isCompletedPlan ? (
-                  <View style={styles.congratsCard}>
-                    <Text style={styles.congratsEmoji}>🎉</Text>
-                    <Text style={styles.congratsTitle}>Congratulations!</Text>
-                    <Text style={styles.congratsSub}>
-                      You completed "{selectedSummary?.name || planDetail?.name}".
-                      Repeat anytime to start a new tracked run.
-                    </Text>
-                  </View>
-                ) : null}
-                <DietPlanActionPanel
-                  status={listStatus}
-                  plan={selectedSummary || planDetail}
-                  loading={updatingStatus}
-                  canComplete={false}
-                  onPause={onPausePress}
-                  onResume={onResumePress}
-                  onStop={onStopPress}
-                  onReset={onResetPress}
-                  onRepeat={onRepeatPress}
-                  onComplete={onCompletePlan}
-                />
-                {isCompletedPlan ? (
-                  <TouchableOpacity
-                    style={[styles.startBtn, { backgroundColor: '#64748B' }]}
-                    onPress={clearSelection}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={styles.startBtnText}>Browse other plans</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              <DietPlanActionPanel
+                status={listStatus}
+                plan={selectedSummary || planDetail}
+                loading={updatingStatus}
+                canComplete={false}
+                onPause={onPausePress}
+                onResume={onResumePress}
+                onStop={onStopPress}
+                onReset={onResetPress}
+                onRepeat={onRepeatPress}
+                onComplete={onCompletePlan}
+              />
             )}
           </ScrollView>
         )}
@@ -3146,8 +3189,7 @@ const DietScreen = (props: any) => {
             setConfirmModal(null);
           }}
           onConfirm={async () => {
-            if (!confirmModal || updatingStatus) return;
-            await confirmModal.onConfirm();
+            await onConfirmDietAction();
           }}
         />
       </SafeAreaView>
@@ -3585,8 +3627,7 @@ const DietScreen = (props: any) => {
           setConfirmModal(null);
         }}
         onConfirm={async () => {
-          if (!confirmModal || updatingStatus) return;
-          await confirmModal.onConfirm();
+          await onConfirmDietAction();
         }}
       />
     </SafeAreaView>
