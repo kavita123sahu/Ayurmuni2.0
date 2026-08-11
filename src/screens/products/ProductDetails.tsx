@@ -971,6 +971,7 @@ import {
     cacheVariantImage,
     resolveProductImageUri,
 } from '../../utils/imageUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 
 const Divider = () => <View style={styles.divider} />;
 
@@ -1071,6 +1072,18 @@ const ProductDetails = (props: any) => {
 
     const handleAddToCart = async () => {
         if (!(await requireAuth('Please login to add items to cart'))) return;
+
+        const productForRx = {
+            ...ProductData,
+            ...selectedVariant,
+            prescription_required:
+                selectedVariant?.prescription_required ??
+                ProductData?.prescription_required,
+        };
+        if (!canAddProductWithoutPrescription(productForRx)) {
+            return;
+        }
+
         // Cache real cover before cart API returns placeholder image_url
         if (selectedVariant?.id && coverImageUri) {
             cacheVariantImage(selectedVariant.id, coverImageUri);
@@ -1393,7 +1406,7 @@ const ProductDetails = (props: any) => {
                                                 selected && styles.variantChipTextSelected,
                                             ]}
                                         >
-                                            {item?.size} {item?.weightage || ''}
+                                            {item?.size} 
                                         </Text>
                                     </TouchableOpacity>
                                 );

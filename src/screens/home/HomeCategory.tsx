@@ -38,7 +38,7 @@ const CATEGORY_ICONS: Record<string, TablerIconName> = {
   consult: 'stethoscope',
   medicine: 'pill',
   products: 'package',
-  yoga: 'user',
+  yoga: 'users',
   diet: 'heart',
 };
 
@@ -113,6 +113,56 @@ const CategoryTile = ({
   );
 };
 
+/** Consult-first service card when home only exposes consultation. */
+const ConsultServiceHero = ({
+  service,
+  navigation,
+}: {
+  service?: Category | null;
+  navigation: any;
+}) => {
+  const title = service?.name?.trim() || 'Consult';
+  const openConsult = useCallback(() => {
+    navigation?.navigate?.('ConsultScreen');
+  }, [navigation]);
+
+  return (
+    <Pressable
+      onPress={openConsult}
+      style={({ pressed }) => [styles.heroCard, pressed && styles.heroPressed]}
+    >
+      <View style={styles.heroLeft}>
+        <View style={styles.heroIconWrap}>
+          {service?.image_url ? (
+            <Image
+              source={{ uri: service.image_url }}
+              style={styles.heroServiceImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <TablerIcon name="stethoscope" size={22} color="#FFFFFF" />
+          )}
+        </View>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroEyebrow}>Our service</Text>
+          <Text style={styles.heroTitle} numberOfLines={1}>
+            Doctor Consultation
+          </Text>
+          <Text style={styles.heroSub} numberOfLines={2}>
+            Book verified Ayurvedic doctors for online care — quick, private,
+            and personalized.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.heroCta}>
+        <Text style={styles.heroCtaText}>Book</Text>
+        <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
+      </View>
+    </Pressable>
+  );
+};
+
 type Props = {
   data?: Category[];
   navigation: any;
@@ -122,7 +172,15 @@ type Props = {
 const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
   const [activeId, setActiveId] = useState('all');
 
-  const listData = useMemo(() => [ALL_ITEM, ...data], [data]);
+  const services = useMemo(
+    () => (Array.isArray(data) ? data.filter(Boolean) : []),
+    [data],
+  );
+
+  // Phase-1 / consult-only: single home service → focused CTA (keep strip code below)
+  const showMultiServiceStrip = services.length > 1;
+
+  const listData = useMemo(() => [ALL_ITEM, ...services], [services]);
 
   const handlePress = useCallback(
     (item: Category) => {
@@ -157,10 +215,20 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
     [activeId, handlePress],
   );
 
-  if (!listData.length) {
+  if (!services.length) {
     return null;
   }
 
+  // ——— Single service (consult-only): useful service banner ———
+  if (!showMultiServiceStrip) {
+    return (
+      <View style={[styles.wrapper, sticky && styles.wrapperSticky]}>
+        <ConsultServiceHero service={services[0]} navigation={navigation} />
+      </View>
+    );
+  }
+
+  // ——— Multi service strip (original UI — do not remove) ———
   return (
     <View style={[styles.wrapper, sticky && styles.wrapperSticky]}>
       <FlatList
@@ -246,5 +314,80 @@ const styles = StyleSheet.create({
   activeSpacer: {
     marginTop: 4,
     height: 3,
+  },
+
+  /* Consult-only hero */
+  heroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0D614E',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  heroPressed: {
+    opacity: 0.94,
+  },
+  heroLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
+  },
+  heroIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroServiceImage: {
+    width: 28,
+    height: 28,
+    tintColor: '#FFFFFF',
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroEyebrow: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.72)',
+    fontFamily: Fonts.PoppinsMedium,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    marginTop: 1,
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  heroSub: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    color: 'rgba(255,255,255,0.82)',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  heroCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  heroCtaText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

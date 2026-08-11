@@ -1,12 +1,20 @@
-import { View, Text, Image, StyleSheet, StatusBar, Dimensions, Animated, Easing } from 'react-native';
 import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  StatusBar,
+  Animated,
+  Easing,
+  Dimensions,
+} from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
 import { Images } from '../../common/Images';
 import { Utils } from '../../common/Utils';
+import { Fonts } from '../../common/Fonts';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
-import { showSuccessToast } from '../../config/Key';
-import * as _AUTH_SERVICES from '../../services/AuthService';
-import LinearGradient from 'react-native-linear-gradient';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 import {
   isGuestUser,
@@ -14,469 +22,315 @@ import {
   syncAccessFromProfile,
 } from '../../services/guestAuth';
 
-const { width, height } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('window');
+/** Auth runs immediately; short brand beat so it still feels like a splash. */
+const MIN_SPLASH_MS = 900;
 
 const Splash = (props: any) => {
   const isFocused = useIsFocused();
+  const navigatedRef = useRef(false);
 
-  // Animation values
-  const logoScale = useRef(new Animated.Value(0.3)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const dot1Anim = useRef(new Animated.Value(0)).current;
-  const dot2Anim = useRef(new Animated.Value(0)).current;
-  const dot3Anim = useRef(new Animated.Value(0)).current;
-  const textSlide = useRef(new Animated.Value(50)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const leafAnim1 = useRef(new Animated.Value(0)).current;
-  const leafAnim2 = useRef(new Animated.Value(0)).current;
-  const leafAnim3 = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.86)).current;
+  const brandOpacity = useRef(new Animated.Value(0)).current;
+  const brandY = useRef(new Animated.Value(18)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const orb1 = useRef(new Animated.Value(0)).current;
+  const orb2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (isFocused) {
-      // Start animations
-      startAnimations();
-      // Load user data after animations
-      setTimeout(() => {
-        getUser();
-      }, 2500);
-    }
-  }, [isFocused]);
+    if (!isFocused) return;
+    navigatedRef.current = false;
+    const startedAt = Date.now();
 
-  const startAnimations = () => {
-    // Logo entrance animation
     Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 6,
-        tension: 40,
-        useNativeDriver: true,
-      }),
       Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 1000,
+        duration: 520,
         useNativeDriver: true,
-        easing: Easing.ease,
+        easing: Easing.out(Easing.cubic),
       }),
-    ]).start();
-
-    // Logo rotation (subtle)
-    Animated.loop(
-      Animated.timing(rotateAnim, {
+      Animated.spring(logoScale, {
         toValue: 1,
-        duration: 20000,
+        friction: 7,
+        tension: 48,
         useNativeDriver: true,
-        easing: Easing.linear,
-      })
-    ).start();
-
-    // Shimmer effect
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Floating dots animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(dot1Anim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot1Anim, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(dot2Anim, {
-          toValue: 1,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot2Anim, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(dot3Anim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot3Anim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Leaf animations
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(leafAnim1, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(leafAnim1, {
-          toValue: 0,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(leafAnim2, {
-          toValue: 1,
-          duration: 5000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(leafAnim2, {
-          toValue: 0,
-          duration: 5000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(leafAnim3, {
-          toValue: 1,
-          duration: 3500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(leafAnim3, {
-          toValue: 0,
-          duration: 3500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Text animation
-    Animated.parallel([
-      Animated.spring(textSlide, {
+      }),
+      Animated.timing(brandOpacity, {
+        toValue: 1,
+        duration: 560,
+        delay: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(brandY, {
         toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(textOpacity, {
-        toValue: 1,
-        duration: 800,
-        delay: 500,
+        duration: 560,
+        delay: 160,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
-  };
 
-  const getUser = async () => {
-    try {
-      const token = await Utils.getData('_TOKEN');
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
 
-      if (!token) {
-        props.navigation.replace('Welcome');
-        return;
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orb1, {
+          toValue: 1,
+          duration: 3200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(orb1, {
+          toValue: 0,
+          duration: 3200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orb2, {
+          toValue: 1,
+          duration: 3800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(orb2, {
+          toValue: 0,
+          duration: 3800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+
+    // const finish = async (navigate: () => void) => {
+    //   if (navigatedRef.current) return;
+    //   const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - startedAt));
+    //   if (wait) await new Promise(r => setTimeout(r, wait));
+    //   if (navigatedRef.current) return;
+    //   navigatedRef.current = true;
+    //   navigate();
+    // };
+
+    const finish = async (navigate: () => void) => {
+      if (navigatedRef.current) return;
+
+      const wait = Math.max(
+        0,
+        MIN_SPLASH_MS - (Date.now() - startedAt),
+      );
+
+      if (wait) {
+        await new Promise<void>(resolve => setTimeout(resolve, wait));
       }
 
-      const result: any = await _PROFILE_SERVICES.user_profile();
-      console.log('PROFILE RESULT =>', result);
+      if (navigatedRef.current) return;
 
-      if (result?.data) {
-        await Utils.storeData('_USER_INFO', result.data);
-      }
+      navigatedRef.current = true;
+      navigate();
+    };
+    const routeUser = async () => {
+      try {
+        const token = await Utils.getData('_TOKEN');
+        if (!token) {
+          await finish(() => props.navigation.replace('Welcome'));
+          return;
+        }
 
-      // Server says onboarded → full user + Home
-      if (result?.data?.is_onboarded) {
-        await syncAccessFromProfile(result.data);
-        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
-        return;
-      }
+        const result: any = await _PROFILE_SERVICES.user_profile();
+        if (result?.data) {
+          await Utils.storeData('_USER_INFO', result.data);
+        }
 
-      // Guest browse session (post-OTP choice) → Home, never force assessment
-      if (await isGuestUser()) {
-        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
-        return;
-      }
+        if (result?.data?.is_onboarded) {
+          await syncAccessFromProfile(result.data);
+          await finish(() =>
+            resetRootToHomeStack(props.navigation, 'TabStack', {
+              screen: 'Home',
+            }),
+          );
+          return;
+        }
 
-      const isCustomer = result?.data?.user_roles?.includes('customer');
+        if (await isGuestUser()) {
+          await finish(() =>
+            resetRootToHomeStack(props.navigation, 'TabStack', {
+              screen: 'Home',
+            }),
+          );
+          return;
+        }
 
-      if (!isCustomer) {
+        const isCustomer = result?.data?.user_roles?.includes('customer');
+        if (!isCustomer || result?.data?.is_skipped) {
+          await markAsGuest();
+          await finish(() =>
+            resetRootToHomeStack(props.navigation, 'TabStack', {
+              screen: 'Home',
+            }),
+          );
+          return;
+        }
+
+        if (!result?.data?.is_onboarded) {
+          await finish(() =>
+            resetRootToHomeStack(props.navigation, 'AssessmentType'),
+          );
+          return;
+        }
+
+        await finish(() =>
+          resetRootToHomeStack(props.navigation, 'TabStack', {
+            screen: 'Home',
+          }),
+        );
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          await finish(() =>
+            props.navigation.replace('AuthStack', { screen: 'Login' }),
+          );
+          return;
+        }
         await markAsGuest();
-        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
-        return;
+        await finish(() =>
+          resetRootToHomeStack(props.navigation, 'TabStack', {
+            screen: 'Home',
+          }),
+        );
       }
+    };
 
-      // Skipped assessment earlier → Home as guest (actions still gated)
-      if (result?.data?.is_skipped) {
-        await markAsGuest();
-        resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
-        return;
-      }
+    routeUser();
+  }, [isFocused]);
 
-      // Not guest flag + customer + incomplete → resume assessment
-      if (!result?.data?.is_onboarded) {
-        resetRootToHomeStack(props.navigation, 'AssessmentType');
-        return;
-      }
-
-      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
-    } catch (error: any) {
-      console.log('GET USER ERROR =>', error);
-
-      if (error?.response?.status === 403) {
-        props.navigation.replace('AuthStack', {
-          screen: 'Login',
-        });
-        return;
-      }
-
-      // Soft fallback: token present → guest Home
-      await markAsGuest();
-      resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
-    }
-  };
-
-  // Interpolations
-  const rotate = rotateAnim.interpolate({
+  const pulseScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: [1, 1.08],
   });
-
-  const shimmer = shimmerAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['rgba(255,255,255,0)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)'],
-  });
-
-  const dotFloat1 = dot1Anim.interpolate({
+  const pulseOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -30],
+    outputRange: [0.35, 0.12],
   });
-
-  const dotFloat2 = dot2Anim.interpolate({
+  const orb1Y = orb1.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 25],
+    outputRange: [0, -18],
   });
-
-  const dotFloat3 = dot3Anim.interpolate({
+  const orb2Y = orb2.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -20],
-  });
-
-  const leafMove1 = leafAnim1.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 20],
-  });
-
-  const leafMove2 = leafAnim2.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -25],
-  });
-
-  const leafMove3 = leafAnim3.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 15],
+    outputRange: [0, 22],
   });
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor={'#0F3D2E'} barStyle={'light-content'} />
+      <StatusBar backgroundColor="#06241C" barStyle="light-content" />
 
-      {/* Animated Gradient Background */}
       <LinearGradient
-        colors={['#0F3D2E', '#1A5C3A', '#2D7A4F']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['#041914', '#0A3328', '#0F4A38', '#0A3328']}
+        locations={[0, 0.35, 0.7, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Decorative Leaves */}
+      {/* Atmosphere orbs */}
       <Animated.View
-        style={[
-          styles.leaf1,
-          {
-            transform: [
-              { translateX: leafMove1 },
-              { translateY: leafMove1 },
-              { rotate: '45deg' },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.leafShape} />
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.leaf2,
-          {
-            transform: [
-              { translateX: leafMove2 },
-              { translateY: leafMove2 },
-              { rotate: '-30deg' },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.leafShape2} />
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.leaf3,
-          {
-            transform: [
-              { translateX: leafMove3 },
-              { translateY: leafMove3 },
-              { rotate: '15deg' },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.leafShape3} />
-      </Animated.View>
-
-      {/* Floating Herbal Dots */}
-      <Animated.View
-        style={[
-          styles.floatingDot1,
-          { transform: [{ translateY: dotFloat1 }] },
-        ]}
+        pointerEvents="none"
+        style={[styles.orbTop, { transform: [{ translateY: orb1Y }] }]}
       />
       <Animated.View
-        style={[
-          styles.floatingDot2,
-          { transform: [{ translateY: dotFloat2 }] },
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.floatingDot3,
-          { transform: [{ translateY: dotFloat3 }] },
-        ]}
+        pointerEvents="none"
+        style={[styles.orbBottom, { transform: [{ translateY: orb2Y }] }]}
       />
 
-      {/* Main Content */}
-      <View style={styles.contentContainer}>
+      {/* Decorative leaf images */}
+      <Image
+        source={Images.leaf1}
+        style={styles.leafTL}
+        resizeMode="contain"
+      />
+      <Image
+        source={Images.leaf2}
+        style={styles.leafBR}
+        resizeMode="contain"
+      />
+
+      <View style={styles.center}>
         <Animated.View
           style={[
-            styles.logoContainer,
+            styles.pulseRing,
+            { opacity: pulseOpacity, transform: [{ scale: pulseScale }] },
+          ]}
+        />
+
+        <Animated.View
+          style={[
+            styles.logoPlate,
             {
               opacity: logoOpacity,
-              transform: [{ scale: logoScale }, { rotate: rotate }],
+              transform: [{ scale: logoScale }],
             },
           ]}
         >
-          <View style={styles.logoWrapper}>
+          <LinearGradient
+            colors={['#F8F4EA', '#FFFFFF', '#F0E6C8']}
+            style={styles.logoPlateInner}
+          >
             <Image
               source={Images.FinalLogo}
               style={styles.logo}
               resizeMode="contain"
             />
-            {/* Shimmer overlay */}
-            <Animated.View
-              style={[
-                styles.shimmerOverlay,
-                { backgroundColor: shimmer },
-              ]}
-            />
-          </View>
+          </LinearGradient>
         </Animated.View>
 
         <Animated.View
           style={[
-            styles.textContainer,
+            styles.brandBlock,
             {
-              opacity: textOpacity,
-              transform: [{ translateY: textSlide }],
+              opacity: brandOpacity,
+              transform: [{ translateY: brandY }],
             },
           ]}
         >
-          <Text style={styles.brandName}>AYURMUNI</Text>
-          <Text style={styles.tagline}>Ancient Wisdom • Modern Wellness</Text>
-
-          {/* Loading indicator */}
-          <View style={styles.loadingContainer}>
-            <View style={styles.loadingDot}>
-              <Animated.View
-                style={[
-                  styles.loadingDotInner,
-                  {
-                    transform: [
-                      {
-                        scale: dot1Anim.interpolate({
-                          inputRange: [0, 0.5, 1],
-                          outputRange: [0.5, 1.2, 0.5],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.loadingDot}>
-              <Animated.View
-                style={[
-                  styles.loadingDotInner,
-                  {
-                    transform: [
-                      {
-                        scale: dot2Anim.interpolate({
-                          inputRange: [0, 0.5, 1],
-                          outputRange: [0.5, 1.2, 0.5],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.loadingDot}>
-              <Animated.View
-                style={[
-                  styles.loadingDotInner,
-                  {
-                    transform: [
-                      {
-                        scale: dot3Anim.interpolate({
-                          inputRange: [0, 0.5, 1],
-                          outputRange: [0.5, 1.2, 0.5],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-            </View>
-          </View>
+          <Text style={styles.brand}>AYURMUNI</Text>
+          <View style={styles.goldLine} />
+          <Text style={styles.tagline}>Heal · Balance · Thrive</Text>
         </Animated.View>
       </View>
+
+      <Animated.View style={[styles.bottom, { opacity: brandOpacity }]}>
+        <View style={styles.progressTrack}>
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                opacity: pulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.55, 1],
+                }),
+              },
+            ]}
+          />
+        </View>
+        <Text style={styles.bottomLabel}>Preparing your wellness space</Text>
+      </Animated.View>
     </View>
   );
 };
@@ -486,174 +340,127 @@ export default Splash;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F3D2E',
+    backgroundColor: '#06241C',
   },
-
-  contentContainer: {
+  orbTop: {
+    position: 'absolute',
+    top: -H * 0.08,
+    right: -W * 0.2,
+    width: W * 0.7,
+    height: W * 0.7,
+    borderRadius: W * 0.35,
+    backgroundColor: 'rgba(32, 140, 100, 0.22)',
+  },
+  orbBottom: {
+    position: 'absolute',
+    bottom: -H * 0.05,
+    left: -W * 0.25,
+    width: W * 0.75,
+    height: W * 0.75,
+    borderRadius: W * 0.375,
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+  },
+  leafTL: {
+    position: 'absolute',
+    top: H * 0.1,
+    left: -10,
+    width: 90,
+    height: 90,
+    opacity: 0.18,
+    transform: [{ rotate: '-25deg' }],
+  },
+  leafBR: {
+    position: 'absolute',
+    bottom: H * 0.14,
+    right: -8,
+    width: 100,
+    height: 100,
+    opacity: 0.16,
+    transform: [{ rotate: '20deg' }],
+  },
+  center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
   },
-
-  // Decorative Leaves
-  leaf1: {
+  pulseRing: {
     position: 'absolute',
-    top: 60,
-    right: 30,
-    width: 70,
-    height: 70,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.55)',
   },
-
-  leafShape: {
-    width: 70,
-    height: 70,
-    backgroundColor: 'rgba(45, 122, 79, 0.25)',
-    borderRadius: 35,
-  },
-
-  leaf2: {
-    position: 'absolute',
-    bottom: 80,
-    left: 20,
-    width: 90,
-    height: 90,
-  },
-
-  leafShape2: {
-    width: 90,
-    height: 90,
-    backgroundColor: 'rgba(26, 92, 58, 0.2)',
-    borderRadius: 45,
-  },
-
-  leaf3: {
-    position: 'absolute',
-    top: 200,
-    left: -30,
-    width: 80,
-    height: 80,
-  },
-
-  leafShape3: {
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(45, 122, 79, 0.15)',
-    borderRadius: 40,
-  },
-
-  // Floating Dots
-  floatingDot1: {
-    position: 'absolute',
-    top: 150,
-    right: 80,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-
-  floatingDot2: {
-    position: 'absolute',
-    bottom: 150,
-    right: 60,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-
-  floatingDot3: {
-    position: 'absolute',
-    top: 250,
-    right: 120,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
-  },
-
-  logoWrapper: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+  logoPlate: {
+    width: 152,
+    height: 152,
+    borderRadius: 105,
+    padding: 3,
+    backgroundColor: 'rgba(212, 175, 55, 0.55)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
-    overflow: 'hidden',
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
   },
-
-  logo: {
-    width: 80,
-    height: 80,
-    tintColor: '#FFFFFF',
-  },
-
-  shimmerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-
-  textContainer: {
+  logoPlateInner: {
+    flex: 1,
+    borderRadius: 105,
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
   },
-
-  brandName: {
-    fontSize: 38,
-    color: '#FFFFFF',
-    fontFamily: 'Poppins-Bold',
-    letterSpacing: 3,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-    marginBottom: 6,
+  logo: {
+    width: 100,
+    height: 100,
   },
-
+  brandBlock: {
+    marginTop: 34,
+    alignItems: 'center',
+  },
+  brand: {
+    fontSize: 34,
+    letterSpacing: 6,
+    color: '#F7F3EA',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  goldLine: {
+    marginTop: 12,
+    marginBottom: 12,
+    width: 48,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#D4AF37',
+  },
   tagline: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontFamily: 'Poppins-Medium',
-    letterSpacing: 1,
+    letterSpacing: 2.4,
+    textTransform: 'uppercase',
+    color: 'rgba(247, 243, 234, 0.7)',
+    fontFamily: Fonts.PoppinsMedium,
   },
-
-  loadingContainer: {
-    flexDirection: 'row',
-    marginTop: 30,
+  bottom: {
+    paddingBottom: 48,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
+    paddingHorizontal: 40,
   },
-
-  loadingDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  progressTrack: {
+    width: 120,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+    marginBottom: 12,
   },
-
-  loadingDotInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+  progressFill: {
+    height: '100%',
+    width: '70%',
+    backgroundColor: '#D4AF37',
+    borderRadius: 2,
+  },
+  bottomLabel: {
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: 'rgba(247, 243, 234, 0.45)',
+    fontFamily: Fonts.PoppinsRegular,
   },
 });

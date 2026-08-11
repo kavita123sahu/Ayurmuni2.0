@@ -38,6 +38,72 @@ export const deleteAccount = async () => {
     }
 };
 
+/**
+ * Recover a soft-deleted customer account (no auth token).
+ * POST user/customer/account/recover/
+ */
+export const recoverAccount = async (payload: {
+    phone_number: string;
+    otp: string;
+}) => {
+    try {
+        const response = await apiClient(
+            'user/customer/account/recover/',
+            {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            },
+            false,
+        );
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/** Detect recoverable deleted-account payload from OTP / login responses. */
+export const parseDeletedAccountInfo = (response: any) => {
+    const data = response?.data ?? response ?? {};
+    const code = String(
+        response?.code || data?.code || response?.error_code || '',
+    ).toLowerCase();
+    const status = String(
+        data?.account_status || data?.status || '',
+    ).toLowerCase();
+    const message = String(response?.message || data?.message || '').toLowerCase();
+
+    const flagged =
+        data?.is_deleted === true ||
+        data?.account_deleted === true ||
+        data?.can_recover === true ||
+        data?.is_account_deleted === true ||
+        status === 'deleted' ||
+        status === 'scheduled_for_deletion' ||
+        code.includes('deleted') ||
+        code.includes('recover') ||
+        message.includes('deleted') ||
+        message.includes('recover');
+
+    if (!flagged) return null;
+
+    const daysRaw =
+        data?.retention_days ??
+        data?.backup_days ??
+        data?.recovery_days ??
+        response?.retention_days ??
+        response?.backup_days ??
+        30;
+    const days = Number(daysRaw);
+    return {
+        retentionDays: Number.isFinite(days) && days > 0 ? days : 30,
+        phoneNumber: data?.phone_number || data?.phone || null,
+        message:
+            response?.message ||
+            data?.message ||
+            'This number was used for a deleted account.',
+    };
+};
+
 export const createDoctorReview = async (
     ReviewQuery: object,
     payload: object,

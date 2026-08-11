@@ -24,6 +24,7 @@ import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService';
 import { Utils } from '../../common/Utils';
 import { Colors } from '../../common/Colors';
+import { parseDeletedAccountInfo } from '../../services/ProfileServices';
 
 const C = {
   collageBg: '#1A2E28',
@@ -192,16 +193,57 @@ const PhoneAuthScreen = (props: any) => {
     setIsLoading(true);
 
     try {
+      const fullPhone = `+91${phone}`;
+
+      // Client hold after delete without recover — block same number during retention.
+      const hold = await Utils.getData('_DELETED_ACCOUNT_HOLD');
+      if (hold?.phone && String(hold.phone) === fullPhone) {
+        const days = Number(hold.retention_days) || 30;
+        const heldAt = Number(hold.held_at) || 0;
+        const msLeft = heldAt + days * 24 * 60 * 60 * 1000 - Date.now();
+        if (msLeft > 0) {
+          const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+          showSuccessToast(
+            `This number is under deletion recovery. Recover with OTP within ~${daysLeft} day(s), or use a new number.`,
+            'error',
+          );
+          // Still allow OTP so they can open recover flow on verify
+        } else {
+          await Utils.removeData('_DELETED_ACCOUNT_HOLD');
+        }
+      }
+
       const send_data = {
-        phone_number: `+91${phone}`,
+        phone_number: fullPhone,
       };
 
       const response: any = await _AUTH_SERVICE.send_otp(send_data);
       const OTP = response?.data?.otp;
+      const deletedInfo = parseDeletedAccountInfo(response);
 
       const isCustomer = response?.data?.user_roles?.some(
         (role: string) => role?.toLowerCase() === 'customer',
       );
+
+      if (deletedInfo) {
+        await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
+          phone: fullPhone,
+          retention_days: deletedInfo.retentionDays,
+          held_at: Date.now(),
+        });
+        Utils.storeData('_OTP', OTP);
+        showSuccessToast(
+          `This number was deleted. Enter OTP to recover within ${deletedInfo.retentionDays} days, or use a new number.`,
+          'error',
+        );
+        props.navigation.navigate('OtpVerify', {
+          phone,
+          customer: isCustomer,
+          accountDeleted: true,
+          retentionDays: deletedInfo.retentionDays,
+        });
+        return;
+      }
 
       if (response?.success) {
         Utils.storeData('_OTP', OTP);

@@ -16,6 +16,7 @@ import {
   getProductStockQty,
   isProductOutOfStock,
 } from '../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { resolveProductImageUri } from '../utils/imageUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -84,11 +85,13 @@ const ProductCard: React.FC<Props> = ({
 
   const handleAdd = () => {
     if (isOutOfStock || actionsLocked) return;
+    if (!canAddProductWithoutPrescription(item)) return;
     onAdd();
   };
 
   const handleIncrement = () => {
     if (isOutOfStock || actionsLocked) return;
+    if (!canAddProductWithoutPrescription(item)) return;
     if (maxQuantity != null && cartQty >= maxQuantity) return;
     onIncrement();
   };

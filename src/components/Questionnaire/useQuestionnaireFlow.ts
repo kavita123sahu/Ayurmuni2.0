@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeGoBack } from '../../navigation/navigationUtils';
+import { showSuccessToast } from '../../config/Key';
 import { QUESTIONNAIRE_SETUP, QuestionnaireMode } from './configs';
 import {
   buildPrakritiAnswers,
@@ -24,6 +25,7 @@ import {
   toggleAnswer,
 } from './utils';
 import { promoteToFullUser } from '../../services/guestAuth';
+import { XP_PER_LEVEL, STREAK_BONUS } from './PrakritiQuestTheme';
 
 export const useQuestionnaireFlow = (
   navigation: any,
@@ -39,9 +41,12 @@ export const useQuestionnaireFlow = (
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [streak, setStreak] = useState(0);
 
   const cachedPrakritiQuestions = useRef<any[]>([]);
   const isSelectingKnowPrakriti = useRef(false);
+  const pendingAdvanceRef = useRef(false);
+  const prevStepRef = useRef(0);
 
   const basics = useMemo(
     () => findBasicQuestions(rawQuestions),
@@ -149,6 +154,15 @@ export const useQuestionnaireFlow = (
       const key = getStepKey(currentStep);
       const isMulti = currentStep?.answer_type === 'multi_choice';
       setAnswers(prev => toggleAnswer(prev, key, choice?.index, isMulti));
+
+      // Gamified: auto-advance after a single choice (prakriti + medical)
+      if (
+        !isMulti &&
+        currentStep?.key !== 'knowPrakriti' &&
+        currentStep?.answer_type !== 'text'
+      ) {
+        pendingAdvanceRef.current = true;
+      }
     },
     [currentStep, handleKnowPrakriti, isPrakriti, submitting],
   );
@@ -175,10 +189,12 @@ export const useQuestionnaireFlow = (
 
   const handleNext = useCallback(async () => {
     if (isDisabled || submitting) {
-      showSuccessToast(
-        isPrakriti ? 'Please select option' : 'Please complete this step',
-        'error',
-      );
+      if (!pendingAdvanceRef.current) {
+        showSuccessToast(
+          isPrakriti ? 'Please select option' : 'Please complete this step',
+          'error',
+        );
+      }
       return;
     }
 
@@ -222,7 +238,46 @@ export const useQuestionnaireFlow = (
     submitting,
   ]);
 
+  // After single-choice select, advance once answers flush (avoids stale isDisabled)
+  useEffect(() => {
+    if (!pendingAdvanceRef.current) return;
+    if (isDisabled || submitting) return;
+    // Don't auto-advance basic info / text steps
+    if (basicInfoStep || currentStep?.answer_type === 'text') {
+      pendingAdvanceRef.current = false;
+      return;
+    }
+    const t = setTimeout(() => {
+      handleNext();
+      pendingAdvanceRef.current = false;
+    }, 280);
+    return () => clearTimeout(t);
+  }, [
+    answers,
+    basicInfoStep,
+    currentStep?.answer_type,
+    handleNext,
+    isDisabled,
+    submitting,
+  ]);
+
+  // Streak HUD: climbing levels builds a combo; going back resets
+  useEffect(() => {
+    if (step > prevStepRef.current) {
+      setStreak(s => s + 1);
+    } else if (step < prevStepRef.current) {
+      setStreak(0);
+    }
+    prevStepRef.current = step;
+  }, [step]);
+
+  const xp = useMemo(() => {
+    const answered = Math.max(0, step);
+    return answered * XP_PER_LEVEL + Math.max(0, streak - 1) * STREAK_BONUS;
+  }, [step, streak]);
+
   const handleBack = useCallback(() => {
+    pendingAdvanceRef.current = false;
     if (step === 0) {
       safeGoBack(navigation);
       return;
@@ -279,6 +334,9 @@ export const useQuestionnaireFlow = (
     isDisabled,
     showSkip,
     isLastStep,
+    streak,
+    xp,
+    mode,
     handleSelect,
     handleNext,
     handleBack,

@@ -10,6 +10,7 @@ import {
 import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import { Fonts } from '../common/Fonts';
+import { Colors } from '../common/Colors';
 import { CARD_SURFACE } from '../constants/cardStyles';
 import { resolveImageUri } from '../utils/imageUtils';
 import { resolveCartItemImage } from '../common/DataInterface';
@@ -93,20 +94,29 @@ const MyProductCard = ({
                         <Text numberOfLines={1} style={styles.prescribedText}>
                             {/^dr\.?\s/i.test(String(item.doctorName).trim())
                                 ? item.doctorName
-                                : `Dr. ${item.doctorName}`}
+                                : `${item.doctorName}`}
                         </Text>
                     </View>
                 )}
             </View>
 
             <View style={styles.qtyWrap}>
-                <BlinkitAddButton
-                    quantity={item.quantity}
-                    compact
-                    onAdd={() => updateQuantity(item.variant_id, 'plus')}
-                    onIncrement={() => updateQuantity(item.variant_id, 'plus')}
-                    onDecrement={() => updateQuantity(item.variant_id, 'minus')}
-                />
+                {type === 'prescribed' ? (
+                    <View style={styles.prescribedQtyBox}>
+                        <Text style={styles.prescribedQtyValue}>
+                            {item.quantity}
+                        </Text>
+                        <Text style={styles.prescribedQtyLabel}>Prescribed</Text>
+                    </View>
+                ) : (
+                    <BlinkitAddButton
+                        quantity={item.quantity}
+                        compact
+                        onAdd={() => updateQuantity(item.variant_id, 'plus')}
+                        onIncrement={() => updateQuantity(item.variant_id, 'plus')}
+                        onDecrement={() => updateQuantity(item.variant_id, 'minus')}
+                    />
+                )}
             </View>
         </Pressable>
     );
@@ -216,5 +226,27 @@ const styles = StyleSheet.create({
     qtyWrap: {
         alignItems: 'flex-end',
         justifyContent: 'center',
+    },
+    prescribedQtyBox: {
+        minWidth: 70,
+        height: 36,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        backgroundColor: Colors.primaryColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    prescribedQtyLabel: {
+        fontSize: 8,
+        color: 'rgba(255,255,255,0.85)',
+        fontFamily: Fonts.PoppinsMedium,
+        letterSpacing: 0.2,
+        marginTop: -1,
+    },
+    prescribedQtyValue: {
+        fontSize: 15,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+        lineHeight: 18,
     },
 });

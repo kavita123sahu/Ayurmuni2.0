@@ -22,7 +22,7 @@ import AllDoctorCard from '../../components/AllDoctorCard';
 import { Fonts } from '../../common/Fonts';
 import { useAllDoctors } from '../../hooks/useConsultData';
 import {
-  TopDoctorsCardSkeleton,
+  AllDoctorCardSkeleton,
   ProductGridSkeleton,
   DiseaseChipSkeleton,
 } from '../../simmerScreen/ShimmerHook';
@@ -40,6 +40,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const H_PAD = 20;
@@ -205,6 +206,10 @@ const CategoryDoctor = (props: any) => {
         showSuccessToast('Not enough stock available', 'error');
         return;
       }
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
       const result = await dispatch(
         syncCartQuantity({ variantId, quantity: newQty }),
       );
@@ -215,7 +220,7 @@ const CategoryDoctor = (props: any) => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   const handleWishlist = useCallback(
@@ -293,11 +298,11 @@ const CategoryDoctor = (props: any) => {
                   </Text>
                 </TouchableOpacity>
 
-                {diseases.map(item => {
+                {diseases.map((item, index) => {
                   const active = selectedDiseaseId === item.id;
                   return (
                     <TouchableOpacity
-                      key={item.id}
+                      key={String(item?.id ?? `disease-${index}`)}
                       style={[
                         styles.diseaseChip,
                         active && styles.diseaseChipActive,
@@ -337,12 +342,12 @@ const CategoryDoctor = (props: any) => {
             />
 
             {doctorsLoading && !hasDoctors ? (
-              <TopDoctorsCardSkeleton />
+              <AllDoctorCardSkeleton count={3} />
             ) : (
               <View style={styles.doctorsBlock}>
-                {previewDoctors.map((item: any) => (
+                {previewDoctors.map((item: any, index: number) => (
                   <AllDoctorCard
-                    key={String(item.id)}
+                    key={String(item?.id ?? item?.doctor_id ?? `doc-${index}`)}
                     item={item}
                     onPress={() => handleDoctorPress(item)}
                   />
@@ -360,12 +365,16 @@ const CategoryDoctor = (props: any) => {
           </>
         ) : null}
 
-        <SectionHeader title={productSectionTitle} />
-        {!productsLoading && products.length > 0 ? (
-          <Text style={styles.resultCount}>
-            {products.length} product{products.length === 1 ? '' : 's'}
-          </Text>
-        ) : null}
+        {(productsLoading || products.length > 0) && (
+          <>
+            <SectionHeader title={productSectionTitle} />
+            {!productsLoading && products.length > 0 ? (
+              <Text style={styles.resultCount}>
+                {products.length} product{products.length === 1 ? '' : 's'}
+              </Text>
+            ) : null}
+          </>
+        )}
       </>
     ),
     [
@@ -423,6 +432,8 @@ const CategoryDoctor = (props: any) => {
 
   const refreshing = doctorsRefreshing || productsRefreshing;
   const showProductSkeleton = productsLoading && products.length === 0;
+  const hasActiveProductFilters =
+    Boolean(debouncedSearch.trim()) || Boolean(selectedDiseaseId);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -435,7 +446,7 @@ const CategoryDoctor = (props: any) => {
         onRefreshPress={onRefresh}
       />
 
-      {showProductSkeleton ? (
+      {showProductSkeleton && products.length === 0 && !hasDoctors ? (
         <View style={styles.pad}>
           <ListHeader />
           <ProductGridSkeleton cardWidth={CARD_W} gap={GRID_GAP} count={6} />
@@ -475,11 +486,17 @@ const CategoryDoctor = (props: any) => {
             ) : null
           }
           ListEmptyComponent={
-            !productsLoading ? (
+            !productsLoading && products.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyTitle}>No products found</Text>
+                <Text style={styles.emptyTitle}>
+                  {hasActiveProductFilters
+                    ? 'No products found'
+                    : 'No products available'}
+                </Text>
                 <Text style={styles.emptySub}>
-                  Try another condition or clear search
+                  {hasActiveProductFilters
+                    ? 'Try clearing search or selecting another disease.'
+                    : 'Products will appear here when available.'}
                 </Text>
               </View>
             ) : null
@@ -510,19 +527,20 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   doctorsBlock: {
-    marginBottom: 8,
+    marginBottom: 4,
+    gap: 0,
   },
   viewAllHint: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 2,
+    marginBottom: 6,
     textAlign: 'center',
     fontSize: 13,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   diseaseSection: {
-    marginBottom: 10,
-    marginTop: 4,
+    marginBottom: 6,
+    marginTop: 2,
   },
   diseaseTitle: {
     fontSize: 13,
@@ -563,6 +581,7 @@ const styles = StyleSheet.create({
   },
   resultCount: {
     marginBottom: 8,
+    marginTop: -2,
     fontSize: 12,
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,

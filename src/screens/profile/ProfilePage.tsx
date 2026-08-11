@@ -1067,6 +1067,10 @@ const ProfilePage = ({ navigation }: any) => {
     const tabClearance = getScreenBottomPadding(insets);
 
     const [logoutVisible, setLogoutVisible] = useState(false);
+    const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
+    const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+    const [deleteAccountDoneVisible, setDeleteAccountDoneVisible] = useState(false);
+    const [deleteRetentionDays, setDeleteRetentionDays] = useState(30);
     const [user, setUser] = useState(null);
     /** null = resolving access; avoids flashing wrong UI */
     const [isGuest, setIsGuest] = useState<boolean | null>(null);
@@ -1159,6 +1163,7 @@ const ProfilePage = ({ navigation }: any) => {
         { id: 8, title: 'Mentor', icon: 'school' },
         { id: 9, title: 'Cart', icon: 'shopping-cart' },
         { id: 10, title: 'Analysis', icon: 'chart-pie' },
+        { id: 11, title: 'Delete Account', icon: 'trash' },
     ];
 
     const preferenceMenu: MenuEntry[] = [
@@ -1265,6 +1270,9 @@ const ProfilePage = ({ navigation }: any) => {
             case 'Analysis':
                 stackNav.navigate('PrakritiProfile');
                 break;
+            case 'Delete Account':
+                setDeleteAccountVisible(true);
+                break;
             default:
                 break;
         }
@@ -1274,6 +1282,29 @@ const ProfilePage = ({ navigation }: any) => {
         setLogoutVisible(false);
         await Utils.clearAllData();
         navigation.replace('Welcome');
+    };
+
+    const handleDeleteAccount = async () => {
+        if (deleteAccountLoading) return;
+        setDeleteAccountLoading(true);
+        try {
+            const res: any = await ProfileServices.deleteAccount();
+            const daysRaw =
+                res?.data?.retention_days ??
+                res?.retention_days ??
+                res?.data?.backup_days ??
+                res?.backup_days ??
+                30;
+            const days = Number(daysRaw);
+            setDeleteRetentionDays(Number.isFinite(days) && days > 0 ? days : 30);
+            setDeleteAccountVisible(false);
+            setDeleteAccountDoneVisible(true);
+        } catch (e) {
+            // Keep user on screen; modal can be closed and retried.
+            setDeleteAccountLoading(false);
+        } finally {
+            setDeleteAccountLoading(false);
+        }
     };
 
     const MenuItem = ({ item }: { item: MenuEntry }) => (
@@ -1536,6 +1567,64 @@ const ProfilePage = ({ navigation }: any) => {
                     confirmText="Yes, Logout"
                     onClose={() => setLogoutVisible(false)}
                     onConfirm={handleLogout}
+                />
+            )}
+
+            {deleteAccountVisible && (
+                <CommonModal
+                    visible={deleteAccountVisible}
+                    icon="🗑️"
+                    title="Delete account"
+                    subtitle={`This will permanently delete your account. Your appointments, orders, and patient records will remain retrievable for ${deleteRetentionDays} days.`}
+                    cancelText="Cancel"
+                    confirmText={deleteAccountLoading ? 'Deleting...' : 'Delete'}
+                    loading={deleteAccountLoading}
+                    onClose={() => setDeleteAccountVisible(false)}
+                    onConfirm={handleDeleteAccount}
+                />
+            )}
+
+            {deleteAccountDoneVisible && (
+                <CommonModal
+                    visible={deleteAccountDoneVisible}
+                    icon="✅"
+                    title="Account scheduled for deletion"
+                    subtitle={`Your appointments, orders, and patient records stay recoverable for ${deleteRetentionDays} days. After that they cannot be restored. Until you recover (or the period ends), this phone number cannot enter the app — use Recover with OTP, or a new number.`}
+                    cancelText="Close"
+                    confirmText="OK"
+                    loading={false}
+                    onClose={async () => {
+                        setDeleteAccountDoneVisible(false);
+                        const info = await Utils.getData('_USER_INFO');
+                        const phone =
+                            info?.phone_number ||
+                            info?.phone ||
+                            info?.mobile ||
+                            null;
+                        await Utils.clearAllData();
+                        await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
+                            phone,
+                            retention_days: deleteRetentionDays,
+                            held_at: Date.now(),
+                        });
+                        navigation.replace('Welcome');
+                    }}
+                    onConfirm={async () => {
+                        setDeleteAccountDoneVisible(false);
+                        const info = await Utils.getData('_USER_INFO');
+                        const phone =
+                            info?.phone_number ||
+                            info?.phone ||
+                            info?.mobile ||
+                            null;
+                        await Utils.clearAllData();
+                        await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
+                            phone,
+                            retention_days: deleteRetentionDays,
+                            held_at: Date.now(),
+                        });
+                        navigation.replace('Welcome');
+                    }}
                 />
             )}
         </>

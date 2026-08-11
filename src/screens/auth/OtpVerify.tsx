@@ -31,6 +31,7 @@ import { Fonts } from '../../common/Fonts';
 import { AntDesign, MaterialCommunityIcons } from '../../common/Vector';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
+import CommonModal from '../../components/LogoutModal';
 
 const C = {
   collageBg: '#1A2E28',
@@ -125,9 +126,24 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState<number>(60);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [recoverVisible, setRecoverVisible] = useState(false);
+  const [recoverLoading, setRecoverLoading] = useState(false);
+  const [recoverDays, setRecoverDays] = useState(30);
+  const [pendingRecoverOtp, setPendingRecoverOtp] = useState('');
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const phoneNumber = props.route?.params?.phone;
   const NEW_CUSTOMER = props.route?.params?.customer;
+  const routeRetentionDays = Number(props.route?.params?.retentionDays);
+
+  useEffect(() => {
+    if (
+      props.route?.params?.accountDeleted &&
+      Number.isFinite(routeRetentionDays) &&
+      routeRetentionDays > 0
+    ) {
+      setRecoverDays(routeRetentionDays);
+    }
+  }, [props.route?.params?.accountDeleted, routeRetentionDays]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
@@ -211,6 +227,108 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
     ]).start();
   };
 
+  const openRecoverPrompt = async (
+    info: {
+      retentionDays: number;
+      message?: string;
+    },
+    otpCode: string,
+  ) => {
+    // Never keep a session for a deleted account unless they recover.
+    await Utils.removeData('_TOKEN');
+    await Utils.removeData('_REFRESH_TOKEN');
+    await Utils.removeData('_IS_GUEST');
+    await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
+      phone: `+91${phoneNumber}`,
+      retention_days: info.retentionDays,
+      held_at: Date.now(),
+    });
+    setRecoverDays(info.retentionDays);
+    setPendingRecoverOtp(otpCode);
+    setRecoverVisible(true);
+  };
+
+  /** Without recover, this number cannot enter the app during retention. */
+  const dismissRecoverWithoutEntry = async () => {
+    setRecoverVisible(false);
+    await Utils.removeData('_TOKEN');
+    await Utils.removeData('_REFRESH_TOKEN');
+    await Utils.removeData('_IS_GUEST');
+    showSuccessToast(
+      `This number is under deletion recovery for ${recoverDays} days. Recover to enter, or use a different number.`,
+      'error',
+    );
+    props.navigation.navigate('Login');
+  };
+
+  const recoverDeletedAccount = async () => {
+    const otpCode = pendingRecoverOtp || otp.join('');
+    if (!otpCode || otpCode.length < 4) {
+      showSuccessToast('Please enter a valid OTP', 'error');
+      return;
+    }
+    setRecoverLoading(true);
+    try {
+      // Recover API must run without auth token
+      await Utils.removeData('_TOKEN');
+      await Utils.removeData('_REFRESH_TOKEN');
+
+      const res: any = await _PROFILE_SERVICES.recoverAccount({
+        phone_number: `+91${phoneNumber}`,
+        otp: otpCode,
+      });
+
+      if (res?.success === false) {
+        showSuccessToast(
+          res?.message || 'Unable to recover account',
+          'error',
+        );
+        return;
+      }
+
+      await Utils.removeData('_DELETED_ACCOUNT_HOLD');
+
+      if (res?.data?.access) {
+        await Utils.storeData('_TOKEN', res.data.access);
+      }
+      if (res?.data?.refresh) {
+        await Utils.storeData('_REFRESH_TOKEN', res.data.refresh);
+      }
+      if (res?.data?.user_id) {
+        await Utils.storeData('_USER_ID', res.data.user_id);
+      }
+
+      showSuccessToast(
+        res?.message || 'Account recovered successfully',
+        'success',
+      );
+      setRecoverVisible(false);
+
+      try {
+        const profileRes: any = await _PROFILE_SERVICES.user_profile();
+        if (profileRes?.data) {
+          await Utils.storeData('_USER_INFO', profileRes.data);
+        }
+        const level = await syncAccessFromProfile(profileRes?.data);
+        if (level === 'full') {
+          resetRootToHomeStack(props.navigation, 'TabStack', {
+            screen: 'Home',
+          });
+        } else {
+          await markAsGuest();
+          resetRootToHomeStack(props.navigation, 'AccessMode');
+        }
+      } catch {
+        await markAsGuest();
+        resetRootToHomeStack(props.navigation, 'AccessMode');
+      }
+    } catch {
+      showSuccessToast('Unable to recover account. Try again.', 'error');
+    } finally {
+      setRecoverLoading(false);
+    }
+  };
+
   const handleVerifyOTP = async () => {
     Keyboard.dismiss();
     const otpCode = otp.join('');
@@ -227,6 +345,12 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         otp: otpCode,
       };
       const response: any = await _AUTH_SERVICE.verify_otp(send_data);
+      const deletedInfo = _PROFILE_SERVICES.parseDeletedAccountInfo(response);
+
+      if (deletedInfo) {
+        await openRecoverPrompt(deletedInfo, otpCode);
+        return;
+      }
 
       if (response?.success) {
         await Utils.storeData('_USER_ID', response?.data?.user_id);
@@ -265,6 +389,12 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         otp: otpCode,
       };
       const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
+      const deletedInfo = _PROFILE_SERVICES.parseDeletedAccountInfo(response);
+
+      if (deletedInfo) {
+        await openRecoverPrompt(deletedInfo, otpCode);
+        return;
+      }
 
       if (response?.success) {
         showSuccessToast(response.message || 'OTP verified successfully', 'success');
@@ -272,9 +402,12 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         await Utils.storeData('_TOKEN', response?.data?.access);
         await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
 
-        const customerOnboard = response?.data?.customer;
+        const customerOnboard = response?.data?.customer || response?.data;
         const hasCustomer =
-          !!customerOnboard && customerOnboard.customer_id != null;
+          !!customerOnboard &&
+          (customerOnboard.customer_id != null ||
+            customerOnboard.is_customer_profile_created === true ||
+            customerOnboard.is_profile === true);
 
         if (!hasCustomer) {
           await markAsGuest();
@@ -287,7 +420,9 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
           if (profileRes?.data) {
             await Utils.storeData('_USER_INFO', profileRes.data);
           }
-          const level = await syncAccessFromProfile(profileRes?.data);
+          const level = await syncAccessFromProfile(
+            profileRes?.data || customerOnboard,
+          );
           if (level === 'full') {
             resetRootToHomeStack(props.navigation, 'TabStack', {
               screen: 'Home',
@@ -569,6 +704,18 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CommonModal
+        visible={recoverVisible}
+        icon="♻️"
+        title="Account was deleted"
+        subtitle={`This number is scheduled for deletion. Recover within ${recoverDays} days to keep your data and enter the app. Without recovery you cannot use this number until the ${recoverDays}-day period ends — or sign in with a new number.`}
+        cancelText="Use another number"
+        confirmText="Recover account"
+        loading={recoverLoading}
+        onClose={dismissRecoverWithoutEntry}
+        onConfirm={recoverDeletedAccount}
+      />
     </View>
   );
 };

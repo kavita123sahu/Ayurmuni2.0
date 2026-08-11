@@ -56,6 +56,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 
 const H_PAD = 20;
 const GRID_GAP = 10;
@@ -78,9 +79,6 @@ const MedicineScreen = (props: any) => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
-  const { images: bannerImages } = useBanners('medicine');
-  const screenWidth = Dimensions.get('window').width;
-
   const {
     categories: dashboardCategories,
     medicineProducts,
@@ -90,6 +88,8 @@ const MedicineScreen = (props: any) => {
     () => getServiceCategoryId(dashboardCategories, 'medicine'),
     [dashboardCategories],
   );
+  const { images: bannerImages } = useBanners('medicine', medicineCategoryId);
+  const screenWidth = Dimensions.get('window').width;
 
   // All Medicines: customers/products/ with pagination (full catalog).
   // Do not block on service_category_id — empty filter returns all products.
@@ -201,6 +201,11 @@ const MedicineScreen = (props: any) => {
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       const result = await dispatch(
         syncCartQuantity({ variantId, quantity: newQty }),
       );
@@ -211,7 +216,7 @@ const MedicineScreen = (props: any) => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   useWishlistSync(setProducts);

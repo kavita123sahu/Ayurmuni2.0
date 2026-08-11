@@ -151,17 +151,25 @@ const SuggestedCard: React.FC<Props> = ({
             .filter(Boolean)
             .join(', ') ||
           '';
-        const badgeText =
-          item?.difficulty || item?.prakriti || item?.season || '';
+        const prakriti = String(item?.prakriti || '').trim();
+        const season = String(item?.season || '').trim();
+        const badgeText = item?.difficulty || season || '';
+        const doctorName = String(
+          item?.suggested_doctor_name ||
+          item?.doctor_name ||
+          item?.suggested_by_doctor_name ||
+          '',
+        ).trim();
+        const doctorLabel = doctorName.replace(/^dr\.?\s*/i, '');
         const imageUri = isYoga
           ? resolveYogaThumbnailUri(item)
           : (
-              item?.thumbnail_url ||
-              item?.image_url ||
-              item?.diet_plan_gallery?.find((img: any) => img.is_cover)
-                ?.image_url ||
-              ''
-            ).trim();
+            item?.thumbnail_url ||
+            item?.image_url ||
+            item?.diet_plan_gallery?.find((img: any) => img.is_cover)
+              ?.image_url ||
+            ''
+          ).trim();
         const videoUri = isYoga ? resolveYogaVideoUri(item) : null;
 
         return (
@@ -191,6 +199,14 @@ const SuggestedCard: React.FC<Props> = ({
                   resizeMode="cover"
                 />
               )}
+              {isDiet && !!prakriti ? (
+
+                <View style={[styles.prakritiOverlay, styles.prakritiBadge]}>
+                  <Text style={[styles.prakritiOverlayText, styles.prakritiBadgeText]} numberOfLines={1}>
+                    {prakriti}
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.subContainer}>
@@ -203,7 +219,22 @@ const SuggestedCard: React.FC<Props> = ({
                   {title}
                 </Text>
 
-                {!!subtitle && (
+                {isDiet && !!doctorName ? (
+                  <View style={styles.doctorSuggestChip}>
+                    <TablerIcon name="stethoscope" size={11} color="#0D614E" />
+                    <View style={styles.doctorSuggestChipCopy}>
+                      <Text style={styles.doctorSuggestChipLabel}>
+                        Suggested by
+                      </Text>
+                      <Text
+                        style={styles.doctorSuggestChipName}
+                        numberOfLines={1}
+                      >
+                        Dr. {doctorLabel}
+                      </Text>
+                    </View>
+                  </View>
+                ) : !!subtitle ? (
                   <Text
                     style={styles.subtitle}
                     numberOfLines={1}
@@ -211,12 +242,18 @@ const SuggestedCard: React.FC<Props> = ({
                   >
                     {subtitle}
                   </Text>
-                )}
+                ) : null}
 
                 <View style={styles.infoRow}>
-                  {!!badgeText && (
+                  {/* {!!prakriti && (
+                    <View style={[styles.badge, styles.prakritiBadge]}>
+                      <Text style={[styles.badgeText, styles.prakritiBadgeText]}>
+                        {prakriti}
+                      </Text>
+                    </View>
+                  )} */}
+                  {!!badgeText && badgeText !== prakriti && (
                     <View style={styles.badge}>
-                      <TablerIcon name="approved" size={14} color="#0D614E" />
                       <Text style={styles.badgeText}>{badgeText}</Text>
                     </View>
                   )}
@@ -298,6 +335,68 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  doctorOverlay: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    maxWidth: '88%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(13, 97, 78, 0.9)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  doctorOverlayText: {
+    flexShrink: 1,
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  prakritiOverlay: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    maxWidth: '88%',
+    backgroundColor: 'rgba(13, 97, 78, 0.92)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  prakritiOverlayText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  doctorSuggestChip: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+  doctorSuggestChipCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  doctorSuggestChipLabel: {
+    fontSize: 9,
+    color: '#0F766E',
+    fontFamily: Fonts.PoppinsMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
+  },
+  doctorSuggestChipName: {
+    fontSize: 11,
+    color: '#0D614E',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   videoPoster: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.55,
@@ -357,10 +456,18 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   badgeText: {
-    marginLeft: 3,
     fontSize: 10,
     color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  prakritiBadge: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#047857',
+    borderWidth: 0.5,
+  },
+  prakritiBadgeText: {
+    color: '#047857',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   footerContainer: {
     alignItems: 'center',

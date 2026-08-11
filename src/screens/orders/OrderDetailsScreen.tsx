@@ -51,7 +51,59 @@ type OrderItemRow = {
 
 const formatCurrency = (value?: string | number) => {
   const num = Number(value ?? 0);
-  return `Rs. ${num.toFixed(2)}`;
+  return `Rs. ${Number.isFinite(num) ? num.toFixed(2) : '0.00'}`;
+};
+
+/** Prefer API fields; fall back to summing line items when items_total/subtotal are 0. */
+const resolveOrderItemsTotal = (order: any): number => {
+  const candidates = [
+    order?.items_total,
+    order?.item_total,
+    order?.items_subtotal,
+    order?.products_total,
+    order?.subtotal,
+    order?.cart_subtotal,
+    order?.amount_items,
+  ];
+
+  for (const candidate of candidates) {
+    const n = Number(candidate);
+    if (Number.isFinite(n) && n > 0) {
+      return n;
+    }
+  }
+
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const sum = items.reduce((acc: number, item: any) => {
+    const qty = Number(item?.quantity ?? 1) || 1;
+    const unit = Number(
+      item?.selling_price ??
+        item?.variant?.selling_price ??
+        item?.price ??
+        item?.unit_price ??
+        0,
+    );
+    const line = Number(
+      item?.item_total ??
+        item?.line_total ??
+        item?.total ??
+        item?.subtotal ??
+        unit * qty,
+    );
+    return acc + (Number.isFinite(line) ? line : 0);
+  }, 0);
+
+  if (sum > 0) return sum;
+
+  // Last resort: derive from grand total minus known charges
+  const grand = Number(order?.total_amount ?? order?.grand_total ?? 0);
+  if (!Number.isFinite(grand) || grand <= 0) return 0;
+
+  const shipping = Number(order?.shipping_charges ?? 0) || 0;
+  const cod = Number(order?.cod_charges ?? 0) || 0;
+  const discount = Number(order?.total_discount ?? order?.discount ?? 0) || 0;
+  const derived = grand - shipping - cod + discount;
+  return derived > 0 ? derived : grand;
 };
 
 const mapOrderItems = (
@@ -62,14 +114,26 @@ const mapOrderItems = (
 
   return items.map((item: any, index: number) => {
     const review = getOrderItemReview(item, order, fetchedByVariant);
+    const qty = Number(item?.quantity ?? 1) || 1;
+    const unit = Number(
+      item?.selling_price ??
+        item?.variant?.selling_price ??
+        item?.price ??
+        item?.unit_price ??
+        0,
+    );
+    const lineTotal = Number(
+      item?.item_total ??
+        item?.line_total ??
+        item?.total ??
+        unit * qty,
+    );
     return {
       id: String(item?.id ?? index),
       variantId: String(item?.variant?.variant_id ?? item?.variant_id ?? ''),
       name: String(item?.variant?.variant_title ?? item?.product_name ?? 'Product'),
-      subtitle: `Qty: ${item?.quantity ?? 1}`,
-      price: formatCurrency(
-        item?.selling_price ?? item?.variant?.selling_price ?? item?.price,
-      ),
+      subtitle: `Qty: ${qty}`,
+      price: formatCurrency(lineTotal > 0 ? lineTotal : unit),
       image: resolveProductImageUri(item),
       raw: item,
       review,
@@ -283,14 +347,16 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
     [order, fetchedReviewsByVariant],
   );
 
-  console.log('itemsitemsitemsitems =>', items);
   const status = (order?.order_status);
   const canReview = status === 'DELIVERED';
   const trackingSteps = useMemo(() => buildOrderTrackingSteps(order), [order]);
   const address = formatDeliveryAddress(order?.delivery_address);
 
   const paymentRows = [
-    { label: 'Items total', value: formatCurrency(order?.items_total ?? order?.subtotal) },
+    {
+      label: 'Items total',
+      value: formatCurrency(resolveOrderItemsTotal(order)),
+    },
     {
       label: 'Shipping',
       value: Number(order?.shipping_charges ?? 0) > 0 ? formatCurrency(order?.shipping_charges) : 'Free',

@@ -48,6 +48,8 @@ const MyCart = ({ navigation }: any) => {
         useAllCartData();
     const [refreshing, setRefreshing] = useState(false);
 
+    console.log("CartDataCartDataCartData",CartData);
+    
     const onRefresh = useCallback(async () => {
 
         setRefreshing(true);
@@ -228,6 +230,11 @@ const MyCart = ({ navigation }: any) => {
                 .find(i => i.variant_id === variantId);
 
             if (!selectedItem) {
+                return;
+            }
+
+            // Prescribed qty is fixed by the doctor — do not allow +/- 
+            if (selectedItem.source === 'prescribed') {
                 return;
             }
 

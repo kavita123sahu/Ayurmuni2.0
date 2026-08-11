@@ -10,15 +10,17 @@ type Setup = {
 
 export const PRAKRITI_CONFIG: QuestionnaireConfig = {
   description:
-    'This helps us understand your prakriti better and give you personalized recommendations.',
+    'Journey through the temple and discover your Ayurvedic constitution.',
   infoText:
-    'Ayurveda believes your hair reflects your inner balance and overall well-being.',
+    'Each answer shapes your Vata, Pitta, and Kapha balance — trust your first instinct.',
   infoFromStep: 1,
 };
 
 export const MEDICAL_CONFIG: QuestionnaireConfig = {
+  description:
+    'Complete your health quest so we can tailor the best wellness plan for you.',
   infoText:
-    'Your information is Confidential and will help us tailor the best wellness plan for you',
+    'Your answers stay confidential — each level unlocks smarter care.',
   infoFromStep: 0,
   medical: true,
 };
@@ -26,11 +28,13 @@ export const MEDICAL_CONFIG: QuestionnaireConfig = {
 export const QUESTIONNAIRE_SETUP: Record<QuestionnaireMode, Setup> = {
   prakriti: {
     config: PRAKRITI_CONFIG,
-    finishRoute: 'AssessmentType',
-    finishParams: { form: 'medical' },
+    // Show Prakriti result screen immediately after assessment
+    finishRoute: 'PrakritiProfile',
+    finishParams: { fromAssessment: true },
   },
   medical: {
     config: MEDICAL_CONFIG,
     finishRoute: 'PrakritiProfile',
+    finishParams: { fromMedical: true },
   },
 };

@@ -117,12 +117,21 @@ export const AddMedicalRecord = async (patientData: any) => {
 
 export const DIET_PLAN_PAGE_SIZE = 20;
 
-export const getDietPlans = async (params?: {
+export type DietPlanListParams = {
     id?: string | number;
     type?: 'all' | string;
     page?: number;
     page_size?: number;
-}) => {
+    search?: string;
+    health_disease_id?: string | number;
+    prakriti?: string;
+    is_paid?: boolean | string;
+    duration?: string | number;
+    calories?: string | number;
+    sort?: 'popularity' | 'latest' | string;
+};
+
+export const getDietPlans = async (params?: DietPlanListParams) => {
     try {
         const query = new URLSearchParams();
         if (params?.id != null && String(params.id).trim() !== '') {
@@ -137,6 +146,31 @@ export const getDietPlans = async (params?: {
         if (params?.page_size != null) {
             query.set('page_size', String(params.page_size));
         }
+        if (params?.search != null && String(params.search).trim() !== '') {
+            query.set('search', String(params.search).trim());
+        }
+        if (
+            params?.health_disease_id != null &&
+            String(params.health_disease_id).trim() !== ''
+        ) {
+            query.set('health_disease_id', String(params.health_disease_id));
+        }
+        if (params?.prakriti != null && String(params.prakriti).trim() !== '') {
+            query.set('prakriti', String(params.prakriti).trim());
+        }
+        if (params?.is_paid != null && params.is_paid !== '') {
+            query.set('is_paid', String(params.is_paid));
+        }
+        if (params?.duration != null && String(params.duration).trim() !== '') {
+            query.set('duration', String(params.duration));
+        }
+        if (params?.calories != null && String(params.calories).trim() !== '') {
+            query.set('calories', String(params.calories));
+        }
+        if (params?.sort != null && String(params.sort).trim() !== '') {
+            query.set('sort', String(params.sort).trim());
+        }
+
         const qs = query.toString();
         const path = qs
             ? `patients/diet-plans/?${qs}`
@@ -281,11 +315,23 @@ export const updateDietPlanProgress = async (payload: {
     }
 };
 
-export type DietPlanStatusAction = 'pause' | 'resume' | 'stop' | 'complete';
+export type DietPlanStatusAction =
+  | 'pause'
+  | 'resume'
+  | 'stop'
+  | 'complete'
+  | 'reset'
+  | 'repeat';
 
 /**
  * Update patient diet plan assignment status
  * /patients/diet-plans/status/?id={{patient_diet_plan_id}}
+ *
+ * Actions:
+ * - pause / resume / stop / complete / reset / repeat
+ * - stop_reason optional (stop / complete)
+ * - reset: same assignment progress restart (repeat_count unchanged)
+ * - repeat: after completed → new active (repeat_count increments)
  */
 export const updateDietPlanStatus = async (
     patient_diet_plan_id: string | number,
@@ -303,8 +349,11 @@ export const updateDietPlanStatus = async (
                 body: JSON.stringify(payload),
             },
         );
+        console.log('DIET_STATUS_API =>', { id: patient_diet_plan_id, payload, response });
         return response;
     } catch (error) {
+        console.log('DIET_STATUS_API_ERROR =>', error);
         throw error;
     }
 };
+       

@@ -19,13 +19,36 @@ export const hasPrescribedData = (consultation?: any): boolean => {
     rx.family_history,
     rx.clinical_notes,
     rx.diagnosis_advice,
+    rx.diet_advice,
+    rx.dietary_advice,
     rx.follow_up?.date,
     rx.follow_up?.reason,
   ];
 
-  return textFields.some(
+  const hasText = textFields.some(
     value => typeof value === 'string' && value.trim().length > 0,
   );
+  if (hasText) return true;
+
+  const listFields = [
+    rx.diet,
+    rx.dos,
+    rx.donts,
+    rx["do's"],
+    rx["don'ts"],
+    rx.suggestions,
+    rx.do_and_dont?.dos,
+    rx.do_and_dont?.donts,
+    rx.lifestyle?.["do's"],
+    rx.lifestyle?.["don'ts"],
+    rx.lifestyle?.diet,
+  ];
+
+  return listFields.some(value => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'string') return value.trim().length > 0;
+    return false;
+  });
 };
 
 export const formatSlipDate = (dateStr?: string | null): string => {

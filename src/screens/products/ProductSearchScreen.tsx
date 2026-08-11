@@ -33,6 +33,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import TablerIcon from '../../components/TablerIcon';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -122,6 +123,11 @@ const ProductSearchScreen = (props: any) => {
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       const result = await dispatch(syncCartQuantity({ variantId, quantity: newQty }));
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -130,7 +136,7 @@ const ProductSearchScreen = (props: any) => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   const handleWishlist = useCallback(

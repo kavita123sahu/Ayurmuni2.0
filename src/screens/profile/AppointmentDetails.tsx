@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -36,6 +36,9 @@ import {
 } from '../../utils/appointmentUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
+import { consultationHasPrescription } from '../../utils/prescriptionDetailUtils';
+import { hasPrescribedData } from '../../utils/doctorSlipUtils';
+import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 
 const PrimaryButton = ({
   title,
@@ -268,7 +271,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     openShareExperience(rating);
   };
 
-  const fetchDetail = async () => {
+  const fetchInFlightRef = useRef(false);
+
+  const fetchDetail = useCallback(async (opts?: { silent?: boolean }) => {
     if (!routeLookupId) {
       showSuccessToast('Appointment id missing', 'error');
       setLoading(false);
@@ -276,10 +281,14 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       return;
     }
 
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+
     try {
-      setLoading(true);
+      if (!opts?.silent) {
+        setLoading(true);
+      }
       const res = await _CONSULT_SERVICE.getAppointmentDetail(routeLookupId);
-      console.log("apponitdetaillss", res);
       if (!res?.success) {
         showSuccessToast(res?.message || 'Appointment not found', 'error');
         setDetail(null);
@@ -289,9 +298,10 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     } catch (error) {
       showSuccessToast('Something went wrong', 'error');
     } finally {
+      fetchInFlightRef.current = false;
       setLoading(false);
     }
-  };
+  }, [routeLookupId]);
 
   useEffect(() => {
     const init = async () => {
@@ -300,14 +310,21 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     };
     init();
     fetchDetail();
-  }, [routeLookupId]);
+  }, [fetchDetail]);
+
+  const skipFocusFetchRef = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
-      if (routeLookupId) {
-        fetchDetail();
+      // Skip the first focus (mount already fetches) to avoid double API call.
+      if (skipFocusFetchRef.current) {
+        skipFocusFetchRef.current = false;
+        return;
       }
-    }, [routeLookupId]),
+      if (routeLookupId) {
+        fetchDetail({ silent: true });
+      }
+    }, [routeLookupId, fetchDetail]),
   );
 
   const normalizedAppointment = useMemo(() => {
@@ -333,6 +350,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     };
   }, [detail]);
 
+  const prscriptionData = detail?.prescription || detail?.appointment?.prescription;
   const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
 
   const showButtons = !['cancelled', 'completed', 'rescheduled'].includes(appointmentStatus);
@@ -446,9 +464,20 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     { icon: 'mail-outline', label: 'Email', value: patient?.email },
   ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
 
+  const paymentAmount =
+    detail?.payment?.consultation_fee ??
+    detail?.payment?.amount ??
+    appointment?.payment?.consultation_fee ??
+    appointment?.payment?.amount ??
+    null;
+  const paymentStatusValue =
+    detail?.payment?.status ||
+    appointment?.payment_status ||
+    appointment?.payment?.status ||
+    null;
+
   const appointmentFields = [
     { icon: 'document-text-outline', label: 'Appointment ID', value: appointment?.appointment_id ?? appointment?.id },
-    // { icon: 'id-card-outline', label: 'Consultation ID', value: appointment?.consultation_id },
     { icon: 'calendar-outline', label: 'Date', value: appointment?.appointment_date },
     { icon: 'time-outline', label: 'Start Time', value: appointment?.start_time },
     { icon: 'time-outline', label: 'End Time', value: appointment?.end_time },
@@ -459,14 +488,25 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       label: 'Consultation Type',
       value: formatLabel(appointment?.consultation_type ?? appointment?.mode),
     },
-    { icon: 'cash-outline', label: 'Payment', value: formatLabel(appointment?.payment_status) },
+    {
+      icon: 'cash-outline',
+      label: 'Consultation Fee',
+      value: paymentAmount != null ? formatRupee(paymentAmount) : null,
+      isAmount: true,
+      amountValue: paymentAmount,
+    },
+    {
+      icon: 'cash-outline',
+      label: 'Payment',
+      value: formatLabel(paymentStatusValue),
+    },
     { icon: 'repeat-outline', label: 'Follow-up', value: appointment?.follow_up?.date ?? appointment?.follow_up_date },
     { icon: 'close-circle-outline', label: 'Cancellation Reason', value: appointment?.cancellation_reason },
     { icon: 'refresh-outline', label: 'Reschedule Reason', value: appointment?.reschedule_reason },
   ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
 
-  const renderInfoFields = (fields: typeof patientFields) =>
-    fields.map((field, index) => (
+  const renderInfoFields = (fields: typeof patientFields | typeof appointmentFields) =>
+    fields.map((field: any, index: number) => (
       <React.Fragment key={field.label}>
         {index > 0 ? <View style={styles.infoDivider} /> : null}
         <View style={styles.infoRow}>
@@ -476,9 +516,18 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
             </View>
             <Text style={styles.infoLabel}>{field.label}</Text>
           </View>
-          <Text style={styles.infoValue} numberOfLines={2}>
-            {String(field.value)}
-          </Text>
+          {field.isAmount && field.amountValue != null ? (
+            <RupeeAmount
+              value={field.amountValue}
+              style={styles.infoValue}
+              iconSize={14}
+              iconColor={Theme.emerald}
+            />
+          ) : (
+            <Text style={styles.infoValue} numberOfLines={2}>
+              {String(field.value)}
+            </Text>
+          )}
         </View>
       </React.Fragment>
     ));
@@ -557,14 +606,35 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </View>
               </>)}
 
-            {/* {!!detail?.doctor?.doctor_id && (
-              <View style={styles.consultSectionWrap}>
-                <DoctorConsultationSection
-                  doctorId={detail.doctor.doctor_id}
-                  navigation={navigation}
-                />
+
+            {/* {(consultationHasPrescription(detail) ||
+              hasPrescribedData({
+                prescription:
+                  detail?.prescription || detail?.appointment?.prescription,
+              }) || */}
+            {detail?.prescription && (
+              <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  style={styles.prescriptionBtn}
+                  onPress={() => {
+                    navigation.navigate('PrescriptionDetail', {
+                      appointment_id:
+                        appointment?.appointment_id ||
+                        appointment?.consultation_id ||
+                        routeLookupId,
+                      consultation_id:
+                        appointment?.consultation_id || routeLookupId,
+                    });
+                  }}
+                >
+                  <TablerIcon name="prescription" size={18} color="#FFFFFF" />
+                  <Text style={styles.prescriptionBtnText}>View Prescription</Text>
+                  <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
-            )} */}
+            )}
+
 
             {appointmentStatus === 'completed' && (
               <>
@@ -1099,6 +1169,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.emerald,
+  },
+
+  prescriptionBtn: {
+    minHeight: 50,
+    borderRadius: 14,
+    backgroundColor: Theme.emerald,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+
+  prescriptionBtnText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   cancelBtn: {

@@ -43,6 +43,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import { useBanners } from '../../hooks/useBanners';
@@ -57,13 +58,12 @@ const ProductsScreen = () => {
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
   const { categories: dashboardCategories, loading: homeLoading } = useHomeData();
-  const { images: bannerImages } = useBanners('product');
-  const screenWidth = Dimensions.get('window').width;
-
   const productsCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'products'),
     [dashboardCategories],
   );
+  const { images: bannerImages } = useBanners('product', productsCategoryId);
+  const screenWidth = Dimensions.get('window').width;
 
   const productFilter = useMemo(
     () =>
@@ -112,6 +112,11 @@ const ProductsScreen = () => {
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       const result = await dispatch(
         syncCartQuantity({ variantId, quantity: newQty }),
       );
@@ -122,7 +127,7 @@ const ProductsScreen = () => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   useWishlistSync(setProducts);

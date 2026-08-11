@@ -32,105 +32,115 @@ export type SlotItem = {
 };
 const doctorRecent = [{ id: '1', image: Images.doctorImage, name: 'Dr. Arjun R Nair', speciality: 'Cardiologist', date: '12 May', }, { id: '2', image: Images.doctorImage, name: 'Dr. Priya Sharma', speciality: 'Dermatologist', date: '18 May', }, { id: '3', image: Images.doctorImage, name: 'Dr. Rahul Mehta', speciality: 'Neurologist', date: '22 May', },];
 
+type UseConsultDataOptions = {
+  /** Health concerns / categories. Default true. */
+  fetchCategories?: boolean;
+  /** Top / all doctors list. Default true. (one API — shared for top + fav) */
+  fetchDoctors?: boolean;
+};
 
-export const useConsultData = () => {
+/** In-flight dedupe so remounts / parallel screens don't spam the same endpoints. */
+const inflightConsult = new Map<string, Promise<any>>();
 
-    const [loading, setLoading] =
-        useState(true);
+const dedupeConsultFetch = <T,>(key: string, fn: () => Promise<T>): Promise<T> => {
+  const existing = inflightConsult.get(key);
+  if (existing) return existing as Promise<T>;
+  const promise = fn().finally(() => {
+    inflightConsult.delete(key);
+  });
+  inflightConsult.set(key, promise);
+  return promise;
+};
 
-    const [refreshing, setRefreshing] =
-        useState(false);
+export const useConsultData = (options: UseConsultDataOptions = {}) => {
+  const fetchCategories = options.fetchCategories !== false;
+  const fetchDoctors = options.fetchDoctors !== false;
 
-    const [categories, setCategories] =
-        useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [recentDoctors, setRecentDoctors] = useState<any[]>([]);
+  const [topDoctors, setTopDoctors] = useState<any[]>([]);
+  const [favDoctor, setFavDoctors] = useState<any[]>([]);
+  const requestIdRef = useRef(0);
 
-    const [recentDoctors, setRecentDoctors] =
-        useState<any[]>([]);
+  const fetchAllData = useCallback(
+    async (opts?: { isRefresh?: boolean }) => {
+      const reqId = ++requestIdRef.current;
+      try {
+        if (!opts?.isRefresh) {
+          setLoading(true);
+        }
 
-    const [topDoctors, setTopDoctors] =
-        useState<any[]>([]);
+        const tasks: Promise<any>[] = [];
+        const taskKeys: Array<'categories' | 'doctors'> = [];
 
-    const [favDoctor, setFavDoctors] =
-        useState<any[]>([]);
+        if (fetchCategories) {
+          taskKeys.push('categories');
+          tasks.push(
+            dedupeConsultFetch('health-categories', () => getHealthCategories()),
+          );
+        }
+        if (fetchDoctors) {
+          taskKeys.push('doctors');
+          // getTopDoctor + AllDoctorData hit the same endpoint — call once.
+          tasks.push(
+            dedupeConsultFetch('customers-doctors', () =>
+              _CONSULT_SERVICES.getTopDoctor(),
+            ),
+          );
+        }
 
+        const results = await Promise.all(tasks);
+        if (reqId !== requestIdRef.current) return;
 
-    const fetchAllData =
-        useCallback(async () => {
+        setRecentDoctors(doctorRecent);
 
-            try {
+        taskKeys.forEach((key, index) => {
+          const res = results[index];
+          if (key === 'categories') {
+            const healthCats = normalizeApiList(res)
+              .map(mapProductCategory)
+              .filter(item => item.id);
+            setCategories(healthCats.length ? healthCats : res?.data || []);
+          }
+          if (key === 'doctors') {
+            const list = res?.data?.results || [];
+            setTopDoctors(list);
+            setFavDoctors(list);
+          }
+        });
+      } catch (error) {
+        if (reqId !== requestIdRef.current) return;
+        console.log('CONSULT API ERROR ===>', error);
+      } finally {
+        if (reqId === requestIdRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    },
+    [fetchCategories, fetchDoctors],
+  );
 
-                setLoading(true);
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
-                const [
-                    categoryRes,
-                    topDoctorRes,
-                    AllfavDoctor
-                ]: any = await Promise.all([
-                    getHealthCategories(),
-                    _CONSULT_SERVICES.getTopDoctor(),
-                    _CONSULT_SERVICES.AllDoctorData(),
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAllData({ isRefresh: true });
+  }, [fetchAllData]);
 
-                ]);
-
-                console.log('ALLtopDoctorResDOCTOR DATA ==>', topDoctorRes);
-
-                setRecentDoctors(doctorRecent);
-
-                setFavDoctors(AllfavDoctor?.data?.results || []);
-
-                const healthCats = normalizeApiList(categoryRes)
-                    .map(mapProductCategory)
-                    .filter(item => item.id);
-
-                setCategories(
-                    healthCats.length
-                        ? healthCats
-                        : categoryRes?.data || [],
-                );
-
-                setTopDoctors(
-                    topDoctorRes?.data?.results || [],
-                );
-
-            } catch (error) {
-
-                console.log(
-                    'CONSULT API ERROR ===>',
-                    error,
-                );
-
-            } finally {
-
-                setLoading(false);
-                setRefreshing(false);
-
-            }
-        }, []);
-
-
-
-    useEffect(() => {
-        fetchAllData();
-    }, []);
-
-    const onRefresh =
-        useCallback(() => {
-
-            setRefreshing(true);
-
-            fetchAllData();
-
-        }, [fetchAllData]);
-
-    return {
-        loading,
-        refreshing,
-        categories,
-        topDoctors,
-        favDoctor,
-        recentDoctors,
-        onRefresh,
-    };
+  return {
+    loading,
+    refreshing,
+    categories,
+    topDoctors,
+    favDoctor,
+    recentDoctors,
+    onRefresh,
+  };
 };
 
 

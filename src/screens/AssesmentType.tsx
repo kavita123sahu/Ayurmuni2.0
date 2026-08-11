@@ -8,6 +8,8 @@ import {
   Platform,
   BackHandler,
   Alert,
+  StatusBar,
+  ScrollView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../common/Colors';
@@ -29,40 +31,39 @@ const scale = (size: number) => {
 type CardProps = {
   title: string;
   subtitle: string;
-  bullets: string[];
+  meta: string;
   icon: TablerIconName;
-  accent: string;
-  accentSoft: string;
+  gradient: string[];
   onPress: () => void;
 };
 
 const AssessmentCard = ({
   title,
   subtitle,
-  bullets,
+  meta,
   icon,
-  accent,
-  accentSoft,
+  gradient,
   onPress,
 }: CardProps) => (
-  <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={onPress}>
-    <View style={[styles.iconBox, { backgroundColor: accentSoft }]}>
-      <TablerIcon name={icon} size={24} color={accent} />
-    </View>
+  <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.cardWrap}>
+    <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
+      <View style={styles.cardTop}>
+        <View style={styles.iconBox}>
+          <TablerIcon name={icon} size={24} color="#FFFFFF" />
+        </View>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaPillText}>{meta}</Text>
+        </View>
+      </View>
 
-    <View style={styles.cardBody}>
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardSubtitle}>{subtitle}</Text>
 
-      {bullets.map(item => (
-        <View key={item} style={styles.bulletRow}>
-          <View style={[styles.bulletDot, { backgroundColor: accent }]} />
-          <Text style={styles.bulletText}>{item}</Text>
-        </View>
-      ))}
-    </View>
-
-    <TablerIcon name="chevron-right" size={20} color="#94A3B8" />
+      <View style={styles.cardCta}>
+        <Text style={styles.cardCtaText}>Begin</Text>
+        <TablerIcon name="arrow-right" size={16} color="#FFFFFF" />
+      </View>
+    </LinearGradient>
   </TouchableOpacity>
 );
 
@@ -73,43 +74,40 @@ const AssessmentType = (props: any) => {
   const showPrakriti = form === 'prakriti' || form === 'all';
 
   const handleBackPress = () => {
-  Alert.alert(
-    'Exit Assessment?',
-    'Are you sure you want to exit the assessment?',
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Exit',
-        style: 'destructive',
-        onPress: () => BackHandler.exitApp(),
-      },
-    ],
-  );
+    Alert.alert(
+      'Exit Assessment?',
+      'Are you sure you want to exit the assessment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Exit',
+          style: 'destructive',
+          onPress: () => BackHandler.exitApp(),
+        },
+      ],
+    );
+    return true;
+  };
 
-  return true;
-};
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress,
+    );
+    return () => subscription.remove();
+  }, []);
 
-useEffect(() => {
-  const subscription = BackHandler.addEventListener(
-    'hardwareBackPress',
-    handleBackPress,
-  );
-
-  return () => subscription.remove();
-}, []);
   const handleSkip = async () => {
     try {
-      const response: any = await _ASSESS_SERVICE.SkipAssesment({ is_skipped: true });
+      const response: any = await _ASSESS_SERVICE.SkipAssesment({
+        is_skipped: true,
+      });
 
       if (!response?.success) {
         showSuccessToast(response?.message || 'Something went wrong', 'error');
         return;
       }
 
-      // Skip keeps guest access — browse OK, actions still need full profile/prakriti
       await markAsGuest();
       resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
     } catch {
@@ -118,204 +116,254 @@ useEffect(() => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A3328" />
       <LinearGradient
-        colors={['#0D614E', '#14876A', '#1FA37D']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        <View style={styles.stepPill}>
-          <Text style={styles.stepPillText}>Step 2 of 2</Text>
-        </View>
-        <Text style={styles.heroTitle}>Personalize Your Journey</Text>
-        <Text style={styles.heroSubtitle}>
-          Choose one path now, or skip and complete it later from your profile.
-        </Text>
-      </LinearGradient>
+        colors={['#0A3328', '#0F4A38', '#F5F8F6']}
+        locations={[0, 0.42, 0.42]}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View style={styles.content}>
-        {showPrakriti && (
-          <AssessmentCard
-            title="Prakriti Assessment"
-            subtitle="Discover your Ayurvedic body type"
-            bullets={['Vata, Pitta, Kapha insights', 'Personal wellness guidance', 'Takes about 5 minutes']}
-            icon="chart-pie"
-            accent={Colors.primaryColor}
-            accentSoft="#E6F4F1"
-            onPress={() => props.navigation.navigate('PatientFAQ')}
-          />
-        )}
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.hero}>
+          <View style={styles.stepRow}>
+            <View style={styles.stepPill}>
+              <Text style={styles.stepPillText}>Step 2 of 2</Text>
+            </View>
+            <TouchableOpacity onPress={handleSkip} hitSlop={10}>
+              <Text style={styles.skipLink}>Skip</Text>
+            </TouchableOpacity>
+          </View>
 
-        {showMedical && (
-          <AssessmentCard
-            title="Medical History"
-            subtitle="Help doctors understand your background"
-            bullets={['Past conditions & allergies', 'Upload reports securely', 'Better consultation outcomes']}
-            icon="file-medical"
-            accent="#059669"
-            accentSoft="#E8F7F0"
-            onPress={() => props.navigation.navigate('MedicalHistory')}
-          />
-        )}
-
-        <View style={styles.tipBox}>
-          <TablerIcon name="alert-circle" size={18} color={Colors.primaryColor} />
-          <Text style={styles.tipText}>
-            Completing both assessments improves product and doctor recommendations.
+          <Text style={styles.heroTitle}>Personalize{'\n'}your care</Text>
+          <Text style={styles.heroSubtitle}>
+            Pick an assessment to tailor doctors, products, and daily guidance.
           </Text>
         </View>
-      </View>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-        <TouchableOpacity activeOpacity={0.9} style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip for now</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+        <ScrollView
+          style={styles.sheet}
+          contentContainerStyle={[
+            styles.sheetContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {showPrakriti && (
+            <AssessmentCard
+              title="Prakriti Assessment"
+              subtitle="Discover your Ayurvedic constitution — Vata, Pitta, Kapha — and get guidance that fits you."
+              meta="~5 min"
+              icon="chart-pie"
+              gradient={['#0D614E', '#1A8F6E']}
+              onPress={() => props.navigation.navigate('PatientFAQ')}
+            />
+          )}
+
+          {showMedical && (
+            <AssessmentCard
+              title="Current Body Type"
+              subtitle="Share conditions, allergies, and reports so consultations start with the full picture."
+              meta="Secure"
+              icon="file-medical"
+              gradient={['#0F4A38', '#157A58']}
+              onPress={() => props.navigation.navigate('MedicalHistory')}
+            />
+          )}
+
+          <View style={styles.tipBox}>
+            <View style={styles.tipIcon}>
+              <TablerIcon name="alert-circle" size={18} color={Colors.primaryColor} />
+            </View>
+            <Text style={styles.tipText}>
+              Completing both unlocks sharper product and doctor recommendations.
+              You can finish either path later from Profile.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.skipBtn}
+            onPress={handleSkip}
+          >
+            <Text style={styles.skipBtnText}>Skip for now · Browse home</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default AssessmentType;
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
-    backgroundColor: '#EEF4F2',
+    backgroundColor: '#F5F8F6',
+  },
+  safe: {
+    flex: 1,
   },
   hero: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 22,
+    paddingHorizontal: 22,
+    paddingTop: 8,
+    paddingBottom: 28,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
   stepPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 5,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.35)',
   },
   stepPillText: {
     color: '#E8FFF8',
     fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.3,
+  },
+  skipLink: {
+    color: 'rgba(247,243,234,0.75)',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsMedium,
   },
   heroTitle: {
-    fontSize: scale(24),
-    lineHeight: scale(32),
-    color: '#FFFFFF',
+    fontSize: scale(30),
+    lineHeight: scale(36),
+    color: '#F7F3EA',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   heroSubtitle: {
-    marginTop: 8,
-    fontSize: scale(13),
-    lineHeight: scale(20),
-    color: 'rgba(255,255,255,0.9)',
-    fontFamily: Fonts.PoppinsMedium,
+    marginTop: 10,
+    fontSize: scale(14),
+    lineHeight: scale(21),
+    color: 'rgba(247,243,234,0.78)',
+    fontFamily: Fonts.PoppinsRegular,
+    maxWidth: 340,
   },
-  content: {
+  sheet: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    gap: 12,
+    backgroundColor: '#F5F8F6',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E4ECE8',
-    gap: 12,
+  sheetContent: {
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    gap: 14,
+  },
+  cardWrap: {
+    borderRadius: 22,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#0D614E',
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
+        shadowColor: '#0A3328',
+        shadowOpacity: 0.14,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
       },
-      android: { elevation: 2 },
+      android: { elevation: 4 },
     }),
+  },
+  card: {
+    padding: 20,
+    minHeight: 168,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   iconBox: {
     width: 48,
     height: 48,
     borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardBody: {
-    flex: 1,
+  metaPill: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaPillText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   cardTitle: {
-    fontSize: scale(16),
-    lineHeight: scale(22),
-    color: '#0F172A',
+    fontSize: scale(20),
+    lineHeight: scale(26),
+    color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   cardSubtitle: {
-    marginTop: 4,
-    fontSize: scale(12),
-    lineHeight: scale(18),
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
+    marginTop: 8,
+    fontSize: scale(13),
+    lineHeight: scale(19),
+    color: 'rgba(255,255,255,0.86)',
+    fontFamily: Fonts.PoppinsRegular,
   },
-  bulletRow: {
+  cardCta: {
+    marginTop: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    gap: 8,
+    gap: 6,
   },
-  bulletDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  bulletText: {
-    flex: 1,
-    fontSize: scale(12),
-    color: '#475569',
-    fontFamily: Fonts.PoppinsMedium,
+  cardCtaText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.4,
   },
   tipBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: '#F3FBF8',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#CFE8DF',
-    marginTop: 4,
+    borderColor: '#E2EBE6',
+  },
+  tipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#E8F3EF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tipText: {
     flex: 1,
-    color: '#334155',
+    color: '#475569',
     fontSize: scale(12),
     lineHeight: scale(18),
     fontFamily: Fonts.PoppinsMedium,
   },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    backgroundColor: '#EEF4F2',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-  },
   skipBtn: {
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 14,
+    marginTop: 4,
     minHeight: 50,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D7E5DF',
   },
-  skipText: {
-    color: Colors.white,
-    fontSize: scale(15),
+  skipBtnText: {
+    color: Colors.primaryColor,
+    fontSize: scale(14),
     fontFamily: Fonts.PoppinsSemiBold,
   },
 });

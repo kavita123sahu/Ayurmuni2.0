@@ -63,6 +63,10 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import { useHomeData } from '../../hooks/UseHomeData';
+import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
 
 const SCREEN_PAD = getScreenPaddingH();
 const GRID_GAP = 10;
@@ -76,7 +80,12 @@ type NavigationProp =
   >;
 
 const ConsultHome = () => {
-  const { images: bannerImages } = useBanners('consult');
+  const { categories: dashboardCategories } = useHomeData();
+  const consultCategoryId = useMemo(
+    () => getServiceCategoryId(dashboardCategories, 'consult'),
+    [dashboardCategories],
+  );
+  const { images: bannerImages } = useBanners('consult', consultCategoryId);
 
   const navigation =
     useNavigation<NavigationProp>();
@@ -87,7 +96,7 @@ const ConsultHome = () => {
     categories,
     topDoctors,
     onRefresh,
-  } = useConsultData();
+  } = useConsultData({ fetchDoctors: true, fetchCategories: true });
 
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
@@ -155,6 +164,10 @@ const ConsultHome = () => {
         showSuccessToast('Not enough stock available', 'error');
         return;
       }
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
       const result = await dispatch(
         syncCartQuantity({ variantId, quantity: newQty }),
       );
@@ -165,7 +178,7 @@ const ConsultHome = () => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
      const handleSearchPress = useCallback(() => {
     navigateToSearchScreen(navigation);
@@ -337,7 +350,14 @@ const ConsultHome = () => {
 
       <FlatList
         data={filteredHistory}
-        keyExtractor={(item) => String(item?.id)}
+        keyExtractor={(item, index) =>
+          String(
+            item?.consultation_id ??
+              item?.appointment_id ??
+              item?.id ??
+              `consult-${index}`,
+          )
+        }
         renderItem={renderRecentDoctor}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
@@ -400,15 +420,13 @@ const ConsultHome = () => {
 
             {loading && <DoctorCardSkeleton />} */}
 
-            {(loading || filteredHistory?.length > 0) && (
+            {(filteredHistory?.length ?? 0) > 0 && (
               <>
                 <SectionHeader
                   title="Recent Consultation"
                   actionText="View History"
                   onPress={() => navigation.navigate('ConsultHistory')}
                 />
-
-                {loading && <DoctorCardSkeleton />}
               </>
             )}
 
@@ -431,17 +449,20 @@ const ConsultHome = () => {
             <>
               <HomeCategorySkeleton />
               <TopDoctorsCardSkeleton />
-              <View style={{ height: 120 }} />
+              <View style={{ height: 40 }} />
             </>
           ) : (
             <>
-              <SectionHeader title="Consult by Concern" />
-
-              <CategoryList
-                data={categories}
-                navigation={navigation}
-                doctor
-              />
+              {categories?.length > 0 && (
+                <>
+                  <SectionHeader title="Consult by Concern" />
+                  <CategoryList
+                    data={categories}
+                    navigation={navigation}
+                    doctor
+                  />
+                </>
+              )}
 
               {filteredTopDoctors?.length > 0 && (
                 <>
@@ -454,15 +475,17 @@ const ConsultHome = () => {
                   <TopDoctorsCard
                     data={filteredTopDoctors}
                     navigation={navigation}
+                    layout="grid"
+                    limit={6}
                   />
                 </>
               )}
 
-              {(productsLoading || productList.length > 0) && (
+              {productList.length > 0 && (
                 <>
                   <SectionHeader
                     title="Suggested Products"
-                    actionText={productList.length > 0 ? 'View all' : ''}
+                    actionText="View all"
                     onPress={() =>
                       navigateToCategoryProducts(navigation, {
                         categoryMode: 'product',
@@ -470,42 +493,33 @@ const ConsultHome = () => {
                       })
                     }
                   />
-                  {productsLoading && productList.length === 0 ? (
-                    <ProductGridSkeleton
-                      cardWidth={CARD_W}
-                      gap={GRID_GAP}
-                      count={6}
-                    />
-                  ) : (
-                    <FlatList
-                      data={productList}
-                      keyExtractor={(item, i) =>
-                        String(item.variant_id || i)
-                      }
-                      numColumns={2}
-                      scrollEnabled={false}
-                      renderItem={renderProduct}
-                      columnWrapperStyle={styles.productColumn}
-                      ListFooterComponent={
-                        productsLoadingMore ? (
-                          <ProductGridSkeleton
-                            cardWidth={CARD_W}
-                            gap={GRID_GAP}
-                            count={2}
-                          />
-                        ) : null
-                      }
-                      ListEmptyComponent={
-                        <Text style={styles.emptyProducts}>
-                          No products available
-                        </Text>
-                      }
-                    />
-                  )}
+                  <FlatList
+                    data={productList}
+                    keyExtractor={(item, i) =>
+                      String(item.variant_id || i)
+                    }
+                    numColumns={2}
+                    scrollEnabled={false}
+                    renderItem={renderProduct}
+                    columnWrapperStyle={styles.productColumn}
+                    ListFooterComponent={
+                      productsLoadingMore ? (
+                        <ProductGridSkeleton
+                          cardWidth={CARD_W}
+                          gap={GRID_GAP}
+                          count={2}
+                        />
+                      ) : null
+                    }
+                  />
                 </>
               )}
 
-              <View style={{ height: 120 }} />
+              {!productList.length && !productsLoading ? (
+                <AyurmuniBrandShade compact />
+              ) : null}
+
+              <View style={{ height: 100 }} />
             </>
           )
         }

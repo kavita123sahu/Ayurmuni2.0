@@ -1,420 +1,244 @@
 // DoctorCard.tsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    TouchableOpacity,
-    Pressable,
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Ionicons } from '../common/Vector';
 import { Images } from '../common/Images';
 import TablerIcon from './TablerIcon';
-import *as _CONSULT_SERVICES from '../services/ConsultServce';
+import * as _CONSULT_SERVICES from '../services/ConsultServce';
 import FavouriteButton from './FavouriteButton';
-import { showSuccessToast } from '../config/Key';
 
 interface DoctorItem {
-    id: string;
-    is_favorite: boolean;
-    image: any;
-    name: string
-    full_name: string;
-    health_diseases: Array<{ name: string }>;
-    profile_image: string;
-    experience_years: string;
-    rating: number;
-    reviewCount: number;
-    total_reviews: number;
-    has_availability: boolean;
-    ranking_score: number;
-    availableInMinutes: number;
+  id: string;
+  is_favorite: boolean;
+  image: any;
+  name: string;
+  full_name: string;
+  health_diseases: Array<{ name: string }>;
+  profile_image: string;
+  experience_years: string;
+  rating: number;
+  reviewCount: number;
+  total_reviews: number;
+  has_availability: boolean;
+  ranking_score: number;
+  availableInMinutes: number;
 }
 
 interface Props {
-    item: DoctorItem;
-    onPress?: (item: DoctorItem) => void;
-    onChatPress?: (item: DoctorItem) => void;
+  item: DoctorItem;
+  onPress?: (item: DoctorItem) => void;
+  onChatPress?: (item: DoctorItem) => void;
 }
 
-const AllDoctorCard: React.FC<Props> = ({ item, onPress, onChatPress }) => {
+const AllDoctorCard: React.FC<Props> = ({ item, onPress }) => {
+  const [isWishlisted, setIsWishlisted] = useState(item?.is_favorite ?? false);
 
+  const isAvailable = useMemo(
+    () => item?.has_availability === true,
+    [item?.has_availability],
+  );
 
-    console.log("itemitemitem", item)
-    const [isWishlisted, setIsWishlisted] = useState(item?.is_favorite ?? false);
+  useEffect(() => {
+    setIsWishlisted(item?.is_favorite ?? false);
+  }, [item?.is_favorite]);
 
-    const isAvailable =
-        useMemo(
-            () => item?.has_availability === true,
-            [item?.has_availability],
-        );
+  const handleWishlist = useCallback(async () => {
+    const previous = isWishlisted;
+    setIsWishlisted(!previous);
 
-    useEffect(() => {
-        setIsWishlisted(
-            item?.is_favorite ?? false,
-        );
-    }, [item?.is_favorite]);
-
-
-
-    const handleWishlist = useCallback(async () => {
-        const previous = isWishlisted;
-
-        setIsWishlisted(!previous);
-
-        try {
-            const response =
-                await _CONSULT_SERVICES.ToggleFavDoctor(
-                    item?.id,
-                    'POST',
-                );
-
-            console.log("resposneeeewisglist", response)
-            if (!response?.success) {
-                setIsWishlisted(previous);
-            }
-        } catch {
-            setIsWishlisted(previous);
-        }
-    }, [isWishlisted, item?.id]);
-    return (
-
-        // /isAvailable ? styles.activeCard : styles.disabledCard
-        <Pressable style={[styles.card,]} onPress={() => onPress?.(item)}>
-
-            <View style={{ flexDirection: 'row', flex: 1 }}>
-               <View style={styles.imageWrapper}>
-  <Image
-    source={
-      item?.profile_image?.trim()
-        ? { uri: item.profile_image }
-        : Images.doctorImage
+    try {
+      const response = await _CONSULT_SERVICES.ToggleFavDoctor(item?.id, 'POST');
+      if (!response?.success) {
+        setIsWishlisted(previous);
+      }
+    } catch {
+      setIsWishlisted(previous);
     }
-    style={[
-      styles.image,
-      !isAvailable && styles.imageGrayscale,
-    ]}
-  />
+  }, [isWishlisted, item?.id]);
 
-  {isAvailable && <View style={styles.onlineDot} />}
-</View>
+  return (
+    <Pressable style={styles.card} onPress={() => onPress?.(item)}>
+      <View style={styles.row}>
+        <View style={styles.imageWrapper}>
+          <Image
+            source={
+              item?.profile_image?.trim()
+                ? { uri: item.profile_image }
+                : Images.doctorImage
+            }
+            style={[styles.image, !isAvailable && styles.imageGrayscale]}
+          />
+          {isAvailable ? <View style={styles.onlineDot} /> : null}
+        </View>
 
-             <View style={styles.right}>
-  <View style={styles.topRow}>
-    <Text style={styles.name} numberOfLines={1}>
-      {item?.name || item?.full_name}
-    </Text>
+        <View style={styles.right}>
+          <View style={styles.topRow}>
+            <Text style={styles.name} numberOfLines={1}>
+              {item?.name || item?.full_name}
+            </Text>
+            <FavouriteButton
+              isFavourite={isWishlisted}
+              onPress={handleWishlist}
+              style={styles.iconBtn}
+            />
+          </View>
 
-    <FavouriteButton
-      isFavourite={isWishlisted}
-      onPress={handleWishlist}
-      style={styles.iconBtn}
-    />
-  </View>
+          <Text style={styles.speciality} numberOfLines={1}>
+            {Array.isArray(item?.health_diseases)
+              ? item.health_diseases.map(i => i.name).join(', ')
+              : ''}
+          </Text>
 
-  <Text style={styles.speciality} numberOfLines={1}>
-    {Array.isArray(item?.health_diseases)
-      ? item.health_diseases.map(i => i.name).join(', ')
-      : ''}
-  </Text>
-
-  <View style={styles.statsRow}>
-    <View style={styles.badge}>
-      <Ionicons name="time-outline" size={14} color="#0F766E" />
-      <Text style={styles.badgeText}>
-        {item?.experience_years || 0} Yrs
-      </Text>
-    </View>
-
-    <View style={styles.badge}>
-      <Ionicons name="star" size={13} color="#F59E0B" />
-      <Text style={styles.badgeText}>
-        {item?.ranking_score || 0}
-      </Text>
-    </View>
-
-    <View style={styles.badge}>
-      <Text style={styles.badgeText}>
-        {item?.total_reviews || 0} Reviews
-      </Text>
-    </View>
-  </View>
-
-  <TouchableOpacity
-    style={styles.consultBtn}
-    onPress={() => onPress?.(item)}>
-    <TablerIcon name="consult" size={20} color="#FFF" />
-    <Text style={styles.consultText}>Consult Now</Text>
-  </TouchableOpacity>
-</View>
-
+          <View style={styles.statsRow}>
+            <View style={styles.badge}>
+              <Ionicons name="time-outline" size={13} color="#0F766E" />
+              <Text style={styles.badgeText}>
+                {item?.experience_years || 0} Yrs
+              </Text>
             </View>
+            <View style={styles.badge}>
+              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Text style={styles.badgeText}>{item?.ranking_score || 0}</Text>
+            </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {item?.total_reviews || 0} Reviews
+              </Text>
+            </View>
+          </View>
 
-
-
-        </Pressable>
-    );
+          <TouchableOpacity
+            style={styles.consultBtn}
+            onPress={() => onPress?.(item)}
+            activeOpacity={0.85}
+          >
+            <TablerIcon name="consult" size={18} color="#FFF" />
+            <Text style={styles.consultText}>Consult Now</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Pressable>
+  );
 };
-
 
 export default React.memo(AllDoctorCard);
 
-
 const styles = StyleSheet.create({
-
-    card: {
-        borderRadius: 16,
-        padding: 12,
-        marginBottom: 8,
-        borderWidth: 1,
-        backgroundColor: '#FFFFFF',
-        borderColor: '#E8EDF2',
-        // shadowColor: '#0D614E',
-        // shadowOffset: { width: 0, height: 2 },
-        // shadowOpacity: 0.05,
-        // shadowRadius: 6,
-        // elevation: 2,
-    },
-
-    imageWrapper: {
-        width: 72,
-        height: 72,
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginRight: 10,
-        backgroundColor: Colors.bgborderColor,
-    },
-
-    image: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-
-    right: {
-        flex: 1,
-        justifyContent: 'flex-start',
-    },
-
-    topRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        minHeight: 22,
-    },
-    statsRow: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  marginTop: 10,
-  gap: 8,
-},
-    badge: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#F8FAFC',
-  paddingHorizontal: 10,
-  paddingVertical: 6,
-  borderRadius: 20,
-},
-badgeText: {
-  marginLeft: 4,
-  fontSize: 12,
-  color: '#475569',
-  fontFamily: Fonts.PoppinsMedium,
-},
-
-    tag: {
-        backgroundColor: '#EAF8F4',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-    },
-
-    tagText: {
-        fontSize: 11,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    iconBtn: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    name: {
-        fontSize: 15,
-        lineHeight: 19,
-        color: '#1E293B',
-        fontFamily: Fonts.PoppinsSemiBold,
-        marginTop: 2,
-    },
-
-    speciality: {
-        fontSize: 11,
-        lineHeight: 15,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsMedium,
-        marginTop: 1,
-    },
-
-
-    consultBtn: {
-        flex: 1,
-        height: 35,
-        borderRadius: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: Colors.primaryColor,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-
-    infoItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginRight: 14,
-    },
-
-    infoText: {
-        fontSize: 11,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-
-    bottomRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 10,
-        gap: 8,
-    },
-
-    chatBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F1F8F6',
-    },
-
-
-    consultText: {
-        color: '#FFF',
-        fontSize: 12,
-        marginLeft: 6,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-
-    activeCard: {
-        backgroundColor: '#FFFFFF',
-        // borderColor: Colors.primaryColor,   // teal border when available
-        // shadowColor: Colors.primaryColor,
-        // shadowOffset: { width: 0, height: 4 },
-        // shadowOpacity: 0.12,
-        // shadowRadius: 8,
-        // elevation: 4,
-    },
-
-    disabledCard: {
-        backgroundColor: '#F8FAFC',
-        borderColor: '#E2E8F0',             // grey border when unavailable
-    },
-
-
-
-    imageGrayscale: {
-        // opacity: 0.4,   
-        backgroundColor: '#F1F5F9'                    // simulates grayscale in RN
-    },
-    onlineDot: {
-  position: 'absolute',
-  bottom: 3,
-  right: 3,
-  width: 14,
-  height: 14,
-  borderRadius: 7,
-  backgroundColor: '#22C55E',
-  borderWidth: 2,
-  borderColor: '#FFF',
-},
-
-    grayscaleOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        borderRadius: 16,
-        backgroundColor: 'rgba(200,200,200,0.35)',
-    },
-
-
-
-
-
-    disabledTag: {
-        backgroundColor: '#F1F5F9',
-    },
-
-
-    disabledTagText: {
-        color: '#94A3B8',
-    },
-
-
-
-    disabledSpeciality: {
-        color: '#A1A1AA',
-
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    disabledText: {
-        color: '#A1A1AA',
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-
-
-
-    disabledinfoText: {
-        fontSize: 12,
-        color: '#A1A1AA',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    reviewCount: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
-    },
-
-
-
-
-    chatBtnDisabled: {
-        backgroundColor: '#F1F5F9',
-    },
-
-
-
-    consultBtnDisabled: {
-        backgroundColor: '#E5E7EB',
-    },
-
-
-    consultTextDisabled: {
-        color: '#64748B',
-
-    },
+  card: {
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D7E8E1',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  imageWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 10,
+    marginTop: 2,
+    backgroundColor: Colors.bgborderColor,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageGrayscale: {
+    backgroundColor: '#F1F5F9',
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 3,
+    right: 3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22C55E',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  right: {
+    flex: 1,
+    minWidth: 0,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    minHeight: 22,
+  },
+  name: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 18,
+    color: '#1E293B',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  iconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  speciality: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+    marginTop: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    gap: 6,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FAF7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  badgeText: {
+    marginLeft: 4,
+    fontSize: 11,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  consultBtn: {
+    marginTop: 8,
+    height: 34,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryColor,
+    gap: 6,
+  },
+  consultText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 });

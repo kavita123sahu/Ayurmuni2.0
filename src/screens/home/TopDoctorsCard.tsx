@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,64 @@ import {
   Image,
   StyleSheet,
   Pressable,
-  Platform,
+  Dimensions,
 } from 'react-native';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import { Images } from '../../common/Images';
 import { Ionicons } from '../../common/Vector';
-import TablerIcon from '../../components/TablerIcon';
 
-const CARD_WIDTH = 232;
-const CARD_GAP = 10;
+const { width: SCREEN_W } = Dimensions.get('window');
+const GRID_GAP = 10;
+const CONTENT_PAD = 40;
+const GRID_CARD_W = (SCREEN_W - CONTENT_PAD - GRID_GAP) / 2;
+const AVATAR = 52;
+
+const toLabelList = (value: any): string[] => {
+  if (value == null || value === '') return [];
+  if (Array.isArray(value)) {
+    return value
+      .map(item => {
+        if (typeof item === 'string') return item.trim();
+        if (item?.name) return String(item.name).trim();
+        if (item?.title) return String(item.title).trim();
+        if (item?.label) return String(item.label).trim();
+        return '';
+      })
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+export const getDoctorSpecializationLabels = (doctor: any): string[] => {
+  const candidates = [
+    doctor?.doctor_specialization,
+    doctor?.specializations,
+    doctor?.specialization,
+    doctor?.specialization_name,
+    doctor?.speciality,
+    doctor?.specialty,
+    doctor?.designation,
+    doctor?.qualification,
+    doctor?.health_diseases,
+  ];
+  for (const c of candidates) {
+    const list = toLabelList(c);
+    if (list.length) return list;
+  }
+  return [];
+};
 
 interface Doctor {
   id: string;
   average_rating?: string;
   full_name: string;
-  health_diseases: [];
+  health_diseases?: any[];
   experience: string;
   name: string;
   total_reviews: string;
@@ -30,140 +72,159 @@ interface Doctor {
   profile_image: any;
   has_availability?: boolean;
   first_name?: string;
+  consultation_fee?: string | number;
+  doctor_specialization?: any;
+  specialization?: any;
+  specializations?: any;
+  specialization_name?: string;
+  designation?: string;
+  qualification?: string;
 }
 
-const TopDoctorsCard = ({ data = [], navigation }: any) => {
+type Props = {
+  data?: Doctor[];
+  navigation: any;
+  layout?: 'grid' | 'horizontal';
+  limit?: number;
+  home?: boolean;
+};
+
+const TopDoctorsCard = ({
+  data = [],
+  navigation,
+  layout = 'grid',
+  limit,
+}: Props) => {
   const openDoctorProfile = useCallback(
     (item: Doctor) => {
       navigation?.navigate?.('DoctorProfile', { doctorData: item });
     },
     [navigation],
   );
-  console.log('TopDoctorsCard data:', data);
+
+  const list = useMemo(() => {
+    const source = Array.isArray(data) ? data : [];
+    if (typeof limit === 'number' && limit > 0) {
+      return source.slice(0, limit);
+    }
+    return source;
+  }, [data, limit]);
+
+  console.log("listlistlistlistlist", list);
+
+  const isGrid = layout !== 'horizontal';
 
   const renderItem = useCallback(
     ({ item }: { item: Doctor }) => {
-      const speciality = Array.isArray(item?.health_diseases)
-        ? item.health_diseases.map((disease: any) => disease.name).join(', ')
-        : 'Ayurveda Specialist';
-
+      const labels = getDoctorSpecializationLabels(item);
+      const speciality = labels[0] || 'Ayurveda Specialist';
       const isAvailable = item?.has_availability === true;
-      const rating = item?.average_rating ?? item?.ranking_score ?? '0';
-      const reviewCount = item?.total_reviews ?? '0';
+      const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
+      const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
       const experience = item?.experience_years || item?.experience || '0';
       const displayName = item.full_name || item.name || 'Doctor';
-      const shortSpeciality =
-        speciality.split(',').slice(0, 2).join(', ') || 'Ayurveda Specialist';
+      const fee = item?.consultation_fee;
+      const imageUri =
+        typeof item?.profile_image === 'string'
+          ? item.profile_image.trim()
+          : item?.profile_image?.url
+            ? String(item.profile_image.url).trim()
+            : '';
 
       return (
         <Pressable
           style={({ pressed }) => [
             styles.card,
-            // isAvailable ? styles.cardActive : styles.cardIdle,
-            // pressed && styles.cardPressed,
+            isGrid ? styles.cardGrid : styles.cardHorizontal,
+            pressed && styles.cardPressed,
           ]}
           onPress={() => openDoctorProfile(item)}
         >
-          <View style={styles.bodyRow}>
-            <View style={styles.imageWrapper}>
-              {item?.profile_image ? (
-                <Image
-                  source={{ uri: item?.profile_image?.trim() }}
-                  style={[
-                    styles.image,
-                    !isAvailable && styles.imageMuted,
-                  ]}
-                // onError={() => setImageError(true)}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.image,
-                    styles.initialAvatar,
-                    !isAvailable && styles.imageMuted,
-                  ]}
-                >
-                  <Text style={styles.initialText}>
-                    {item?.first_name?.charAt(0).toUpperCase() || ''}
-                  </Text>
-                </View>
-              )}
-
-              {isAvailable ? <View style={styles.liveDot} /> : null}
-            </View>
-
-            {/* <View style={styles.imageWrapper}>
-            
-            {}  <Image
-                source={
-                  item?.profile_image?.trim?.()
-                    ? { uri: item.profile_image }
-                    : Images.doctorImage
-                }
-                style={[styles.image, !isAvailable && styles.imageMuted]}
+          <View style={styles.avatarWrap}>
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                style={[styles.avatar, !isAvailable && styles.imageMuted]}
               />
-              {isAvailable ? <View style={styles.liveDot} /> : null}
-            </View> */}
-
-            <View style={styles.content}>
-              <View style={styles.tagRow}>
-                {/* <View style={[styles.tag, !isAvailable && styles.tagIdle]}>
-                  <Text style={[styles.tagText, !isAvailable && styles.tagTextIdle]}>
-                    {isAvailable ? 'Active' : 'Inactive'}
-                  </Text>
-                </View> */}
+            ) : (
+              <View
+                style={[
+                  styles.avatar,
+                  styles.initialAvatar,
+                  !isAvailable && styles.imageMuted,
+                ]}
+              >
+                <Text style={styles.initialText}>
+                  {item?.first_name?.charAt(0).toUpperCase() ||
+                    displayName?.charAt(0)?.toUpperCase() ||
+                    ''}
+                </Text>
               </View>
-
-              <Text style={styles.name} numberOfLines={1}>
-                {displayName}
-              </Text>
-
-              <Text style={styles.speciality} numberOfLines={1}>
-                {shortSpeciality}
-              </Text>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoItem}>
-                  <Ionicons name="time-outline" size={12} color="#64748B" />
-                  <Text style={styles.infoText}>{experience} Yrs</Text>
-                </View>
-                <View style={styles.infoItem}>
-                  <Ionicons name="star" size={11} color="#F59E0B" />
-                  <Text style={styles.infoText}>
-                    {rating}
-                    <Text style={styles.reviewCount}> ({reviewCount})</Text>
-                  </Text>
-                </View>
-              </View>
-            </View>
+            )}
+            {isAvailable ? <View style={styles.onlineDot} /> : null}
           </View>
-          {/* /!isAvailable && styles.consultBtnIdle */}
-          <View style={[styles.consultBtn,]}>
-            <TablerIcon name="consult" size={16} color="#FFFFFF" />
-            <Text style={styles.consultText}>Consult Now</Text>
+
+          <Text style={styles.name} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.speciality} numberOfLines={1}>
+            {speciality}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <Ionicons name="star" size={10} color="#F59E0B" />
+            <Text style={styles.metaText}>{ratingLabel}</Text>
+            <Text style={styles.metaDot}>·</Text>
+            <Text style={styles.metaText}>{experience}yr</Text>
+            {fee != null && fee !== '' ? (
+              <>
+                <Text style={styles.metaDot}>·</Text>
+                <Text style={styles.feeText}>₹{fee}</Text>
+              </>
+            ) : null}
+          </View>
+
+          <View style={styles.consultBtn}>
+            <Text style={styles.consultText}>Consult</Text>
           </View>
         </Pressable>
       );
     },
-    [openDoctorProfile],
+    [openDoctorProfile, isGrid],
   );
+
+  if (!list.length) {
+    return null;
+  }
+
+  if (isGrid) {
+    return (
+      <View style={styles.gridWrap}>
+        {list.map((item, index) => (
+          <View
+            key={String(item?.id ?? `top-doc-${index}`)}
+            style={styles.gridItem}
+          >
+            {renderItem({ item })}
+          </View>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <FlatList
       horizontal
-      data={data}
-      keyExtractor={item => item.id}
+      data={list}
+      keyExtractor={(item, index) =>
+        String(item?.id ?? `top-doc-${index}`)
+      }
       renderItem={renderItem}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={styles.horizontalContainer}
       initialNumToRender={4}
       maxToRenderPerBatch={4}
       windowSize={5}
-      getItemLayout={(_, index) => ({
-        length: CARD_WIDTH + CARD_GAP,
-        offset: (CARD_WIDTH + CARD_GAP) * index,
-        index,
-      })}
     />
   );
 };
@@ -171,154 +232,123 @@ const TopDoctorsCard = ({ data = [], navigation }: any) => {
 export default React.memo(TopDoctorsCard);
 
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 2,
+  gridWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: GRID_GAP,
+  },
+  gridItem: {
+    width: GRID_CARD_W,
+  },
+  horizontalContainer: {
     paddingRight: 4,
   },
   card: {
-    width: CARD_WIDTH,
-    marginRight: CARD_GAP,
-    borderRadius: 14,
-    padding: 10,
     backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E8EDF2',
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: '#0D614E',
-    //     shadowOffset: { width: 0, height: 3 },
-    //     shadowOpacity: 0.07,
-    //     shadowRadius: 8,
-    //   },
-    //   // android: { elevation: 3 },
-    // }),
+    borderColor: '#D7E8E1',
+    paddingTop: 10,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    alignItems: 'center',
   },
-  cardActive: {
-    borderColor: '#CFE8DF',
+  cardGrid: {
+    width: '100%',
   },
-  cardIdle: {
-    backgroundColor: '#FAFBFC',
+  cardHorizontal: {
+    width: 148,
+    marginRight: 10,
   },
   cardPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.985 }],
+    opacity: 0.94,
   },
-  bodyRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  imageWrapper: {
-    width: 54,
-    height: 54,
-    borderRadius: 10,
+  avatarWrap: {
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
     overflow: 'hidden',
-    marginRight: 8,
-    backgroundColor: Colors.bgborderColor,
+    backgroundColor: '#E8F3EF',
+    marginBottom: 6,
   },
-  image: {
+  avatar: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
   initialAvatar: {
-    backgroundColor: Colors.bgcolor,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#D7EDE5',
   },
-
   initialText: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
     textTransform: 'uppercase',
   },
-
   imageMuted: {
-    opacity: 0.75,
+    opacity: 0.72,
   },
-  liveDot: {
+  onlineDot: {
     position: 'absolute',
-    bottom: 3,
-    right: 3,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    right: 2,
+    bottom: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#22C55E',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  content: {
-    flex: 1,
-    minWidth: 0,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    marginBottom: 2,
-  },
-  tag: {
-    backgroundColor: '#EAF8F4',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
-  tagIdle: {
-    backgroundColor: '#F1F5F9',
-  },
-  tagText: {
-    fontSize: 10,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  tagTextIdle: {
-    color: '#94A3B8',
-  },
   name: {
-    fontSize: 13,
-    lineHeight: 17,
-    color: '#1E293B',
+    fontSize: 12,
+    lineHeight: 15,
+    color: '#0F3D32',
     fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+    width: '100%',
   },
   speciality: {
+    marginTop: 1,
     fontSize: 10,
     lineHeight: 13,
-    color: Colors.primaryColor,
+    color: '#0F766E',
     fontFamily: Fonts.PoppinsMedium,
-    marginTop: 1,
+    textAlign: 'center',
+    width: '100%',
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    flexWrap: 'wrap',
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  infoText: {
-    fontSize: 10,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-    marginLeft: 3,
-  },
-  reviewCount: {
-    fontSize: 9,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  consultBtn: {
-    marginTop: 8,
-    height: 34,
-    borderRadius: 9,
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primaryColor,
-    gap: 5,
+    marginTop: 4,
+    flexWrap: 'nowrap',
+    gap: 2,
   },
-  consultBtnIdle: {
-    backgroundColor: '#94A3B8',
+  metaText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  metaDot: {
+    fontSize: 10,
+    color: '#CBD5E1',
+  },
+  feeText: {
+    fontSize: 10,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  consultBtn: {
+    marginTop: 6,
+    alignSelf: 'stretch',
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryColor,
   },
   consultText: {
     color: '#FFFFFF',

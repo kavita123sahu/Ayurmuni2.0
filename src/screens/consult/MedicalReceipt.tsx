@@ -21,6 +21,7 @@ import TablerIcon from '../../components/TablerIcon';
 import { showSuccessToast } from '../../config/Key';
 import { saveAndOpenTextFile } from '../../utils/fileDownloadUtils';
 import { formatDate } from '../../common/DataInterface';
+import { RupeeAmount } from '../../utils/currencyUtils';
 const { width } = Dimensions.get('window');
 
 interface ReceiptData {
@@ -240,17 +241,32 @@ const MedicalReceipt = (props: any) => {
 
                                     <View style={styles.priceRow}>
                                         <Text style={styles.priceLabel}>Consultation Fee</Text>
-                                        <Text style={styles.priceValue}>{receipt?.consultation_fees?.toFixed(2) || '0.00'}</Text>
+                                        <RupeeAmount
+                                            value={receipt?.consultation_fees ?? 0}
+                                            style={styles.priceValue}
+                                            iconSize={14}
+                                            iconColor={Colors.primaryColor}
+                                        />
                                     </View>
 
                                     <View style={styles.priceRow1}>
                                         <Text style={styles.priceLabel}>Administrative Charges</Text>
-                                        <Text style={styles.priceValue}>{receipt?.administrative_charges?.toFixed(2) || '0.00'}</Text>
+                                        <RupeeAmount
+                                            value={receipt?.administrative_charges ?? 0}
+                                            style={styles.priceValue}
+                                            iconSize={14}
+                                            iconColor={Colors.primaryColor}
+                                        />
                                     </View>
 
                                     <View style={styles.priceRow1}>
                                         <Text style={styles.priceLabel}>Digital Report Access</Text>
-                                        <Text style={styles.priceValue}>{receipt?.digital_report_access?.toFixed(2) || '0.00'}</Text>
+                                        <RupeeAmount
+                                            value={receipt?.digital_report_access ?? 0}
+                                            style={styles.priceValue}
+                                            iconSize={14}
+                                            iconColor={Colors.primaryColor}
+                                        />
                                     </View>
 
 
@@ -259,7 +275,16 @@ const MedicalReceipt = (props: any) => {
                                     {/* TOTAL */}
                                     <View style={styles.totalRow}>
                                         <Text style={styles.totalText}>Total Paid</Text>
-                                        <Text style={styles.totalAmount}>{receipt?.consultation_fees?.toFixed(2) || '0.00'}</Text>
+                                        <RupeeAmount
+                                            value={
+                                                receipt?.total_amount ??
+                                                receipt?.consultation_fees ??
+                                                0
+                                            }
+                                            style={styles.totalAmount}
+                                            iconSize={16}
+                                            iconColor={Colors.primaryColor}
+                                        />
                                     </View>
 
                                     <View style={styles.noteBox}>

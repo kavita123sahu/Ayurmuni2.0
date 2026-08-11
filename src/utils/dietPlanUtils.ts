@@ -371,6 +371,24 @@ export const isDietPlanStarted = (plan?: any): boolean => {
   );
 };
 
+export const getDietRepeatCount = (plan?: any): number => {
+  if (!plan) return 0;
+  const raw =
+    plan?.repeat_count ??
+    plan?.patient_repeat_count ??
+    plan?.times_repeated ??
+    0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+};
+
+/** Human label: first run vs repeat #N */
+export const getDietRunLabel = (plan?: any): string => {
+  const count = getDietRepeatCount(plan);
+  if (count <= 0) return 'First time';
+  return `Repeat #${count}`;
+};
+
 /** Display status for diet plan list cards */
 export type DietListStatus =
   | 'active'
@@ -822,8 +840,20 @@ export const mapPlanJsonMeals = (
       mealKey,
       type: MEAL_LABELS[mealKey] || mealKey.toUpperCase(),
       time: MEAL_TIMES[mealKey] || '',
-      title: dietItems[0] || MEAL_LABELS[mealKey] || mealKey,
-      subtitle: dietItems.slice(1).join(' · ') || steps[0] || '',
+      title:
+        dietItemDetails[0]?.name ||
+        dietItems[0] ||
+        MEAL_LABELS[mealKey] ||
+        mealKey,
+      subtitle:
+        dietItemDetails
+          .slice(1)
+          .map(d => d.name)
+          .filter(Boolean)
+          .join(' · ') ||
+        dietItems.slice(1).join(' · ') ||
+        steps[0] ||
+        '',
       kcal,
       carbs,
       protein,

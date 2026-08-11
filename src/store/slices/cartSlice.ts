@@ -65,9 +65,9 @@ const normalizeCartItemsImages = (data: CartData): CartData => {
     },
     prescription_cart: data.prescription_cart
       ? {
-          ...data.prescription_cart,
-          items: prescriptionGroups,
-        }
+        ...data.prescription_cart,
+        items: prescriptionGroups,
+      }
       : data.prescription_cart,
   };
 };
@@ -108,15 +108,15 @@ const patchCartItemQuantity = (
     items.push(
       cartItemFromApi
         ? enrichCartItemImages(
-            {
-              ...cartItemFromApi,
-              id: cartItemFromApi.id,
-              variant_id:
-                getVariantIdFromItem(cartItemFromApi) || variantId,
-              quantity: Number(cartItemFromApi.quantity ?? quantity),
-            },
-            variantId,
-          )
+          {
+            ...cartItemFromApi,
+            id: cartItemFromApi.id,
+            variant_id:
+              getVariantIdFromItem(cartItemFromApi) || variantId,
+            quantity: Number(cartItemFromApi.quantity ?? quantity),
+          },
+          variantId,
+        )
         : { variant_id: variantId, quantity },
     );
   }
@@ -192,6 +192,7 @@ export const fetchCart = createAsyncThunk<CartData, FetchCartArg>(
         CART_CACHE_KEY,
         async () => {
           const res = await _CART_SERVICES.getAllCart();
+          console.log('CartServiceResponse', res);
           return res?.data ?? {};
         },
         { ttl: 30_000, force },

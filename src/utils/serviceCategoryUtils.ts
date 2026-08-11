@@ -1,4 +1,4 @@
-export type ServiceCategoryKey = 'medicine' | 'products';
+export type ServiceCategoryKey = 'medicine' | 'products' | 'consult';
 
 const SERVICE_NAME_ALIASES: Record<ServiceCategoryKey, string[]> = {
   medicine: [
@@ -21,6 +21,16 @@ const SERVICE_NAME_ALIASES: Record<ServiceCategoryKey, string[]> = {
     'store products',
     'product store',
     'ayurvedic products',
+  ],
+  consult: [
+    'consult',
+    'consultation',
+    'consultations',
+    'doctor',
+    'doctors',
+    'teleconsult',
+    'online consult',
+    'ayurveda consult',
   ],
 };
 
@@ -128,4 +138,5 @@ export const getServiceCategoryId = (
 export const getServiceCategoryIds = (categories: any[] | undefined | null) => ({
   medicine: getServiceCategoryId(categories, 'medicine'),
   products: getServiceCategoryId(categories, 'products'),
+  consult: getServiceCategoryId(categories, 'consult'),
 });

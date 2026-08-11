@@ -256,8 +256,15 @@ const RenderAppoint = ({
           );
         }}
         onViewDetails={() =>
-          navigation.navigate('DoctorSlipScreen', {
-            doctorID: item?.rawData?.doctor?.doctor_id,
+          navigation.navigate('PrescriptionDetail', {
+            appointment_id:
+              item?.appointment_id ||
+              item?.consultation_id ||
+              item?.rawData?.appointment?.appointment_id ||
+              item?.rawData?.appointment_id,
+            consultation_id:
+              item?.consultation_id ||
+              item?.rawData?.appointment?.consultation_id,
           })
         }
       />

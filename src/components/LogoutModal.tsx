@@ -45,7 +45,9 @@ const CommonModal = ({
             <Pressable
                 style={styles.overlay}
                 onPress={onClose}>
-                <Pressable style={styles.modalContainer}>
+                <Pressable
+                    style={styles.modalContainer}
+                    onPress={e => e?.stopPropagation?.()}>
 
                     <View style={styles.iconWrapper}>
                         <Text style={styles.icon}>
@@ -69,7 +71,10 @@ const CommonModal = ({
                         <TouchableOpacity
                             activeOpacity={0.8}
                             style={styles.cancelBtn}
-                            onPress={onClose}
+                            onPress={e => {
+                                e?.stopPropagation?.();
+                                onClose();
+                            }}
                             disabled={loading}>
                             <Text style={styles.cancelText}>
                                 {cancelText}
@@ -78,7 +83,10 @@ const CommonModal = ({
 
                         <TouchableOpacity
                             activeOpacity={0.9}
-                            onPress={onConfirm}
+                            onPress={e => {
+                                e?.stopPropagation?.();
+                                onConfirm();
+                            }}
                             disabled={loading}
                             style={styles.confirmBtnWrapper}>
                             <LinearGradient

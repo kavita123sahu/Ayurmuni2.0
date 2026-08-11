@@ -27,6 +27,17 @@ import { showSuccessToast } from '../config/Key';
 import { requireAuth } from '../services/guestAuth';
 import type { DietPlanStatusAction } from '../services/PatientServices';
 import { DIET_PLAN_PAGE_SIZE } from '../services/PatientServices';
+import type { DietPlanListParams } from '../services/PatientServices';
+
+export type DietListFilters = {
+  search?: string;
+  prakriti?: string;
+  health_disease_id?: string | number;
+  is_paid?: boolean | string;
+  duration?: string | number;
+  calories?: string | number;
+  sort?: 'popularity' | 'latest' | string;
+};
 
 type Options = {
   /** Open this plan detail when screen mounts */
@@ -37,11 +48,62 @@ type Options = {
    * - 'all' → GET ?type=all
    */
   listType?: 'all' | null;
+  /** Server-side list filters (search / prakriti / paid / sort / …) */
+  listFilters?: DietListFilters;
 };
+
+const normalizeListFilters = (filters?: DietListFilters): DietListFilters => {
+  if (!filters) return {};
+  const search = String(filters.search || '').trim();
+  const prakriti = String(filters.prakriti || '').trim();
+  const health_disease_id =
+    filters.health_disease_id != null &&
+    String(filters.health_disease_id).trim() !== ''
+      ? filters.health_disease_id
+      : undefined;
+  const duration =
+    filters.duration != null && String(filters.duration).trim() !== ''
+      ? filters.duration
+      : undefined;
+  const calories =
+    filters.calories != null && String(filters.calories).trim() !== ''
+      ? filters.calories
+      : undefined;
+  const sort = String(filters.sort || '').trim() || undefined;
+  const is_paid =
+    filters.is_paid === true ||
+    filters.is_paid === false ||
+    filters.is_paid === 'true' ||
+    filters.is_paid === 'false'
+      ? filters.is_paid
+      : undefined;
+
+  return {
+    ...(search ? { search } : {}),
+    ...(prakriti && prakriti.toLowerCase() !== 'all' ? { prakriti } : {}),
+    ...(health_disease_id != null ? { health_disease_id } : {}),
+    ...(is_paid != null ? { is_paid } : {}),
+    ...(duration != null ? { duration } : {}),
+    ...(calories != null ? { calories } : {}),
+    ...(sort ? { sort } : {}),
+  };
+};
+
+const filtersKey = (filters?: DietListFilters) =>
+  JSON.stringify(normalizeListFilters(filters));
 
 export const useDietPlans = (options: Options = {}) => {
   /** Default: suggested (no type). Pass listType: 'all' for View all catalog. */
-  const { initialPlanId = null, listType = null } = options;
+  const { initialPlanId = null, listType = null, listFilters } = options;
+  const normalizedFilters = useMemo(
+    () => normalizeListFilters(listFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtersKey(listFilters)],
+  );
+  const hasServerFilters = Object.keys(normalizedFilters).length > 0;
+  // Search / filter across full catalog; suggested list stays default when idle
+  const effectiveListType =
+    listType === 'all' || hasServerFilters ? ('all' as const) : null;
 
   const [plans, setPlans] = useState<DietPlanSummary[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(
@@ -62,6 +124,7 @@ export const useDietPlans = (options: Options = {}) => {
   const [starting, setStarting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loggingMealId, setLoggingMealId] = useState<string | null>(null);
+  const [completionJson, setCompletionJson] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -71,6 +134,7 @@ export const useDietPlans = (options: Options = {}) => {
   const loadingMoreLockRef = useRef(false);
   const hasMoreRef = useRef(true);
   const pageRef = useRef(1);
+  const listRequestIdRef = useRef(0);
   currentDayKeyRef.current = currentDayKey;
 
   const nutrition: DietNutrition = useMemo(
@@ -199,15 +263,29 @@ export const useDietPlans = (options: Options = {}) => {
         loadingMoreLockRef.current = true;
         setLoadingMore(true);
       } else {
+        setLoadingMore(false);
+        loadingMoreLockRef.current = false;
+        listRequestIdRef.current += 1;
+        // Soft filter reload: keep rows visible; UI shows a thin spinner header
         setLoadingList(true);
       }
 
+      const requestId = listRequestIdRef.current;
+
       try {
-        const res = await _PATIENT.getDietPlans({
-          ...(listType ? { type: listType } : {}),
-          // page: pageToLoad,
-          // page_size: DIET_PLAN_PAGE_SIZE,
-        });
+        const query: DietPlanListParams = {
+          ...(effectiveListType ? { type: effectiveListType } : {}),
+          ...normalizedFilters,
+          page: pageToLoad,
+          page_size: DIET_PLAN_PAGE_SIZE,
+        };
+
+        const res = await _PATIENT.getDietPlans(query);
+
+        // Ignore stale responses when filters/search changed mid-flight
+        if (requestId !== listRequestIdRef.current) {
+          return;
+        }
 
         if (res?.success === false) {
           if (mode === 'replace') {
@@ -235,14 +313,12 @@ export const useDietPlans = (options: Options = {}) => {
             seen.add(id);
             return true;
           });
-          // Empty unique page → no more. Partial page → end of list.
           if (unique.length === 0 || mapped.length < DIET_PLAN_PAGE_SIZE) {
             more = false;
           }
           return [...prev, ...unique];
         });
 
-        // Replace mode: short first page means end
         if (mode === 'replace' && mapped.length < DIET_PLAN_PAGE_SIZE) {
           more = false;
         }
@@ -252,6 +328,9 @@ export const useDietPlans = (options: Options = {}) => {
         setHasMore(more);
         hasMoreRef.current = more;
       } catch (e) {
+        if (requestId !== listRequestIdRef.current) {
+          return;
+        }
         console.log('DIET_LIST_ERROR', e);
         if (mode === 'replace') {
           setPlans([]);
@@ -259,12 +338,19 @@ export const useDietPlans = (options: Options = {}) => {
           hasMoreRef.current = false;
         }
       } finally {
-        setLoadingList(false);
-        setLoadingMore(false);
-        loadingMoreLockRef.current = false;
+        if (mode === 'append') {
+          loadingMoreLockRef.current = false;
+        }
+        if (requestId === listRequestIdRef.current) {
+          setLoadingList(false);
+          setLoadingMore(false);
+          if (mode !== 'append') {
+            loadingMoreLockRef.current = false;
+          }
+        }
       }
     },
-    [listType],
+    [effectiveListType, normalizedFilters],
   );
 
   const loadList = useCallback(async () => {
@@ -287,22 +373,6 @@ export const useDietPlans = (options: Options = {}) => {
     fetchListPage(pageRef.current + 1, 'append');
   }, [fetchListPage, loadingList, loadingMore]);
 
-  /**
-   * All-diet catalog (`type=all`): keep loading pages until the API ends
-   * so the list shows the full catalog (with a safety page cap).
-   */
-  useEffect(() => {
-    if (listType !== 'all') return;
-    if (loadingList || loadingMore || !hasMore) return;
-    if (page >= 20) return;
-    const timer = setTimeout(() => {
-      if (hasMoreRef.current && !loadingMoreLockRef.current) {
-        loadMore();
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [listType, loadingList, loadingMore, hasMore, page, loadMore]);
-
   const loadDetail = useCallback(
     async (planId: string) => {
       if (!planId) return null;
@@ -319,8 +389,8 @@ export const useDietPlans = (options: Options = {}) => {
         const listSummary =
           plans.find(p => String(p.id) === String(planId)) || null;
 
-        // View-all catalog → type=all first; suggested → try plain id then fallback
-        const preferAll = listType === 'all';
+        // View-all catalog / filtered search → type=all first; suggested → plain id then fallback
+        const preferAll = effectiveListType === 'all';
         let detailRes = preferAll
           ? await _PATIENT.getDietPlans({ id: planId, type: 'all' })
           : await _PATIENT.getDietPlans({ id: planId });
@@ -465,7 +535,7 @@ export const useDietPlans = (options: Options = {}) => {
         setLoadingDetail(false);
       }
     },
-    [loadProgress, rebuildMeals, plans, listType],
+    [loadProgress, rebuildMeals, plans, effectiveListType],
   );
 
   useEffect(() => {
@@ -507,6 +577,7 @@ export const useDietPlans = (options: Options = {}) => {
     setMealsByDay([]);
     setProgress([]);
     setShowAllDays(false);
+    setCompletionJson(null);
     setSelectedPlanId(planId);
   }, []);
 
@@ -517,6 +588,7 @@ export const useDietPlans = (options: Options = {}) => {
     setMealsByDay([]);
     setProgress([]);
     setShowAllDays(false);
+    setCompletionJson(null);
     hasInitializedDayRef.current = false;
   }, []);
 
@@ -800,6 +872,28 @@ export const useDietPlans = (options: Options = {}) => {
     return fromDetail || fromSummary || null;
   }, [planDetail, selectedSummary, selectedPlanId]);
 
+  /** Keep last known assignment id so Repeat still works after complete refresh. */
+  const lastAssignmentIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (patientDietPlanId) {
+      lastAssignmentIdRef.current = String(patientDietPlanId);
+    }
+  }, [patientDietPlanId]);
+
+  const resolveAssignmentId = useCallback(
+    (override?: string | null) => {
+      const id =
+        override ||
+        patientDietPlanId ||
+        planDetail?.patient_diet_plan_id ||
+        selectedSummary?.patient_diet_plan_id ||
+        lastAssignmentIdRef.current ||
+        null;
+      return id ? String(id) : null;
+    },
+    [patientDietPlanId, planDetail, selectedSummary],
+  );
+
   const updateStatus = useCallback(
     async (
       action: DietPlanStatusAction,
@@ -807,9 +901,14 @@ export const useDietPlans = (options: Options = {}) => {
       patientId?: string | null,
       options?: { silent?: boolean },
     ) => {
-      const id = patientId || patientDietPlanId;
+      const id = resolveAssignmentId(patientId);
       if (!id) {
-        showSuccessToast('No active assignment found for this plan', 'error');
+        showSuccessToast(
+          action === 'repeat'
+            ? 'No completed plan assignment found to repeat'
+            : 'No active assignment found for this plan',
+          'error',
+        );
         return false;
       }
       if (!(await requireAuth('Please login to update diet plan'))) return false;
@@ -820,12 +919,10 @@ export const useDietPlans = (options: Options = {}) => {
           action,
         };
         if (stop_reason) payload.stop_reason = stop_reason;
-        console.log('swicthpannn', id, payload);
 
         const res = await _PATIENT.updateDietPlanStatus(id, payload);
-        console.log('swicthpannnresposnee', res);
         if (res?.success === false) {
-          if (isNoActiveDietPlanError(res)) {
+          if (isNoActiveDietPlanError(res) && action !== 'repeat') {
             await loadList();
             if (selectedPlanId) await loadDetail(selectedPlanId);
             showSuccessToast(
@@ -837,21 +934,53 @@ export const useDietPlans = (options: Options = {}) => {
             );
             return false;
           }
-          showSuccessToast(res?.message || 'Unable to update plan status', 'error');
+          showSuccessToast(
+            extractDietApiError(
+              res,
+              res?.message || 'Unable to update plan status',
+            ),
+            'error',
+          );
           return false;
         }
+
+        // Capture new assignment id if backend returns it (repeat/reset).
+        const nextAssignment =
+          res?.data?.patient_diet_plan_id ||
+          res?.patient_diet_plan_id ||
+          res?.data?.id ||
+          null;
+        if (nextAssignment && (action === 'repeat' || action === 'reset')) {
+          lastAssignmentIdRef.current = String(nextAssignment);
+        }
+
+        if (action === 'complete') {
+          const json =
+            res?.complete_json ??
+            res?.data?.complete_json ??
+            res?.completeJson ??
+            res?.data?.completeJson ??
+            res?.complete ??
+            null;
+          setCompletionJson(json);
+          // Keep completed assignment id for Repeat
+          lastAssignmentIdRef.current = String(id);
+        }
+
         if (!options?.silent) {
-          showSuccessToast(
-            res?.message ||
-              (action === 'pause'
-                ? 'Plan paused'
-                : action === 'resume'
-                  ? 'Plan resumed'
-                  : action === 'stop'
-                    ? 'Plan stopped'
-                    : 'Plan completed'),
-            'success',
-          );
+          const defaultMsg =
+            action === 'pause'
+              ? 'Plan paused'
+              : action === 'resume'
+                ? 'Plan resumed'
+                : action === 'stop'
+                  ? 'Plan stopped'
+                  : action === 'reset'
+                    ? 'Plan reset — tracking started fresh'
+                    : action === 'repeat'
+                      ? 'Plan repeated — new run started'
+                      : 'Plan completed';
+          showSuccessToast(res?.message || defaultMsg, 'success');
         }
         await loadList();
         if (selectedPlanId) {
@@ -865,7 +994,7 @@ export const useDietPlans = (options: Options = {}) => {
         setUpdatingStatus(false);
       }
     },
-    [patientDietPlanId, loadList, loadDetail, selectedPlanId],
+    [resolveAssignmentId, loadList, loadDetail, selectedPlanId],
   );
 
   /** Currently active assignment (only one allowed at a time). */
@@ -1072,6 +1201,33 @@ export const useDietPlans = (options: Options = {}) => {
     return updateStatus('complete');
   }, [updateStatus]);
 
+  const resetPlan = useCallback(
+    async (stop_reason?: string) => {
+      return updateStatus('reset', stop_reason);
+    },
+    [updateStatus],
+  );
+
+  const repeatPlan = useCallback(async () => {
+    const assignmentId = resolveAssignmentId();
+    if (!assignmentId) {
+      showSuccessToast('No completed plan found to repeat', 'error');
+      return false;
+    }
+    return updateStatus('repeat', undefined, assignmentId);
+  }, [updateStatus, resolveAssignmentId]);
+
+  const pausePlan = useCallback(async () => {
+    return updateStatus('pause');
+  }, [updateStatus]);
+
+  const stopPlan = useCallback(
+    async (stop_reason?: string) => {
+      return updateStatus('stop', stop_reason || 'Stopped by user');
+    },
+    [updateStatus],
+  );
+
   return {
     plans,
     selectedPlanId,
@@ -1093,6 +1249,7 @@ export const useDietPlans = (options: Options = {}) => {
     isStarted,
     isPlanFullyComplete,
     listStatus,
+    completionJson,
     patientDietPlanId,
     activePlan,
     loadingList,
@@ -1110,6 +1267,10 @@ export const useDietPlans = (options: Options = {}) => {
     adjustWater,
     updateStatus,
     completePlan,
+    resetPlan,
+    repeatPlan,
+    pausePlan,
+    stopPlan,
     prepareResume,
     prepareStart,
     pauseActiveAndResume,

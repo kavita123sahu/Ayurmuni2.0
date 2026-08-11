@@ -442,70 +442,152 @@ const gridSkeletonStyles = StyleSheet.create({
 });
 
 export const TopDoctorsCardSkeleton = () => {
+  const cardW = (width - 40 - 10) / 2;
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{
-        paddingBottom: 10,
-        paddingRight: 10,
+    <View
+      style={{
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        rowGap: 10,
       }}
     >
       {[1, 2, 3, 4].map(item => (
         <View
-          key={item}
+          key={`top-doc-skel-${item}`}
           style={{
-            width: 232,
-            marginRight: 10,
-            marginBottom: 6,
-            backgroundColor: '#fff',
+            width: cardW,
+            backgroundColor: '#FFFFFF',
             borderRadius: 14,
-            padding: 10,
             borderWidth: 1,
-            borderColor: '#E8EDF2',
+            borderColor: '#D7E8E1',
+            paddingTop: 10,
+            paddingHorizontal: 8,
+            paddingBottom: 8,
+            alignItems: 'center',
           }}
         >
           <SkeletonPlaceholder borderRadius={10} speed={1200}>
-            <SkeletonPlaceholder.Item flexDirection="row">
-              <SkeletonPlaceholder.Item width={54} height={54} borderRadius={10} />
-              <SkeletonPlaceholder.Item marginLeft={8} flex={1}>
-                <SkeletonPlaceholder.Item width={52} height={14} borderRadius={5} />
-                <SkeletonPlaceholder.Item
-                  marginTop={6}
-                  width="88%"
-                  height={13}
-                  borderRadius={5}
-                />
-                <SkeletonPlaceholder.Item
-                  marginTop={4}
-                  width="72%"
-                  height={11}
-                  borderRadius={5}
-                />
-                <SkeletonPlaceholder.Item flexDirection="row" marginTop={6}>
-                  <SkeletonPlaceholder.Item width={48} height={10} borderRadius={4} />
-                  <SkeletonPlaceholder.Item
-                    marginLeft={8}
-                    width={56}
-                    height={10}
-                    borderRadius={4}
-                  />
-                </SkeletonPlaceholder.Item>
-              </SkeletonPlaceholder.Item>
-            </SkeletonPlaceholder.Item>
-
             <SkeletonPlaceholder.Item
-              marginTop={8}
+              width={52}
+              height={52}
+              borderRadius={26}
+              alignSelf="center"
+            />
+            <SkeletonPlaceholder.Item
+              marginTop={6}
+              width="82%"
+              height={12}
+              borderRadius={4}
+              alignSelf="center"
+            />
+            <SkeletonPlaceholder.Item
+              marginTop={1}
+              width="62%"
+              height={10}
+              borderRadius={4}
+              alignSelf="center"
+            />
+            <SkeletonPlaceholder.Item
+              marginTop={4}
+              width="70%"
+              height={10}
+              borderRadius={4}
+              alignSelf="center"
+            />
+            <SkeletonPlaceholder.Item
+              marginTop={6}
               width="100%"
-              height={34}
-              borderRadius={9}
+              height={28}
+              borderRadius={8}
             />
           </SkeletonPlaceholder>
         </View>
       ))}
-    </ScrollView>
+    </View>
   );
 };
+
+/** Matches AllDoctorCard (row list) used on concern / All Doctors screens */
+export const AllDoctorCardSkeleton = ({ count = 4 }: { count?: number }) => (
+  <View>
+    {Array.from({ length: count }).map((_, index) => (
+      <View
+        key={`all-doc-skel-${index}`}
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: '#D7E8E1',
+          padding: 10,
+          marginBottom: 10,
+        }}
+      >
+        <SkeletonPlaceholder borderRadius={10} speed={1200}>
+          <SkeletonPlaceholder.Item flexDirection="row" alignItems="flex-start">
+            <SkeletonPlaceholder.Item
+              width={56}
+              height={56}
+              borderRadius={12}
+              marginTop={2}
+            />
+            <SkeletonPlaceholder.Item flex={1} marginLeft={10}>
+              <SkeletonPlaceholder.Item
+                flexDirection="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <SkeletonPlaceholder.Item
+                  width="58%"
+                  height={14}
+                  borderRadius={6}
+                />
+                <SkeletonPlaceholder.Item
+                  width={28}
+                  height={28}
+                  borderRadius={14}
+                />
+              </SkeletonPlaceholder.Item>
+              <SkeletonPlaceholder.Item
+                marginTop={2}
+                width="72%"
+                height={11}
+                borderRadius={5}
+              />
+              <SkeletonPlaceholder.Item
+                flexDirection="row"
+                marginTop={6}
+                gap={6}
+              >
+                <SkeletonPlaceholder.Item
+                  width={58}
+                  height={22}
+                  borderRadius={20}
+                />
+                <SkeletonPlaceholder.Item
+                  width={48}
+                  height={22}
+                  borderRadius={20}
+                />
+                <SkeletonPlaceholder.Item
+                  width={70}
+                  height={22}
+                  borderRadius={20}
+                />
+              </SkeletonPlaceholder.Item>
+              <SkeletonPlaceholder.Item
+                marginTop={8}
+                width="100%"
+                height={34}
+                borderRadius={10}
+              />
+            </SkeletonPlaceholder.Item>
+          </SkeletonPlaceholder.Item>
+        </SkeletonPlaceholder>
+      </View>
+    ))}
+  </View>
+);
 
 
 const COMPACT_TILE = 64;
@@ -580,127 +662,7 @@ export const DiseaseChipSkeleton = ({ count = 5 }: { count?: number }) => (
 
 
 export const DoctorCardSkeleton = () => {
-  return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{
-        paddingBottom: 100,
-        // paddingHorizontal: 15,
-      }}
-    >
-      {[1, 2, 3, 4, 5].map(item => (
-        <View
-          key={item}
-          style={{
-            marginBottom: 14,
-            backgroundColor: "#fff",
-            borderRadius: 18,
-            padding: 12,
-            borderWidth: 1,
-            borderColor: "#EEF2F6",
-          }}
-        >
-          <SkeletonPlaceholder borderRadius={12} speed={1200}>
-
-            {/* TOP SECTION */}
-            <SkeletonPlaceholder.Item flexDirection="row">
-
-              {/* IMAGE (same as card) */}
-              <SkeletonPlaceholder.Item
-                width={78}
-                height={78}
-                borderRadius={14}
-              />
-
-              {/* RIGHT SIDE */}
-              <SkeletonPlaceholder.Item flex={1} marginLeft={10}>
-
-                {/* TAG + HEART */}
-                <SkeletonPlaceholder.Item
-                  flexDirection="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  minHeight={26}
-                >
-                  <SkeletonPlaceholder.Item
-                    width={70}
-                    height={22}
-                    borderRadius={6}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    width={28}
-                    height={28}
-                    borderRadius={14}
-                  />
-                </SkeletonPlaceholder.Item>
-
-                {/* NAME */}
-                <SkeletonPlaceholder.Item
-                  marginTop={6}
-                  width="60%"
-                  height={14}
-                  borderRadius={6}
-                />
-
-                {/* SPECIALITY */}
-                <SkeletonPlaceholder.Item
-                  marginTop={6}
-                  width="70%"
-                  height={12}
-                  borderRadius={6}
-                />
-
-                {/* INFO ROW */}
-                <SkeletonPlaceholder.Item
-                  flexDirection="row"
-                  marginTop={8}
-                >
-                  <SkeletonPlaceholder.Item
-                    width={90}
-                    height={12}
-                    borderRadius={6}
-                    marginRight={12}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    width={70}
-                    height={12}
-                    borderRadius={6}
-                  />
-                </SkeletonPlaceholder.Item>
-
-              </SkeletonPlaceholder.Item>
-            </SkeletonPlaceholder.Item>
-
-            {/* BOTTOM ROW (IMPORTANT FIX) */}
-            <SkeletonPlaceholder.Item
-              flexDirection="row"
-              marginTop={12}
-            >
-
-              {/* CHAT BUTTON */}
-              <SkeletonPlaceholder.Item
-                width={46}
-                height={46}
-                borderRadius={12}
-                marginRight={8}
-              />
-
-              {/* CONSULT BUTTON */}
-              <SkeletonPlaceholder.Item
-                flex={1}
-                height={48}
-                borderRadius={12}
-              />
-
-            </SkeletonPlaceholder.Item>
-
-          </SkeletonPlaceholder>
-        </View>
-      ))}
-    </ScrollView>
-  );
+  return <AllDoctorCardSkeleton count={5} />;
 };
 
 export const AppointmentSkeletonList = () => {
@@ -715,6 +677,7 @@ export const AppointmentSkeletonList = () => {
     >
       {[1, 2, 3, 4, 5].map(item => (
         <View
+          key={`appointment-skel-${item}`}
           style={{
             backgroundColor: Colors.white,
             borderRadius: 20,

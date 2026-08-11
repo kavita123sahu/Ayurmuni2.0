@@ -28,6 +28,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { resolveProductImageUri } from '../utils/imageUtils';
 
 interface Props {
@@ -110,6 +111,11 @@ const TopSellingList: React.FC<Props> = ({
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       // Seed variant image cache so cart/checkout can show cover after add
       resolveProductImageUri(item);
 
@@ -124,7 +130,7 @@ const TopSellingList: React.FC<Props> = ({
         );
       }
     },
-    [dispatch, resolveVariantId],
+    [dispatch, resolveVariantId, variantQuantities],
   );
 
   useWishlistSync(setProductData, {

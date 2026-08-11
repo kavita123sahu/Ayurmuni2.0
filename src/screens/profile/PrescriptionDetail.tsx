@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -8,11 +8,37 @@ import {
     Image,
     Dimensions,
     Linking,
+    ActivityIndicator,
+    Share,
+    StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { Images } from '../../common/Images';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
+import TablerIcon from '../../components/TablerIcon';
+import * as _CONSULT_SERVICE from '../../services/ConsultServce';
+import {
+    consultationHasPrescription,
+    formatIssuedLabel,
+    getClinicalAdvisory,
+    getConcernText,
+    getDiagnosisText,
+    getDietAdvice,
+    getDoList,
+    getDontList,
+    getMedicineItems,
+    getMedicinePrice,
+    getMedicineScheduleChips,
+    getPaymentAmount,
+    getRecommendedDietPlans,
+    getSuggestionList,
+    normalizePrescriptionPayload,
+} from '../../utils/prescriptionDetailUtils';
+import { getDoctorLocationLine } from '../../utils/doctorSlipUtils';
+import { showSuccessToast } from '../../config/Key';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -26,324 +52,757 @@ const COLORS = {
     success: '#10B981',
     successBg: '#E8F7EF',
     lightGray: '#F3F4F6',
-};
-
-const Fonts = {
-    semiBold: 'Poppins-SemiBold',
-    medium: 'Poppins-Medium',
-    regular: 'Poppins-Regular',
+    mint: '#EEF3F1',
 };
 
 const handleCall = (phoneNumber?: string) => {
     if (!phoneNumber) return;
+    Linking.openURL(`tel:${phoneNumber}`).catch(() => undefined);
+};
 
-    Linking.openURL(`tel:${phoneNumber}`).catch(err =>
-        console.log('Call Error:', err),
+const SectionTitle = ({ title }: { title: string }) => (
+    <View style={styles.sectionTitleWrap}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={styles.sectionUnderline} />
+    </View>
+);
+
+const AdviceRow = ({
+    icon,
+    text,
+    tone = 'default',
+}: {
+    icon: 'clock' | 'circle-check' | 'alert-circle' | 'leaf' | 'plus' | 'x';
+    text: string;
+    tone?: 'default' | 'do' | 'dont';
+}) => {
+    const iconColor =
+        tone === 'do' ? '#047857' : tone === 'dont' ? '#B91C1C' : COLORS.primary;
+    return (
+        <View style={styles.adviceRow}>
+            <View
+                style={[
+                    styles.adviceIconWrap,
+                    tone === 'do' && styles.adviceIconDo,
+                    tone === 'dont' && styles.adviceIconDont,
+                ]}
+            >
+                <TablerIcon name={icon} size={14} color={iconColor} />
+            </View>
+            <Text style={styles.adviceText}>{text}</Text>
+        </View>
     );
 };
 
 const PrescriptionDetail = (props: any) => {
-
     const insets = useSafeAreaInsets();
-    const { PrisData, doctorData } = props.route.params;
+    const params = props?.route?.params || {};
 
-    console.log("PrisDataPrisData", props)
+    const lookupId = String(
+        params.appointment_id ||
+        params.consultation_id ||
+        params.PrisData?.appointment_id ||
+        params.PrisData?.consultation_id ||
+        '',
+    ).trim();
+
+    const [loading, setLoading] = useState(true);
+    const [payload, setPayload] = useState<any>(
+        params.PrisData
+            ? { ...params.PrisData, doctor: params.doctorData || params.PrisData?.doctor }
+            : null,
+    );
+    const hasSeedData = useMemo(
+        () => consultationHasPrescription(params.PrisData),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- seed from first navigation only
+        [],
+    );
+
+    const fetchPrescription = useCallback(async () => {
+        if (!lookupId) {
+            if (!params.PrisData) {
+                showSuccessToast('Appointment id missing', 'error');
+            }
+            setLoading(false);
+            return;
+        }
+
+        try {
+            if (!hasSeedData) {
+                setLoading(true);
+            }
+            const res = await _CONSULT_SERVICE.getAppointmentDetail(lookupId);
+            console.log("prescriitonbyApntmetid,", res);
+            if (!res?.success) {
+                if (!hasSeedData) {
+                    showSuccessToast(res?.message || 'Prescription not found', 'error');
+                    if (!params.PrisData) setPayload(null);
+                }
+                return;
+            }
+            setPayload(res?.data ?? null);
+        } catch {
+            if (!hasSeedData) {
+                showSuccessToast('Unable to load prescription', 'error');
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [lookupId, hasSeedData]);
+
+    useEffect(() => {
+        fetchPrescription();
+    }, [fetchPrescription]);
+
+    const normalized = useMemo(
+        () => normalizePrescriptionPayload(payload),
+        [payload],
+    );
+
+    const doctor = normalized.doctor || params.doctorData || null;
+    const patient = normalized.patient;
+    const prescription = normalized.prescription;
+    const medicines = getMedicineItems(prescription);
+    const dietPlans = getRecommendedDietPlans(payload);
+    const dietItems = getDietAdvice(prescription);
+    const doItems = getDoList(prescription);
+    const dontItems = getDontList(prescription);
+    const suggestions = getSuggestionList(prescription);
+    const clinicalAdvisory = getClinicalAdvisory(prescription);
+    const doctorLocation = getDoctorLocationLine(doctor);
+    const doctorId = doctor?.doctor_id || doctor?.id || null;
+    const hasContent = consultationHasPrescription(payload);
+    const paymentAmount = getPaymentAmount(payload);
+    const concernText = getConcernText(payload);
+    const diagnosisText = getDiagnosisText(prescription);
+    const prescriptionCode = String(
+        prescription?.prescription_code || '',
+    ).trim();
+    const symptomText = String(
+        prescription?.symptom_description || '',
+    ).trim();
+    const appointmentNotes = String(
+        normalized.appointment?.appointment_notes ||
+        payload?.appointment_notes ||
+        '',
+    ).trim();
+    const paymentMethod = String(
+        payload?.payment?.payment_method ||
+        payload?.payment?.mode ||
+        normalized.appointment?.payment?.payment_method ||
+        '',
+    ).trim();
+    const paymentStatus = String(
+        payload?.payment?.payment_status ||
+        payload?.payment?.status ||
+        normalized.appointment?.payment?.payment_status ||
+        '',
+    ).trim();
+
+    const openDietPlan = useCallback(
+        (diet: any) => {
+            const planId =
+                diet?.diet_plan_id ||
+                diet?.id ||
+                diet?.plan_id ||
+                null;
+            if (!planId) {
+                showSuccessToast('Diet plan unavailable', 'error');
+                return;
+            }
+            props.navigation.navigate('DietScreen', {
+                item: {
+                    ...diet,
+                    id: planId,
+                    diet_plan_id: planId,
+                    name: diet?.name || diet?.title || 'Diet Plan',
+                },
+            });
+        },
+        [props.navigation],
+    );
+
+    const openViewAll = () => {
+        if (!doctorId) {
+            showSuccessToast('Doctor details unavailable', 'error');
+            return;
+        }
+        props.navigation.navigate('DoctorConsultationHistory', {
+            doctorID: doctorId,
+            doctorName: doctor?.doctor_name,
+        });
+    };
+
+    const onShare = async () => {
+        try {
+            const medicineSummary = medicines
+                .map((m: any) => m?.medicine_name)
+                .filter(Boolean)
+                .join(', ');
+            await Share.share({
+                message: [
+                    `Prescription for ${patient?.patient_name || 'patient'}`,
+                    doctor?.doctor_name ? `Doctor: ${doctor.doctor_name}` : '',
+                    medicineSummary ? `Medicines: ${medicineSummary}` : '',
+                ]
+                    .filter(Boolean)
+                    .join('\n'),
+            });
+        } catch {
+            // ignore
+        }
+    };
+
+    const specialization = Array.isArray(doctor?.doctor_specialization)
+        ? doctor.doctor_specialization.join(', ')
+        : doctor?.doctor_specialization ||
+        doctor?.specialization ||
+        doctor?.speciality ||
+        '';
+
     return (
-        <SafeAreaView style={styles.container}>
-            <AppHeader title='Prescription History' leftIconName='arrow-left' onLeftPress={() => props.navigation.goBack()} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+            <AppHeader
+                title="Prescription History"
+                leftIconName="arrow-left"
+                onLeftPress={() => props.navigation.goBack()}
+                rightLabel={doctorId ? 'View all' : undefined}
+                onRightPress={doctorId ? openViewAll : undefined}
+            />
 
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{
-                    paddingBottom: insets.bottom + 100
-                }}
-            >
-                <View style={styles.card}>
-                    {/* PATIENT INFO */}
-
-                    <View style={styles.patientRow}>
-                        {/* <Image
-                            source={{
-                                uri: 'https://i.pravatar.cc/150?img=32',
-                            }}
-                            style={styles.avatar}
-                        /> */}
-                        <View style={styles.initialAvatar}>
-                            <Text style={styles.initialText}>
-                                {PrisData?.patient?.patient_name?.charAt(0)?.toUpperCase() || ''}
-                            </Text>
-                        </View>
-                        <View style={styles.patientContent}>
-                            <Text
-                                numberOfLines={1}
-                                style={styles.patientName}
-                            >
-                                {PrisData?.patient?.patient_name ?? ''}
-                            </Text>
-
-                            <Text
-                                style={styles.patientSubText}
-                            >
-                                Gender : {PrisData?.patient?.gender ?? ''}
-                            </Text>
-
-                            <Text
-                                style={styles.patientSubText}
-                            >
-                                Age : {PrisData?.patient?.age ?? ''}
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* MEDICATION */}
-
-                    <Text style={styles.sectionTitle}>
-                        Primary Medications
+            {loading && !payload ? (
+                <View style={styles.loader}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loaderText}>Loading prescription…</Text>
+                </View>
+            ) : !hasContent ? (
+                <View style={styles.emptyWrap}>
+                    <TablerIcon name="prescription" size={36} color="#94A3B8" />
+                    <Text style={styles.emptyTitle}>No prescription yet</Text>
+                    <Text style={styles.emptySub}>
+                        Medicines, diet advice, and do’s & don’ts will appear here once the
+                        doctor issues them.
                     </Text>
+                    {!!doctorId && (
+                        <TouchableOpacity style={styles.emptyBtn} onPress={openViewAll}>
+                            <Text style={styles.emptyBtnText}>View all consultations</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            ) : (
+                <>
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{
+                            paddingBottom: insets.bottom + 110,
+                            paddingHorizontal: 16,
+                            paddingTop: 8,
+                        }}
+                        refreshControl={undefined}
+                    >
+                        {loading ? (
+                            <View style={styles.inlineLoader}>
+                                <ActivityIndicator color={COLORS.primary} />
+                            </View>
+                        ) : null}
 
-                    {PrisData?.prescription?.items?.map((medicine: any) => (
-                        <View key={medicine.id}>
-                            <View style={styles.separator} />
-
-                            {/* Medicine */}
-                            <View>
-                                <Text style={styles.medicineName}>
-                                    {medicine?.medicine_name}
+                        {/* Patient */}
+                        <View style={styles.patientRow}>
+                            {patient?.patient_image ? (
+                                <Image
+                                    source={{ uri: patient.patient_image }}
+                                    style={styles.avatar}
+                                />
+                            ) : (
+                                <View style={styles.initialAvatar}>
+                                    <Text style={styles.initialText}>
+                                        {patient?.patient_name?.charAt(0)?.toUpperCase() || 'P'}
+                                    </Text>
+                                </View>
+                            )}
+                            <View style={styles.patientContent}>
+                                <Text numberOfLines={1} style={styles.patientName}>
+                                    {patient?.patient_name || 'Patient'}
                                 </Text>
-
-                                <Text style={styles.medicineDesc}>
-                                    {medicine?.instruction || 'No instruction available'}
+                                <Text style={styles.patientSubText}>
+                                    {[
+                                        patient?.age != null ? `Age ${patient.age}` : '',
+                                        patient?.gender ? String(patient.gender) : '',
+                                        patient?.relation ? String(patient.relation) : '',
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ') || '—'}
+                                </Text>
+                                <Text style={styles.patientSubText}>
+                                    Issued {formatIssuedLabel(normalized.issuedOn)}
                                 </Text>
                             </View>
+                            {paymentAmount != null && (
+                                <RupeeAmount
+                                    value={paymentAmount}
+                                    style={styles.patientFee}
+                                    iconColor={COLORS.primary}
+                                    iconSize={15}
+                                />
+                            )}
+                        </View>
 
-                            {/* Schedule */}
-                            <View style={styles.scheduleCard}>
-                                <Text style={styles.scheduleTitle}>
-                                    Treatment Schedule
-                                </Text>
-
-                                <View style={styles.scheduleRow}>
-                                    <View style={styles.scheduleItem}>
-                                        <Text style={styles.scheduleIcon}>🕒</Text>
-
-                                        <Text style={styles.scheduleText}>
-                                            {medicine?.dosage || '-'} times • {medicine?.frequency || '-'} daily
-                                        </Text>
+                        {(!!concernText ||
+                            !!diagnosisText ||
+                            (!!symptomText &&
+                                symptomText.toLowerCase() !==
+                                    concernText.toLowerCase() &&
+                                symptomText.toLowerCase() !==
+                                    diagnosisText.toLowerCase()) ||
+                            !!appointmentNotes ||
+                            !!prescriptionCode ||
+                            paymentAmount != null ||
+                            !!paymentMethod ||
+                            !!paymentStatus) && (
+                            <View style={styles.metaCard}>
+                                {!!prescriptionCode && (
+                                    <View style={styles.metaRow}>
+                                        <Text style={styles.metaLabel}>Rx Code</Text>
+                                        <Text style={styles.metaValue}>{prescriptionCode}</Text>
                                     </View>
-
-                                    <View style={styles.scheduleItem}>
-                                        <Text style={styles.scheduleIcon}>📅</Text>
-
-                                        <Text style={styles.scheduleText}>
-                                            {medicine?.duration || '-'}Days course
-                                        </Text>
+                                )}
+                                {!!concernText && (
+                                    <View style={styles.metaRow}>
+                                        <Text style={styles.metaLabel}>Concern</Text>
+                                        <Text style={styles.metaValue}>{concernText}</Text>
                                     </View>
+                                )}
+                                {!!diagnosisText &&
+                                    diagnosisText.toLowerCase() !==
+                                        concernText.toLowerCase() && (
+                                    <View style={styles.metaRow}>
+                                        <Text style={styles.metaLabel}>
+                                            {prescription?.diagnosis
+                                                ? 'Diagnosis'
+                                                : 'Symptoms'}
+                                        </Text>
+                                        <Text style={styles.metaValue}>{diagnosisText}</Text>
+                                    </View>
+                                )}
+                                {!!symptomText &&
+                                    symptomText.toLowerCase() !==
+                                        concernText.toLowerCase() &&
+                                    symptomText.toLowerCase() !==
+                                        diagnosisText.toLowerCase() && (
+                                    <View style={styles.metaRow}>
+                                        <Text style={styles.metaLabel}>Symptoms</Text>
+                                        <Text style={styles.metaValue}>{symptomText}</Text>
+                                    </View>
+                                )}
+                                {!!appointmentNotes && (
+                                    <View style={styles.metaRow}>
+                                        <Text style={styles.metaLabel}>Notes</Text>
+                                        <Text style={styles.metaValue}>{appointmentNotes}</Text>
+                                    </View>
+                                )}
+                                {(paymentAmount != null ||
+                                    !!paymentMethod ||
+                                    !!paymentStatus) && (
+                                    <View style={[styles.metaRow, styles.metaRowLast]}>
+                                        <Text style={styles.metaLabel}>Payment</Text>
+                                        <View style={styles.metaPaymentCol}>
+                                            {paymentAmount != null ? (
+                                                <RupeeAmount
+                                                    value={paymentAmount}
+                                                    style={styles.metaValue}
+                                                    iconSize={13}
+                                                    iconColor={COLORS.primary}
+                                                />
+                                            ) : null}
+                                            {!!(paymentMethod || paymentStatus) && (
+                                                <Text style={styles.metaSubValue}>
+                                                    {[paymentMethod, paymentStatus]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Medicines */}
+                        <SectionTitle title="Primary Medications" />
+                        {medicines.length === 0 ? (
+                            <Text style={styles.emptySection}>No medicines prescribed</Text>
+                        ) : (
+                            <View style={styles.medicineList}>
+                                {medicines.map((medicine: any, index: number) => {
+                                    const price = getMedicinePrice(medicine);
+                                    const chips = getMedicineScheduleChips(medicine);
+                                    const subtitle =
+                                        medicine?.product_name ||
+                                        medicine?.description ||
+                                        medicine?.brand_name ||
+                                        medicine?.composition ||
+                                        '';
+
+                                    return (
+                                        <View
+                                            key={
+                                                medicine?.id ||
+                                                `${medicine?.medicine_name}-${index}`
+                                            }
+                                            style={styles.medicineCard}
+                                        >
+                                            <View style={styles.medicineCardTop}>
+                                                <View style={styles.medicineIcon}>
+                                                    <TablerIcon
+                                                        name="pill"
+                                                        size={16}
+                                                        color={COLORS.primary}
+                                                    />
+                                                </View>
+                                                <View style={styles.medicineMain}>
+                                                    <Text
+                                                        style={styles.medicineName}
+                                                        numberOfLines={2}
+                                                    >
+                                                        {medicine?.medicine_name ||
+                                                            medicine?.product_name ||
+                                                            'Medicine'}
+                                                    </Text>
+                                                    {!!subtitle &&
+                                                        String(subtitle).toLowerCase() !==
+                                                            String(
+                                                                medicine?.medicine_name || '',
+                                                            ).toLowerCase() && (
+                                                            <Text
+                                                                style={styles.medicineDesc}
+                                                                numberOfLines={2}
+                                                            >
+                                                                {subtitle}
+                                                            </Text>
+                                                        )}
+                                                </View>
+                                                {price != null ? (
+                                                    <RupeeAmount
+                                                        value={price}
+                                                        style={styles.medicinePrice}
+                                                        iconSize={12}
+                                                        iconColor={COLORS.primary}
+                                                    />
+                                                ) : null}
+                                            </View>
+
+                                            {chips.length > 0 ? (
+                                                <View style={styles.scheduleRow}>
+                                                    {chips.map(chip => (
+                                                        <View
+                                                            key={chip.key}
+                                                            style={styles.scheduleItem}
+                                                        >
+                                                            <Text style={styles.scheduleCaption}>
+                                                                {chip.caption}
+                                                            </Text>
+                                                            <Text style={styles.scheduleValue}>
+                                                                {chip.label}
+                                                            </Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            ) : null}
+
+                                            {!!medicine?.instruction && (
+                                                <View style={styles.instructionRow}>
+                                                    <TablerIcon
+                                                        name="clock"
+                                                        size={13}
+                                                        color={COLORS.secondary}
+                                                    />
+                                                    <Text style={styles.instructionText}>
+                                                        {String(medicine.instruction)}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
+
+                        {/* Recommended diet plans */}
+                        {dietPlans.length > 0 && (
+                            <>
+                                <SectionTitle title="Recommended Diet Plans" />
+                                <View style={styles.dietPlanList}>
+                                    {dietPlans.map((diet: any, index: number) => {
+                                        const planId =
+                                            diet?.diet_plan_id || diet?.id || index;
+                                        const calories = diet?.avg_daily_calories;
+                                        const meals = diet?.meals_per_day;
+                                        return (
+                                            <TouchableOpacity
+                                                key={String(planId)}
+                                                style={styles.dietPlanCard}
+                                                activeOpacity={0.85}
+                                                onPress={() => openDietPlan(diet)}
+                                            >
+                                                <View style={styles.dietPlanIcon}>
+                                                    <TablerIcon
+                                                        name="leaf"
+                                                        size={18}
+                                                        color={COLORS.primary}
+                                                    />
+                                                </View>
+                                                <View style={styles.dietPlanMain}>
+                                                    <Text
+                                                        style={styles.dietPlanName}
+                                                        numberOfLines={2}
+                                                    >
+                                                        {diet?.name ||
+                                                            diet?.title ||
+                                                            'Diet Plan'}
+                                                    </Text>
+                                                    <Text style={styles.dietPlanMeta}>
+                                                        {[
+                                                            calories != null
+                                                                ? `~${Math.round(
+                                                                      Number(calories),
+                                                                  )} kcal/day`
+                                                                : '',
+                                                            meals != null
+                                                                ? `${meals} meals/day`
+                                                                : '',
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' · ') ||
+                                                            'Tap to view & start'}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.dietPlanCta}>
+                                                    <Text style={styles.dietPlanCtaText}>
+                                                        View
+                                                    </Text>
+                                                    <TablerIcon
+                                                        name="chevron-right"
+                                                        size={16}
+                                                        color={COLORS.primary}
+                                                    />
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </>
+                        )}
+
+                        {/* Diet advice text (if any free-form advice) */}
+                        {dietItems.length > 0 && (
+                            <>
+                                <SectionTitle title="Diet Advice" />
+                                <View style={styles.softCard}>
+                                    {dietItems.map((item, index) => (
+                                        <AdviceRow
+                                            key={`diet-${index}`}
+                                            icon="leaf"
+                                            text={item}
+                                        />
+                                    ))}
+                                </View>
+                            </>
+                        )}
+
+                        {/* Patient instructions / suggestions */}
+                        {suggestions.length > 0 && (
+                            <>
+                                <SectionTitle title="Patient Instructions" />
+                                <View style={styles.softCard}>
+                                    {suggestions.map((item, index) => (
+                                        <AdviceRow
+                                            key={`sug-${index}`}
+                                            icon="circle-check"
+                                            text={item}
+                                        />
+                                    ))}
+                                </View>
+                            </>
+                        )}
+
+                        {/* Do / Don't */}
+                        {(doItems.length > 0 || dontItems.length > 0) && (
+                            <>
+                                <SectionTitle title="Do’s & Don’ts" />
+                                {doItems.length > 0 && (
+                                    <View style={[styles.softCard, styles.doCard]}>
+                                        <Text style={styles.doCardTitle}>Do</Text>
+                                        {doItems.map((item, index) => (
+                                            <AdviceRow
+                                                key={`do-${index}`}
+                                                icon="plus"
+                                                text={item}
+                                                tone="do"
+                                            />
+                                        ))}
+                                    </View>
+                                )}
+                                {dontItems.length > 0 && (
+                                    <View style={[styles.softCard, styles.dontCard]}>
+                                        <Text style={styles.dontCardTitle}>Don’t</Text>
+                                        {dontItems.map((item, index) => (
+                                            <AdviceRow
+                                                key={`dont-${index}`}
+                                                icon="x"
+                                                text={item}
+                                                tone="dont"
+                                            />
+                                        ))}
+                                    </View>
+                                )}
+                            </>
+                        )}
+
+                        {/* Clinical advisory */}
+                        {!!clinicalAdvisory && (
+                            <View style={styles.successCard}>
+                                <View style={styles.successTop}>
+                                    <TablerIcon name="alert-circle" size={16} color="#FFFFFF" />
+                                    <Text style={styles.successTitle}>CLINICAL ADVISORY</Text>
+                                </View>
+                                <Text style={styles.successDesc}>{clinicalAdvisory}</Text>
+                            </View>
+                        )}
+
+                        {/* Doctor */}
+                        <SectionTitle title="Prescribing Physician" />
+                        <View style={styles.doctorCard}>
+                            <View style={styles.doctorRow}>
+                                <Image
+                                    source={
+                                        doctor?.doctor_image
+                                            ? { uri: doctor.doctor_image }
+                                            : Images.doctorImage
+                                    }
+                                    style={styles.doctorImage}
+                                />
+                                <View style={{ flex: 1 }}>
+                                    <Text numberOfLines={1} style={styles.doctorName}>
+                                        {doctor?.doctor_name || 'Doctor'}
+                                    </Text>
+                                    {!!specialization && (
+                                        <Text style={styles.doctorSpeciality}>{specialization}</Text>
+                                    )}
                                 </View>
                             </View>
-                        </View>
-                    ))}
 
-                    {/* INSTRUCTIONS */}
-
-                    <Text style={styles.sectionTitle}>
-                        Patient Instructions
-                    </Text>
-
-                    <View style={styles.separator} />
-
-                    <View style={styles.instructionItem}>
-                        <View
-                            style={styles.bulletCircle}
-                        />
-
-                        <Text
-                            style={styles.instructionText}
-                        >
-                            {PrisData?.prescription?.diagnosis_advice}
-                        </Text>
-                    </View>
-
-                    <View style={styles.instructionItem}>
-                        <View
-                            style={styles.bulletCircle}
-                        />
-
-                        <Text
-                            style={styles.instructionText}
-                        >
-                            {PrisData?.prescription?.history_of_past_illness}
-                        </Text>
-                    </View>
-
-                    {/* SUCCESS BOX */}
-
-                    <View style={styles.successCard}>
-                        <View
-                            style={styles.successTop}
-                        >
-                            <Text
-                                style={styles.successIcon}
-                            >
-                                ✓
-                            </Text>
-
-                            <Text
-                                style={styles.successTitle}
-                            >
-                                CLINICAL ADVISORY
-                            </Text>
+                            <View style={styles.doctorInfo}>
+                                {!!doctorLocation && (
+                                    <View style={styles.infoRow}>
+                                        <TablerIcon name="map-pin" size={14} color={COLORS.secondary} />
+                                        <Text style={styles.infoText}>{doctorLocation}</Text>
+                                    </View>
+                                )}
+                                {!!(doctor?.phone || doctor?.mobile || doctor?.contact_number) && (
+                                    <View style={styles.infoRow}>
+                                        <TablerIcon name="phone" size={14} color={COLORS.secondary} />
+                                        <Text style={styles.infoText}>
+                                            {doctor?.phone || doctor?.mobile || doctor?.contact_number}
+                                        </Text>
+                                    </View>
+                                )}
+                                {!!doctor?.email && (
+                                    <View style={styles.infoRow}>
+                                        <TablerIcon name="mail" size={14} color={COLORS.secondary} />
+                                        <Text style={styles.infoText}>{doctor.email}</Text>
+                                    </View>
+                                )}
+                                {!!doctor?.registration_number && (
+                                    <View style={styles.infoRow}>
+                                        <TablerIcon
+                                            name="prescription"
+                                            size={14}
+                                            color={COLORS.secondary}
+                                        />
+                                        <Text style={styles.infoText}>
+                                            Reg. {doctor.registration_number}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
                         </View>
 
-                        <Text
-                            style={styles.successDesc}
-                        >
-                            {PrisData?.prescription?.clinical_notes}
-                        </Text>
-                    </View>
-
-                    {/* DOCTOR */}
-
-                    <Text style={styles.sectionTitle}>
-                        Prescribing Physician
-                    </Text>
-
-                    <View style={styles.separator} />
-
-                    <View style={styles.doctorRow}>
-                        <Image
-                            source={{
-                                uri: doctorData?.doctor_image,
-                            }}
-                            style={styles.doctorImage}
-                        />
-
-                        <View style={{ flex: 1 }}>
-                            <Text
-                                numberOfLines={1}
-                                style={styles.doctorName}
-                            >
-                                {doctorData?.doctor_name ?? ''}
-                            </Text>
-
-                            <Text
-                                style={styles.doctorSpeciality}
-                            >
-                                {doctorData?.doctor_specialization ?? ''}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.doctorInfo}>
-                        <Text style={styles.infoText}>
-                            📍 {doctorData?.city} {doctorData?.state}
-                        </Text>
-
-                        <Text style={styles.infoText}>
-                            📞 {doctorData?.registration_number}
-                        </Text>
-
-                        <Text style={styles.infoText}>
-                            ✉ {doctorData?.email}
-                        </Text>
-                    </View>
-
-                    {/* PRESCRIPTION STATUS */}
-
-                    <Text style={styles.sectionTitle}>
-                        Prescription Status
-                    </Text>
-
-                    <View style={styles.separator} />
-
-                    {/* <View style={styles.statusRow}>
-                        <View
-                            style={styles.activeBadge}
-                        >
-                            <View
-                                style={styles.activeDot}
-                            />
-
-                            <Text
-                                style={styles.activeText}
-                            >
-                                Active Course
+                        {/* Status */}
+                        <SectionTitle title="Prescription Status" />
+                        <View style={styles.statusCard}>
+                            <View style={styles.activeBadge}>
+                                <View style={styles.activeDot} />
+                                <Text style={styles.activeText}>
+                                    {normalized.status
+                                        ? String(normalized.status).replace(/_/g, ' ')
+                                        : 'Issued'}
+                                </Text>
+                            </View>
+                            <Text style={styles.dateInfo}>
+                                Issued on {formatIssuedLabel(normalized.issuedOn)}
                             </Text>
                         </View>
 
-                        <Text style={styles.dateInfo}>
-                            Started Oct 12 •
-                            Completes Oct 19
-                        </Text>
-                    </View> */}
+                        {/* Help */}
+                        <View style={styles.helpCard}>
+                            <Text style={styles.helpTitle}>Need Assistance?</Text>
+                            <Text style={styles.helpDesc}>
+                                If you experience severe reactions, dizziness, or allergic
+                                reactions, contact your doctor immediately.
+                            </Text>
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() =>
+                                    handleCall(
+                                        doctor?.phone ||
+                                        doctor?.mobile ||
+                                        doctor?.contact_number ||
+                                        '',
+                                    )
+                                }
+                                style={styles.contactBtn}
+                            >
+                                <Text style={styles.contactText}>Contact Now</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                    {/* HELP CARD */}
+                        {!!doctorId && (
+                            <TouchableOpacity style={styles.viewAllLink} onPress={openViewAll}>
+                                <Text style={styles.viewAllLinkText}>
+                                    View all consultations with{' '}
+                                    {doctor?.doctor_name || 'this doctor'}
+                                </Text>
+                                <TablerIcon name="chevron-right" size={16} color={COLORS.primary} />
+                            </TouchableOpacity>
+                        )}
+                    </ScrollView>
 
-                    <View style={styles.helpCard}>
-                        <Text style={styles.helpTitle}>
-                            Need Assistance?
-                        </Text>
-
-                        <Text style={styles.helpDesc}>
-                            If you experience severe
-                            reactions, dizziness, or
-                            allergic reactions,
-                            contact our 24/7 nursing
-                            line immediately.
-                        </Text>
+                    <View
+                        style={[
+                            styles.bottomContainer,
+                            { paddingBottom: Math.max(insets.bottom, 16) },
+                        ]}
+                    >
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.shareBtn}
+                            onPress={onShare}
+                        >
+                            <TablerIcon name="share" size={16} color={COLORS.secondary} />
+                            <Text style={styles.shareText}>Share Record</Text>
+                        </TouchableOpacity>
 
                         <TouchableOpacity
                             activeOpacity={0.8}
-                            onPress={() => handleCall(doctorData?.registration_number ?? '')}
-                            style={styles.contactBtn}
+                            style={styles.orderBtn}
+                            onPress={() => props.navigation.navigate('MyCart')}
                         >
-                            <Text style={styles.contactText}>
-                                Contact Now
-                            </Text>
+                            <Text style={styles.orderText}>Order Medicines</Text>
                         </TouchableOpacity>
                     </View>
-
-                    {/* FOOTER */}
-
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>
-                            © 2025 MediSystems •
-                            HIPAA Compliant Secure
-                            Portal
-                        </Text>
-
-                        <Text style={styles.footerLink}>
-                            Privacy Policy • Download
-                            PDF
-                        </Text>
-                    </View>
-                </View>
-            </ScrollView>
-
-            {/* BOTTOM BUTTONS */}
-
-            <View style={[styles.bottomContainer, {
-
-                paddingBottom: Math.max(insets.bottom, 16)
-            }
-            ]}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.shareBtn}
-                >
-                    <Text style={styles.shareText}>
-                        ↗ Share Record
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.orderBtn}
-                >
-                    <Text style={styles.orderText}>
-                        Order Refill
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                </>
+            )}
         </SafeAreaView>
     );
 };
@@ -353,484 +812,568 @@ export default PrescriptionDetail;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor:
-            COLORS.background,
+        backgroundColor: COLORS.background,
     },
-
-    scrollContent: {
-        paddingHorizontal: 16,
-        paddingBottom: 120,
-    },
-
-    /* HEADER */
-
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent:
-            'space-between',
-        marginTop: 10,
-        marginBottom: 20,
-    },
-
-    backBtn: {
-        width: 34,
-        height: 34,
-        borderRadius: 12,
-        backgroundColor:
-            COLORS.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    backText: {
-        fontSize: 24,
-        color: COLORS.text,
-    },
-
-    headerTitle: {
+    loader: {
         flex: 1,
-        textAlign: 'center',
-        fontSize: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    loaderText: {
+        fontSize: 13,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    inlineLoader: {
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    emptyWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 32,
+        gap: 8,
+    },
+    emptyTitle: {
+        marginTop: 8,
+        fontSize: 16,
         color: COLORS.text,
-        fontFamily:
-            Fonts.semiBold,
-        paddingHorizontal: 10,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
-    emptyView: {
-        width: 34,
+    emptySub: {
+        textAlign: 'center',
+        fontSize: 13,
+        lineHeight: 20,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsRegular,
     },
-
-    /* MAIN CARD */
-
-    card: {
-        backgroundColor:
-            COLORS.white,
-        // borderRadius: 24,
-        padding: 16,
-        // borderWidth: 1,
-        // borderColor:
-        //     COLORS.border,
+    emptyBtn: {
+        marginTop: 12,
+        backgroundColor: COLORS.primary,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
     },
-
-    /* PATIENT */
-
+    emptyBtnText: {
+        color: '#fff',
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
     patientRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EEF3F1',
+        backgroundColor: COLORS.mint,
         borderRadius: 18,
         padding: 14,
     },
-
     avatar: {
-        width: width * 0.16,
-        height: width * 0.16,
-        minWidth: 58,
-        minHeight: 58,
-        maxWidth: 64,
-        maxHeight: 64,
+        width: Math.min(64, width * 0.16),
+        height: Math.min(64, width * 0.16),
         borderRadius: 18,
         marginRight: 14,
     },
     initialAvatar: {
-        width: 70,
-        height: 70,
-        marginRight: 10,
-        borderRadius: 20,
-        backgroundColor: '#0D614E',
+        width: 64,
+        height: 64,
+        marginRight: 12,
+        borderRadius: 18,
+        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
     },
-
     initialText: {
         color: '#FFFFFF',
         fontSize: 20,
-        fontWeight: '700',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
     patientContent: {
         flex: 1,
         minWidth: 0,
     },
-
     patientName: {
         fontSize: 16,
         color: COLORS.text,
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
     patientSubText: {
         marginTop: 2,
         fontSize: 12,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.medium,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
     },
-
-    /* SECTION */
-
-    sectionTitle: {
-        marginTop: 24,
-        fontSize: 15,
-        color: COLORS.text,
-        fontFamily:
-            Fonts.semiBold,
-    },
-
-    separator: {
-        height: 1,
-        backgroundColor:
-            COLORS.border,
-        marginVertical: 12,
-    },
-
-    /* MEDICINE */
-
-    medicineName: {
-        fontSize: 16,
+    patientFee: {
+        fontSize: 13,
         color: COLORS.primary,
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
-    medicineDesc: {
-        marginTop: 4,
-        fontSize: 13,
-        lineHeight: 20,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.regular,
+    metaCard: {
+        marginTop: 10,
+        backgroundColor: COLORS.white,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 8,
     },
-
-    /* SCHEDULE */
-
-    scheduleCard: {
-        backgroundColor:
-            COLORS.lightGray,
-        borderRadius: 18,
-        padding: 14,
-        marginTop: 18,
-    },
-
-    scheduleTitle: {
-        fontSize: 14,
-        color: COLORS.text,
-        fontFamily:
-            Fonts.semiBold,
-        marginBottom: 12,
-    },
-
-    scheduleRow: {
-        gap: 12,
-    },
-
-    scheduleItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    scheduleIcon: {
-        fontSize: 16,
-        marginRight: 10,
-    },
-
-    scheduleText: {
-        flex: 1,
-        fontSize: 13,
-        lineHeight: 20,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.medium,
-    },
-
-    /* INSTRUCTIONS */
-
-    instructionItem: {
+    metaRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        marginBottom: 14,
+        gap: 10,
     },
-
-    bulletCircle: {
-        width: 8,
-        height: 8,
-        borderRadius: 20,
-        backgroundColor:
-            COLORS.primary,
-        marginTop: 7,
-        marginRight: 10,
+    metaRowLast: {
+        paddingTop: 2,
     },
-
-    instructionText: {
+    metaLabel: {
+        width: 78,
+        fontSize: 11,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsSemiBold,
+        textTransform: 'uppercase',
+        marginTop: 2,
+    },
+    metaValue: {
         flex: 1,
         fontSize: 13,
-        lineHeight: 22,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.medium,
+        lineHeight: 18,
+        color: COLORS.text,
+        fontFamily: Fonts.PoppinsMedium,
     },
-
-    /* SUCCESS */
-
+    metaSubValue: {
+        marginTop: 2,
+        fontSize: 11,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsRegular,
+        textTransform: 'capitalize',
+    },
+    metaPaymentCol: {
+        flex: 1,
+    },
+    sectionTitleWrap: {
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    sectionTitle: {
+        fontSize: 15,
+        color: COLORS.text,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    sectionUnderline: {
+        marginTop: 5,
+        width: 36,
+        height: 3,
+        borderRadius: 2,
+        backgroundColor: COLORS.primary,
+    },
+    emptySection: {
+        fontSize: 13,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    medicineList: {
+        gap: 8,
+    },
+    medicineCard: {
+        backgroundColor: COLORS.white,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 12,
+    },
+    medicineCardTop: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    medicineIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        backgroundColor: '#E8F3EF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    medicineMain: {
+        flex: 1,
+        minWidth: 0,
+    },
+    medicineName: {
+        fontSize: 14,
+        lineHeight: 19,
+        color: COLORS.text,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    medicineDesc: {
+        marginTop: 2,
+        fontSize: 12,
+        lineHeight: 17,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsRegular,
+    },
+  medicinePrice: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+    gap: 8,
+  },
+  scheduleItem: {
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 96,
+    backgroundColor: '#F3F7F5',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5EFEA',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  scheduleCaption: {
+    fontSize: 10,
+    lineHeight: 14,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  scheduleValue: {
+    marginTop: 2,
+    fontSize: 13,
+    lineHeight: 18,
+    color: COLORS.text,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  chip: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  chipText: {
+    fontSize: 11,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  dietPlanList: {
+    gap: 8,
+  },
+  dietPlanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+  },
+  dietPlanIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#E8F3EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dietPlanMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  dietPlanName: {
+    fontSize: 14,
+    lineHeight: 19,
+    color: COLORS.text,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  dietPlanMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    color: COLORS.secondary,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  dietPlanCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  dietPlanCtaText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  instructionRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 6,
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    instructionText: {
+        flex: 1,
+        fontSize: 12,
+        lineHeight: 17,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    softCard: {
+        backgroundColor: COLORS.white,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 14,
+        gap: 10,
+    },
+    doCard: {
+        backgroundColor: '#ECFDF5',
+        borderColor: '#A7F3D0',
+        marginBottom: 10,
+    },
+    dontCard: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FECACA',
+    },
+    doCardTitle: {
+        fontSize: 13,
+        color: '#047857',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 2,
+    },
+    dontCardTitle: {
+        fontSize: 13,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 2,
+    },
+    adviceRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    adviceIconWrap: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#E8F3EF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 1,
+    },
+    adviceIconDo: {
+        backgroundColor: '#D1FAE5',
+    },
+    adviceIconDont: {
+        backgroundColor: '#FEE2E2',
+    },
+    adviceText: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 20,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
+    },
     successCard: {
-        backgroundColor:
-            COLORS.primary,
-        borderRadius: 20,
+        backgroundColor: COLORS.primary,
+        borderRadius: 18,
         padding: 16,
         marginTop: 18,
     },
-
     successTop: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
-
-    successIcon: {
-        fontSize: 16,
-        color: '#FFFFFF',
-        marginRight: 8,
-    },
-
     successTitle: {
         fontSize: 13,
         color: '#FFFFFF',
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 0.4,
     },
-
     successDesc: {
         marginTop: 10,
         fontSize: 13,
         lineHeight: 22,
         color: '#E2E8F0',
-        fontFamily:
-            Fonts.regular,
+        fontFamily: Fonts.PoppinsRegular,
     },
-
-    /* DOCTOR */
-
+    doctorCard: {
+        backgroundColor: COLORS.white,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 14,
+    },
     doctorRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-
     doctorImage: {
         width: 52,
         height: 52,
         borderRadius: 16,
         marginRight: 12,
+        backgroundColor: '#EFE9DC',
     },
-
     doctorName: {
         fontSize: 15,
         color: COLORS.text,
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
     doctorSpeciality: {
         marginTop: 3,
         fontSize: 12,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.medium,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
     },
-
     doctorInfo: {
-        marginTop: 16,
+        marginTop: 14,
         gap: 10,
     },
-
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     infoText: {
+        flex: 1,
         fontSize: 13,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.medium,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
     },
-
-    /* STATUS */
-
-    statusRow: {
-        gap: 12,
+    statusCard: {
+        backgroundColor: COLORS.white,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 14,
+        gap: 10,
     },
-
     activeBadge: {
         alignSelf: 'flex-start',
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor:
-            COLORS.successBg,
+        backgroundColor: COLORS.successBg,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 999,
     },
-
     activeDot: {
         width: 8,
         height: 8,
         borderRadius: 20,
-        backgroundColor:
-            COLORS.success,
+        backgroundColor: COLORS.success,
         marginRight: 8,
     },
-
     activeText: {
         fontSize: 12,
-        color:
-            COLORS.success,
-        fontFamily:
-            Fonts.semiBold,
+        color: COLORS.success,
+        fontFamily: Fonts.PoppinsSemiBold,
+        textTransform: 'capitalize',
     },
-
     dateInfo: {
         fontSize: 12,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.medium,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
     },
-
-    /* HELP */
-
     helpCard: {
         marginTop: 22,
-        backgroundColor:
-            COLORS.primary,
-        borderRadius: 22,
+        backgroundColor: COLORS.primary,
+        borderRadius: 20,
         padding: 18,
     },
-
     helpTitle: {
         fontSize: 16,
         color: '#FFFFFF',
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
     helpDesc: {
         marginTop: 10,
         fontSize: 13,
         lineHeight: 22,
         color: '#DCE7E4',
-        fontFamily:
-            Fonts.regular,
+        fontFamily: Fonts.PoppinsRegular,
     },
-
     contactBtn: {
         marginTop: 18,
-        backgroundColor:
-            COLORS.white,
+        backgroundColor: COLORS.white,
         height: 48,
         borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },
-
     contactText: {
         fontSize: 14,
         color: COLORS.primary,
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
-    /* FOOTER */
-
-    footer: {
-        marginTop: 28,
+    viewAllLink: {
+        marginTop: 18,
+        marginBottom: 8,
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
     },
-
-    footerText: {
-        textAlign: 'center',
-        fontSize: 11,
-        lineHeight: 18,
-        color: '#94A3B8',
-        fontFamily:
-            Fonts.regular,
-    },
-
-    footerLink: {
-        marginTop: 6,
-        textAlign: 'center',
-        fontSize: 11,
-        lineHeight: 18,
+    viewAllLinkText: {
+        fontSize: 13,
         color: COLORS.primary,
-        fontFamily:
-            Fonts.medium,
+        fontFamily: Fonts.PoppinsSemiBold,
+        textAlign: 'center',
     },
-
-    /* BOTTOM */
-
     bottomContainer: {
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom: 0, // ❌ 20 mat rakho
-
+        bottom: 0,
         flexDirection: 'row',
-
         backgroundColor: COLORS.white,
-
         paddingHorizontal: 16,
         paddingTop: 14,
-
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
-
-        elevation: 8,
-
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: -2,
-        },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        gap: 10,
     },
-
     shareBtn: {
         flex: 1,
         height: 52,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor:
-            COLORS.border,
+        borderColor: COLORS.border,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 10,
+        flexDirection: 'row',
+        gap: 6,
     },
-
     shareText: {
         fontSize: 13,
-        color:
-            COLORS.secondary,
-        fontFamily:
-            Fonts.semiBold,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
-
     orderBtn: {
         flex: 1,
         height: 52,
         borderRadius: 16,
-        backgroundColor:
-            COLORS.primary,
+        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 10,
     },
-
     orderText: {
         fontSize: 14,
         color: '#FFFFFF',
-        fontFamily:
-            Fonts.semiBold,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 });

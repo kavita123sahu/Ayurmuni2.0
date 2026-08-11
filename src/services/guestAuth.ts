@@ -63,12 +63,23 @@ export async function promoteToFullUser(): Promise<void> {
 /** True when profile looks finished enough to leave guest mode. */
 export function isProfileComplete(profile?: {
   is_onboarded?: boolean;
+  /** Some APIs return this key instead of is_onboarded. */
+  is_profile?: boolean | string | number;
+  /** Alternate backend flag for customer profile readiness. */
+  is_customer_profile_created?: boolean | string | number;
   prakriti_progress?: number | string | null;
   first_name?: string | null;
   customer_id?: string | number | null;
   id?: string | number | null;
 } | null): boolean {
   if (!profile) return false;
+
+  const truthy = (v: unknown) =>
+    v === true || v === 'true' || v === 1 || v === '1';
+
+  // Explicit profile flags from backend
+  if (truthy(profile.is_profile)) return true;
+  if (truthy(profile.is_customer_profile_created)) return true;
   if (profile.is_onboarded === true) return true;
   if (Number(profile.prakriti_progress) >= 100) return true;
   // Completed customer onboarding (name + id) — clears stuck guest flag
@@ -76,14 +87,32 @@ export function isProfileComplete(profile?: {
   return false;
 }
 
+/** True when backend says customer profile is not ready → treat as guest. */
+export function shouldStayGuest(profile?: {
+  is_profile?: boolean | string | number;
+  is_customer_profile_created?: boolean | string | number;
+  is_onboarded?: boolean;
+} | null): boolean {
+  if (!profile) return true;
+  const falsy = (v: unknown) =>
+    v === false || v === 'false' || v === 0 || v === '0';
+
+  // Explicit false flags force guest even if other fields exist
+  if (falsy(profile.is_profile)) return true;
+  if (falsy(profile.is_customer_profile_created)) return true;
+  return !isProfileComplete(profile);
+}
+
 /**
  * Keep local access flag in sync with profile API.
+ * - is_profile / is_customer_profile_created false → guest
  * - completed / onboarded / has customer profile → full user
- * - guest + no profile → stay guest
- * - never demote a full user just because is_onboarded is missing
+ * - otherwise incomplete → guest
  */
 export async function syncAccessFromProfile(profile?: {
   is_onboarded?: boolean;
+  is_profile?: boolean | string | number;
+  is_customer_profile_created?: boolean | string | number;
   prakriti_progress?: number | string | null;
   first_name?: string | null;
   customer_id?: string | number | null;
@@ -91,17 +120,27 @@ export async function syncAccessFromProfile(profile?: {
 } | null): Promise<AccessLevel> {
   if (!(await isAuthenticated())) return 'logged_out';
 
+  const falsy = (v: unknown) =>
+    v === false || v === 'false' || v === 0 || v === '0';
+
+  // Explicit incomplete profile flags win — force guest mode
+  if (
+    profile &&
+    (falsy(profile.is_profile) || falsy(profile.is_customer_profile_created))
+  ) {
+    await markAsGuest();
+    return 'guest';
+  }
+
   if (isProfileComplete(profile)) {
     await promoteToFullUser();
     return 'full';
   }
 
-  // Already marked guest and still incomplete → keep guest
   if (await isGuestUser()) {
     return 'guest';
   }
 
-  // Authenticated with no profile yet → guest browse
   await markAsGuest();
   return 'guest';
 }

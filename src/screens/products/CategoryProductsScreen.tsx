@@ -724,6 +724,7 @@ import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import {
   toggleWishlistItem,
   useWishlistSync,
@@ -741,8 +742,7 @@ import {
 } from '../../hooks/useProductCategories';
 import { useHealthCategories } from '../../hooks/useHealthCategories';
 import { useBrands } from '../../hooks/useBrands';
-import {
-  applyProductFilters,
+import {  applyProductFilters,
   ProductSortKey,
   PriceRangeKey,
 } from '../../utils/productSearchUtils';
@@ -972,6 +972,10 @@ const CategoryProductsScreen = (props: any) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
       const variantId = String(item?.variant_id);
       if (!variantId) return;
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
       const result = await dispatch(syncCartQuantity({ variantId, quantity: newQty }));
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -980,7 +984,7 @@ const CategoryProductsScreen = (props: any) => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   useWishlistSync(setProducts);

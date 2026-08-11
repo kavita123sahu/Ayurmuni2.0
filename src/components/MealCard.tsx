@@ -35,6 +35,12 @@ const MealCard = ({ data, navigation, onLog }: MealProps) => {
     const subtitle = toDisplayText(data?.subtitle);
     const type = toDisplayText(data?.type, 'MEAL');
     const time = toDisplayText(data?.time);
+    const foodItems = Array.isArray(data?.dietItemDetails)
+        ? data.dietItemDetails.filter(
+              (f: any) => f?.name || f?.label || f?.quantity,
+          )
+        : [];
+    const primaryQty = String(foodItems[0]?.quantity || '').trim();
 
     return (
         <TouchableOpacity
@@ -53,15 +59,40 @@ const MealCard = ({ data, navigation, onLog }: MealProps) => {
                     </View>
                 </View>
 
-                <Text style={styles.title} numberOfLines={2}>
-                    {title}
-                </Text>
+                <View style={styles.titleRow}>
+                    <Text style={styles.title} numberOfLines={2}>
+                        {title}
+                    </Text>
+                    {!!primaryQty && (
+                        <View style={styles.qtyBadge}>
+                            <Text style={styles.qtyBadgeText}>{primaryQty}</Text>
+                        </View>
+                    )}
+                </View>
 
-                {!!subtitle && (
+                {foodItems.length > 1 ? (
+                    <View style={styles.qtyChipRow}>
+                        {foodItems.slice(1, 4).map((food: any, index: number) => {
+                            const name = String(food?.name || food?.label || '').trim();
+                            const qty = String(food?.quantity || '').trim();
+                            if (!name && !qty) return null;
+                            return (
+                                <View style={styles.qtyChip} key={`${name}-${index}`}>
+                                    <Text style={styles.qtyChipName} numberOfLines={1}>
+                                        {name || 'Item'}
+                                    </Text>
+                                    {!!qty && (
+                                        <Text style={styles.qtyChipQty}>{qty}</Text>
+                                    )}
+                                </View>
+                            );
+                        })}
+                    </View>
+                ) : !!subtitle ? (
                     <Text style={styles.subtitle} numberOfLines={1}>
                         {subtitle}
                     </Text>
-                )}
+                ) : null}
 
                 <View style={styles.bottomRow}>
                     <Text style={styles.kcal}>
@@ -141,17 +172,75 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
     },
 
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginTop: 2,
+    },
+
     title: {
+        flex: 1,
         fontSize: 14,
         color: Colors.black,
         fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: -5
+        lineHeight: 20,
+    },
+
+    qtyBadge: {
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        maxWidth: 88,
+    },
+
+    qtyBadgeText: {
+        fontSize: 11,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    qtyChipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 6,
+    },
+
+    qtyChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        maxWidth: '100%',
+    },
+
+    qtyChipName: {
+        fontSize: 10,
+        color: '#475569',
+        fontFamily: Fonts.PoppinsMedium,
+        maxWidth: 90,
+    },
+
+    qtyChipQty: {
+        fontSize: 10,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     subtitle: {
         fontSize: 12,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsRegular,
+        marginTop: 4,
     },
 
     bottomRow: {

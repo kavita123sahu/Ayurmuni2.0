@@ -38,23 +38,24 @@ import {
   SCREEN_PADDING_H,
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { AppointmentSkeletonList, HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton, SuggestedCardSkeleton } from '../../simmerScreen/ShimmerHook';
+import { HomeCategorySkeleton, HorizontalAppointmentSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
 import JoinCallBanner from '../../components/JoinCallBanner';
+import CategoryList from '../../components/CategoryList';
 import {
   getJoinableAppointment,
   sortAppointmentsByDateTime,
 } from '../../utils/appointmentUtils';
 import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
+import { useHealthConcernCategories } from '../../hooks/useHealthConcernCategories';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import { requireAuth, } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToSearchScreen } from '../../navigation/productNavigation';
-import DietScreen from '../mentor/DietScreen';
-import MealCard from '../../components/MealCard';
 import { useBanners } from '../../hooks/useBanners';
 import { CallEvents, CALL_ENDED } from '../../common/Utils';
+import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
 
 
 const { width } = Dimensions.get('window');
@@ -64,10 +65,17 @@ const HomePage: React.FC = (props: any) => {
 
   const hasFetched = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { images: bannerImages, refresh: refreshBanners } = useBanners('home');
-  const homeBannerImages =
-    bannerImages.length > 0 ? bannerImages : product.images;
-
+  const {
+    images: bannerImages,
+    loading: bannersLoading,
+    refresh: refreshBanners,
+  } = useBanners('home');
+  const homeBannerImages = useMemo(() => {
+    if (bannerImages.length > 0) return bannerImages;
+    // Avoid flashing local require() ids while API banners load
+    if (bannersLoading) return [];
+    return product.images;
+  }, [bannerImages, bannersLoading]);
   const {
     categories,
     SuggestDoctor,
@@ -82,7 +90,6 @@ const HomePage: React.FC = (props: any) => {
     fetchDietPlans,
 
     loadingCategories,
-    loadingDoctors,
     loadingProducts,
     loadingCustomer,
     refreshHomeData
@@ -91,6 +98,11 @@ const HomePage: React.FC = (props: any) => {
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
+  const {
+    categories: healthConcerns,
+    refresh: refreshHealthConcerns,
+  } = useHealthConcernCategories(null);
+  const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
   const insets = useSafeAreaInsets();
 
   const {
@@ -119,8 +131,6 @@ const HomePage: React.FC = (props: any) => {
     const stackNav = props.navigation.getParent?.() || props.navigation;
     stackNav.navigate('MedicineScreen');
   }, [props.navigation]);
-
-  console.log("YogaSessionYogaSessionYogaSession", dietProducts)
 
   useFocusEffect(
     useCallback(() => {
@@ -238,11 +248,16 @@ const HomePage: React.FC = (props: any) => {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await Promise.all([refreshHomeData(), refreshPreview(), refreshBanners()]);
+      await Promise.all([
+        refreshHomeData(),
+        refreshPreview(),
+        refreshBanners(),
+        refreshHealthConcerns(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshPreview, refreshBanners]);
+  }, [refreshHomeData, refreshPreview, refreshBanners, refreshHealthConcerns]);
 
 
   useEffect(() => {
@@ -287,6 +302,57 @@ const HomePage: React.FC = (props: any) => {
       </View>
     </View>
   );
+
+  const ComingSoonStrip = ({
+    items,
+  }: {
+    items: { title: string; icon: string }[];
+  }) => {
+    if (!items.length) return null;
+    return (
+      <View style={styles.comingSoonStrip}>
+        <Text style={styles.comingSoonStripTitle}>More wellness soon</Text>
+        <View style={styles.comingSoonChips}>
+          {items.map(item => (
+            <View key={item.title} style={styles.comingSoonChip}>
+              <Text style={styles.comingSoonChipIcon}>{item.icon}</Text>
+              <Text style={styles.comingSoonChipText} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <View style={styles.comingSoonChipBadge}>
+                <Text style={styles.comingSoonChipBadgeText}>Soon</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const hasCatalogModules =
+    (storeProducts?.length ?? 0) > 0 ||
+    (medicineProducts?.length ?? 0) > 0 ||
+    (YogaSession?.length ?? 0) > 0 ||
+    (dietProducts?.length ?? 0) > 0;
+
+  const showConsultBrandShade =
+    !loadingProducts && !loadingDiet && !hasCatalogModules;
+
+  const comingSoonItems = useMemo(() => {
+    const items: { title: string; icon: string }[] = [];
+    if (!YogaSession?.length && !dietProducts?.length) {
+      items.push({ title: 'Diet & Yoga', icon: '🥗' });
+    } else {
+      if (!dietProducts?.length) {
+        items.push({ title: 'Diet plans', icon: '🥗' });
+      }
+      if (!YogaSession?.length) {
+        items.push({ title: 'Yoga', icon: '🧘' });
+      }
+    }
+    items.push({ title: 'Panchakarma', icon: '🌿' });
+    return items;
+  }, [YogaSession?.length, dietProducts?.length]);
 
   return (
     <View style={styles.container}>
@@ -363,21 +429,23 @@ const HomePage: React.FC = (props: any) => {
         removeClippedSubviews
         renderItem={() => (
           <View style={styles.sections}>
-            <View style={styles.homeSection}>
-              <Detailimages
-                images={homeBannerImages}
-                itemWidth={width - SCREEN_PADDING_H * 2}
-                DynamicResize="cover"
-                autoSlide
-                embedded
-                mode="banner"
-                enablePreview={false}
-              />
-            </View>
+            {homeBannerImages.length > 0 && (
+              <View style={styles.homeSection}>
+                <Detailimages
+                  images={homeBannerImages}
+                  itemWidth={width - SCREEN_PADDING_H * 2}
+                  DynamicResize="cover"
+                  autoSlide
+                  embedded
+                  mode="banner"
+                  enablePreview={false}
+                />
+              </View>
+            )}
 
-            {(loadingAppointments ||
-              joinableAppointment ||
-              sortedUpcomingAppointments.length > 0) && (
+            {(joinableAppointment ||
+              (!loadingAppointments &&
+                (homeAppointmentList?.length ?? 0) > 0)) && (
                 <View style={styles.homeSection}>
                   <SectionHeader
                     home
@@ -482,27 +550,52 @@ const HomePage: React.FC = (props: any) => {
                 </View>
               )} */}
 
-            <View style={styles.homeSection}>
-              <SectionHeader
-                home
-                title="Suggested Doctors"
-                actionText={SuggestDoctor.length > 1 ? 'View all' : ''}
-                onPress={() =>
-                  props.navigation.navigate('AllDoctors', {
-                    all: true,
-                  })
-                }
-              />
-              {loadingDoctors ? (
-                <TopDoctorsCardSkeleton />
-              ) : (
+            {safeHealthConcerns.length > 0 && (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Health Concerns"
+                  actionText={
+                    safeHealthConcerns.length > 1 ? 'View all' : ''
+                  }
+                  onPress={() => {
+                    const stackNav =
+                      props.navigation.getParent?.() || props.navigation;
+                    stackNav.navigate('ConsultScreen');
+                  }}
+                />
+                <CategoryList
+                  data={safeHealthConcerns}
+                  navigation={
+                    props.navigation.getParent?.() || props.navigation
+                  }
+                  doctor
+                // mode="health"
+                />
+              </View>
+            )}
+
+            {SuggestDoctor.length > 0 && (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Suggested Doctors"
+                  actionText={SuggestDoctor.length > 1 ? 'View all' : ''}
+                  onPress={() =>
+                    props.navigation.navigate('AllDoctors', {
+                      all: true,
+                    })
+                  }
+                />
                 <TopDoctorsCard
                   data={SuggestDoctor}
                   navigation={props.navigation}
+                  layout="grid"
+                  limit={4}
                   home
                 />
-              )}
-            </View>
+              </View>
+            )}
 
 
             {storeProducts?.length > 0 && (
@@ -513,17 +606,13 @@ const HomePage: React.FC = (props: any) => {
                   actionText={storeProducts.length > 1 ? 'View all' : ''}
                   onPress={handleViewAllProducts}
                 />
-                {loadingProducts ? (
-                  <TopSellingListSkeleton />
-                ) : (
-                  <TopSellingList
-                    data={storeProducts}
-                    navigation={props.navigation}
-                    setProductData={setStoreProducts}
-                    nested
-                    home
-                  />
-                )}
+                <TopSellingList
+                  data={storeProducts}
+                  navigation={props.navigation}
+                  setProductData={setStoreProducts}
+                  nested
+                  home
+                />
               </View>
             )}
 
@@ -535,17 +624,13 @@ const HomePage: React.FC = (props: any) => {
                   actionText={medicineProducts.length > 1 ? 'View all' : ''}
                   onPress={handleViewAllMedicines}
                 />
-                {loadingProducts ? (
-                  <TopSellingListSkeleton />
-                ) : (
-                  <TopSellingList
-                    data={medicineProducts}
-                    navigation={props.navigation}
-                    setProductData={setMedicineProducts}
-                    nested
-                    home
-                  />
-                )}
+                <TopSellingList
+                  data={medicineProducts}
+                  navigation={props.navigation}
+                  setProductData={setMedicineProducts}
+                  nested
+                  home
+                />
               </View>
             )}
 
@@ -567,19 +652,17 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
-            {loadingDiet && (!dietProducts || dietProducts?.length === 0) ? (
-              <View style={styles.homeSection}>
-                <SectionHeader home title="Diet's" actionText="" />
-                <SuggestedCardSkeleton />
-              </View>
-            ) : dietProducts?.length > 0 ? (
+            {dietProducts?.length > 0 ? (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
                   title="Diet's"
                   actionText={'View all'}
                   onPress={() =>
-                    props.navigation.navigate('DietScreen', { listType: 'all' })
+                    props.navigation.navigate('DietScreen', {
+                      listType: 'all',
+                      viewAll: true,
+                    })
                   }
                 />
                 <SuggestedCard
@@ -590,14 +673,18 @@ const HomePage: React.FC = (props: any) => {
               </View>
             ) : null}
 
-            <View style={[styles.homeSection, styles.comingSoonGroup]}>
-              {!loadingDiet &&
-                YogaSession.length === 0 &&
-                (!dietProducts || dietProducts.length === 0) && (
-                  <ComingSoonCard title="Personalized Diet Plans" icon="🥗" />
-                )}
-              <ComingSoonCard title="Panchakarma" icon="🌿" />
-            </View>
+            {/* {showConsultBrandShade ? ( */}
+              
+            {/* ) :  */}
+            {comingSoonItems.length > 0 ? (
+              <View style={styles.homeSection}>
+                <ComingSoonStrip items={comingSoonItems} />
+              </View>
+            ) : null}
+
+            <View style={styles.homeSection}>
+                <AyurmuniBrandShade />
+              </View>
           </View>
         )}
       />
@@ -687,7 +774,59 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   comingSoonGroup: {
-    gap: 12,
+    gap: 8,
+  },
+  comingSoonStrip: {
+    backgroundColor: '#F3F7F5',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D7E8E1',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  comingSoonStripTitle: {
+    fontSize: 12,
+    color: '#0F766E',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 8,
+  },
+  comingSoonChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  comingSoonChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingLeft: 8,
+    paddingRight: 6,
+    maxWidth: '100%',
+  },
+  comingSoonChipIcon: {
+    fontSize: 13,
+  },
+  comingSoonChipText: {
+    fontSize: 12,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsMedium,
+    maxWidth: 110,
+  },
+  comingSoonChipBadge: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  comingSoonChipBadgeText: {
+    fontSize: 10,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   appointmentLoadMore: {
     justifyContent: 'center',

@@ -57,7 +57,8 @@ const MealDetails = (props: any) => {
       ? item.dietItemDetails.map((food: any, index: number) => ({
           id: String(index),
           title: String(food?.name || food?.label || ''),
-          subtitle: [food?.quantity, food?.notes].filter(Boolean).join(' · '),
+          quantity: String(food?.quantity || '').trim(),
+          notes: String(food?.notes || '').trim(),
         }))
       : Array.isArray(item?.dietItems) && item.dietItems.length
         ? item.dietItems
@@ -67,9 +68,8 @@ const MealDetails = (props: any) => {
               return {
                 id: String(index),
                 title: normalized.name || normalized.label,
-                subtitle: [normalized.quantity, normalized.notes]
-                  .filter(Boolean)
-                  .join(' · '),
+                quantity: normalized.quantity,
+                notes: normalized.notes,
               };
             })
             .filter(Boolean)
@@ -169,13 +169,20 @@ const MealDetails = (props: any) => {
             ) : (
               ingredients.map((ing: any) => (
                 <View style={styles.itemRow} key={ing.id}>
-                  <Text style={styles.itemLeft} numberOfLines={2}>
-                    {ing.title}
-                  </Text>
-                  {!!ing.subtitle && (
-                    <Text style={styles.itemRight} numberOfLines={1}>
-                      {ing.subtitle}
+                  <View style={styles.itemLeftWrap}>
+                    <Text style={styles.itemLeft} numberOfLines={2}>
+                      {ing.title}
                     </Text>
+                    {!!ing.notes && (
+                      <Text style={styles.itemNotes} numberOfLines={1}>
+                        {ing.notes}
+                      </Text>
+                    )}
+                  </View>
+                  {!!ing.quantity && (
+                    <View style={styles.qtyPill}>
+                      <Text style={styles.qtyPillText}>{ing.quantity}</Text>
+                    </View>
                   )}
                 </View>
               ))
@@ -362,12 +369,40 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#EBEEED80',
+    gap: 10,
+  },
+
+  itemLeftWrap: {
+    flex: 1,
+    minWidth: 0,
   },
 
   itemLeft: {
-    flex: 1,
     fontSize: 14,
     color: '#1F2937',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  itemNotes: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  qtyPill: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: 110,
+  },
+
+  qtyPillText: {
+    fontSize: 12,
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
