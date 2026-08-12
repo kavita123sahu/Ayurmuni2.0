@@ -712,6 +712,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         subtitle={`This number is scheduled for deletion. Recover within ${recoverDays} days to keep your data and enter the app. Without recovery you cannot use this number until the ${recoverDays}-day period ends — or sign in with a new number.`}
         cancelText="Use another number"
         confirmText="Recover account"
+        stackButtons
         loading={recoverLoading}
         onClose={dismissRecoverWithoutEntry}
         onConfirm={recoverDeletedAccount}

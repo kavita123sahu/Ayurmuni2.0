@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,68 +12,49 @@ import TablerIcon from './TablerIcon';
 import type { DietListStatus } from '../utils/dietPlanUtils';
 import { getDietRepeatCount, getDietRunLabel } from '../utils/dietPlanUtils';
 
-type ActionKey = 'pause' | 'resume' | 'stop' | 'reset' | 'repeat' | 'complete';
-
 type Props = {
   status: DietListStatus;
   plan?: any;
   loading?: boolean;
   canComplete?: boolean;
+  progressHint?: string;
   onPause?: () => void;
   onResume?: () => void;
   onStop?: () => void;
   onReset?: () => void;
+  /** Only used when status === 'completed' */
   onRepeat?: () => void;
+  /** Used when status === 'stopped' (new start — not repeat API) */
+  onStartAgain?: () => void;
   onComplete?: () => void;
 };
 
-const ACTION_META: Record<
-  ActionKey,
-  { label: string; icon: string; tone: 'primary' | 'warn' | 'danger' | 'soft' }
-> = {
-  pause: { label: 'Pause', icon: 'clock', tone: 'warn' },
-  resume: { label: 'Resume', icon: 'bolt', tone: 'primary' },
-  stop: { label: 'Stop', icon: 'x', tone: 'danger' },
-  reset: { label: 'Reset', icon: 'refresh', tone: 'soft' },
-  repeat: { label: 'Repeat', icon: 'exchange', tone: 'primary' },
-  complete: { label: 'Complete', icon: 'circle-check', tone: 'primary' },
-};
-
 /**
- * Visual diet plan controls — status + action tiles (not toast-only).
- * State machine: pause/resume/stop/complete/reset/repeat.
+ * Clear status-driven controls:
+ * - active  → Pause (primary), optional Complete; Stop/Reset under More
+ * - paused  → Resume only (no Stop/Reset/Complete)
+ * - completed → Repeat this plan (only after Complete)
+ * - stopped → Start again (catalog start — API repeat is completed-only)
  */
 const DietPlanActionPanel = ({
   status,
   plan,
   loading,
   canComplete,
+  progressHint,
   onPause,
   onResume,
   onStop,
   onReset,
   onRepeat,
+  onStartAgain,
   onComplete,
 }: Props) => {
+  const [showMore, setShowMore] = useState(false);
   const repeatCount = getDietRepeatCount(plan);
   const runLabel = getDietRunLabel(plan);
 
-  const actions: ActionKey[] = [];
-  if (status === 'active') {
-    actions.push('pause', 'reset', 'stop');
-    if (canComplete) actions.push('complete');
-  } else if (status === 'paused') {
-    actions.push('resume', 'reset', 'stop');
-    if (canComplete) actions.push('complete');
-  } else if (status === 'completed') {
-    actions.push('repeat');
-  } else if (status === 'stopped') {
-    actions.push('repeat');
-  }
-
-  if (!actions.length && status === 'not_started') {
-    return null;
-  }
+  if (status === 'not_started') return null;
 
   const statusTone =
     status === 'active'
@@ -88,7 +69,7 @@ const DietPlanActionPanel = ({
 
   const statusLabel =
     status === 'active'
-      ? 'Active'
+      ? 'Tracking'
       : status === 'paused'
         ? 'Paused'
         : status === 'completed'
@@ -97,14 +78,57 @@ const DietPlanActionPanel = ({
             ? 'Stopped'
             : 'Not started';
 
-  const handlers: Record<ActionKey, (() => void) | undefined> = {
-    pause: onPause,
-    resume: onResume,
-    stop: onStop,
-    reset: onReset,
-    repeat: onRepeat,
-    complete: onComplete,
-  };
+  const hint =
+    status === 'active'
+      ? 'Meal tracking is live. Pause anytime — your progress is saved.'
+      : status === 'paused'
+        ? 'Paused — only Resume is available. Tap Resume to continue meal tracking.'
+        : status === 'completed'
+          ? 'Plan completed. Repeat starts a new run from Day 1 and increases your repeat count.'
+          : status === 'stopped'
+            ? 'This run was stopped. Start again for a new cycle. Repeat is only for completed plans.'
+            : 'Start the plan to unlock tracking controls.';
+
+  // Repeat ONLY for completed. Stopped uses Start again (not repeat API).
+  const primary =
+    status === 'active'
+      ? {
+          key: 'pause',
+          label: 'Pause plan',
+          icon: 'clock' as const,
+          onPress: onPause,
+          tone: 'warn' as const,
+        }
+      : status === 'paused'
+        ? {
+            key: 'resume',
+            label: 'Resume plan',
+            icon: 'bolt' as const,
+            onPress: onResume,
+            tone: 'primary' as const,
+          }
+        : status === 'completed'
+          ? {
+              key: 'repeat',
+              label: 'Repeat this plan',
+              icon: 'exchange' as const,
+              onPress: onRepeat,
+              tone: 'primary' as const,
+            }
+          : status === 'stopped'
+            ? {
+                key: 'start_again',
+                label: 'Start again',
+                icon: 'bolt' as const,
+                onPress: onStartAgain,
+                tone: 'primary' as const,
+              }
+            : null;
+
+  if (!primary) return null;
+
+  const hasMore =
+    status === 'active' && !!(onStop || onReset);
 
   return (
     <View style={styles.wrap}>
@@ -122,75 +146,104 @@ const DietPlanActionPanel = ({
         </View>
       </View>
 
-      <Text style={styles.hint}>
-        {status === 'active'
-          ? 'Pause anytime, reset progress, or stop this run.'
-          : status === 'paused'
-            ? 'Resume to continue meal tracking, or reset / stop.'
-            : status === 'completed'
-              ? 'Great job. Repeat starts a new tracked run of this plan.'
-              : status === 'stopped'
-                ? 'This run ended. Repeat to start again with fresh tracking.'
-                : 'Start the plan to unlock tracking controls.'}
-      </Text>
+      <Text style={styles.hint}>{hint}</Text>
+      {!!progressHint && <Text style={styles.progressHint}>{progressHint}</Text>}
 
-      {actions.length > 0 ? (
-        <View style={styles.actionsRow}>
-          {actions.map(key => {
-            const meta = ACTION_META[key];
-            const onPress = handlers[key];
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[
-                  styles.actionTile,
-                  meta.tone === 'primary' && styles.actionPrimary,
-                  meta.tone === 'warn' && styles.actionWarn,
-                  meta.tone === 'danger' && styles.actionDanger,
-                  meta.tone === 'soft' && styles.actionSoft,
-                ]}
-                activeOpacity={0.85}
-                disabled={loading || !onPress}
-                onPress={onPress}
-              >
-                {loading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={
-                      meta.tone === 'primary' || meta.tone === 'danger'
-                        ? '#FFF'
-                        : Colors.primaryColor
-                    }
-                  />
-                ) : (
-                  <>
-                    <TablerIcon
-                      name={meta.icon as any}
-                      size={16}
-                      color={
-                        meta.tone === 'primary' || meta.tone === 'danger'
-                          ? '#FFFFFF'
-                          : meta.tone === 'warn'
-                            ? '#92400E'
-                            : Colors.primaryColor
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.actionLabel,
-                        (meta.tone === 'primary' || meta.tone === 'danger') &&
-                          styles.actionLabelLight,
-                        meta.tone === 'warn' && styles.actionLabelWarn,
-                      ]}
-                    >
-                      {meta.label}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      <TouchableOpacity
+        style={[
+          styles.primaryBtn,
+          primary.tone === 'warn' && styles.primaryWarn,
+          primary.tone === 'primary' && styles.primaryFill,
+        ]}
+        activeOpacity={0.88}
+        disabled={loading || !primary.onPress}
+        onPress={primary.onPress}
+      >
+        {loading ? (
+          <ActivityIndicator
+            color={primary.tone === 'warn' ? Colors.primaryColor : '#FFF'}
+          />
+        ) : (
+          <>
+            <TablerIcon
+              name={primary.icon}
+              size={18}
+              color={primary.tone === 'warn' ? '#92400E' : '#FFFFFF'}
+            />
+            <Text
+              style={[
+                styles.primaryLabel,
+                primary.tone === 'warn' && styles.primaryLabelWarn,
+              ]}
+            >
+              {primary.label}
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      {status === 'active' && canComplete && onComplete ? (
+        <TouchableOpacity
+          style={styles.completeBtn}
+          activeOpacity={0.88}
+          disabled={loading}
+          onPress={onComplete}
+        >
+          <TablerIcon name="circle-check" size={16} color="#FFFFFF" />
+          <Text style={styles.completeLabel}>Mark plan complete</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {hasMore ? (
+        <>
+          <TouchableOpacity
+            style={styles.moreToggle}
+            onPress={() => setShowMore(v => !v)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.moreToggleText}>
+              {showMore ? 'Hide options' : 'More options'}
+            </Text>
+            <TablerIcon
+              name={showMore ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#64748B"
+            />
+          </TouchableOpacity>
+
+          {showMore ? (
+            <View style={styles.moreRow}>
+              {onReset ? (
+                <TouchableOpacity
+                  style={styles.moreBtn}
+                  disabled={loading}
+                  onPress={onReset}
+                  activeOpacity={0.85}
+                >
+                  <TablerIcon name="refresh" size={15} color={Colors.primaryColor} />
+                  <Text style={styles.moreBtnText}>Reset progress</Text>
+                </TouchableOpacity>
+              ) : null}
+              {onStop ? (
+                <TouchableOpacity
+                  style={[styles.moreBtn, styles.moreDanger]}
+                  disabled={loading}
+                  onPress={onStop}
+                  activeOpacity={0.85}
+                >
+                  <TablerIcon name="x" size={15} color="#DC2626" />
+                  <Text style={[styles.moreBtnText, styles.moreDangerText]}>
+                    Stop this run
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              <Text style={styles.moreHelp}>
+                Reset restarts Day 1 on the same run (repeat count unchanged).
+                Stop ends the run; you can start again later.
+              </Text>
+            </View>
+          ) : null}
+        </>
       ) : null}
     </View>
   );
@@ -204,7 +257,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#D7E8E1',
-    padding: 12,
+    padding: 14,
     gap: 10,
   },
   headerRow: {
@@ -262,47 +315,93 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  actionTile: {
-    width: '100%',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  actionPrimary: {
-    backgroundColor: Colors.primaryColor,
-    borderColor: Colors.primaryColor,
-  },
-  actionWarn: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#F59E0B',
-  },
-  actionDanger: {
-    backgroundColor: '#DC2626',
-    borderColor: '#DC2626',
-  },
-  actionSoft: {
-    backgroundColor: '#F3F7F5',
-    borderColor: '#D7E8E1',
-  },
-  actionLabel: {
-    fontSize: 11,
+  progressHint: {
+    fontSize: 12,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  actionLabelLight: {
-    color: '#FFFFFF',
+  primaryBtn: {
+    minHeight: 50,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
   },
-  actionLabelWarn: {
+  primaryFill: {
+    backgroundColor: Colors.primaryColor,
+  },
+  primaryWarn: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  primaryLabel: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  primaryLabelWarn: {
     color: '#92400E',
+  },
+  completeBtn: {
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: '#0F766E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  completeLabel: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  moreToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  moreToggleText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  moreRow: {
+    gap: 8,
+  },
+  moreBtn: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D7E8E1',
+    backgroundColor: '#F8FBFA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  moreDanger: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
+  moreBtnText: {
+    fontSize: 12,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  moreDangerText: {
+    color: '#DC2626',
+  },
+  moreHelp: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
   },
 });

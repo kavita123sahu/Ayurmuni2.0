@@ -1265,7 +1265,7 @@ const ProfilePage = ({ navigation }: any) => {
                 stackNav.navigate('Settings');
                 break;
             case 'FAQ':
-                stackNav.navigate('FAQScreen');
+                stackNav.navigate('HelpCenterScreen');
                 break;
             case 'Analysis':
                 stackNav.navigate('PrakritiProfile');
@@ -1592,6 +1592,7 @@ const ProfilePage = ({ navigation }: any) => {
                     subtitle={`Your appointments, orders, and patient records stay recoverable for ${deleteRetentionDays} days. After that they cannot be restored. Until you recover (or the period ends), this phone number cannot enter the app — use Recover with OTP, or a new number.`}
                     cancelText="Close"
                     confirmText="OK"
+                    stackButtons
                     loading={false}
                     onClose={async () => {
                         setDeleteAccountDoneVisible(false);

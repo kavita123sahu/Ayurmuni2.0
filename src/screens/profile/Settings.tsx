@@ -113,7 +113,7 @@ const SettingsScreen = (props: any) => {
             subtitle: 'Common questions answered',
             iconName: 'help',
             type: 'arrow',
-            screen: 'FAQScreen',
+            screen: 'HelpCenterScreen',
           },
           {
             title: 'About Ayurmuni',

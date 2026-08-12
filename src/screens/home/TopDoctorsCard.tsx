@@ -11,12 +11,13 @@ import {
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { Ionicons } from '../../common/Vector';
+import TablerIcon from '../../components/TablerIcon';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const GRID_GAP = 10;
+const GRID_GAP = 12;
 const CONTENT_PAD = 40;
 const GRID_CARD_W = (SCREEN_W - CONTENT_PAD - GRID_GAP) / 2;
-const AVATAR = 52;
+const AVATAR = 72;
 
 const toLabelList = (value: any): string[] => {
   if (value == null || value === '') return [];
@@ -110,8 +111,6 @@ const TopDoctorsCard = ({
     return source;
   }, [data, limit]);
 
-  console.log("listlistlistlistlist", list);
-
   const isGrid = layout !== 'horizontal';
 
   const renderItem = useCallback(
@@ -120,10 +119,14 @@ const TopDoctorsCard = ({
       const speciality = labels[0] || 'Ayurveda Specialist';
       const isAvailable = item?.has_availability === true;
       const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
-      const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
+      const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '—';
       const experience = item?.experience_years || item?.experience || '0';
       const displayName = item.full_name || item.name || 'Doctor';
-      const fee = item?.consultation_fee;
+      const reviews = item?.total_reviews;
+      const feeRaw = item?.consultation_fee;
+      const hasFee =
+        feeRaw != null && String(feeRaw).trim() !== '' && Number(feeRaw) >= 0;
+      const feeLabel = hasFee ? String(feeRaw).replace(/\.0+$/, '') : null;
       const imageUri =
         typeof item?.profile_image === 'string'
           ? item.profile_image.trim()
@@ -140,31 +143,38 @@ const TopDoctorsCard = ({
           ]}
           onPress={() => openDoctorProfile(item)}
         >
-          <View style={styles.avatarWrap}>
-            {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                style={[styles.avatar, !isAvailable && styles.imageMuted]}
-              />
-            ) : (
+          <View style={styles.cardTop}>
+            <View style={styles.avatarRing}>
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={[styles.avatar, !isAvailable && styles.imageMuted]}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.avatar,
+                    styles.initialAvatar,
+                    !isAvailable && styles.imageMuted,
+                  ]}
+                >
+                  <Text style={styles.initialText}>
+                    {item?.first_name?.charAt(0).toUpperCase() ||
+                      displayName?.charAt(0)?.toUpperCase() ||
+                      'D'}
+                  </Text>
+                </View>
+              )}
               <View
                 style={[
-                  styles.avatar,
-                  styles.initialAvatar,
-                  !isAvailable && styles.imageMuted,
+                  styles.onlineDot,
+                  !isAvailable && styles.offlineDot,
                 ]}
-              >
-                <Text style={styles.initialText}>
-                  {item?.first_name?.charAt(0).toUpperCase() ||
-                    displayName?.charAt(0)?.toUpperCase() ||
-                    ''}
-                </Text>
-              </View>
-            )}
-            {isAvailable ? <View style={styles.onlineDot} /> : null}
+              />
+            </View>
           </View>
 
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={2}>
             {displayName}
           </Text>
           <Text style={styles.speciality} numberOfLines={1}>
@@ -172,20 +182,29 @@ const TopDoctorsCard = ({
           </Text>
 
           <View style={styles.metaRow}>
-            <Ionicons name="star" size={10} color="#F59E0B" />
-            <Text style={styles.metaText}>{ratingLabel}</Text>
-            <Text style={styles.metaDot}>·</Text>
-            <Text style={styles.metaText}>{experience}yr</Text>
-            {fee != null && fee !== '' ? (
-              <>
-                <Text style={styles.metaDot}>·</Text>
-                <Text style={styles.feeText}>₹{fee}</Text>
-              </>
-            ) : null}
+            <View style={styles.metaPill}>
+              <Ionicons name="star" size={11} color="#F59E0B" />
+              <Text style={styles.metaText}>{ratingLabel}</Text>
+              {reviews != null && String(reviews).trim() !== '' ? (
+                <Text style={styles.metaMuted}>({reviews})</Text>
+              ) : null}
+            </View>
+            <View style={styles.metaPill}>
+              <TablerIcon name="briefcase" size={11} color={Colors.primaryColor} />
+              <Text style={styles.metaText}>{experience} yrs</Text>
+            </View>
           </View>
+
+          {hasFee ? (
+            <View style={styles.feeBadge}>
+              {/* <Text style={styles.feeFrom}>from</Text> */}
+              <Text style={styles.feeAmount}>₹{feeLabel}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.consultBtn}>
             <Text style={styles.consultText}>Consult</Text>
+            <TablerIcon name="chevron-right" size={14} color="#FFFFFF" />
           </View>
         </Pressable>
       );
@@ -216,9 +235,7 @@ const TopDoctorsCard = ({
     <FlatList
       horizontal
       data={list}
-      keyExtractor={(item, index) =>
-        String(item?.id ?? `top-doc-${index}`)
-      }
+      keyExtractor={(item, index) => String(item?.id ?? `top-doc-${index}`)}
       renderItem={renderItem}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.horizontalContainer}
@@ -246,35 +263,49 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#D7E8E1',
-    paddingTop: 10,
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+    paddingTop: 14,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#0D614E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   cardGrid: {
     width: '100%',
   },
   cardHorizontal: {
-    width: 148,
-    marginRight: 10,
+    width: 168,
+    marginRight: 12,
   },
   cardPressed: {
     opacity: 0.94,
+    transform: [{ scale: 0.985 }],
   },
-  avatarWrap: {
+  cardTop: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  avatarRing: {
+    width: AVATAR + 6,
+    height: AVATAR + 6,
+    borderRadius: (AVATAR + 6) / 2,
+    borderWidth: 2,
+    borderColor: '#B7D9CE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF7F3',
+  },
+  avatar: {
     width: AVATAR,
     height: AVATAR,
     borderRadius: AVATAR / 2,
-    overflow: 'hidden',
-    backgroundColor: '#E8F3EF',
-    marginBottom: 6,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
     resizeMode: 'cover',
   },
   initialAvatar: {
@@ -283,7 +314,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D7EDE5',
   },
   initialText: {
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
     textTransform: 'uppercase',
@@ -293,27 +324,30 @@ const styles = StyleSheet.create({
   },
   onlineDot: {
     position: 'absolute',
-    right: 2,
-    bottom: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    right: 4,
+    bottom: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#22C55E',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#FFFFFF',
   },
+  offlineDot: {
+    backgroundColor: '#94A3B8',
+  },
   name: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 14,
+    lineHeight: 18,
     color: '#0F3D32',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
     width: '100%',
   },
   speciality: {
-    marginTop: 1,
-    fontSize: 10,
-    lineHeight: 13,
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 14,
     color: '#0F766E',
     fontFamily: Fonts.PoppinsMedium,
     textAlign: 'center',
@@ -323,36 +357,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    flexWrap: 'nowrap',
-    gap: 2,
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F8FBFA',
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#E6F2ED',
   },
   metaText: {
-    fontSize: 10,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  metaDot: {
-    fontSize: 10,
-    color: '#CBD5E1',
-  },
-  feeText: {
-    fontSize: 10,
-    color: Colors.primaryColor,
+    fontSize: 11,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  metaMuted: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  feeBadge: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  feeFrom: {
+    fontSize: 9,
+    color: '#C2410C',
+    fontFamily: Fonts.PoppinsMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  feeAmount: {
+    fontSize: 14,
+    color: '#EA580C',
+    fontFamily: Fonts.PoppinsSemiBold,
+    lineHeight: 19,
+  },
   consultBtn: {
-    marginTop: 6,
+    marginTop: 8,
     alignSelf: 'stretch',
-    height: 28,
-    borderRadius: 8,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 2,
     backgroundColor: Colors.primaryColor,
   },
   consultText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 });

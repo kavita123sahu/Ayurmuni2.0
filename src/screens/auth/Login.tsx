@@ -203,10 +203,10 @@ const PhoneAuthScreen = (props: any) => {
         const msLeft = heldAt + days * 24 * 60 * 60 * 1000 - Date.now();
         if (msLeft > 0) {
           const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
-          showSuccessToast(
-            `This number is under deletion recovery. Recover with OTP within ~${daysLeft} day(s), or use a new number.`,
-            'error',
-          );
+          // showSuccessToast(
+          //   `This number is under deletion recovery. Recover with OTP within ~${daysLeft} day(s), or use a new number.`,
+          //   'error',
+          // );
           // Still allow OTP so they can open recover flow on verify
         } else {
           await Utils.removeData('_DELETED_ACCOUNT_HOLD');
@@ -232,10 +232,10 @@ const PhoneAuthScreen = (props: any) => {
           held_at: Date.now(),
         });
         Utils.storeData('_OTP', OTP);
-        showSuccessToast(
-          `This number was deleted. Enter OTP to recover within ${deletedInfo.retentionDays} days, or use a new number.`,
-          'error',
-        );
+        // showSuccessToast(
+        //   `This number was deleted. Enter OTP to recover within ${deletedInfo.retentionDays} days, or use a new number.`,
+        //   'error',
+        // );
         props.navigation.navigate('OtpVerify', {
           phone,
           customer: isCustomer,

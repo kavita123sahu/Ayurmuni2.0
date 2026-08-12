@@ -192,6 +192,18 @@ const SearchBar: React.FC<Props> = ({
         returnKeyType="search"
       />
 
+      {!onPress && !!value?.length && onChangeText ? (
+        <TouchableOpacity
+          style={styles.clearBtn}
+          onPress={() => onChangeText('')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.75}
+          accessibilityLabel="Clear search"
+        >
+          <TablerIcon name="x" size={compact ? 14 : 15} color="#64748B" />
+        </TouchableOpacity>
+      ) : null}
+
       {showMicIcon ? (
         <TouchableOpacity
           style={styles.trailing}
@@ -262,6 +274,14 @@ const styles = StyleSheet.create({
   },
   inputCompact: {
     fontSize: 13,
+  },
+  clearBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   trailing: {
     width: 28,

@@ -21,12 +21,7 @@ export const Method = {
     PUT: 'PUT'
 }
 
-// export const ZUGOKey = {
-//     ZEGO_APP_ID: '712416091',
-//     ZEGO_APP_SIGN: 'c6de6e9ebf00826ca6a1834aaf6db203e722d67f5976cb9ede3f023db73232e8'
-// }
 
-/** Google Maps SDK key (Android/iOS native maps) */
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';
 
 /** Google Places / Geocoding API key */

@@ -1750,6 +1750,7 @@ import {
   TextInput,
   Modal,
   Pressable,
+  BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import SectionHeader from '../../components/SectionHeader';
@@ -1780,6 +1781,7 @@ import CommonModal from '../../components/LogoutModal';
 import LinearGradient from 'react-native-linear-gradient';
 import DietPlanActionPanel from '../../components/DietPlanActionPanel';
 import { formatRupee } from '../../utils/currencyUtils';
+import { showSuccessToast } from '../../config/Key';
 
 const MACRO_COLORS = {
   Carbs: '#1FA77A',
@@ -2086,6 +2088,25 @@ const DietScreen = (props: any) => {
     setOpenFilter(null);
   }, []);
 
+  /** Detail / tracking back → all diet list (not Home). */
+  const handleBackFromDetail = useCallback(() => {
+    clearSelection();
+    props.navigation.setParams({
+      listType: 'all',
+      viewAll: true,
+      item: undefined,
+    });
+  }, [clearSelection, props.navigation]);
+
+  useEffect(() => {
+    if (!selectedPlanId) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackFromDetail();
+      return true;
+    });
+    return () => sub.remove();
+  }, [selectedPlanId, handleBackFromDetail]);
+
   const filterChipMeta: {
     key: DietFilterKey;
     title: string;
@@ -2265,14 +2286,8 @@ const DietScreen = (props: any) => {
   );
 
   // Prefer list status so a stale detail payload can't hide Resume for paused plans
-  const assignmentStatus = String(
-    selectedSummary?.patient_assignment_status ||
-    planDetail?.patient_assignment_status ||
-    '',
-  ).toLowerCase();
-  const isPaused = listStatus === 'paused' || assignmentStatus.includes('pause');
-  const isCompletedPlan =
-    listStatus === 'completed' || assignmentStatus.includes('complete');
+  const isPaused = listStatus === 'paused';
+  const isCompletedPlan = listStatus === 'completed';
 
   const onResumePress = useCallback(async () => {
     const prep = prepareResume();
@@ -2345,10 +2360,8 @@ const DietScreen = (props: any) => {
   };
 
   const onCompletePlan = useCallback(async () => {
-    const ok = await completePlan();
-    if (ok) {
-      setCongratsVisible(true);
-    }
+    // Completion opens the dedicated completed screen (detail branch) with tracking summary
+    await completePlan();
   }, [completePlan]);
 
   const onPausePress = useCallback(() => {
@@ -2363,7 +2376,8 @@ const DietScreen = (props: any) => {
   const onStopPress = useCallback(() => {
     setConfirmModal({
       title: 'Stop this run?',
-      subtitle: 'Stopping ends the current run. You can repeat the plan later.',
+      subtitle:
+        'Stopping ends this run. To use Repeat later you must Complete the plan first — stopped plans use Start again instead.',
       confirmText: 'Stop plan',
       action: 'stop',
     });
@@ -2373,7 +2387,7 @@ const DietScreen = (props: any) => {
     setConfirmModal({
       title: 'Reset progress?',
       subtitle:
-        'Tracking restarts from day 1 for this same run. Repeat count stays the same.',
+        'Ends this run and starts a fresh active assignment from Day 1. Repeat count stays the same (only Complete → Repeat increases it).',
       confirmText: 'Reset',
       action: 'reset',
     });
@@ -2615,7 +2629,7 @@ const DietScreen = (props: any) => {
               </View>
             ) : cardStatus === 'paused' ? (
               <View style={styles.resumePill}>
-                <Text style={styles.resumePillText}>Resume</Text>
+                <Text style={styles.resumePillText}>Paused</Text>
               </View>
             ) : cardStatus === 'completed' ? (
               <View style={styles.completedPill}>
@@ -2936,13 +2950,7 @@ const DietScreen = (props: any) => {
         <Header
           title="Diet Plan"
           subtitle={selectedSummary?.name || 'Details'}
-          onBack={() => {
-            if (initialPlanId && plans.length <= 1) {
-              props.navigation.goBack();
-              return;
-            }
-            clearSelection();
-          }}
+          onBack={handleBackFromDetail}
         />
 
         {loadingDetail ? (
@@ -3033,58 +3041,89 @@ const DietScreen = (props: any) => {
               </View>
             </View>
 
-            {isCompletedPlan || listStatus === 'stopped' ? (
-              <View style={{ gap: 12 }}>
-                {isCompletedPlan ? (
-                  <View style={styles.congratsCard}>
-                    <Text style={styles.congratsEmoji}>🎉</Text>
-                    <Text style={styles.congratsTitle}>Congratulations!</Text>
-                    <Text style={styles.congratsSub}>
-                      You completed "{selectedSummary?.name || planDetail?.name}".
-                      Tap Repeat to start a new tracked run
-                      {getDietRepeatCount(selectedSummary || planDetail) >= 0
-                        ? ` (next: Repeat #${
-                            getDietRepeatCount(selectedSummary || planDetail) + 1
-                          })`
-                        : ''}
-                      .
+            {isCompletedPlan ? (
+              <View style={{ gap: 12, paddingHorizontal: 0 }}>
+                <View style={styles.congratsCard}>
+                  <Text style={styles.congratsEmoji}>🎉</Text>
+                  <Text style={styles.congratsTitle}>Plan completed</Text>
+                  <Text style={styles.congratsSub}>
+                    You finished "
+                    {selectedSummary?.name || planDetail?.name}". Your run
+                    progress is saved below. Only a completed plan can be
+                    repeated — tap Repeat to start a new tracked cycle from Day
+                    1
+                    {` (next: Repeat #${getDietRepeatCount(selectedSummary || planDetail) + 1
+                      })`}
+                    .
+                  </Text>
+
+                  <View style={styles.completeRunMeta}>
+                    <Text style={styles.completeRunMetaText}>
+                      {getDietRunLabel(selectedSummary || planDetail)}
                     </Text>
                   </View>
-                ) : (
-                  <DietPlanActionPanel
-                    status={listStatus}
-                    plan={selectedSummary || planDetail}
-                    loading={updatingStatus}
-                    canComplete={false}
-                    onPause={onPausePress}
-                    onResume={onResumePress}
-                    onStop={onStopPress}
-                    onReset={onResetPress}
-                    onRepeat={onRepeatPress}
-                    onComplete={onCompletePlan}
-                  />
-                )}
 
-                <TouchableOpacity
-                  style={styles.startBtn}
-                  onPress={onRepeatPress}
-                  disabled={updatingStatus}
-                  activeOpacity={0.9}
-                >
-                  {updatingStatus ? (
-                    <ActivityIndicator color="#fff" />
+                  {completionJson ? (
+                    <View
+                      style={[styles.completeTrackingBlock, { width: '100%' }]}
+                    >
+                      <Text style={styles.completeTrackingTitle}>
+                        Your tracking summary
+                      </Text>
+                      {Object.entries(completionJson || {})
+                        .slice(0, 12)
+                        .map(([key, value]) => (
+                          <View key={key} style={styles.completeTrackRow}>
+                            <Text style={styles.completeTrackKey}>
+                              {String(key)
+                                .replace(/_/g, ' ')
+                                .replace(/\b\w/g, c => c.toUpperCase())}
+                            </Text>
+                            <Text style={styles.completeTrackVal}>
+                              {typeof value === 'object'
+                                ? JSON.stringify(value)
+                                : String(value ?? '—')}
+                            </Text>
+                          </View>
+                        ))}
+                    </View>
                   ) : (
-                    <Text style={styles.startBtnText}>
-                      {isCompletedPlan ? 'Repeat this plan' : 'Start again'}
+                    <Text style={styles.completeEmptyText}>
+                      Your completed run is saved. Use Repeat below when you’re
+                      ready for another cycle.
                     </Text>
                   )}
-                </TouchableOpacity>
-                <Text style={styles.startHint}>
-                  {isCompletedPlan
-                    ? 'Repeat creates a fresh run and increases your repeat count.'
-                    : 'Start a new run of this plan with fresh meal tracking.'}
-                </Text>
+                </View>
 
+                <DietPlanActionPanel
+                  status="completed"
+                  plan={selectedSummary || planDetail}
+                  loading={updatingStatus}
+                  canComplete={false}
+                  onRepeat={onRepeatPress}
+                />
+
+                <TouchableOpacity
+                  style={[styles.startBtn, { backgroundColor: '#64748B' }]}
+                  onPress={clearSelection}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.startBtnText}>Browse other plans</Text>
+                </TouchableOpacity>
+              </View>
+            ) : listStatus === 'stopped' ? (
+              <View style={{ gap: 12 }}>
+                <DietPlanActionPanel
+                  status="stopped"
+                  plan={selectedSummary || planDetail}
+                  loading={updatingStatus || starting}
+                  canComplete={false}
+                  onStartAgain={onStartPress}
+                />
+                <Text style={styles.startHint}>
+                  Stopped plans can’t use Repeat. Start again to begin a new
+                  run, or complete a full plan first to unlock Repeat.
+                </Text>
                 <TouchableOpacity
                   style={[styles.startBtn, { backgroundColor: '#64748B' }]}
                   onPress={clearSelection}
@@ -3119,12 +3158,15 @@ const DietScreen = (props: any) => {
                 plan={selectedSummary || planDetail}
                 loading={updatingStatus}
                 canComplete={false}
-                onPause={onPausePress}
-                onResume={onResumePress}
-                onStop={onStopPress}
-                onReset={onResetPress}
-                onRepeat={onRepeatPress}
-                onComplete={onCompletePlan}
+                progressHint={
+                  listStatus === 'paused'
+                    ? 'Status: Paused — only Resume is available'
+                    : undefined
+                }
+                onPause={listStatus === 'active' ? onPausePress : undefined}
+                onResume={listStatus === 'paused' ? onResumePress : undefined}
+                onStop={listStatus === 'active' ? onStopPress : undefined}
+                onReset={listStatus === 'active' ? onResetPress : undefined}
               />
             )}
           </ScrollView>
@@ -3159,25 +3201,6 @@ const DietScreen = (props: any) => {
         />
 
         <CommonModal
-          visible={congratsVisible}
-          icon="🎉"
-          title="Congratulations!"
-          subtitle={`You completed "${selectedSummary?.name || planDetail?.name || 'this diet plan'
-            }". Repeat to start a fresh tracked run, or browse other plans.`}
-          cancelText="Browse plans"
-          confirmText="Repeat plan"
-          loading={updatingStatus}
-          onClose={() => {
-            setCongratsVisible(false);
-            clearSelection();
-          }}
-          onConfirm={() => {
-            setCongratsVisible(false);
-            onRepeatPress();
-          }}
-        />
-
-        <CommonModal
           visible={!!confirmModal}
           icon="ℹ️"
           title={confirmModal?.title || ''}
@@ -3197,21 +3220,17 @@ const DietScreen = (props: any) => {
     );
   }
 
+  // —— TRACKING (active / started) ——
+
   // —— ACTIVE TRACKING (original Daily Vitality UI) ——
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
         title="Diet"
         subtitle={selectedSummary?.name || 'Track your nutrition'}
-        onBack={() => {
-          if (initialPlanId && !plans.length) {
-            props.navigation.goBack();
-            return;
-          }
-          clearSelection();
-        }}
+        onBack={handleBackFromDetail}
       />
 
       {loadingDetail && meals.length === 0 && mealsByDay.length === 0 ? (
@@ -3495,12 +3514,20 @@ const DietScreen = (props: any) => {
                 plan={selectedSummary || planDetail}
                 loading={updatingStatus}
                 canComplete={!!isPlanFullyComplete}
+                progressHint={
+                  listStatus === 'paused'
+                    ? 'Status: Paused — Resume only'
+                    : dayLabel
+                      ? `Tracking ${dayLabel}${isViewingToday ? ' (today)' : ''}`
+                      : undefined
+                }
                 onPause={onPausePress}
                 onResume={onResumePress}
-                onStop={onStopPress}
-                onReset={onResetPress}
-                onRepeat={onRepeatPress}
-                onComplete={onCompletePlan}
+                onStop={listStatus === 'active' ? onStopPress : undefined}
+                onReset={listStatus === 'active' ? onResetPress : undefined}
+                onComplete={
+                  listStatus === 'active' ? onCompletePlan : undefined
+                }
               />
             </View>
           ) : null}
@@ -3962,6 +3989,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 14,
     lineHeight: 20,
+  },
+  completeRunMeta: {
+    marginTop: 4,
+    marginBottom: 10,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  completeRunMetaText: {
+    fontSize: 12,
+    color: '#065F46',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  completeTrackRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#D1FAE5',
+  },
+  completeTrackKey: {
+    flex: 1,
+    fontSize: 12,
+    color: '#047857',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  completeTrackVal: {
+    flex: 1,
+    fontSize: 12,
+    color: '#0F172A',
+    textAlign: 'right',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   completeBanner: {
     marginTop: 16,

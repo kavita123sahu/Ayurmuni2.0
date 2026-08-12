@@ -575,12 +575,12 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
-            {SuggestDoctor.length > 0 && (
+            {(SuggestDoctor?.length ?? 0) > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
                   title="Suggested Doctors"
-                  actionText={SuggestDoctor.length > 1 ? 'View all' : ''}
+                  actionText={(SuggestDoctor?.length ?? 0) > 1 ? 'View all' : ''}
                   onPress={() =>
                     props.navigation.navigate('AllDoctors', {
                       all: true,
@@ -588,7 +588,7 @@ const HomePage: React.FC = (props: any) => {
                   }
                 />
                 <TopDoctorsCard
-                  data={SuggestDoctor}
+                  data={Array.isArray(SuggestDoctor) ? SuggestDoctor : []}
                   navigation={props.navigation}
                   layout="grid"
                   limit={4}
@@ -634,18 +634,18 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
-            {YogaSession.length > 0 && (
+            {(YogaSession?.length ?? 0) > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
                   title="Yoga's"
-                  actionText={YogaSession.length > 1 ? 'View all' : ''}
+                  actionText={(YogaSession?.length ?? 0) > 1 ? 'View all' : ''}
                   onPress={() =>
                     props.navigation.navigate('YogaScreen', { viewAll: true })
                   }
                 />
                 <SuggestedCard
-                  data={YogaSession}
+                  data={Array.isArray(YogaSession) ? YogaSession : []}
                   navigation={props.navigation}
                   home
                 />
@@ -674,7 +674,7 @@ const HomePage: React.FC = (props: any) => {
             ) : null}
 
             {/* {showConsultBrandShade ? ( */}
-              
+
             {/* ) :  */}
             {comingSoonItems.length > 0 ? (
               <View style={styles.homeSection}>
@@ -683,8 +683,8 @@ const HomePage: React.FC = (props: any) => {
             ) : null}
 
             <View style={styles.homeSection}>
-                <AyurmuniBrandShade />
-              </View>
+              <AyurmuniBrandShade />
+            </View>
           </View>
         )}
       />

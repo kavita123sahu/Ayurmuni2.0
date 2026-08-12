@@ -22,17 +22,32 @@ export const useDebounce = <T,>(
 
 
 export const useNetworkStatus = () => {
-    const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  // Assume online until NetInfo resolves — never blank the app on cold start
+  const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
-    useEffect(() => {
-        const unsubscribe = NetInfo.addEventListener(state => {
-            setIsConnected(state.isConnected);
-        });
+  useEffect(() => {
+    let mounted = true;
 
-        return unsubscribe;
-    }, []);
+    NetInfo.fetch()
+      .then(state => {
+        if (mounted) setIsConnected(state.isConnected !== false);
+      })
+      .catch(() => {
+        if (mounted) setIsConnected(true);
+      });
 
-    return isConnected;
+    const unsubscribe = NetInfo.addEventListener(state => {
+      // Treat null/unknown as connected so Navigator never unmounts
+      setIsConnected(state.isConnected !== false);
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  return isConnected;
 };
 
 

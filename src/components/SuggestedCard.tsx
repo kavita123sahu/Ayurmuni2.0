@@ -92,7 +92,8 @@ const SuggestedCard: React.FC<Props> = ({
 }) => {
   const [showAll, setShowAll] = useState(false);
 
-  const displayData = showAll ? data : data.slice(0, 6);
+  const safeData = Array.isArray(data) ? data : [];
+  const displayData = showAll ? safeData : safeData.slice(0, 6);
 
 
   const formattedData =

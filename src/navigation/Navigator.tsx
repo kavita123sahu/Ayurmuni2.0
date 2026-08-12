@@ -273,13 +273,9 @@ const MainNavigator = () => {
 const Navigator = () => {
   const isConnected = useNetworkStatus();
 
-  if (isConnected === null) {
-    return null; // ya ActivityIndicator
-  }
-
   return (
     <NavigationContainer ref={navigationRef}>
-      {isConnected ? <MainNavigator /> : <NetworkError />}
+      {isConnected === false ? <NetworkError /> : <MainNavigator />}
     </NavigationContainer>
   );
 };

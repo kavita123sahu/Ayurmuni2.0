@@ -399,17 +399,36 @@ export type DietListStatus =
   | 'not_started';
 
 export const getDietListStatus = (plan?: any): DietListStatus => {
-  const status = String(
-    plan?.patient_assignment_status || plan?.status || '',
-  ).toLowerCase();
-  if (status.includes('complete')) return 'completed';
-  if (status.includes('pause')) return 'paused';
-  if (status.includes('stop') || status.includes('cancel')) return 'stopped';
+  // Prefer assignment status only — never treat meal/progress "completed" as plan status.
+  const status = String(plan?.patient_assignment_status || '')
+    .toLowerCase()
+    .trim();
+  // Exact tokens only (avoid matching "incomplete" / "not_completed")
+  if (status === 'completed' || status === 'complete') return 'completed';
+  if (status === 'paused' || status === 'pause') return 'paused';
+  if (
+    status === 'stopped' ||
+    status === 'stop' ||
+    status === 'cancelled' ||
+    status === 'canceled'
+  ) {
+    return 'stopped';
+  }
   if (
     status === 'active' ||
-    status.includes('start') ||
+    status === 'started' ||
+    status === 'in_progress' ||
+    status === 'ongoing'
+  ) {
+    return 'active';
+  }
+  if (status.includes('pause')) return 'paused';
+  if (status.startsWith('stop') || status.includes('cancel')) return 'stopped';
+  if (status.startsWith('completed')) return 'completed';
+  if (
     status.includes('in_progress') ||
-    status.includes('ongoing')
+    status.includes('ongoing') ||
+    (status.includes('start') && !status.includes('not'))
   ) {
     return 'active';
   }
@@ -436,6 +455,93 @@ export const isNoActiveDietPlanError = (res: any): boolean => {
     );
   }
   return res?.status === 404 && msg.includes('diet');
+};
+
+const assignmentStatusRank = (plan?: any): number => {
+  const s = getDietListStatus(plan);
+  if (s === 'active') return 4;
+  if (s === 'paused') return 3;
+  if (s === 'completed') return 2;
+  if (s === 'stopped') return 1;
+  return 0;
+};
+
+const assignmentStartedMs = (plan?: any): number => {
+  const t = Date.parse(String(plan?.started_at || ''));
+  return Number.isFinite(t) ? t : 0;
+};
+
+/**
+ * Overlay patient assignment fields from suggested / assigned list onto catalog rows.
+ * Never let a stale overlay (e.g. old paused) win over a fresher catalog assignment
+ * (e.g. stopped after reset) for the same diet plan id.
+ */
+export const mergePlanAssignmentFields = (
+  plans: DietPlanSummary[],
+  assignmentPlans: DietPlanSummary[],
+): DietPlanSummary[] => {
+  if (!plans.length || !assignmentPlans.length) return plans;
+
+  const byCatalogId = new Map<string, DietPlanSummary>();
+  assignmentPlans.forEach(p => {
+    const id = String(p.id || '').trim();
+    if (!id) return;
+    if (!(p.patient_diet_plan_id || p.patient_assignment_status)) return;
+    const prev = byCatalogId.get(id);
+    if (!prev) {
+      byCatalogId.set(id, p);
+      return;
+    }
+    const rankP = assignmentStatusRank(p);
+    const rankPrev = assignmentStatusRank(prev);
+    if (
+      rankP > rankPrev ||
+      (rankP === rankPrev && assignmentStartedMs(p) >= assignmentStartedMs(prev))
+    ) {
+      byCatalogId.set(id, p);
+    }
+  });
+
+  if (!byCatalogId.size) return plans;
+
+  return plans.map(plan => {
+    const overlay = byCatalogId.get(String(plan.id));
+    if (!overlay) return plan;
+
+    const planHasAssignment = Boolean(
+      plan.patient_diet_plan_id || plan.patient_assignment_status,
+    );
+    if (!planHasAssignment) {
+      return {
+        ...plan,
+        patient_diet_plan_id: overlay.patient_diet_plan_id ?? null,
+        patient_assignment_status: overlay.patient_assignment_status ?? null,
+        started_at: overlay.started_at ?? plan.started_at,
+        ended_at: overlay.ended_at ?? plan.ended_at,
+        stop_reason: overlay.stop_reason ?? plan.stop_reason,
+        repeat_count: overlay.repeat_count ?? plan.repeat_count,
+      };
+    }
+
+    // Both have assignment — keep the more relevant / newer one
+    const preferOverlay =
+      assignmentStatusRank(overlay) > assignmentStatusRank(plan) ||
+      (assignmentStatusRank(overlay) === assignmentStatusRank(plan) &&
+        assignmentStartedMs(overlay) > assignmentStartedMs(plan));
+
+    const chosen = preferOverlay ? overlay : plan;
+    return {
+      ...plan,
+      patient_diet_plan_id:
+        chosen.patient_diet_plan_id ?? plan.patient_diet_plan_id,
+      patient_assignment_status:
+        chosen.patient_assignment_status ?? plan.patient_assignment_status,
+      started_at: chosen.started_at ?? plan.started_at,
+      ended_at: chosen.ended_at ?? plan.ended_at,
+      stop_reason: chosen.stop_reason ?? plan.stop_reason,
+      repeat_count: chosen.repeat_count ?? plan.repeat_count,
+    };
+  });
 };
 
 export const mapDietPlanSummary = (item: any): DietPlanSummary => {
