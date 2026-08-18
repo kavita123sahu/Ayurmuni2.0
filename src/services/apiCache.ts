@@ -49,7 +49,11 @@ export const fetchWithCache = async <T>(
 
   const request = fetcher()
     .then(data => {
-      setCached(key, data);
+      // Don't cache empty lists — a first empty parse would hide later valid data
+      const isEmptyArray = Array.isArray(data) && data.length === 0;
+      if (!isEmptyArray && data != null) {
+        setCached(key, data);
+      }
       inflight.delete(key);
       return data;
     })

@@ -152,6 +152,7 @@ export const createDoctorReview = async (
  * POST create review:
  *   review/?entity_type=doctor
  *   review/?entity_type=product
+ *   review/?entity_type=diet_plan
  * (IDs go in the body — not the query string.)
  *
  * GET list reviews (use ProductServices.getReviewsAll):
@@ -161,7 +162,7 @@ export const createDoctorReview = async (
 export const buildReviewEndpoint = ({
   entityType,
 }: {
-  entityType: 'doctor' | 'product' | string;
+  entityType: 'doctor' | 'product' | 'diet_plan' | string;
 }) => {
   const normalizedType = String(entityType).toLowerCase();
 
@@ -173,6 +174,10 @@ export const buildReviewEndpoint = ({
     return 'review/?entity_type=product';
   }
 
+  if (normalizedType === 'diet_plan') {
+    return 'review/?entity_type=diet_plan';
+  }
+
   throw new Error('Unsupported review entity type');
 };
 
@@ -181,13 +186,15 @@ export const createReview = async ({
   appointmentId,
   variantId,
   orderId,
+  patientDietPlanId,
   reviewData,
   method: _method = 'POST',
 }: {
-  entityType: 'doctor' | 'product' | string;
+  entityType: 'doctor' | 'product' | 'diet_plan' | string;
   appointmentId?: string;
   variantId?: string;
   orderId?: string;
+  patientDietPlanId?: string;
   reviewData: {
     rating: number;
     review: string;
@@ -196,6 +203,7 @@ export const createReview = async ({
     appointment?: string;
     order_id?: string;
     variant_id?: string;
+    patient_diet_plan_id?: string;
     tags?: string[];
   };
   method?: 'POST' | 'PATCH';
@@ -235,6 +243,17 @@ export const createReview = async ({
       }
       payload.variant_id = variant_id;
       payload.order_id = order_id;
+    }
+
+    if (normalizedType === 'diet_plan') {
+      const patient_diet_plan_id =
+        patientDietPlanId || reviewData.patient_diet_plan_id;
+      if (!patient_diet_plan_id) {
+        throw new Error(
+          'patient_diet_plan_id is required for diet plan reviews',
+        );
+      }
+      payload.patient_diet_plan_id = patient_diet_plan_id;
     }
 
     if (reviewData.tags?.length) {

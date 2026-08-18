@@ -3,8 +3,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 import { Fonts } from '../common/Fonts';
-
 import { HOME_SECTION_HEADER_MB } from '../constants/layout';
+import { TYPO } from '../constants/responsive';
 
 
 
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
 
     fontFamily: Fonts.PoppinsSemiBold,
 
-    fontSize: 17,
+    fontSize: TYPO.lg + 1,
 
     color: '#0F172A',
 
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
 
     color: '#0D614E',
 
-    fontSize: 13,
+    fontSize: TYPO.subtitle,
 
     fontFamily: Fonts.PoppinsSemiBold,
 

@@ -31,7 +31,7 @@ import {
   useWishlistSync,
 } from '../../hooks/useWishlistSync';
 import { Images } from '../../common/Images';
-import { safeGoBack } from '../../navigation/navigationUtils';
+import { goBackToHomeTab } from '../../navigation/navigationUtils';
 import {
   navigateToSearchScreen,
   navigateToCategoryProducts,
@@ -94,8 +94,11 @@ const ProductsScreen = () => {
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
   const handleSearchPress = useCallback(() => {
-    navigateToSearchScreen(navigation);
-  }, [navigation]);
+    navigateToSearchScreen(navigation, {
+      categoryMode: 'product',
+      serviceCategoryId: productsCategoryId || undefined,
+    });
+  }, [navigation, productsCategoryId]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -190,7 +193,7 @@ const ProductsScreen = () => {
             tag="SUMMER SALE"
             buttontext="Shop Now"
             showButton
-            onPress={() => {}}
+            onPress={() => { }}
           />
         )}
 
@@ -198,7 +201,10 @@ const ProductsScreen = () => {
           title="Shop by Category"
           actionText={productCategories.length > 0 ? 'View all' : ''}
           onPress={() =>
-            navigateToCategoryProducts(navigation, { categoryMode: 'product' })
+            navigateToCategoryProducts(navigation, {
+              categoryMode: 'product',
+              serviceCategoryId: productsCategoryId || undefined,
+            })
           }
         />
         {categoriesLoading && productCategories.length === 0 ? (
@@ -208,25 +214,26 @@ const ProductsScreen = () => {
             data={productCategories}
             navigation={navigation}
             mode="product"
+            serviceCategoryId={productsCategoryId}
           />
         ) : null}
 
         <SectionHeader title="All Products" actionText="" />
       </View>
     ),
-    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth],
+    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth, productsCategoryId],
   );
 
   const showInitialSkeleton = loading && products.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       <Header
         title="Products"
         backIcon={Images.backIcon}
-        onBack={() => safeGoBack(navigation)}
+        onBack={() => goBackToHomeTab(navigation)}
         subtitle="Choose best product"
         onSearchPress={handleSearchPress}
       />

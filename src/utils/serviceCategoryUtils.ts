@@ -1,5 +1,11 @@
 export type ServiceCategoryKey = 'medicine' | 'products' | 'consult';
 
+const SERVICE_CODE_ALIASES: Record<ServiceCategoryKey, string[]> = {
+  medicine: ['MEDI', 'MEDIC', 'MEDICINE', 'PHAR', 'AYUR', 'PHARMA'],
+  products: ['PRODU', 'PROD', 'PRODUCT', 'PRODUCTS', 'STORE', 'SHOP'],
+  consult: ['CONS', 'CONSULT', 'DOCT', 'DOCTOR', 'TELE'],
+};
+
 const SERVICE_NAME_ALIASES: Record<ServiceCategoryKey, string[]> = {
   medicine: [
     'medicine',
@@ -44,6 +50,7 @@ const getCategoryName = (item: any): string =>
   normalizeName(
     item?.name ??
       item?.category_name ??
+      item?.service_category_name ??
       item?.title ??
       item?.service_name ??
       item?.label ??
@@ -130,6 +137,28 @@ export const getServiceCategoryId = (
   });
   if (byMeta) {
     return getCategoryId(byMeta);
+  }
+
+  // Match by service_category_code (e.g. MEDI, PRODU)
+  const byCode = list.find(item => {
+    const code = String(item?.service_category_code ?? item?.code ?? '')
+      .trim()
+      .toUpperCase();
+    if (!code) return false;
+    const codes = SERVICE_CODE_ALIASES[key];
+    return codes.some(c => code === c || code.startsWith(c) || code.includes(c));
+  });
+  if (byCode) {
+    return getCategoryId(byCode);
+  }
+
+  // Dashboard may expose medicine/products as a service_type enum
+  const byServiceType = list.find(item => {
+    const typeKey = normalizeName(item?.service_type ?? item?.type ?? '');
+    return typeKey === key || aliases.some(a => typeKey.includes(a));
+  });
+  if (byServiceType) {
+    return getCategoryId(byServiceType);
   }
 
   return null;

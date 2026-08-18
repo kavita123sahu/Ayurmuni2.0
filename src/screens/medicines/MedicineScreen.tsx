@@ -20,7 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { useOrders } from '../../hooks/useOrders';
-import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
+import { getDetailBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
@@ -75,13 +75,15 @@ const MedicineScreen = (props: any) => {
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent?.() || navigation;
   const insets = useSafeAreaInsets();
-  const bottomPadding = getScreenBottomPadding(insets);
+  const bottomPadding = getDetailBottomPadding(insets);
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
   const {
     categories: dashboardCategories,
     medicineProducts,
+    loading: homeLoading,
+    refreshHomeData,
   } = useHomeData();
 
   const medicineCategoryId = useMemo(
@@ -91,9 +93,13 @@ const MedicineScreen = (props: any) => {
   const { images: bannerImages } = useBanners('medicine', medicineCategoryId);
   const screenWidth = Dimensions.get('window').width;
 
-  // All Medicines: customers/products/ with pagination (full catalog).
-  // Do not block on service_category_id — empty filter returns all products.
-  const productFilter = useMemo(() => ({}), []);
+  const productFilter = useMemo(
+    () =>
+      medicineCategoryId
+        ? { service_category_id: medicineCategoryId }
+        : {},
+    [medicineCategoryId],
+  );
 
   const {
     products,
@@ -104,14 +110,14 @@ const MedicineScreen = (props: any) => {
     refresh,
     loadMore,
   } = useCategoryProducts(productFilter, medicineProducts, {
-    enabled: true,
+    enabled: !homeLoading,
   });
 
   const {
     categories: healthConcerns,
     loading: healthConcernsLoading,
     refresh: refreshHealthConcerns,
-  } = useHealthConcernCategories(null);
+  } = useHealthConcernCategories(medicineCategoryId);
 
   const { brands, refresh: refreshBrands } = useBrands();
   const { recentProducts, loading: ordersLoading, refresh: refreshOrders } =
@@ -139,8 +145,11 @@ const MedicineScreen = (props: any) => {
   );
 
   const handleSearchPress = useCallback(() => {
-    navigateToSearchScreen(navigation);
-  }, [navigation]);
+    navigateToSearchScreen(navigation, {
+      categoryMode: 'health',
+      serviceCategoryId: medicineCategoryId || undefined,
+    });
+  }, [navigation, medicineCategoryId]);
 
   const handleViewOrderHistory = useCallback(() => {
     navigation.navigate('OrderHistory');
@@ -148,12 +157,19 @@ const MedicineScreen = (props: any) => {
 
   const onRefresh = useCallback(async () => {
     await Promise.all([
+      refreshHomeData(),
       refresh(),
       refreshOrders(),
       refreshBrands(),
       refreshHealthConcerns(),
     ]);
-  }, [refresh, refreshOrders, refreshBrands, refreshHealthConcerns]);
+  }, [
+    refreshHomeData,
+    refresh,
+    refreshOrders,
+    refreshBrands,
+    refreshHealthConcerns,
+  ]);
 
   const actionItems: ActionItem[] = useMemo(
     () => [
@@ -302,6 +318,7 @@ const MedicineScreen = (props: any) => {
             data={safeHealthConcerns}
             navigation={navigation}
             mode="health"
+            serviceCategoryId={medicineCategoryId}
           />
         )}
 
@@ -339,7 +356,7 @@ const MedicineScreen = (props: any) => {
       <Header
         title="Medicine Store"
         backIcon={Images.backIcon}
-        onBack={() => safeGoBack(props.navigation)}
+        onBack={() => safeGoBack(navigation)}
         subtitle="Health & Wellness"
         onSearchPress={handleSearchPress}
       />

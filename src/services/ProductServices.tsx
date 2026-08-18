@@ -10,12 +10,38 @@ export type ProductQuery = {
   service_category_id?: string;
   variant_id?: string;
   search?: string;
+  /** Discovery rail: home|featured|personalized|trending|best_sellers|new_arrivals|related|similar|recently_viewed */
+  section?: ProductSectionType | string;
   page?: number;
   page_size?: number;
 };
 
+export type ProductSectionType =
+  | 'home'
+  | 'featured'
+  | 'personalized'
+  | 'trending'
+  | 'best_sellers'
+  | 'new_arrivals'
+  | 'related'
+  | 'similar'
+  | 'recently_viewed';
+
+export const PRODUCT_SECTION_LABELS: Record<ProductSectionType, string> = {
+  home: 'For You',
+  featured: 'Featured Products',
+  personalized: 'Personalized For You',
+  trending: 'Trending Now',
+  best_sellers: 'Best Sellers',
+  new_arrivals: 'New Arrivals',
+  related: 'Related Products',
+  similar: 'Similar Products',
+  recently_viewed: 'Recently Viewed',
+};
+
 export type ProductCategoryQuery = {
   id?: string;
+  service_category_id?: string;
 };
 
 const appendQueryParam = (
@@ -40,11 +66,16 @@ const buildProductQuery = (params: ProductQuery = {}) => {
   appendQueryParam(query, 'service_category_id', params.service_category_id);
   appendQueryParam(query, 'variant_id', params.variant_id);
   appendQueryParam(query, 'search', params.search);
+  // Only send section when caller asks — do not default on every catalog query
+  appendQueryParam(query, 'section', params.section);
   appendQueryParam(query, 'page', params.page);
   appendQueryParam(query, 'page_size', params.page_size);
 
   const qs = query.toString();
+
+  console.log('buildProductQueryqsssss', qs);
   return qs ? `customers/products/?${qs}` : 'customers/products/';
+
 };
 
 const buildProductCategoryQuery = (params: ProductCategoryQuery = {}) => {
@@ -69,6 +100,11 @@ export const normalizeApiList = (response: any): any[] => {
 
   if (data && typeof data === 'object') {
     if (Array.isArray(data.results)) return data.results;
+    if (Array.isArray(data.products)) return data.products;
+    if (Array.isArray(data.medicines)) return data.medicines;
+    if (Array.isArray(data.suggested)) return data.suggested;
+    if (Array.isArray(data.suggested_products)) return data.suggested_products;
+    if (Array.isArray(data.suggested_medicines)) return data.suggested_medicines;
     if (Array.isArray(data.categories)) return data.categories;
     if (Array.isArray(data.product_categories)) return data.product_categories;
     if (Array.isArray(data.health_categories)) return data.health_categories;
@@ -77,11 +113,76 @@ export const normalizeApiList = (response: any): any[] => {
     if (Array.isArray(data.children)) return data.children;
   }
 
-  if (Array.isArray(response?.results)) {
-    return response.results;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.products)) return response.products;
+  if (Array.isArray(response?.medicines)) return response.medicines;
+  if (Array.isArray(response)) return response;
+
+  const numericKeys = Object.keys(response || {})
+    .filter(key => /^\d+$/.test(key))
+    .sort((a, b) => Number(a) - Number(b));
+  if (numericKeys.length > 0) {
+    const list = numericKeys.map(key => response[key]).filter(Boolean);
+    if (list.length > 0) return list;
   }
 
   return [];
+};
+
+/** Flatten nested catalog/suggested product so cards always have variant_id + name. */
+export const mapCatalogProductItem = (item: any) => {
+  if (!item || typeof item !== 'object') return null;
+
+  const nestedProduct =
+    item.product && typeof item.product === 'object' ? item.product : null;
+  const variants = Array.isArray(item.variants)
+    ? item.variants
+    : Array.isArray(nestedProduct?.variants)
+      ? nestedProduct.variants
+      : [];
+  const def =
+    variants.find((v: any) => v?.is_default) ||
+    variants[0] ||
+    item.variant ||
+    nestedProduct ||
+    {};
+
+  const variantId =
+    item.variant_id ??
+    def.variant_id ??
+    def.id ??
+    nestedProduct?.variant_id ??
+    null;
+  const productId = item.id ?? item.product_id ?? nestedProduct?.id ?? def.product_id;
+  const name = String(
+    item.name ||
+    item.product_name ||
+    item.title ||
+    nestedProduct?.name ||
+    def.name ||
+    '',
+  ).trim();
+
+  if (!variantId && !productId) return null;
+
+  return {
+    ...nestedProduct,
+    ...def,
+    ...item,
+    id: productId ?? variantId,
+    variant_id: variantId ?? productId,
+    name: name || 'Product',
+    selling_price:
+      def.selling_price ??
+      item.selling_price ??
+      item.price ??
+      nestedProduct?.selling_price,
+    mrp: def.mrp ?? item.mrp ?? nestedProduct?.mrp,
+    is_wishlist_item:
+      def.is_wishlist_item ??
+      item.is_wishlist_item ??
+      nestedProduct?.is_wishlist_item,
+  };
 };
 
 export const hasMoreProductPages = (
@@ -141,17 +242,17 @@ const resolveImageUrl = (item: any): string => {
 export const mapProductCategory = (item: any) => ({
   id: String(
     item?.id ??
-      item?.product_category_id ??
-      item?.category_id ??
-      item?.health_category_id ??
-      '',
+    item?.product_category_id ??
+    item?.category_id ??
+    item?.health_category_id ??
+    '',
   ),
   name: String(
     item?.name ??
-      item?.category_name ??
-      item?.product_category_name ??
-      item?.title ??
-      'Category',
+    item?.category_name ??
+    item?.product_category_name ??
+    item?.title ??
+    'Category',
   ),
   image_url: resolveImageUrl(item),
   parent_id:
@@ -173,26 +274,80 @@ export const getProduct = async (params: ProductQuery = {}) => {
   }
 };
 
+/**
+ * Discovery / ecommerce rails (catalog list).
+ * related|similar should pass product id; others work with section alone (default home).
+ */
+export const getProductsBySection = async ({
+  section = 'home',
+  productId,
+  page = 1,
+  page_size = 12,
+}: {
+  section?: ProductSectionType | string;
+  productId?: string | number | null;
+  page?: number;
+  page_size?: number;
+}) => {
+  const params: ProductQuery = {
+    section: section || 'home',
+    page,
+    page_size,
+  };
+  if (productId != null && String(productId).trim() !== '') {
+    params.id = String(productId).trim();
+  }
+  return getProduct(params);
+};
+
+/** Product Details discovery: GET customers/products/discovery/?section=&product_id= */
+export const getProductDiscovery = async ({
+  section,
+  productId,
+  page = 1,
+  page_size = 12,
+}: {
+  section: ProductSectionType | string;
+  productId?: string | number | null;
+  page?: number;
+  page_size?: number;
+}) => {
+  const query = new URLSearchParams();
+  appendQueryParam(query, 'section', section);
+  appendQueryParam(query, 'product_id', productId);
+  appendQueryParam(query, 'page', page);
+  appendQueryParam(query, 'page_size', page_size);
+  const qs = query.toString();
+  const path = qs
+    ? `customers/products/discovery/?${qs}`
+    : 'customers/products/discovery/';
+  return apiClient(path, { method: 'GET' });
+};
+
 const buildHealthCategoryQuery = (params: ProductCategoryQuery = {}) => {
   const query = new URLSearchParams();
   appendQueryParam(query, 'id', params.id);
+  appendQueryParam(query, 'service_category_id', params.service_category_id);
   const qs = query.toString();
   return qs ? `customers/health-categories/?${qs}` : 'customers/health-categories/';
 };
 
-export const getHealthCategories = async (parentId?: string) => {
+export const getHealthCategories = async (serviceCategoryId?: string) => {
   try {
-    const response = await apiClient(
-      buildHealthCategoryQuery(parentId ? { id: parentId } : {}),
-      { method: 'GET' },
-    );
+    // Only scope by service_category_id — id would filter to one health category row
+    const scoped = serviceCategoryId
+      ? { service_category_id: serviceCategoryId }
+      : {};
+    const response = await apiClient(buildHealthCategoryQuery(scoped), {
+      method: 'GET',
+    });
 
     if (response?.success !== false) {
       return response;
     }
 
-    const legacyQuery = parentId
-      ? `user/health-categories/?category_id=${encodeURIComponent(parentId)}`
+    const legacyQuery = serviceCategoryId
+      ? `user/health-categories/?category_id=${encodeURIComponent(serviceCategoryId)}`
       : 'user/health-categories/';
 
     return apiClient(legacyQuery, { method: 'GET' }, false);

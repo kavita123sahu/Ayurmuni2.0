@@ -6,6 +6,8 @@
  *   { quantity: 0 } → out of stock (disabled ADD, still tappable for details)
  */
 
+export const LOW_STOCK_THRESHOLD = 10;
+
 const toNumber = (value: unknown): number | null => {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -66,4 +68,55 @@ export const canAddProductQty = (item: any, nextQty: number): boolean => {
   }
 
   return nextQty <= stockQty;
+};
+
+export type ProductStockTone = 'out_of_stock' | 'low_stock' | 'in_stock';
+
+/** quantity > 0 and <= LOW_STOCK_THRESHOLD */
+export const isProductLowStock = (item: any): boolean => {
+  const stockQty = getProductStockQty(item);
+  if (stockQty === null || stockQty <= 0) {
+    return false;
+  }
+  return stockQty <= LOW_STOCK_THRESHOLD;
+};
+
+export const getProductStockDisplay = (
+  item: any,
+): {
+  qty: number | null;
+  tone: ProductStockTone;
+  label: string;
+  color: string;
+  backgroundColor: string;
+} => {
+  const qty = getProductStockQty(item);
+
+  if (qty === null || qty <= 0) {
+    return {
+      qty,
+      tone: 'out_of_stock',
+      label: 'Out of stock',
+      color: '#DC2626',
+      backgroundColor: '#FEE2E2',
+    };
+  }
+
+  if (qty <= LOW_STOCK_THRESHOLD) {
+    return {
+      qty,
+      tone: 'low_stock',
+      label: `Low stock — only ${qty} left`,
+      color: '#B45309',
+      backgroundColor: '#FEF3C7',
+    };
+  }
+
+  return {
+    qty,
+    tone: 'in_stock',
+    label: 'In stock',
+    color: '#16A34A',
+    backgroundColor: '#DCFCE7',
+  };
 };

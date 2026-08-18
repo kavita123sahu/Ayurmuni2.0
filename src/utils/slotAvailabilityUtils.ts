@@ -59,3 +59,44 @@ export const isSlotBookable = (slot: SlotLike, now = new Date()): boolean => {
   if (isSlotMissedOrExpired(slot, now)) return false;
   return true;
 };
+
+export const isSameSlot = (
+  a?: SlotLike | null,
+  b?: SlotLike | null,
+): boolean => {
+  if (a?.id == null || b?.id == null) return false;
+  return String(a.id) === String(b.id);
+};
+
+/** Attach selected calendar date when API omits it on each slot. */
+export const withSlotDate = (slot: SlotLike, date?: string): SlotLike => {
+  const slotDate = String(slot?.date ?? '').trim();
+  const fallbackDate = String(date ?? '').trim();
+  if (slotDate || !fallbackDate) return slot;
+  return { ...slot, date: fallbackDate };
+};
+
+export const pickFirstBookableSlot = (
+  slots: SlotLike[] = [],
+  date?: string,
+  now = new Date(),
+): SlotLike | null => {
+  for (const raw of slots) {
+    const slot = withSlotDate(raw, date);
+    if (isSlotBookable(slot, now)) return slot;
+  }
+  return null;
+};
+
+export const isSlotSelectedInList = (
+  selected: SlotLike | null | undefined,
+  slots: SlotLike[] = [],
+  date?: string,
+  now = new Date(),
+): boolean => {
+  if (!selected?.id) return false;
+  return slots.some((raw) => {
+    const slot = withSlotDate(raw, date);
+    return isSameSlot(selected, slot) && isSlotBookable(slot, now);
+  });
+};

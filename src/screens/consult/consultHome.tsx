@@ -15,7 +15,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -39,7 +39,7 @@ import { useConsultData } from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
 import Detailimages from '../../components/Detailimages';
 import { useBanners } from '../../hooks/useBanners';
-import { SCREEN_PADDING_H } from '../../constants/layout';
+import { SCREEN_PADDING_H, getScreenBottomPadding } from '../../constants/layout';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
@@ -67,6 +67,7 @@ import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils'
 import { useHomeData } from '../../hooks/UseHomeData';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
+import { goBackToHomeTab } from '../../navigation/navigationUtils';
 
 const SCREEN_PAD = getScreenPaddingH();
 const GRID_GAP = 10;
@@ -80,6 +81,8 @@ type NavigationProp =
   >;
 
 const ConsultHome = () => {
+  const insets = useSafeAreaInsets();
+  const listBottomPad = getScreenBottomPadding(insets);
   const { categories: dashboardCategories } = useHomeData();
   const consultCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'consult'),
@@ -339,9 +342,7 @@ const ConsultHome = () => {
       <Header
         title="Doctors Consultation"
         subtitle="Find best doctor"
-        onBack={() =>
-          navigation.goBack()
-        }
+        onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
         // onSearchPress={() => setSearchExpanded(true)}
         onRefreshPress={onRefresh}
@@ -448,7 +449,13 @@ const ConsultHome = () => {
           loading ? (
             <>
               <HomeCategorySkeleton />
-              <TopDoctorsCardSkeleton />
+              <TopDoctorsCardSkeleton count={6} />
+              <SectionHeader title="Suggested Products" />
+              <ProductGridSkeleton
+                cardWidth={CARD_W}
+                gap={GRID_GAP}
+                count={4}
+              />
               <View style={{ height: 40 }} />
             </>
           ) : (
@@ -481,50 +488,59 @@ const ConsultHome = () => {
                 </>
               )}
 
-              {productList.length > 0 && (
+              {(productList.length > 0 || productsLoading) && (
                 <>
                   <SectionHeader
                     title="Suggested Products"
-                    actionText="View all"
-                    onPress={() =>
-                      navigateToCategoryProducts(navigation, {
-                        categoryMode: 'product',
-                        categoryName: 'All Products',
-                      })
+                    actionText={productList.length > 0 ? 'View all' : undefined}
+                    onPress={
+                      productList.length > 0
+                        ? () =>
+                            navigateToCategoryProducts(navigation, {
+                              categoryMode: 'product',
+                              categoryName: 'All Products',
+                            })
+                        : undefined
                     }
                   />
-                  <FlatList
-                    data={productList}
-                    keyExtractor={(item, i) =>
-                      String(item.variant_id || i)
-                    }
-                    numColumns={2}
-                    scrollEnabled={false}
-                    renderItem={renderProduct}
-                    columnWrapperStyle={styles.productColumn}
-                    ListFooterComponent={
-                      productsLoadingMore ? (
-                        <ProductGridSkeleton
-                          cardWidth={CARD_W}
-                          gap={GRID_GAP}
-                          count={2}
-                        />
-                      ) : null
-                    }
-                  />
+                  {productsLoading && productList.length === 0 ? (
+                    <ProductGridSkeleton
+                      cardWidth={CARD_W}
+                      gap={GRID_GAP}
+                      count={4}
+                    />
+                  ) : (
+                    <FlatList
+                      data={productList}
+                      keyExtractor={(item, i) =>
+                        String(item.variant_id || i)
+                      }
+                      numColumns={2}
+                      scrollEnabled={false}
+                      renderItem={renderProduct}
+                      columnWrapperStyle={styles.productColumn}
+                      ListFooterComponent={
+                        productsLoadingMore ? (
+                          <ProductGridSkeleton
+                            cardWidth={CARD_W}
+                            gap={GRID_GAP}
+                            count={2}
+                          />
+                        ) : null
+                      }
+                    />
+                  )}
                 </>
               )}
 
               {!productList.length && !productsLoading ? (
                 <AyurmuniBrandShade compact />
               ) : null}
-
-              <View style={{ height: 100 }} />
             </>
           )
         }
 
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: listBottomPad }]}
       />
 
     </SafeAreaView>
@@ -544,7 +560,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingBottom: SPACING.xxl,
+    paddingBottom: SPACING.lg,
   },
 
   productColumn: {

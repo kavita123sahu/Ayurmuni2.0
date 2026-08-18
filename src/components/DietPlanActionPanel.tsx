@@ -10,7 +10,7 @@ import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon from './TablerIcon';
 import type { DietListStatus } from '../utils/dietPlanUtils';
-import { getDietRepeatCount, getDietRunLabel } from '../utils/dietPlanUtils';
+import { getDietRepeatCount, getDietRunLabel, getDietNextRepeatNumber } from '../utils/dietPlanUtils';
 
 type Props = {
   status: DietListStatus;
@@ -53,6 +53,7 @@ const DietPlanActionPanel = ({
   const [showMore, setShowMore] = useState(false);
   const repeatCount = getDietRepeatCount(plan);
   const runLabel = getDietRunLabel(plan);
+  const nextRepeatNumber = getDietNextRepeatNumber(plan);
 
   if (status === 'not_started') return null;
 
@@ -69,7 +70,7 @@ const DietPlanActionPanel = ({
 
   const statusLabel =
     status === 'active'
-      ? 'Tracking'
+      ? 'Active'
       : status === 'paused'
         ? 'Paused'
         : status === 'completed'
@@ -80,11 +81,11 @@ const DietPlanActionPanel = ({
 
   const hint =
     status === 'active'
-      ? 'Meal tracking is live. Pause anytime — your progress is saved.'
+      ? 'This plan is active. Pause anytime — progress is saved. Only one diet can be active.'
       : status === 'paused'
-        ? 'Paused — only Resume is available. Tap Resume to continue meal tracking.'
+        ? 'Paused — tap Resume to continue. If another plan is active, you’ll be asked to pause it first.'
         : status === 'completed'
-          ? 'Plan completed. Repeat starts a new run from Day 1 and increases your repeat count.'
+          ? `Plan completed (repeat count: ${repeatCount}). Tap Repeat to start run #${nextRepeatNumber}. If another plan is active, you’ll be asked to pause it first.`
           : status === 'stopped'
             ? 'This run was stopped. Start again for a new cycle. Repeat is only for completed plans.'
             : 'Start the plan to unlock tracking controls.';
@@ -110,7 +111,7 @@ const DietPlanActionPanel = ({
         : status === 'completed'
           ? {
               key: 'repeat',
-              label: 'Repeat this plan',
+              label: `Repeat plan (#${nextRepeatNumber})`,
               icon: 'exchange' as const,
               onPress: onRepeat,
               tone: 'primary' as const,
@@ -139,8 +140,12 @@ const DietPlanActionPanel = ({
         </View>
         <View style={styles.runPill}>
           <TablerIcon name="exchange" size={13} color={Colors.primaryColor} />
-          <Text style={styles.runText}>{runLabel}</Text>
-          {repeatCount > 0 ? (
+          <Text style={styles.runText}>
+            {status === 'completed'
+              ? `Repeats: ${repeatCount}`
+              : runLabel}
+          </Text>
+          {status !== 'completed' && repeatCount > 0 ? (
             <Text style={styles.runCount}>×{repeatCount}</Text>
           ) : null}
         </View>

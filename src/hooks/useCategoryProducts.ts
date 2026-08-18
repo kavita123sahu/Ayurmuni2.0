@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getProduct,
   hasMoreProductPages,
+  mapCatalogProductItem,
   normalizeApiList,
   PRODUCT_PAGE_SIZE,
   ProductQuery,
@@ -136,7 +137,9 @@ export const useCategoryProducts = (
           return;
         }
 
-        const apiResults = normalizeApiList(response);
+        const apiResults = normalizeApiList(response)
+          .map(mapCatalogProductItem)
+          .filter(Boolean);
         const more = hasMoreProductPages(response, apiResults.length, size);
 
         setHasMore(more);

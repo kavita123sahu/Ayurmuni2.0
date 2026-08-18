@@ -1,27 +1,23 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
+  Text,
   FlatList,
   Image,
   StyleSheet,
   Animated,
   ImageSourcePropType,
   PixelRatio,
-  Modal,
   TouchableOpacity,
-  Pressable,
-  Text,
-  StatusBar,
-  Dimensions,
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { BANNER, getContentWidth, getScreenPaddingH } from '../constants/responsive';
+import { BANNER, getContentWidth, getScreenPaddingH, TYPO } from '../constants/responsive';
 import TablerIcon from './TablerIcon';
+import ProductImagePreviewModal from './ProductImagePreviewModal';
 
 const SPACING = 10;
 const AUTO_SLIDE_MS = 4500;
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 type Props = {
   images: any[];
@@ -36,6 +32,12 @@ type Props = {
   mode?: 'product' | 'banner';
   /** Disable fullscreen preview (banner default) */
   enablePreview?: boolean;
+};
+
+const getUriFromSource = (source: ImageSourcePropType | null): string | null => {
+  if (!source || typeof source === 'number') return null;
+  const uri = (source as { uri?: string })?.uri;
+  return uri ? String(uri) : null;
 };
 
 const Detailimages: React.FC<Props> = ({
@@ -59,11 +61,15 @@ const Detailimages: React.FC<Props> = ({
   const finalHeight =
     itemHeight ?? PixelRatio.roundToNearestPixel(finalWidth / aspectRatio);
 
+  const slideGap = embedded ? 0 : SPACING;
+  const slideSize = finalWidth + slideGap;
+
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+  const prefetchedRef = useRef<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const slideSize = finalWidth + SPACING;
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
 
   const safeImages = useMemo(
     () => (Array.isArray(images) ? images.filter(Boolean) : []),
@@ -80,12 +86,43 @@ const Detailimages: React.FC<Props> = ({
     return uri ? { uri: String(uri) } : null;
   }, []);
 
+  const resolvedImages = useMemo(() => {
+    const out: { item: any; source: ImageSourcePropType; uri: string | null }[] =
+      [];
+    safeImages.forEach(item => {
+      const source = getImageSource(item);
+      if (source) {
+        out.push({ item, source, uri: getUriFromSource(source) });
+      }
+    });
+    return out;
+  }, [safeImages, getImageSource]);
+
+  const previewImages = useMemo(
+    () =>
+      resolvedImages.map(entry => ({
+        source: entry.source,
+        uri: entry.uri ?? undefined,
+      })),
+    [resolvedImages],
+  );
+
   useEffect(() => {
-    if (!autoSlide || safeImages.length <= 1 || previewIndex !== null) return;
+    resolvedImages.forEach(entry => {
+      if (!entry.uri || prefetchedRef.current.has(entry.uri)) return;
+      prefetchedRef.current.add(entry.uri);
+      Image.prefetch(entry.uri).catch(() => {
+        prefetchedRef.current.delete(entry.uri!);
+      });
+    });
+  }, [resolvedImages]);
+
+  useEffect(() => {
+    if (!autoSlide || resolvedImages.length <= 1 || previewVisible) return;
 
     const timer = setInterval(() => {
       setActiveIndex(prev => {
-        const next = (prev + 1) % safeImages.length;
+        const next = (prev + 1) % resolvedImages.length;
         flatListRef.current?.scrollToOffset({
           offset: next * slideSize,
           animated: true,
@@ -95,21 +132,19 @@ const Detailimages: React.FC<Props> = ({
     }, AUTO_SLIDE_MS);
 
     return () => clearInterval(timer);
-  }, [autoSlide, safeImages.length, slideSize, previewIndex]);
+  }, [autoSlide, resolvedImages.length, slideSize, previewVisible]);
 
   const openPreview = (index: number) => {
-    if (!allowPreview) return;
-    setPreviewIndex(index);
+    if (!allowPreview || previewImages.length === 0) return;
+    setPreviewIndex(Math.min(index, previewImages.length - 1));
+    setPreviewVisible(true);
   };
 
   const closePreview = () => {
-    setPreviewIndex(null);
+    setPreviewVisible(false);
   };
 
-  const previewSource =
-    previewIndex !== null ? getImageSource(safeImages[previewIndex]) : null;
-
-  if (safeImages.length === 0) return null;
+  if (resolvedImages.length === 0) return null;
 
   return (
     <View
@@ -121,7 +156,7 @@ const Detailimages: React.FC<Props> = ({
     >
       <FlatList
         ref={flatListRef}
-        data={safeImages}
+        data={resolvedImages}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(_, index) => `banner-${index}`}
@@ -130,21 +165,28 @@ const Detailimages: React.FC<Props> = ({
         decelerationRate="fast"
         disableIntervalMomentum
         bounces={false}
-        removeClippedSubviews
-        contentContainerStyle={[styles.listContent, { paddingHorizontal: !isBanner ? SPACING : undefined }]}
+        removeClippedSubviews={resolvedImages.length > 4}
+        initialNumToRender={Math.min(resolvedImages.length, 6)}
+        maxToRenderPerBatch={Math.min(resolvedImages.length, 6)}
+        windowSize={Math.min(resolvedImages.length, 5)}
+        contentContainerStyle={[
+          embedded ? styles.listContentEmbedded : styles.listContent,
+          {
+            paddingHorizontal:
+              embedded || isBanner ? 0 : SPACING,
+          },
+        ]}
         onMomentumScrollEnd={e => {
-          const index = Math.round(
-            e.nativeEvent.contentOffset.x / slideSize,
-          );
-          setActiveIndex(Math.min(index, safeImages.length - 1));
+          const index = Math.round(e.nativeEvent.contentOffset.x / slideSize);
+          setActiveIndex(Math.min(index, resolvedImages.length - 1));
         }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false },
         )}
         scrollEventThrottle={16}
-        renderItem={({ item, index }) => {
-          const source = getImageSource(item);
+        renderItem={({ item: entry, index }) => {
+          const source = entry.source;
           return (
             <TouchableOpacity
               activeOpacity={allowPreview ? 0.92 : 1}
@@ -154,7 +196,7 @@ const Detailimages: React.FC<Props> = ({
                 styles.slide,
                 isBanner && styles.slideBanner,
                 {
-                  marginLeft: index === 0 ? 0 : SPACING,
+                  marginLeft: index === 0 ? 0 : slideGap,
                   width: finalWidth,
                   height: finalHeight,
                 },
@@ -169,24 +211,33 @@ const Detailimages: React.FC<Props> = ({
               ) : (
                 <View style={styles.placeholder} />
               )}
-              {allowPreview ? (
-                <View style={styles.tapHint}>
-                  <TablerIcon name="eye" size={14} color="#FFFFFF" />
-                </View>
-              ) : null}
             </TouchableOpacity>
           );
         }}
       />
 
-      {showIndicator && safeImages.length > 1 && (
+      {allowPreview ? (
+        <TouchableOpacity
+          style={styles.previewBtn}
+          onPress={() => openPreview(activeIndex)}
+          activeOpacity={0.85}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <TablerIcon name="eye" size={14} color="#FFFFFF" />
+          <Text style={styles.previewBtnText}>Preview</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {showIndicator && resolvedImages.length > 1 && (
         <View
           style={[
             styles.indicatorContainer,
+            (isBanner || embedded) && styles.indicatorOverlay,
             isBanner && styles.indicatorBanner,
+            embedded && styles.indicatorEmbedded,
           ]}
         >
-          {safeImages.map((_, index) => {
+          {resolvedImages.map((_, index) => {
             const inputRange = [
               (index - 1) * slideSize,
               index * slideSize,
@@ -229,39 +280,14 @@ const Detailimages: React.FC<Props> = ({
         </View>
       )}
 
-      <Modal
-        visible={previewIndex !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={closePreview}
-        statusBarTranslucent
-      >
-        <View style={styles.previewOverlay}>
-          <StatusBar barStyle="light-content" backgroundColor="#000000" />
-          <Pressable style={StyleSheet.absoluteFill} onPress={closePreview} />
-
-          <View style={styles.previewHeader}>
-            <Text style={styles.previewCounter}>
-              {(previewIndex ?? 0) + 1} / {safeImages.length}
-            </Text>
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={closePreview}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <TablerIcon name="x" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {previewSource ? (
-            <Image
-              source={previewSource}
-              style={styles.previewImage}
-              resizeMode="contain"
-            />
-          ) : null}
-        </View>
-      </Modal>
+      {allowPreview ? (
+        <ProductImagePreviewModal
+          images={previewImages}
+          visible={previewVisible}
+          initialIndex={previewIndex}
+          onClose={closePreview}
+        />
+      ) : null}
     </View>
   );
 };
@@ -272,18 +298,23 @@ const styles = StyleSheet.create({
   wrapper: {
     marginTop: 6,
     marginBottom: 10,
+    position: 'relative',
   },
   wrapperEmbedded: {
     marginTop: 0,
     marginBottom: 0,
+    overflow: 'hidden',
+    borderRadius: 16,
   },
   wrapperBanner: {
     marginTop: 0,
     marginBottom: 4,
   },
   listContent: {
-
     paddingRight: SPACING,
+  },
+  listContentEmbedded: {
+    paddingRight: 0,
   },
   slide: {
     backgroundColor: '#FFFFFF',
@@ -293,15 +324,8 @@ const styles = StyleSheet.create({
     borderColor: '#E8EDF2',
   },
   slideBanner: {
-
-    // backgroundColor: '#0B2E26',
     borderRadius: 18,
     borderWidth: 0,
-    // elevation: 2,
-    // shadowColor: '#0D614E',
-    // shadowOpacity: 0.12,
-    // shadowRadius: 8,
-    // shadowOffset: { width: 0, height: 3 },
   },
   image: {
     width: '100%',
@@ -311,65 +335,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F1F5F9',
   },
-  tapHint: {
+  previewBtn: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    top: 10,
+    right: 10,
+    zIndex: 6,
+    elevation: 6,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(15, 23, 42, 0.62)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  previewBtnText: {
+    color: '#FFFFFF',
+    fontSize: TYPO.caption,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 10,
   },
-  indicatorBanner: {
+  indicatorOverlay: {
     position: 'absolute',
-    bottom: 12,
     left: 0,
     right: 0,
     marginTop: 0,
+  },
+  indicatorBanner: {
+    bottom: 12,
+  },
+  indicatorEmbedded: {
+    bottom: 28,
   },
   dot: {
     height: 6,
     borderRadius: 3,
     marginHorizontal: 4,
-  },
-  previewOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.94)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewHeader: {
-    position: 'absolute',
-    top: 48,
-    left: 16,
-    right: 16,
-    zIndex: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  previewCounter: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewImage: {
-    width: SCREEN_W,
-    height: SCREEN_H * 0.72,
   },
 });

@@ -80,12 +80,13 @@ export type RootStackParamList = {
     TopCategories: undefined;
     ReviewPage: undefined;
     ShareExperienceScreen: {
-        entityType?: 'doctor' | 'product';
+        entityType?: 'doctor' | 'product' | 'diet_plan';
         entityName?: string;
         entitySubtitle?: string;
         appointmentId?: string;
         variantId?: string;
         orderId?: string;
+        patientDietPlanId?: string;
         initialRating?: number;
         initialReview?: string;
         initialImages?: string[];

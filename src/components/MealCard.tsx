@@ -11,6 +11,7 @@ import { Colors } from "../common/Colors";
 import TablerIcon from "./TablerIcon";
 import { normalizeDietFoodItem, resolveMealImage } from "../utils/dietPlanUtils";
 import { resolveImageSource } from "../utils/imageUtils";
+import { DIET_UI, RADIUS, SPACING, TYPO } from "../constants/responsive";
 
 interface MealProps {
     data: any;
@@ -35,94 +36,73 @@ const MealCard = ({ data, navigation, onLog }: MealProps) => {
     const subtitle = toDisplayText(data?.subtitle);
     const type = toDisplayText(data?.type, 'MEAL');
     const time = toDisplayText(data?.time);
-    const foodItems = Array.isArray(data?.dietItemDetails)
-        ? data.dietItemDetails.filter(
-              (f: any) => f?.name || f?.label || f?.quantity,
-          )
-        : [];
-    const primaryQty = String(foodItems[0]?.quantity || '').trim();
+    const canLog = data?.status === 'log';
+
+    const openDetails = () =>
+        navigation?.navigate?.('MealDetails', { item: data });
 
     return (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigation?.navigate?.('MealDetails', { item: data })}
-            activeOpacity={0.9}
-        >
-            <Image source={imageSource} style={styles.image} />
+        <View style={styles.card}>
+            <View style={styles.imageWrap}>
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={openDetails}
+                    style={styles.imageHit}
+                >
+                    <Image source={imageSource} style={styles.image} />
+                </TouchableOpacity>
 
-            <View style={styles.content}>
+                <TouchableOpacity
+                    style={[styles.logOverlay, !canLog && styles.logOverlayDone]}
+                    onPress={onLog}
+                    activeOpacity={0.85}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                >
+                    {canLog ? (
+                        <Text style={styles.logText}>LOG</Text>
+                    ) : (
+                        <TablerIcon
+                            name="circle-check"
+                            size={16}
+                            color={Colors.primaryColor}
+                        />
+                    )}
+                </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+                style={styles.content}
+                onPress={openDetails}
+                activeOpacity={0.9}
+            >
                 <View style={styles.topRow}>
-                    <Text style={styles.type}>{type}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TablerIcon name="clock" size={20} color="#6B7280" />
-                        <Text style={styles.time}>  {time}</Text>
-                    </View>
-                </View>
-
-                <View style={styles.titleRow}>
-                    <Text style={styles.title} numberOfLines={2}>
-                        {title}
+                    <Text style={styles.type} numberOfLines={1}>
+                        {type}
                     </Text>
-                    {!!primaryQty && (
-                        <View style={styles.qtyBadge}>
-                            <Text style={styles.qtyBadgeText}>{primaryQty}</Text>
+                    {!!time && (
+                        <View style={styles.timeRow}>
+                            <TablerIcon name="clock" size={13} color="#6B7280" />
+                            <Text style={styles.time}>{time}</Text>
                         </View>
                     )}
                 </View>
 
-                {foodItems.length > 1 ? (
-                    <View style={styles.qtyChipRow}>
-                        {foodItems.slice(1, 4).map((food: any, index: number) => {
-                            const name = String(food?.name || food?.label || '').trim();
-                            const qty = String(food?.quantity || '').trim();
-                            if (!name && !qty) return null;
-                            return (
-                                <View style={styles.qtyChip} key={`${name}-${index}`}>
-                                    <Text style={styles.qtyChipName} numberOfLines={1}>
-                                        {name || 'Item'}
-                                    </Text>
-                                    {!!qty && (
-                                        <Text style={styles.qtyChipQty}>{qty}</Text>
-                                    )}
-                                </View>
-                            );
-                        })}
-                    </View>
-                ) : !!subtitle ? (
+                <Text style={styles.title} numberOfLines={1}>
+                    {title}
+                </Text>
+
+                {!!subtitle ? (
                     <Text style={styles.subtitle} numberOfLines={1}>
                         {subtitle}
                     </Text>
                 ) : null}
 
-                <View style={styles.bottomRow}>
-                    <Text style={styles.kcal}>
-                        {Number(data?.kcal) || 0} <Text style={styles.kcalText}>KCAL</Text>
-                    </Text>
-
-                    {data?.status === "log" ? (
-                        <TouchableOpacity
-                            style={styles.logBtn}
-                            onPress={e => {
-                                e?.stopPropagation?.();
-                                onLog?.();
-                            }}
-                        >
-                            <Text style={styles.logText}>LOG</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity
-                            style={styles.doneBtn}
-                            onPress={e => {
-                                e?.stopPropagation?.();
-                                onLog?.();
-                            }}
-                        >
-                            <TablerIcon name="circle-check" size={28} color={Colors.primaryColor} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </View>
-        </TouchableOpacity>
+                <Text style={styles.kcal}>
+                    {Number(data?.kcal) || 0}{' '}
+                    <Text style={styles.kcalText}>KCAL</Text>
+                </Text>
+            </TouchableOpacity>
+        </View>
     );
 };
 
@@ -131,25 +111,65 @@ export default MealCard;
 const styles = StyleSheet.create({
     card: {
         flexDirection: "row",
-        backgroundColor: "#ffff",
-        borderRadius: 20,
+        height: DIET_UI.mealCardHeight,
+        backgroundColor: "#FFFFFF",
+        borderRadius: RADIUS.lg,
         borderWidth: 1,
         borderColor: Colors.borderColor,
-        marginBottom: 14,
+        marginBottom: SPACING.md,
         overflow: "hidden",
     },
 
-    image: {
-        width: 110,
-        height: "100%",
+    imageWrap: {
+        width: DIET_UI.mealImageWidth,
+        height: DIET_UI.mealImageHeight,
         backgroundColor: Colors.cardBackground,
+        borderRightWidth: 1,
+        borderRightColor: Colors.borderColor,
+    },
+
+    imageHit: {
+        width: '100%',
+        height: '100%',
+    },
+
+    image: {
+        width: '100%',
+        height: '100%',
+    },
+
+    logOverlay: {
+        position: 'absolute',
+        left: 8,
+        right: 8,
+        bottom: 8,
+        height: 28,
+        borderRadius: RADIUS.pill,
+        backgroundColor: Colors.primaryColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 4,
+        elevation: 4,
+    },
+
+    logOverlayDone: {
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: Colors.borderColor
+        borderColor: Colors.primaryColor,
+    },
+
+    logText: {
+        color: "#fff",
+        fontSize: TYPO.caption,
+        fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 0.4,
     },
 
     content: {
         flex: 1,
-        padding: 14,
+        minWidth: 0,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm + 2,
         justifyContent: "space-between",
     },
 
@@ -157,129 +177,54 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        gap: SPACING.sm,
     },
 
     type: {
-        fontSize: 11,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-        letterSpacing: 0.5,
-    },
-
-    time: {
-        fontSize: 12,
-        color: "#6B7280",
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
-        marginTop: 2,
-    },
-
-    title: {
         flex: 1,
-        fontSize: 14,
-        color: Colors.black,
-        fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 20,
-    },
-
-    qtyBadge: {
-        backgroundColor: '#ECFDF5',
-        borderWidth: 1,
-        borderColor: '#A7F3D0',
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        maxWidth: 88,
-    },
-
-    qtyBadgeText: {
-        fontSize: 11,
+        minWidth: 0,
+        fontSize: TYPO.caption,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
     },
 
-    qtyChipRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginTop: 6,
-    },
-
-    qtyChip: {
+    timeRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 999,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        maxWidth: '100%',
+        flexShrink: 0,
     },
 
-    qtyChipName: {
-        fontSize: 10,
-        color: '#475569',
+    time: {
+        fontSize: TYPO.sm,
+        color: "#6B7280",
         fontFamily: Fonts.PoppinsMedium,
-        maxWidth: 90,
     },
 
-    qtyChipQty: {
-        fontSize: 10,
-        color: Colors.primaryColor,
+    title: {
+        fontSize: TYPO.body,
+        color: Colors.black,
         fontFamily: Fonts.PoppinsSemiBold,
+        lineHeight: 18,
     },
 
     subtitle: {
-        fontSize: 12,
+        fontSize: TYPO.sm,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsRegular,
-        marginTop: 4,
-    },
-
-    bottomRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: 8,
     },
 
     kcal: {
-        fontSize: 16,
+        fontSize: TYPO.md,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     kcalText: {
-        fontSize: 12,
+        fontSize: TYPO.sm,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsMedium,
-    },
-
-    logBtn: {
-        backgroundColor: Colors.primaryColor,
-        paddingHorizontal: 25,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-
-    logText: {
-        color: "#fff",
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    doneBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        justifyContent: "center",
-        alignItems: "center",
     },
 });

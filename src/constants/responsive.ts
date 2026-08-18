@@ -69,3 +69,17 @@ export const getStickyBottom = (insets: EdgeInsets, offset = 16) =>
 /** List bottom padding when a sticky CTA sits above the tab bar / home indicator. */
 export const getListBottomPadding = (insets: EdgeInsets, ctaHeight = BUTTON.height) =>
   getStickyBottom(insets, 16) + ctaHeight + SPACING.lg;
+
+/** Fixed diet-tracking layout — same px on every device. */
+export const DIET_UI = {
+  mealCardHeight: 100,
+  mealImageWidth: 92,
+  mealImageHeight: 100,
+  vitalityCircle: 112,
+  vitalityCircleBorder: 8,
+  hydrationIcon: 40,
+  hydrationAction: 38,
+  mealDetailHeroHeight: 200,
+  detailHeroHeight: 200,
+  detailCardOverlap: 20,
+} as const;

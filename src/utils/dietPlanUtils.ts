@@ -2,6 +2,8 @@
  * Diet plan helpers — list / details / plan_json meals + frontend nutrition.
  */
 
+import { isDietPlanAssignmentReviewed } from './reviewedDietPlans';
+
 export type DietMeal = {
   id: string;
   dayKey: string;
@@ -47,8 +49,83 @@ export type DietPlanSummary = {
   repeat_count?: number | null;
   ended_at?: string | null;
   health_diseases?: { id: string; name: string }[];
+  avg_rating?: number | null;
+  total_reviews?: number | null;
+  my_rating?: number | null;
+  is_reviewed?: boolean;
   [key: string]: any;
 };
+
+/** True when avg_rating > 0 (plan already has a rating). */
+export const isDietPlanReviewed = (plan: any): boolean => {
+  if (!plan) return false;
+
+  const avg = Number(plan.avg_rating);
+  if (Number.isFinite(avg) && avg > 0) return true;
+
+  // Optimistic / local until API returns updated avg_rating
+  const my = Number(plan.my_rating);
+  if (Number.isFinite(my) && my > 0) return true;
+  if (isDietPlanAssignmentReviewed(plan.patient_diet_plan_id)) return true;
+
+  return false;
+};
+
+/** Show "Rate this diet plan" only when avg_rating is 0 or missing. */
+export const canShowDietPlanRateButton = (plan: any): boolean => {
+  if (!plan) return false;
+  return !isDietPlanReviewed(plan);
+};
+
+/** Rating label for list/detail cards — hide when no meaningful rating yet. */
+export const getDietPlanRatingLabel = (plan: any): string | null => {
+  if (!plan) return null;
+
+  const avgRaw = plan.avg_rating;
+  const myRaw = plan.my_rating ?? plan.patient_rating ?? plan.review?.rating;
+
+  const avg =
+    avgRaw != null && avgRaw !== '' && Number.isFinite(Number(avgRaw))
+      ? Number(avgRaw)
+      : null;
+  const my =
+    myRaw != null && myRaw !== '' && Number.isFinite(Number(myRaw))
+      ? Number(myRaw)
+      : null;
+
+  const totalReviews = Number(plan.total_reviews) || 0;
+  const value =
+    avg != null && avg > 0
+      ? avg
+      : my != null && my > 0
+        ? my
+        : avg != null && totalReviews > 0
+          ? avg
+          : null;
+
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+};
+
+export type DietPlanRatingMeta = {
+  label: string | null;
+  totalReviews: number;
+  hasRating: boolean;
+};
+
+export const getDietPlanRatingMeta = (plan: any): DietPlanRatingMeta => {
+  const label = getDietPlanRatingLabel(plan);
+  const totalReviews = Math.max(0, Number(plan?.total_reviews) || 0);
+  return {
+    label,
+    totalReviews,
+    hasRating: label != null,
+  };
+};
+
+/** Badge text — avg rating only. */
+export const formatDietPlanRatingBadgeText = (plan: any): string | null =>
+  getDietPlanRatingLabel(plan);
 
 export type DietNutrition = {
   goalKcal: number;
@@ -67,6 +144,75 @@ export type DietNutrition = {
   mealsTotal: number;
   mealProgressPct: number;
 };
+
+/** One glass = 250 ml (4 glasses = 1 L). */
+export const WATER_GLASS_ML = 250;
+export const WATER_LITER_ML = 1000;
+export const DEFAULT_WATER_GOAL_ML = 3000;
+
+export type WaterGoalOption = {
+  label: string;
+  value: number;
+  recommended?: boolean;
+};
+
+export const WATER_GOAL_OPTIONS: WaterGoalOption[] = [
+  { label: '1.5 L', value: 1500 },
+  { label: '2 L', value: 2000 },
+  { label: '2.5 L', value: 2500 },
+  { label: '3 L', value: 3000, recommended: true },
+  { label: '3.5 L', value: 3500 },
+];
+
+export const getWaterGlassCount = (goalMl: number): number =>
+  Math.max(1, Math.ceil((Number(goalMl) || 0) / WATER_GLASS_ML));
+
+export const parseWaterProgressJson = (plan?: any): Record<string, number> => {
+  const raw =
+    plan?.daily_water_intake_progress_json ??
+    plan?.water_intake_progress_json ??
+    null;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  Object.entries(raw).forEach(([key, value]) => {
+    const ml = Number(value);
+    if (Number.isFinite(ml) && ml >= 0) {
+      out[String(key).toLowerCase()] = ml;
+    }
+  });
+  return out;
+};
+
+export const getWaterGoalMl = (plan?: any): number => {
+  const goal = Number(
+    plan?.daily_water_intake_goal ??
+      plan?.water_intake_goal ??
+      DEFAULT_WATER_GOAL_ML,
+  );
+  return Number.isFinite(goal) && goal > 0 ? goal : DEFAULT_WATER_GOAL_ML;
+};
+
+export const getWaterIntakeForDay = (plan: any, dayKey: string): number => {
+  const progress = parseWaterProgressJson(plan);
+  const key = String(dayKey || 'day_1').toLowerCase();
+  if (progress[key] != null) return progress[key];
+  const match = Object.entries(progress).find(
+    ([k]) => k.toLowerCase() === key,
+  );
+  return match ? Number(match[1]) : 0;
+};
+
+export const buildWaterProgressPatch = (
+  plan: any,
+  dayKey: string,
+  intakeMl: number,
+): Record<string, number> => ({
+  ...parseWaterProgressJson(plan),
+  [String(dayKey || 'day_1').toLowerCase()]: Math.max(0, intakeMl),
+});
+
+export const formatWaterLiters = (ml: number): string =>
+  `${((Number(ml) || 0) / 1000).toFixed(1)} L`;
 
 export type DietProgressItem = {
   day: string;
@@ -390,6 +536,20 @@ export const getDietRunLabel = (plan?: any): string => {
   return `Repeat #${count}`;
 };
 
+/** Next repeat cycle number after a completed run (1 = first repeat). */
+export const getDietNextRepeatNumber = (plan?: any): number =>
+  getDietRepeatCount(plan) + 1;
+
+/** Completed-plan summary for repeat UI */
+export const getDietRepeatSummary = (plan?: any): string => {
+  const count = getDietRepeatCount(plan);
+  const next = count + 1;
+  if (count <= 0) {
+    return 'First completion — next run will be Repeat #1';
+  }
+  return `Completed ${count} repeat${count === 1 ? '' : 's'} — next run will be Repeat #${next}`;
+};
+
 /** Display status for diet plan list cards */
 export type DietListStatus =
   | 'active'
@@ -400,7 +560,12 @@ export type DietListStatus =
 
 export const getDietListStatus = (plan?: any): DietListStatus => {
   // Prefer assignment status only — never treat meal/progress "completed" as plan status.
-  const status = String(plan?.patient_assignment_status || '')
+  const status = String(
+    plan?.patient_assignment_status ||
+      plan?.assignment_status ||
+      plan?.patient_diet_status ||
+      '',
+  )
     .toLowerCase()
     .trim();
   // Exact tokens only (avoid matching "incomplete" / "not_completed")
@@ -432,8 +597,28 @@ export const getDietListStatus = (plan?: any): DietListStatus => {
   ) {
     return 'active';
   }
-  if (plan?.patient_diet_plan_id && !status) return 'paused';
+  // Assignment id alone without status is not enough to treat as paused —
+  // that left users stuck on Resume with nothing to start.
   return 'not_started';
+};
+
+/** Backend said another diet plan is already active (cannot start/repeat yet). */
+export const isAlreadyActiveDietPlanError = (resOrMessage: any): boolean => {
+  const msg = String(
+    typeof resOrMessage === 'string'
+      ? resOrMessage
+      : extractDietApiError(resOrMessage, resOrMessage?.message || ''),
+  )
+    .toLowerCase()
+    .trim();
+  if (!msg) return false;
+  if (msg.includes('no active')) return false;
+  return (
+    msg.includes('already has an active') ||
+    (msg.includes('already') && msg.includes('active')) ||
+    (msg.includes('active diet') && msg.includes('already')) ||
+    (msg.includes('only one') && msg.includes('active'))
+  );
 };
 
 export const isNoActiveDietPlanError = (res: any): boolean => {
@@ -484,28 +669,35 @@ export const mergePlanAssignmentFields = (
 
   const byCatalogId = new Map<string, DietPlanSummary>();
   assignmentPlans.forEach(p => {
-    const id = String(p.id || '').trim();
-    if (!id) return;
+    const keys = [
+      String(p.id || '').trim(),
+      String(p.diet_plan_id || '').trim(),
+    ].filter(Boolean);
+    if (!keys.length) return;
     if (!(p.patient_diet_plan_id || p.patient_assignment_status)) return;
-    const prev = byCatalogId.get(id);
-    if (!prev) {
-      byCatalogId.set(id, p);
-      return;
-    }
-    const rankP = assignmentStatusRank(p);
-    const rankPrev = assignmentStatusRank(prev);
-    if (
-      rankP > rankPrev ||
-      (rankP === rankPrev && assignmentStartedMs(p) >= assignmentStartedMs(prev))
-    ) {
-      byCatalogId.set(id, p);
-    }
+    keys.forEach(id => {
+      const prev = byCatalogId.get(id);
+      if (!prev) {
+        byCatalogId.set(id, p);
+        return;
+      }
+      const rankP = assignmentStatusRank(p);
+      const rankPrev = assignmentStatusRank(prev);
+      if (
+        rankP > rankPrev ||
+        (rankP === rankPrev && assignmentStartedMs(p) >= assignmentStartedMs(prev))
+      ) {
+        byCatalogId.set(id, p);
+      }
+    });
   });
 
   if (!byCatalogId.size) return plans;
 
   return plans.map(plan => {
-    const overlay = byCatalogId.get(String(plan.id));
+    const overlay =
+      byCatalogId.get(String(plan.id)) ||
+      byCatalogId.get(String(plan.diet_plan_id || ''));
     if (!overlay) return plan;
 
     const planHasAssignment = Boolean(
@@ -561,7 +753,11 @@ export const mapDietPlanSummary = (item: any): DietPlanSummary => {
     short_description: diseaseNames || item?.season || item?.prakriti || '',
     health_diseases: diseases,
     patient_diet_plan_id: item?.patient_diet_plan_id ?? null,
-    patient_assignment_status: item?.patient_assignment_status ?? null,
+    patient_assignment_status:
+      item?.patient_assignment_status ??
+      item?.assignment_status ??
+      item?.patient_diet_status ??
+      null,
     started_at: item?.started_at ?? null,
     repeat_count:
       item?.repeat_count ??
@@ -1006,7 +1202,7 @@ export const calculateDietNutrition = (
 
   const burnedKcal = Number(extras?.burnedKcal ?? 0);
   const waterMl = Number(extras?.waterMl ?? 0);
-  const waterGoalMl = 2500;
+  const waterGoalMl = plan ? getWaterGoalMl(plan) : DEFAULT_WATER_GOAL_ML;
 
   const macroTotal = carbsG * 4 + proteinG * 4 + fatG * 9;
   const carbsPct =

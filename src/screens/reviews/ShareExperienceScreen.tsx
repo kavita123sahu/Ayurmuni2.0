@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -31,14 +31,22 @@ import {
   uploadReviewAsset,
 } from '../../utils/reviewUtils';
 import { setPendingProductReview } from '../../utils/pendingProductReview';
+import { setPendingDietPlanReview } from '../../utils/pendingDietPlanReview';
+import {
+  hydrateReviewedDietPlans,
+  isDietPlanAssignmentReviewed,
+  markDietPlanAssignmentReviewed,
+} from '../../utils/reviewedDietPlans';
 
 export type ShareExperienceParams = {
-  entityType: 'doctor' | 'product';
+  entityType: 'doctor' | 'product' | 'diet_plan';
   entityName: string;
   entitySubtitle?: string;
   appointmentId?: string;
   variantId?: string;
   orderId?: string;
+  patientDietPlanId?: string;
+  dietPlanId?: string;
   initialRating?: number;
   initialReview?: string;
   initialImages?: string[];
@@ -63,6 +71,8 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
     appointmentId = '',
     variantId = '',
     orderId = '',
+    patientDietPlanId = '',
+    dietPlanId = '',
     initialRating = 0,
   } = params;
 
@@ -76,15 +86,44 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  useEffect(() => {
+    if (entityType !== 'diet_plan' || !patientDietPlanId) return;
+    let active = true;
+    (async () => {
+      await hydrateReviewedDietPlans();
+      if (!active) return;
+      if (isDietPlanAssignmentReviewed(patientDietPlanId)) {
+        showSuccessToast('You have already reviewed this diet plan', 'error');
+        navigation.goBack();
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [entityType, patientDietPlanId, navigation]);
+
   const canSubmitRefs =
     entityType === 'doctor'
       ? !!appointmentId
-      : !!variantId && !!orderId;
+      : entityType === 'product'
+        ? !!variantId && !!orderId
+        : entityType === 'diet_plan'
+          ? !!patientDietPlanId
+          : false;
 
-  const headerTitle = useMemo(
-    () => (entityType === 'doctor' ? 'Rate Your Consultation' : 'Rate This Product'),
-    [entityType],
-  );
+  const headerTitle = useMemo(() => {
+    if (entityType === 'doctor') return 'Rate Your Consultation';
+    if (entityType === 'product') return 'Rate This Product';
+    if (entityType === 'diet_plan') return 'Rate This Diet Plan';
+    return 'Share Experience';
+  }, [entityType]);
+
+  const heroIconName =
+    entityType === 'doctor'
+      ? 'stethoscope'
+      : entityType === 'diet_plan'
+        ? 'leaf'
+        : 'package';
 
   const uploadAsset = useCallback(
     async (asset: Asset) => uploadReviewAsset(asset, entityType),
@@ -158,7 +197,9 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
       showSuccessToast(
         entityType === 'product'
           ? 'Missing order or product reference'
-          : 'Missing appointment reference',
+          : entityType === 'diet_plan'
+            ? 'Missing diet plan reference'
+            : 'Missing appointment reference',
         'error',
       );
       return;
@@ -185,7 +226,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         }),
       );
 
-      // 2) POST review/?entity_type=doctor|product with body IDs + image_urls
+      // 2) POST review/?entity_type=doctor|product|diet_plan with body IDs + image_urls
       const reviewPayload = buildReviewSubmitPayload({
         rating,
         review,
@@ -194,6 +235,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         appointmentId,
         orderId,
         variantId,
+        patientDietPlanId,
         isEdit,
       });
       console.log('reviewPayload', reviewPayload);
@@ -203,6 +245,8 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         appointmentId: entityType === 'doctor' ? appointmentId : undefined,
         variantId: entityType === 'product' ? variantId : undefined,
         orderId: entityType === 'product' ? orderId : undefined,
+        patientDietPlanId:
+          entityType === 'diet_plan' ? patientDietPlanId : undefined,
         method: 'POST',
         reviewData: reviewPayload,
       });
@@ -221,6 +265,24 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
             rating,
             review: review.trim(),
             image_urls: uploadedUrls.filter(Boolean),
+          });
+        }
+
+        if (entityType === 'diet_plan' && patientDietPlanId) {
+          const responseAvg =
+            response?.data?.avg_rating ??
+            response?.avg_rating ??
+            response?.data?.diet_plan?.avg_rating ??
+            null;
+          await markDietPlanAssignmentReviewed(String(patientDietPlanId));
+          setPendingDietPlanReview({
+            patientDietPlanId: String(patientDietPlanId),
+            dietPlanId: dietPlanId ? String(dietPlanId) : undefined,
+            rating,
+            avg_rating:
+              responseAvg != null && Number.isFinite(Number(responseAvg))
+                ? Number(responseAvg)
+                : rating,
           });
         }
 
@@ -262,7 +324,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         >
           <View style={styles.heroIconWrap}>
             <TablerIcon
-              name={entityType === 'doctor' ? 'stethoscope' : 'package'}
+              name={heroIconName as any}
               size={28}
               color="#FFFFFF"
             />

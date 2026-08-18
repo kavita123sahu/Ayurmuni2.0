@@ -965,6 +965,7 @@ import { Colors } from '../../common/Colors';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
+import ProductDetailsDiscovery from '../../components/ProductDetailsDiscovery';
 import { TogglewishlistProduct } from '../../services/ProductServices';
 import {
     buildVariantGallery,
@@ -972,6 +973,11 @@ import {
     resolveProductImageUri,
 } from '../../utils/imageUtils';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import {
+    getProductStockDisplay,
+    isProductLowStock,
+    isProductOutOfStock,
+} from '../../utils/productStockUtils';
 
 const Divider = () => <View style={styles.divider} />;
 
@@ -1035,7 +1041,7 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        setQuantity(1);
+        setQuantity(selectedVariant?.cart_quantity || 1);
     }, [selectedVariant?.id]);
 
     useEffect(() => {
@@ -1060,6 +1066,16 @@ const ProductDetails = (props: any) => {
         () => resolveProductImageUri(selectedVariant) || resolveProductImageUri(ProductData),
         [selectedVariant, ProductData],
     );
+
+    /** Catalog product id for related/similar discovery rails */
+    const discoveryProductId = useMemo(() => {
+        const id =
+            ProductData?.product_id ??
+            ProductData?.id ??
+            selectedVariant?.product_id ??
+            null;
+        return id ? String(id) : null;
+    }, [ProductData?.product_id, ProductData?.id, selectedVariant?.product_id]);
 
     useEffect(() => {
         if (selectedVariant?.id && coverImageUri) {
@@ -1140,18 +1156,11 @@ const ProductDetails = (props: any) => {
         }
     };
 
-    const stockQty = Number(selectedVariant?.quantity ?? 0);
-    const isOutOfStock = stockQty <= 0;
-    const stockLabel = isOutOfStock
-        ? 'Out of Stock'
-        : stockQty > 10
-            ? 'In Stock'
-            : `Only ${stockQty} Left`;
-    const stockColor = isOutOfStock
-        ? '#DC2626'
-        : stockQty > 10
-            ? '#16A34A'
-            : '#D97706';
+    const stockDisplay = getProductStockDisplay(selectedVariant);
+    const isOutOfStock = isProductOutOfStock(selectedVariant);
+    const isLowStock = isProductLowStock(selectedVariant);
+    const stockLabel = stockDisplay.label;
+    const stockColor = stockDisplay.color;
 
     const totalPrice = (selectedVariant?.selling_price || 0) * quantity;
     const saveAmount = Math.max(
@@ -1282,9 +1291,21 @@ const ProductDetails = (props: any) => {
             >
                 <Detailimages
                     itemHeight={300}
-                    DynamicResize="cover"
+                    DynamicResize="contain"
                     images={galleryImages}
                 />
+
+                {isLowStock ? (
+                    <View style={styles.lowStockBanner}>
+                        <TablerIcon name="alert-circle" size={18} color="#B45309" />
+                        <View style={styles.lowStockTextWrap}>
+                            <Text style={styles.lowStockTitle}>Low stock</Text>
+                            <Text style={styles.lowStockSubtitle}>
+                                Only {stockDisplay.qty} left — order soon before it runs out.
+                            </Text>
+                        </View>
+                    </View>
+                ) : null}
 
                 {/* Title + price (commerce-style) */}
                 <View style={styles.heroCard}>
@@ -1343,7 +1364,14 @@ const ProductDetails = (props: any) => {
                             </Text>
                         ) : null}
                         <Text style={styles.taxNote}>Inclusive of all taxes</Text>
-                        <View style={styles.stockRow}>
+                        <View
+                            style={[
+                                styles.stockRow,
+                                {
+                                    backgroundColor: stockDisplay.backgroundColor,
+                                },
+                            ]}
+                        >
                             <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
                             <Text style={[styles.stockLabel, { color: stockColor }]}>
                                 {stockLabel}
@@ -1406,7 +1434,7 @@ const ProductDetails = (props: any) => {
                                                 selected && styles.variantChipTextSelected,
                                             ]}
                                         >
-                                            {item?.size} 
+                                            {item?.size}
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -1503,6 +1531,17 @@ const ProductDetails = (props: any) => {
                         title="Product Reviews"
                     />
                 </View>
+
+                {/* Discovery rails — sequential API, horizontal scroll, auto load-more */}
+                {!!discoveryProductId && (
+                    <View style={styles.discoveryWrap}>
+                        <ProductDetailsDiscovery
+                            productId={discoveryProductId}
+                            navigation={props.navigation}
+                            excludeVariantId={varientID}
+                        />
+                    </View>
+                )}
 
                 <View style={{ height: 110 }} />
             </ScrollView>
@@ -1614,6 +1653,11 @@ export default ProductDetails;
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F4F7F6' },
     scrollContent: { paddingBottom: 20 },
+    discoveryWrap: {
+        marginTop: 8,
+        marginHorizontal: -4,
+        gap: 4,
+    },
 
     heroCard: {
         backgroundColor: '#FFFFFF',
@@ -1743,9 +1787,46 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
         marginBottom: 8,
     },
-    stockRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    stockRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        alignSelf: 'flex-start',
+        marginTop: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+    },
     stockDot: { width: 8, height: 8, borderRadius: 4 },
     stockLabel: { fontSize: 13, fontFamily: Fonts.PoppinsSemiBold },
+    lowStockBanner: {
+        marginHorizontal: 16,
+        marginBottom: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
+        backgroundColor: '#FEF3C7',
+        borderWidth: 1,
+        borderColor: '#FCD34D',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    lowStockTextWrap: {
+        flex: 1,
+        gap: 2,
+    },
+    lowStockTitle: {
+        fontSize: 14,
+        color: '#92400E',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    lowStockSubtitle: {
+        fontSize: 12,
+        lineHeight: 17,
+        color: '#B45309',
+        fontFamily: Fonts.PoppinsRegular,
+    },
 
     trustStrip: {
         marginTop: 10,

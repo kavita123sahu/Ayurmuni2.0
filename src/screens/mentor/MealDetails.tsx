@@ -25,6 +25,14 @@ import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
 import { resolveImageSource } from '../../utils/imageUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ProductImagePreviewModal from '../../components/ProductImagePreviewModal';
+import {
+  BUTTON,
+  DIET_UI,
+  RADIUS,
+  SPACING,
+  TYPO,
+} from '../../constants/responsive';
 const FALLBACK_IMAGE = require('../../assets/images/login/7.jpg');
 
 const MealDetails = (props: any) => {
@@ -34,6 +42,7 @@ const MealDetails = (props: any) => {
   const item = props?.route?.params?.item;
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState(item?.status === 'done');
+  const [previewVisible, setPreviewVisible] = useState(false);
 
   const mealTitle =
     typeof item?.title === 'string'
@@ -134,14 +143,29 @@ const MealDetails = (props: any) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        <Image source={imageSource} style={styles.image} />
+        <View style={styles.heroWrap}>
+          <Image source={imageSource} style={styles.image} />
+          <TouchableOpacity
+            style={styles.previewBtn}
+            onPress={() => setPreviewVisible(true)}
+            activeOpacity={0.85}
+          >
+            <TablerIcon name="eye" size={14} color="#FFFFFF" />
+            <Text style={styles.previewBtnText}>Preview</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <View style={styles.tag}>
               <Text style={styles.tagText}>{mealType}</Text>
             </View>
-            <TablerIcon name="heart" size={26} color={Colors.primaryColor} />
+            {!!item?.time && (
+              <View style={styles.timeRow}>
+                <TablerIcon name="clock" size={14} color="#6B7280" />
+                <Text style={styles.timeText}>{item.time}</Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.title}>{mealTitle}</Text>
@@ -193,7 +217,7 @@ const MealDetails = (props: any) => {
             <View style={styles.sectionHeader}>
               <TablerIcon
                 name="prescription"
-                size={16}
+                size={14}
                 color={Colors.primaryColor}
               />
               <Text style={styles.sectionTitle}>Preparation Steps</Text>
@@ -215,7 +239,7 @@ const MealDetails = (props: any) => {
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12), }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity
           style={[styles.btn, styles.primaryBtn]}
           onPress={onLogMeal}
@@ -235,9 +259,15 @@ const MealDetails = (props: any) => {
           style={[styles.btn, styles.secondaryBtn]}
           onPress={() => props.navigation.goBack()}
         >
-          <Text style={[styles.btnText, { color: Colors.primaryColor }]}>+</Text>
+          <Text style={[styles.btnText, { color: Colors.primaryColor }]}>Back</Text>
         </TouchableOpacity>
       </View>
+
+      <ProductImagePreviewModal
+        images={[{ source: imageSource }]}
+        visible={previewVisible}
+        onClose={() => setPreviewVisible(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -251,113 +281,154 @@ const styles = StyleSheet.create({
   },
 
   scroll: {
-    paddingBottom: 120,
+    paddingBottom: 24,
     backgroundColor: '#FDFDFB',
+  },
+
+  heroWrap: {
+    width: '100%',
+    height: DIET_UI.mealDetailHeroHeight,
+    backgroundColor: '#E5E7EB',
   },
 
   image: {
     width: '100%',
-    height: 300,
+    height: '100%',
     resizeMode: 'cover',
-    backgroundColor: '#E5E7EB',
+  },
+
+  previewBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(15, 23, 42, 0.62)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+
+  previewBtnText: {
+    color: '#FFFFFF',
+    fontSize: TYPO.caption,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   card: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
+    marginHorizontal: SPACING.lg,
     borderWidth: 1,
     borderColor: Colors.borderColor,
-    marginTop: -36,
-    borderRadius: 22,
-    padding: 20,
+    marginTop: -DIET_UI.detailCardOverlap,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    zIndex: 2,
+    elevation: 3,
     shadowColor: '#0F172A',
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
   },
 
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: SPACING.sm,
   },
 
   tag: {
     backgroundColor: '#E6F2F2',
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
   },
 
   tagText: {
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 12,
+    fontSize: TYPO.sm,
     textTransform: 'capitalize',
   },
 
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+
+  timeText: {
+    fontSize: TYPO.sm,
+    color: '#6B7280',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
   title: {
-    fontSize: 24,
+    fontSize: TYPO.xl + 2,
     fontFamily: Fonts.PoppinsBold,
     color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 16,
-    lineHeight: 32,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
+    lineHeight: 26,
   },
 
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: SPACING.sm,
   },
 
   statBox: {
     backgroundColor: '#EDEFF1',
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    borderRadius: 14,
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.xs + 2,
+    borderRadius: RADIUS.md,
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
   },
 
   statLabel: {
-    fontSize: 10,
+    fontSize: TYPO.xs,
     color: '#6B7280',
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   statValue: {
-    fontSize: 15,
+    fontSize: TYPO.md + 1,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsBold,
     marginTop: 2,
   },
 
   sectionContainer: {
-    marginTop: 24,
+    marginTop: SPACING.xl,
   },
 
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    gap: 8,
+    marginBottom: SPACING.md,
+    gap: SPACING.sm,
   },
 
   sectionIcon: {
-    height: 15,
-    width: 15,
+    height: 14,
+    width: 14,
   },
 
   sectionTitle: {
-    fontSize: 17,
+    fontSize: TYPO.lg,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1F2937',
   },
 
   emptySection: {
-    fontSize: 13,
+    fontSize: TYPO.subtitle,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
   },
@@ -366,10 +437,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: '#EBEEED80',
-    gap: 10,
+    gap: SPACING.sm,
   },
 
   itemLeftWrap: {
@@ -378,14 +449,14 @@ const styles = StyleSheet.create({
   },
 
   itemLeft: {
-    fontSize: 14,
+    fontSize: TYPO.body,
     color: '#1F2937',
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   itemNotes: {
     marginTop: 2,
-    fontSize: 12,
+    fontSize: TYPO.sm,
     color: '#6B7280',
     fontFamily: Fonts.PoppinsRegular,
   },
@@ -395,83 +466,75 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#A7F3D0',
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACING.sm + 2,
     paddingVertical: 5,
-    maxWidth: 110,
+    maxWidth: 100,
+    flexShrink: 0,
   },
 
   qtyPillText: {
-    fontSize: 12,
+    fontSize: TYPO.sm,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   itemRight: {
-    fontSize: 14,
+    fontSize: TYPO.body,
     color: '#6B7280',
     fontFamily: Fonts.PoppinsRegular,
-    marginLeft: 10,
+    marginLeft: SPACING.sm,
   },
 
   stepRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 18,
+    marginBottom: SPACING.lg - 2,
   },
 
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#F4D9A4',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: SPACING.md,
+    flexShrink: 0,
   },
 
   stepNumber: {
-    fontSize: 12,
+    fontSize: TYPO.sm,
     color: '#1A1D1F',
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
   stepText: {
     flex: 1,
-    fontSize: 14,
+    minWidth: 0,
+    fontSize: TYPO.body,
     color: Colors.subTextColor,
     fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 21,
-    paddingTop: 3,
+    lineHeight: 20,
+    paddingTop: 2,
   },
 
 
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    // Safe area for all devices
-    gap: 12,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.sm + 2,
+    gap: SPACING.md,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-
+    zIndex: 8,
+    elevation: 8,
   },
-  // footer: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   paddingHorizontal: 20,
-  //   paddingTop: 10,
-  //   paddingBottom: 12,
-  //   gap: 12,
-  //   backgroundColor: '#FFFFFF',
-  //   borderTopWidth: 1,
-  //   borderTopColor: '#F1F5F9',
-  // },
 
   btn: {
-    height: 55,
-    borderRadius: 16,
+    height: BUTTON.height,
+    borderRadius: RADIUS.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -490,7 +553,7 @@ const styles = StyleSheet.create({
 
   btnText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: TYPO.button,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 });

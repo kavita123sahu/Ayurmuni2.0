@@ -18,6 +18,12 @@ import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
 import { useNotifications, NotificationItem } from '../hooks/useNotification';
 import TablerIcon from '../components/TablerIcon';
+import {
+    buildAppointmentDetailsParams,
+    buildVideoCallNavParams,
+} from '../utils/appointmentUtils';
+import { navigateToStackScreen } from '../navigation/navigationUtils';
+import { getDetailBottomPadding } from '../constants/layout';
 
 const getNotificationImageSource = (image: unknown) => {
     if (!image) return null;
@@ -188,12 +194,28 @@ const NotificationCard = ({
     item,
     onPress,
     onQuickMarkRead,
+    onJoinCall,
+    onViewDetails,
 }: {
     item: NotificationItem;
     onPress: (item: NotificationItem) => void;
     onQuickMarkRead: (item: NotificationItem) => void;
+    onJoinCall: (item: NotificationItem) => void;
+    onViewDetails: (item: NotificationItem) => void;
 }) => {
     const status = item.appointmentStatus ?? item?.rawData?.data?.appointment_status;
+    const callStatus = String(
+        item?.rawData?.data?.call_status ??
+        item?.rawData?.call_status ??
+        '',
+    ).toLowerCase();
+    const apptStatus = String(status ?? '').toLowerCase();
+    const showJoinCall = callStatus === 'in_progress';
+    const showDetails =
+        !showJoinCall &&
+        (apptStatus === 'cancelled' ||
+            apptStatus === 'completed' ||
+            !!item.appointmentId);
     const isUnread = !item.isRead;
     const imageSource = getNotificationImageSource(item?.rawData?.image);
 
@@ -243,23 +265,29 @@ const NotificationCard = ({
                             <Image source={imageSource} style={styles.image} />
                         ) : null}
 
-                        {status ? (
+                        {status || showJoinCall ? (
                             <View style={styles.buttonRow}>
-                                {status === 'completed' && (
-                                    <TouchableOpacity style={styles.joinBtn}>
+                                {showJoinCall ? (
+                                    <TouchableOpacity
+                                        style={styles.joinBtn}
+                                        onPress={() => onJoinCall(item)}
+                                    >
                                         <Text numberOfLines={1} style={styles.joinText}>Join Call</Text>
                                     </TouchableOpacity>
-                                )}
-                                {status === 'cancelled' && (
-                                    <TouchableOpacity style={styles.detailBtn}>
+                                ) : null}
+                                {showDetails ? (
+                                    <TouchableOpacity
+                                        style={styles.detailBtn}
+                                        onPress={() => onViewDetails(item)}
+                                    >
                                         <Text numberOfLines={1} style={styles.detailText}>Details</Text>
                                     </TouchableOpacity>
-                                )}
-                                {status === 'pending' && (
+                                ) : null}
+                                {apptStatus === 'pending' && !showJoinCall ? (
                                     <View style={styles.statusChip}>
                                         <Text style={styles.statusChipText}>Pending</Text>
                                     </View>
-                                )}
+                                ) : null}
                             </View>
                         ) : null}
                     </View>
@@ -463,9 +491,10 @@ const NotificationsScreen = (props: any) => {
         refreshNotifications,
     } = useNotifications();
 
+    const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isSmallDevice = width < 360;
-    console.log('notificationsnotifications', notifications)
+    const listBottomPad = getDetailBottomPadding(insets);
     const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -505,10 +534,30 @@ const NotificationsScreen = (props: any) => {
 
     const handleViewAppointment = (item: NotificationItem) => {
         closeDetail();
-        console.log("apppintmnetscronnn", item);
-        props.navigation.navigate('AppointmentDetail', {
-            appointmentId: item?.appointmentId,
-        });
+        navigateToStackScreen(
+            props.navigation,
+            'AppointmentDetails',
+            buildAppointmentDetailsParams(item.rawData ?? item),
+        );
+    };
+
+    const handleJoinCall = (item: NotificationItem) => {
+        navigateToStackScreen(
+            props.navigation,
+            'PatientVideoCallScreen',
+            buildVideoCallNavParams(item.rawData ?? item, {
+                role: 'patient',
+                otherPartyName: item.doctorName,
+            }),
+        );
+    };
+
+    const handleViewDetails = (item: NotificationItem) => {
+        navigateToStackScreen(
+            props.navigation,
+            'AppointmentDetails',
+            buildAppointmentDetailsParams(item.rawData ?? item),
+        );
     };
 
     const sections = useMemo(() => {
@@ -569,6 +618,8 @@ const NotificationsScreen = (props: any) => {
                         item={item}
                         onPress={openDetail}
                         onQuickMarkRead={handleMarkRead}
+                        onJoinCall={handleJoinCall}
+                        onViewDetails={handleViewDetails}
                     />
                 )}
                 renderSectionHeader={({ section: { title } }) => (
@@ -577,7 +628,7 @@ const NotificationsScreen = (props: any) => {
                 stickySectionHeadersEnabled={false}
                 contentContainerStyle={{
                     paddingHorizontal: isSmallDevice ? 12 : 16,
-                    paddingBottom: 24,
+                    paddingBottom: listBottomPad,
                     flexGrow: 1,
                 }}
                 onRefresh={refreshNotifications}

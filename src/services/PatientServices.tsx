@@ -143,9 +143,9 @@ export const getDietPlans = async (params?: DietPlanListParams) => {
         if (params?.page != null) {
             query.set('page', String(params.page));
         }
-        if (params?.page_size != null) {
-            query.set('page_size', String(params.page_size));
-        }
+        // if (params?.page_size != null) {
+        //     query.set('page_size', String(params.page_size));
+        // }
         if (params?.search != null && String(params.search).trim() !== '') {
             query.set('search', String(params.search).trim());
         }
@@ -216,17 +216,17 @@ export const hasMoreDietPlanPages = (
             typeof data.count === 'number'
                 ? data.count
                 : typeof data.total === 'number'
-                  ? data.total
-                  : typeof data.total_count === 'number'
-                    ? data.total_count
-                    : null;
+                    ? data.total
+                    : typeof data.total_count === 'number'
+                        ? data.total_count
+                        : null;
         const page =
             pageLoaded ??
             (typeof data.page === 'number'
                 ? data.page
                 : typeof data.current_page === 'number'
-                  ? data.current_page
-                  : null);
+                    ? data.current_page
+                    : null);
 
         if (total != null && page != null) {
             return page * pageSize < total;
@@ -242,21 +242,56 @@ export const hasMoreDietPlanPages = (
 };
 
 /** Start a diet plan for the patient (catalog diet plan id, not assignment id). */
-export const startDietPlan = async (diet_plan_id: string | number) => {
+export const startDietPlan = async (
+    diet_plan_id: string | number,
+    options?: { daily_water_intake_goal?: number },
+) => {
     try {
         const id = String(diet_plan_id).trim();
-        // API accepts diet_plan_id (Postman). Also send `id` — some envs validate that key.
+        const body: Record<string, string | number> = {
+            diet_plan_id: id,
+            id,
+        };
+        if (
+            options?.daily_water_intake_goal != null &&
+            Number.isFinite(Number(options.daily_water_intake_goal)) &&
+            Number(options.daily_water_intake_goal) > 0
+        ) {
+            body.daily_water_intake_goal = Math.round(
+                Number(options.daily_water_intake_goal),
+            );
+        }
         const response = await apiClient('patients/diet-plans/start/', {
             method: 'POST',
-            body: JSON.stringify({
-                diet_plan_id: id,
-                id,
-            }),
+            body: JSON.stringify(body),
         });
-        console.log('DIET_START_API =>', { diet_plan_id: id, response });
+        console.log('DIET_START_API =>', { diet_plan_id: id, body, response });
         return response;
     } catch (error) {
         console.log('DIET_START_API_ERROR =>', error);
+        throw error;
+    }
+};
+
+/** PATCH daily water intake for the active diet assignment. */
+export const updateDietPlanWater = async (payload: {
+    day: string;
+    intake_ml: number;
+}) => {
+    try {
+        const body = {
+            day: String(payload.day || 'day_1'),
+            intake_ml: Math.max(0, Math.round(Number(payload.intake_ml) || 0)),
+        };
+        console.log('DIET_WATER_PATCH =>', body);
+        const response = await apiClient('patients/diet-plans/water/', {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        });
+        console.log('DIET_WATER_PATCH_RES =>', response);
+        return response;
+    } catch (error) {
+        console.log('DIET_WATER_PATCH_ERROR =>', error);
         throw error;
     }
 };
@@ -316,12 +351,12 @@ export const updateDietPlanProgress = async (payload: {
 };
 
 export type DietPlanStatusAction =
-  | 'pause'
-  | 'resume'
-  | 'stop'
-  | 'complete'
-  | 'reset'
-  | 'repeat';
+    | 'pause'
+    | 'resume'
+    | 'stop'
+    | 'complete'
+    | 'reset'
+    | 'repeat';
 
 /**
  * Update patient diet plan assignment status
@@ -356,4 +391,4 @@ export const updateDietPlanStatus = async (
         throw error;
     }
 };
-       
+

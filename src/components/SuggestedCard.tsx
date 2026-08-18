@@ -17,6 +17,7 @@ import {
   resolveYogaThumbnailUri,
   resolveYogaVideoUri,
 } from '../utils/yogaUtils';
+import { formatDietPlanRatingBadgeText } from '../utils/dietPlanUtils';
 
 interface Props {
   data: any[];
@@ -162,6 +163,7 @@ const SuggestedCard: React.FC<Props> = ({
           '',
         ).trim();
         const doctorLabel = doctorName.replace(/^dr\.?\s*/i, '');
+        const dietRatingText = isDiet ? formatDietPlanRatingBadgeText(item) : null;
         const imageUri = isYoga
           ? resolveYogaThumbnailUri(item)
           : (
@@ -246,13 +248,14 @@ const SuggestedCard: React.FC<Props> = ({
                 ) : null}
 
                 <View style={styles.infoRow}>
-                  {/* {!!prakriti && (
-                    <View style={[styles.badge, styles.prakritiBadge]}>
-                      <Text style={[styles.badgeText, styles.prakritiBadgeText]}>
-                        {prakriti}
+                  {isDiet && !!dietRatingText ? (
+                    <View style={styles.ratingBadge}>
+                      <TablerIcon name="star" size={10} color="#F59E0B" strokeWidth={2} />
+                      <Text style={styles.ratingBadgeText} numberOfLines={1}>
+                        {dietRatingText}
                       </Text>
                     </View>
-                  )} */}
+                  ) : null}
                   {!!badgeText && badgeText !== prakriti && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{badgeText}</Text>
@@ -468,6 +471,24 @@ const styles = StyleSheet.create({
   },
   prakritiBadgeText: {
     color: '#047857',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    maxWidth: '100%',
+  },
+  ratingBadgeText: {
+    flexShrink: 1,
+    fontSize: 10,
+    color: '#B45309',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   footerContainer: {

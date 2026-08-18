@@ -1005,8 +1005,12 @@ import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import {
     getSlotStatusKey,
+    isSameSlot,
     isSlotBookable,
     isSlotMissedOrExpired,
+    isSlotSelectedInList,
+    pickFirstBookableSlot,
+    withSlotDate,
 } from '../../utils/slotAvailabilityUtils';
 import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
 import PrescriptionUpload from './Uploadreport';
@@ -1142,10 +1146,12 @@ const DoctorSlot = (props: any) => {
 
     const handleSelectSlot = useCallback(
         (slot: any) => {
-            setSelectedSlot(slot);
+            const bookableSlot = withSlotDate(slot, selectedDate);
+            if (!isSlotBookable(bookableSlot)) return;
+            setSelectedSlot(bookableSlot);
             scrollToConcernSection();
         },
-        [scrollToConcernSection],
+        [scrollToConcernSection, selectedDate],
     );
 
     const handleConcernSectionLayout = useCallback(
@@ -1190,9 +1196,13 @@ const DoctorSlot = (props: any) => {
                 id: doctorIdParam,
                 date,
             });
-            setSlotsData(resp?.data);
-            if (resp?.data) {
-                setDoctorDetailData(resp.data);
+            const rawData = resp?.data;
+            const slots = (rawData?.slots || []).map((slot: any) =>
+                withSlotDate(slot, date),
+            );
+            setSlotsData(rawData ? { ...rawData, slots } : null);
+            if (rawData) {
+                setDoctorDetailData(rawData);
             }
         } finally {
             setLoadingSlots(false);
@@ -1233,24 +1243,34 @@ const DoctorSlot = (props: any) => {
 
 
     useEffect(() => {
-        if (!selectedSlot && slotsData?.slots?.length) {
-            const firstAvailable = slotsData.slots.find((s: any) =>
-                isSlotBookable(s),
-            );
-            if (firstAvailable) {
-                pendingConcernScrollRef.current = true;
-                setSelectedSlot(firstAvailable);
-                scrollToConcernSection();
-            }
-        }
-    }, [slotsData, selectedSlot, scrollToConcernSection]);
+        if (loadingSlots) return;
 
-    // Clear selection if the chosen slot becomes expired/missed
-    useEffect(() => {
-        if (selectedSlot && !isSlotBookable(selectedSlot)) {
-            setSelectedSlot(null);
+        const slots = slotsData?.slots || [];
+        if (!slots.length) {
+            if (selectedSlot) setSelectedSlot(null);
+            return;
         }
-    }, [selectedSlot, slotsData]);
+
+        if (isSlotSelectedInList(selectedSlot, slots, selectedDate)) {
+            return;
+        }
+
+        const firstAvailable = pickFirstBookableSlot(slots, selectedDate);
+        if (firstAvailable) {
+            pendingConcernScrollRef.current = true;
+            setSelectedSlot(firstAvailable);
+            scrollToConcernSection();
+            return;
+        }
+
+        if (selectedSlot) setSelectedSlot(null);
+    }, [
+        slotsData,
+        selectedDate,
+        loadingSlots,
+        selectedSlot,
+        scrollToConcernSection,
+    ]);
 
     const handleContinue = async () => {
         if (!(await requireAuth('Please login to book a consultation'))) return;
@@ -1394,7 +1414,12 @@ const DoctorSlot = (props: any) => {
                             {DAYS.map((item: any) => {
                                 const isActive = selectedDate === item.fullDate;
                                 return (
-                                    <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => setSelectedDate(item.fullDate)} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
+                                    <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => {
+                                        if (item.fullDate !== selectedDate) {
+                                            setSelectedSlot(null);
+                                        }
+                                        setSelectedDate(item.fullDate);
+                                    }} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
                                         <Text style={[styles.dayText, isActive && { color: '#FFFFFF' }]}>{item.day}</Text>
                                         <Text style={[styles.dateText, isActive && { color: '#FFFFFF' }]}>{item.date}</Text>
                                         <Text style={[styles.monthDayText, isActive && { color: '#D1FAE5' }]}>{item.month}</Text>
@@ -1437,7 +1462,7 @@ const DoctorSlot = (props: any) => {
                                                         onPress={() => handleSelectSlot(slot)}
                                                         style={[
                                                             styles.slotBtn,
-                                                            selectedSlot?.id === slot.id && styles.activeSlotBtn,
+                                                            isSameSlot(selectedSlot, slot) && styles.activeSlotBtn,
 
                                                             isReserved && {
                                                                 backgroundColor: '#FEF3C7',
@@ -1458,7 +1483,7 @@ const DoctorSlot = (props: any) => {
 
                                                     >
 
-                                                        <Text style={[styles.slotText, selectedSlot?.id === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
+                                                        <Text style={[styles.slotText, isSameSlot(selectedSlot, slot) && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
 
                                                         {isBooked && <Text style={styles.slotStatus}>Booked</Text>}
 
@@ -1551,10 +1576,18 @@ const DoctorSlot = (props: any) => {
 
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        disabled={!selectedSlot?.id || loadingSlots || groupedSlots.length === 0}
+                        disabled={
+                            loadingSlots ||
+                            groupedSlots.length === 0 ||
+                            !selectedSlot ||
+                            !isSlotBookable(withSlotDate(selectedSlot, selectedDate))
+                        }
                         style={[
                             styles.payBtn,
-                            (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) &&
+                            (loadingSlots ||
+                                groupedSlots.length === 0 ||
+                                !selectedSlot ||
+                                !isSlotBookable(withSlotDate(selectedSlot, selectedDate))) &&
                                 styles.payBtnDisabled,
                         ]}
                         onPress={handleContinue}

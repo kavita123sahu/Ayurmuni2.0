@@ -199,6 +199,7 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
         categoryName: item.name,
         healthCategoryId: item.id,
         categoryMode: 'health',
+        serviceCategoryId: item.id,
       });
     },
     [navigation],

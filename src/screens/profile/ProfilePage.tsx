@@ -1042,6 +1042,7 @@ import {
     syncAccessFromProfile,
 } from '../../services/guestAuth';
 import LinearGradient from 'react-native-linear-gradient';
+import { goBackToHomeTab } from '../../navigation/navigationUtils';
 
 
 
@@ -1518,7 +1519,7 @@ const ProfilePage = ({ navigation }: any) => {
     return (
         <>
             <ScreenShell contentStyle={styles.shellContent}>
-                <Header title="Profile" subtitle="Manage your account" onBack={() => navigation.goBack()} />
+                <Header title="Profile" subtitle="Manage your account" onBack={() => goBackToHomeTab(navigation)} />
 
                 <ScrollView
                     style={styles.scrollArea}

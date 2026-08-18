@@ -38,7 +38,7 @@ import {
   SCREEN_PADDING_H,
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { HomeCategorySkeleton, HorizontalAppointmentSkeleton } from '../../simmerScreen/ShimmerHook';
+import { HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import RenderAppoint from '../../components/RenderAppoint';
 import JoinCallBanner from '../../components/JoinCallBanner';
 import CategoryList from '../../components/CategoryList';
@@ -56,6 +56,8 @@ import { navigateToSearchScreen } from '../../navigation/productNavigation';
 import { useBanners } from '../../hooks/useBanners';
 import { CallEvents, CALL_ENDED } from '../../common/Utils';
 import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
+import ProductDiscoverySection from '../../components/ProductDiscoverySection';
+import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 
 
 const { width } = Dimensions.get('window');
@@ -92,16 +94,21 @@ const HomePage: React.FC = (props: any) => {
     loadingCategories,
     loadingProducts,
     loadingCustomer,
+    loadingDoctors,
     refreshHomeData
   } = useHomeData();
 
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
+  const medicineCategoryId = useMemo(
+    () => getServiceCategoryId(categories, 'medicine'),
+    [categories],
+  );
   const {
     categories: healthConcerns,
     refresh: refreshHealthConcerns,
-  } = useHealthConcernCategories(null);
+  } = useHealthConcernCategories(medicineCategoryId);
   const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
   const insets = useSafeAreaInsets();
 
@@ -575,6 +582,13 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
+            {loadingDoctors && !(SuggestDoctor?.length > 0) ? (
+              <View style={styles.homeSection}>
+                <SectionHeader home title="Suggested Doctors" />
+                <TopDoctorsCardSkeleton count={4} />
+              </View>
+            ) : null}
+
             {(SuggestDoctor?.length ?? 0) > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
@@ -598,6 +612,13 @@ const HomePage: React.FC = (props: any) => {
             )}
 
 
+            {loadingProducts && !(storeProducts?.length > 0) ? (
+              <View style={styles.homeSection}>
+                <SectionHeader home title="Suggested Products" />
+                <TopSellingListSkeleton />
+              </View>
+            ) : null}
+
             {storeProducts?.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
@@ -615,6 +636,44 @@ const HomePage: React.FC = (props: any) => {
                 />
               </View>
             )}
+
+            <ProductDiscoverySection
+              section="featured"
+              navigation={props.navigation}
+              home
+            />
+            <ProductDiscoverySection
+              section="personalized"
+              navigation={props.navigation}
+              home
+            />
+            <ProductDiscoverySection
+              section="trending"
+              navigation={props.navigation}
+              home
+            />
+            <ProductDiscoverySection
+              section="best_sellers"
+              navigation={props.navigation}
+              home
+            />
+            <ProductDiscoverySection
+              section="new_arrivals"
+              navigation={props.navigation}
+              home
+            />
+            <ProductDiscoverySection
+              section="recently_viewed"
+              navigation={props.navigation}
+              home
+            />
+
+            {loadingProducts && !(medicineProducts?.length > 0) ? (
+              <View style={styles.homeSection}>
+                <SectionHeader home title="Suggested Medicines" />
+                <TopSellingListSkeleton />
+              </View>
+            ) : null}
 
             {medicineProducts?.length > 0 && (
               <View style={styles.homeSection}>

@@ -28,6 +28,7 @@ const CategoryList = ({
   navigation,
   doctor,
   mode = 'product',
+  serviceCategoryId,
 }: any) => {
   const handlePress = useCallback(
     (item: Category) => {
@@ -44,6 +45,7 @@ const CategoryList = ({
           categoryName: item.name,
           healthCategoryId: item.id,
           categoryMode: 'health',
+          serviceCategoryId: serviceCategoryId || undefined,
         });
         return;
       }
@@ -52,9 +54,10 @@ const CategoryList = ({
         categoryId: item.id,
         categoryName: item.name,
         categoryMode: 'product',
+        serviceCategoryId: serviceCategoryId || undefined,
       });
     },
-    [navigation, doctor, mode],
+    [navigation, doctor, mode, serviceCategoryId],
   );
 
   const renderItem = ({ item }: { item: Category }) => (

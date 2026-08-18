@@ -67,8 +67,10 @@ export const LIST_STACK_SCREENS = new Set([
   'BookingConfrimScreen',
   'MedicineScreen',
   'ProductsScreen',
-  'AllFavDoctors',
+  'FavDoctors',
   'SearchScreen',
+  'ProductDetails',
+  'ReviewPage',
 ]);
 
 export const MODAL_STACK_SCREENS = new Set(['MyCart', 'Checkout']);
@@ -78,7 +80,6 @@ export const getStackScreenOptions = (
 ): NativeStackNavigationOptions => {
   if (screenName === 'TabStack') return tabRootOptions;
   if (MODAL_STACK_SCREENS.has(screenName)) return modalStackOptions;
-  if (screenName === 'ProductDetails') return productStackOptions;
   if (LIST_STACK_SCREENS.has(screenName)) return listStackOptions;
   return detailStackOptions;
 };

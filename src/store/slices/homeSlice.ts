@@ -8,7 +8,10 @@ import {
   getServiceCategoryIds,
   normalizeServiceCategories,
 } from '../../utils/serviceCategoryUtils';
-import { normalizeApiList } from '../../services/ProductServices';
+import {
+  mapCatalogProductItem,
+  normalizeApiList,
+} from '../../services/ProductServices';
 import { normalizeYogaSessionList } from '../../utils/yogaUtils';
 
 const CACHE_KEYS = {
@@ -101,9 +104,9 @@ export const normalizeDietPlans = (response: any): any[] => {
 export const mapDietPlanForHome = (item: any) => {
   const diseases = Array.isArray(item?.health_diseases)
     ? item.health_diseases
-        .map((d: any) => d?.name)
-        .filter(Boolean)
-        .join(', ')
+      .map((d: any) => d?.name)
+      .filter(Boolean)
+      .join(', ')
     : '';
 
   return {
@@ -143,28 +146,20 @@ const loadSuggestedCatalog = async (
   kind: 'products' | 'medicines',
 ): Promise<any[]> => {
   try {
-    console.log(
-      `HOME_${kind.toUpperCase()}_FETCH => customers/suggested/${kind}/`,
-    );
     const res =
       kind === 'medicines'
         ? await _HOME_SERVICES.getSuggestedMedicines()
         : await _HOME_SERVICES.getSuggestedProducts();
-    console.log(`HOME_${kind.toUpperCase()}_RESPONSE =>`, res);
 
-    if (res?.success === false) {
-      console.log(`HOME_${kind.toUpperCase()}_FAILED =>`, res?.message);
+    if (!res || res?.success === false) {
       return [];
     }
 
-    return normalizeApiList(res).filter(
-      (item: any) =>
-        item &&
-        (item.variant_id || item.id) &&
-        String(item.name || item.title || '').trim(),
-    );
+    return normalizeApiList(res)
+      .map(mapCatalogProductItem)
+      .filter(Boolean);
   } catch (error) {
-    console.log(`HOME_${kind.toUpperCase()}_ERROR =>`, error);
+    console.log(`HOME_${kind.toUpperCase()}_ERROR:`, error);
     return [];
   }
 };
