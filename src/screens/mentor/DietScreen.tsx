@@ -2389,7 +2389,7 @@ const DietScreen = (props: any) => {
   const openActiveConflict = useCallback(
     (
       mode: 'resume' | 'start' | 'repeat' | 'switch',
-      active: { name?: string; patient_diet_plan_id?: string | number; id?: string | number } | null | undefined,
+      active: { name?: string;   patient_diet_plan_id?: string | number | null; id?: string | number } | null | undefined,
       targetId: string,
     ) => {
       const activeId = String(active?.patient_diet_plan_id || '').trim();

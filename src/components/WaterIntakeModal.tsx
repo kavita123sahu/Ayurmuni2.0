@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import TablerIcon from './TablerIcon';
 import WaterGlass from './WaterGlass';
 import {
   WATER_GLASS_ML,
@@ -19,7 +18,7 @@ import {
   formatWaterLiters,
   getWaterGlassCount,
 } from '../utils/dietPlanUtils';
-import { RADIUS, SPACING, TYPO } from '../constants/responsive';
+import { BUTTON, RADIUS, TYPO } from '../constants/responsive';
 
 type Props = {
   visible: boolean;
@@ -52,6 +51,7 @@ const WaterIntakeModal = ({
     100,
     waterGoalMl > 0 ? Math.round((draftMl / waterGoalMl) * 100) : 0,
   );
+  const fillRatio = waterGoalMl > 0 ? Math.min(1, draftMl / waterGoalMl) : 0;
   const literCount = Math.ceil(waterGoalMl / WATER_LITER_ML);
 
   const literGroups = useMemo(() => {
@@ -68,15 +68,23 @@ const WaterIntakeModal = ({
     return groups;
   }, [literCount, totalGlasses]);
 
+  const applyIntake = (nextMl: number) => {
+    const next = Math.max(0, Math.min(nextMl, waterGoalMl));
+    setDraftMl(next);
+    onSetIntake(next);
+  };
+
   const onGlassPress = (glassIndex: number) => {
     if (updating) return;
     const targetMl = (glassIndex + 1) * WATER_GLASS_ML;
-    const next =
-      draftMl >= targetMl
-        ? Math.max(0, targetMl - WATER_GLASS_ML)
-        : Math.min(targetMl, waterGoalMl);
-    setDraftMl(next);
-    onSetIntake(next);
+    applyIntake(
+      draftMl >= targetMl ? targetMl - WATER_GLASS_ML : targetMl,
+    );
+  };
+
+  const onStep = (direction: 1 | -1) => {
+    if (updating) return;
+    applyIntake(draftMl + direction * WATER_GLASS_ML);
   };
 
   return (
@@ -91,71 +99,90 @@ const WaterIntakeModal = ({
         <View style={styles.sheet}>
           <View style={styles.handle} />
 
-          <View style={styles.hero}>
-            <WaterGlass filled={filledGlasses > 0} size="lg" />
-            <View style={styles.heroText}>
-              <Text style={styles.title}>Log your water</Text>
-              <Text style={styles.subtitle}>
-                {dayLabel ? `${dayLabel} · ` : ''}
-                {formatWaterLiters(draftMl)} of {formatWaterLiters(waterGoalMl)}
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.title}>Log water</Text>
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {dayLabel ? `${dayLabel}  ·  ` : ''}
+                1 glass = {WATER_GLASS_ML} ml
               </Text>
-              <Text style={styles.heroMeta}>
-                {filledGlasses}/{totalGlasses} glasses · {progressPct}% complete
+            </View>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={10}
+              style={styles.closeBtn}
+            >
+              <Text style={styles.closeText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.summary}>
+            <WaterGlass
+              filled={fillRatio > 0}
+              fillRatio={Math.max(fillRatio, fillRatio > 0 ? 0.18 : 0)}
+              size="md"
+            />
+            <View style={styles.summaryCopy}>
+              <Text style={styles.summaryValue}>
+                {formatWaterLiters(draftMl)}
+                <Text style={styles.summaryGoal}>
+                  {' '}
+                  / {formatWaterLiters(waterGoalMl)}
+                </Text>
               </Text>
+              <Text style={styles.summaryMeta}>
+                {filledGlasses}/{totalGlasses} glasses  ·  {progressPct}%
+              </Text>
+            </View>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => onStep(-1)}
+                disabled={updating || draftMl <= 0}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.stepBtnText}>−</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.stepBtn, styles.stepBtnPlus]}
+                onPress={() => onStep(1)}
+                disabled={updating || draftMl >= waterGoalMl}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.stepBtnText, styles.stepBtnPlusText]}>+</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+          <View style={styles.track}>
+            <View style={[styles.fill, { width: `${progressPct}%` }]} />
           </View>
-
-          <Text style={styles.hint}>
-            Tap a glass to add {WATER_GLASS_ML} ml. Tap a filled glass to remove it.
-          </Text>
 
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
             {literGroups.map(group => {
-              const literMl = group.liter * WATER_LITER_ML;
-              const literDone = draftMl >= literMl;
-              const literFilled = Math.min(
-                4,
-                Math.max(
-                  0,
-                  Math.floor(
-                    (draftMl - (group.liter - 1) * WATER_LITER_ML) /
-                      WATER_GLASS_ML,
-                  ),
-                ),
-              );
+              const literFilled = group.glasses.filter(
+                glassIndex => draftMl >= (glassIndex + 1) * WATER_GLASS_ML,
+              ).length;
 
               return (
-                <View key={`liter-${group.liter}`} style={styles.literBlock}>
-                  <View style={styles.literHeader}>
-                    <Text style={styles.literLabel}>{group.liter} litre</Text>
-                    {literDone ? (
-                      <View style={styles.literDoneBadge}>
-                        <TablerIcon name="check" size={12} color="#047857" />
-                        <Text style={styles.literDoneText}>Complete</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.literPending}>
-                        {literFilled}/4 glasses
-                      </Text>
-                    )}
+                <View key={`liter-${group.liter}`} style={styles.literRow}>
+                  <View style={styles.literMeta}>
+                    <Text style={styles.literLabel}>{group.liter} L</Text>
+                    <Text style={styles.literCount}>
+                      {literFilled}/{group.glasses.length}
+                    </Text>
                   </View>
                   <View style={styles.glassRow}>
                     {group.glasses.map(glassIndex => (
                       <WaterGlass
                         key={`glass-${glassIndex}`}
-                        size="md"
+                        size="sm"
                         filled={draftMl >= (glassIndex + 1) * WATER_GLASS_ML}
-                        mlLabel="250ml"
                         onPress={() => onGlassPress(glassIndex)}
                         disabled={updating}
-                        style={styles.glassItem}
                       />
                     ))}
                   </View>
@@ -164,19 +191,18 @@ const WaterIntakeModal = ({
             })}
           </ScrollView>
 
-          <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.doneBtn}
+            onPress={onClose}
+            activeOpacity={0.9}
+            disabled={updating}
+          >
             {updating ? (
-              <ActivityIndicator size="small" color={Colors.primaryColor} />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <TouchableOpacity
-                style={styles.doneBtn}
-                onPress={onClose}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.doneBtnText}>Done</Text>
-              </TouchableOpacity>
+              <Text style={styles.doneBtnText}>Done</Text>
             )}
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -189,142 +215,160 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
   },
   sheet: {
-    backgroundColor: '#F8FCFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.xl,
-    maxHeight: '82%',
-    borderWidth: 1,
-    borderColor: '#E0F2FE',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    maxHeight: '72%',
   },
   handle: {
     alignSelf: 'center',
-    width: 42,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#CBD5E1',
-    marginBottom: SPACING.md,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 10,
   },
-  hero: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.lg,
-    marginBottom: SPACING.md,
-    padding: SPACING.md,
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: '#E0F2FE',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  heroText: {
+  headerText: {
     flex: 1,
     minWidth: 0,
   },
   title: {
-    fontSize: TYPO.lg + 1,
-    color: '#0F172A',
+    fontSize: TYPO.lg,
+    color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   subtitle: {
-    marginTop: 2,
-    fontSize: TYPO.sm,
-    color: '#0369A1',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  heroMeta: {
-    marginTop: 4,
+    marginTop: 1,
     fontSize: TYPO.caption,
-    color: '#64748B',
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  closeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  closeText: {
+    fontSize: TYPO.sm,
+    color: Colors.subTextColor,
     fontFamily: Fonts.PoppinsMedium,
   },
-  progressTrack: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#E0F2FE',
-    overflow: 'hidden',
-    marginBottom: SPACING.sm,
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
   },
-  progressFill: {
+  summaryCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  summaryValue: {
+    fontSize: 22,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    lineHeight: 26,
+  },
+  summaryGoal: {
+    fontSize: TYPO.md,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  summaryMeta: {
+    marginTop: 2,
+    fontSize: TYPO.caption,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  stepper: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  stepBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBtnPlus: {
+    backgroundColor: Colors.primaryColor,
+    borderColor: Colors.primaryColor,
+  },
+  stepBtnText: {
+    fontSize: 18,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsMedium,
+    marginTop: -1,
+  },
+  stepBtnPlusText: {
+    color: '#FFFFFF',
+  },
+  track: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#E8EEEB',
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  fill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#0EA5E9',
-  },
-  hint: {
-    fontSize: TYPO.caption,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
-    marginBottom: SPACING.md,
-    textAlign: 'center',
+    backgroundColor: Colors.primaryColor,
   },
   scrollContent: {
-    paddingBottom: SPACING.sm,
+    paddingBottom: 8,
+    gap: 8,
   },
-  literBlock: {
-    marginBottom: SPACING.lg,
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  literHeader: {
+  literRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
+    backgroundColor: Colors.bgcolor,
+    gap: 12,
+  },
+  literMeta: {
+    width: 42,
   },
   literLabel: {
-    fontSize: TYPO.md,
-    color: '#0F172A',
+    fontSize: TYPO.sm,
+    color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  literDoneBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  literDoneText: {
-    fontSize: TYPO.caption,
-    color: '#047857',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  literPending: {
-    fontSize: TYPO.caption,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
+  literCount: {
+    fontSize: 10,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsRegular,
   },
   glassRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    gap: SPACING.sm,
-  },
-  glassItem: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  footer: {
-    marginTop: SPACING.md,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: '#E0F2FE',
-    alignItems: 'center',
+    gap: 10,
   },
   doneBtn: {
-    width: '100%',
-    backgroundColor: Colors.primaryColor,
+    marginTop: 12,
+    height: BUTTON.heightSm,
     borderRadius: RADIUS.md,
-    paddingVertical: SPACING.md,
+    backgroundColor: Colors.primaryColor,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   doneBtnText: {
     color: '#FFFFFF',

@@ -70,8 +70,12 @@ const AppInputField = ({
     <View style={[styles.wrapper, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <TouchableOpacity   activeOpacity={disabled ? 2 : 0.7} onPress={handlePress}>
-        <View style={styles.inputContainer}>
+      <TouchableOpacity
+        activeOpacity={disabled ? 1 : 0.7}
+        onPress={handlePress}
+        disabled={disabled}
+      >
+        <View style={[styles.inputContainer, disabled && styles.inputDisabled]}>
           {leftIconName && (
             <TablerIcon
               name={leftIconName as TablerIconName}
@@ -83,9 +87,9 @@ const AppInputField = ({
           <TextInput
             value={value}
             placeholder={placeholder}
-            editable={!isDateField && !isDropdownField}
+            editable={!disabled && !isDateField && !isDropdownField}
             onChangeText={onChangeText}
-            style={styles.input}
+            style={[styles.input, disabled && styles.inputTextDisabled]}
           />
 
           {rightIconName && (
@@ -160,6 +164,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     gap: 8,
   },
+  inputDisabled: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
   input: {
     flex: 1,
     fontSize: 14,
@@ -167,6 +175,9 @@ const styles = StyleSheet.create({
 
     color: Colors.textColor,
     paddingVertical: 0,
+  },
+  inputTextDisabled: {
+    color: '#94A3B8',
   },
   modalOverlay: {
     flex: 1,

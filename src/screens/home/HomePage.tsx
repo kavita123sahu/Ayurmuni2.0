@@ -585,7 +585,7 @@ const HomePage: React.FC = (props: any) => {
             {loadingDoctors && !(SuggestDoctor?.length > 0) ? (
               <View style={styles.homeSection}>
                 <SectionHeader home title="Suggested Doctors" />
-                <TopDoctorsCardSkeleton count={4} />
+                <TopDoctorsCardSkeleton count={4} featured />
               </View>
             ) : null}
 

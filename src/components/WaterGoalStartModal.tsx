@@ -7,18 +7,19 @@ import {
   TouchableOpacity,
   Pressable,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import WaterGlass, { WaterGoalGlassPreview } from './WaterGlass';
+import WaterGlass from './WaterGlass';
 import {
   WATER_GLASS_ML,
   WATER_GOAL_OPTIONS,
   formatWaterLiters,
   getWaterGlassCount,
 } from '../utils/dietPlanUtils';
-import { BUTTON, RADIUS, SPACING, TYPO } from '../constants/responsive';
+import { BUTTON, RADIUS, TYPO } from '../constants/responsive';
+
+type WaterUnit = 'glasses' | 'liters';
 
 type Props = {
   visible: boolean;
@@ -35,16 +36,17 @@ const WaterGoalStartModal = ({
   onClose,
   onConfirm,
 }: Props) => {
+  const [unit, setUnit] = useState<WaterUnit>('glasses');
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
-    if (visible) setSelected(null);
+    if (visible) {
+      setSelected(null);
+      setUnit('glasses');
+    }
   }, [visible]);
 
-  const selectedOption = WATER_GOAL_OPTIONS.find(o => o.value === selected);
-  const previewGlasses = selectedOption
-    ? getWaterGlassCount(selectedOption.value)
-    : 0;
+  const glasses = selected ? getWaterGlassCount(selected) : 0;
 
   return (
     <Modal
@@ -56,79 +58,94 @@ const WaterGoalStartModal = ({
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>Before you start</Text>
-          <Text style={styles.title}>What's your daily water goal?</Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.title}>Daily water goal</Text>
+          <Text style={styles.subtitle} numberOfLines={2}>
             {planName
-              ? `We'll track hydration every day of "${planName}".`
-              : 'Choose how much water you want to drink each day.'}
+              ? `How do you want to drink water for ${planName}?`
+              : 'How do you want to drink water for this diet?'}
           </Text>
 
-          <View style={styles.heroGlass}>
-            <WaterGlass
-              filled={!!selectedOption}
-              size="lg"
-              mlLabel={selectedOption ? formatWaterLiters(selectedOption.value) : 'Goal'}
-            />
-            {selectedOption ? (
-              <View style={styles.heroMeta}>
-                <Text style={styles.heroValue}>{selectedOption.label}</Text>
-                <Text style={styles.heroDetail}>
-                  {previewGlasses} glasses × {WATER_GLASS_ML} ml
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.heroPlaceholder}>Pick a goal below</Text>
-            )}
+          <View style={styles.segment}>
+            <TouchableOpacity
+              style={[styles.segmentBtn, unit === 'glasses' && styles.segmentBtnOn]}
+              onPress={() => setUnit('glasses')}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  unit === 'glasses' && styles.segmentTextOn,
+                ]}
+              >
+                Glasses
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.segmentBtn, unit === 'liters' && styles.segmentBtnOn]}
+              onPress={() => setUnit('liters')}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  unit === 'liters' && styles.segmentTextOn,
+                ]}
+              >
+                Liters
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {selectedOption ? (
-            <WaterGoalGlassPreview
-              glassCount={previewGlasses}
-              selected
-            />
-          ) : null}
+          <Text style={styles.stepHint}>
+            {unit === 'glasses'
+              ? `Tap how many glasses a day  ·  1 glass = ${WATER_GLASS_ML} ml`
+              : 'Tap how many liters a day'}
+          </Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.optionsRow}
-          >
+          <View style={styles.grid}>
             {WATER_GOAL_OPTIONS.map(option => {
-              const isSelected = selected === option.value;
-              const glasses = getWaterGlassCount(option.value);
+              const isOn = selected === option.value;
+              const glassCount = getWaterGlassCount(option.value);
+              const primary =
+                unit === 'glasses' ? `${glassCount}` : option.label;
+              const secondary =
+                unit === 'glasses'
+                  ? `glasses · ${formatWaterLiters(option.value)}`
+                  : `${glassCount} glasses`;
+
               return (
                 <TouchableOpacity
                   key={option.value}
-                  style={[styles.optionCard, isSelected && styles.optionCardOn]}
+                  style={[styles.goalCard, isOn && styles.goalCardOn]}
                   onPress={() => setSelected(option.value)}
-                  activeOpacity={0.88}
                   disabled={loading}
+                  activeOpacity={0.88}
                 >
-                  <WaterGlass filled={isSelected} size="sm" />
-                  <Text
-                    style={[
-                      styles.optionLabel,
-                      isSelected && styles.optionLabelOn,
-                    ]}
-                  >
-                    {option.label}
+                  <WaterGlass filled={isOn} size="sm" />
+                  <Text style={[styles.goalPrimary, isOn && styles.goalPrimaryOn]}>
+                    {primary}
                   </Text>
-                  <Text style={styles.optionMeta}>{glasses} glasses</Text>
+                  <Text style={styles.goalSecondary} numberOfLines={1}>
+                    {secondary}
+                  </Text>
                   {option.recommended ? (
-                    <View style={styles.recBadge}>
-                      <Text style={styles.recText}>Popular</Text>
-                    </View>
-                  ) : null}
+                    <Text style={[styles.popular, isOn && styles.popularOn]}>
+                      Popular
+                    </Text>
+                  ) : (
+                    <View style={styles.popularSpacer} />
+                  )}
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
 
-          <Text style={styles.pickHint}>
-            {selectedOption
-              ? `Daily target: ${selectedOption.label} (${previewGlasses} glasses)`
-              : 'Select your hydration goal to start the diet'}
+          <Text style={styles.selectedLine}>
+            {selected
+              ? `Selected  ·  ${glasses} glasses  ·  ${formatWaterLiters(selected)} / day`
+              : 'Pick one amount to continue'}
           </Text>
 
           <View style={styles.actions}>
@@ -152,7 +169,7 @@ const WaterGoalStartModal = ({
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.confirmText}>Start diet plan</Text>
+                <Text style={styles.confirmText}>Start diet</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -168,131 +185,127 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: 16,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    borderWidth: 1,
-    borderColor: '#E0F2FE',
-    maxHeight: '90%',
-  },
-  eyebrow: {
-    fontSize: TYPO.caption,
-    color: '#0369A1',
-    fontFamily: Fonts.PoppinsSemiBold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    textAlign: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   title: {
-    marginTop: SPACING.xs,
     fontSize: TYPO.xl,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
   },
   subtitle: {
-    marginTop: SPACING.sm,
+    marginTop: 2,
     fontSize: TYPO.sm,
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: SPACING.lg,
+    lineHeight: 18,
   },
-  heroGlass: {
+  segment: {
+    marginTop: 10,
     flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 3,
+  },
+  segmentBtn: {
+    flex: 1,
+    height: 34,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.lg,
-    padding: SPACING.lg,
-    backgroundColor: '#F0F9FF',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    marginBottom: SPACING.md,
   },
-  heroMeta: {
-    alignItems: 'flex-start',
+  segmentBtnOn: {
+    backgroundColor: '#FFFFFF',
   },
-  heroValue: {
-    fontSize: TYPO.xxl,
-    color: '#0C4A6E',
-    fontFamily: Fonts.PoppinsBold,
-  },
-  heroDetail: {
-    marginTop: 2,
+  segmentText: {
     fontSize: TYPO.sm,
-    color: '#0369A1',
+    color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
-  heroPlaceholder: {
-    fontSize: TYPO.sm,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  optionsRow: {
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
-  },
-  optionCard: {
-    width: 88,
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FAFAFA',
-  },
-  optionCardOn: {
-    borderColor: Colors.primaryColor,
-    backgroundColor: '#F0FDFA',
-  },
-  optionLabel: {
-    marginTop: SPACING.sm,
-    fontSize: TYPO.md,
-    color: '#334155',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  optionLabelOn: {
+  segmentTextOn: {
     color: Colors.primaryColor,
-  },
-  optionMeta: {
-    fontSize: TYPO.xs,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  recBadge: {
-    marginTop: 4,
-    backgroundColor: '#FFFBEB',
-    borderRadius: 999,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  recText: {
-    fontSize: 9,
-    color: '#B45309',
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  pickHint: {
-    marginTop: SPACING.sm,
+  stepHint: {
+    marginTop: 10,
+    marginBottom: 8,
     fontSize: TYPO.caption,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
     textAlign: 'center',
   },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  goalCard: {
+    width: '30%',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FAFAFA',
+  },
+  goalCardOn: {
+    borderColor: Colors.primaryColor,
+    backgroundColor: '#F0FDFA',
+  },
+  goalPrimary: {
+    marginTop: 4,
+    fontSize: TYPO.lg,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsBold,
+    lineHeight: 20,
+  },
+  goalPrimaryOn: {
+    color: Colors.primaryColor,
+  },
+  goalSecondary: {
+    fontSize: 10,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+    textAlign: 'center',
+  },
+  popular: {
+    marginTop: 2,
+    fontSize: 9,
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  popularOn: {
+    color: Colors.primaryColor,
+  },
+  popularSpacer: {
+    height: 13,
+  },
+  selectedLine: {
+    marginTop: 10,
+    fontSize: TYPO.caption,
+    color: '#0369A1',
+    fontFamily: Fonts.PoppinsMedium,
+    textAlign: 'center',
+  },
   actions: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginTop: SPACING.lg,
+    gap: 8,
+    marginTop: 10,
   },
   cancelBtn: {
     flex: 1,
-    height: BUTTON.height,
+    height: BUTTON.heightSm,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -305,15 +318,15 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
   confirmBtn: {
-    flex: 1.5,
-    height: BUTTON.height,
+    flex: 1.4,
+    height: BUTTON.heightSm,
     borderRadius: RADIUS.md,
     backgroundColor: Colors.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   confirmBtnOff: {
-    opacity: 0.45,
+    opacity: 0.4,
   },
   confirmText: {
     fontSize: TYPO.button,

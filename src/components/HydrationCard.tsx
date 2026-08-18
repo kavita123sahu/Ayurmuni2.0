@@ -1,19 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import TablerIcon from './TablerIcon';
 import WaterIntakeModal from './WaterIntakeModal';
-import WaterGlass, { WaterGlassRow } from './WaterGlass';
+import WaterGlass from './WaterGlass';
 import {
   WATER_GLASS_ML,
-  WATER_LITER_ML,
   formatWaterLiters,
   getWaterGlassCount,
 } from '../utils/dietPlanUtils';
@@ -43,76 +35,45 @@ const HydrationCard = ({
     waterGoalMl > 0 ? Math.round((waterMl / waterGoalMl) * 100) : 0,
   );
   const goalReached = waterMl >= waterGoalMl && waterGoalMl > 0;
-  const litersDone = Math.floor(waterMl / WATER_LITER_ML);
-  const litersGoal = Math.ceil(waterGoalMl / WATER_LITER_ML);
-
-  const visibleGlasses = useMemo(
-    () => Math.min(totalGlasses, 8),
-    [totalGlasses],
-  );
+  const fillRatio = waterGoalMl > 0 ? Math.min(1, waterMl / waterGoalMl) : 0;
 
   return (
     <>
       <TouchableOpacity
         style={styles.card}
         onPress={() => setModalVisible(true)}
-        activeOpacity={0.92}
+        activeOpacity={0.9}
       >
-        <View style={styles.topRow}>
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>Water intake</Text>
-            <Text style={styles.subtitle}>
-              {dayLabel ? `${dayLabel} · ` : ''}
-              {formatWaterLiters(waterMl)} / {formatWaterLiters(waterGoalMl)}
-            </Text>
-          </View>
-          {goalReached ? (
-            <View style={styles.doneBadge}>
-              <TablerIcon name="circle-check" size={14} color="#047857" />
-              <Text style={styles.doneBadgeText}>Goal met</Text>
-            </View>
-          ) : (
-            <View style={styles.logChip}>
-              <Text style={styles.logChipText}>+ Log</Text>
-            </View>
-          )}
+        <View style={styles.iconWrap}>
+          <WaterGlass filled={fillRatio > 0} fillRatio={fillRatio} size="xs" />
         </View>
 
-        <View style={styles.heroRow}>
-          <WaterGlass filled={filledGlasses > 0} size="md" />
-          <View style={styles.stats}>
-            <Text style={styles.statMain}>
-              {filledGlasses}
-              <Text style={styles.statMuted}>/{totalGlasses}</Text>
-            </Text>
-            <Text style={styles.statLabel}>glasses today</Text>
-            <Text style={styles.statSub}>
-              {litersDone}/{litersGoal} L · {WATER_GLASS_ML} ml each
+        <View style={styles.body}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Hydration</Text>
+            <Text style={styles.amount}>
+              {formatWaterLiters(waterMl)}
+              <Text style={styles.amountMuted}>
+                {' '}
+                / {formatWaterLiters(waterGoalMl)}
+              </Text>
             </Text>
           </View>
-          <View style={styles.ring}>
-            <Text style={styles.ringPct}>{progressPct}%</Text>
+          <View style={styles.track}>
+            <View style={[styles.fill, { width: `${progressPct}%` }]} />
           </View>
+          <Text style={styles.meta} numberOfLines={1}>
+            {dayLabel ? `${dayLabel}  ·  ` : ''}
+            {filledGlasses}/{totalGlasses} glasses
+            {goalReached ? '  ·  Goal reached' : `  ·  ${progressPct}%`}
+          </Text>
         </View>
 
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+        <View style={[styles.action, goalReached && styles.actionDone]}>
+          <Text style={[styles.actionText, goalReached && styles.actionTextDone]}>
+            {goalReached ? 'Done' : 'Log'}
+          </Text>
         </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.glassScroll}
-        >
-          <WaterGlassRow
-            totalGlasses={totalGlasses}
-            filledGlasses={filledGlasses}
-            size="sm"
-            maxVisible={visibleGlasses}
-          />
-        </ScrollView>
-
-        <Text style={styles.tapHint}>Tap to open glasses and update intake</Text>
       </TouchableOpacity>
 
       <WaterIntakeModal
@@ -132,130 +93,84 @@ export default React.memo(HydrationCard);
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: Colors.bgcolor,
     marginTop: SPACING.lg,
     borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  titleBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontSize: TYPO.lg,
-    color: '#0C4A6E',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: TYPO.sm,
-    color: '#0369A1',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  doneBadge: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 999,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+    gap: 12,
   },
-  doneBadgeText: {
-    fontSize: TYPO.caption,
-    color: '#047857',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  logChip: {
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 999,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 5,
-  },
-  logChipText: {
-    fontSize: TYPO.caption,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  stats: {
-    flex: 1,
-    minWidth: 0,
-  },
-  statMain: {
-    fontSize: TYPO.xxl + 4,
-    color: '#0C4A6E',
-    fontFamily: Fonts.PoppinsBold,
-    lineHeight: 28,
-  },
-  statMuted: {
-    fontSize: TYPO.lg,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  statLabel: {
-    fontSize: TYPO.sm,
-    color: '#475569',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  statSub: {
-    marginTop: 2,
-    fontSize: TYPO.caption,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  ring: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 3,
-    borderColor: '#0EA5E9',
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ringPct: {
+  body: {
+    flex: 1,
+    minWidth: 0,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  title: {
+    fontSize: TYPO.md,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  amount: {
     fontSize: TYPO.sm,
-    color: '#0369A1',
-    fontFamily: Fonts.PoppinsBold,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
-  progressTrack: {
-    height: 6,
+  amountMuted: {
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  track: {
+    height: 4,
     borderRadius: 999,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#D7E5E0',
     overflow: 'hidden',
-    marginBottom: SPACING.md,
+    marginTop: 6,
   },
-  progressFill: {
+  fill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#0EA5E9',
+    backgroundColor: Colors.primaryColor,
   },
-  glassScroll: {
-    paddingVertical: SPACING.xs,
-    gap: 4,
-  },
-  tapHint: {
-    marginTop: SPACING.sm,
+  meta: {
+    marginTop: 4,
     fontSize: TYPO.caption,
-    color: '#64748B',
+    color: Colors.subTextColor,
     fontFamily: Fonts.PoppinsRegular,
-    textAlign: 'center',
+  },
+  action: {
+    backgroundColor: Colors.primaryColor,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionDone: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  actionText: {
+    fontSize: TYPO.caption,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  actionTextDone: {
+    color: '#047857',
   },
 });

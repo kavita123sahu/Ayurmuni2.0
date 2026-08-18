@@ -34,3 +34,9 @@ export const resolvePayOnDelivery = (item: any): boolean => {
       item.selectedVariant?.pay_on_delivery,
   );
 };
+
+/** COD is allowed only when every line item supports pay_on_delivery. */
+export const isCodAvailableForItems = (items?: any[]): boolean => {
+  if (!Array.isArray(items) || items.length === 0) return false;
+  return items.every(item => resolvePayOnDelivery(item));
+};

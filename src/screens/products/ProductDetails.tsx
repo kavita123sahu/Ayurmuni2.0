@@ -963,6 +963,7 @@ import { requireAuth } from '../../services/guestAuth';
 import { showSuccessToast } from '../../config/Key';
 import { Colors } from '../../common/Colors';
 import { handleShareAction } from '../../hooks/DownloadFuction';
+import { getProductShareMessage } from '../../helper/shareMessage';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import ProductDetailsDiscovery from '../../components/ProductDetailsDiscovery';
@@ -1279,8 +1280,18 @@ const ProductDetails = (props: any) => {
                 onLeftPress={() => props.navigation.goBack()}
                 onRightPress={() =>
                     handleShareAction({
-                        type: 'whatsapp',
-                        message: coverImageUri || galleryImages[0]?.media_url || '',
+                        type: 'native',
+                        message: getProductShareMessage({
+                            name: ProductData?.name,
+                            size: selectedVariant?.size,
+                            price:
+                                selectedVariant?.selling_price ??
+                                ProductData?.selling_price,
+                            url:
+                                coverImageUri ||
+                                galleryImages[0]?.media_url ||
+                                '',
+                        }),
                     })
                 }
             />

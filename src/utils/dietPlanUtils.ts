@@ -149,6 +149,20 @@ export type DietNutrition = {
 export const WATER_GLASS_ML = 250;
 export const WATER_LITER_ML = 1000;
 export const DEFAULT_WATER_GOAL_ML = 3000;
+export const MIN_WATER_GOAL_ML = 500;
+export const MAX_WATER_GOAL_ML = 5000;
+export const WATER_LITER_STEP_ML = 500;
+
+export const clampWaterGoalMl = (ml: number): number => {
+  const n = Math.round(Number(ml) || 0);
+  return Math.min(MAX_WATER_GOAL_ML, Math.max(MIN_WATER_GOAL_ML, n));
+};
+
+export const mlToGlasses = (ml: number): number =>
+  Math.max(1, Math.round((Number(ml) || 0) / WATER_GLASS_ML));
+
+export const glassesToMl = (glasses: number): number =>
+  clampWaterGoalMl(Math.round(Number(glasses) || 0) * WATER_GLASS_ML);
 
 export type WaterGoalOption = {
   label: string;

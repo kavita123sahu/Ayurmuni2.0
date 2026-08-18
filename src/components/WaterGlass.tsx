@@ -24,6 +24,8 @@ const SIZE_MAP: Record<
 
 type Props = {
   filled?: boolean;
+  /** 0–1 fill height. When set, overrides the default full/empty look. */
+  fillRatio?: number;
   size?: WaterGlassSize;
   mlLabel?: string;
   onPress?: () => void;
@@ -33,6 +35,7 @@ type Props = {
 
 const WaterGlass = ({
   filled = false,
+  fillRatio,
   size = 'md',
   mlLabel,
   onPress,
@@ -41,6 +44,13 @@ const WaterGlass = ({
 }: Props) => {
   const dims = SIZE_MAP[size];
   const Wrapper = onPress ? TouchableOpacity : View;
+  const hasCustomFill = typeof fillRatio === 'number';
+  const ratio = hasCustomFill
+    ? Math.max(0, Math.min(1, fillRatio))
+    : filled
+      ? 0.74
+      : 0.1;
+  const isFilled = hasCustomFill ? ratio > 0.12 : filled;
 
   return (
     <Wrapper
@@ -57,22 +67,22 @@ const WaterGlass = ({
             height: dims.height,
             borderWidth: dims.border,
           },
-          filled && styles.glassFilled,
+          isFilled && styles.glassFilled,
         ]}
       >
         <View style={styles.glassHighlight} />
         <View
           style={[
             styles.water,
-            filled ? styles.waterFull : styles.waterEmpty,
             {
               left: dims.border + 1,
               right: dims.border + 1,
               bottom: dims.border + 1,
+              height: `${Math.round(ratio * 100)}%`,
+              backgroundColor: isFilled ? '#0F766E' : 'rgba(13,97,78,0.12)',
             },
           ]}
         />
-        {filled ? <View style={styles.waterShine} /> : null}
       </View>
       {mlLabel ? (
         <Text
@@ -165,51 +175,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   glass: {
-    borderColor: '#94A3B8',
+    borderColor: '#C5D4CE',
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
-    borderBottomLeftRadius: 7,
-    borderBottomRightRadius: 7,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
   glassFilled: {
-    borderColor: '#0EA5E9',
-    backgroundColor: 'rgba(240,249,255,0.9)',
+    borderColor: Colors.primaryColor,
   },
   glassHighlight: {
     position: 'absolute',
-    top: 4,
+    top: 3,
     left: 3,
-    width: 4,
-    height: '55%',
+    width: 3,
+    height: '46%',
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
     zIndex: 2,
   },
   water: {
     position: 'absolute',
-    borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 5,
-  },
-  waterEmpty: {
-    height: '12%',
-    backgroundColor: 'rgba(186,230,253,0.35)',
-  },
-  waterFull: {
-    height: '78%',
-    backgroundColor: '#38BDF8',
-  },
-  waterShine: {
-    position: 'absolute',
-    bottom: '18%',
-    left: '22%',
-    width: '18%',
-    height: '28%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    zIndex: 1,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
   },
   label: {
     marginTop: 4,

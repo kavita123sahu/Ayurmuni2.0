@@ -265,7 +265,7 @@ const NotificationCard = ({
                             <Image source={imageSource} style={styles.image} />
                         ) : null}
 
-                        {status || showJoinCall ? (
+                        {/* {status || showJoinCall ? (
                             <View style={styles.buttonRow}>
                                 {showJoinCall ? (
                                     <TouchableOpacity
@@ -289,7 +289,7 @@ const NotificationCard = ({
                                     </View>
                                 ) : null}
                             </View>
-                        ) : null}
+                        ) : null} */}
                     </View>
 
                     {isUnread ? (

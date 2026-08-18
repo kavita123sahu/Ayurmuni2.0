@@ -22,9 +22,10 @@ export const handleShareAction = async ({
       return;
     }
 
-    if (type === 'message') {
+    if (type === 'message' || type === 'native' || type === 'sheet') {
       await Share.open({
         message,
+        failOnCancel: false,
       });
 
       onComplete?.();

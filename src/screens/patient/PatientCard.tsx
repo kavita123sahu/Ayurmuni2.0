@@ -63,37 +63,19 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation, onDelete 
       </View>
 
       <View style={styles.actions}>
-        <TouchableOpacity
-          disabled={isSelf}
-          onPress={() => {
-            if (isSelf) {
-              return;
-            }
-
-            navigation.navigate('AddEditPatientDetail', {
-              mode: 'edit',
-              patientId: patient?.id,
-            });
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          {isSelf ? <TablerIcon
-            name="edit"
-            size={20}
-            color={
-
-              Colors.primaryColor
-            }
-          /> : null}
-          {/* <TablerIcon
-            name="edit"
-            size={20}
-            color={
-             
-                 Colors.primaryColor
-            }
-          /> */}
-        </TouchableOpacity>
+        {!isSelf ? (
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate('AddEditPatientDetail', {
+                mode: 'edit',
+                patientId: patient?.id,
+              });
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <TablerIcon name="edit" size={20} color={Colors.primaryColor} />
+          </TouchableOpacity>
+        ) : null}
 
         {!isSelf && onDelete ? (
           <TouchableOpacity

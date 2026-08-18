@@ -5,6 +5,11 @@ import { Colors } from '../common/Colors';
 import {
   GRID_CARD_WIDTH,
 } from '../components/ProductCard';
+import {
+  DOCTOR_GRID,
+  DOCTOR_GRID_CARD_HEIGHT,
+  getDoctorGridCardWidth,
+} from '../constants/doctorGridLayout';
 
 const { width } = Dimensions.get('window');
 
@@ -495,20 +500,25 @@ const gridSkeletonStyles = StyleSheet.create({
   },
 });
 
+type TopDoctorsCardSkeletonProps = {
+  count?: number;
+  featured?: boolean;
+};
+
 export const TopDoctorsCardSkeleton = ({
   count = 4,
-}: {
-  count?: number;
-}) => {
-  // Match TopDoctorsCard grid: CONTENT_PAD 40, GRID_GAP 12
-  const cardW = (width - 40 - 12) / 2;
+  featured: _featured = false,
+}: TopDoctorsCardSkeletonProps) => {
+  const cardW = getDoctorGridCardWidth();
+  const photoH = DOCTOR_GRID.photoHeight;
+
   return (
     <View
       style={{
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        rowGap: 12,
+        rowGap: DOCTOR_GRID.gap,
       }}
     >
       {Array.from({ length: count }).map((_, index) => (
@@ -516,73 +526,71 @@ export const TopDoctorsCardSkeleton = ({
           key={`top-doc-skel-${index}`}
           style={{
             width: cardW,
+            height: DOCTOR_GRID_CARD_HEIGHT,
             backgroundColor: '#FFFFFF',
-            borderRadius: 18,
+            borderRadius: DOCTOR_GRID.cardRadius,
             borderWidth: 1,
-            borderColor: '#D7E8E1',
-            paddingTop: 14,
-            paddingHorizontal: 12,
-            paddingBottom: 12,
-            alignItems: 'center',
+            borderColor: '#E4EEE9',
+            overflow: 'hidden',
           }}
         >
-          <SkeletonPlaceholder borderRadius={12} speed={1200}>
-            {/* Avatar ring ~78 */}
+          <SkeletonPlaceholder borderRadius={0} speed={1200}>
             <SkeletonPlaceholder.Item
-              width={78}
-              height={78}
-              borderRadius={39}
-              alignSelf="center"
+              marginTop={DOCTOR_GRID.cardPaddingTop}
+              width={cardW}
+              height={photoH}
+              borderTopLeftRadius={DOCTOR_GRID.imageRadius}
+              borderTopRightRadius={DOCTOR_GRID.imageRadius}
             />
-            {/* Name */}
             <SkeletonPlaceholder.Item
-              marginTop={10}
-              width="88%"
-              height={16}
-              borderRadius={5}
-              alignSelf="center"
-            />
-            {/* Speciality */}
-            <SkeletonPlaceholder.Item
-              marginTop={6}
-              width="70%"
-              height={12}
-              borderRadius={4}
-              alignSelf="center"
-            />
-            {/* Rating + exp pills */}
-            <SkeletonPlaceholder.Item
-              marginTop={10}
-              flexDirection="row"
-              justifyContent="center"
-              gap={6}
+              paddingHorizontal={DOCTOR_GRID.cardPaddingH}
+              paddingTop={8}
             >
               <SkeletonPlaceholder.Item
-                width={58}
-                height={24}
-                borderRadius={8}
+                flexDirection="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <SkeletonPlaceholder.Item
+                  width="58%"
+                  height={DOCTOR_GRID.nameHeight}
+                  borderRadius={4}
+                />
+                <SkeletonPlaceholder.Item
+                  width={42}
+                  height={DOCTOR_GRID.nameHeight}
+                  borderRadius={4}
+                />
+              </SkeletonPlaceholder.Item>
+              <SkeletonPlaceholder.Item
+                width="70%"
+                height={DOCTOR_GRID.specialtyHeight}
+                borderRadius={4}
               />
               <SkeletonPlaceholder.Item
-                width={58}
-                height={24}
-                borderRadius={8}
+                marginTop={6}
+                flexDirection="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <SkeletonPlaceholder.Item
+                  width="52%"
+                  height={DOCTOR_GRID.statsHeight}
+                  borderRadius={4}
+                />
+                <SkeletonPlaceholder.Item
+                  width="34%"
+                  height={DOCTOR_GRID.statsHeight}
+                  borderRadius={4}
+                />
+              </SkeletonPlaceholder.Item>
+              <SkeletonPlaceholder.Item
+                marginTop={6}
+                width="100%"
+                height={DOCTOR_GRID.ctaHeight}
+                borderRadius={DOCTOR_GRID.ctaRadius}
               />
             </SkeletonPlaceholder.Item>
-            {/* Fee badge */}
-            <SkeletonPlaceholder.Item
-              marginTop={10}
-              width={92}
-              height={26}
-              borderRadius={999}
-              alignSelf="center"
-            />
-            {/* Consult button */}
-            <SkeletonPlaceholder.Item
-              marginTop={10}
-              width="100%"
-              height={36}
-              borderRadius={11}
-            />
           </SkeletonPlaceholder>
         </View>
       ))}
@@ -597,23 +605,24 @@ export const AllDoctorCardSkeleton = ({ count = 4 }: { count?: number }) => (
       <View
         key={`all-doc-skel-${index}`}
         style={{
+          flexDirection: 'row',
           backgroundColor: '#FFFFFF',
-          borderRadius: 14,
+          borderRadius: 18,
           borderWidth: 1,
-          borderColor: '#D7E8E1',
-          padding: 10,
-          marginBottom: 10,
+          borderColor: '#E8EEEA',
+          overflow: 'hidden',
+          marginBottom: 12,
+          minHeight: 125,
         }}
       >
-        <SkeletonPlaceholder borderRadius={10} speed={1200}>
-          <SkeletonPlaceholder.Item flexDirection="row" alignItems="flex-start">
+        <SkeletonPlaceholder borderRadius={0} speed={1200}>
+          <SkeletonPlaceholder.Item flexDirection="row">
+            <SkeletonPlaceholder.Item width={108} height={125} />
             <SkeletonPlaceholder.Item
-              width={56}
-              height={56}
-              borderRadius={12}
-              marginTop={2}
-            />
-            <SkeletonPlaceholder.Item flex={1} marginLeft={10}>
+              flex={1}
+              paddingVertical={10}
+              paddingHorizontal={12}
+            >
               <SkeletonPlaceholder.Item
                 flexDirection="row"
                 justifyContent="space-between"
@@ -621,46 +630,48 @@ export const AllDoctorCardSkeleton = ({ count = 4 }: { count?: number }) => (
               >
                 <SkeletonPlaceholder.Item
                   width="58%"
-                  height={14}
+                  height={20}
                   borderRadius={6}
                 />
                 <SkeletonPlaceholder.Item
-                  width={28}
-                  height={28}
-                  borderRadius={14}
+                  width={44}
+                  height={20}
+                  borderRadius={6}
                 />
               </SkeletonPlaceholder.Item>
               <SkeletonPlaceholder.Item
-                marginTop={2}
-                width="72%"
-                height={11}
-                borderRadius={5}
+                marginTop={4}
+                width="68%"
+                height={12}
+                borderRadius={4}
               />
               <SkeletonPlaceholder.Item
+                marginTop={8}
                 flexDirection="row"
-                marginTop={6}
-                gap={6}
+                alignItems="center"
               >
                 <SkeletonPlaceholder.Item
-                  width={58}
-                  height={22}
-                  borderRadius={20}
+                  width="34%"
+                  height={12}
+                  borderRadius={4}
                 />
                 <SkeletonPlaceholder.Item
-                  width={48}
-                  height={22}
-                  borderRadius={20}
+                  marginLeft={8}
+                  width={3}
+                  height={3}
+                  borderRadius={2}
                 />
                 <SkeletonPlaceholder.Item
-                  width={70}
-                  height={22}
-                  borderRadius={20}
+                  marginLeft={8}
+                  width="22%"
+                  height={12}
+                  borderRadius={4}
                 />
               </SkeletonPlaceholder.Item>
               <SkeletonPlaceholder.Item
                 marginTop={8}
                 width="100%"
-                height={34}
+                height={32}
                 borderRadius={10}
               />
             </SkeletonPlaceholder.Item>
