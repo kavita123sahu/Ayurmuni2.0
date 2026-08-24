@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, createAction } from '@reduxjs/toolkit';
 import * as _CART_SERVICES from '../../services/CartService';
 import { fetchWithCache, invalidateCache } from '../../services/apiCache';
 import { isAuthenticated } from '../../services/guestAuth';
@@ -72,16 +72,97 @@ const normalizeCartItemsImages = (data: CartData): CartData => {
   };
 };
 
-const patchCartItemQuantity = (
+const getCartLineId = (item: any): string =>
+  String(item?.id ?? item?.cart_item_id ?? '');
+
+type LineSyncPayload = {
+  variantId: string;
+  quantity: number;
+  source?: 'cart' | 'prescribed';
+  cartItemId?: string;
+  currentQuantity?: number;
+  prescriptionRequired?: boolean;
+};
+
+const lineSyncKey = (payload: LineSyncPayload): string =>
+  `${payload.source ?? 'cart'}:${payload.cartItemId ?? payload.variantId}`;
+
+const lineSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const lastConfirmedQty = new Map<string, number>();
+const pendingSyncPayloads = new Map<string, LineSyncPayload>();
+
+const findCartLineQuantity = (
+  data: CartData,
+  payload: LineSyncPayload,
+): number | null => {
+  const lineId = String(payload.cartItemId ?? '');
+  const variantId = String(payload.variantId ?? '');
+
+  if (payload.source === 'prescribed') {
+    for (const group of data?.prescription_cart?.items ?? []) {
+      for (const item of group?.items ?? []) {
+        const matchesLine = !!lineId && getCartLineId(item) === lineId;
+        const matchesVariant =
+          !lineId && !!variantId && getVariantIdFromItem(item) === variantId;
+        if (matchesLine || matchesVariant) {
+          return Number(item.quantity) || 0;
+        }
+      }
+    }
+    return null;
+  }
+
+  for (const item of data?.my_cart?.items ?? []) {
+    const matchesLine = !!lineId && getCartLineId(item) === lineId;
+    const matchesVariant =
+      !lineId && !!variantId && getVariantIdFromItem(item) === variantId;
+    if (matchesLine || matchesVariant) {
+      return Number(item.quantity) || 0;
+    }
+  }
+  return null;
+};
+
+const seedLastConfirmedQuantities = (data: CartData) => {
+  lastConfirmedQty.clear();
+
+  for (const item of data?.my_cart?.items ?? []) {
+    const key = lineSyncKey({
+      variantId: getVariantIdFromItem(item),
+      quantity: Number(item.quantity) || 0,
+      source: 'cart',
+      cartItemId: getCartLineId(item),
+    });
+    lastConfirmedQty.set(key, Number(item.quantity) || 0);
+  }
+
+  for (const group of data?.prescription_cart?.items ?? []) {
+    for (const item of group?.items ?? []) {
+      const key = lineSyncKey({
+        variantId: getVariantIdFromItem(item),
+        quantity: Number(item.quantity) || 0,
+        source: 'prescribed',
+        cartItemId: getCartLineId(item),
+      });
+      lastConfirmedQty.set(key, Number(item.quantity) || 0);
+    }
+  }
+};
+
+const patchMyCartItemQuantity = (
   data: CartData,
   variantId: string,
   quantity: number,
   cartItemFromApi?: any | null,
+  cartItemId?: string,
 ): CartData => {
   const items = [...(data?.my_cart?.items ?? [])];
-  const index = items.findIndex(
-    item => getVariantIdFromItem(item) === variantId,
-  );
+  const lineId = String(cartItemId ?? cartItemFromApi?.id ?? '');
+  const index = items.findIndex(item => {
+    if (lineId && getCartLineId(item) === lineId) return true;
+    if (lineId) return false;
+    return getVariantIdFromItem(item) === variantId;
+  });
 
   if (quantity <= 0) {
     if (index >= 0) {
@@ -92,7 +173,6 @@ const patchCartItemQuantity = (
     const merged = {
       ...existing,
       ...(cartItemFromApi ?? {}),
-      // Prefer API cart line id (data.item.id)
       id: cartItemFromApi?.id ?? existing?.id,
       quantity: Number(cartItemFromApi?.quantity ?? quantity),
       variant_id: getVariantIdFromItem(cartItemFromApi ?? existing) || variantId,
@@ -102,7 +182,6 @@ const patchCartItemQuantity = (
       },
       price: cartItemFromApi?.price ?? existing?.price,
     };
-    // Replace cart placeholder image_url with cover_image / cached cover for this variant
     items[index] = enrichCartItemImages(merged, variantId);
   } else {
     items.push(
@@ -128,6 +207,71 @@ const patchCartItemQuantity = (
       items,
     },
   };
+};
+
+const patchPrescribedItemQuantity = (
+  data: CartData,
+  quantity: number,
+  cartItemId?: string,
+  variantId?: string,
+): CartData => {
+  const groups = (data?.prescription_cart?.items ?? []).map((group: any) => ({
+    ...group,
+    items: (group?.items ?? [])
+      .map((item: any) => {
+        const matchesLine =
+          !!cartItemId && getCartLineId(item) === String(cartItemId);
+        const matchesVariant =
+          !cartItemId &&
+          !!variantId &&
+          getVariantIdFromItem(item) === String(variantId);
+        if (!matchesLine && !matchesVariant) return item;
+        if (quantity <= 0) return null;
+        return {
+          ...item,
+          quantity: Number(quantity),
+        };
+      })
+      .filter(Boolean),
+  }));
+
+  return {
+    ...data,
+    prescription_cart: {
+      ...data.prescription_cart,
+      items: groups,
+    },
+  };
+};
+
+const patchCartItemQuantity = (
+  data: CartData,
+  variantId: string,
+  quantity: number,
+  cartItemFromApi?: any | null,
+  options?: { source?: 'cart' | 'prescribed'; cartItemId?: string },
+): CartData => {
+  const source = options?.source ?? 'cart';
+  const cartItemId = String(
+    options?.cartItemId ?? cartItemFromApi?.id ?? '',
+  );
+
+  if (source === 'prescribed') {
+    return patchPrescribedItemQuantity(
+      data,
+      quantity,
+      cartItemId,
+      variantId,
+    );
+  }
+
+  return patchMyCartItemQuantity(
+    data,
+    variantId,
+    quantity,
+    cartItemFromApi,
+    cartItemId,
+  );
 };
 
 const removeVariantsFromCartData = (
@@ -207,27 +351,68 @@ export const fetchCart = createAsyncThunk<CartData, FetchCartArg>(
 export const addToCart = createAsyncThunk(
   'cart/add',
   async (
-    { variantId, quantity }: { variantId: string | number; quantity: number },
+    {
+      variantId,
+      quantity,
+      source = 'cart',
+      cartItemId,
+      skipOptimistic = false,
+      currentQuantity,
+      prescriptionRequired = false,
+    }: {
+      variantId: string | number;
+      quantity: number;
+      source?: 'cart' | 'prescribed';
+      cartItemId?: string;
+      skipOptimistic?: boolean;
+      currentQuantity?: number;
+      prescriptionRequired?: boolean;
+    },
     { rejectWithValue },
   ) => {
     try {
       if (!(await isAuthenticated())) {
         return rejectWithValue('LOGIN_REQUIRED');
       }
+
+      const previousQty = Number(currentQuantity) || 0;
+      if (
+        source !== 'prescribed' &&
+        Boolean(prescriptionRequired) &&
+        Number(quantity) > previousQty
+      ) {
+        return rejectWithValue('Prescription required');
+      }
+
+      // Prescribed lines have their own quantity in prescription_cart.
+      // Do not POST by variant_id or it will merge into my_cart.
+      if (source === 'prescribed') {
+        return {
+          variantId: String(variantId),
+          quantity,
+          cartItemId: String(cartItemId ?? ''),
+          source,
+          cartItem: null,
+          message: 'Quantity updated',
+        };
+      }
+
       const response = await _CART_SERVICES.AddupdateCart({
         variant_id: String(variantId),
         quantity,
+        cart_item_id: cartItemId,
+        source,
       });
       if (!response?.success) {
         return rejectWithValue(response?.message ?? 'Failed to update cart');
       }
       invalidateCache(CART_CACHE_KEY);
-      // API returns cart line id on data.item.id (not variant.variant_id)
       const cartItem = response?.data?.item ?? null;
       return {
         variantId: String(variantId),
         quantity: Number(cartItem?.quantity ?? quantity),
-        cartItemId: cartItem?.id ? String(cartItem.id) : null,
+        cartItemId: String(cartItemId ?? cartItem?.id ?? ''),
+        source,
         cartItem,
         message: response.message,
       };
@@ -237,19 +422,108 @@ export const addToCart = createAsyncThunk(
   },
 );
 
-/** Updates cart on API; optimistic Redux state is updated in addToCart reducers. */
+/** Instant UI patch — use queueCartLineSync from screens for qty changes. */
+export const applyCartLineQuantity = createAction<LineSyncPayload>(
+  'cart/applyLineQuantity',
+);
+
+/** Optimistic qty update + debounced API sync (one request per line). */
+export const queueCartLineSync = createAsyncThunk(
+  'cart/queueLineSync',
+  async (payload: LineSyncPayload, { dispatch, getState }) => {
+    const key = lineSyncKey(payload);
+
+    if (!lastConfirmedQty.has(key)) {
+      const state = getState() as { cart: CartState };
+      const current = findCartLineQuantity(state.cart.cartData, payload);
+      if (current != null) {
+        lastConfirmedQty.set(key, current);
+      }
+    }
+
+    pendingSyncPayloads.set(key, payload);
+    dispatch(applyCartLineQuantity(payload));
+
+    if (lineSyncTimers.has(key)) {
+      clearTimeout(lineSyncTimers.get(key)!);
+    }
+
+    return new Promise((resolve, reject) => {
+      lineSyncTimers.set(
+        key,
+        setTimeout(async () => {
+          lineSyncTimers.delete(key);
+          const latest = pendingSyncPayloads.get(key);
+          pendingSyncPayloads.delete(key);
+
+          if (!latest) {
+            resolve({ skipped: true });
+            return;
+          }
+
+          const result = await dispatch(
+            addToCart({
+              variantId: latest.variantId,
+              quantity: latest.quantity,
+              source: latest.source,
+              cartItemId: latest.cartItemId,
+              skipOptimistic: true,
+              currentQuantity: latest.currentQuantity,
+              prescriptionRequired: latest.prescriptionRequired,
+            }),
+          );
+
+          if (addToCart.fulfilled.match(result)) {
+            lastConfirmedQty.set(key, latest.quantity);
+            if (latest.quantity <= 0) {
+              lastConfirmedQty.delete(key);
+            }
+            resolve(result.payload);
+            return;
+          }
+
+          const rollbackQty = lastConfirmedQty.get(key);
+          if (rollbackQty !== undefined) {
+            dispatch(
+              applyCartLineQuantity({
+                ...latest,
+                quantity: rollbackQty,
+              }),
+            );
+          } else {
+            await dispatch(fetchCart({ force: true, silent: true }));
+          }
+          reject(result.payload);
+        }, 400),
+      );
+    });
+  },
+);
+
+/** @deprecated Prefer queueCartLineSync for cart screen qty changes. */
 export const syncCartQuantity = createAsyncThunk(
   'cart/syncQuantity',
   async (
-    { variantId, quantity }: { variantId: string | number; quantity: number },
-    { dispatch, rejectWithValue },
+    payload: {
+      variantId: string | number;
+      quantity: number;
+      source?: 'cart' | 'prescribed';
+      cartItemId?: string;
+      currentQuantity?: number;
+      prescriptionRequired?: boolean;
+    },
+    { dispatch },
   ) => {
-    const result = await dispatch(addToCart({ variantId, quantity }));
-    if (addToCart.rejected.match(result)) {
-      await dispatch(fetchCart({ force: true, silent: true }));
-      return rejectWithValue(result.payload);
-    }
-    return result.payload;
+    return dispatch(
+      queueCartLineSync({
+        variantId: String(payload.variantId),
+        quantity: payload.quantity,
+        source: payload.source,
+        cartItemId: payload.cartItemId,
+        currentQuantity: payload.currentQuantity,
+        prescriptionRequired: payload.prescriptionRequired,
+      }),
+    ).unwrap();
   },
 );
 
@@ -321,54 +595,96 @@ const cartSlice = createSlice({
         state.loading = false;
         const normalized = normalizeCartItemsImages(action.payload);
         state.cartData = normalized;
+        seedLastConfirmedQuantities(normalized);
         const metrics = computeMetrics(normalized);
         state.itemCount = metrics.itemCount;
         state.variantQuantities = metrics.variantQuantities;
+      })
+      .addCase(applyCartLineQuantity, (state, action) => {
+        const { variantId, quantity, source, cartItemId } = action.payload;
+        const patchSource = source ?? 'cart';
+        state.cartData = patchCartItemQuantity(
+          state.cartData,
+          String(variantId),
+          quantity,
+          null,
+          { source: patchSource, cartItemId: String(cartItemId ?? '') },
+        );
+        if (patchSource !== 'prescribed') {
+          const id = String(variantId);
+          if (quantity <= 0) {
+            delete state.variantQuantities[id];
+          } else {
+            state.variantQuantities[id] = quantity;
+          }
+          state.itemCount = Object.values(state.variantQuantities).reduce(
+            (sum, q) => sum + q,
+            0,
+          );
+        }
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
       .addCase(addToCart.pending, (state, action) => {
-        state.addingVariantId = String(action.meta.arg.variantId);
-        const { variantId, quantity } = action.meta.arg;
-        const id = String(variantId);
-        state.cartData = patchCartItemQuantity(state.cartData, id, quantity);
-        if (quantity <= 0) {
-          delete state.variantQuantities[id];
-        } else {
-          state.variantQuantities[id] = quantity;
+        if (action.meta.arg.skipOptimistic) {
+          return;
         }
-        state.itemCount = Object.values(state.variantQuantities).reduce(
-          (sum, q) => sum + q,
-          0,
-        );
-      })
-      .addCase(addToCart.fulfilled, (state, action) => {
-        state.addingVariantId = null;
-        const { variantId, quantity, cartItem } = action.payload as {
-          variantId: string;
-          quantity: number;
-          cartItemId?: string | null;
-          cartItem?: any;
-          message?: string;
-        };
+        state.addingVariantId = String(action.meta.arg.variantId);
+        const { variantId, quantity, source, cartItemId } = action.meta.arg;
         const id = String(variantId);
+        const patchSource = source ?? 'cart';
         state.cartData = patchCartItemQuantity(
           state.cartData,
           id,
           quantity,
-          cartItem,
+          null,
+          { source: patchSource, cartItemId },
         );
-        if (quantity <= 0) {
-          delete state.variantQuantities[id];
-        } else {
-          state.variantQuantities[id] = quantity;
+        if (patchSource !== 'prescribed') {
+          if (quantity <= 0) {
+            delete state.variantQuantities[id];
+          } else {
+            state.variantQuantities[id] = quantity;
+          }
+          state.itemCount = Object.values(state.variantQuantities).reduce(
+            (sum, q) => sum + q,
+            0,
+          );
         }
-        state.itemCount = Object.values(state.variantQuantities).reduce(
-          (sum, q) => sum + q,
-          0,
+      })
+      .addCase(addToCart.fulfilled, (state, action) => {
+        state.addingVariantId = null;
+        const { variantId, quantity, cartItem, cartItemId, source } =
+          action.payload as {
+            variantId: string;
+            quantity: number;
+            cartItemId?: string | null;
+            source?: 'cart' | 'prescribed';
+            cartItem?: any;
+            message?: string;
+          };
+        const id = String(variantId);
+        const patchSource = source ?? 'cart';
+        state.cartData = patchCartItemQuantity(
+          state.cartData,
+          id,
+          quantity,
+          patchSource === 'prescribed' ? null : cartItem,
+          { source: patchSource, cartItemId: String(cartItemId ?? '') },
         );
+        if (patchSource !== 'prescribed') {
+          if (quantity <= 0) {
+            delete state.variantQuantities[id];
+          } else {
+            state.variantQuantities[id] = quantity;
+          }
+          state.itemCount = Object.values(state.variantQuantities).reduce(
+            (sum, q) => sum + q,
+            0,
+          );
+        }
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.addingVariantId = null;

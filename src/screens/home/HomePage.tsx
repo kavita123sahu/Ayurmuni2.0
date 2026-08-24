@@ -15,6 +15,7 @@ import {
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
 import SectionHeader from '../../components/SectionHeader';
@@ -36,6 +37,8 @@ import {
   HOME_CATEGORY_GAP,
   HOME_SECTION_GAP,
   SCREEN_PADDING_H,
+  getHorizontalScrollBleedStyle,
+  HORIZONTAL_SCROLL_CONTENT,
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
@@ -57,7 +60,14 @@ import { useBanners } from '../../hooks/useBanners';
 import { CallEvents, CALL_ENDED } from '../../common/Utils';
 import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
 import ProductDiscoverySection from '../../components/ProductDiscoverySection';
+import ActiveDietHomeCard from '../../components/ActiveDietHomeCard';
+import { useActiveDietHome } from '../../hooks/useActiveDietHome';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+import VisitedDoctorHomeCard from '../../components/VisitedDoctorHomeCard';
+import {
+  mapRecentDoctorToNavPayload,
+  useRecentVisitedDoctors,
+} from '../../hooks/useRecentVisitedDoctors';
 
 
 const { width } = Dimensions.get('window');
@@ -97,7 +107,7 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
-
+console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts)
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -110,6 +120,28 @@ const HomePage: React.FC = (props: any) => {
     refresh: refreshHealthConcerns,
   } = useHealthConcernCategories(medicineCategoryId);
   const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
+  const homeHealthConcerns = useMemo(() => {
+    if (!safeHealthConcerns.length) return [];
+    const targetCount = 10;
+    const looped = Array.from({ length: targetCount }, (_, index) => {
+      const item = safeHealthConcerns[index % safeHealthConcerns.length];
+      return {
+        ...item,
+        _homeLoopKey: `${item?.id ?? 'concern'}-${index}`,
+      };
+    });
+    return looped;
+  }, [safeHealthConcerns]);
+  const {
+    preview: activeDietPreview,
+    loading: loadingActiveDiet,
+    refresh: refreshActiveDiet,
+  } = useActiveDietHome();
+  const {
+    doctors: visitedDoctors,
+    loading: loadingVisitedDoctors,
+    refresh: refreshVisitedDoctors,
+  } = useRecentVisitedDoctors();
   const insets = useSafeAreaInsets();
 
   const {
@@ -138,6 +170,13 @@ const HomePage: React.FC = (props: any) => {
     const stackNav = props.navigation.getParent?.() || props.navigation;
     stackNav.navigate('MedicineScreen');
   }, [props.navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshActiveDiet();
+      refreshVisitedDoctors();
+    }, [refreshActiveDiet, refreshVisitedDoctors]),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -260,11 +299,13 @@ const HomePage: React.FC = (props: any) => {
         refreshPreview(),
         refreshBanners(),
         refreshHealthConcerns(),
+        refreshActiveDiet(),
+        refreshVisitedDoctors(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshPreview, refreshBanners, refreshHealthConcerns]);
+  }, [refreshHomeData, refreshPreview, refreshBanners, refreshHealthConcerns, refreshActiveDiet, refreshVisitedDoctors]);
 
 
   useEffect(() => {
@@ -363,7 +404,10 @@ const HomePage: React.FC = (props: any) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+      <StatusBar
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+        barStyle={SCREEN_THEME.statusBarStyle}
+      />
 
       <Animated.View
         style={[
@@ -450,6 +494,21 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
+            {activeDietPreview ? (
+              <View style={styles.homeSection}>
+                <ActiveDietHomeCard
+                  data={activeDietPreview}
+                  onPress={() => {
+                    const stackNav =
+                      props.navigation.getParent?.() || props.navigation;
+                    stackNav.navigate('DietScreen', {
+                      item: { id: activeDietPreview.planId },
+                    });
+                  }}
+                />
+              </View>
+            ) : null}
+
             {(joinableAppointment ||
               (!loadingAppointments &&
                 (homeAppointmentList?.length ?? 0) > 0)) && (
@@ -481,83 +540,29 @@ const HomePage: React.FC = (props: any) => {
                         />
                       ) : null}
                       {homeAppointmentList?.length > 0 ? (
-                        <FlatList
-                          horizontal
-                          data={homeAppointmentList}
-                          keyExtractor={(item, index) =>
-                            `${item?.consultation_id || index}`
-                          }
-                          contentContainerStyle={styles.horizontalList}
-                          renderItem={({ item }) => (
-                            <RenderAppoint
-                              item={item}
-                              navigation={props.navigation}
-                              isHorizontal
-                            />
-                          )}
-                          showsHorizontalScrollIndicator={false}
-                        />
+                          <FlatList
+                            horizontal
+                            data={homeAppointmentList}
+                            keyExtractor={(item, index) =>
+                              `${item?.consultation_id || index}`
+                            }
+                            contentContainerStyle={styles.horizontalList}
+                            renderItem={({ item }) => (
+                              <RenderAppoint
+                                item={item}
+                                navigation={props.navigation}
+                                isHorizontal
+                              />
+                            )}
+                            showsHorizontalScrollIndicator={false}
+                          />
                       ) : null}
                     </>
                   )}
                 </View>
               )}
 
-
-            {/* {(loadingAppointments ||
-              joinableAppointment ||
-              sortedUpcomingAppointments.length > 0) && (
-                <View style={styles.homeSection}>
-                  <SectionHeader
-                    home
-                    title="Upcoming Appointments"
-                    actionText={
-                      !loadingAppointments && sortedUpcomingAppointments.length > 0
-                        ? 'View all'
-                        : ''
-                    }
-                    onPress={async () => {
-                      if (await requireAuth('Please login to view appointments')) {
-                        props.navigation.navigate('Appointments', {
-                          mode: 'upcoming',
-                        });
-                      }
-                    }}
-                  />
-                  {loadingAppointments ? (
-                    <HorizontalAppointmentSkeleton />
-                  ) : (
-                    <>
-                      {joinableAppointment ? (
-                        <JoinCallBanner
-                          joinable={joinableAppointment}
-                          navigation={props.navigation}
-                        />
-                      ) : null}
-                      {loadingAppointments && sortedUpcomingAppointments.length > 0 ? (
-                        <FlatList
-                          horizontal
-                          data={sortedUpcomingAppointments}
-                          keyExtractor={(item, index) =>
-                            `${item?.consultation_id || item?.appointment_id || index}`
-                          }
-                          contentContainerStyle={styles.horizontalList}
-                          renderItem={({ item }) => (
-                            <RenderAppoint
-                              item={item}
-                              navigation={props.navigation}
-                              isHorizontal
-                            />
-                          )}
-                          showsHorizontalScrollIndicator={false}
-                        />
-                      ) : null}
-                    </>
-                  )}
-                </View>
-              )} */}
-
-            {safeHealthConcerns.length > 0 && (
+            {homeHealthConcerns.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
@@ -572,15 +577,65 @@ const HomePage: React.FC = (props: any) => {
                   }}
                 />
                 <CategoryList
-                  data={safeHealthConcerns}
+                  data={homeHealthConcerns}
                   navigation={
                     props.navigation.getParent?.() || props.navigation
                   }
                   doctor
-                // mode="health"
+                  variant="concern"
                 />
               </View>
             )}
+
+            {(loadingVisitedDoctors && visitedDoctors.length === 0) ||
+            visitedDoctors.length > 0 ? (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title="Visited Doctors"
+                  actionText={visitedDoctors.length > 1 ? 'View all' : ''}
+                  onPress={() => {
+                    const stackNav =
+                      props.navigation.getParent?.() || props.navigation;
+                    stackNav.navigate('ConsultScreen');
+                  }}
+                />
+                {loadingVisitedDoctors && visitedDoctors.length === 0 ? (
+                  <HorizontalAppointmentSkeleton />
+                ) : (
+                  <FlatList
+                    horizontal
+                    data={visitedDoctors}
+                    keyExtractor={(item, index) =>
+                      String(item.doctor_id || item.id || index)
+                    }
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalList}
+                    renderItem={({ item }) => (
+                      <VisitedDoctorHomeCard
+                        item={item}
+                        onPress={() => {
+                          const stackNav =
+                            props.navigation.getParent?.() ||
+                            props.navigation;
+                          stackNav.navigate('DoctorProfile', {
+                            doctorData: mapRecentDoctorToNavPayload(item),
+                          });
+                        }}
+                        onConsultPress={() => {
+                          const stackNav =
+                            props.navigation.getParent?.() ||
+                            props.navigation;
+                          stackNav.navigate('DoctorSlot', {
+                            doctorDetails: mapRecentDoctorToNavPayload(item),
+                          });
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              </View>
+            ) : null}
 
             {loadingDoctors && !(SuggestDoctor?.length > 0) ? (
               <View style={styles.homeSection}>
@@ -829,9 +884,7 @@ const styles = StyleSheet.create({
   homeSection: {
     width: '100%',
   },
-  horizontalList: {
-    paddingRight: 4,
-  },
+  horizontalList: HORIZONTAL_SCROLL_CONTENT,
   comingSoonGroup: {
     gap: 8,
   },
@@ -899,14 +952,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.headerBackground,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E2E8F0',
-    overflow: 'hidden',
+    overflow: 'visible',
     justifyContent: 'flex-start',
   },
   categoryDock: {
-    width: '100%',
+    ...getHorizontalScrollBleedStyle(),
   },
   searchDock: {
     width: '100%',

@@ -878,49 +878,28 @@ export const resolveCurrentDayKey = (
   const days = getPlanJsonDays(plan);
   if (days.length === 0) return 'day_1';
 
-  // Prefer progress current day if API sends incomplete meals for a day
-  if (Array.isArray(progress) && progress.length) {
-    const last = progress[progress.length - 1];
-    const lastDay = String(last?.day || '').toLowerCase();
-    const matchedDay = days.find(d => d.toLowerCase() === lastDay);
-    if (matchedDay) {
+  // Walk from day_1 upward: the active day is the first day that is NOT fully
+  // completed.  A user must complete a day before the next one unlocks.
+  if (Array.isArray(progress) && progress.length > 0) {
+    for (let i = 0; i < days.length; i++) {
+      const dayKey = days[i];
       const dayMeals = progress.filter(
-        p => String(p.day).toLowerCase() === lastDay,
+        p => String(p.day ?? '').toLowerCase() === dayKey.toLowerCase(),
       );
       const allDone = MEAL_ORDER.every(m =>
         dayMeals.some(
           p =>
-            String(p.meal).toLowerCase() === m &&
+            String(p.meal ?? '').toLowerCase() === m &&
             isCompletedStatus(p.status),
         ),
       );
-      if (!allDone) return matchedDay;
-      const idx = days.findIndex(d => d.toLowerCase() === lastDay);
-      if (idx >= 0 && idx < days.length - 1) return days[idx + 1];
-      return matchedDay;
+      if (!allDone) return dayKey; // this day still has work to do
     }
+    // All days completed — stay on the last day
+    return days[days.length - 1];
   }
 
-  const startedAt = plan?.started_at;
-  if (startedAt) {
-    const start = new Date(startedAt);
-    if (!Number.isNaN(start.getTime())) {
-      const now = new Date();
-      const startDay = new Date(
-        start.getFullYear(),
-        start.getMonth(),
-        start.getDate(),
-      );
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const diffDays = Math.max(
-        0,
-        Math.floor((today.getTime() - startDay.getTime()) / 86400000),
-      );
-      const dayIndex = Math.min(diffDays, days.length - 1);
-      return days[dayIndex] || days[0];
-    }
-  }
-
+  // No progress at all → always start on day 1, regardless of calendar days
   return days[0];
 };
 
@@ -1091,6 +1070,10 @@ export type DietDayChip = {
   mealsTotal: number;
   mealsDone: number;
   progressPct: number;
+  /** All meals for this day are completed */
+  isCompleted: boolean;
+  /** This day is after the active day — user cannot access it yet */
+  isLocked: boolean;
 };
 
 /** Build day chips for plan_json + progress_json */
@@ -1100,22 +1083,28 @@ export const buildDietDayChips = (
   todayDayKey?: string | null,
 ): DietDayChip[] => {
   const days = getPlanJsonDays(plan);
-  const today = String(todayDayKey || resolveCurrentDayKey(plan, progress)).toLowerCase();
+  const activeKey = String(todayDayKey || resolveCurrentDayKey(plan, progress)).toLowerCase();
+  const activeIdx = days.findIndex(d => d.toLowerCase() === activeKey);
 
-  return days.map(dayKey => {
+  return days.map((dayKey, idx) => {
     const meals = mapPlanJsonMeals(plan, dayKey, progress);
     const mealsTotal = meals.length;
     const mealsDone = meals.filter(m => m.status === 'done').length;
     const dayNumber = Number(String(dayKey).replace(/\D/g, '')) || 0;
+    const isCompleted = mealsTotal > 0 && mealsDone === mealsTotal;
+    // Days after the active day are locked until the active day is completed
+    const isLocked = idx > activeIdx;
     return {
       dayKey,
       label: `Day ${dayNumber || dayKey}`,
       dayNumber,
-      isToday: String(dayKey).toLowerCase() === today,
+      isToday: String(dayKey).toLowerCase() === activeKey,
       mealsTotal,
       mealsDone,
       progressPct:
         mealsTotal > 0 ? Math.round((mealsDone / mealsTotal) * 100) : 0,
+      isCompleted,
+      isLocked,
     };
   });
 };

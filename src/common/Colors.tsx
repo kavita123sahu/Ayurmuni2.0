@@ -28,7 +28,10 @@ export const Colors = {
   cardBackground: "#E5E7EB",
   grey1: '#8183BB',
   transparent: '#0000',
-  background: '#FDFDFB',
+  /** Page body — slightly off-white so white headers stand out */
+  background: '#F4F7F6',
+  screenBackground: '#F4F7F6',
+  headerBackground: '#FFFFFF',
 
   orangeColor: '#2576BC',
   borderColor: "#F1F5F9",

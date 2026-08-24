@@ -7,29 +7,78 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ImageSourcePropType,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
 import { navigateToCategoryProducts } from '../navigation/productNavigation';
 import { renderCategoryName } from '../common/DataInterface';
+import { HORIZONTAL_SCROLL_CONTENT } from '../constants/layout';
 
 const { width } = Dimensions.get('window');
 
-const ITEM_SIZE = width / 5;
+const ITEM_SIZE = Math.min(102, Math.round(width / 3.9));
+const CONCERN_CARD_WIDTH = Math.min(122, Math.round(width / 3.15));
 
 interface Category {
   id: string;
   name: string;
   image_url: any;
+  _homeLoopKey?: string;
 }
 
+const getTileSource = (imageUrl: any): ImageSourcePropType =>
+  imageUrl && typeof imageUrl === 'string'
+    ? { uri: imageUrl }
+    : Images.cardiology;
+
+const TileCard = ({
+  name,
+  imageUrl,
+  textStyle,
+}: {
+  name: string;
+  imageUrl: any;
+  textStyle: any;
+}) => {
+  const source = getTileSource(imageUrl);
+
+  return (
+    <View style={styles.card}>
+      {/* Full Image */}
+      <View style={styles.imageContainer}>
+        <Image
+          source={source}
+          style={styles.cardImage}
+          resizeMode="cover"
+        />
+      </View>
+
+      {/* Text section with subtle 10% tint */}
+      <View style={styles.textBackground}>
+        <Text
+          style={textStyle}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {renderCategoryName(name, textStyle)}
+        </Text>
+      </View>
+    </View>
+  );
+};
 const CategoryList = ({
   data = [],
   navigation,
   doctor,
   mode = 'product',
   serviceCategoryId,
+  variant = 'default',
+  edgeScroll = false,
 }: any) => {
+  const isConcern = doctor || variant === 'concern';
+  const itemWidth = isConcern ? CONCERN_CARD_WIDTH : ITEM_SIZE;
+
   const handlePress = useCallback(
     (item: Category) => {
       if (doctor) {
@@ -62,32 +111,15 @@ const CategoryList = ({
 
   const renderItem = ({ item }: { item: Category }) => (
     <TouchableOpacity
-      style={[styles.item, { width: ITEM_SIZE }]}
+      style={[styles.item, { width: itemWidth }, edgeScroll && styles.itemEdge]}
       onPress={() => handlePress(item)}
-      activeOpacity={0.7}
+      activeOpacity={0.82}
     >
-      <View style={[styles.circle, { width: ITEM_SIZE - 10, height: ITEM_SIZE - 10 }]}>
-        <Image
-          source={
-            item?.image_url && typeof item.image_url === 'string'
-              ? { uri: item.image_url }
-              : Images.cardiology
-          }
-          style={styles.icon}
-        />
-      </View>
-
-      {/* <Text style={styles.text}>{item.name}</Text> */}
-      <Text
-        style={styles.text}
-        numberOfLines={2}
-        ellipsizeMode="tail"
-      >
-        {/* {item.name} */}
-        {renderCategoryName(item.name, styles.text)}
-      </Text>
-
-
+      <TileCard
+        name={item.name}
+        imageUrl={item?.image_url}
+        textStyle={isConcern ? styles.concernText : styles.text}
+      />
     </TouchableOpacity>
   );
 
@@ -97,16 +129,22 @@ const CategoryList = ({
       data={data}
       nestedScrollEnabled
       scrollEnabled={data.length > 4}
-      keyExtractor={(item, index) => String(item?.id ?? index)}
+      keyExtractor={(item, index) =>
+        String(item?._homeLoopKey ?? item?.id ?? index)
+      }
       renderItem={renderItem}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        isConcern && styles.concernContainer,
+        edgeScroll && styles.edgeContainer,
+      ]}
       initialNumToRender={5}
       maxToRenderPerBatch={5}
       windowSize={5}
       getItemLayout={(_, index) => ({
-        length: ITEM_SIZE,
-        offset: ITEM_SIZE * index,
+        length: itemWidth,
+        offset: itemWidth * index,
         index,
       })}
     />
@@ -117,36 +155,95 @@ export default React.memo(CategoryList);
 
 const styles = StyleSheet.create({
   container: {
-    paddingLeft: -10,
-    marginBottom: 10
+    paddingHorizontal: 0,
+    paddingBottom: 4,
   },
+
+  concernContainer: {
+    paddingRight: 4,
+    gap: 0,
+  },
+
+  edgeContainer: {
+    ...HORIZONTAL_SCROLL_CONTENT,
+    paddingHorizontal: 0,
+  },
+
   item: {
     alignItems: 'center',
     marginHorizontal: 2,
   },
-  circle: {
-    borderRadius: 24,
-    backgroundColor: '#0D614E1A',
-    justifyContent: 'center',
-    alignItems: 'center',
 
+  itemEdge: {
+    marginHorizontal: 2,
   },
-  icon: {
-    // width: 28,
-    // height: 28,
-    borderRadius: 20,
-    width: ITEM_SIZE - 10, height: ITEM_SIZE - 10,
-    resizeMode: 'cover',
+
+  card: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+
+    borderWidth: 1,
+    borderColor: '#E8EEEA',
+
+    shadowColor: '#0F172A',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
+
+  imageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  textBackground: {
+    width: '100%',
+    minHeight: 48,
+
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+
+    // Only a subtle 10% background tint
+    backgroundColor: 'rgba(13, 97, 78, 0.10)',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   text: {
-    marginTop: 6,
     fontSize: 12,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
-    width: ITEM_SIZE - 8,
+    width: '100%',
     lineHeight: 16,
-    flexWrap: 'wrap',
+    includeFontPadding: false,
+    minHeight: 32,
+  },
+
+  concernText: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+    width: '100%',
+    minHeight: 30,
     includeFontPadding: false,
   },
 });

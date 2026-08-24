@@ -17,6 +17,7 @@ import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { ProductGridSkeleton, ProductsScreenSkeleton, CategoryRowSkeleton } from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
@@ -121,7 +122,12 @@ const ProductsScreen = () => {
       }
 
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -228,7 +234,10 @@ const ProductsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <Header
         title="Products"
@@ -295,12 +304,13 @@ export default ProductsScreen;
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FDFDFB',
+    // backgroundColor: SCREEN_THEME.screenBackground,
     paddingHorizontal: H_PAD,
   },
   headerContent: {},
   bannerWrap: {
     marginBottom: 8,
+    marginTop: 20,
   },
   listContent: {},
   columnWrap: {

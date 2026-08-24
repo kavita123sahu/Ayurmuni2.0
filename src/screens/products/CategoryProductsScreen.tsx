@@ -714,7 +714,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import ProductCard from '../../components/ProductCard';
+import ProductCard, { GRID_CARD_HEIGHT } from '../../components/ProductCard';
 import ProductSearchFilterBar, {
   BrandFilterOption,
 } from '../../components/ProductSearchFilterBar';
@@ -742,7 +742,8 @@ import {
 } from '../../hooks/useProductCategories';
 import { useHealthCategories } from '../../hooks/useHealthCategories';
 import { useBrands } from '../../hooks/useBrands';
-import {  applyProductFilters,
+import {
+  applyProductFilters,
   ProductSortKey,
   PriceRangeKey,
 } from '../../utils/productSearchUtils';
@@ -976,7 +977,14 @@ const CategoryProductsScreen = (props: any) => {
       if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
         return;
       }
-      const result = await dispatch(syncCartQuantity({ variantId, quantity: newQty }));
+      const result = await dispatch(
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
+      );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
           (result.payload as string) || 'Failed to update cart',
@@ -1092,7 +1100,7 @@ const CategoryProductsScreen = (props: any) => {
             routeParams.brandName
               ? String(routeParams.brandName)
               : routeParams.categoryName ??
-                (categoryMode === 'health' ? 'Health Concerns' : 'Categories')
+              (categoryMode === 'health' ? 'Health Concerns' : 'Categories')
           }
           backIcon={Images.backIcon}
           onBack={() => safeGoBack(props.navigation)}
@@ -1250,7 +1258,7 @@ const CategoryProductsScreen = (props: any) => {
           )}
         </View>
       </View>
-      
+
     </SafeAreaView>
   );
 };
@@ -1379,7 +1387,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   listContent: {
-    paddingTop: 2,
+    paddingTop: GRID_GAP,
   },
   columnWrap: {
     gap: GRID_GAP,
@@ -1387,6 +1395,7 @@ const styles = StyleSheet.create({
   },
   cardWrap: {
     width: GRID_CARD_WIDTH,
+    height: GRID_CARD_HEIGHT,
     marginBottom: GRID_GAP,
   },
   loader: {

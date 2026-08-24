@@ -61,6 +61,7 @@ export const normalizePrescriptionPayload = (raw: any) => {
     return {
       appointmentId: null as string | null,
       consultationId: null as string | null,
+      prescriptionId: null as string | null,
       doctor: null as any,
       patient: null as any,
       appointment: null as any,
@@ -112,6 +113,13 @@ export const normalizePrescriptionPayload = (raw: any) => {
   return {
     appointmentId,
     consultationId,
+    prescriptionId: String(
+      prescription?.id ||
+        prescription?.prescription_id ||
+        raw?.prescription_id ||
+        raw?.id ||
+        '',
+    ).trim() || null,
     doctor,
     patient,
     appointment: appointment || raw,
@@ -369,6 +377,100 @@ export const getClinicalAdvisory = (prescription: any): string => {
   ).trim();
 };
 
+/** Normalize free-form clinical text (string / array / object). */
+export const getClinicalText = (value: any): string => {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value).trim();
+  }
+  const list = asAdviceList(value);
+  return list.join(', ').trim();
+};
+
+export const getAllergiesList = (prescription: any): string[] => {
+  if (!prescription) return [];
+  return asAdviceList(
+    prescription.allergies ||
+      prescription.allergy ||
+      prescription.known_allergies ||
+      prescription.allergy_history,
+  );
+};
+
+export const getPastIllnessText = (prescription: any): string =>
+  getClinicalText(
+    prescription?.history_of_past_illness ||
+      prescription?.past_illness ||
+      prescription?.past_medical_history ||
+      prescription?.medical_history,
+  );
+
+export const getFamilyHistoryText = (prescription: any): string =>
+  getClinicalText(
+    prescription?.family_history ||
+      prescription?.family_medical_history ||
+      prescription?.hereditary_history,
+  );
+
+export const getSymptomDescription = (prescription: any): string =>
+  getClinicalText(
+    prescription?.symptom_description ||
+      prescription?.symptoms ||
+      prescription?.chief_complaint ||
+      prescription?.presenting_complaint,
+  );
+
+export type FollowUpInfo = {
+  date: string | null;
+  dateLabel: string | null;
+  reason: string | null;
+  schedule: boolean;
+  notes: string | null;
+  status: string | null;
+  hasContent: boolean;
+};
+
+export const getFollowUpInfo = (
+  prescription: any,
+  appointment?: any,
+): FollowUpInfo => {
+  const followUp =
+    (prescription?.follow_up && typeof prescription.follow_up === 'object'
+      ? prescription.follow_up
+      : null) ||
+    (appointment?.follow_up && typeof appointment.follow_up === 'object'
+      ? appointment.follow_up
+      : null) ||
+    null;
+
+  const dateRaw =
+    followUp?.date ||
+    followUp?.follow_up_date ||
+    appointment?.follow_up_date ||
+    null;
+  const date = dateRaw ? String(dateRaw).trim() : null;
+  const reason = getClinicalText(
+    followUp?.reason || followUp?.note || followUp?.notes || followUp?.purpose,
+  );
+  const notes = getClinicalText(
+    followUp?.instructions || followUp?.advice || followUp?.description,
+  );
+  const status = getClinicalText(followUp?.status || followUp?.appointment_status);
+  const schedule = Boolean(
+    followUp?.schedule ?? followUp?.scheduled ?? (date || reason || notes),
+  );
+
+  return {
+    date,
+    dateLabel: date ? formatIssuedLabel(date) : null,
+    reason: reason || null,
+    schedule,
+    notes: notes || null,
+    status: status || null,
+    hasContent: Boolean(date || reason || notes || status || followUp?.schedule),
+  };
+};
+
 export const formatIssuedLabel = (value?: string | null): string => {
   if (!value) return '—';
   return formatSlipDate(value);
@@ -388,4 +490,150 @@ export const consultationHasPrescription = (payload: any): boolean => {
     getDontList(normalized.prescription).length > 0 ||
     getSuggestionList(normalized.prescription).length > 0
   );
+};
+
+const lineList = (title: string, items: string[]): string[] => {
+  if (!items.length) return [];
+  return [title, ...items.map(item => `  • ${item}`), ''];
+};
+
+const medicineLine = (medicine: any, index: number): string => {
+  const name = String(
+    medicine?.name ||
+      medicine?.medicine_name ||
+      medicine?.product_name ||
+      medicine?.title ||
+      `Medicine ${index + 1}`,
+  ).trim();
+  const chips = getMedicineScheduleChips(medicine)
+    .map(c => `${c.caption}: ${c.label}`)
+    .join(' | ');
+  const notes = String(
+    medicine?.instructions || medicine?.notes || medicine?.advice || '',
+  ).trim();
+  return [`  ${index + 1}. ${name}`, chips ? `     ${chips}` : '', notes ? `     Notes: ${notes}` : '']
+    .filter(Boolean)
+    .join('\n');
+};
+
+/** Build a readable prescription text file from download API JSON `data`. */
+export const buildPrescriptionDownloadText = (data: any): string => {
+  const root = data?.data && typeof data.data === 'object' ? data.data : data;
+  if (!root || typeof root !== 'object') {
+    throw new Error('Prescription data is empty');
+  }
+
+  const doctor = root.doctor || {};
+  const patient = root.patient || {};
+  const appointment = root.appointment || {};
+  const prescription = root.prescription || root;
+
+  const doctorName = String(
+    doctor.name || doctor.doctor_name || doctor.full_name || '',
+  ).trim();
+  const specialization = Array.isArray(doctor.doctor_specialization)
+    ? doctor.doctor_specialization.join(', ')
+    : String(
+        doctor.doctor_specialization ||
+          doctor.specialization ||
+          doctor.speciality ||
+          '',
+      ).trim();
+  const patientName = String(
+    patient.name || patient.patient_name || patient.full_name || '',
+  ).trim();
+  const code = String(
+    prescription.prescription_code || root.prescription_code || root.id || '',
+  ).trim();
+  const issuedOn = formatIssuedLabel(
+    appointment.appointment_date ||
+      root.issued_on ||
+      prescription.created_at ||
+      appointment.date ||
+      null,
+  );
+
+  const medicines = getMedicineItems(prescription);
+  const dos = getDoList(prescription);
+  const donts = getDontList(prescription);
+  const diets = getDietAdvice(prescription);
+  const dietPlans = getRecommendedDietPlans(root);
+  const suggestions = getSuggestionList(prescription);
+  const allergies = getAllergiesList(prescription);
+  const followUp = getFollowUpInfo(prescription, appointment);
+  const symptoms = getSymptomDescription(prescription);
+  const pastIllness = getPastIllnessText(prescription);
+  const familyHistory = getFamilyHistoryText(prescription);
+  const clinical = getClinicalAdvisory(prescription);
+  const diagnosis = getDiagnosisText(prescription);
+
+  const sections: string[] = [
+    'AYURMUNI',
+    'Digital Prescription',
+    '----------------------------------------',
+    `Prescription: ${code || '-'}`,
+    `Issued on: ${issuedOn}`,
+    `Doctor: ${doctorName || '-'}`,
+    `Specialization: ${specialization || '-'}`,
+    `Patient: ${patientName || '-'}`,
+    '----------------------------------------',
+    '',
+  ];
+
+  if (symptoms) {
+    sections.push('Symptoms', `  ${symptoms}`, '');
+  }
+  if (diagnosis) {
+    sections.push('Diagnosis', `  ${diagnosis}`, '');
+  }
+  if (pastIllness) {
+    sections.push('History of past illness', `  ${pastIllness}`, '');
+  }
+  if (allergies.length) {
+    sections.push(...lineList('Allergies', allergies));
+  }
+  if (familyHistory) {
+    sections.push('Family history', `  ${familyHistory}`, '');
+  }
+  if (clinical) {
+    sections.push('Clinical notes', `  ${clinical}`, '');
+  }
+
+  if (medicines.length) {
+    sections.push('Medicines');
+    medicines.forEach((med, i) => sections.push(medicineLine(med, i)));
+    sections.push('');
+  }
+
+  sections.push(...lineList("Do's", dos));
+  sections.push(...lineList("Don'ts", donts));
+  sections.push(...lineList('Diet advice', diets));
+
+  if (dietPlans.length) {
+    sections.push(
+      ...lineList(
+        'Recommended diet plans',
+        dietPlans.map(d =>
+          String(d?.name || d?.title || d?.diet_name || d).trim(),
+        ).filter(Boolean),
+      ),
+    );
+  }
+
+  sections.push(...lineList('Advice / suggestions', suggestions));
+
+  if (followUp.hasContent) {
+    sections.push('Follow-up');
+    if (followUp.dateLabel) sections.push(`  Date: ${followUp.dateLabel}`);
+    if (followUp.reason) sections.push(`  Reason: ${followUp.reason}`);
+    if (followUp.notes) sections.push(`  Notes: ${followUp.notes}`);
+    sections.push('');
+  }
+
+  sections.push(
+    '----------------------------------------',
+    'This is a computer generated prescription.',
+  );
+
+  return sections.join('\n');
 };

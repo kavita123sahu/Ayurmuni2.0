@@ -43,7 +43,9 @@ const WaterIntakeModal = ({
 
   useEffect(() => {
     if (visible) setDraftMl(waterMl);
-  }, [visible, waterMl]);
+    // Keep draft when waterMl updates after API — don't reset the open modal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const totalGlasses = getWaterGlassCount(waterGoalMl);
   const filledGlasses = Math.floor(draftMl / WATER_GLASS_ML);
@@ -195,7 +197,6 @@ const WaterIntakeModal = ({
             style={styles.doneBtn}
             onPress={onClose}
             activeOpacity={0.9}
-            disabled={updating}
           >
             {updating ? (
               <ActivityIndicator color="#FFFFFF" />

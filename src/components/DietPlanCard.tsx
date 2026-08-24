@@ -86,81 +86,96 @@ const DietPlanCard = ({ item, onPress }: Props) => {
       activeOpacity={0.88}
       onPress={() => onPress(item)}
     >
-      <View style={styles.planCardHeader}>
-        {isPopular ? (
-          <View style={styles.planPopularBadge}>
+      {/* ── Full-width cover image ── */}
+      <View style={styles.coverWrap}>
+        <Image
+          source={resolveDietImage(item)}
+          style={styles.coverImage}
+          resizeMode="cover"
+        />
+        {/* Dark gradient overlay so badges stay readable */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.28)', 'transparent']}
+          style={styles.coverGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        {/* Top-left: Popular badge */}
+        {isPopular && (
+          <View style={styles.popularOverlay}>
             <TablerIcon name="flame" size={12} color="#EA580C" />
-            <Text style={styles.planPopularText}>Popular</Text>
+            <Text style={styles.popularOverlayText}>Popular</Text>
           </View>
-        ) : (
-          <View />
         )}
-        <View style={styles.planStatusSlot}>
+
+        {/* Top-right: Status pill */}
+        <View style={styles.statusOverlay}>
           <PlanStatusPill item={item} />
         </View>
+
+        {/* Bottom-right: PRO badge */}
+        {!isFree && (
+          <LinearGradient
+            colors={['#C9A227', '#E8C77B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.proBadge}
+          >
+            <TablerIcon name="star" size={9} color="#5E4200" />
+            <Text style={styles.proBadgeText}>PRO</Text>
+          </LinearGradient>
+        )}
       </View>
 
-      <View style={styles.planCardMain}>
-        <View style={styles.planThumbWrap}>
-          <Image source={resolveDietImage(item)} style={styles.planThumb} />
-          {!isFree && (
-            <LinearGradient
-              colors={['#C9A227', '#E8C77B']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.planPremiumBadge}
-            >
-              <TablerIcon name="star" size={9} color="#5E4200" />
-              <Text style={styles.planPremiumBadgeText}>PRO</Text>
-            </LinearGradient>
-          )}
-        </View>
+      {/* ── Card body ── */}
+      <View style={styles.cardBody}>
+        <Text style={styles.planTitle} numberOfLines={2}>
+          {item.name}
+        </Text>
 
-        <View style={styles.planBody}>
-          <Text style={styles.planTitle} numberOfLines={2}>
-            {item.name}
+        {!!diseases && (
+          <Text style={styles.planSubtitle} numberOfLines={1}>
+            {diseases}
           </Text>
-          {!!diseases && (
-            <Text style={styles.planSubtitle} numberOfLines={1}>
-              {diseases}
-            </Text>
-          )}
-          {!!prakriti && (
-            <View style={styles.planPrakritiBadge}>
-              <Text style={styles.planPrakritiBadgeText} numberOfLines={1}>
-                {prakriti}
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
+        )}
 
-      <View style={styles.planCardFooter}>
-        <View style={styles.planFooterMeta}>
-          {!!item.total_days && (
-            <View style={styles.planFooterItem}>
-              <TablerIcon name="calendar" size={14} color="#94A3B8" />
-              <Text style={styles.planFooterText}>
-                {item.total_days}{' '}
-                {Number(item.total_days) === 1 ? 'Day' : 'Days'}
-              </Text>
-            </View>
-          )}
-          <View style={styles.planFooterItem}>
-            <TablerIcon name="receipt" size={14} color="#94A3B8" />
-            <Text style={styles.planFooterText}>
-              {isFree ? 'Free Plan' : formatRupee(item.price)}
+        {!!prakriti && (
+          <View style={styles.prakritiBadge}>
+            <Text style={styles.prakritiBadgeText} numberOfLines={1}>
+              {prakriti}
             </Text>
           </View>
-          {!!ratingText && (
-            <View style={styles.planFooterItem}>
-              <TablerIcon name="star" size={14} color="#F59E0B" strokeWidth={2} />
-              <Text style={styles.planFooterRatingText}>{ratingText}</Text>
+        )}
+
+        {/* Footer row */}
+        <View style={styles.footerRow}>
+          <View style={styles.footerMeta}>
+            {!!item.total_days && (
+              <View style={styles.footerItem}>
+                <TablerIcon name="calendar" size={13} color="#94A3B8" />
+                <Text style={styles.footerText}>
+                  {item.total_days}{' '}
+                  {Number(item.total_days) === 1 ? 'Day' : 'Days'}
+                </Text>
+              </View>
+            )}
+            <View style={styles.footerItem}>
+              <TablerIcon name="receipt" size={13} color="#94A3B8" />
+              <Text style={styles.footerText}>
+                {isFree ? 'Free' : formatRupee(item.price)}
+              </Text>
             </View>
-          )}
-        </View>
-        <View style={styles.planChevron}>
-          <TablerIcon name="chevron-right" size={16} color="#64748B" />
+            {!!ratingText && (
+              <View style={styles.footerItem}>
+                <TablerIcon name="star" size={13} color="#F59E0B" strokeWidth={2} />
+                <Text style={styles.footerRatingText}>{ratingText}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.chevronBtn}>
+            <TablerIcon name="chevron-right" size={16} color="#64748B" />
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -178,7 +193,8 @@ export default memo(DietPlanCard, (prev, next) => {
     a?.patient_diet_plan_id === b?.patient_diet_plan_id &&
     a?.repeat_count === b?.repeat_count &&
     a?.price === b?.price &&
-    a?.popularity_count === b?.popularity_count
+    a?.popularity_count === b?.popularity_count &&
+    a?.avg_rating === b?.avg_rating
   );
 });
 
@@ -186,87 +202,61 @@ const styles = StyleSheet.create({
   planCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.lg,
-    padding: SPACING.md,
     borderWidth: 1,
     borderColor: '#E8EEF2',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 2,
+    overflow: 'hidden',
   },
-  planCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-    minHeight: 22,
+
+  // Cover image — fills top edge-to-edge, no white gap
+  coverWrap: {
+    width: '100%',
+    height: 160,
+    position: 'relative',
   },
-  planPopularBadge: {
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 64,
+  },
+
+  // Badges overlaid on the cover image
+  popularOverlay: {
+    position: 'absolute',
+    top: SPACING.sm,
+    left: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: 'rgba(255,247,237,0.92)',
     borderRadius: RADIUS.pill,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 3,
   },
-  planPopularText: {
+  popularOverlayText: {
     fontSize: TYPO.caption,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#EA580C',
   },
-  planCardMain: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.md,
-  },
-  planCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: SPACING.md,
-    paddingTop: SPACING.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EEF2F6',
-  },
-  planFooterMeta: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-    minWidth: 0,
-  },
-  planFooterItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  planFooterText: {
-    fontSize: TYPO.caption,
-    fontFamily: Fonts.PoppinsMedium,
-    color: '#64748B',
-  },
-  planFooterRatingText: {
-    fontSize: TYPO.caption,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#B45309',
-  },
-  planThumbWrap: {
-    position: 'relative',
-    flexShrink: 0,
-  },
-  planThumb: {
-    width: 72,
-    height: 72,
-    borderRadius: RADIUS.md,
-    backgroundColor: Colors.cardBackground,
-  },
-  planPremiumBadge: {
+  statusOverlay: {
     position: 'absolute',
-    top: -4,
-    left: -4,
+    top: SPACING.sm,
+    right: SPACING.sm,
+  },
+  proBadge: {
+    position: 'absolute',
+    bottom: SPACING.sm,
+    right: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -274,20 +264,21 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 8,
   },
-  planPremiumBadgeText: {
+  proBadgeText: {
     fontSize: 9,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#5E4200',
     letterSpacing: 0.4,
   },
-  planBody: {
-    flex: 1,
-    minWidth: 0,
-    paddingTop: 2,
+
+  // Content below the image
+  cardBody: {
+    padding: SPACING.md,
+    paddingTop: SPACING.sm + 2,
   },
   planTitle: {
     fontSize: TYPO.md,
-    lineHeight: 20,
+    lineHeight: 21,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
   },
@@ -298,11 +289,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 3,
   },
-  planStatusSlot: {
-    flexShrink: 0,
-    marginLeft: SPACING.sm,
-  },
-  planPrakritiBadge: {
+  prakritiBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#ECFDF5',
     borderRadius: RADIUS.sm - 2,
@@ -310,17 +297,62 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     marginTop: SPACING.xs + 2,
   },
-  planPrakritiBadgeText: {
+  prakritiBadgeText: {
     fontSize: TYPO.caption,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#047857',
     textTransform: 'capitalize',
   },
+
+  // Footer row
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: SPACING.sm + 2,
+    paddingTop: SPACING.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EEF2F6',
+  },
+  footerMeta: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+    minWidth: 0,
+  },
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  footerText: {
+    fontSize: TYPO.caption,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#64748B',
+  },
+  footerRatingText: {
+    fontSize: TYPO.caption,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#B45309',
+  },
+  chevronBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.sm,
+  },
+
+  // Status pills
   activePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#E6F4F0',
+    backgroundColor: 'rgba(230,244,240,0.92)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -337,7 +369,7 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
   },
   resumePill: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: 'rgba(254,243,199,0.92)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -348,7 +380,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
   completedPill: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: 'rgba(238,242,255,0.92)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -359,7 +391,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
   stoppedPill: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(254,242,242,0.92)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -370,7 +402,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
   notStartedPill: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(241,245,249,0.92)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -379,14 +411,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#64748B',
     fontFamily: Fonts.PoppinsSemiBold,
-  },
-  planChevron: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: SPACING.sm,
   },
 });

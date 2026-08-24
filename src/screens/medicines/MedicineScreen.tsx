@@ -18,6 +18,7 @@ import BrandList from '../../components/BrandList';
 import ProductCard from '../../components/ProductCard';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { useOrders } from '../../hooks/useOrders';
 import { getDetailBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
@@ -223,7 +224,12 @@ const MedicineScreen = (props: any) => {
       }
 
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -351,7 +357,10 @@ const MedicineScreen = (props: any) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top','bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <Header
         title="Medicine Store"
@@ -415,7 +424,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     paddingHorizontal: H_PAD,
-    backgroundColor: '#FDFDFB',
+    backgroundColor: SCREEN_THEME.screenBackground,
   },
   listContent: {
     paddingTop: 4,

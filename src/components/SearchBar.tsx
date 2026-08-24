@@ -12,6 +12,7 @@ import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 import { HOME_SECTION_GAP } from '../constants/layout';
+import BackIconButton from './BackIconButton';
 
 export const SEARCH_SECTION_GAP = HOME_SECTION_GAP;
 
@@ -239,6 +240,33 @@ const SearchBar: React.FC<Props> = ({
   return content;
 };
 
+/** Search screen top bar: back + search field (no title header). */
+export const SearchScreenHeader = ({
+  onBack,
+  placeholder,
+  value,
+  onChangeText,
+  autoFocus = true,
+}: {
+  onBack: () => void;
+  placeholder?: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  autoFocus?: boolean;
+}) => (
+  <View style={styles.searchScreenHeader}>
+    <BackIconButton onPress={onBack} />
+    <SearchBar
+      placeholder={placeholder}
+      value={value}
+      onChangeText={onChangeText}
+      autoFocus={autoFocus}
+      showMicIcon
+      containerStyle={styles.searchScreenField}
+    />
+  </View>
+);
+
 export default React.memo(SearchBar);
 
 const styles = StyleSheet.create({
@@ -352,5 +380,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F1F5F9',
+  },
+  searchScreenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.headerBackground,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E7EB',
+  },
+  searchScreenField: {
+    flex: 1,
   },
 });

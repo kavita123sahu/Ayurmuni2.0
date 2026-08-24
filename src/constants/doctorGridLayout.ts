@@ -1,7 +1,58 @@
 import { PixelRatio } from 'react-native';
 import { SCREEN, SCREEN_PADDING_H } from './layout';
 
-/** Fixed doctor grid card layout — same px on every device. */
+/** Home suggested-doctor card — fixed px slots so every card stays the same height. */
+export const HOME_DOCTOR = {
+  gap: 10,
+  cardRadius: 18,
+  cardPadding: 10,
+  avatarSize: 64,
+  nameHeight: 18,
+  qualHeight: 14,
+  statsHeight: 20,
+  ctaHeight: 32,
+  ctaRadius: 8,
+} as const;
+
+// export const HOME_DOCTOR_CARD_HEIGHT =
+//   HOME_DOCTOR.cardPadding +
+//   (HOME_DOCTOR.avatarSize + 12) +
+//   6 +
+//   HOME_DOCTOR.nameHeight +
+//   HOME_DOCTOR.qualHeight +
+//   8 +
+//   HOME_DOCTOR.statsHeight +
+//   8 +
+//   HOME_DOCTOR.ctaHeight +
+//   HOME_DOCTOR.cardPadding;
+
+export const HOME_DOCTOR_CARD_HEIGHT =
+  HOME_DOCTOR.cardPadding * 4 +
+  // Avatar
+  (HOME_DOCTOR.avatarSize + 12) +
+  6 +
+  // Name
+  HOME_DOCTOR.nameHeight +
+  // Qualification
+  HOME_DOCTOR.qualHeight +
+  // Rating + Consultations
+  28 +
+  8 +
+  // Experience + Feedback
+  48 +
+  7 +
+  // Fee
+  20 +
+  6 +
+  // CTA
+  HOME_DOCTOR.ctaHeight;
+
+export const getHomeDoctorCardWidth = () =>
+  PixelRatio.roundToNearestPixel(
+    (SCREEN.width - SCREEN_PADDING_H * 2 - HOME_DOCTOR.gap) / 2,
+  );
+
+/** List/consult grid card layout — same px on every device. */
 export const DOCTOR_GRID = {
   gap: 10,
   cardRadius: 16,

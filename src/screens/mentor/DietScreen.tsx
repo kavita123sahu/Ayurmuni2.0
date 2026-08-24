@@ -1816,18 +1816,32 @@ const DEFAULT_PRAKRITI_OPTIONS = [
 const DEFAULT_DURATION_OPTIONS = ['7', '14', '21', '30', '45', '60'];
 const DEFAULT_CALORIE_OPTIONS = ['1200', '1500', '1800', '2000', '2200', '2500'];
 
+const planRatingValue = (plan: any) => {
+  const n = Number(plan?.avg_rating ?? plan?.my_rating ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
 type DietFilterKey =
   | 'prakriti'
   | 'disease'
   | 'paid'
   | 'duration'
   | 'calories'
+  | 'rating'
   | 'sort';
 
 type FilterPickOption = {
   label: string;
   value: string;
 };
+
+const RATING_FILTER_OPTIONS: FilterPickOption[] = [
+  { label: 'All ratings', value: 'all' },
+  { label: '4.5 & above', value: '4.5' },
+  { label: '4.0 & above', value: '4' },
+  { label: '3.5 & above', value: '3.5' },
+  { label: '3.0 & above', value: '3' },
+];
 
 type DiseaseOption = {
   id: string;
@@ -1946,6 +1960,7 @@ const DietScreen = (props: any) => {
   const [durationFilter, setDurationFilter] = useState(ALL_VALUE);
   const [caloriesFilter, setCaloriesFilter] = useState(ALL_VALUE);
   const [sortFilter, setSortFilter] = useState(ALL_VALUE);
+  const [ratingFilter, setRatingFilter] = useState(ALL_VALUE);
   const [openFilter, setOpenFilter] = useState<DietFilterKey | null>(null);
   const [filterCatalog, setFilterCatalog] = useState<FilterCatalog>({
     prakriti: DEFAULT_PRAKRITI_OPTIONS,
@@ -1981,8 +1996,12 @@ const DietScreen = (props: any) => {
         caloriesFilter && caloriesFilter !== ALL_VALUE
           ? caloriesFilter
           : undefined,
+      min_rating:
+        ratingFilter && ratingFilter !== ALL_VALUE ? ratingFilter : undefined,
       sort:
-        sortFilter === 'popularity' || sortFilter === 'latest'
+        sortFilter === 'popularity' ||
+          sortFilter === 'latest' ||
+          sortFilter === 'rating'
           ? sortFilter
           : undefined,
     }),
@@ -1993,6 +2012,7 @@ const DietScreen = (props: any) => {
       paidFilter,
       durationFilter,
       caloriesFilter,
+      ratingFilter,
       sortFilter,
     ],
   );
@@ -2114,11 +2134,19 @@ const DietScreen = (props: any) => {
     (paidFilter && paidFilter !== ALL_VALUE) ||
     (durationFilter && durationFilter !== ALL_VALUE) ||
     (caloriesFilter && caloriesFilter !== ALL_VALUE) ||
+    (ratingFilter && ratingFilter !== ALL_VALUE) ||
     (sortFilter && sortFilter !== ALL_VALUE),
   );
 
   const visiblePlans = useMemo(() => {
-    const ranked = [...plans].sort((a, b) => {
+    const minRating =
+      ratingFilter && ratingFilter !== ALL_VALUE ? Number(ratingFilter) : 0;
+    const source =
+      Number.isFinite(minRating) && minRating > 0
+        ? plans.filter(p => planRatingValue(p) >= minRating)
+        : plans;
+
+    const ranked = [...source].sort((a, b) => {
       const rank = (p: any) => {
         const st = getDietListStatus(p);
         if (st === 'active') return 0;
@@ -2126,16 +2154,21 @@ const DietScreen = (props: any) => {
         if (st === 'completed' || st === 'stopped') return 2;
         return 3;
       };
-      return rank(a) - rank(b);
+      const byStatus = rank(a) - rank(b);
+      if (byStatus !== 0) return byStatus;
+      if (sortFilter === 'rating') {
+        return planRatingValue(b) - planRatingValue(a);
+      }
+      return 0;
     });
     if (statusTab === 'active') {
       return ranked.filter(p => getDietListStatus(p) === 'active');
     }
     if (statusTab === 'inactive') {
-      return ranked.filter(p => getDietListStatus(p) !== 'active');
+      return ranked.filter(p => getDietListStatus(p) === 'paused');
     }
     return ranked;
-  }, [plans, statusTab]);
+  }, [plans, statusTab, ratingFilter, sortFilter]);
 
   useEffect(() => {
     if (selectedPlanId || loadingList) return;
@@ -2155,6 +2188,7 @@ const DietScreen = (props: any) => {
     setPaidFilter(ALL_VALUE);
     setDurationFilter(ALL_VALUE);
     setCaloriesFilter(ALL_VALUE);
+    setRatingFilter(ALL_VALUE);
     setSortFilter(ALL_VALUE);
     setOpenFilter(null);
   }, []);
@@ -2226,6 +2260,13 @@ const DietScreen = (props: any) => {
           caloriesFilter !== ALL_VALUE ? caloriesFilter : 'Calories',
       },
       {
+        key: 'rating',
+        title: 'Rating',
+        active: ratingFilter !== ALL_VALUE,
+        valueLabel:
+          ratingFilter !== ALL_VALUE ? `${ratingFilter}+` : 'Rating',
+      },
+      {
         key: 'sort',
         title: 'Sort',
         active: sortFilter !== ALL_VALUE,
@@ -2234,7 +2275,9 @@ const DietScreen = (props: any) => {
             ? 'Popular'
             : sortFilter === 'latest'
               ? 'Latest'
-              : 'Sort',
+              : sortFilter === 'rating'
+                ? 'Top rated'
+                : 'Sort',
       },
     ];
 
@@ -2249,9 +2292,11 @@ const DietScreen = (props: any) => {
             ? 'Select Duration'
             : openFilter === 'calories'
               ? 'Select Calories'
-              : openFilter === 'sort'
-                ? 'Sort By'
-                : '';
+              : openFilter === 'rating'
+                ? 'Filter by Rating'
+                : openFilter === 'sort'
+                  ? 'Sort By'
+                  : '';
 
   const dropdownOptions: FilterPickOption[] = useMemo(() => {
     if (openFilter === 'prakriti') {
@@ -2294,11 +2339,15 @@ const DietScreen = (props: any) => {
         })),
       ];
     }
+    if (openFilter === 'rating') {
+      return RATING_FILTER_OPTIONS;
+    }
     if (openFilter === 'sort') {
       return [
         { label: 'Default', value: ALL_VALUE },
         { label: 'Popularity', value: 'popularity' },
         { label: 'Latest', value: 'latest' },
+        { label: 'Highest rating', value: 'rating' },
       ];
     }
     return [];
@@ -2315,9 +2364,11 @@ const DietScreen = (props: any) => {
             ? durationFilter
             : openFilter === 'calories'
               ? caloriesFilter
-              : openFilter === 'sort'
-                ? sortFilter
-                : ALL_VALUE;
+              : openFilter === 'rating'
+                ? ratingFilter
+                : openFilter === 'sort'
+                  ? sortFilter
+                  : ALL_VALUE;
 
   const onPickFilterOption = useCallback(
     (option: FilterPickOption) => {
@@ -2338,6 +2389,8 @@ const DietScreen = (props: any) => {
         setDurationFilter(option.value);
       } else if (openFilter === 'calories') {
         setCaloriesFilter(option.value);
+      } else if (openFilter === 'rating') {
+        setRatingFilter(option.value);
       } else if (openFilter === 'sort') {
         setSortFilter(option.value);
       }
@@ -2389,7 +2442,7 @@ const DietScreen = (props: any) => {
   const openActiveConflict = useCallback(
     (
       mode: 'resume' | 'start' | 'repeat' | 'switch',
-      active: { name?: string;   patient_diet_plan_id?: string | number | null; id?: string | number } | null | undefined,
+      active: { name?: string; patient_diet_plan_id?: string | number | null; id?: string | number } | null | undefined,
       targetId: string,
     ) => {
       const activeId = String(active?.patient_diet_plan_id || '').trim();
@@ -2875,16 +2928,6 @@ const DietScreen = (props: any) => {
     </View>
   );
 
-  const HydrationCardSection = () => (
-    <HydrationCard
-      waterMl={waterMl}
-      waterGoalMl={nutrition.waterGoalMl}
-      dayLabel={hydrationDayLabel}
-      updating={updatingWater}
-      onSetIntake={updateWaterIntake}
-    />
-  );
-
   // —— LIST ——
   if (!selectedPlanId) {
     return (
@@ -3135,14 +3178,14 @@ const DietScreen = (props: any) => {
                   {statusTab === 'active'
                     ? 'No active diet'
                     : statusTab === 'inactive'
-                      ? 'No inactive diets'
+                      ? 'No paused diets'
                       : 'No diet plans'}
                 </Text>
                 <Text style={styles.emptySub}>
                   {statusTab === 'active'
                     ? 'You don’t have a diet in progress. Open All and start a plan.'
                     : statusTab === 'inactive'
-                      ? 'Every listed plan is currently active.'
+                      ? 'No plans are currently paused.'
                       : hasActiveListFilters
                         ? 'Try another search or prakriti filter.'
                         : listType === 'all'
@@ -3650,15 +3693,18 @@ const DietScreen = (props: any) => {
                         styles.dayChip,
                         selected && styles.dayChipSelected,
                         item.isToday && !selected && styles.dayChipToday,
+                        item.isLocked && styles.dayChipLocked,
                       ]}
-                      activeOpacity={0.85}
-                      onPress={() => selectDay(item.dayKey)}
+                      activeOpacity={item.isLocked ? 1 : 0.85}
+                      disabled={item.isLocked}
+                      onPress={() => !item.isLocked && selectDay(item.dayKey)}
                     >
                       <View style={styles.dayChipTop}>
                         <Text
                           style={[
                             styles.dayChipLabel,
                             selected && styles.dayChipLabelSelected,
+                            item.isLocked && styles.dayChipLabelLocked,
                           ]}
                           numberOfLines={1}
                         >
@@ -3680,27 +3726,36 @@ const DietScreen = (props: any) => {
                               Now
                             </Text>
                           </View>
+                        ) : item.isLocked ? (
+                          <TablerIcon name="lock" size={10} color="#CBD5E1" />
                         ) : null}
                       </View>
                       <Text
                         style={[
                           styles.dayChipMeta,
                           selected && styles.dayChipMetaSelected,
+                          item.isLocked && styles.dayChipMetaLocked,
                         ]}
                       >
-                        {item.isToday
-                          ? 'Today'
-                          : `${item.mealsDone}/${item.mealsTotal || 0}`}
+                        {item.isLocked
+                          ? 'Locked'
+                          : item.isToday
+                            ? 'Today'
+                            : item.isCompleted
+                              ? 'Done ✓'
+                              : `${item.mealsDone}/${item.mealsTotal || 0}`}
                       </Text>
                       <View style={styles.dayChipTrack}>
                         <View
                           style={[
                             styles.dayChipFill,
                             {
-                              width: `${item.progressPct}%`,
+                              width: item.isLocked ? '0%' : `${item.progressPct}%`,
                               backgroundColor: selected
                                 ? '#FFFFFF'
-                                : Colors.primaryColor,
+                                : item.isCompleted
+                                  ? '#10B981'
+                                  : Colors.primaryColor,
                             },
                           ]}
                         />
@@ -3719,7 +3774,13 @@ const DietScreen = (props: any) => {
                 actionText={isViewingToday ? undefined : dayLabel}
               />
               <DailyVitalityCard />
-              <HydrationCardSection />
+              <HydrationCard
+                waterMl={waterMl}
+                waterGoalMl={nutrition.waterGoalMl}
+                dayLabel={hydrationDayLabel}
+                updating={updatingWater}
+                onSetIntake={updateWaterIntake}
+              />
             </>
           )}
 
@@ -5060,6 +5121,20 @@ const styles = StyleSheet.create({
   dayChipToday: {
     borderColor: '#9DD4C4',
     backgroundColor: '#F1FAF6',
+  },
+
+  dayChipLocked: {
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    opacity: 0.6,
+  },
+
+  dayChipLabelLocked: {
+    color: '#94A3B8',
+  },
+
+  dayChipMetaLocked: {
+    color: '#CBD5E1',
   },
 
   dayChipTop: {

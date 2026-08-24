@@ -417,7 +417,7 @@ const QuestLayoutInner = ({
       <View style={[styles.orb, styles.orbTL, { backgroundColor: theme.orbA }]} />
       <View style={[styles.orb, styles.orbBR, { backgroundColor: theme.orbB }]} />
 
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safeOuter} edges={['top', 'bottom']}>
         {/* Dense brand + actions row */}
         <View style={styles.topBar}>
           <Pressable onPress={onHeaderBack} style={styles.iconBtn} hitSlop={8}>
@@ -503,7 +503,7 @@ const QuestLayoutInner = ({
           trackColor={theme.track}
         />
 
-        {/* Filled quest stage — no empty bottom */}
+        {/* Stage card — grows with content, never leaves blank space */}
         <Animated.View
           key={cardKey}
           entering={FadeInDown.springify().damping(18)}
@@ -520,7 +520,7 @@ const QuestLayoutInner = ({
             <Text style={styles.levelBadgeText}>LEVEL {level}</Text>
           </View>
 
-          <Text style={styles.question} numberOfLines={3}>
+          <Text style={styles.question}>
             {basicInfoStep
               ? 'Share your basic information'
               : currentStep.question}
@@ -531,17 +531,20 @@ const QuestLayoutInner = ({
           ) : null}
 
           {basicInfoStep && rawQuestions && handleBasicInfoChange ? (
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 8 }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <BasicInfoForm
-                questions={rawQuestions}
-                selectedAnswers={answers}
-                onChange={handleBasicInfoChange}
-              />
+            /* Basic info — scrollable form + pinned Continue */
+            <View style={styles.stageBody}>
+              <ScrollView
+                style={styles.stageScroll}
+                contentContainerStyle={styles.stageScrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <BasicInfoForm
+                  questions={rawQuestions}
+                  selectedAnswers={answers}
+                  onChange={handleBasicInfoChange}
+                />
+              </ScrollView>
               <Pressable
                 style={[
                   styles.continueBtn,
@@ -549,27 +552,23 @@ const QuestLayoutInner = ({
                   (isDisabled || submitting) && styles.continueDisabled,
                 ]}
                 disabled={isDisabled || submitting}
-                onPress={() => {
-                  play('select');
-                  handleNext();
-                }}
+                onPress={() => { play('select'); handleNext(); }}
               >
-                {submitting ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
+                {submitting ? <ActivityIndicator color="#FFF" /> : (
                   <Text style={styles.continueText}>Continue</Text>
                 )}
               </Pressable>
-            </ScrollView>
+            </View>
           ) : currentStep.answer_type === 'text' && handleTextChange ? (
-            <View style={{ flex: 1 }}>
+            /* Free-text answer + pinned Continue */
+            <View style={styles.stageBody}>
               <TextInput
                 multiline
                 placeholder="Write your answer..."
                 placeholderTextColor="#94A3B8"
                 value={answers[stepKey] ?? ''}
                 onChangeText={handleTextChange}
-                style={[styles.input, { flex: 1 }]}
+                style={[styles.input, styles.inputFlex]}
               />
               <Pressable
                 style={[
@@ -578,14 +577,9 @@ const QuestLayoutInner = ({
                   (isDisabled || submitting) && styles.continueDisabled,
                 ]}
                 disabled={isDisabled || submitting}
-                onPress={() => {
-                  play('select');
-                  handleNext();
-                }}
+                onPress={() => { play('select'); handleNext(); }}
               >
-                {submitting ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
+                {submitting ? <ActivityIndicator color="#FFF" /> : (
                   <Text style={styles.continueText}>
                     {isLastStep ? 'Complete Quest' : 'Continue'}
                   </Text>
@@ -593,11 +587,13 @@ const QuestLayoutInner = ({
               </Pressable>
             </View>
           ) : (
-            <View style={styles.options}>
+            /* Choice options — scrollable list + pinned Continue for multi/last */
+            <View style={styles.stageBody}>
               <ScrollView
-                style={styles.optionsScrollView}
-                contentContainerStyle={styles.optionsScroll}
+                style={styles.stageScroll}
+                contentContainerStyle={styles.stageScrollContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 bounces={false}
               >
                 {choices.map((item, index) => {
@@ -626,7 +622,6 @@ const QuestLayoutInner = ({
                   );
                 })}
               </ScrollView>
-
               {(currentStep.answer_type === 'multi_choice' || isLastStep) && (
                 <Pressable
                   style={[
@@ -635,14 +630,9 @@ const QuestLayoutInner = ({
                     (isDisabled || submitting) && styles.continueDisabled,
                   ]}
                   disabled={isDisabled || submitting}
-                  onPress={() => {
-                    play('select');
-                    handleNext();
-                  }}
+                  onPress={() => { play('select'); handleNext(); }}
                 >
-                  {submitting ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
+                  {submitting ? <ActivityIndicator color="#FFF" /> : (
                     <Text style={styles.continueText}>
                       {isLastStep ? 'Complete Quest' : 'Continue'}
                     </Text>
@@ -680,7 +670,7 @@ export default memo(PrakritiQuestLayout);
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: QUEST.bgTop },
-  safe: { flex: 1, paddingHorizontal: 14 },
+  safeOuter: { flex: 1, paddingHorizontal: 14 },
   loader: {
     flex: 1,
     alignItems: 'center',
@@ -702,7 +692,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   iconBtn: {
     width: 34,
@@ -759,7 +749,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   pill: {
     flexDirection: 'row',
@@ -787,7 +777,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 
-  trackBlock: { marginBottom: 10 },
+  trackBlock: { marginBottom: 8 },
   trackMeta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -857,6 +847,18 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
     elevation: 4,
+    overflow: 'hidden',
+  },
+  /* Inner body of the stage — flex:1 so options/form scroll fills remaining space */
+  stageBody: {
+    flex: 1,
+  },
+  stageScroll: {
+    flex: 1,
+  },
+  stageScrollContent: {
+    gap: 8,
+    paddingBottom: 4,
   },
   levelBadge: {
     alignSelf: 'flex-start',
@@ -876,10 +878,10 @@ const styles = StyleSheet.create({
   },
   question: {
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 18,
+    fontSize: 17,
     lineHeight: 24,
     color: QUEST.ink,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   multiHint: {
     fontFamily: Fonts.PoppinsMedium,
@@ -887,18 +889,7 @@ const styles = StyleSheet.create({
     color: QUEST.muted,
     marginBottom: 6,
   },
-  options: {
-    flex: 1,
-    minHeight: 0,
-  },
-  optionsScrollView: {
-    flexGrow: 0,
-    flexShrink: 1,
-  },
-  optionsScroll: {
-    gap: 8,
-    paddingBottom: 2,
-  },
+  inputFlex: { flex: 1 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',

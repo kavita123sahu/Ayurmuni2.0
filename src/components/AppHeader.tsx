@@ -4,12 +4,11 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images';
 import TablerIcon, { TablerIconName } from './TablerIcon';
+import BackIconButton from './BackIconButton';
 
 type Props = {
   title: string;
@@ -36,9 +35,6 @@ const AppHeader: React.FC<Props> = ({
   onRightPress,
   onSearchPress,
   onSecondaryRightPress,
-  // onRefreshPress,
-  useLocalBackIcon = true,
-  leftIconName = 'arrow-left',
   rightIconName,
   rightIconColor,
   secondaryRightIconName,
@@ -53,19 +49,11 @@ const AppHeader: React.FC<Props> = ({
   return (
     <View style={styles.shell}>
       <View style={styles.container}>
-        <TouchableOpacity
-          onPress={onLeftPress}
-          style={styles.iconBox}
-          disabled={!onLeftPress}
-        >
-          {onLeftPress ? (
-            useLocalBackIcon ? (
-              <Image source={Images.backIcon} style={styles.backImage} />
-            ) : (
-              <TablerIcon name={leftIconName} size={22} color={Colors.primaryColor} />
-            )
-          ) : null}
-        </TouchableOpacity>
+        {onLeftPress ? (
+          <BackIconButton onPress={onLeftPress} />
+        ) : (
+          <View style={styles.iconPlaceholder} />
+        )}
 
         <Text style={styles.title} numberOfLines={1}>
           {title || ' '}
@@ -120,7 +108,7 @@ export default AppHeader;
 
 const styles = StyleSheet.create({
   shell: {
-    // backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.headerBackground,
   },
   container: {
     flexDirection: 'row',

@@ -70,9 +70,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
 
     borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    marginBottom: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
   },
 
   activeCard: {
@@ -134,7 +134,8 @@ const styles = StyleSheet.create({
 
   // 🔥 TITLE FIX (main issue yahi tha)
   title: {
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 18,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1C1F23',
   },

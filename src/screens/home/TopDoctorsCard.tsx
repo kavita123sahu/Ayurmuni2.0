@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import DoctorListCard from '../../components/DoctorListCard';
+import HomeDoctorCard from '../../components/HomeDoctorCard';
 import {
-  DOCTOR_GRID,
+  HOME_DOCTOR,
   getDoctorGridCardWidth,
+  getHomeDoctorCardWidth,
 } from '../../constants/doctorGridLayout';
 
 const toLabelList = (value: any): string[] => {
@@ -55,6 +57,8 @@ interface Doctor {
   experience: string;
   name: string;
   total_reviews: string;
+  total_patients?: string | number;
+  patients_display?: string | number;
   ranking_score: string;
   experience_years: string;
   profile_image: any;
@@ -87,8 +91,12 @@ const TopDoctorsCard = ({
   data = [],
   navigation,
   limit,
+  home = false,
 }: Props) => {
-  const cardWidth = useMemo(() => getDoctorGridCardWidth(), []);
+  const cardWidth = useMemo(
+    () => (home ? getHomeDoctorCardWidth() : getDoctorGridCardWidth()),
+    [home],
+  );
 
   const openDoctorProfile = useCallback(
     (item: Doctor) => {
@@ -120,20 +128,43 @@ const TopDoctorsCard = ({
           Number(feeRaw) >= 0;
         const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
 
+        const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
+        const cardProps = {
+          name: item.full_name || item.name || 'Doctor',
+          speciality: labels[0] || 'Ayurveda Specialist',
+          ratingLabel,
+          reviews: item?.total_reviews,
+          totalPatients:
+            item?.patients_display ??
+            item?.total_patients ??
+            item?.total_reviews,
+          experience: item?.experience_years || item?.experience || '0',
+          feeLabel: hasFee ? String(feeRaw).replace(/\.0+$/, '') : null,
+          imageUri: resolveImageUri(item),
+          available: item?.has_availability === true,
+          onPress: () => openDoctorProfile(item),
+        };
+
+        if (home) {
+          return (
+            <HomeDoctorCard
+              key={String(item?.id ?? `top-doc-${index}`)}
+              cardWidth={cardWidth}
+              qualification={
+                String(item?.qualification || item?.designation || '').trim() ||
+                undefined
+              }
+              {...cardProps}
+            />
+          );
+        }
+
         return (
           <DoctorListCard
             key={String(item?.id ?? `top-doc-${index}`)}
             variant="grid"
             cardWidth={cardWidth}
-            name={item.full_name || item.name || 'Doctor'}
-            speciality={labels[0] || 'Ayurveda Specialist'}
-            ratingLabel={Number.isFinite(rating) ? rating.toFixed(1) : '—'}
-            reviews={item?.total_reviews}
-            experience={item?.experience_years || item?.experience || '0'}
-            feeLabel={hasFee ? String(feeRaw).replace(/\.0+$/, '') : null}
-            imageUri={resolveImageUri(item)}
-            available={item?.has_availability === true}
-            onPress={() => openDoctorProfile(item)}
+            {...cardProps}
           />
         );
       })}
@@ -148,6 +179,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: DOCTOR_GRID.gap,
+    rowGap: HOME_DOCTOR.gap,
   },
 });

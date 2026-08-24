@@ -34,6 +34,7 @@ import {
 } from '../../simmerScreen/ShimmerHook';
 import { RootStackParamList } from '../../../type';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { Fonts } from '../../common/Fonts';
 import { useConsultData } from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
@@ -172,7 +173,12 @@ const ConsultHome = () => {
         return;
       }
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -331,10 +337,8 @@ const ConsultHome = () => {
       style={styles.container}>
 
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor={
-          Colors.background
-        }
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
       />
 
       {/* HEADER */}
@@ -555,7 +559,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: '#FDFDFB',
+    backgroundColor: SCREEN_THEME.screenBackground,
     paddingHorizontal: getScreenPaddingH(),
   },
 

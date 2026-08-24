@@ -78,6 +78,120 @@ export const mapYogaSessionForList = (item: any) => {
   };
 };
 
+export const parseTimeToSeconds = (value: any): number => {
+  if (value == null || value === '') return 0;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, value);
+  }
+  const raw = String(value).trim();
+  if (!raw) return 0;
+  if (/^\d+(\.\d+)?$/.test(raw)) return Math.max(0, Number(raw));
+  const parts = raw.split(':').map(p => Number(p));
+  if (parts.some(n => !Number.isFinite(n))) return 0;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return 0;
+};
+
+export const formatYogaTime = (seconds: number): string => {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+export type YogaBreakdownItem = {
+  id: string;
+  title: string;
+  time: string;
+  startSeconds: number;
+};
+
+const toBreakdownItem = (raw: any, index: number): YogaBreakdownItem | null => {
+  if (raw == null) return null;
+  if (typeof raw === 'string') {
+    const title = raw.trim();
+    if (!title) return null;
+    return {
+      id: `pose-${index}`,
+      title,
+      time: formatYogaTime(0),
+      startSeconds: 0,
+    };
+  }
+  const title = String(
+    raw.title ?? raw.name ?? raw.pose ?? raw.asana ?? raw.label ?? '',
+  ).trim();
+  if (!title) return null;
+  const startSeconds = parseTimeToSeconds(
+    raw.start_seconds ??
+      raw.start_time ??
+      raw.timestamp ??
+      raw.time_seconds ??
+      raw.time ??
+      raw.offset ??
+      0,
+  );
+  return {
+    id: String(raw.id ?? `pose-${index}`),
+    title,
+    time: formatYogaTime(startSeconds),
+    startSeconds,
+  };
+};
+
+/** Session poses / chapters from common API shapes. */
+export const getYogaSessionBreakdown = (item?: any): YogaBreakdownItem[] => {
+  if (!item || typeof item !== 'object') return [];
+  const candidates = [
+    item.session_breakdown,
+    item.breakdown,
+    item.poses,
+    item.yoga_poses,
+    item.asanas,
+    item.steps,
+    item.segments,
+    item.chapters,
+    item.sequence,
+    item.timeline,
+    item.sections,
+  ];
+  for (const list of candidates) {
+    if (!Array.isArray(list) || !list.length) continue;
+    const mapped = list
+      .map((row, i) => toBreakdownItem(row, i))
+      .filter(Boolean) as YogaBreakdownItem[];
+    if (mapped.length) return mapped;
+  }
+  return [];
+};
+
+export const getYogaInstructor = (item?: any) => {
+  const src =
+    item?.instructor ||
+    item?.mentor ||
+    item?.teacher ||
+    item?.guided_by ||
+    item?.coach ||
+    null;
+  if (!src) return null;
+  if (typeof src === 'string') {
+    return { name: src, subtitle: '', description: '', imageUri: '' };
+  }
+  return {
+    name: String(src.full_name || src.name || 'Yoga Mentor'),
+    subtitle: String(
+      src.designation || src.specialization || src.title || '',
+    ),
+    description: String(src.bio || src.description || ''),
+    imageUri: String(src.profile_image || src.image_url || src.image || ''),
+  };
+};
+
 export const normalizeYogaSessionList = (response: any): any[] => {
   if (!response) return [];
   if (Array.isArray(response)) {

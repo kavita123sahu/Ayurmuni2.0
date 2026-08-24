@@ -2378,8 +2378,17 @@ export type DietListFilters = {
   is_paid?: boolean | string;
   duration?: string | number;
   calories?: string | number;
-  sort?: 'popularity' | 'latest' | string;
+  sort?: 'popularity' | 'latest' | 'rating' | string;
+  /** Client-side min avg rating; also switches list to catalog fetch. */
+  min_rating?: string | number;
 };
+
+
+interface PlanDetail {
+  id: string;
+  is_active?: boolean;
+  // add your actual fields here
+}
 
 type Options = {
   /** Open this plan detail when screen mounts */
@@ -2412,6 +2421,10 @@ const normalizeListFilters = (filters?: DietListFilters): DietListFilters => {
       ? filters.calories
       : undefined;
   const sort = String(filters.sort || '').trim() || undefined;
+  const min_rating =
+    filters.min_rating != null && String(filters.min_rating).trim() !== ''
+      ? filters.min_rating
+      : undefined;
   const is_paid =
     filters.is_paid === true ||
       filters.is_paid === false ||
@@ -2428,6 +2441,7 @@ const normalizeListFilters = (filters?: DietListFilters): DietListFilters => {
     ...(duration != null ? { duration } : {}),
     ...(calories != null ? { calories } : {}),
     ...(sort ? { sort } : {}),
+    ...(min_rating != null ? { min_rating } : {}),
   };
 };
 
@@ -2452,6 +2466,10 @@ export const useDietPlans = (options: Options = {}) => {
     initialPlanId,
   );
   const [planDetail, setPlanDetail] = useState<any | null>(null);
+
+  // const [planDetail, setPlanDetail] = useState<PlanDetail | null>(null);
+
+  // const [planDetail, setPlanDetail] = useState<any | null>(null);
   const [progress, setProgress] = useState<DietProgressItem[]>([]);
   const [currentDayKey, setCurrentDayKey] = useState('day_1');
   const [todayDayKey, setTodayDayKey] = useState('day_1');
@@ -2673,9 +2691,10 @@ export const useDietPlans = (options: Options = {}) => {
       const requestId = listRequestIdRef.current;
 
       try {
+        const { min_rating: _minRating, ...apiFilters } = normalizedFilters;
         const query: DietPlanListParams = {
           ...(effectiveListType ? { type: effectiveListType } : {}),
-          ...normalizedFilters,
+          ...apiFilters,
           page: pageToLoad,
           page_size: DIET_PLAN_PAGE_SIZE,
         };
@@ -3913,7 +3932,7 @@ export const useDietPlans = (options: Options = {}) => {
               );
             }
           } else {
-            setPlanDetail(prev => (prev ? patchActive(prev) : prev));
+            setPlanDetail((prev: any) => (prev ? patchActive(prev) : prev));
             setPlans(prev =>
               prev.map(p =>
                 String(p.id) === String(selectedPlanId) ||
@@ -4016,7 +4035,7 @@ export const useDietPlans = (options: Options = {}) => {
                 }
                 : prev;
             setPlans(prev => prev.map(p => patchRepeatActive(p)));
-            setPlanDetail(prev => patchRepeatActive(prev) ?? prev);
+            setPlanDetail((prev: any) => patchRepeatActive(prev) ?? prev);
           }
         } else {
           await loadList();

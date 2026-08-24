@@ -246,7 +246,7 @@ const HelpCenterScreen = (props: any) => {
                 onPress={() =>
                   setActiveIndex(activeIndex === item.id ? null : item.id)
                 }
-                onOpenDetail={() => openFaqDetail(item.id)}
+                // onOpenDetail={() => openFaqDetail(item.id)}
               />
             ))
           )}

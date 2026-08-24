@@ -128,7 +128,7 @@ export type DietPlanListParams = {
     is_paid?: boolean | string;
     duration?: string | number;
     calories?: string | number;
-    sort?: 'popularity' | 'latest' | string;
+    sort?: 'popularity' | 'latest' | 'rating' | string;
 };
 
 export const getDietPlans = async (params?: DietPlanListParams) => {

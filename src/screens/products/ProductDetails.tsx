@@ -1107,7 +1107,10 @@ const ProductDetails = (props: any) => {
         } else {
             resolveProductImageUri(selectedVariant);
         }
-        const success = await addToCart(selectedVariant?.id, quantity);
+        const success = await addToCart(selectedVariant?.id, quantity, {
+            currentQuantity: 0,
+            prescriptionRequired: isPrescriptionRequired(productForRx),
+        });
         if (success) {
             props.navigation.navigate('MyCart');
         } else {

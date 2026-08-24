@@ -18,6 +18,7 @@ import {
   resolveYogaVideoUri,
 } from '../utils/yogaUtils';
 import { formatDietPlanRatingBadgeText } from '../utils/dietPlanUtils';
+import { SCREEN_PADDING_H } from '../constants/layout';
 
 interface Props {
   data: any[];
@@ -27,6 +28,7 @@ interface Props {
   navigation: any;
   ListHeaderComponent?: React.ReactNode;
   home?: boolean;
+  edgeScroll?: boolean;
 }
 
 const YogaPreviewVideo = ({
@@ -90,6 +92,7 @@ const SuggestedCard: React.FC<Props> = ({
   header = false,
   navigation,
   home = false,
+  edgeScroll = false,
 }) => {
   const [showAll, setShowAll] = useState(false);
 
@@ -127,6 +130,7 @@ const SuggestedCard: React.FC<Props> = ({
       contentContainerStyle={[
         styles.listContent,
         home && styles.listContentHome,
+        home && edgeScroll && styles.listContentEdge,
       ]}
       columnWrapperStyle={
         isGrid
@@ -309,7 +313,10 @@ const styles = StyleSheet.create({
   },
   listContentHome: {
     paddingBottom: 0,
-    paddingRight: 4,
+  },
+  listContentEdge: {
+    paddingLeft: 0,
+    paddingRight: SCREEN_PADDING_H,
   },
   card: {
     width: LIST_CARD_WIDTH,

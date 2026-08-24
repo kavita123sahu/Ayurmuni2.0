@@ -4,6 +4,8 @@ import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
 import { fetchHomeData } from '../store/slices/homeSlice';
 import { isAuthenticated } from '../services/guestAuth';
+import * as ProductServices from '../services/ProductServices';
+import { setWishlistCount } from '../utils/wishlistCount';
 
 /**
  * Warm home/cart after first interactions so Splash/nav aren't blocked.
@@ -14,9 +16,19 @@ const AppDataInitializer = () => {
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       dispatch(fetchHomeData(false));
-      isAuthenticated().then(loggedIn => {
+      isAuthenticated().then(async loggedIn => {
         if (loggedIn) {
           dispatch(fetchCart(false));
+          try {
+            const res = await ProductServices.getProduct();
+            const items = res?.data?.results || [];
+            const count = items.filter(
+              (item: any) => item?.is_wishlist_item === true,
+            ).length;
+            setWishlistCount(count);
+          } catch {
+            setWishlistCount(0);
+          }
         }
       });
     });

@@ -473,29 +473,83 @@ export const formatAppointmentTimeLabel = (timeStr?: string) => {
 };
 
 /** Normalize history/recent API item into display fields */
+// export const getConsultationScheduleLabels = (item: any) => {
+//   const dateRaw =
+//     item?.date ||
+//     item?.appointment_date ||
+//     item?.appointment?.appointment_date ||
+//     '';
+//   const timeRaw =
+//     item?.time ||
+//     item?.start_time ||
+//     item?.appointment?.start_time ||
+//     '';
+//   const status =
+//     item?.status ||
+//     item?.appointment_status ||
+//     item?.appointment?.appointment_status ||
+//     '';
+// const endTime = item?.end_time || item?.appointment?.end_time || null;
+
+//   const weekday = formatAppointmentWeekday(dateRaw);
+//   const dayLabel = formatAppointmentDayLabel(dateRaw);
+//   const dateLabel = formatAppointmentDateFull(dateRaw);
+//   const timeLabel = formatAppointmentTimeLabel(timeRaw);
+//   const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
+//   return {
+//     dateRaw,
+//     timeRaw,
+//     status: String(status || ''),
+//     weekday,
+//     dayLabel,
+//     dateLabel,
+//     timeLabel,
+//     endTimeLabel,
+//     /** Compact line: Today · 31 Jul 2026 · 10:30 AM */
+//     scheduleLine: [dayLabel || weekday, dateLabel, timeLabel]
+//       .filter(Boolean)
+//       .join(' · '),
+//   };
+// };
+
 export const getConsultationScheduleLabels = (item: any) => {
   const dateRaw =
     item?.date ||
     item?.appointment_date ||
     item?.appointment?.appointment_date ||
     '';
+
   const timeRaw =
     item?.time ||
     item?.start_time ||
     item?.appointment?.start_time ||
     '';
+
   const status =
     item?.status ||
     item?.appointment_status ||
     item?.appointment?.appointment_status ||
     '';
-const endTime = item?.end_time || item?.appointment?.end_time || null;
 
+  const endTime =
+    item?.end_time ||
+    item?.appointment?.end_time ||
+    null;
+
+  // Always show weekday: Monday, Tuesday, Wednesday...
   const weekday = formatAppointmentWeekday(dateRaw);
-  const dayLabel = formatAppointmentDayLabel(dateRaw);
+
+  // Don't use Today/Tomorrow label
+  const dayLabel = weekday;
+
   const dateLabel = formatAppointmentDateFull(dateRaw);
+
   const timeLabel = formatAppointmentTimeLabel(timeRaw);
-  const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
+
+  const endTimeLabel = endTime
+    ? formatAppointmentTimeLabel(endTime)
+    : null;
+
   return {
     dateRaw,
     timeRaw,
@@ -505,8 +559,10 @@ const endTime = item?.end_time || item?.appointment?.end_time || null;
     dateLabel,
     timeLabel,
     endTimeLabel,
-    /** Compact line: Today · 31 Jul 2026 · 10:30 AM */
-    scheduleLine: [dayLabel || weekday, dateLabel, timeLabel]
+
+    // Example:
+    // Monday · 31 Jul 2026 · 10:30 AM
+    scheduleLine: [weekday, dateLabel, timeLabel]
       .filter(Boolean)
       .join(' · '),
   };
@@ -519,6 +575,7 @@ export const formatDoctorDisplayName = (name?: string) => {
   }
   return /^dr\.?\s/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
 };
+
 
 export const getMinutesUntilAppointment = (
   dateStr?: string,

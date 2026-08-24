@@ -14,6 +14,7 @@ import { Colors } from '../common/Colors';
 import { CARD_SURFACE } from '../constants/cardStyles';
 import { resolveImageUri } from '../utils/imageUtils';
 import { resolveCartItemImage } from '../common/DataInterface';
+import { isPrescriptionRequired } from '../utils/prescriptionUtils';
 
 type Props = {
     item: any;
@@ -21,7 +22,7 @@ type Props = {
     isSelected: boolean;
     navigation: any;
     toggleItemSelection: (id: string) => void;
-    updateQuantity: (variantId: string, action: 'plus' | 'minus') => void;
+    updateQuantity: (itemId: string, action: 'plus' | 'minus' | 'remove') => void;
 };
 
 const MyProductCard = ({
@@ -101,21 +102,34 @@ const MyProductCard = ({
             </View>
 
             <View style={styles.qtyWrap}>
-                {type === 'prescribed' ? (
-                    <View style={styles.prescribedQtyBox}>
+                {isPrescriptionRequired(item) ? (
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => updateQuantity(String(item.id), 'plus')}
+                        style={styles.prescribedQtyBox}
+                    >
                         <Text style={styles.prescribedQtyValue}>
                             {item.quantity}
                         </Text>
-                        <Text style={styles.prescribedQtyLabel}>Prescribed</Text>
-                    </View>
+                        <Text style={styles.prescribedQtyLabel}>Rx needed</Text>
+                    </TouchableOpacity>
                 ) : (
-                    <BlinkitAddButton
-                        quantity={item.quantity}
-                        compact
-                        onAdd={() => updateQuantity(item.variant_id, 'plus')}
-                        onIncrement={() => updateQuantity(item.variant_id, 'plus')}
-                        onDecrement={() => updateQuantity(item.variant_id, 'minus')}
-                    />
+                    <>
+                        <BlinkitAddButton
+                            quantity={Number(item.quantity) || 0}
+                            compact
+                            onAdd={() => updateQuantity(String(item.id), 'plus')}
+                            onIncrement={() => updateQuantity(String(item.id), 'plus')}
+                            onDecrement={() => updateQuantity(String(item.id), 'minus')}
+                        />
+                        <TouchableOpacity
+                            activeOpacity={0.75}
+                            onPress={() => updateQuantity(String(item.id), 'remove')}
+                            style={styles.removeBtn}
+                        >
+                            <Text style={styles.removeBtnText}>Remove</Text>
+                        </TouchableOpacity>
+                    </>
                 )}
             </View>
         </Pressable>
@@ -226,6 +240,16 @@ const styles = StyleSheet.create({
     qtyWrap: {
         alignItems: 'flex-end',
         justifyContent: 'center',
+        gap: 6,
+    },
+    removeBtn: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    removeBtnText: {
+        fontSize: 11,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
     },
     prescribedQtyBox: {
         minWidth: 70,

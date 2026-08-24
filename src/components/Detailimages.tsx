@@ -303,12 +303,10 @@ const styles = StyleSheet.create({
   wrapperEmbedded: {
     marginTop: 0,
     marginBottom: 0,
-    overflow: 'hidden',
-    borderRadius: 16,
   },
   wrapperBanner: {
     marginTop: 0,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   listContent: {
     paddingRight: SPACING,
@@ -324,8 +322,10 @@ const styles = StyleSheet.create({
     borderColor: '#E8EDF2',
   },
   slideBanner: {
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 0,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
