@@ -12,8 +12,6 @@ export const isPrescriptionRequired = (item: any): boolean => {
 
   const raw =
     item.prescription_required ??
-    item.requires_prescription ??
-    item.is_prescription_required ??
     item.variant?.prescription_required ??
     item.product?.prescription_required;
 
@@ -22,19 +20,21 @@ export const isPrescriptionRequired = (item: any): boolean => {
 
 const PRESCRIPTION_TITLE = 'Prescription required';
 const PRESCRIPTION_MSG =
-  'This medicine needs a doctor’s prescription. Please consult a doctor to get it prescribed before adding to cart.';
+  'You cannot increase the quantity or add this medicine to cart without a doctor’s prescription.';
 
 /** Toast + optional native alert for prescription-gated products */
 export const showPrescriptionRequiredMessage = (options?: {
   useAlert?: boolean;
+  message?: string;
 }) => {
+  const message = options?.message || PRESCRIPTION_MSG;
   if (options?.useAlert !== false) {
-    Alert.alert(PRESCRIPTION_TITLE, PRESCRIPTION_MSG, [
+    Alert.alert(PRESCRIPTION_TITLE, message, [
       { text: 'OK', style: 'default' },
     ]);
     return;
   }
-  showSuccessToast(PRESCRIPTION_MSG, 'error');
+  showSuccessToast(message, 'error');
 };
 
 /**

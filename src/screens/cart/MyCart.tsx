@@ -43,6 +43,21 @@ import {
     canAddProductWithoutPrescription,
     isPrescriptionRequired,
 } from '../../utils/prescriptionUtils';
+import {
+    resolveCartItemSellingPrice,
+} from '../../utils/cartPriceUtils';
+
+/** Skip incomplete API rows (no variant / name) so empty shells never render. */
+const isRenderableCartProduct = (product: {
+    variant_id?: string;
+    name?: string;
+    quantity?: number;
+}) => {
+    const variantId = String(product?.variant_id ?? '').trim();
+    const name = String(product?.name ?? '').trim();
+    const qty = Number(product?.quantity) || 0;
+    return Boolean(variantId && name && qty > 0);
+};
 
 
 
@@ -83,15 +98,21 @@ const MyCart = ({ navigation }: any) => {
         const next: SectionType[] = [];
 
         if (CartData?.my_cart?.items?.length) {
-            next.push({
-                id: 'cart',
-                title: 'My Cart',
-                type: 'cart',
-                items: CartData.my_cart.items.map((item: any) => ({
+            const cartItems = CartData.my_cart.items
+                .map((item: any) => ({
                     ...getProductData(item),
                     source: 'cart' as const,
-                })),
-            });
+                }))
+                .filter(isRenderableCartProduct);
+
+            if (cartItems.length) {
+                next.push({
+                    id: 'cart',
+                    title: 'My Cart',
+                    type: 'cart',
+                    items: cartItems,
+                });
+            }
         }
 
         // Only line items inside prescription groups that have products
@@ -110,16 +131,33 @@ const MyCart = ({ navigation }: any) => {
                         item,
                         prescription?.doctor_name,
                     );
+                    const variantId = String(product.variant_id ?? '');
+                    const extraQty = (
+                        CartData?.my_cart?.items ?? []
+                    ).reduce((sum: number, cartItem: any) => {
+                        const cartVariantId = String(
+                            cartItem?.variant_id ??
+                                cartItem?.variant?.variant_id ??
+                                cartItem?.variant?.id ??
+                                '',
+                        );
+                        if (cartVariantId && cartVariantId === variantId) {
+                            return sum + (Number(cartItem?.quantity) || 0);
+                        }
+                        return sum;
+                    }, 0);
+
                     return {
                         ...product,
-                        // Prefer nested prescription line id for place-order
                         id: lineId,
                         cart_item_id: lineId,
                         source: 'prescribed' as const,
                         prescription_id: prescription?.prescription_id,
                         prescription_cart_id: prescription?.id,
+                        extra_qty: extraQty,
                     };
-                });
+                })
+                .filter(isRenderableCartProduct);
         });
 
         if (prescribedLineItems.length > 0) {
@@ -149,9 +187,7 @@ const MyCart = ({ navigation }: any) => {
         useCallback(() => {
             selectAllPendingRef.current = true;
             setFocusTick(tick => tick + 1);
-            if (!hasCachedCart) {
-                fetchAllData({ force: true, silent: false });
-            }
+            fetchAllData({ force: true, silent: hasCachedCart });
         }, [fetchAllData, hasCachedCart]),
     );
 
@@ -239,11 +275,13 @@ const MyCart = ({ navigation }: any) => {
                     variant_id: String(
                         myCartItem.variant_id ??
                             myCartItem.variant?.variant_id ??
+                            myCartItem.variant?.id ??
                             '',
                     ),
                     quantity: Number(myCartItem.quantity) || 0,
                     source: 'cart' as const,
                     cart_item_id: id,
+                    prescription_required: isPrescriptionRequired(myCartItem),
                 };
             }
 
@@ -256,13 +294,14 @@ const MyCart = ({ navigation }: any) => {
                         variant_id: String(
                             prescribedItem.variant_id ??
                                 prescribedItem.variant?.variant_id ??
+                                prescribedItem.variant?.id ??
                                 '',
                         ),
                         quantity: Number(prescribedItem.quantity) || 0,
                         source: 'prescribed' as const,
                         cart_item_id: id,
                         prescription_required:
-                            prescribedItem.prescription_required,
+                            isPrescriptionRequired(prescribedItem),
                     };
                 }
             }
@@ -279,7 +318,61 @@ const MyCart = ({ navigation }: any) => {
                 return;
             }
 
-            if (isPrescriptionRequired(line)) {
+            const rxRequired = isPrescriptionRequired(line);
+            const isPrescribed = line.source === 'prescribed';
+
+            /**
+             * Prescribed list:
+             * - prescription_required true → alert, cannot increase / add / remove
+             * - prescription_required false → user can adjust prescribed qty
+             * - never remove prescribed line (qty 0)
+             */
+            if (isPrescribed) {
+                if (action === 'remove') {
+                    return;
+                }
+
+                if (rxRequired) {
+                    canAddProductWithoutPrescription(line);
+                    return;
+                }
+
+                const oldQty = line.quantity;
+
+                if (action === 'plus') {
+                    dispatch(
+                        queueCartLineSync({
+                            variantId: line.variant_id,
+                            quantity: oldQty + 1,
+                            source: 'prescribed',
+                            cartItemId: line.cart_item_id,
+                            currentQuantity: oldQty,
+                            prescriptionRequired: false,
+                        }),
+                    );
+                    return;
+                }
+
+                if (action === 'minus') {
+                    if (oldQty <= 1) {
+                        return;
+                    }
+                    dispatch(
+                        queueCartLineSync({
+                            variantId: line.variant_id,
+                            quantity: oldQty - 1,
+                            source: 'prescribed',
+                            cartItemId: line.cart_item_id,
+                            currentQuantity: oldQty,
+                            prescriptionRequired: false,
+                        }),
+                    );
+                }
+                return;
+            }
+
+            // Regular my_cart: Rx products cannot increase qty / add more
+            if (rxRequired && action === 'plus') {
                 canAddProductWithoutPrescription(line);
                 return;
             }
@@ -300,6 +393,8 @@ const MyCart = ({ navigation }: any) => {
                     quantity: newQty,
                     source: line.source,
                     cartItemId: String(line.cart_item_id ?? itemId),
+                    currentQuantity: oldQty,
+                    prescriptionRequired: rxRequired,
                 }),
             );
         },
@@ -327,25 +422,23 @@ const MyCart = ({ navigation }: any) => {
     const deliveryFee = 0;
 
     const subtotal = useMemo(() => {
-        return Number(
-            selectedProducts
-                .reduce(
-                    (sum, item) =>
-                        sum +
-                        item.price * item.quantity,
-                    0,
-                )
-                .toFixed(2),
+        const selected = selectedProducts as any[];
+
+        return Math.round(
+            selected.reduce((sum, item) => {
+                const unitPrice =
+                    resolveCartItemSellingPrice(item) ||
+                    Number(item.price) ||
+                    0;
+                const qty = Number(item.quantity) || 0;
+                return sum + unitPrice * qty;
+            }, 0),
         );
     }, [selectedProducts]);
 
-    const total = Number(
-        (subtotal + deliveryFee).toFixed(2),
-    );
+    const total = subtotal + deliveryFee;
 
-    const totalSubtotal =
-        Math.round(Number(CartData?.my_cart?.subtotal || 0) +
-            Number(CartData?.prescription_cart?.subtotal || 0));
+    const totalSubtotal = subtotal;
 
     const cartSection = sections.find(item => item.type === 'cart');
     const prescribedSection = sections.find(item => item.type === 'prescribed');
@@ -774,7 +867,7 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: SCREEN_THEME.contentPaddingHorizontal,
         backgroundColor: SCREEN_THEME.screenBackground,
     },
 
@@ -807,15 +900,16 @@ const styles = StyleSheet.create({
     },
 
     sectionCard: {
-        marginBottom: 12,
+        marginBottom: SCREEN_THEME.sectionGap,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent:
             'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
         paddingHorizontal: 2,
+        paddingVertical: 4,
     },
 
     sectionTitle: {

@@ -169,3 +169,16 @@ export const getServiceCategoryIds = (categories: any[] | undefined | null) => (
   products: getServiceCategoryId(categories, 'products'),
   consult: getServiceCategoryId(categories, 'consult'),
 });
+
+/** Resolve which service bucket a single dashboard category belongs to. */
+export const resolveServiceCategoryKey = (
+  item: any,
+): ServiceCategoryKey | null => {
+  if (!item) return null;
+  const keys: ServiceCategoryKey[] = ['consult', 'medicine', 'products'];
+  for (const key of keys) {
+    const matched = getServiceCategoryId([item], key);
+    if (matched) return key;
+  }
+  return null;
+};

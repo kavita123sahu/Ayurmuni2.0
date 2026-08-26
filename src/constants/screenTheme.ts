@@ -6,4 +6,7 @@ export const SCREEN_THEME = {
   statusBarStyle: 'dark-content' as const,
   screenBackground: Colors.background,
   headerBackground: Colors.headerBackground,
+  contentPaddingHorizontal: 20,
+  sectionGap: 16,
+  headerBorderColor: '#E2E8E6',
 } as const;

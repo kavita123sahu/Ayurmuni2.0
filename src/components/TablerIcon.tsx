@@ -10,14 +10,27 @@ import IconChevronUp from '@tabler/icons-react-native/IconChevronUp';
 import IconHome from '@tabler/icons-react-native/IconHome';
 import IconPackage from '@tabler/icons-react-native/IconPackage';
 import IconPill from '@tabler/icons-react-native/IconPill';
+import IconPillFilled from '@tabler/icons-react-native/IconPillFilled';
 import IconUser from '@tabler/icons-react-native/IconUser';
+import IconUserFilled from '@tabler/icons-react-native/IconUserFilled';
 import IconStethoscope from '@tabler/icons-react-native/IconStethoscope';
+import IconMedicalCrossFilled from '@tabler/icons-react-native/IconMedicalCrossFilled';
 import IconPlus from '@tabler/icons-react-native/IconPlus';
 import IconMinus from '@tabler/icons-react-native/IconMinus';
 import IconStar from '@tabler/icons-react-native/IconStar';
 import IconStarFilled from '@tabler/icons-react-native/IconStarFilled';
 import IconHeart from '@tabler/icons-react-native/IconHeart';
 import IconHeartFilled from '@tabler/icons-react-native/IconHeartFilled';
+import IconLeafFilled from '@tabler/icons-react-native/IconLeafFilled';
+import IconShoppingCartFilled from '@tabler/icons-react-native/IconShoppingCartFilled';
+import IconBoxMultipleFilled from '@tabler/icons-react-native/IconBoxMultipleFilled';
+import IconLayoutListFilled from '@tabler/icons-react-native/IconLayoutListFilled';
+import IconCategoryFilled from '@tabler/icons-react-native/IconCategoryFilled';
+import IconBarbellFilled from '@tabler/icons-react-native/IconBarbellFilled';
+import IconSaladFilled from '@tabler/icons-react-native/IconSaladFilled';
+import IconAppsFilled from '@tabler/icons-react-native/IconAppsFilled';
+import IconClipboardListFilled from '@tabler/icons-react-native/IconClipboardListFilled';
+import IconHomeFilled from '@tabler/icons-react-native/IconHomeFilled';
 import IconSearch from '@tabler/icons-react-native/IconSearch';
 import IconMapPin from '@tabler/icons-react-native/IconMapPin';
 import IconCrosshair from '@tabler/icons-react-native/IconCrosshair';
@@ -95,11 +108,24 @@ const ICON_MAP = {
   'chevron-left': IconChevronLeft,
   'chevron-up': IconChevronUp,
   home: IconHome,
+  'home-filled': IconHomeFilled,
   package: IconPackage,
+  'package-filled': IconBoxMultipleFilled,
   pill: IconPill,
+  'pill-filled': IconPillFilled,
   user: IconUser,
+  'user-filled': IconUserFilled,
   users: IconUsers,
   stethoscope: IconStethoscope,
+  'medical-cross-filled': IconMedicalCrossFilled,
+  'leaf-filled': IconLeafFilled,
+  'shopping-cart-filled': IconShoppingCartFilled,
+  'layout-list-filled': IconLayoutListFilled,
+  'category-filled': IconCategoryFilled,
+  'apps-filled': IconAppsFilled,
+  'barbell-filled': IconBarbellFilled,
+  'salad-filled': IconSaladFilled,
+  'clipboard-list-filled': IconClipboardListFilled,
   plus: IconPlus,
   minus: IconMinus,
   star: IconStar,

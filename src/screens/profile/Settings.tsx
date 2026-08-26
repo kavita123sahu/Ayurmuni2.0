@@ -10,6 +10,7 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { Fontisto } from '../../common/Vector';
 import { Utils } from '../../common/Utils';
 import { showSuccessToast } from '../../config/Key';
+import { logoutOneSignalUser } from '../../services/pushNotificationService';
 
 const SettingsScreen = (props: any) => {
   const navigation = props.navigation;
@@ -145,6 +146,7 @@ const SettingsScreen = (props: any) => {
   };
 
   const handleSignOut = async () => {
+    logoutOneSignalUser();
     await Utils.clearAllData();
     showSuccessToast('Signed out successfully', 'success');
     navigation.reset({

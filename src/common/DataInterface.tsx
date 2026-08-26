@@ -4,6 +4,8 @@ import { Colors } from "./Colors";
 import React from "react";
 import { resolveProductImageUri } from '../utils/imageUtils';
 import { resolvePayOnDelivery } from '../utils/payOnDeliveryUtils';
+import { isPrescriptionRequired } from '../utils/prescriptionUtils';
+import { resolveCartItemSellingPrice } from '../utils/cartPriceUtils';
 
 
 export interface ProductItem {
@@ -171,11 +173,7 @@ export const getProductData = (
     item.variant?.id ||
     (item as any)?.variant_id ||
     '',
-  price: Number(
-    item.variant?.selling_price ||
-    item.price ||
-    0,
-  ),
+  price: resolveCartItemSellingPrice(item),
 
   quantity: Number((item as any)?.quantity ?? 0),
 
@@ -185,11 +183,7 @@ export const getProductData = (
   doctorName,
   gift_wrap: Boolean((item as any)?.gift_wrap || (item as any)?.is_gift_wrap),
   pay_on_delivery: resolvePayOnDelivery(item),
-  prescription_required:
-    (item as any)?.prescription_required ??
-    (item as any)?.requires_prescription ??
-    (item as any)?.is_prescription_required ??
-    item.variant?.prescription_required,
+  prescription_required: isPrescriptionRequired(item),
   variant: item.variant,
   cart_item_id: String((item as any)?.id ?? (item as any)?.cart_item_id ?? ''),
 });

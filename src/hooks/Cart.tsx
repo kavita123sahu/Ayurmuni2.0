@@ -126,7 +126,8 @@ export const useCartActions = (): UseCartActionsReturn => {
       }
       console.log("cartttttAPIIIIIIIIIIIIIII", result);
       if (syncCartQuantity.fulfilled.match(result)) {
-        showSuccessToast(result.payload?.message || 'Added to cart', 'success');
+        //result.payload?.message ||
+        showSuccessToast('Added to cart', 'success');
         return true;
       }
       return false;

@@ -958,7 +958,9 @@ import ReviewSection from '../../components/ReviewSecton';
 import QuantityControl from '../../components/QuantityControl';
 import { useProductData } from '../../hooks/useProductData';
 import { Fonts } from '../../common/Fonts';
-import { useCartActions } from '../../hooks/Cart';
+import { useCartActions, useVariantCartQuantity } from '../../hooks/Cart';
+import { useAppSelector } from '../../store/hooks';
+import { selectIsAddingVariant } from '../../store/slices/cartSlice';
 import { requireAuth } from '../../services/guestAuth';
 import { showSuccessToast } from '../../config/Key';
 import { Colors } from '../../common/Colors';
@@ -973,7 +975,10 @@ import {
     cacheVariantImage,
     resolveProductImageUri,
 } from '../../utils/imageUtils';
-import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import {
+    canAddProductWithoutPrescription,
+    isPrescriptionRequired,
+} from '../../utils/prescriptionUtils';
 import {
     getProductStockDisplay,
     isProductLowStock,
@@ -1023,14 +1028,19 @@ const DETAIL_SHEET_META: Record<
 const ProductDetails = (props: any) => {
     const { varientID } = props?.route?.params;
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
-    const { isAdding, addToCart } = useCartActions();
-    const insets = useSafeAreaInsets();
 
     const variants = ProductData?.variants || [];
     const defaultVariant =
         variants.find((v: any) => v?.is_default) || variants[0];
     const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
     const [quantity, setQuantity] = useState(1);
+    const cartVariantId = String(
+        selectedVariant?.variant_id ?? selectedVariant?.id ?? varientID ?? '',
+    );
+    const { addToCart } = useCartActions();
+    const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
+    const existingCartQty = useVariantCartQuantity(cartVariantId);
+    const insets = useSafeAreaInsets();
     const [descExpanded, setDescExpanded] = useState(false);
     const [activeSheet, setActiveSheet] = useState<DetailSheetKey>(null);
     const [isWishlisted, setIsWishlisted] = useState(false);
@@ -1042,7 +1052,8 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        setQuantity(selectedVariant?.cart_quantity || 1);
+        // Quantity picker is "how many to add", not absolute cart qty.
+        setQuantity(1);
     }, [selectedVariant?.id]);
 
     useEffect(() => {
@@ -1107,8 +1118,10 @@ const ProductDetails = (props: any) => {
         } else {
             resolveProductImageUri(selectedVariant);
         }
-        const success = await addToCart(selectedVariant?.id, quantity, {
-            currentQuantity: 0,
+        const addQty = Math.max(1, Number(quantity) || 1);
+        const nextQty = existingCartQty + addQty;
+        const success = await addToCart(cartVariantId, nextQty, {
+            currentQuantity: existingCartQty,
             prescriptionRequired: isPrescriptionRequired(productForRx),
         });
         if (success) {
@@ -1474,7 +1487,7 @@ const ProductDetails = (props: any) => {
                 </View>
 
                 {/* Delivery summary */}
-                <View style={styles.card}>
+                {/* <View style={styles.card}>
                     <SectionHeader title="Delivery & Services" />
                     <InfoRow
                         title="Free Delivery"
@@ -1496,7 +1509,7 @@ const ProductDetails = (props: any) => {
                             selectedVariant?.pay_on_delivery ? 'Available' : 'Not Available'
                         }
                     />
-                </View>
+                </View> */}
 
                 {/* Complete details — tap opens modal (Flipkart-style) */}
                 {detailLinks.length > 0 && (
@@ -1574,14 +1587,17 @@ const ProductDetails = (props: any) => {
                 <TouchableOpacity
                     style={[
                         styles.addToCartBtn,
-                        isOutOfStock && styles.addToCartBtnDisabled,
+                        (isOutOfStock || isAdding) && styles.addToCartBtnDisabled,
                     ]}
                     onPress={handleAddToCart}
                     activeOpacity={0.85}
-                    disabled={isAdding || isOutOfStock}
+                    disabled={isOutOfStock || isAdding}
                 >
                     {isAdding ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <View style={styles.addToCartInner}>
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                            <Text style={styles.addToCartText}>Adding…</Text>
+                        </View>
                     ) : (
                         <View style={styles.addToCartInner}>
                             <TablerIcon name="shopping-cart" size={18} color="#FFFFFF" />

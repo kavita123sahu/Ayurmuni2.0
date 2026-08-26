@@ -72,7 +72,9 @@ export const useHealthConcernCategories = (serviceCategoryId?: string | null) =>
         setError(null);
 
         const response = await getHealthCategories(
-          serviceCategoryId ?? undefined,
+          serviceCategoryId
+            ? { service_category_id: serviceCategoryId }
+            : undefined,
         );
         if (reqId !== requestIdRef.current) {
           return;

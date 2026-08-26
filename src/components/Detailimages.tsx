@@ -57,7 +57,10 @@ const Detailimages: React.FC<Props> = ({
   const allowPreview = enablePreview ?? !isBanner;
 
   const paddingH = getScreenPaddingH();
-  const finalWidth = itemWidth ?? getContentWidth(paddingH);
+  const fallbackWidth = itemWidth ?? getContentWidth(paddingH);
+  const [layoutWidth, setLayoutWidth] = useState(0);
+  const finalWidth =
+    isBanner && layoutWidth > 0 ? layoutWidth : fallbackWidth;
   const finalHeight =
     itemHeight ?? PixelRatio.roundToNearestPixel(finalWidth / aspectRatio);
 
@@ -153,6 +156,13 @@ const Detailimages: React.FC<Props> = ({
         embedded && styles.wrapperEmbedded,
         isBanner && styles.wrapperBanner,
       ]}
+      onLayout={e => {
+        if (!isBanner) return;
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (w > 0 && w !== layoutWidth) {
+          setLayoutWidth(w);
+        }
+      }}
     >
       <FlatList
         ref={flatListRef}
@@ -307,6 +317,10 @@ const styles = StyleSheet.create({
   wrapperBanner: {
     marginTop: 0,
     marginBottom: 6,
+    width: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+    borderRadius: 14,
   },
   listContent: {
     paddingRight: SPACING,

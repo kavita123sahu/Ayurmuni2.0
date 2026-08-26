@@ -14,13 +14,20 @@ export const AddupdateCart = async ({
     cart_item_id?: string;
     source?: 'cart' | 'prescribed';
 }) => {
-    console.log("varinttquantity", variant_id, quantity, cart_item_id, source)
+    const safeCartItemId = String(cart_item_id ?? '').trim();
+    console.log('varinttquantity', variant_id, quantity, safeCartItemId || null, source);
     try {
         const query = new URLSearchParams();
-        query.set('variant_id', variant_id);
+        query.set('variant_id', String(variant_id));
         query.set('quantity', String(quantity));
-        if (cart_item_id) query.set('cart_item_id', String(cart_item_id));
-        if (source) query.set('source', source);
+        // Only send cart_item_id when updating an existing my_cart / prescribed line.
+        if (safeCartItemId) {
+            query.set('cart_item_id', safeCartItemId);
+        }
+        // Source is only meaningful for prescribed-cart operations.
+        if (source === 'prescribed') {
+            query.set('source', source);
+        }
 
         const response = await apiClient(
             `cart/?${query.toString()}`,

@@ -21,7 +21,7 @@ import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { ProductGridSkeleton, ProductsScreenSkeleton, CategoryRowSkeleton } from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
-import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
+import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { showSuccessToast } from '../../config/Key';
@@ -44,7 +44,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
-import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import { canAddProductWithoutPrescription, isPrescriptionRequired } from '../../utils/prescriptionUtils';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import { useBanners } from '../../hooks/useBanners';
@@ -64,7 +64,6 @@ const ProductsScreen = () => {
     [dashboardCategories],
   );
   const { images: bannerImages } = useBanners('product', productsCategoryId);
-  const screenWidth = Dimensions.get('window').width;
 
   const productFilter = useMemo(
     () =>
@@ -126,7 +125,7 @@ const ProductsScreen = () => {
           variantId,
           quantity: newQty,
           currentQuantity: currentQty,
-          prescriptionRequired: item?.prescription_required,
+          prescriptionRequired: isPrescriptionRequired(item),
         }),
       );
       if (syncCartQuantity.rejected.match(result)) {
@@ -184,7 +183,6 @@ const ProductsScreen = () => {
           <View style={styles.bannerWrap}>
             <Detailimages
               images={bannerImages}
-              itemWidth={screenWidth - SCREEN_PADDING_H * 2}
               DynamicResize="cover"
               autoSlide
               embedded
@@ -227,7 +225,7 @@ const ProductsScreen = () => {
         <SectionHeader title="All Products" actionText="" />
       </View>
     ),
-    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth, productsCategoryId],
+    [productCategories, categoriesLoading, navigation, bannerImages, productsCategoryId],
   );
 
   const showInitialSkeleton = loading && products.length === 0;
@@ -311,6 +309,9 @@ const styles = StyleSheet.create({
   bannerWrap: {
     marginBottom: 8,
     marginTop: 20,
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: 14,
   },
   listContent: {},
   columnWrap: {

@@ -21,7 +21,7 @@ import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { useOrders } from '../../hooks/useOrders';
-import { getDetailBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
+import { getDetailBottomPadding } from '../../constants/layout';
 import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
@@ -92,7 +92,6 @@ const MedicineScreen = (props: any) => {
     [dashboardCategories],
   );
   const { images: bannerImages } = useBanners('medicine', medicineCategoryId);
-  const screenWidth = Dimensions.get('window').width;
 
   const productFilter = useMemo(
     () =>
@@ -283,10 +282,9 @@ const MedicineScreen = (props: any) => {
     () => (
       <View>
         {bannerImages.length > 0 ? (
-          <View style={{ marginBottom: 10 }}>
+          <View style={styles.bannerWrap}>
             <Detailimages
               images={bannerImages}
-              itemWidth={screenWidth - SCREEN_PADDING_H * 2}
               DynamicResize="cover"
               autoSlide
               embedded
@@ -323,8 +321,8 @@ const MedicineScreen = (props: any) => {
           <CategoryList
             data={safeHealthConcerns}
             navigation={navigation}
-            mode="health"
-            serviceCategoryId={medicineCategoryId}
+            doctor
+            variant="concern"
           />
         )}
 
@@ -349,7 +347,6 @@ const MedicineScreen = (props: any) => {
       safeHealthConcerns,
       brandListData,
       bannerImages,
-      screenWidth,
     ],
   );
 
@@ -428,6 +425,12 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 4,
+  },
+  bannerWrap: {
+    marginBottom: 10,
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: 14,
   },
   columnWrap: {
     justifyContent: 'space-between',

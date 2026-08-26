@@ -440,7 +440,7 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
         <Animated.View
           style={[
             styles.categoryDock,
-            { marginTop: HOME_CATEGORY_GAP },
+            { marginTop: 4 },
             categoryAnimatedStyle,
           ]}
         >
@@ -481,11 +481,10 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
         renderItem={() => (
           <View style={styles.sections}>
             {homeBannerImages.length > 0 && (
-              <View style={styles.homeSection}>
+              <View style={styles.bannerSection}>
                 <Detailimages
                   images={homeBannerImages}
-                  itemWidth={width - SCREEN_PADDING_H * 2}
-                  DynamicResize="cover"
+                  DynamicResize="contain"
                   autoSlide
                   embedded
                   mode="banner"
@@ -883,6 +882,12 @@ const styles = StyleSheet.create({
   },
   homeSection: {
     width: '100%',
+  },
+  bannerSection: {
+    width: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+    borderRadius: 14,
   },
   horizontalList: HORIZONTAL_SCROLL_CONTENT,
   comingSoonGroup: {
