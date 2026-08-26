@@ -332,13 +332,36 @@ const buildHealthCategoryQuery = (params: ProductCategoryQuery = {}) => {
   return qs ? `customers/health-categories/?${qs}` : 'customers/health-categories/';
 };
 
-export const getHealthCategories = async (serviceCategoryId?: string) => {
+export type HealthCategoryFetchParams = {
+  /** Parent health concern id → returns disease children */
+  id?: string;
+  /** Dashboard service category id → top-level concerns for that service */
+  service_category_id?: string;
+};
+
+/**
+ * Health categories / diseases.
+ * - `{ id }` → children (diseases) of a concern
+ * - `{ service_category_id }` → top-level concerns for a service
+ * - bare string → treated as parent concern `id` (disease list)
+ */
+export const getHealthCategories = async (
+  options?: string | HealthCategoryFetchParams,
+) => {
   try {
-    // Only scope by service_category_id — id would filter to one health category row
-    const scoped = serviceCategoryId
-      ? { service_category_id: serviceCategoryId }
-      : {};
-    const response = await apiClient(buildHealthCategoryQuery(scoped), {
+    const params: ProductCategoryQuery =
+      typeof options === 'string'
+        ? options
+          ? { id: options }
+          : {}
+        : {
+            ...(options?.id ? { id: options.id } : {}),
+            ...(options?.service_category_id
+              ? { service_category_id: options.service_category_id }
+              : {}),
+          };
+
+    const response = await apiClient(buildHealthCategoryQuery(params), {
       method: 'GET',
     });
 
@@ -346,8 +369,9 @@ export const getHealthCategories = async (serviceCategoryId?: string) => {
       return response;
     }
 
-    const legacyQuery = serviceCategoryId
-      ? `user/health-categories/?category_id=${encodeURIComponent(serviceCategoryId)}`
+    const legacyId = params.id || params.service_category_id;
+    const legacyQuery = legacyId
+      ? `user/health-categories/?category_id=${encodeURIComponent(String(legacyId))}`
       : 'user/health-categories/';
 
     return apiClient(legacyQuery, { method: 'GET' }, false);

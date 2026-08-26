@@ -1041,6 +1041,7 @@ import {
     promoteToFullUser,
     syncAccessFromProfile,
 } from '../../services/guestAuth';
+import { logoutOneSignalUser } from '../../services/pushNotificationService';
 import LinearGradient from 'react-native-linear-gradient';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
 
@@ -1281,6 +1282,7 @@ const ProfilePage = ({ navigation }: any) => {
 
     const handleLogout = async () => {
         setLogoutVisible(false);
+        logoutOneSignalUser();
         await Utils.clearAllData();
         navigation.replace('Welcome');
     };

@@ -22,7 +22,9 @@ export const useHealthCategories = (parentId?: string | null) => {
           setLoading(true);
         }
 
-        const response = await getHealthCategories(parentId ?? undefined);
+        const response = await getHealthCategories(
+          parentId ? { id: parentId } : undefined,
+        );
         if (reqId !== requestIdRef.current) {
           return;
         }
@@ -33,7 +35,28 @@ export const useHealthCategories = (parentId?: string | null) => {
           return;
         }
 
-        const list = normalizeApiList(response)
+        const raw = normalizeApiList(response);
+        const parent = parentId ? String(parentId) : '';
+        const list = raw
+          .filter((item: any) => {
+            const id = String(
+              item?.id ??
+                item?.product_category_id ??
+                item?.category_id ??
+                item?.health_category_id ??
+                '',
+            );
+            if (!id) return false;
+            if (!parent) return true;
+            // Drop the parent concern row itself
+            if (id === parent) return false;
+            const itemParent =
+              item?.parent_id != null ? String(item.parent_id) : '';
+            // When API returns parent_id, keep only children of this concern
+            if (itemParent) return itemParent === parent;
+            // Assume ?id= already scoped the payload
+            return true;
+          })
           .map(mapProductCategory)
           .filter(item => item.id);
 

@@ -10,11 +10,14 @@ import {
 import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import { Fonts } from '../common/Fonts';
-import { Colors } from '../common/Colors';
 import { CARD_SURFACE } from '../constants/cardStyles';
 import { resolveImageUri } from '../utils/imageUtils';
 import { resolveCartItemImage } from '../common/DataInterface';
 import { isPrescriptionRequired } from '../utils/prescriptionUtils';
+import {
+    resolveCartItemMrp,
+    resolveCartItemSellingPrice,
+} from '../utils/cartPriceUtils';
 
 type Props = {
     item: any;
@@ -33,9 +36,28 @@ const MyProductCard = ({
     toggleItemSelection,
     updateQuantity,
 }: Props) => {
-    const lineTotal = Math.round(Number(item.price || 0) * Number(item.quantity || 1));
+    const qty = Math.max(0, Number(item.quantity) || 0);
+    const displayQty = qty;
+
+    const unitSelling = resolveCartItemSellingPrice(item) || Number(item.price) || 0;
+    const unitMrp = resolveCartItemMrp(item);
+    const sellingLineTotal = Math.round(unitSelling * displayQty);
+    const mrpLineTotal = Math.round(unitMrp * displayQty);
+    const showMrp =
+        unitMrp > 0 && unitSelling > 0 && unitMrp > unitSelling;
+
     const imageUri =
         resolveImageUri(item?.image) || resolveCartItemImage(item);
+
+    const rxRequired = isPrescriptionRequired(item);
+    const isPrescribed = type === 'prescribed';
+
+    // prescription_required true → locked qty, no increase / no remove on prescribed
+    // prescription_required false on prescribed → +/- extras to my_cart, no remove
+    // regular cart → normal controls (increase still blocked in handler if Rx)
+    const showLockedQty = isPrescribed && rxRequired;
+    const showPrescribedAdjust = isPrescribed && !rxRequired;
+    const showNormalControls = !isPrescribed;
 
     return (
         <Pressable
@@ -71,25 +93,40 @@ const MyProductCard = ({
                     {item.name}
                 </Text>
 
-             <View style={{flexDirection:'row', justifyContent:'flex-start', alignItems:'center', gap:5}}>
-                   {!!item.brand_name && (
-                    <Text numberOfLines={1} style={styles.brand}>
-                        {item.brand_name}
-                    </Text>
-                )}
+                <View style={styles.metaRow}>
+                    {!!item.brand_name && (
+                        <Text numberOfLines={1} style={styles.brand}>
+                            {item.brand_name}
+                        </Text>
+                    )}
 
-                {!!item.size && (
-                    <Text style={styles.size}>({item.size})</Text>
-                )}
-
-             </View>
-
-                <View style={styles.priceRow}>
-                    <Text style={styles.price}>₹{Math.round(item.price)}</Text>
-                    <Text style={styles.lineTotal}>₹{lineTotal}</Text>
+                    {!!item.size && (
+                        <Text style={styles.size}>({item.size})</Text>
+                    )}
                 </View>
 
-                {type === 'prescribed' && !!item.doctorName && (
+                <View style={styles.priceRow}>
+                    <Text style={styles.sellingPrice}>
+                        ₹{Math.round(sellingLineTotal)}
+                    </Text>
+                      {showMrp ? (
+                    <Text style={styles.mrpStrike}>
+                        MRP ₹{mrpLineTotal}
+                    </Text>
+                ) : null}
+                    {/* {showMrp ? (
+                        <Text style={styles.mrpStrike}>
+                            ₹{Math.round(unitMrp)}
+                        </Text>
+                    ) : null} */}
+                    {/* <Text style={styles.lineTotal}>
+                        ₹{sellingLineTotal}
+                    </Text> */}
+                </View>
+
+              
+
+                {isPrescribed && !!item.doctorName && (
                     <View style={styles.prescribedPill}>
                         <TablerIcon name="stethoscope" size={12} color="#047857" />
                         <Text numberOfLines={1} style={styles.prescribedText}>
@@ -102,35 +139,58 @@ const MyProductCard = ({
             </View>
 
             <View style={styles.qtyWrap}>
-                {isPrescriptionRequired(item) ? (
+                {showLockedQty ? (
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        onPress={() => updateQuantity(String(item.id), 'plus')}
+                        onPress={() =>
+                            updateQuantity(String(item.id), 'plus')
+                        }
                         style={styles.prescribedQtyBox}
                     >
-                        <Text style={styles.prescribedQtyValue}>
-                            {item.quantity}
-                        </Text>
-                        <Text style={styles.prescribedQtyLabel}>Rx needed</Text>
+                        <Text style={styles.prescribedQtyValue}>{qty}</Text>
+                        <Text style={styles.prescribedQtyLabel}>Rx locked</Text>
                     </TouchableOpacity>
-                ) : (
+                ) : null}
+
+                {showPrescribedAdjust ? (
+                    <BlinkitAddButton
+                        quantity={displayQty}
+                        compact
+                        onAdd={() => updateQuantity(String(item.id), 'plus')}
+                        onIncrement={() =>
+                            updateQuantity(String(item.id), 'plus')
+                        }
+                        onDecrement={() =>
+                            updateQuantity(String(item.id), 'minus')
+                        }
+                    />
+                ) : null}
+
+                {showNormalControls ? (
                     <>
                         <BlinkitAddButton
-                            quantity={Number(item.quantity) || 0}
+                            quantity={qty}
                             compact
                             onAdd={() => updateQuantity(String(item.id), 'plus')}
-                            onIncrement={() => updateQuantity(String(item.id), 'plus')}
-                            onDecrement={() => updateQuantity(String(item.id), 'minus')}
+                            onIncrement={() =>
+                                updateQuantity(String(item.id), 'plus')
+                            }
+                            onDecrement={() =>
+                                updateQuantity(String(item.id), 'minus')
+                            }
                         />
                         <TouchableOpacity
-                            activeOpacity={0.75}
-                            onPress={() => updateQuantity(String(item.id), 'remove')}
+                            activeOpacity={0.85}
+                            onPress={() =>
+                                updateQuantity(String(item.id), 'remove')
+                            }
                             style={styles.removeBtn}
                         >
+                            <TablerIcon name="trash" size={14} color="#B91C1C" />
                             <Text style={styles.removeBtnText}>Remove</Text>
                         </TouchableOpacity>
                     </>
-                )}
+                ) : null}
             </View>
         </Pressable>
     );
@@ -192,6 +252,12 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
         lineHeight: 18,
     },
+    metaRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        gap: 5,
+    },
     brand: {
         fontSize: 12,
         color: '#64748B',
@@ -205,19 +271,29 @@ const styles = StyleSheet.create({
     priceRow: {
         flexDirection: 'row',
         alignItems: 'baseline',
-        gap: 8,
-        // marginTop: 4,
+        flexWrap: 'wrap',
+        gap: 6,
     },
-    price: {
+    sellingPrice: {
         fontSize: 15,
         color: '#0D614E',
         fontFamily: Fonts.PoppinsSemiBold,
     },
+    mrpStrike: {
+        fontSize: 12,
+        color: '#94A3B8',
+        textDecorationLine: 'line-through',
+        fontFamily: Fonts.PoppinsMedium,
+    },
     lineTotal: {
         fontSize: 12,
-        color: '#64748B',
-        textDecorationLine:'line-through',
-        fontFamily: Fonts.PoppinsMedium,
+        color: '#334155',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    mrpLineHint: {
+        fontSize: 10,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsRegular,
     },
     prescribedPill: {
         flexDirection: 'row',
@@ -238,39 +314,44 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
     },
     qtyWrap: {
-        alignItems: 'flex-end',
-        justifyContent: 'center',
+        alignItems: 'center',
         gap: 6,
     },
+    prescribedQtyBox: {
+        minWidth: 52,
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        borderRadius: 10,
+        backgroundColor: '#F1F5F9',
+    },
+    prescribedQtyValue: {
+        fontSize: 14,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    prescribedQtyLabel: {
+        fontSize: 9,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+    },
     removeBtn: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        marginTop: 2,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        backgroundColor: '#FEF2F2',
+        minWidth: 84,
     },
     removeBtnText: {
         fontSize: 11,
         color: '#B91C1C',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    prescribedQtyBox: {
-        minWidth: 70,
-        height: 36,
-        paddingHorizontal: 10,
-        borderRadius: 8,
-        backgroundColor: Colors.primaryColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    prescribedQtyLabel: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,0.85)',
-        fontFamily: Fonts.PoppinsMedium,
-        letterSpacing: 0.2,
-        marginTop: -1,
-    },
-    prescribedQtyValue: {
-        fontSize: 15,
-        color: '#FFFFFF',
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 18,
     },
 });

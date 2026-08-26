@@ -118,20 +118,21 @@ const CategoryDoctor = (props: any) => {
 
   // Products: always scoped to this health category; narrow by disease when picked
   const productFilter = useMemo(() => {
-    if (debouncedSearch.trim()) {
-      return { search: debouncedSearch.trim() };
-    }
-
-    if (!concernId) {
+    if (!concernId && !debouncedSearch.trim()) {
       return {};
     }
 
-    // Child disease from health-categories/?id=parent → use as health_category_id
-    // (same as CategoryProducts health mode)
     return {
-      health_category_id: selectedDiseaseId ?? concernId,
-      ...(selectedDiseaseId
-        ? { health_disease_id: selectedDiseaseId }
+      ...(concernId
+        ? {
+            health_category_id: selectedDiseaseId ?? concernId,
+            ...(selectedDiseaseId
+              ? { health_disease_id: selectedDiseaseId }
+              : {}),
+          }
+        : {}),
+      ...(debouncedSearch.trim()
+        ? { search: debouncedSearch.trim() }
         : {}),
     };
   }, [concernId, selectedDiseaseId, debouncedSearch]);
@@ -157,8 +158,8 @@ const CategoryDoctor = (props: any) => {
   );
 
   const hasDoctors = previewDoctors.length > 0;
-  const showDoctorsSection = doctorsLoading || hasDoctors;
-  const showDiseases = Boolean(concernId) && (diseasesLoading || diseases.length > 0);
+  const showDiseases =
+    Boolean(concernId) && (diseasesLoading || diseases.length > 0);
 
   const selectedDiseaseName = useMemo(
     () => diseases.find(d => d.id === selectedDiseaseId)?.name,
@@ -276,7 +277,7 @@ const CategoryDoctor = (props: any) => {
 
         {showDiseases ? (
           <View style={styles.diseaseSection}>
-            <Text style={styles.diseaseTitle}>All Disease</Text>
+            <Text style={styles.diseaseTitle}>Diseases</Text>
             {diseasesLoading && diseases.length === 0 ? (
               <DiseaseChipSkeleton />
             ) : (
@@ -332,54 +333,53 @@ const CategoryDoctor = (props: any) => {
           </View>
         ) : null}
 
-        {showDoctorsSection ? (
-          <>
-            <SectionHeader
-              title="Related Doctors"
-              actionText={
-                doctorData.length > DOCTOR_PREVIEW_COUNT ? 'View all' : ''
-              }
-              onPress={
-                doctorData.length > DOCTOR_PREVIEW_COUNT
-                  ? handleViewAllDoctors
-                  : undefined
-              }
-            />
+        <SectionHeader
+          title="Related Doctors"
+          actionText={
+            doctorData.length > DOCTOR_PREVIEW_COUNT ? 'View all' : ''
+          }
+          onPress={
+            doctorData.length > DOCTOR_PREVIEW_COUNT
+              ? handleViewAllDoctors
+              : undefined
+          }
+        />
 
-            {doctorsLoading && !hasDoctors ? (
-              <AllDoctorCardSkeleton count={3} />
-            ) : (
-              <View style={styles.doctorsBlock}>
-                {previewDoctors.map((item: any, index: number) => (
-                  <AllDoctorCard
-                    key={String(item?.id ?? item?.doctor_id ?? `doc-${index}`)}
-                    item={item}
-                    onPress={() => handleDoctorPress(item)}
-                  />
-                ))}
-                {doctorData.length > DOCTOR_PREVIEW_COUNT ? (
-                  <Text
-                    style={styles.viewAllHint}
-                    onPress={handleViewAllDoctors}
-                  >
-                    View all {doctorData.length} doctors
-                  </Text>
-                ) : null}
-              </View>
-            )}
-          </>
-        ) : null}
-
-        {(productsLoading || products.length > 0) && (
-          <>
-            <SectionHeader title={productSectionTitle} />
-            {!productsLoading && products.length > 0 ? (
-              <Text style={styles.resultCount}>
-                {products.length} product{products.length === 1 ? '' : 's'}
+        {doctorsLoading && !hasDoctors ? (
+          <AllDoctorCardSkeleton count={3} />
+        ) : hasDoctors ? (
+          <View style={styles.doctorsBlock}>
+            {previewDoctors.map((item: any, index: number) => (
+              <AllDoctorCard
+                key={String(item?.id ?? item?.doctor_id ?? `doc-${index}`)}
+                item={item}
+                onPress={() => handleDoctorPress(item)}
+              />
+            ))}
+            {doctorData.length > DOCTOR_PREVIEW_COUNT ? (
+              <Text
+                style={styles.viewAllHint}
+                onPress={handleViewAllDoctors}
+              >
+                View all {doctorData.length} doctors
               </Text>
             ) : null}
-          </>
+          </View>
+        ) : (
+          <View style={styles.sectionEmptyBox}>
+            <Text style={styles.emptyTitle}>No doctors found</Text>
+            <Text style={styles.emptySub}>
+              No specialists are linked to this concern yet.
+            </Text>
+          </View>
         )}
+
+        <SectionHeader title={productSectionTitle} />
+        {!productsLoading && products.length > 0 ? (
+          <Text style={styles.resultCount}>
+            {products.length} product{products.length === 1 ? '' : 's'}
+          </Text>
+        ) : null}
       </>
     ),
     [
@@ -390,7 +390,6 @@ const CategoryDoctor = (props: any) => {
       diseasesLoading,
       diseases,
       selectedDiseaseId,
-      showDoctorsSection,
       doctorData.length,
       doctorsLoading,
       hasDoctors,
@@ -595,15 +594,27 @@ const styles = StyleSheet.create({
     paddingVertical: 36,
     alignItems: 'center',
   },
+  sectionEmptyBox: {
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+  },
   emptyTitle: {
     fontSize: 15,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
   },
   emptySub: {
     marginTop: 4,
     fontSize: 12,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
+    textAlign: 'center',
   },
 });

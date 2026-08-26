@@ -73,26 +73,21 @@ const VisitedDoctorHomeCard = ({ item, onPress, onConsultPress }: Props) => {
               <TablerIcon name="heart-filled" size={13} color="#E11D48" />
             ) : null}
           </View>
-          <Text style={styles.specialty} numberOfLines={1}>
-            {specialty}
-          </Text>
-          <View style={styles.metaLine}>
-            <TablerIcon name="star-filled" size={11} color="#F59E0B" />
-            <Text style={styles.metaText}>{ratingLabel}</Text>
+
+          <View style={styles.specialtyRow}>
+            <Text style={styles.specialty} numberOfLines={1}>
+              {specialty}
+            </Text>
             {!!experience && (
-              <>
-                <Text style={styles.dotSep}>·</Text>
-                <Text style={styles.metaText}>{experience} yr experience</Text>
-              </>
+              <Text style={styles.experience} numberOfLines={1}>
+                {experience}
+              </Text>
             )}
-            {/* {!!item.city && (
-              <>
-                <Text style={styles.dotSep}>·</Text>
-                <Text style={styles.metaText} numberOfLines={1}>
-                  {item.city}
-                </Text>
-              </>
-            )} */}
+          </View>
+
+          <View style={styles.ratingBadge}>
+            <TablerIcon name="star-filled" size={11} color="#F59E0B" />
+            <Text style={styles.ratingText}>{ratingLabel}</Text>
           </View>
         </View>
       </View>
@@ -178,27 +173,43 @@ const styles = StyleSheet.create({
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  specialtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 2,
+  },
   specialty: {
-    marginTop: 1,
+    flex: 1,
+    minWidth: 0,
     fontSize: 11,
     color: Colors.headercolor,
     fontFamily: Fonts.PoppinsMedium,
   },
-  metaLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  metaText: {
+  experience: {
+    flexShrink: 0,
     fontSize: 11,
     color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-    flexShrink: 1,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
-  dotSep: {
+  ratingBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  ratingText: {
     fontSize: 11,
-    color: '#CBD5E1',
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   lastVisit: {
     marginTop: 10,

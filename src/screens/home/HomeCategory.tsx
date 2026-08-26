@@ -3,7 +3,6 @@ import {
   FlatList,
   View,
   Text,
-  Image,
   StyleSheet,
   Pressable,
   Dimensions,
@@ -11,13 +10,13 @@ import {
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
 } from 'react-native-reanimated';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { HORIZONTAL_SCROLL_CONTENT, SCREEN_PADDING_H } from '../../constants/layout';
 import { navigateToCategoryProducts } from '../../navigation/productNavigation';
+import { resolveServiceCategoryKey } from '../../utils/serviceCategoryUtils';
 
 const SCREEN_W = Dimensions.get('window').width;
 const ITEM_GAP = 8;
@@ -31,16 +30,17 @@ interface Category {
   image_url: string;
 }
 
+/** Filled Tabler icons for every service tile (no outline). */
 const CATEGORY_ICONS: Record<string, TablerIconName> = {
-  all: 'list',
-  consult: 'stethoscope',
-  medicine: 'pill',
-  products: 'package',
-  yoga: 'users',
-  diet: 'heart',
+  all: 'apps-filled',
+  consult: 'medical-cross-filled',
+  medicine: 'pill-filled',
+  products: 'package-filled',
+  yoga: 'barbell-filled',
+  diet: 'salad-filled',
 };
 
-const CATEGORY_ROUTES: Record<string, string> = {
+const SERVICE_ROUTES: Record<string, string> = {
   consult: 'ConsultScreen',
   medicine: 'MedicineScreen',
   products: 'ProductsScreen',
@@ -54,6 +54,16 @@ const ALL_ITEM: Category = {
   image_url: '',
 };
 
+const resolveCategoryIcon = (item: Category): TablerIconName => {
+  if (item.id === 'all') return CATEGORY_ICONS.all;
+  const serviceKey = resolveServiceCategoryKey(item);
+  if (serviceKey && CATEGORY_ICONS[serviceKey]) {
+    return CATEGORY_ICONS[serviceKey];
+  }
+  const nameKey = item?.name?.trim().toLowerCase() ?? '';
+  return CATEGORY_ICONS[nameKey] ?? 'category-filled';
+};
+
 const CategoryTile = ({
   item,
   active,
@@ -64,8 +74,7 @@ const CategoryTile = ({
   onPress: () => void;
 }) => {
   const scale = useSharedValue(1);
-  const key = item?.name?.trim().toLowerCase() ?? 'all';
-  const iconName = CATEGORY_ICONS[key] ?? 'package';
+  const iconName = resolveCategoryIcon(item);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -74,15 +83,7 @@ const CategoryTile = ({
   return (
     <Pressable onPress={onPress} style={styles.item}>
       <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>
-        {item?.image_url ? (
-          <Image
-            source={{ uri: item.image_url }}
-            style={styles.tileImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
-        )}
+        <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
       </Animated.View>
 
       <Text
@@ -121,15 +122,26 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
         return;
       }
 
-      const route = CATEGORY_ROUTES[item?.name?.trim().toLowerCase()];
+      const nameKey = item?.name?.trim().toLowerCase() ?? '';
+      const serviceKey = resolveServiceCategoryKey(item) ?? nameKey;
+      const route =
+        SERVICE_ROUTES[serviceKey] || SERVICE_ROUTES[nameKey] || null;
+
+      // Doctor / consult service → Consult tab/screen (never CategoryProducts)
+      if (serviceKey === 'consult' || route === 'ConsultScreen') {
+        navigation.navigate('ConsultScreen' as never);
+        return;
+      }
+
       if (route) {
         navigation.navigate(route as never);
         return;
       }
+
       navigateToCategoryProducts(navigation, {
         categoryName: item.name,
-        healthCategoryId: item.id,
-        categoryMode: 'health',
+        categoryId: item.id,
+        categoryMode: 'product',
         serviceCategoryId: item.id,
       });
     },
@@ -203,10 +215,6 @@ const styles = StyleSheet.create({
   },
   tileActive: {
     opacity: 1,
-  },
-  tileImage: {
-    width: TILE_W - 10,
-    height: TILE_H - 10,
   },
   label: {
     marginTop: 2,

@@ -1,3 +1,6 @@
+
+
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -6,6 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  ScrollView,
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
@@ -15,8 +19,6 @@ import {
   Easing,
   Dimensions,
   StatusBar,
-  ScrollView,
-  KeyboardEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -32,6 +34,13 @@ import { AntDesign, MaterialCommunityIcons } from '../../common/Vector';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import CommonModal from '../../components/LogoutModal';
+import {
+  loginOneSignalUser,
+  requestNotificationPermission,
+  welcome_notification,
+} from '../../services/pushNotificationService';
+import { OneSignal } from 'react-native-onesignal';
+
 
 const C = {
   collageBg: '#1A2E28',
@@ -42,18 +51,18 @@ const C = {
   ctaText: '#FFFFFF',
   inputBg: '#FFFFFF',
   inputBorder: '#DDD6C8',
+  accent: '#D4A84B',
   soft: '#EFE8DA',
 };
 
 const { height, width } = Dimensions.get('window');
 const isSmallDevice = height < 700;
-/** Same top/body proportions as Login */
-const COLLAGE_HEIGHT = Math.round(height * (isSmallDevice ? 0.34 : 0.38));
+const COLLAGE_HEIGHT = Math.round(height * (isSmallDevice ? 0.28 : 0.32));
 const TILE_HEIGHT = Math.round(COLLAGE_HEIGHT * 0.64);
 const TILE_GAP = 10;
 const OTP_LEN = 4;
 const BOX_GAP = 10;
-const BOX_SIZE = Math.min(58, Math.floor((width - 44 - BOX_GAP * (OTP_LEN - 1)) / OTP_LEN));
+const BOX_SIZE = Math.min(58, Math.floor((width - 64 - BOX_GAP * (OTP_LEN - 1)) / OTP_LEN));
 
 const IMAGE_POOL = [
   Images.journeyConsult,
@@ -126,40 +135,28 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState<number>(60);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const [recoverVisible, setRecoverVisible] = useState(false);
-  const [recoverLoading, setRecoverLoading] = useState(false);
-  const [recoverDays, setRecoverDays] = useState(30);
-  const [pendingRecoverOtp, setPendingRecoverOtp] = useState('');
+  const [notifPromptVisible, setNotifPromptVisible] = useState(false);
+  const [notifPromptLoading, setNotifPromptLoading] = useState(false);
+  const pendingRegisterOtpRef = useRef('');
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const phoneNumber = props.route?.params?.phone;
   const NEW_CUSTOMER = props.route?.params?.customer;
-  const routeRetentionDays = Number(props.route?.params?.retentionDays);
-
-  useEffect(() => {
-    if (
-      props.route?.params?.accountDeleted &&
-      Number.isFinite(routeRetentionDays) &&
-      routeRetentionDays > 0
-    ) {
-      setRecoverDays(routeRetentionDays);
-    }
-  }, [props.route?.params?.accountDeleted, routeRetentionDays]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(16)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 480,
+        duration: 500,
         useNativeDriver: true,
         easing: Easing.out(Easing.ease),
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 400,
+        duration: 420,
         useNativeDriver: true,
         easing: Easing.out(Easing.ease),
       }),
@@ -227,231 +224,1030 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
     ]).start();
   };
 
-  const openRecoverPrompt = async (
-    info: {
-      retentionDays: number;
-      message?: string;
-    },
-    otpCode: string,
-  ) => {
-    // Never keep a session for a deleted account unless they recover.
-    await Utils.removeData('_TOKEN');
-    await Utils.removeData('_REFRESH_TOKEN');
-    await Utils.removeData('_IS_GUEST');
-    await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
-      phone: `+91${phoneNumber}`,
-      retention_days: info.retentionDays,
-      held_at: Date.now(),
-    });
-    setRecoverDays(info.retentionDays);
-    setPendingRecoverOtp(otpCode);
-    setRecoverVisible(true);
-  };
-
-  /** Without recover, this number cannot enter the app during retention. */
-  const dismissRecoverWithoutEntry = async () => {
-    setRecoverVisible(false);
-    await Utils.removeData('_TOKEN');
-    await Utils.removeData('_REFRESH_TOKEN');
-    await Utils.removeData('_IS_GUEST');
-    showSuccessToast(
-      `This number is under deletion recovery for ${recoverDays} days. Recover to enter, or use a different number.`,
-      'error',
-    );
-    props.navigation.navigate('Login');
-  };
-
-  const recoverDeletedAccount = async () => {
-    const otpCode = pendingRecoverOtp || otp.join('');
-    if (!otpCode || otpCode.length < 4) {
-      showSuccessToast('Please enter a valid OTP', 'error');
-      return;
-    }
-    setRecoverLoading(true);
-    try {
-      // Recover API must run without auth token
-      await Utils.removeData('_TOKEN');
-      await Utils.removeData('_REFRESH_TOKEN');
-
-      const res: any = await _PROFILE_SERVICES.recoverAccount({
-        phone_number: `+91${phoneNumber}`,
-        otp: otpCode,
-      });
-
-      if (res?.success === false) {
-        showSuccessToast(
-          res?.message || 'Unable to recover account',
-          'error',
-        );
-        return;
-      }
-
-      await Utils.removeData('_DELETED_ACCOUNT_HOLD');
-
-      if (res?.data?.access) {
-        await Utils.storeData('_TOKEN', res.data.access);
-      }
-      if (res?.data?.refresh) {
-        await Utils.storeData('_REFRESH_TOKEN', res.data.refresh);
-      }
-      if (res?.data?.user_id) {
-        await Utils.storeData('_USER_ID', res.data.user_id);
-      }
-
-      showSuccessToast(
-        res?.message || 'Account recovered successfully',
-        'success',
-      );
-      setRecoverVisible(false);
-
-      try {
-        const profileRes: any = await _PROFILE_SERVICES.user_profile();
-        if (profileRes?.data) {
-          await Utils.storeData('_USER_INFO', profileRes.data);
-        }
-        const level = await syncAccessFromProfile(profileRes?.data);
-        if (level === 'full') {
-          resetRootToHomeStack(props.navigation, 'TabStack', {
-            screen: 'Home',
-          });
-        } else {
-          await markAsGuest();
-          resetRootToHomeStack(props.navigation, 'AccessMode');
-        }
-      } catch {
-        await markAsGuest();
-        resetRootToHomeStack(props.navigation, 'AccessMode');
-      }
-    } catch {
-      showSuccessToast('Unable to recover account. Try again.', 'error');
-    } finally {
-      setRecoverLoading(false);
-    }
-  };
-
   const handleVerifyOTP = async () => {
+    console.log('🚀 [STEP 0] handleVerifyOTP STARTED');
+
     Keyboard.dismiss();
+
     const otpCode = otp.join('');
+
+    console.log('📝 [STEP 1] OTP:', otpCode);
+    console.log('📱 [STEP 1] Phone Number:', phoneNumber);
+
     if (otpCode.length !== 4) {
+      console.log('❌ [STEP 1] Invalid OTP length:', otpCode.length);
+
       showSuccessToast('Please enter valid OTP', 'error');
       shake();
       return;
     }
-    setIsLoading(true);
 
-    try {
-      const send_data = {
-        phone_number: `+91${phoneNumber}`,
-        otp: otpCode,
-      };
-      const response: any = await _AUTH_SERVICE.verify_otp(send_data);
-      const deletedInfo = _PROFILE_SERVICES.parseDeletedAccountInfo(response);
-
-      if (deletedInfo) {
-        await openRecoverPrompt(deletedInfo, otpCode);
-        return;
-      }
-
-      if (response?.success) {
-        await Utils.storeData('_USER_ID', response?.data?.user_id);
-        await Utils.storeData('_TOKEN', response?.data?.access);
-        await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
-        await markAsGuest();
-        showSuccessToast(response.message || 'OTP verified successfully', 'success');
-        resetRootToHomeStack(props.navigation, 'AccessMode');
-      } else {
-        showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
-        shake();
-      }
-    } catch (error) {
-      console.error('Send OTP Error:', error);
-      showSuccessToast('Something went wrong. Please try again.', 'error');
-      shake();
-    } finally {
-      setIsLoading(false);
-    }
+    pendingRegisterOtpRef.current = otpCode;
+    setNotifPromptVisible(true);
   };
 
-  const LoginVerfiyOTP = async () => {
-    Keyboard.dismiss();
-    const otpCode = otp.join('');
+  const submitRegisterWithNotificationPreference = async (
+    isNotificationEnabled: boolean,
+  ) => {
+    const otpCode =
+      pendingRegisterOtpRef.current || otp.join('');
+
     if (otpCode.length !== 4) {
-      showSuccessToast('Please enter valid OTP', 'error');
+      showSuccessToast(
+        'Please enter valid OTP',
+        'error',
+      );
       shake();
       return;
     }
 
+    setNotifPromptVisible(false);
+    setNotifPromptLoading(false);
     setIsLoading(true);
 
+    console.log(
+      '⏳ [STEP 2] Loading enabled',
+    );
+
+    console.log(
+      '🔔 [STEP 2] is_notification_enabled:',
+      isNotificationEnabled,
+    );
+
     try {
+      // ==========================================
+      // STEP 3: Prepare OTP Payload
+      // ==========================================
+
       const send_data = {
         phone_number: `+91${phoneNumber}`,
         otp: otpCode,
+        is_notification_enabled:
+          isNotificationEnabled,
       };
-      const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
-      const deletedInfo = _PROFILE_SERVICES.parseDeletedAccountInfo(response);
 
-      if (deletedInfo) {
-        await openRecoverPrompt(deletedInfo, otpCode);
-        return;
-      }
+      console.log(
+        '📤 [STEP 3] OTP Verify Payload:',
+        send_data,
+      );
+
+      // ==========================================
+      // STEP 4: Verify OTP API
+      // ==========================================
+
+      console.log(
+        '🔵 [STEP 4] Calling verify_otp API...',
+      );
+
+      const response: any =
+        await _AUTH_SERVICE.verify_otp(send_data);
+
+      console.log(
+        '🟢 [STEP 4] verify_otp API RESPONSE:',
+        response,
+      );
 
       if (response?.success) {
-        showSuccessToast(response.message || 'OTP verified successfully', 'success');
-        await Utils.storeData('_USER_ID', response?.data?.user_id);
-        await Utils.storeData('_TOKEN', response?.data?.access);
-        await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
+        console.log(
+          '✅ [STEP 5] OTP verification SUCCESS',
+        );
 
-        const customerOnboard = response?.data?.customer || response?.data;
-        const hasCustomer =
-          !!customerOnboard &&
-          (customerOnboard.customer_id != null ||
-            customerOnboard.is_customer_profile_created === true ||
-            customerOnboard.is_profile === true);
+        // ==========================================
+        // STEP 6: Get User ID
+        // ==========================================
 
-        if (!hasCustomer) {
-          await markAsGuest();
-          resetRootToHomeStack(props.navigation, 'AccessMode');
+        const userId =
+          response?.data?.user_id;
+
+        console.log(
+          '👤 [STEP 6] Backend User ID:',
+          userId,
+        );
+
+        if (!userId) {
+          console.log(
+            '❌ [STEP 6] USER ID NOT FOUND',
+          );
+
+          showSuccessToast(
+            'User information not received. Please try again.',
+            'error',
+          );
+
           return;
         }
 
-        try {
-          const profileRes: any = await _PROFILE_SERVICES.user_profile();
-          if (profileRes?.data) {
-            await Utils.storeData('_USER_INFO', profileRes.data);
-          }
-          const level = await syncAccessFromProfile(
-            profileRes?.data || customerOnboard,
+        console.log(
+          '✅ [STEP 6] User ID available:',
+          userId,
+        );
+
+        // ==========================================
+        // STEP 7: Get Tokens
+        // ==========================================
+
+        const accessToken =
+          response?.data?.access;
+
+        const refreshToken =
+          response?.data?.refresh;
+
+        console.log(
+          '🔑 [STEP 7] Access Token exists:',
+          !!accessToken,
+        );
+
+        console.log(
+          '🔄 [STEP 7] Refresh Token exists:',
+          !!refreshToken,
+        );
+
+        if (!accessToken) {
+          console.log(
+            '❌ [STEP 7] ACCESS TOKEN NOT FOUND',
           );
+
+          showSuccessToast(
+            'Authentication token not received.',
+            'error',
+          );
+
+          return;
+        }
+
+        // ==========================================
+        // STEP 8: Store User ID
+        // ==========================================
+
+        console.log(
+          '💾 [STEP 8] Storing _USER_ID...',
+        );
+
+        await Utils.storeData(
+          '_USER_ID',
+          String(userId),
+        );
+
+        console.log(
+          '✅ [STEP 8] _USER_ID stored',
+        );
+
+        // ==========================================
+        // STEP 9: Store Access Token
+        // ==========================================
+
+        console.log(
+          '💾 [STEP 9] Storing _TOKEN...',
+        );
+
+        await Utils.storeData(
+          '_TOKEN',
+          accessToken,
+        );
+
+        console.log(
+          '✅ [STEP 9] _TOKEN stored',
+        );
+
+        // ==========================================
+        // STEP 10: Store Refresh Token
+        // ==========================================
+
+        if (refreshToken) {
+          console.log(
+            '💾 [STEP 10] Storing _REFRESH_TOKEN...',
+          );
+
+          await Utils.storeData(
+            '_REFRESH_TOKEN',
+            refreshToken,
+          );
+
+          console.log(
+            '✅ [STEP 10] _REFRESH_TOKEN stored',
+          );
+        }
+
+        console.log(
+          '✅ [STEP 10] ALL AUTH DATA STORED',
+        );
+
+        // ==========================================
+        // STEP 11: OneSignal Login
+        // ==========================================
+
+        console.log(
+          '🔵 [STEP 11] Calling loginOneSignalUser...',
+        );
+
+        console.log(
+          '👤 [STEP 11] User ID:',
+          userId,
+        );
+
+        try {
+          // ==========================================
+          // STEP 11.1
+          // Login + Get Subscription Data
+          // ==========================================
+
+          const oneSignalData =
+            await loginOneSignalUser(userId);
+
+          console.log(
+            '🟢 [STEP 11] OneSignal Response:',
+            oneSignalData,
+          );
+
+          if (!oneSignalData) {
+            console.log(
+              '❌ [STEP 11] OneSignal login failed',
+            );
+          } else {
+            // ==========================================
+            // STEP 11.2
+            // Get Data Returned By Service
+            // ==========================================
+
+            const {
+              externalId,
+              subscriptionId,
+              fcmToken,
+              optedIn,
+            } = oneSignalData;
+
+            console.log(
+              '🆔 [STEP 11.2] External ID:',
+              externalId,
+            );
+
+            console.log(
+              '🆔 [STEP 11.2] Subscription ID:',
+              subscriptionId,
+            );
+
+            console.log(
+              '🔥 [STEP 11.2] FCM Token:',
+              fcmToken,
+            );
+
+            console.log(
+              '🔔 [STEP 11.2] Opted In:',
+              optedIn,
+            );
+
+            // ==========================================
+            // STEP 12: Check Notification Preference
+            // ==========================================
+
+            if (!isNotificationEnabled) {
+              console.log(
+                '🔕 [STEP 12] User disabled notifications',
+              );
+
+              console.log(
+                '⏭️ [STEP 12] Welcome Push will NOT be sent',
+              );
+            }
+
+            // ==========================================
+            // STEP 12.1: Subscription Ready Check
+            // ==========================================
+
+            else if (
+              optedIn === true &&
+              !!subscriptionId &&
+              !!fcmToken
+            ) {
+              console.log(
+                '✅ [STEP 12] OneSignal subscription READY',
+              );
+
+              console.log(
+                '🆔 [STEP 12] Subscription ID:',
+                subscriptionId,
+              );
+
+              console.log(
+                '🔥 [STEP 12] FCM Token exists:',
+                !!fcmToken,
+              );
+
+              console.log(
+                '🔔 [STEP 12] Opted In:',
+                optedIn,
+              );
+
+              // ==========================================
+              // STEP 12.2: Wait 3 Seconds
+              // ==========================================
+
+              console.log(
+                '⏳ [STEP 12.2] Waiting 3 seconds before Welcome Push...',
+              );
+
+
+
+              await new Promise<void>(resolve =>
+                setTimeout(resolve, 5000),
+              );
+
+
+              console.log(
+                '⏰ [STEP 12.2] 3 seconds completed',
+              );
+
+              // ==========================================
+              // STEP 12.3: Welcome Notification API
+              // ==========================================
+
+              console.log(
+                '🚀 [STEP 12.3] Calling welcome_notification...',
+              );
+
+              console.log(
+                '🔐 [STEP 12.3] Auth token should be attached by apiClient',
+              );
+
+              try {
+                const welcomeResponse =
+                  await welcome_notification();
+
+                console.log(
+                  '🟢 [STEP 12.3] Welcome API Response:',
+                  welcomeResponse,
+                );
+
+                if (
+                  welcomeResponse?.success
+                ) {
+                  console.log(
+                    '🎉 [STEP 12.3] WELCOME PUSH SUCCESS',
+                  );
+                } else {
+                  console.log(
+                    '⚠️ [STEP 12.3] WELCOME PUSH NOT DELIVERED:',
+                    welcomeResponse,
+                  );
+                }
+              } catch (
+              welcomeError: any
+              ) {
+                console.error(
+                  '❌ [STEP 12.3] Welcome Push ERROR:',
+                  welcomeError,
+                );
+
+                console.error(
+                  '❌ [STEP 12.3] Error Message:',
+                  welcomeError?.message,
+                );
+
+                console.error(
+                  '❌ [STEP 12.3] Error Response:',
+                  welcomeError?.response?.data,
+                );
+
+                console.error(
+                  '❌ [STEP 12.3] Error Status:',
+                  welcomeError?.response?.status,
+                );
+
+                // IMPORTANT:
+                // Don't break registration if
+                // welcome notification fails.
+              }
+            }
+
+            // ==========================================
+            // STEP 12.4: Subscription NOT Ready
+            // ==========================================
+
+            else {
+              console.log(
+                '⚠️ [STEP 12] Welcome Push SKIPPED',
+              );
+
+              console.log(
+                '⚠️ [STEP 12] Subscription NOT READY:',
+                {
+                  isNotificationEnabled,
+                  optedIn,
+                  subscriptionId,
+                  fcmToken,
+                },
+              );
+            }
+          }
+        } catch (
+        oneSignalError: any
+        ) {
+          console.error(
+            '❌ [STEP 11] OneSignal ERROR:',
+            oneSignalError,
+          );
+
+          console.error(
+            '❌ [STEP 11] Error Message:',
+            oneSignalError?.message,
+          );
+
+          console.error(
+            '❌ [STEP 11] Error Response:',
+            oneSignalError?.response,
+          );
+
+          // IMPORTANT:
+          // Don't break registration.
+        }
+
+        // ==========================================
+        // STEP 13: markAsGuest
+        // ==========================================
+
+        console.log(
+          '🔵 [STEP 13] Calling markAsGuest...',
+        );
+
+        try {
+          await markAsGuest();
+
+          console.log(
+            '✅ [STEP 13] markAsGuest SUCCESS',
+          );
+        } catch (
+        guestError: any
+        ) {
+          console.error(
+            '❌ [STEP 13] markAsGuest ERROR:',
+            guestError,
+          );
+
+          console.error(
+            '❌ [STEP 13] guestError message:',
+            guestError?.message,
+          );
+
+          throw guestError;
+        }
+
+        // ==========================================
+        // STEP 14: Success Toast
+        // ==========================================
+
+        console.log(
+          '🟢 [STEP 14] Showing success toast',
+        );
+
+        showSuccessToast(
+          response?.message ||
+          'OTP verified successfully',
+          'success',
+        );
+
+        // ==========================================
+        // STEP 15: Navigation
+        // ==========================================
+
+        console.log(
+          '🚀 [STEP 15] Navigating to AccessMode...',
+        );
+
+        resetRootToHomeStack(
+          props.navigation,
+          'AccessMode',
+        );
+
+        console.log(
+          '✅ [STEP 15] Navigation successful',
+        );
+      } else {
+        // ==========================================
+        // OTP FAILURE
+        // ==========================================
+
+        console.log(
+          '❌ [STEP 5] OTP verification FAILED:',
+          response,
+        );
+
+        showSuccessToast(
+          response?.message ||
+          'Failed to verify OTP',
+          'error',
+        );
+
+        shake();
+      }
+    } catch (error: any) {
+      // ==========================================
+      // GLOBAL ERROR
+      // ==========================================
+
+      console.error(
+        '🔥 [GLOBAL ERROR] Registration failed:',
+        error,
+      );
+
+      console.error(
+        '🔥 [GLOBAL ERROR] Message:',
+        error?.message,
+      );
+
+      console.error(
+        '🔥 [GLOBAL ERROR] Response:',
+        error?.response?.data,
+      );
+
+      console.error(
+        '🔥 [GLOBAL ERROR] Status:',
+        error?.response?.status,
+      );
+
+      showSuccessToast(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Something went wrong. Please try again.',
+        'error',
+      );
+
+      shake();
+    } finally {
+      console.log(
+        '🏁 [FINAL] submitRegisterWithNotificationPreference FINISHED',
+      );
+
+      setIsLoading(false);
+    }
+  };
+
+  const onEnableNotifications = async () => {
+    setNotifPromptLoading(true);
+    try {
+      const granted = await requestNotificationPermission(true);
+      await submitRegisterWithNotificationPreference(Boolean(granted));
+    } catch {
+      await submitRegisterWithNotificationPreference(false);
+    }
+  };
+
+  const onSkipNotifications = async () => {
+    await submitRegisterWithNotificationPreference(false);
+  };
+  //   const handleVerifyOTP = async () => {
+  //   Keyboard.dismiss();
+
+  //   const otpCode = otp.join('');
+
+  //   if (otpCode.length !== 4) {
+  //     showSuccessToast('Please enter valid OTP', 'error');
+  //     shake();
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+
+  //   try {
+  //     const send_data = {
+  //       phone_number: `+91${phoneNumber}`,
+  //       otp: otpCode,
+  //     };
+
+  //     const response: any =
+  //       await _AUTH_SERVICE.verify_otp(send_data);
+
+  //     if (response?.success) {
+  //       // ==========================================
+  //       // 1. Get user ID from backend
+  //       // ==========================================
+
+  //       const userId = response?.data?.user_id;
+
+  //       console.log('====================================');
+  //       console.log('✅ OTP LOGIN SUCCESS');
+  //       console.log('👤 Backend User ID:', userId);
+  //       console.log('====================================');
+
+  //       if (!userId) {
+  //         console.log(
+  //           '❌ User ID not received from login API',
+  //         );
+
+  //         showSuccessToast(
+  //           'User information not received. Please try again.',
+  //           'error',
+  //         );
+
+  //         return;
+  //       }
+
+  //       // ==========================================
+  //       // 2. Store authentication data
+  //       // ==========================================
+
+  //       await Utils.storeData(
+  //         '_USER_ID',
+  //         String(userId),
+  //       );
+
+  //       await Utils.storeData(
+  //         '_TOKEN',
+  //         response?.data?.access,
+  //       );
+
+  //       await Utils.storeData(
+  //         '_REFRESH_TOKEN',
+  //         response?.data?.refresh,
+  //       );
+
+  //       console.log(
+  //         '✅ Authentication data stored',
+  //       );
+
+  //       // ==========================================
+  //       // 3. Login user into OneSignal
+  //       // ==========================================
+
+  //       try {
+  //         console.log(
+  //           '🔵 Logging user into OneSignal...',
+  //         );
+
+  //         const oneSignalExternalId =
+  //           await loginOneSignalUser(userId);
+
+  //         if (oneSignalExternalId) {
+  //           console.log(
+  //             '✅ OneSignal External ID:',
+  //             oneSignalExternalId,
+  //           );
+  //         } else {
+  //           console.log(
+  //             '⚠️ OneSignal login did not return External ID',
+  //           );
+  //         }
+  //       } catch (oneSignalError) {
+  //         // Don't break application login if
+  //         // OneSignal has a temporary problem.
+  //         console.log(
+  //           '⚠️ OneSignal login error:',
+  //           oneSignalError,
+  //         );
+  //       }
+
+  //       // ==========================================
+  //       // 4. Existing guest/access flow
+  //       // ==========================================
+
+  //       await markAsGuest();
+
+  //       showSuccessToast(
+  //         response.message ||
+  //           'OTP verified successfully',
+  //         'success',
+  //       );
+
+  //       // ==========================================
+  //       // 5. Navigate to AccessMode
+  //       // ==========================================
+
+  //       resetRootToHomeStack(
+  //         props.navigation,
+  //         'AccessMode',
+  //       );
+  //     } else {
+  //       showSuccessToast(
+  //         response?.message ||
+  //           'Failed to verify OTP',
+  //         'error',
+  //       );
+
+  //       shake();
+  //     }
+  //   } catch (error) {
+  //     console.error(
+  //       '❌ Verify OTP Error:',
+  //       error,
+  //     );
+
+  //     showSuccessToast(
+  //       'Something went wrong. Please try again.',
+  //       'error',
+  //     );
+
+  //     shake();
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+  const LoginVerfiyOTP = async () => {
+    Keyboard.dismiss();
+
+    const otpCode = otp.join('');
+
+    if (otpCode.length !== 4) {
+      showSuccessToast(
+        'Please enter valid OTP',
+        'error',
+      );
+
+      shake();
+
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const send_data = {
+        phone_number: `+91${phoneNumber}`,
+        otp: otpCode,
+      };
+
+      console.log('====================================');
+      console.log('🔵 VERIFY OTP LOGIN');
+      console.log('====================================');
+
+      /**
+       * 1️⃣ Existing Login API
+       */
+      const response: any =
+        await _AUTH_SERVICE.verify_otp_login(
+          send_data,
+        );
+
+      console.log(
+        'LOGIN API RESPONSE:',
+        response,
+      );
+
+      if (response?.success) {
+        showSuccessToast(
+          response.message ||
+          'OTP verified successfully',
+          'success',
+        );
+
+        /**
+         * 2️⃣ Get user ID returned by backend
+         *
+         * This becomes OneSignal External ID.
+         */
+        const userId =
+          response?.data?.user_id;
+
+        console.log(
+          '👤 Backend User ID:',
+          userId,
+        );
+
+        if (!userId) {
+          console.log(
+            '⚠️ User ID missing from login response',
+          );
+        }
+
+        /**
+         * 3️⃣ Store existing authentication data
+         */
+        await Utils.storeData(
+          '_USER_ID',
+          userId,
+        );
+
+        await Utils.storeData(
+          '_TOKEN',
+          response?.data?.access,
+        );
+
+        await Utils.storeData(
+          '_REFRESH_TOKEN',
+          response?.data?.refresh,
+        );
+
+        /**
+         * 4️⃣ CONNECT USER WITH ONESIGNAL
+         *
+         * user_id
+         *      ↓
+         * OneSignal.login()
+         *      ↓
+         * External ID
+         */
+        if (userId) {
+          try {
+            console.log(
+              '====================================',
+            );
+
+            console.log(
+              '🔵 Connecting user with OneSignal',
+            );
+
+            console.log(
+              'OneSignal External ID:',
+              String(userId),
+            );
+
+            const oneSignalData =
+              await loginOneSignalUser(
+                userId,
+              );
+
+            console.log(
+              '✅ OneSignal user connected:',
+              oneSignalData,
+            );
+
+            console.log(
+              '====================================',
+            );
+          } catch (oneSignalError) {
+            /**
+             * IMPORTANT:
+             *
+             * OneSignal failure should NOT
+             * break user login.
+             */
+            console.log(
+              '⚠️ OneSignal connection failed:',
+              oneSignalError,
+            );
+          }
+        }
+
+        /**
+         * 5️⃣ Existing customer logic
+         */
+        const customerOnboard =
+          response?.data?.customer;
+
+        const hasCustomer =
+          !!customerOnboard &&
+          customerOnboard.customer_id != null;
+
+        if (!hasCustomer) {
+          await markAsGuest();
+
+          resetRootToHomeStack(
+            props.navigation,
+            'AccessMode',
+          );
+
+          return;
+        }
+
+        /**
+         * 6️⃣ Existing profile API
+         */
+        try {
+          const profileRes: any =
+            await _PROFILE_SERVICES.user_profile();
+
+          if (profileRes?.data) {
+            await Utils.storeData(
+              '_USER_INFO',
+              profileRes.data,
+            );
+          }
+
+          const level =
+            await syncAccessFromProfile(
+              profileRes?.data,
+            );
+
           if (level === 'full') {
-            resetRootToHomeStack(props.navigation, 'TabStack', {
-              screen: 'Home',
-            });
+            resetRootToHomeStack(
+              props.navigation,
+              'TabStack',
+              {
+                screen: 'Home',
+              },
+            );
           } else {
             await markAsGuest();
-            resetRootToHomeStack(props.navigation, 'AccessMode');
+
+            resetRootToHomeStack(
+              props.navigation,
+              'AccessMode',
+            );
           }
-        } catch {
+        } catch (profileError) {
+          console.log(
+            '⚠️ Profile API error:',
+            profileError,
+          );
+
           await markAsGuest();
-          resetRootToHomeStack(props.navigation, 'TabStack', {
-            screen: 'Home',
-          });
+
+          resetRootToHomeStack(
+            props.navigation,
+            'TabStack',
+            {
+              screen: 'Home',
+            },
+          );
         }
       } else {
-        showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
+        showSuccessToast(
+          response?.message ||
+          'Failed to verify OTP',
+          'error',
+        );
+
         shake();
       }
     } catch (error) {
-      console.error('Send OTP Error:', error);
-      showSuccessToast('Something went wrong. Please try again.', 'error');
+      console.error(
+        '❌ Send OTP Error:',
+        error,
+      );
+
+      showSuccessToast(
+        'Something went wrong. Please try again.',
+        'error',
+      );
+
       shake();
     } finally {
       setIsLoading(false);
     }
   };
 
+  // const LoginVerfiyOTP = async () => {
+  //   Keyboard.dismiss();
+
+  //   const otpCode = otp.join('');
+  //   if (otpCode.length !== 4) {
+  //     showSuccessToast('Please enter valid OTP', 'error');
+  //     shake();
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+
+  //   try {
+  //     const send_data = {
+  //       phone_number: `+91${phoneNumber}`,
+  //       otp: otpCode,
+  //     };
+
+  //     const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
+
+  //     if (response?.success) {
+  //       showSuccessToast(response.message || 'OTP verified successfully', 'success');
+
+  //       await Utils.storeData('_USER_ID', response?.data?.user_id);
+  //       await Utils.storeData('_TOKEN', response?.data?.access);
+  //       await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
+
+  //       const customerOnboard = response?.data?.customer;
+  //       const hasCustomer =
+  //         !!customerOnboard && customerOnboard.customer_id != null;
+
+  //       if (!hasCustomer) {
+  //         await markAsGuest();
+  //         resetRootToHomeStack(props.navigation, 'AccessMode');
+  //         return;
+  //       }
+
+  //       try {
+  //         const profileRes: any = await _PROFILE_SERVICES.user_profile();
+  //         if (profileRes?.data) {
+  //           await Utils.storeData('_USER_INFO', profileRes.data);
+  //         }
+  //         const level = await syncAccessFromProfile(profileRes?.data);
+  //         if (level === 'full') {
+  //           resetRootToHomeStack(props.navigation, 'TabStack', {
+  //             screen: 'Home',
+  //           });
+  //         } else {
+  //           await markAsGuest();
+  //           resetRootToHomeStack(props.navigation, 'AccessMode');
+  //         }
+  //       } catch {
+  //         await markAsGuest();
+  //         resetRootToHomeStack(props.navigation, 'TabStack', {
+  //           screen: 'Home',
+  //         });
+  //       }
+  //     } else {
+  //       showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
+  //       shake();
+  //     }
+  //   } catch (error) {
+  //     console.error('Send OTP Error:', error);
+  //     showSuccessToast('Something went wrong. Please try again.', 'error');
+  //     shake();
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleOTPChange = (text: string, index: number) => {
     const cleaned = text.replace(/[^0-9]/g, '');
+
+    // SMS autofill / paste of full code
     if (cleaned.length > 1) {
       applyOtpDigits(cleaned);
       return;
@@ -498,9 +1294,11 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
     otpInputRefs.current[0]?.focus();
 
     try {
-      const response: any = await _AUTH_SERVICE.send_otp({
+      const send_data = {
         phone_number: `+91${phoneNumber}`,
-      });
+      };
+
+      const response: any = await _AUTH_SERVICE.send_otp(send_data);
       Utils.storeData('_OTP', response?.data?.otp);
       await loadStoredOtp();
 
@@ -520,34 +1318,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
 
   const otpComplete = otp.join('').length === OTP_LEN;
   const onVerify = NEW_CUSTOMER ? LoginVerfiyOTP : handleVerifyOTP;
-  const scrollRef = useRef<ScrollView>(null);
-
-  const ensureVerifyVisible = useCallback(() => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, Platform.OS === 'ios' ? 60 : 100);
-    });
-  }, []);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onShow = (_e: KeyboardEvent) => {
-      ensureVerifyVisible();
-    };
-    const onHide = () => {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-    };
-
-    const showSub = Keyboard.addListener(showEvent, onShow);
-    const hideSub = Keyboard.addListener(hideEvent, onHide);
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [ensureVerifyVisible]);
 
   return (
     <View style={styles.container}>
@@ -556,14 +1326,11 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
-          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
@@ -609,7 +1376,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
             style={[
               styles.sheet,
               {
-                paddingBottom: Math.max(insets.bottom, 14),
+                paddingBottom: Math.max(insets.bottom, 12),
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               },
@@ -617,105 +1384,114 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
           >
             <View style={styles.sheetHandle} />
 
-            <Text style={styles.title}>Verify your OTP</Text>
+            <View style={styles.formCard}>
+              <View style={styles.headerBlock}>
+                <Text style={styles.title}>Verify your number</Text>
+                <View style={styles.phoneRow}>
+                  <Text style={styles.subtitle} numberOfLines={1}>
+                    Sent to <Text style={styles.phone}>+91 {phoneNumber}</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={changeMobileNumber}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <AntDesign name="edit" size={14} color={C.cta} />
+                    <Text style={styles.editText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-            <View style={styles.phoneRow}>
-              <Text style={styles.subtitle} numberOfLines={1}>
-                Sent to <Text style={styles.phone}>+91 {phoneNumber}</Text>
-              </Text>
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={changeMobileNumber}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              <Text style={styles.otpLabel}>Enter 4-digit OTP</Text>
+
+              <Animated.View
+                style={[styles.otpContainer, { transform: [{ translateX: shakeAnim }] }]}
               >
-                <AntDesign name="edit" size={14} color={C.cta} />
-                <Text style={styles.editText}>Edit</Text>
+                {otp.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={ref => {
+                      otpInputRefs.current[index] = ref;
+                    }}
+                    style={[
+                      styles.otpInput,
+                      digit ? styles.otpFilled : null,
+                      focusedIndex === index ? styles.otpFocused : null,
+                    ]}
+                    value={digit}
+                    onChangeText={text => handleOTPChange(text, index)}
+                    onKeyPress={({ nativeEvent }) =>
+                      handleKeyPress(nativeEvent.key, index)
+                    }
+                    onFocus={() => setFocusedIndex(index)}
+                    keyboardType="number-pad"
+                    maxLength={index === 0 ? OTP_LEN : 1}
+                    textAlign="center"
+                    autoFocus={index === 0}
+                    selectionColor={C.cta}
+                    placeholder=""
+                    textContentType={index === 0 ? 'oneTimeCode' : 'none'}
+                    autoComplete={index === 0 ? 'sms-otp' : 'off'}
+                    importantForAutofill={index === 0 ? 'yes' : 'no'}
+                  />
+                ))}
+              </Animated.View>
+
+              <View style={styles.metaRow}>
+                <View style={styles.timerChip}>
+                  <MaterialCommunityIcons name="clock-outline" size={13} color={C.cta} />
+                  <Text style={styles.timer}>
+                    00:{resendTimer < 10 ? `0${resendTimer}` : resendTimer}
+                  </Text>
+                </View>
+
+                <TouchableOpacity onPress={onResendPress} disabled={resendTimer > 0}>
+                  <Text
+                    style={[
+                      styles.resendLink,
+                      resendTimer > 0 && styles.resendDisabled,
+                    ]}
+                  >
+                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={onVerify}
+                style={[styles.cta, (!otpComplete || isLoading) && styles.ctaDisabled]}
+                activeOpacity={0.88}
+                disabled={!otpComplete || isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.ctaText}>Verify & continue</Text>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>Enter OTP</Text>
-
-            <Animated.View
-              style={[styles.otpContainer, { transform: [{ translateX: shakeAnim }] }]}
-            >
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={ref => {
-                    otpInputRefs.current[index] = ref;
-                  }}
-                  style={[
-                    styles.otpInput,
-                    digit ? styles.otpFilled : null,
-                    focusedIndex === index ? styles.otpFocused : null,
-                  ]}
-                  value={digit}
-                  onChangeText={text => handleOTPChange(text, index)}
-                  onKeyPress={({ nativeEvent }) =>
-                    handleKeyPress(nativeEvent.key, index)
-                  }
-                  onFocus={() => {
-                    setFocusedIndex(index);
-                    ensureVerifyVisible();
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={index === 0 ? OTP_LEN : 1}
-                  textAlign="center"
-                  autoFocus={index === 0}
-                  selectionColor={C.cta}
-                  textContentType={index === 0 ? 'oneTimeCode' : 'none'}
-                  autoComplete={index === 0 ? 'sms-otp' : 'off'}
-                  importantForAutofill={index === 0 ? 'yes' : 'no'}
-                />
-              ))}
-            </Animated.View>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.timer}>
-                00:{resendTimer < 10 ? `0${resendTimer}` : resendTimer}
-              </Text>
-              <TouchableOpacity onPress={onResendPress} disabled={resendTimer > 0}>
-                <Text
-                  style={[
-                    styles.resendLink,
-                    resendTimer > 0 && styles.resendDisabled,
-                  ]}
-                >
-                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              onPress={onVerify}
-              style={[styles.cta, (!otpComplete || isLoading) && styles.ctaDisabled]}
-              activeOpacity={0.88}
-              disabled={!otpComplete || isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Text style={styles.ctaText}>Verify</Text>
-                  <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-                </>
-              )}
-            </TouchableOpacity>
+            <Text style={styles.secureNote}>
+              Secure one-time password · never share your code
+            </Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       <CommonModal
-        visible={recoverVisible}
-        icon="♻️"
-        title="Account was deleted"
-        subtitle={`This number is scheduled for deletion. Recover within ${recoverDays} days to keep your data and enter the app. Without recovery you cannot use this number until the ${recoverDays}-day period ends — or sign in with a new number.`}
-        cancelText="Use another number"
-        confirmText="Recover account"
+        visible={notifPromptVisible}
+        icon="🔔"
+        title="Stay updated with Ayurmuni"
+        subtitle="Allow notifications for appointment reminders, order updates, and wellness tips. You can change this anytime in Settings."
+        cancelText="Not now"
+        confirmText="Enable alerts"
         stackButtons
-        loading={recoverLoading}
-        onClose={dismissRecoverWithoutEntry}
-        onConfirm={recoverDeletedAccount}
+        loading={notifPromptLoading}
+        onClose={onSkipNotifications}
+        onConfirm={onEnableNotifications}
       />
     </View>
   );
@@ -787,38 +1563,49 @@ const styles = StyleSheet.create({
   sheet: {
     flexGrow: 1,
     backgroundColor: C.sheet,
-    marginTop: -22,
+    marginTop: -26,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 22,
-    paddingTop: 10,
+    paddingHorizontal: 18,
+    paddingTop: 8,
   },
   sheetHandle: {
     alignSelf: 'center',
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: '#D8D0C0',
-    marginBottom: 12,
+    marginBottom: 10,
   },
 
+  formCard: {
+    backgroundColor: '#FFFEFA',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#E8E0D2',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+  },
+  headerBlock: {
+    marginBottom: 10,
+  },
   title: {
     fontSize: isSmallDevice ? 20 : 22,
     lineHeight: isSmallDevice ? 26 : 28,
     fontFamily: Fonts.PoppinsSemiBold,
     color: C.headline,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 12,
   },
   subtitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     lineHeight: 18,
     color: C.body,
     fontFamily: Fonts.PoppinsRegular,
@@ -830,40 +1617,39 @@ const styles = StyleSheet.create({
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: C.soft,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   editText: {
-    fontSize: 12,
+    fontSize: 11,
     color: C.cta,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
-  label: {
-    fontSize: 18,
-    fontFamily: Fonts.PoppinsSemiBold,
+  otpLabel: {
+    fontSize: 13,
     color: C.headline,
+    fontFamily: Fonts.PoppinsSemiBold,
     marginBottom: 8,
   },
-
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: BOX_GAP,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   otpInput: {
     width: BOX_SIZE,
     height: BOX_SIZE,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: C.inputBorder,
     backgroundColor: C.inputBg,
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: Fonts.PoppinsSemiBold,
     color: C.headline,
     textAlign: 'center',
@@ -877,21 +1663,35 @@ const styles = StyleSheet.create({
   },
   otpFocused: {
     borderColor: C.cta,
+    shadowColor: C.cta,
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
 
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 12,
+  },
+  timerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: C.soft,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   timer: {
     color: C.cta,
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   resendLink: {
-    fontSize: 13,
+    fontSize: 12,
     color: C.cta,
     fontFamily: Fonts.PoppinsSemiBold,
   },
@@ -902,21 +1702,33 @@ const styles = StyleSheet.create({
 
   cta: {
     width: '100%',
-    minHeight: 54,
-    borderRadius: 28,
+    minHeight: 50,
+    borderRadius: 26,
     backgroundColor: C.cta,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 16,
   },
   ctaDisabled: {
     opacity: 0.55,
   },
   ctaText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: C.ctaText,
-    letterSpacing: 0.6,
+    letterSpacing: 0.3,
+  },
+  secureNote: {
+    marginTop: 12,
+    textAlign: 'center',
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#8A968F',
+    fontFamily: Fonts.PoppinsRegular,
   },
 });
+
+
+

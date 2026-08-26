@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as _ORDER_SERVICES from '../services/OrderService';
 import { TablerIconName } from '../components/TablerIcon';
 
-export const TRANSACTION_PAGE_SIZE = 20;
+export const TRANSACTION_PAGE_SIZE = 10;
 
 export type TransactionListItem = {
   id: string;
@@ -141,10 +141,12 @@ export const useTransactions = (options?: { pageSize?: number }) => {
           page: pageToLoad,
           page_size: pageSize,
         });
+        console.log("resresresresresres",res);
 
         const rawList = normalizeTransactionList(res);
         const mapped = rawList.map(mapTransaction);
         let more = hasMoreTransactionPages(res, mapped.length, pageSize);
+
 
         setTransactions(prev => {
           if (mode !== 'append') {

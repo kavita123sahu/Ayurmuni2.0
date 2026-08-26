@@ -28,7 +28,7 @@ const PaymentsScreen = (props: any) => {
     hasMore,
     refresh,
     loadMore,
-  } = useTransactions({ pageSize: 20 });
+  } = useTransactions({ pageSize: 10 });
 
   const renderItem = useCallback(
     ({ item }: { item: (typeof transactions)[number] }) => (
@@ -80,7 +80,7 @@ const PaymentsScreen = (props: any) => {
           }
         }}
         onEndReachedThreshold={0.35}
-        ListHeaderComponent={<SectionHeader title="Transaction History" />}
+        // ListHeaderComponent={<SectionHeader title="Transaction History" />}
         ListEmptyComponent={
           loading ? (
             <View style={styles.loaderWrap}>

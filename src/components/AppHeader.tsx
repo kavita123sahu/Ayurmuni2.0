@@ -109,14 +109,21 @@ export default AppHeader;
 const styles = StyleSheet.create({
   shell: {
     backgroundColor: Colors.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8E6',
+    shadowColor: '#0D614E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
+    paddingTop: 8,
     paddingBottom: 12,
-    marginTop: 6,
   },
   iconBox: {
     width: 44,
@@ -157,13 +164,12 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: 18,
+    lineHeight: 24,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.textColor,
-    marginHorizontal: 8,
+    marginHorizontal: 10,
   },
   divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginTop: 4,
+    height: 0,
   },
 });

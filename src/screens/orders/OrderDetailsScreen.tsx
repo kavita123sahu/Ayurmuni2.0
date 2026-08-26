@@ -18,7 +18,9 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, CommonActions } from '@react-navigation/native';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCart } from '../../store/slices/cartSlice';
 import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
@@ -215,6 +217,7 @@ const DetailRow = ({ label, value }: { label: string; value?: string | number | 
 const OrderDetailsScreen = ({ route, navigation }: any) => {
   const initialOrder = route?.params?.order;
   const fromOrderSuccess = Boolean(route?.params?.fromOrderSuccess);
+  const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
 
@@ -274,12 +277,36 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const goBack = useCallback(() => {
+    if (fromOrderSuccess) {
+      dispatch(fetchCart({ force: true, silent: false }));
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'TabStack',
+              state: {
+                routes: [
+                  { name: 'Home' },
+                  { name: 'Products' },
+                  { name: 'MyCart' },
+                  { name: 'Consult' },
+                  { name: 'Profile' },
+                ],
+                index: 2,
+              },
+            },
+          ],
+        }),
+      );
+      return;
+    }
     if (navigation.canGoBack?.()) {
       navigation.goBack();
     } else {
       navigation.navigate('OrderHistory');
     }
-  }, [navigation]);
+  }, [navigation, fromOrderSuccess, dispatch]);
 
   const applyLocalReview = useCallback(
     (payload: {
