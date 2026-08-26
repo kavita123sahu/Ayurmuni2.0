@@ -307,12 +307,12 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
         </View>
 
         {/* Delete Account Button */}
-        <View style={styles.deleteButtonContainer}>
+        {/* <View style={styles.deleteButtonContainer}>
           <CommonButton title="Delete Account" onPress={() => {
             console.log("Button Pressed");
             setDeleteModalVisible(true)
           }} />
-        </View>
+        </View> */}
 
         {/* Version Text */}
         <Text style={styles.version}>APP VERSION 1.0</Text>

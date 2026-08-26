@@ -635,8 +635,8 @@ const AllDoctors = (props: any) => {
                 )
                     : (<FlatList
                         data={doctorData}
-                        keyExtractor={(item) =>
-                            String(item?.id)
+                        keyExtractor={(item, index) =>
+                            String(item?.id ?? item?.doctor_id ?? `doc-${index}`)
                         }
 
                         showsVerticalScrollIndicator={

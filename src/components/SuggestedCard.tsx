@@ -17,6 +17,8 @@ import {
   resolveYogaThumbnailUri,
   resolveYogaVideoUri,
 } from '../utils/yogaUtils';
+import { formatDietPlanRatingBadgeText } from '../utils/dietPlanUtils';
+import { SCREEN_PADDING_H } from '../constants/layout';
 
 interface Props {
   data: any[];
@@ -26,6 +28,7 @@ interface Props {
   navigation: any;
   ListHeaderComponent?: React.ReactNode;
   home?: boolean;
+  edgeScroll?: boolean;
 }
 
 const YogaPreviewVideo = ({
@@ -89,10 +92,12 @@ const SuggestedCard: React.FC<Props> = ({
   header = false,
   navigation,
   home = false,
+  edgeScroll = false,
 }) => {
   const [showAll, setShowAll] = useState(false);
 
-  const displayData = showAll ? data : data.slice(0, 6);
+  const safeData = Array.isArray(data) ? data : [];
+  const displayData = showAll ? safeData : safeData.slice(0, 6);
 
 
   const formattedData =
@@ -125,6 +130,7 @@ const SuggestedCard: React.FC<Props> = ({
       contentContainerStyle={[
         styles.listContent,
         home && styles.listContentHome,
+        home && edgeScroll && styles.listContentEdge,
       ]}
       columnWrapperStyle={
         isGrid
@@ -151,17 +157,26 @@ const SuggestedCard: React.FC<Props> = ({
             .filter(Boolean)
             .join(', ') ||
           '';
-        const badgeText =
-          item?.difficulty || item?.prakriti || item?.season || '';
+        const prakriti = String(item?.prakriti || '').trim();
+        const season = String(item?.season || '').trim();
+        const badgeText = item?.difficulty || season || '';
+        const doctorName = String(
+          item?.suggested_doctor_name ||
+          item?.doctor_name ||
+          item?.suggested_by_doctor_name ||
+          '',
+        ).trim();
+        const doctorLabel = doctorName.replace(/^dr\.?\s*/i, '');
+        const dietRatingText = isDiet ? formatDietPlanRatingBadgeText(item) : null;
         const imageUri = isYoga
           ? resolveYogaThumbnailUri(item)
           : (
-              item?.thumbnail_url ||
-              item?.image_url ||
-              item?.diet_plan_gallery?.find((img: any) => img.is_cover)
-                ?.image_url ||
-              ''
-            ).trim();
+            item?.thumbnail_url ||
+            item?.image_url ||
+            item?.diet_plan_gallery?.find((img: any) => img.is_cover)
+              ?.image_url ||
+            ''
+          ).trim();
         const videoUri = isYoga ? resolveYogaVideoUri(item) : null;
 
         return (
@@ -191,6 +206,14 @@ const SuggestedCard: React.FC<Props> = ({
                   resizeMode="cover"
                 />
               )}
+              {isDiet && !!prakriti ? (
+
+                <View style={[styles.prakritiOverlay, styles.prakritiBadge]}>
+                  <Text style={[styles.prakritiOverlayText, styles.prakritiBadgeText]} numberOfLines={1}>
+                    {prakriti}
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.subContainer}>
@@ -203,7 +226,22 @@ const SuggestedCard: React.FC<Props> = ({
                   {title}
                 </Text>
 
-                {!!subtitle && (
+                {isDiet && !!doctorName ? (
+                  <View style={styles.doctorSuggestChip}>
+                    <TablerIcon name="stethoscope" size={11} color="#0D614E" />
+                    <View style={styles.doctorSuggestChipCopy}>
+                      <Text style={styles.doctorSuggestChipLabel}>
+                        Suggested by
+                      </Text>
+                      <Text
+                        style={styles.doctorSuggestChipName}
+                        numberOfLines={1}
+                      >
+                        Dr. {doctorLabel}
+                      </Text>
+                    </View>
+                  </View>
+                ) : !!subtitle ? (
                   <Text
                     style={styles.subtitle}
                     numberOfLines={1}
@@ -211,12 +249,19 @@ const SuggestedCard: React.FC<Props> = ({
                   >
                     {subtitle}
                   </Text>
-                )}
+                ) : null}
 
                 <View style={styles.infoRow}>
-                  {!!badgeText && (
+                  {isDiet && !!dietRatingText ? (
+                    <View style={styles.ratingBadge}>
+                      <TablerIcon name="star" size={10} color="#F59E0B" strokeWidth={2} />
+                      <Text style={styles.ratingBadgeText} numberOfLines={1}>
+                        {dietRatingText}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {!!badgeText && badgeText !== prakriti && (
                     <View style={styles.badge}>
-                      <TablerIcon name="approved" size={14} color="#0D614E" />
                       <Text style={styles.badgeText}>{badgeText}</Text>
                     </View>
                   )}
@@ -268,7 +313,10 @@ const styles = StyleSheet.create({
   },
   listContentHome: {
     paddingBottom: 0,
-    paddingRight: 4,
+  },
+  listContentEdge: {
+    paddingLeft: 0,
+    paddingRight: SCREEN_PADDING_H,
   },
   card: {
     width: LIST_CARD_WIDTH,
@@ -297,6 +345,68 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  doctorOverlay: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    maxWidth: '88%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(13, 97, 78, 0.9)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  doctorOverlayText: {
+    flexShrink: 1,
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  prakritiOverlay: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    maxWidth: '88%',
+    backgroundColor: 'rgba(13, 97, 78, 0.92)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  prakritiOverlayText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  doctorSuggestChip: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+  doctorSuggestChipCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  doctorSuggestChipLabel: {
+    fontSize: 9,
+    color: '#0F766E',
+    fontFamily: Fonts.PoppinsMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
+  },
+  doctorSuggestChipName: {
+    fontSize: 11,
+    color: '#0D614E',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   videoPoster: {
     ...StyleSheet.absoluteFillObject,
@@ -357,10 +467,36 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   badgeText: {
-    marginLeft: 3,
     fontSize: 10,
     color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  prakritiBadge: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#047857',
+    borderWidth: 0.5,
+  },
+  prakritiBadgeText: {
+    color: '#047857',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    maxWidth: '100%',
+  },
+  ratingBadgeText: {
+    flexShrink: 1,
+    fontSize: 10,
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   footerContainer: {
     alignItems: 'center',

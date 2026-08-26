@@ -16,16 +16,23 @@ import {
   getProductStockQty,
   isProductOutOfStock,
 } from '../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { resolveProductImageUri } from '../utils/imageUtils';
+import { formatRupee } from '../utils/currencyUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-/** Default 2-col grid width for full-width screens (16px pad + 10 gap) */
-export const GRID_CARD_WIDTH = (SCREEN_W - 42) / 2;
+/** Default 2-col grid width for full-width screens (20px pad + 10 gap) */
+export const GRID_CARD_WIDTH = (SCREEN_W - 50) / 2;
 export const HORIZONTAL_CARD_WIDTH = 158;
 const IMAGE_HEIGHT_GRID = 136;
 const IMAGE_HEIGHT_HORIZONTAL = 124;
-const INFO_HEIGHT = 94;
+const TITLE_H = 18;
+const SUBTITLE_H = 14;
+const PRICE_H = 20;
+const INFO_PAD_TOP = 8;
+const INFO_PAD_BOTTOM = 10;
+const INFO_HEIGHT = INFO_PAD_TOP + TITLE_H + 4 + SUBTITLE_H + 4 + PRICE_H + INFO_PAD_BOTTOM;
 export const GRID_CARD_HEIGHT = IMAGE_HEIGHT_GRID + INFO_HEIGHT;
 export const HORIZONTAL_CARD_HEIGHT = IMAGE_HEIGHT_HORIZONTAL + INFO_HEIGHT;
 
@@ -63,13 +70,8 @@ const ProductCard: React.FC<Props> = ({
   const cardWidth = isGrid
     ? gridWidth ?? GRID_CARD_WIDTH
     : HORIZONTAL_CARD_WIDTH;
-  const scale = isGrid && gridWidth ? gridWidth / GRID_CARD_WIDTH : 1;
-  const cardHeight = isGrid
-    ? GRID_CARD_HEIGHT * Math.min(Math.max(scale, 0.85), 1.15)
-    : HORIZONTAL_CARD_HEIGHT;
-  const imageHeight = isGrid
-    ? IMAGE_HEIGHT_GRID * Math.min(Math.max(scale, 0.85), 1.15)
-    : IMAGE_HEIGHT_HORIZONTAL;
+  const cardHeight = isGrid ? GRID_CARD_HEIGHT : HORIZONTAL_CARD_HEIGHT;
+  const imageHeight = isGrid ? IMAGE_HEIGHT_GRID : IMAGE_HEIGHT_HORIZONTAL;
 
   const discount =
     item?.mrp > item?.selling_price
@@ -84,11 +86,13 @@ const ProductCard: React.FC<Props> = ({
 
   const handleAdd = () => {
     if (isOutOfStock || actionsLocked) return;
+    if (!canAddProductWithoutPrescription(item)) return;
     onAdd();
   };
 
   const handleIncrement = () => {
     if (isOutOfStock || actionsLocked) return;
+    if (!canAddProductWithoutPrescription(item)) return;
     if (maxQuantity != null && cartQty >= maxQuantity) return;
     onIncrement();
   };
@@ -157,7 +161,7 @@ const ProductCard: React.FC<Props> = ({
       </View>
 
       <View style={styles.infoZone}>
-        <Text numberOfLines={2} style={styles.title}>
+        <Text numberOfLines={1} style={styles.title}>
           {item.product_name || item.name || 'Product'}
         </Text>
 
@@ -167,17 +171,21 @@ const ProductCard: React.FC<Props> = ({
 
         <View style={styles.bottomRow}>
           <View style={styles.priceBlock}>
-            <Text style={styles.price}>
-              ₹{Math.floor(Number(item?.selling_price || item?.price || 0))}
+            <Text style={styles.price} numberOfLines={1}>
+              {formatRupee(item?.selling_price || item?.price || 0)}
             </Text>
             {Number(item?.mrp) > Number(item?.selling_price || 0) && (
-              <Text style={styles.oldPrice}>₹{item.mrp}</Text>
+              <Text style={styles.oldPrice} numberOfLines={1}>
+                {formatRupee(item.mrp)}
+              </Text>
             )}
           </View>
 
           <View style={styles.ratingRow}>
             <TablerIcon name="star" size={11} color="#FBBF24" strokeWidth={2} />
-            <Text style={styles.ratingText}>{item?.avg_rating || '0'}</Text>
+            <Text style={styles.ratingText} numberOfLines={1}>
+              {item?.avg_rating || '0'}
+            </Text>
           </View>
         </View>
       </View>
@@ -266,54 +274,70 @@ const styles = StyleSheet.create({
   infoZone: {
     height: INFO_HEIGHT,
     paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: INFO_PAD_TOP,
+    paddingBottom: INFO_PAD_BOTTOM,
     justifyContent: 'flex-start',
   },
   title: {
+    height: TITLE_H,
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: TITLE_H,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
   subtitle: {
+    height: SUBTITLE_H,
+    marginTop: 4,
     fontSize: 10,
-    height: 14,
+    lineHeight: SUBTITLE_H,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
-    marginTop: 1,
+    includeFontPadding: false,
   },
   bottomRow: {
+    height: PRICE_H,
+    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 6,
+    gap: 6,
   },
   priceBlock: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     gap: 4,
-    flexShrink: 1,
   },
   price: {
+    flexShrink: 1,
     fontSize: 14,
+    lineHeight: PRICE_H,
     color: '#111827',
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
   oldPrice: {
+    flexShrink: 1,
     fontSize: 10,
+    lineHeight: 14,
     color: '#94A3B8',
     textDecorationLine: 'line-through',
     fontFamily: Fonts.PoppinsRegular,
+    includeFontPadding: false,
   },
   ratingRow: {
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
   },
   ratingText: {
     fontSize: 10,
+    lineHeight: 14,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
 });

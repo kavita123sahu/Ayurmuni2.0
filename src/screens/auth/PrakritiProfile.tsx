@@ -110,6 +110,7 @@ interface GuidelineCardProps {
 }
 
 const PrakritiProfile = (props: any) => {
+  const fromAssessment = Boolean(props?.route?.params?.fromAssessment);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasPrakriti, setHasPrakriti] = useState(false);
@@ -120,8 +121,21 @@ const PrakritiProfile = (props: any) => {
       setHasPrakriti(false);
       setAnalysisData(null);
 
-      const response: any = await _PROFILE_SERVICES.get_prakriti_info();
-      console.log("prakiirinanauluysysy", response);
+      let response: any = await _PROFILE_SERVICES.get_prakriti_info();
+      console.log('prakiirinanauluysysy', response);
+
+      // Right after submit, result API can lag — one short retry
+      // if (!hasValidPrakritiPayload(response) && fromAssessment) {
+      //   await new Promise(resolve => setTimeout(resolve, 700));
+      //   response = await _PROFILE_SERVICES.get_prakriti_info();
+      // }
+
+      if (!hasValidPrakritiPayload(response) && fromAssessment) {
+        await new Promise<void>(resolve => setTimeout(resolve, 700));
+
+        response = await _PROFILE_SERVICES.get_prakriti_info();
+      }
+
       if (!hasValidPrakritiPayload(response)) {
         setHasPrakriti(false);
         setAnalysisData(null);
@@ -137,7 +151,7 @@ const PrakritiProfile = (props: any) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fromAssessment]);
 
   useFocusEffect(
     useCallback(() => {
@@ -205,12 +219,16 @@ const PrakritiProfile = (props: any) => {
     return (
       <>
         <View style={styles.topSection}>
-          <Text style={styles.completedText}>PRAKRITI ANALYSIS COMPLETE</Text>
+          <Text style={styles.completedText}>
+            {fromAssessment
+              ? 'ASSESSMENT COMPLETE'
+              : 'PRAKRITI ANALYSIS COMPLETE'}
+          </Text>
           <Text style={styles.mainTitle}>
             {analysisData.dominantType || 'Your Prakriti Type'}
           </Text>
           <Text style={styles.subtitle}>
-            Your unique Ayurvedic soul-print, Priya.
+            Your unique Ayurvedic body constitution.
           </Text>
         </View>
 
@@ -226,6 +244,26 @@ const PrakritiProfile = (props: any) => {
               <Text style={styles.doshaPercent}>{item.percentage}%</Text>
             </View>
           ))}
+        </View>
+
+        {/* Ask again — retake / update current body type */}
+        <View style={styles.reassessCard}>
+          <View style={styles.reassessCopy}>
+            <Text style={styles.reassessTitle}>
+              Update your current body type?
+            </Text>
+            <Text style={styles.reassessSub}>
+              Retake the Prakriti assessment anytime if your lifestyle or balance
+              has changed.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.reassessBtn}
+            activeOpacity={0.9}
+            onPress={() => props.navigation.navigate('PatientFAQ')}
+          >
+            <Text style={styles.reassessBtnText}>Assess again</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.essenceCard}>
@@ -262,34 +300,20 @@ const PrakritiProfile = (props: any) => {
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() =>
-              props.navigation.navigate('PatientFAQ')
-            }
+            onPress={() => props.navigation.navigate('PatientFAQ')}
           >
-            <TablerIcon
-              name="edit"
-              size={14}
-              color={Colors.primaryColor}
-            />
-            <Text style={styles.actionText}>
-              Prakriti
-            </Text>
+            <TablerIcon name="edit" size={14} color={Colors.primaryColor} />
+            <Text style={styles.actionText}>Retake Prakriti</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionBtn, { borderColor: '#FED7AA' }]}
             onPress={() =>
-              props.navigation.navigate('MedicalHistory')
+              props.navigation.navigate('AssessmentType', { form: 'medical' })
             }
           >
-            <TablerIcon
-              name="edit"
-              size={14}
-              color={Colors.primaryColor}
-            />
-            <Text style={styles.actionText}>
-              Medical
-            </Text>
+            <TablerIcon name="edit" size={14} color={Colors.primaryColor} />
+            <Text style={styles.actionText}>Body Type</Text>
           </TouchableOpacity>
         </View>
 
@@ -298,7 +322,9 @@ const PrakritiProfile = (props: any) => {
           style={styles.homeBtn}
           onPress={handleGoHome}
         >
-          <Text style={styles.homeBtnText}>Go to Home</Text>
+          <Text style={styles.homeBtnText}>
+            {fromAssessment ? 'Continue to Home' : 'Go to Home'}
+          </Text>
         </TouchableOpacity>
       </>
     );
@@ -332,7 +358,7 @@ const PrakritiProfile = (props: any) => {
             onPress={handleEditAssessment}
             activeOpacity={0.8}
           >
-            <TablerIcon name="edit" size={22} color={Colors.primaryColor} />
+            {/* <TablerIcon name="" size={22} color={Colors.primaryColor} /> */}
           </TouchableOpacity>
         ) : (
           <View style={styles.iconBtnPlaceholder} />
@@ -576,6 +602,44 @@ const styles = StyleSheet.create({
     color: '#FFFFFF99',
     fontFamily: Fonts.PoppinsMedium,
     lineHeight: 22,
+  },
+
+  reassessCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D7EBE3',
+  },
+  reassessCopy: {
+    marginBottom: 12,
+  },
+  reassessTitle: {
+    fontSize: 15,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 4,
+  },
+  reassessSub: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  reassessBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primaryColor,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  reassessBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   // ===== DOSHA CARD =====

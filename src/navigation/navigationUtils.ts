@@ -132,6 +132,33 @@ export const safeGoBack = (navigation: any) => {
   navigation?.navigate?.('TabStack', { screen: 'Home' });
 };
 
+/** Bottom-tab root screens: back goes to Home tab instead of popping stack. */
+export const goBackToHomeTab = (navigation: any) => {
+  if (navigation?.canGoBack?.()) {
+    navigation.goBack();
+    return;
+  }
+
+  const state = navigation?.getState?.();
+  const routeNames: string[] = state?.routeNames ?? [];
+  if (routeNames.includes('Home')) {
+    navigation.navigate('Home');
+    return;
+  }
+
+  const parent = navigation?.getParent?.();
+  if (parent?.canGoBack?.()) {
+    parent.goBack();
+    return;
+  }
+  if (parent?.navigate) {
+    parent.navigate('TabStack', { screen: 'Home' });
+    return;
+  }
+
+  safeGoBack(navigation);
+};
+
 /**
  * Leave video call and land on Appointments without leaving
  * PatientVideoCallScreen in the stack (avoids back → video call again).

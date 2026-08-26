@@ -29,6 +29,8 @@ import {
     getPatientMeta,
     hasPrescribedData,
 } from '../../utils/doctorSlipUtils';
+import { getMedicinePrice, getMedicineScheduleChips } from '../../utils/prescriptionDetailUtils';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +38,8 @@ interface MedicineItem {
     id: number | string;
     icon?: string;
     description?: string;
+    brand_name?: string;
+    composition?: string;
     days?: string;
     timing?: string;
     instruction?: string;
@@ -43,6 +47,11 @@ interface MedicineItem {
     dosage?: string;
     duration?: string;
     frequency?: string;
+    quantity?: string | number;
+    selling_price?: string | number;
+    price?: string | number;
+    mrp?: string | number;
+    amount?: string | number;
 }
 
 export const AppText = memo(
@@ -188,56 +197,74 @@ export const DoctorCityHeader = ({ doctor }: { doctor?: any }) => {
     );
 };
 
-export const MedicineCard = memo(
-    ({
+export const MedicineCard = memo((item: MedicineItem) => {
+    const {
         medicine_name,
-        dosage,
-        duration,
-        frequency,
         instruction,
-    }: MedicineItem) => {
-        return (
-            <View style={styles.medicineCard}>
-                <View style={styles.medicineTopRow}>
-                    <View style={styles.medicineLeft}>
-                        <View style={styles.iconWrapper}>
-                            <Ionicons
-                                name="medkit-outline"
-                                size={18}
-                                color={Colors.primaryColor}
-                            />
-                        </View>
-                        <View style={styles.medicineInfo}>
-                            <AppText
-                                text={medicine_name}
-                                style={styles.medicineName}
-                            />
-                            {!!instruction && (
-                                <AppText
-                                    text={instruction}
-                                    style={styles.medicineDesc}
-                                />
-                            )}
-                        </View>
-                    </View>
-                    <View style={styles.timeWrapper}>
-                        {!!frequency && (
-                            <Text style={styles.timeText}>{frequency} frequency</Text>
-                        )}
-                        {!!dosage && (
-                            <Text style={styles.timeText}>{dosage} dosage</Text>
-                        )}
-                    </View>
+        description,
+        brand_name,
+        composition,
+    } = item;
+    const price = getMedicinePrice(item);
+    const subtitle =
+        (item as any)?.product_name || description || brand_name || composition || '';
+    const chips = getMedicineScheduleChips(item);
+
+    return (
+        <View style={styles.medicineCard}>
+            <View style={styles.medicineTopRow}>
+                <View style={styles.iconWrapper}>
+                    <Ionicons
+                        name="medkit-outline"
+                        size={16}
+                        color={Colors.primaryColor}
+                    />
                 </View>
-                {!!duration && (
-                    <View style={styles.bottomRow}>
-                        <Text style={styles.daysText}>{duration} duration</Text>
-                    </View>
-                )}
+                <View style={styles.medicineInfo}>
+                    <AppText
+                        text={medicine_name || (item as any)?.product_name || 'Medicine'}
+                        style={styles.medicineName}
+                        numberOfLines={2}
+                    />
+                    {!!subtitle &&
+                        String(subtitle).toLowerCase() !==
+                            String(medicine_name || '').toLowerCase() && (
+                        <AppText
+                            text={subtitle}
+                            style={styles.medicineDesc}
+                            numberOfLines={2}
+                        />
+                    )}
+                </View>
+                {price != null ? (
+                    <RupeeAmount
+                        value={price}
+                        style={styles.medicinePrice}
+                        iconSize={12}
+                        iconColor={Colors.primaryColor}
+                    />
+                ) : null}
             </View>
-        );
-    },
-);
+
+            {chips.length > 0 ? (
+                <View style={styles.scheduleRow}>
+                    {chips.map(chip => (
+                        <View key={chip.key} style={styles.scheduleItem}>
+                            <Text style={styles.scheduleCaption}>{chip.caption}</Text>
+                            <Text style={styles.scheduleValue}>{chip.label}</Text>
+                        </View>
+                    ))}
+                </View>
+            ) : null}
+
+            {!!instruction && (
+                <Text style={styles.instructionText} numberOfLines={2}>
+                    {instruction}
+                </Text>
+            )}
+        </View>
+    );
+});
 
 const NoteBlock = ({ label, value }: { label: string; value?: string | null }) => {
     if (!value?.trim?.()) return null;
@@ -436,9 +463,17 @@ const DoctorSlipScreen = (props: any) => {
                 {(fee != null || activeConsultation?.appointment_notes) && (
                     <View style={styles.summaryCard}>
                         {fee != null && (
-                            <Text style={styles.summaryLine}>
-                                Consultation fee · ₹{Number(fee).toLocaleString('en-IN')}
-                            </Text>
+                            <View style={styles.summaryFeeRow}>
+                                <Text style={styles.summaryLine}>
+                                    Consultation fee
+                                </Text>
+                                <RupeeAmount
+                                    value={fee}
+                                    style={styles.summaryLine}
+                                    iconSize={14}
+                                    iconColor={Colors.primaryColor}
+                                />
+                            </View>
                         )}
                         {!!activeConsultation?.appointment_notes && (
                             <Text style={styles.summarySub}>
@@ -482,6 +517,11 @@ const DoctorSlipScreen = (props: any) => {
                         title="View Prescription"
                         onPress={() =>
                             props?.navigation.navigate('PrescriptionDetail', {
+                                appointment_id:
+                                    activeConsultation?.appointment_id ||
+                                    activeConsultation?.consultation_id,
+                                consultation_id:
+                                    activeConsultation?.consultation_id,
                                 PrisData: activeConsultation,
                                 doctorData: doctor,
                             })
@@ -613,79 +653,124 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
     },
     listGap: {
-        paddingTop: 6,
+        paddingTop: 4,
     },
     medicineCard: {
-        marginTop: 12,
+        marginTop: 8,
         backgroundColor: '#FFFFFF',
-        borderRadius: 18,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#94A3B833',
-        padding: 18,
+        borderColor: '#E8EEEB',
+        padding: 12,
     },
     medicineTopRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    medicineLeft: {
-        flex: 1,
-        flexDirection: 'row',
-        paddingRight: 10,
+        alignItems: 'flex-start',
+        gap: 10,
     },
     iconWrapper: {
-        width: 42,
-        height: 42,
-        borderRadius: 14,
+        width: 34,
+        height: 34,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#0051470D',
-        marginRight: 12,
+        backgroundColor: '#E8F3EF',
     },
     medicineInfo: {
         flex: 1,
+        minWidth: 0,
     },
     medicineName: {
-        fontSize: 15,
-        lineHeight: 24,
+        fontSize: 14,
+        lineHeight: 19,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
     medicineDesc: {
         marginTop: 2,
-        fontSize: 13,
-        lineHeight: 22,
+        fontSize: 12,
+        lineHeight: 17,
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
     },
-    timeWrapper: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#FFBA2033',
-        borderRadius: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        gap: 2,
-    },
-    timeText: {
-        fontSize: 10,
-        color: '#5E4200',
+    medicinePrice: {
+        fontSize: 12,
+        color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
     },
-    bottomRow: {
-        alignItems: 'flex-end',
-        marginTop: 12,
+    scheduleRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 10,
     },
-    daysText: {
+    scheduleItem: {
+        flexGrow: 1,
+        flexBasis: '30%',
+        minWidth: 96,
+        backgroundColor: '#F3F7F5',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E5EFEA',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+    },
+    scheduleCaption: {
+        fontSize: 10,
+        lineHeight: 14,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
+    scheduleValue: {
+        marginTop: 2,
+        fontSize: 13,
+        lineHeight: 18,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    chipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 8,
+    },
+    chip: {
+        backgroundColor: '#F1F5F9',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    chipText: {
         fontSize: 11,
+        color: '#475569',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    instructionText: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        fontSize: 12,
+        lineHeight: 17,
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
     },
     summaryCard: {
-        marginTop: 20,
-        borderRadius: 16,
+        marginTop: 16,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         backgroundColor: '#F8FAF9',
-        padding: 16,
+        padding: 14,
+        gap: 6,
+    },
+    summaryFeeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
     },
     summaryLine: {
         fontSize: 14,

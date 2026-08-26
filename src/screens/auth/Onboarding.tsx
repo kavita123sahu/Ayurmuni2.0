@@ -280,7 +280,14 @@ const Onboarding = (props: any) => {
             );
         }
     };
-
+    const clearDobError = () => {
+        if (errors.dob) {
+            setErrors((prev: any) => ({
+                ...prev,
+                dob: '',
+            }));
+        }
+    };
 
 
     const handleAddImage = () => {
@@ -490,7 +497,7 @@ const Onboarding = (props: any) => {
 
     return (
 
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
             <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
 
             <KeyboardAvoidingView
@@ -579,7 +586,7 @@ const Onboarding = (props: any) => {
                             <View style={styles.row}>
 
                                 <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>First Name *</Text>
+                                    <Text style={styles.label}>First Name{' '}<Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text></Text>
                                     <TextInput
                                         ref={firstNameRef}
                                         placeholder="ABC"
@@ -600,7 +607,7 @@ const Onboarding = (props: any) => {
                                 </View>
 
                                 <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>Last Name *</Text>
+                                    <Text style={styles.label}>Last Name{' '}<Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text> </Text>
                                     <TextInput
                                         ref={lastNameRef}
                                         placeholder="XYZ"
@@ -623,7 +630,11 @@ const Onboarding = (props: any) => {
 
                             {/* EMAIL — placed under name so it stays near top section & visible with keyboard */}
                             <View style={styles.emailBlock}>
-                                <Text style={styles.label}>Email Address</Text>
+                                <Text style={styles.label}>
+                                    Email Address{' '}
+                                    <Text style={styles.optionalText}>(optional)</Text>
+                                </Text>
+                                {/* <Text style={styles.label}>Email Address (optional)</Text> */}
                                 <TextInput
                                     ref={emailRef}
                                     placeholder="email@gmail.com"
@@ -644,44 +655,49 @@ const Onboarding = (props: any) => {
                             </View>
 
                             {/* GENDER */}
-                            <Text style={styles.label}>Gender *</Text>
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.label}>
+                                    Gender{' '}
+                                    <Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text>
+                                </Text>
 
-                            <View style={styles.genderRow}>
-                                {genderOptions.map((item: any) => (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        onPress={() => handleFieldChange('gender', item.value)}
-                                        style={[
-                                            styles.genderBtn,
-                                            formData.gender === item.value && styles.genderActive,
-                                        ]}
-                                    >
-                                        <Text
+                                <View style={styles.genderRow}>
+                                    {genderOptions.map((item: any) => (
+                                        <TouchableOpacity
+                                            key={item.id}
+                                            onPress={() => handleFieldChange('gender', item.value)}
                                             style={[
-                                                styles.genderText,
-                                                formData.gender === item.value && styles.genderTextActive
+                                                styles.genderBtn,
+                                                formData.gender === item.value && styles.genderActive,
                                             ]}
                                         >
-                                            {item.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
+                                            <Text
+                                                style={[
+                                                    styles.genderText,
+                                                    formData.gender === item.value && styles.genderTextActive,
+                                                ]}
+                                            >
+                                                {item.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
 
+                                {!!errors.gender && (
+                                    <Text style={[styles.errorText, { top: -15 }]}>
+                                        {errors.gender}
+                                    </Text>
+                                )}
                             </View>
-
-                            <Text style={styles.errorText}>{errors.gender}</Text>
-
                             {/* DOB */}
-                            <Text style={styles.label}>Date of Birth *</Text>
+                            <Text style={[styles.label,]}>Date of Birth{' '}<Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text></Text>
 
                             <View style={styles.dobContainer}>
 
                                 <TextInput
                                     ref={dayRef}
                                     placeholder={
-                                        focusedField === 'day' || dob.year === ''
-                                            ? 'DD'
-                                            : ''
+                                        focusedField === 'day' || dob.year === '' ? 'DD' : ''
                                     }
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.day}
@@ -691,7 +707,13 @@ const Onboarding = (props: any) => {
                                         styles.dobInput,
                                         dob.day && styles.inputFilled,
                                     ]}
+                                    onFocus={() => {
+                                        setFocusedField('day');
+                                        clearDobError();
+                                        onFieldFocus(dayRef);
+                                    }}
                                     onChangeText={(t) => {
+                                        clearDobError();
 
                                         const value = t.replace(/[^0-9]/g, '');
 
@@ -704,13 +726,8 @@ const Onboarding = (props: any) => {
                                             monthRef.current?.focus();
                                         }
                                     }}
-                                    onFocus={() => {
-                                        setFocusedField('day');
-                                        onFieldFocus(dayRef);
-                                    }}
                                     onBlur={() => setFocusedField(null)}
                                     onKeyPress={({ nativeEvent }) => {
-
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.day.length === 0
@@ -723,9 +740,7 @@ const Onboarding = (props: any) => {
                                 <TextInput
                                     ref={monthRef}
                                     placeholder={
-                                        focusedField === 'month' || dob.year === ''
-                                            ? 'MM'
-                                            : ''
+                                        focusedField === 'month' || dob.year === '' ? 'MM' : ''
                                     }
                                     placeholderTextColor="#9CA3AF"
                                     value={dob.month}
@@ -737,10 +752,12 @@ const Onboarding = (props: any) => {
                                     ]}
                                     onFocus={() => {
                                         setFocusedField('month');
+                                        clearDobError();
                                         onFieldFocus(monthRef);
                                     }}
                                     onBlur={() => setFocusedField(null)}
                                     onChangeText={(t) => {
+                                        clearDobError();
 
                                         const value = t.replace(/[^0-9]/g, '');
 
@@ -754,7 +771,6 @@ const Onboarding = (props: any) => {
                                         }
                                     }}
                                     onKeyPress={({ nativeEvent }) => {
-
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.month.length === 0
@@ -768,13 +784,12 @@ const Onboarding = (props: any) => {
                                     ref={yearRef}
                                     value={dob.year}
                                     placeholder={
-                                        focusedField === 'year' || dob.year === ''
-                                            ? 'YYYY'
-                                            : ''
+                                        focusedField === 'year' || dob.year === '' ? 'YYYY' : ''
                                     }
                                     placeholderTextColor="#9CA3AF"
                                     onFocus={() => {
                                         setFocusedField('year');
+                                        clearDobError();
                                         onFieldFocus(yearRef);
                                     }}
                                     onBlur={() => setFocusedField(null)}
@@ -786,14 +801,16 @@ const Onboarding = (props: any) => {
                                         dob.year && styles.inputFilled,
                                     ]}
                                     onChangeText={(t) => {
+                                        clearDobError();
+
                                         const value = t.replace(/[^0-9]/g, '');
+
                                         setDob({
                                             ...dob,
                                             year: value,
                                         });
                                     }}
                                     onKeyPress={({ nativeEvent }) => {
-
                                         if (
                                             nativeEvent.key === 'Backspace' &&
                                             dob.year.length === 0
@@ -805,7 +822,12 @@ const Onboarding = (props: any) => {
 
                             </View>
 
-                            <Text style={[styles.errorText, { top: -15 }]}>{errors.dob}</Text>
+                            {errors.dob ? (
+                                <Text style={[styles.errorText, { top: -15 }]}>
+                                    {errors.dob}
+                                </Text>
+                            ) : null}
+                            {/* <Text style={[styles.errorText, { top: -15 }]}>{errors.dob}</Text> */}
                         </View>
                     </View>
                 </ScrollView>
@@ -1051,7 +1073,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         gap: 12,
-        marginBottom: 18,
+        // marginBottom: 1,
     },
 
     inputWrapper: {
@@ -1059,7 +1081,7 @@ const styles = StyleSheet.create({
     },
 
     emailBlock: {
-        marginBottom: 18,
+        marginBottom: 10,
     },
 
     label: {
@@ -1069,6 +1091,15 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
     },
 
+    fieldContainer: {
+        width: '100%',
+        marginTop: -15
+    },
+    optionalText: {
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsRegular,
+        fontSize: 13,
+    },
     inputHalf: {
         height: 54,
         borderWidth: 1,

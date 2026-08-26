@@ -50,8 +50,16 @@ export const useAllCartData = () => {
 
 type UseCartActionsReturn = {
   isAdding: boolean;
-  addToCart: (variantId: string | number, quantity: number) => Promise<boolean>;
-  updateCartQuantity: (variantId: string | number, quantity: number) => Promise<boolean>;
+  addToCart: (
+    variantId: string | number,
+    quantity: number,
+    options?: { currentQuantity?: number; prescriptionRequired?: boolean },
+  ) => Promise<boolean>;
+  updateCartQuantity: (
+    variantId: string | number,
+    quantity: number,
+    options?: { currentQuantity?: number; prescriptionRequired?: boolean },
+  ) => Promise<boolean>;
   cartCount: number;
 };
 
@@ -61,7 +69,11 @@ export const useCartActions = (): UseCartActionsReturn => {
   const cartCount = useAppSelector(selectCartCount);
 
   const updateCartQuantityFn = useCallback(
-    async (variantId: string | number, quantity: number): Promise<boolean> => {
+    async (
+      variantId: string | number,
+      quantity: number,
+      options?: { currentQuantity?: number; prescriptionRequired?: boolean },
+    ): Promise<boolean> => {
       if (!variantId) {
         return false;
       }
@@ -69,7 +81,14 @@ export const useCartActions = (): UseCartActionsReturn => {
         return false;
       }
 
-      const result = await dispatch(syncCartQuantity({ variantId, quantity }));
+      const result = await dispatch(
+        syncCartQuantity({
+          variantId,
+          quantity,
+          currentQuantity: options?.currentQuantity,
+          prescriptionRequired: options?.prescriptionRequired,
+        }),
+      );
       if (syncCartQuantity.rejected.match(result)) {
         if (result.payload === 'LOGIN_REQUIRED') {
           return false;
@@ -82,7 +101,11 @@ export const useCartActions = (): UseCartActionsReturn => {
   );
 
   const addToCartFn = useCallback(
-    async (variantId: string | number, quantity: number): Promise<boolean> => {
+    async (
+      variantId: string | number,
+      quantity: number,
+      options?: { currentQuantity?: number; prescriptionRequired?: boolean },
+    ): Promise<boolean> => {
       if (!variantId) {
         return false;
       }
@@ -90,7 +113,14 @@ export const useCartActions = (): UseCartActionsReturn => {
         return false;
       }
 
-      const result = await dispatch(syncCartQuantity({ variantId, quantity }));
+      const result = await dispatch(
+        syncCartQuantity({
+          variantId,
+          quantity,
+          currentQuantity: options?.currentQuantity,
+          prescriptionRequired: options?.prescriptionRequired,
+        }),
+      );
       if (syncCartQuantity.rejected.match(result)) {
         return false;
       }

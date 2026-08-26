@@ -1,16 +1,17 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import * as _HOME_SERVICES from '../../services/HomeServices';
-import * as _PRODUCT_SERVICES from '../../services/ProductServices';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import * as _YOGA_SERVICES from '../../services/YogaServices';
-import * as _PATIENT_SERVICES from '../../services/PatientServices';
 import { fetchWithCache } from '../../services/apiCache';
 import { isAuthenticated, isGuestUser } from '../../services/guestAuth';
 import {
   getServiceCategoryIds,
   normalizeServiceCategories,
 } from '../../utils/serviceCategoryUtils';
-import { normalizeApiList } from '../../services/ProductServices';
+import {
+  mapCatalogProductItem,
+  normalizeApiList,
+} from '../../services/ProductServices';
 import { normalizeYogaSessionList } from '../../utils/yogaUtils';
 
 const CACHE_KEYS = {
@@ -103,9 +104,9 @@ export const normalizeDietPlans = (response: any): any[] => {
 export const mapDietPlanForHome = (item: any) => {
   const diseases = Array.isArray(item?.health_diseases)
     ? item.health_diseases
-        .map((d: any) => d?.name)
-        .filter(Boolean)
-        .join(', ')
+      .map((d: any) => d?.name)
+      .filter(Boolean)
+      .join(', ')
     : '';
 
   return {
@@ -124,8 +125,8 @@ export const mapDietPlanForHome = (item: any) => {
 
 const loadDietPlansForHome = async (): Promise<any[]> => {
   try {
-    // Available plans only (common + doctor-suggested) — these can be started
-    const res = await _PATIENT_SERVICES.getDietPlans();
+    // Homepage personalized: GET /customers/suggested/diet-plans/
+    const res = await _HOME_SERVICES.getSuggestedDietPlans();
     console.log('HOME_DIET_PLANS_RESPONSE =>', res);
     if (res?.success === false) {
       console.log('HOME_DIET_PLANS_FAILED =>', res?.message);
@@ -140,34 +141,25 @@ const loadDietPlansForHome = async (): Promise<any[]> => {
   }
 };
 
-/** customers/products/?service_category_id=... for home medicine / products sections */
-const loadProductsByServiceCategory = async (
-  serviceCategoryId: string | null,
-  label: 'medicine' | 'products',
+/** Homepage personalized products / medicines via suggested endpoints */
+const loadSuggestedCatalog = async (
+  kind: 'products' | 'medicines',
 ): Promise<any[]> => {
-  if (!serviceCategoryId) {
-    console.log(`HOME_${label.toUpperCase()}_SKIP => missing service_category_id`);
-    return [];
-  }
-
   try {
-    console.log(
-      `HOME_${label.toUpperCase()}_FETCH => customers/products/?service_category_id=${serviceCategoryId}`,
-    );
-    const res = await _PRODUCT_SERVICES.getProduct({
-      service_category_id: serviceCategoryId,
-      page_size: 20,
-    });
-    console.log(`HOME_${label.toUpperCase()}_RESPONSE =>`, res);
+    const res =
+      kind === 'medicines'
+        ? await _HOME_SERVICES.getSuggestedMedicines()
+        : await _HOME_SERVICES.getSuggestedProducts();
 
-    if (res?.success === false) {
-      console.log(`HOME_${label.toUpperCase()}_FAILED =>`, res?.message);
+    if (!res || res?.success === false) {
       return [];
     }
 
-    return normalizeApiList(res);
+    return normalizeApiList(res)
+      .map(mapCatalogProductItem)
+      .filter(Boolean);
   } catch (error) {
-    console.log(`HOME_${label.toUpperCase()}_ERROR =>`, error);
+    console.log(`HOME_${kind.toUpperCase()}_ERROR:`, error);
     return [];
   }
 };
@@ -187,21 +179,11 @@ export const fetchHomeData = createAsyncThunk<
   'home/fetchAll',
   async (force = false, { rejectWithValue }) => {
     try {
-      const categories = await fetchWithCache(
-        CACHE_KEYS.categories,
-        async () => {
-          const res = await _HOME_SERVICES.getHomeCategory();
-          const list = normalizeServiceCategories(res?.data ?? res);
-          console.log('HOME_CATEGORIES =>', list);
-          return list;
-        },
-        { ttl: 120_000, force },
-      );
-
-      const serviceIds = getServiceCategoryIds(categories);
-      console.log('HOME_SERVICE_CATEGORY_IDS =>', serviceIds);
-
-      const safe = async <T,>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+      const safe = async <T,>(
+        label: string,
+        fn: () => Promise<T>,
+        fallback: T,
+      ): Promise<T> => {
         try {
           return await fn();
         } catch (error) {
@@ -210,16 +192,40 @@ export const fetchHomeData = createAsyncThunk<
         }
       };
 
+      const categories = await safe(
+        'CATEGORIES',
+        () =>
+          fetchWithCache(
+            CACHE_KEYS.categories,
+            async () => {
+              const res = await _HOME_SERVICES.getHomeCategory();
+              const list = normalizeServiceCategories(res?.data ?? res);
+              console.log('HOME_CATEGORIES =>', list);
+              return list;
+            },
+            { ttl: 120_000, force },
+          ),
+        [],
+      );
+
+      const serviceIds = getServiceCategoryIds(categories);
+      console.log('HOME_SERVICE_CATEGORY_IDS =>', serviceIds);
+
       const [doctors, medicineProducts, storeProducts, yoga, diet, customer] =
         await Promise.all([
           safe(
             'DOCTORS',
             () =>
               fetchWithCache(
-                CACHE_KEYS.doctors,
+                `${CACHE_KEYS.doctors}_suggested`,
                 async () => {
                   const res = await _HOME_SERVICES.getSuggestedDoctor();
-                  return normalizeApiList(res);
+                  return normalizeApiList(res).filter(
+                    (item: any) =>
+                      item &&
+                      (item.id || item.doctor_id) &&
+                      String(item.full_name || item.name || '').trim(),
+                  );
                 },
                 { ttl: 120_000, force },
               ),
@@ -229,9 +235,8 @@ export const fetchHomeData = createAsyncThunk<
             'MEDICINE',
             () =>
               fetchWithCache(
-                `${CACHE_KEYS.medicineProducts}_${serviceIds.medicine ?? 'none'}`,
-                () =>
-                  loadProductsByServiceCategory(serviceIds.medicine, 'medicine'),
+                `${CACHE_KEYS.medicineProducts}_suggested`,
+                () => loadSuggestedCatalog('medicines'),
                 { ttl: 120_000, force },
               ),
             [],
@@ -240,9 +245,8 @@ export const fetchHomeData = createAsyncThunk<
             'PRODUCTS',
             () =>
               fetchWithCache(
-                `${CACHE_KEYS.storeProducts}_${serviceIds.products ?? 'none'}`,
-                () =>
-                  loadProductsByServiceCategory(serviceIds.products, 'products'),
+                `${CACHE_KEYS.storeProducts}_suggested`,
+                () => loadSuggestedCatalog('products'),
                 { ttl: 120_000, force },
               ),
             [],
@@ -302,7 +306,7 @@ export const fetchDietPlans = createAsyncThunk<any[], boolean | undefined>(
   async (force = true, { rejectWithValue }) => {
     try {
       return await fetchWithCache(
-        CACHE_KEYS.diet,
+        `${CACHE_KEYS.diet}_suggested`,
         () => loadDietPlansForHome(),
         { ttl: 60_000, force },
       );

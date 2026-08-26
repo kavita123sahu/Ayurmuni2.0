@@ -28,6 +28,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader';
 import AllDoctorCard from '../../components/AllDoctorCard';
 import { Images } from '../../common/Images';
+import { doctorListKey } from '../../utils/listKeys';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
@@ -87,7 +88,10 @@ const AllDoctors = (props: any) => {
     const [searchText, setSearchText] = useState('');
     const [searchExpanded, setSearchExpanded] = useState(false);
 
-    const { categories } = useConsultData();
+    const { categories } = useConsultData({
+        fetchCategories: true,
+        fetchDoctors: false,
+    });
 
     const debouncedSearch = useDebounce(searchText, 400);
 
@@ -340,8 +344,8 @@ const AllDoctors = (props: any) => {
                         : <FlatList
                             data={doctorData}
 
-                            keyExtractor={(item) =>
-                                String(item?.id)
+                            keyExtractor={(item, index) =>
+                                doctorListKey(item, index)
                             }
 
                             showsVerticalScrollIndicator={
@@ -362,14 +366,6 @@ const AllDoctors = (props: any) => {
                             }
 
                             renderItem={renderDoctorItem}
-
-                            ItemSeparatorComponent={() => (
-                                <View
-                                    style={{
-                                        height: 14,
-                                    }}
-                                />
-                            )}
 
                             initialNumToRender={10}
                             maxToRenderPerBatch={10}

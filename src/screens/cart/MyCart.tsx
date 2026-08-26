@@ -23,19 +23,26 @@ import {
 
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStore } from 'react-redux';
 import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { useAllCartData } from '../../hooks/Cart';
 import { useAppDispatch } from '../../store/hooks';
-import { syncCartQuantity } from '../../store/slices/cartSlice';
+import type { RootState } from '../../store/store';
+import { queueCartLineSync } from '../../store/slices/cartSlice';
 import { getProductData, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToCheckout } from '../../navigation/productNavigation';
 import SegmentTabs from '../../components/SegmentTabs';
 import { getScreenBottomPadding } from '../../constants/layout';
+import {
+    canAddProductWithoutPrescription,
+    isPrescriptionRequired,
+} from '../../utils/prescriptionUtils';
 
 
 
@@ -43,11 +50,12 @@ import { getScreenBottomPadding } from '../../constants/layout';
 const MyCart = ({ navigation }: any) => {
 
     const dispatch = useAppDispatch();
+    const store = useStore<RootState>();
 
     const { CartData, loading, fetchAllData, hasCachedCart } =
         useAllCartData();
     const [refreshing, setRefreshing] = useState(false);
-
+    
     const onRefresh = useCallback(async () => {
 
         setRefreshing(true);
@@ -97,7 +105,6 @@ const MyCart = ({ navigation }: any) => {
             return lineItems
                 .filter((item: any) => item?.id)
                 .map((item: any) => {
-                    console.log("cart_item_id", item?.id,);
                     const lineId = String(item.id);
                     const product = getProductData(
                         item,
@@ -140,10 +147,11 @@ const MyCart = ({ navigation }: any) => {
 
     useFocusEffect(
         useCallback(() => {
-            // Coming to cart (e.g. after add) → all items selected by default
             selectAllPendingRef.current = true;
             setFocusTick(tick => tick + 1);
-            fetchAllData({ force: true, silent: hasCachedCart });
+            if (!hasCachedCart) {
+                fetchAllData({ force: true, silent: false });
+            }
         }, [fetchAllData, hasCachedCart]),
     );
 
@@ -218,32 +226,84 @@ const MyCart = ({ navigation }: any) => {
     }, []);
 
 
-    const updateQuantity = useCallback(
-        async (
-            variantId: string,
-            action: 'plus' | 'minus',
-        ) => {
-            const selectedItem = sections
-                .flatMap(s => s.items)
-                .find(i => i.variant_id === variantId);
+    const findLineInCartData = useCallback(
+        (itemId: string) => {
+            const cartData = store.getState().cart.cartData;
+            const id = String(itemId);
 
-            if (!selectedItem) {
+            const myCartItem = (cartData?.my_cart?.items ?? []).find(
+                (item: any) => String(item?.id ?? item?.cart_item_id) === id,
+            );
+            if (myCartItem) {
+                return {
+                    variant_id: String(
+                        myCartItem.variant_id ??
+                            myCartItem.variant?.variant_id ??
+                            '',
+                    ),
+                    quantity: Number(myCartItem.quantity) || 0,
+                    source: 'cart' as const,
+                    cart_item_id: id,
+                };
+            }
+
+            for (const prescription of cartData?.prescription_cart?.items ?? []) {
+                const prescribedItem = (prescription?.items ?? []).find(
+                    (item: any) => String(item?.id) === id,
+                );
+                if (prescribedItem) {
+                    return {
+                        variant_id: String(
+                            prescribedItem.variant_id ??
+                                prescribedItem.variant?.variant_id ??
+                                '',
+                        ),
+                        quantity: Number(prescribedItem.quantity) || 0,
+                        source: 'prescribed' as const,
+                        cart_item_id: id,
+                        prescription_required:
+                            prescribedItem.prescription_required,
+                    };
+                }
+            }
+
+            return null;
+        },
+        [store],
+    );
+
+    const updateQuantity = useCallback(
+        (itemId: string, action: 'plus' | 'minus' | 'remove') => {
+            const line = findLineInCartData(itemId);
+            if (!line?.variant_id) {
                 return;
             }
 
-            const oldQty = selectedItem.quantity;
+            if (isPrescriptionRequired(line)) {
+                canAddProductWithoutPrescription(line);
+                return;
+            }
+
+            const oldQty = line.quantity;
             const newQty =
-                action === 'minus' && oldQty === 1
+                action === 'remove'
+                    ? 0
+                    : action === 'minus' && oldQty === 1
                     ? 0
                     : action === 'plus'
                         ? oldQty + 1
                         : oldQty - 1;
 
-            await dispatch(
-                syncCartQuantity({ variantId, quantity: newQty }),
+            dispatch(
+                queueCartLineSync({
+                    variantId: line.variant_id,
+                    quantity: newQty,
+                    source: line.source,
+                    cartItemId: String(line.cart_item_id ?? itemId),
+                }),
             );
         },
-        [sections, dispatch],
+        [findLineInCartData, dispatch],
     );
 
     const selectedProducts =
@@ -371,8 +431,8 @@ const MyCart = ({ navigation }: any) => {
         >
 
             <StatusBar
-                barStyle="dark-content"
-                backgroundColor="#FFFFFF"
+                barStyle={SCREEN_THEME.statusBarStyle}
+                backgroundColor={SCREEN_THEME.statusBarBackground}
             />
 
             <AppHeader
@@ -518,9 +578,9 @@ const MyCart = ({ navigation }: any) => {
                                         </TouchableOpacity>
                                     </View>
 
-                                    {currentSection.items.map(item => (
+                                    {currentSection.items.map((item, idx) => (
                                         <MyProductCard
-                                            key={item.id}
+                                            key={String(item.id ?? item.variant_id ?? idx)}
                                             item={item}
                                             navigation={navigation}
                                             type={currentSection.type}
@@ -589,7 +649,8 @@ const MyCart = ({ navigation }: any) => {
                                 <>
                                     <BillRow
                                         label="Subtotal"
-                                        value={`Rs. ${subtotal}`}
+                                          value={`Rs. ${Math.round(subtotal)}`}
+                                        // value={`Rs. ${subtotal}`}
                                     />
 
                                     <BillRow
@@ -714,7 +775,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
-        backgroundColor: '#F8FAF8',
+        backgroundColor: SCREEN_THEME.screenBackground,
     },
 
     scrollView: {
@@ -938,7 +999,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F8FAF8',
+        backgroundColor: SCREEN_THEME.screenBackground,
     },
 
     loaderCard: {
@@ -1063,7 +1124,7 @@ const styles = StyleSheet.create({
 
     checkoutFooter: {
         paddingTop: 12,
-        backgroundColor: '#F8FAF8',
+        backgroundColor: SCREEN_THEME.screenBackground,
         borderTopWidth: 1,
         borderTopColor: '#E2E8F0',
     },

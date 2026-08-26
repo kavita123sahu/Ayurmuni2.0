@@ -6,7 +6,6 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 
 import { getStatusStyle } from '../common/DataInterface';
 import { Colors } from '../common/Colors';
@@ -104,22 +103,43 @@ const RenderAppoint = ({
   if (isHorizontal) {
     return (
       <TouchableOpacity
-        activeOpacity={0.9}
+        activeOpacity={0.92}
         style={styles.hCard}
         onPress={openAppointmentDetails}
       >
-        {/* <LinearGradient
-          colors={['#0D614E', '#12856A', '#1A9B7A']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hAccent}
-        /> */}
-
         <View style={styles.hInner}>
-          <View style={styles.hTopRow}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.hAvatar} />
+          ) : (
+            <View style={[styles.hAvatar, styles.avatarFallback]}>
+              <TablerIcon name="user" size={24} color={Colors.primaryColor} />
+            </View>
+          )}
+
+          <View style={styles.hBody}>
+            <Text style={styles.hDoctorName} numberOfLines={1}>
+              {item.doctorName}
+            </Text>
+
+            <View style={styles.hMetaRow}>
+              <View style={styles.hMetaChip}>
+                <TablerIcon name="calendar" size={12} color={Colors.primaryColor} />
+                <Text style={styles.hMetaText} numberOfLines={1}>
+                  {item.date}
+                </Text>
+              </View>
+              <View style={styles.hMetaChip}>
+                <TablerIcon name="clock" size={12} color={Colors.primaryColor} />
+                <Text style={styles.hMetaText} numberOfLines={1}>
+                  {item.time}
+                </Text>
+              </View>
+            </View>
+
             <View
               style={[
                 styles.status,
+                styles.hStatus,
                 { backgroundColor: statusStyle.backgroundColor },
               ]}
             >
@@ -127,39 +147,7 @@ const RenderAppoint = ({
                 {statusLabel}
               </Text>
             </View>
-            {item?.rawData?.follow_up?.date ? (
-              <View style={styles.followUP}>
-                <Text style={styles.followUPText}>
-                  Follow-up · {item.rawData.follow_up.date}
-                </Text>
-              </View>
-            ) : null}
           </View>
-
-          <View style={styles.hDoctorRow}>
-            {item.image ? (
-              <Image source={{ uri: item.image }} style={styles.hAvatar} />
-            ) : (
-              <View style={[styles.hAvatar, styles.avatarFallback]}>
-                <TablerIcon name="user" size={20} color={Colors.primaryColor} />
-              </View>
-            )}
-            <View style={styles.hDoctorText}>
-              <Text style={styles.hDoctorName} numberOfLines={1}>
-                {item.doctorName}
-              </Text>
-              <Text style={styles.hSpeciality} numberOfLines={1}>
-                {therapyPreview}
-              </Text>
-            </View>
-            <View style={styles.hChevron}>
-              <TablerIcon name="chevron-right" size={16} color="#94A3B8" />
-            </View>
-          </View>
-
-          <View style={{ borderWidth: 0.2, borderColor: '#74686800' }} />
-
-          <DateTimeCard item={item} isHorizontal />
         </View>
       </TouchableOpacity>
     );
@@ -256,8 +244,15 @@ const RenderAppoint = ({
           );
         }}
         onViewDetails={() =>
-          navigation.navigate('DoctorSlipScreen', {
-            doctorID: item?.rawData?.doctor?.doctor_id,
+          navigation.navigate('PrescriptionDetail', {
+            appointment_id:
+              item?.appointment_id ||
+              item?.consultation_id ||
+              item?.rawData?.appointment?.appointment_id ||
+              item?.rawData?.appointment_id,
+            consultation_id:
+              item?.consultation_id ||
+              item?.rawData?.appointment?.consultation_id,
           })
         }
       />
@@ -403,88 +398,61 @@ const styles = StyleSheet.create({
 
   /* Horizontal (Home) */
   hCard: {
-    width: 268,
+    width: 248,
     marginRight: 12,
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E6EFEA',
-    // overflow: 'hidden',
-    // shadowColor: '#0D614E',
-    // shadowOpacity: 0.08,
-    // shadowRadius: 12,
-    // shadowOffset: { width: 0, height: 5 },
-    // elevation: 3,
-  },
-  hAccent: {
-    height: 4,
-    width: '100%',
+    borderColor: '#E3ECE8',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   hInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
+    gap: 12,
   },
-  hTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  hDoctorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+  hBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
   },
   hAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    marginRight: 10,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 2,
-    borderColor: '#E8F5E9',
-  },
-  hDoctorText: {
-    flex: 1,
+    borderColor: '#E8F5EF',
+    backgroundColor: '#F4FAF7',
   },
   hDoctorName: {
     fontSize: 14,
+    lineHeight: 18,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  hSpeciality: {
-    marginTop: 1,
-    fontSize: 11,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  hChevron: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F4FAF7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   hMetaRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   hMetaChip: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    // backgroundColor: '#F4FAF7',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    // borderWidth: 1,
-    borderColor: '#E6EFEA',
+    gap: 4,
+    maxWidth: '100%',
   },
   hMetaText: {
-    flex: 1,
     fontSize: 11,
-    color: '#334155',
+    color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  hStatus: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
 });

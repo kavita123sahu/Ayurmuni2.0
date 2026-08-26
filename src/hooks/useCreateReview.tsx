@@ -12,13 +12,15 @@ export const useCreateReview = () => {
     appointmentId,
     variantId,
     orderId,
+    patientDietPlanId,
     reviewData,
     method = 'POST',
   }: {
-    entityType: 'doctor' | 'product' | string;
+    entityType: 'doctor' | 'product' | 'diet_plan' | string;
     appointmentId?: string;
     variantId?: string;
     orderId?: string;
+    patientDietPlanId?: string;
     reviewData: ReviewPayload;
     method?: 'POST' | 'PATCH';
   }) => {
@@ -31,6 +33,8 @@ export const useCreateReview = () => {
         appointmentId: entityType === 'doctor' ? appointmentId : undefined,
         variantId: entityType === 'product' ? variantId : undefined,
         orderId: entityType === 'product' ? orderId : undefined,
+        patientDietPlanId:
+          entityType === 'diet_plan' ? patientDietPlanId : undefined,
         reviewData,
         method,
       });

@@ -11,12 +11,12 @@ import { Fonts } from './src/common/Fonts';
 import { LocationProvider } from './src/context/LocationContext';
 import { VideoCallProvider } from './src/context/VideoCallContext';
 import FloatingVideoOverlay from './src/components/FloatingVideoOverlay';
+import WishlistToastBar from './src/components/WishlistToastBar';
 
 
 console.log = () => { };
 console.warn = () => { };
 console.error = () => { };
-
 
 const toastConfig = {
   success: (props: any) => (
@@ -88,6 +88,7 @@ const App = () => {
                 <AppDataInitializer />
                 <Navigator />
                 <FloatingVideoOverlay />
+                <WishlistToastBar />
                 <Toast config={toastConfig} />
               </View>
             </LocationProvider>

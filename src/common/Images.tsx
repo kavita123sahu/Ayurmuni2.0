@@ -3,6 +3,7 @@ export const Images = {
     backIcon: require('../assets/images/backButton.png'),
     FinalLogo: require('../assets/images/FinalLogo.png'),
     FinalLogo2: require('../assets/images/FinalLogo2.png'),
+    logoRound: require('../assets/images/logoround.png'),
     login1: require('../assets/images/login/1.png'),
     login3: require('../assets/images/login/3.png'),
     login4: require('../assets/images/login/4.png'),

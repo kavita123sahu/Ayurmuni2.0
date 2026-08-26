@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F8FAFC',
         // padding: 16,
-        paddingHorizontal: 20
+        paddingHorizontal: 10
     },
 
     header: {
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     tabs: {
         flexDirection: 'row',
         marginBottom: 16,
-        marginTop:10,
+        marginTop: 10,
 
     },
 
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
         paddingVertical: 28,
         alignItems: 'center',
         marginTop: 16,
-     marginBottom:20,
+        marginBottom: 20,
     },
 
     uploadIcon: {

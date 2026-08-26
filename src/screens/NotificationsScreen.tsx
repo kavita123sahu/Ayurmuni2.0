@@ -18,6 +18,12 @@ import { Fonts } from '../common/Fonts';
 import AppHeader from '../components/AppHeader';
 import { useNotifications, NotificationItem } from '../hooks/useNotification';
 import TablerIcon from '../components/TablerIcon';
+import {
+    buildAppointmentDetailsParams,
+    buildVideoCallNavParams,
+} from '../utils/appointmentUtils';
+import { navigateToStackScreen } from '../navigation/navigationUtils';
+import { getDetailBottomPadding } from '../constants/layout';
 
 const getNotificationImageSource = (image: unknown) => {
     if (!image) return null;
@@ -181,99 +187,122 @@ const FilterTabs = ({
 );
 
 /* ------------------------------------------------------------------ */
-/*  NOTIFICATION CARD                                                  */
+/*  NOTIFICATION CARD  — ecommerce style                              */
 /* ------------------------------------------------------------------ */
+
+// Map notification types to accent colours
+const TYPE_ACCENT: Record<string, { bg: string; text: string; dot: string }> = {
+    appointment: { bg: '#EEF2FF', text: '#4338CA', dot: '#6366F1' },
+    prescription: { bg: '#F0FDF4', text: '#15803D', dot: '#22C55E' },
+    offer: { bg: '#FFF7ED', text: '#C2410C', dot: '#F97316' },
+    order: { bg: '#EFF6FF', text: '#1D4ED8', dot: '#3B82F6' },
+    reminder: { bg: '#FDF4FF', text: '#7E22CE', dot: '#A855F7' },
+    default: { bg: '#F1F5F9', text: '#475569', dot: '#94A3B8' },
+};
+
+const getTypeAccent = (type?: string) => {
+    const key = String(type ?? '').toLowerCase();
+    for (const k of Object.keys(TYPE_ACCENT)) {
+        if (k !== 'default' && key.includes(k)) return TYPE_ACCENT[k];
+    }
+    return TYPE_ACCENT.default;
+};
 
 const NotificationCard = ({
     item,
     onPress,
     onQuickMarkRead,
+    onJoinCall,
+    onViewDetails,
 }: {
     item: NotificationItem;
     onPress: (item: NotificationItem) => void;
     onQuickMarkRead: (item: NotificationItem) => void;
+    onJoinCall: (item: NotificationItem) => void;
+    onViewDetails: (item: NotificationItem) => void;
 }) => {
-    const status = item.appointmentStatus ?? item?.rawData?.data?.appointment_status;
+    const callStatus = String(
+        item?.rawData?.data?.call_status ?? item?.rawData?.call_status ?? '',
+    ).toLowerCase();
+    const apptStatus = String(
+        item.appointmentStatus ?? item?.rawData?.data?.appointment_status ?? '',
+    ).toLowerCase();
+    const showJoinCall = callStatus === 'in_progress';
+    const showDetails =
+        !showJoinCall &&
+        (apptStatus === 'cancelled' || apptStatus === 'completed' || !!item.appointmentId);
     const isUnread = !item.isRead;
-    const imageSource = getNotificationImageSource(item?.rawData?.image);
+    const accent = getTypeAccent(item.notificationType ?? item.eventType);
 
     return (
-        <TouchableOpacity activeOpacity={0.85} onPress={() => onPress(item)}>
-            <View style={[styles.card, isUnread && styles.cardUnread]}>
-                {isUnread && <View style={styles.unreadStrip} />}
+        <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onPress(item)}
+            style={[styles.card, isUnread && styles.cardUnread]}
+        >
+            {/* Thin unread indicator on left edge */}
+            {isUnread && (
+                <View style={[styles.unreadBar, { backgroundColor: accent.dot }]} />
+            )}
 
-                <View style={styles.row}>
-                    <View style={[styles.iconBox, { backgroundColor: item.iconBg }]}>
-                        {item.icon}
-                    </View>
-
-                    <View style={styles.cardBody}>
-                        <View style={styles.cardTopRow}>
-                            <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-                            <View style={styles.timeRow}>
-                                <TablerIcon name="clock" size={11} color="#94A3B8" />
-                                <Text style={styles.time}>{item.time}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.badgeRow}>
-                            {item.isNew && isUnread ? (
-                                <View style={styles.newBadge}>
-                                    <Text style={styles.newBadgeText}>New</Text>
-                                </View>
-                            ) : null}
-                            {item.notificationType ? (
-                                <View style={styles.typeBadge}>
-                                    <Text style={styles.typeBadgeText} numberOfLines={1}>
-                                        {item.notificationType}
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </View>
-
-                        {renderStyledText(item.description)}
-
-                        {item.eventType ? (
-                            <View style={styles.eventTypeBadge}>
-                                <Text style={styles.eventTypeText}>{item.eventType}</Text>
-                            </View>
-                        ) : null}
-
-                        {imageSource ? (
-                            <Image source={imageSource} style={styles.image} />
-                        ) : null}
-
-                        {status ? (
-                            <View style={styles.buttonRow}>
-                                {status === 'completed' && (
-                                    <TouchableOpacity style={styles.joinBtn}>
-                                        <Text numberOfLines={1} style={styles.joinText}>Join Call</Text>
-                                    </TouchableOpacity>
-                                )}
-                                {status === 'cancelled' && (
-                                    <TouchableOpacity style={styles.detailBtn}>
-                                        <Text numberOfLines={1} style={styles.detailText}>Details</Text>
-                                    </TouchableOpacity>
-                                )}
-                                {status === 'pending' && (
-                                    <View style={styles.statusChip}>
-                                        <Text style={styles.statusChipText}>Pending</Text>
-                                    </View>
-                                )}
-                            </View>
-                        ) : null}
-                    </View>
-
-                    {isUnread ? (
-                        <TouchableOpacity
-                            style={styles.quickReadBtn}
-                            onPress={() => onQuickMarkRead(item)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                            <TablerIcon name="tick-icon" size={12} color="#0D614E" />
-                        </TouchableOpacity>
-                    ) : null}
+            <View style={styles.cardRow}>
+                {/* Small icon circle */}
+                <View style={[styles.iconCircle, { backgroundColor: item.iconBg ?? accent.bg }]}>
+                    {item.icon}
                 </View>
+
+                {/* Text block */}
+                <View style={styles.cardText}>
+                    <View style={styles.cardTopRow}>
+                        <Text
+                            style={[styles.title, isUnread && styles.titleUnread]}
+                            numberOfLines={1}
+                        >
+                            {item.title}
+                        </Text>
+                        <Text style={styles.time}>{item.time}</Text>
+                    </View>
+                    <Text style={styles.desc} numberOfLines={2}>
+                        {item.description}
+                    </Text>
+
+                    {/* Action links — inline, small */}
+                    {/* {(showJoinCall || showDetails) ? (
+                        <View style={styles.actionRow}>
+                            {showJoinCall ? (
+                                <TouchableOpacity
+                                    style={styles.joinBtn}
+                                    onPress={() => onJoinCall(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <TablerIcon name="video" size={11} color="#fff" />
+                                    <Text style={styles.joinText}>Join Call</Text>
+                                </TouchableOpacity>
+                            ) : null}
+                            {showDetails ? (
+                                <TouchableOpacity
+                                    onPress={() => onViewDetails(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={styles.detailText}>View Details →</Text>
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+                    ) : null} */}
+                </View>
+
+                {/* Unread dot / tap to mark read */}
+                {isUnread ? (
+                    <TouchableOpacity
+                        onPress={() => onQuickMarkRead(item)}
+                        hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                        style={styles.dotBtn}
+                    >
+                        <View style={[styles.unreadDot, { backgroundColor: accent.dot }]} />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.dotPlaceholder} />
+                )}
             </View>
         </TouchableOpacity>
     );
@@ -463,9 +492,10 @@ const NotificationsScreen = (props: any) => {
         refreshNotifications,
     } = useNotifications();
 
+    const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isSmallDevice = width < 360;
-    console.log('notificationsnotifications', notifications)
+    const listBottomPad = getDetailBottomPadding(insets);
     const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -505,10 +535,30 @@ const NotificationsScreen = (props: any) => {
 
     const handleViewAppointment = (item: NotificationItem) => {
         closeDetail();
-        console.log("apppintmnetscronnn", item);
-        props.navigation.navigate('AppointmentDetail', {
-            appointmentId: item?.appointmentId,
-        });
+        navigateToStackScreen(
+            props.navigation,
+            'AppointmentDetails',
+            buildAppointmentDetailsParams(item.rawData ?? item),
+        );
+    };
+
+    const handleJoinCall = (item: NotificationItem) => {
+        navigateToStackScreen(
+            props.navigation,
+            'PatientVideoCallScreen',
+            buildVideoCallNavParams(item.rawData ?? item, {
+                role: 'patient',
+                otherPartyName: item.doctorName,
+            }),
+        );
+    };
+
+    const handleViewDetails = (item: NotificationItem) => {
+        navigateToStackScreen(
+            props.navigation,
+            'AppointmentDetails',
+            buildAppointmentDetailsParams(item.rawData ?? item),
+        );
     };
 
     const sections = useMemo(() => {
@@ -569,6 +619,8 @@ const NotificationsScreen = (props: any) => {
                         item={item}
                         onPress={openDetail}
                         onQuickMarkRead={handleMarkRead}
+                        onJoinCall={handleJoinCall}
+                        onViewDetails={handleViewDetails}
                     />
                 )}
                 renderSectionHeader={({ section: { title } }) => (
@@ -577,7 +629,7 @@ const NotificationsScreen = (props: any) => {
                 stickySectionHeadersEnabled={false}
                 contentContainerStyle={{
                     paddingHorizontal: isSmallDevice ? 12 : 16,
-                    paddingBottom: 24,
+                    paddingBottom: listBottomPad,
                     flexGrow: 1,
                 }}
                 onRefresh={refreshNotifications}
@@ -724,260 +776,155 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
 
-    /* ---------- Notification Card ---------- */
+    /* ---------- Notification Card — lean list row ---------- */
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 8,
-        marginTop: 8,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#F0F4F2',
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
     },
     cardUnread: {
-        backgroundColor: '#FFFFFF',
-        borderColor: '#D1E7DF',
+        backgroundColor: '#F9FDFB',
     },
-    unreadStrip: {
+    unreadBar: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        width: 4,
-        backgroundColor: '#0D614E',
+        width: 3,
     },
-
-    row: {
+    cardRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        gap: 8,
+        paddingVertical: 11,
+        paddingLeft: 18,   // leaves room for the unread bar
+        paddingRight: 12,
+        gap: 10,
     },
-
-    cardBody: {
+    cardText: {
         flex: 1,
         minWidth: 0,
     },
-
-    iconBox: {
-        height: 34,
-        width: 34,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    badgeRow: {
+    cardTopRow: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 4,
-        marginTop: 4,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 6,
         marginBottom: 2,
     },
-    newBadge: {
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        backgroundColor: '#F1F5F9',
-    },
-    newBadgeText: {
-        fontSize: 10,
-        color: '#334155',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    typeBadge: {
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        backgroundColor: '#0D614E14',
-    },
-    typeBadgeText: {
-        fontSize: 10,
-        color: '#0D614E',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    statusBadge: {
-        flexDirection: 'row',
+    iconCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         alignItems: 'center',
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        gap: 4,
-    },
-    statusUnread: {
-        backgroundColor: '#0D614E14',
-    },
-    statusRead: {
-        backgroundColor: '#F1F5F9',
-    },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    dotUnread: {
-        backgroundColor: '#0D614E',
-    },
-    dotRead: {
-        backgroundColor: '#94A3B8',
-    },
-    statusBadgeText: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    statusUnreadText: {
-        color: '#0D614E',
-    },
-    statusReadText: {
-        color: '#64748B',
-    },
-
-    title: {
-        flex: 1,
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        lineHeight: 18,
+        justifyContent: 'center',
+        flexShrink: 0,
+        marginTop: 1,
     },
 
     time: {
         fontSize: 10,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsMedium,
+        flexShrink: 0,
+    },
+
+    title: {
+        flex: 1,
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+        lineHeight: 18,
+    },
+    titleUnread: {
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     desc: {
         fontSize: 12,
-        color: '#475569',
-        marginTop: 2,
+        color: '#94A3B8',
         lineHeight: 17,
         fontFamily: Fonts.PoppinsRegular,
     },
 
     boldText: {
         fontFamily: Fonts.PoppinsSemiBold,
-        color: '#000',
+        color: '#0F172A',
     },
-
     hashText: {
-        color: 'black',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    offerText: {
         color: '#0D614E',
         fontFamily: Fonts.PoppinsSemiBold,
     },
-
-    eventTypeBadge: {
-        alignSelf: 'flex-start',
-        marginTop: 8,
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        backgroundColor: '#F1F5F9',
-    },
-    eventTypeText: {
-        fontSize: 10,
-        color: '#475569',
-        fontFamily: Fonts.PoppinsMedium,
+    offerText: {
+        color: '#C2410C',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
-    infoText: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsRegular,
-    },
-
-    image: {
-        width: '100%',
-        height: 96,
-        borderRadius: 8,
-        marginTop: 6,
-    },
-
-    buttonRow: {
+    /* Action row */
+    actionRow: {
         flexDirection: 'row',
-        marginTop: 6,
-        gap: 8,
-    },
-
-    joinBtn: {
-        flex: 1,
-        backgroundColor: '#0D614E',
-        paddingVertical: 7,
-        borderRadius: 8,
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 10,
+        marginTop: 5,
+    },
+    joinBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#0D614E',
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 6,
     },
     joinText: {
         color: '#fff',
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
     },
-
-    detailBtn: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        paddingVertical: 7,
-        borderRadius: 8,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     detailText: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-    },
-
-    statusChip: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        backgroundColor: '#FEF3C7',
-    },
-    statusChipText: {
         fontSize: 11,
-        color: '#92400E',
         fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0D614E',
     },
 
-    /* ---------- Card top row (title/badges left, time/quick-read right) ---------- */
-    cardTopRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        gap: 6,
-    },
-    timeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
+    /* Unread dot */
+    dotBtn: {
+        paddingTop: 4,
         flexShrink: 0,
     },
-    quickReadBtn: {
-        height: 20,
-        width: 20,
-        borderRadius: 10,
-        backgroundColor: '#0D614E14',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 2,
+    dotPlaceholder: {
+        width: 8,
+        flexShrink: 0,
+    },
+    unreadDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
 
-    /* ---------- Meta row (patient / date / consultation type) ---------- */
-    metaRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-        marginTop: 8,
-    },
-    metaText: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsRegular,
-    },
+    /* Legacy unused but kept to avoid breakage */
+    statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    statusUnread: { backgroundColor: '#0D614E14' },
+    statusRead: { backgroundColor: '#F1F5F9' },
+    statusDot: { width: 6, height: 6, borderRadius: 3 },
+    dotUnread: { backgroundColor: '#0D614E' },
+    dotRead: { backgroundColor: '#94A3B8' },
+    statusBadgeText: { fontSize: 10, fontFamily: Fonts.PoppinsSemiBold },
+    statusUnreadText: { color: '#0D614E' },
+    statusReadText: { color: '#64748B' },
+    eventTypeBadge: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#F1F5F9' },
+    eventTypeText: { fontSize: 10, color: '#475569', fontFamily: Fonts.PoppinsMedium },
+    infoText: { fontSize: 12, color: '#64748B', fontFamily: Fonts.PoppinsRegular },
+    buttonRow: { flexDirection: 'row', marginTop: 6, gap: 8 },
+    statusChip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#FEF3C7' },
+    statusChipText: { fontSize: 11, color: '#92400E', fontFamily: Fonts.PoppinsSemiBold },
+    cardTopRowLegacy: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
+    metaText: { fontSize: 12, color: '#64748B', fontFamily: Fonts.PoppinsRegular },
+    typeBadge: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#0D614E14' },
+    typeBadgeText: { fontSize: 10, color: '#0D614E', fontFamily: Fonts.PoppinsSemiBold },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4, marginBottom: 2 },
 
     /* ---------- Empty State ---------- */
     emptyState: {

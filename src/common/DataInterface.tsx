@@ -20,6 +20,9 @@ export interface ProductItem {
   source?: 'cart' | 'prescribed';
   gift_wrap?: boolean;
   pay_on_delivery?: boolean;
+  prescription_required?: boolean;
+  variant?: any;
+  cart_item_id?: string;
 }
 export type SectionType = {
   id: string;
@@ -45,6 +48,7 @@ export type CartItem = {
     selling_price?: number;
     brand_name?: string;
     pay_on_delivery?: boolean;
+    prescription_required?: boolean;
     image_url?: string;
     cover_image?: {
       id?: string;
@@ -173,7 +177,7 @@ export const getProductData = (
     0,
   ),
 
-  quantity: Number(item.quantity || 1),
+  quantity: Number((item as any)?.quantity ?? 0),
 
   // cover_image.media_url → media is_cover → legacy image fields
   image: resolveCartItemImage(item),
@@ -181,6 +185,13 @@ export const getProductData = (
   doctorName,
   gift_wrap: Boolean((item as any)?.gift_wrap || (item as any)?.is_gift_wrap),
   pay_on_delivery: resolvePayOnDelivery(item),
+  prescription_required:
+    (item as any)?.prescription_required ??
+    (item as any)?.requires_prescription ??
+    (item as any)?.is_prescription_required ??
+    item.variant?.prescription_required,
+  variant: item.variant,
+  cart_item_id: String((item as any)?.id ?? (item as any)?.cart_item_id ?? ''),
 });
 
 export interface GenderOption {

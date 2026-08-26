@@ -17,6 +17,7 @@ import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { ProductGridSkeleton, ProductsScreenSkeleton, CategoryRowSkeleton } from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
@@ -31,7 +32,7 @@ import {
   useWishlistSync,
 } from '../../hooks/useWishlistSync';
 import { Images } from '../../common/Images';
-import { safeGoBack } from '../../navigation/navigationUtils';
+import { goBackToHomeTab } from '../../navigation/navigationUtils';
 import {
   navigateToSearchScreen,
   navigateToCategoryProducts,
@@ -43,6 +44,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import { useBanners } from '../../hooks/useBanners';
@@ -57,13 +59,12 @@ const ProductsScreen = () => {
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
   const { categories: dashboardCategories, loading: homeLoading } = useHomeData();
-  const { images: bannerImages } = useBanners('product');
-  const screenWidth = Dimensions.get('window').width;
-
   const productsCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'products'),
     [dashboardCategories],
   );
+  const { images: bannerImages } = useBanners('product', productsCategoryId);
+  const screenWidth = Dimensions.get('window').width;
 
   const productFilter = useMemo(
     () =>
@@ -94,8 +95,11 @@ const ProductsScreen = () => {
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
   const handleSearchPress = useCallback(() => {
-    navigateToSearchScreen(navigation);
-  }, [navigation]);
+    navigateToSearchScreen(navigation, {
+      categoryMode: 'product',
+      serviceCategoryId: productsCategoryId || undefined,
+    });
+  }, [navigation, productsCategoryId]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -112,8 +116,18 @@ const ProductsScreen = () => {
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -122,7 +136,7 @@ const ProductsScreen = () => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   useWishlistSync(setProducts);
@@ -185,7 +199,7 @@ const ProductsScreen = () => {
             tag="SUMMER SALE"
             buttontext="Shop Now"
             showButton
-            onPress={() => {}}
+            onPress={() => { }}
           />
         )}
 
@@ -193,7 +207,10 @@ const ProductsScreen = () => {
           title="Shop by Category"
           actionText={productCategories.length > 0 ? 'View all' : ''}
           onPress={() =>
-            navigateToCategoryProducts(navigation, { categoryMode: 'product' })
+            navigateToCategoryProducts(navigation, {
+              categoryMode: 'product',
+              serviceCategoryId: productsCategoryId || undefined,
+            })
           }
         />
         {categoriesLoading && productCategories.length === 0 ? (
@@ -203,25 +220,29 @@ const ProductsScreen = () => {
             data={productCategories}
             navigation={navigation}
             mode="product"
+            serviceCategoryId={productsCategoryId}
           />
         ) : null}
 
         <SectionHeader title="All Products" actionText="" />
       </View>
     ),
-    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth],
+    [productCategories, categoriesLoading, navigation, bannerImages, screenWidth, productsCategoryId],
   );
 
   const showInitialSkeleton = loading && products.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <Header
         title="Products"
         backIcon={Images.backIcon}
-        onBack={() => safeGoBack(navigation)}
+        onBack={() => goBackToHomeTab(navigation)}
         subtitle="Choose best product"
         onSearchPress={handleSearchPress}
       />
@@ -283,12 +304,13 @@ export default ProductsScreen;
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FDFDFB',
+    // backgroundColor: SCREEN_THEME.screenBackground,
     paddingHorizontal: H_PAD,
   },
   headerContent: {},
   bannerWrap: {
     marginBottom: 8,
+    marginTop: 20,
   },
   listContent: {},
   columnWrap: {

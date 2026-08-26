@@ -138,9 +138,8 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
         const granted = await checkLocationPermission();
         if (granted) {
           setLocationEnabled(true);
-          if (!savedDelivery) {
-            fetchLocationFromGps();
-          }
+          // Don't GPS on cold start — Home prompts via promptLocationOnHome.
+          // First-open GPS races caused native crashes before nav was ready.
         }
       } catch {
         // ignore corrupt cache
@@ -148,7 +147,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     init();
-  }, [fetchLocationFromGps]);
+  }, []);
 
   const handleAllowLocation = async () => {
     setShowPermissionModal(false);

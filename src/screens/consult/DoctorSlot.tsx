@@ -1005,8 +1005,12 @@ import { groupSlotsByTime } from '../../hooks/useConsultData';
 import { getDoctorSlots } from '../../services/ConsultServce';
 import {
     getSlotStatusKey,
+    isSameSlot,
     isSlotBookable,
     isSlotMissedOrExpired,
+    isSlotSelectedInList,
+    pickFirstBookableSlot,
+    withSlotDate,
 } from '../../utils/slotAvailabilityUtils';
 import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
 import PrescriptionUpload from './Uploadreport';
@@ -1019,6 +1023,7 @@ import AppHeader from '../../components/AppHeader';
 import { formatMessageTime } from '../../chatSystem/utils/dateFormatter';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
 import { showSuccessToast } from '../../config/Key';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -1107,37 +1112,9 @@ const DoctorSlot = (props: any) => {
         return `${yyyy}-${mm}-${dd}`;
     };
 
-    const getDoctorDetails = useCallback(async () => {
-        try {
-            const res = await getDoctorSlots({
-                id: doctorDetails?.id
-            }
-            );
-            console.log("dattaaa", res?.data);
-            if (res?.data) {
-                setDoctorDetailData(res?.data
-                );
-            }
-
-        } catch (error) {
-            console.log(
-                'DOCTOR DETAILS ERROR =>',
-                error
-            );
-        }
-    }, [doctorDetails?.id]);
-
-    useEffect(() => {
-        if (doctorDetails?.id) {
-            getDoctorDetails();
-        }
-    }, [doctorDetails?.id, getDoctorDetails]);
-
     const [selectedDate, setSelectedDate] = useState(getTodayDate());
     const [selectedSlot, setSelectedSlot] = useState<any>(null);
-
     const [concern, setConcern] = useState('');
-
     const [slotsData, setSlotsData] = useState<any | null>(null);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -1169,10 +1146,12 @@ const DoctorSlot = (props: any) => {
 
     const handleSelectSlot = useCallback(
         (slot: any) => {
-            setSelectedSlot(slot);
+            const bookableSlot = withSlotDate(slot, selectedDate);
+            if (!isSlotBookable(bookableSlot)) return;
+            setSelectedSlot(bookableSlot);
             scrollToConcernSection();
         },
-        [scrollToConcernSection],
+        [scrollToConcernSection, selectedDate],
     );
 
     const handleConcernSectionLayout = useCallback(
@@ -1185,8 +1164,6 @@ const DoctorSlot = (props: any) => {
         },
         [scrollToConcernSection],
     );
-
-    console.log("doctorDetailsdoctorDetails", doctorDetails);
 
     useEffect(() => {
         if (!doctorIdParam) console.warn('Doctor ID missing in route params');
@@ -1209,19 +1186,6 @@ const DoctorSlot = (props: any) => {
         }
     }, [DAYS]);
 
-
-    useFocusEffect(
-        useCallback(() => {
-            if (isFirstRender.current) {
-                isFirstRender.current = false;
-                return;
-            }
-
-            fetchSlotsForDate(selectedDate);
-        }, [selectedDate])
-    );
-
-
     const fetchSlotsForDate = useCallback(async (date: string) => {
         if (!doctorIdParam || !date) return;
 
@@ -1232,26 +1196,40 @@ const DoctorSlot = (props: any) => {
                 id: doctorIdParam,
                 date,
             });
-            console.log("slotresposne--->>>", resp);
-            setSlotsData(resp?.data);
-
+            const rawData = resp?.data;
+            const slots = (rawData?.slots || []).map((slot: any) =>
+                withSlotDate(slot, date),
+            );
+            setSlotsData(rawData ? { ...rawData, slots } : null);
+            if (rawData) {
+                setDoctorDetailData(rawData);
+            }
         } finally {
             setLoadingSlots(false);
         }
     }, [doctorIdParam]);
+
     useEffect(() => {
         if (selectedDate && doctorIdParam) {
             fetchSlotsForDate(selectedDate);
         }
     }, [selectedDate, doctorIdParam, fetchSlotsForDate]);
 
+    useFocusEffect(
+        useCallback(() => {
+            if (isFirstRender.current) {
+                isFirstRender.current = false;
+                return;
+            }
+
+            fetchSlotsForDate(selectedDate);
+        }, [selectedDate, fetchSlotsForDate]),
+    );
+
     const onRefresh = useCallback(async () => {
         try {
             setRefreshing(true);
-
-            // await fetchSlotsForDate(selectedDate);
-            await getDoctorDetails();
-
+            await fetchSlotsForDate(selectedDate);
         } finally {
             setRefreshing(false);
         }
@@ -1265,24 +1243,34 @@ const DoctorSlot = (props: any) => {
 
 
     useEffect(() => {
-        if (!selectedSlot && slotsData?.slots?.length) {
-            const firstAvailable = slotsData.slots.find((s: any) =>
-                isSlotBookable(s),
-            );
-            if (firstAvailable) {
-                pendingConcernScrollRef.current = true;
-                setSelectedSlot(firstAvailable);
-                scrollToConcernSection();
-            }
-        }
-    }, [slotsData, selectedSlot, scrollToConcernSection]);
+        if (loadingSlots) return;
 
-    // Clear selection if the chosen slot becomes expired/missed
-    useEffect(() => {
-        if (selectedSlot && !isSlotBookable(selectedSlot)) {
-            setSelectedSlot(null);
+        const slots = slotsData?.slots || [];
+        if (!slots.length) {
+            if (selectedSlot) setSelectedSlot(null);
+            return;
         }
-    }, [selectedSlot, slotsData]);
+
+        if (isSlotSelectedInList(selectedSlot, slots, selectedDate)) {
+            return;
+        }
+
+        const firstAvailable = pickFirstBookableSlot(slots, selectedDate);
+        if (firstAvailable) {
+            pendingConcernScrollRef.current = true;
+            setSelectedSlot(firstAvailable);
+            scrollToConcernSection();
+            return;
+        }
+
+        if (selectedSlot) setSelectedSlot(null);
+    }, [
+        slotsData,
+        selectedDate,
+        loadingSlots,
+        selectedSlot,
+        scrollToConcernSection,
+    ]);
 
     const handleContinue = async () => {
         if (!(await requireAuth('Please login to book a consultation'))) return;
@@ -1379,12 +1367,15 @@ const DoctorSlot = (props: any) => {
                         )}
 
                         {!!(doctor?.consultation_fee) && (
-                            <Text style={styles.heroFeeHint}>
-                                Consultation from{' '}
-                                <Text style={styles.heroFeeValue}>
-                                    {doctor?.consultation_fee}
-                                </Text>
-                            </Text>
+                            <View style={styles.heroFeeHintRow}>
+                                <Text style={styles.heroFeeHint}>Consultation from </Text>
+                                <RupeeAmount
+                                    value={doctor?.consultation_fee}
+                                    style={styles.heroFeeValue}
+                                    iconSize={14}
+                                    iconColor={Colors.primaryColor}
+                                />
+                            </View>
                         )}
                     </View>
 
@@ -1423,7 +1414,12 @@ const DoctorSlot = (props: any) => {
                             {DAYS.map((item: any) => {
                                 const isActive = selectedDate === item.fullDate;
                                 return (
-                                    <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => setSelectedDate(item.fullDate)} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
+                                    <TouchableOpacity key={item.fullDate} disabled={item.isDisabled} activeOpacity={0.8} onPress={() => {
+                                        if (item.fullDate !== selectedDate) {
+                                            setSelectedSlot(null);
+                                        }
+                                        setSelectedDate(item.fullDate);
+                                    }} style={[styles.dayCard, isActive && styles.activeDayCard, item.isDisabled && { opacity: 0.45 }]}>
                                         <Text style={[styles.dayText, isActive && { color: '#FFFFFF' }]}>{item.day}</Text>
                                         <Text style={[styles.dateText, isActive && { color: '#FFFFFF' }]}>{item.date}</Text>
                                         <Text style={[styles.monthDayText, isActive && { color: '#D1FAE5' }]}>{item.month}</Text>
@@ -1448,7 +1444,7 @@ const DoctorSlot = (props: any) => {
                                         </View>
 
                                         <View style={styles.slotGrid}>
-                                            {sectionSlots.map((slot: any) => {
+                                            {sectionSlots.map((slot: any, slotIndex: number) => {
                                                 const status = getSlotStatusKey(slot);
                                                 const expired = isSlotMissedOrExpired(slot);
                                                 const isReserved = !expired && status === 'reserved';
@@ -1456,11 +1452,17 @@ const DoctorSlot = (props: any) => {
                                                 const selectable = isSlotBookable(slot);
 
                                                 return (
-                                                    <TouchableOpacity key={slot?.id} activeOpacity={0.8} disabled={!selectable}
+                                                    <TouchableOpacity
+                                                        key={String(
+                                                            slot?.id ??
+                                                              `${slot?.start_time}-${slotIndex}`,
+                                                        )}
+                                                        activeOpacity={0.8}
+                                                        disabled={!selectable}
                                                         onPress={() => handleSelectSlot(slot)}
                                                         style={[
                                                             styles.slotBtn,
-                                                            selectedSlot?.id === slot.id && styles.activeSlotBtn,
+                                                            isSameSlot(selectedSlot, slot) && styles.activeSlotBtn,
 
                                                             isReserved && {
                                                                 backgroundColor: '#FEF3C7',
@@ -1481,7 +1483,7 @@ const DoctorSlot = (props: any) => {
 
                                                     >
 
-                                                        <Text style={[styles.slotText, selectedSlot?.id === slot?.id && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
+                                                        <Text style={[styles.slotText, isSameSlot(selectedSlot, slot) && styles.activeSlotText, !selectable && { color: '#94A3B8' }]}>{slot?.displayTime}</Text>
 
                                                         {isBooked && <Text style={styles.slotStatus}>Booked</Text>}
 
@@ -1559,17 +1561,33 @@ const DoctorSlot = (props: any) => {
                 <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
                     <View style={styles.priceContainer}>
                         <Text style={styles.feeLabel}>Consult Fee</Text>
-                        <Text style={styles.price}>
-                            {selectedSlot?.amount ?? doctor?.consultation_fee ?? doctorDetails?.consultation_fee ?? 0}
-                        </Text>
+                        <RupeeAmount
+                            value={
+                                selectedSlot?.amount ??
+                                doctor?.consultation_fee ??
+                                doctorDetails?.consultation_fee ??
+                                0
+                            }
+                            style={styles.price}
+                            iconSize={16}
+                            iconColor={Colors.primaryColor}
+                        />
                     </View>
 
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        disabled={!selectedSlot?.id || loadingSlots || groupedSlots.length === 0}
+                        disabled={
+                            loadingSlots ||
+                            groupedSlots.length === 0 ||
+                            !selectedSlot ||
+                            !isSlotBookable(withSlotDate(selectedSlot, selectedDate))
+                        }
                         style={[
                             styles.payBtn,
-                            (!selectedSlot?.id || loadingSlots || groupedSlots?.length === 0) &&
+                            (loadingSlots ||
+                                groupedSlots.length === 0 ||
+                                !selectedSlot ||
+                                !isSlotBookable(withSlotDate(selectedSlot, selectedDate))) &&
                                 styles.payBtnDisabled,
                         ]}
                         onPress={handleContinue}
@@ -1672,6 +1690,13 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
+    },
+    heroFeeHintRow: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 4,
     },
     heroFeeValue: {
         color: Colors.primaryColor,

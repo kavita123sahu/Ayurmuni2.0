@@ -18,9 +18,10 @@ import BrandList from '../../components/BrandList';
 import ProductCard from '../../components/ProductCard';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { useOrders } from '../../hooks/useOrders';
-import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
+import { getDetailBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { RootStackParamList } from '../../../type';
 import { TablerIconName } from '../../components/TablerIcon';
 import { Images } from '../../common/Images';
@@ -56,6 +57,7 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 
 const H_PAD = 20;
 const GRID_GAP = 10;
@@ -74,26 +76,31 @@ const MedicineScreen = (props: any) => {
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent?.() || navigation;
   const insets = useSafeAreaInsets();
-  const bottomPadding = getScreenBottomPadding(insets);
+  const bottomPadding = getDetailBottomPadding(insets);
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
-  const { images: bannerImages } = useBanners('medicine');
-  const screenWidth = Dimensions.get('window').width;
-
   const {
     categories: dashboardCategories,
     medicineProducts,
+    loading: homeLoading,
+    refreshHomeData,
   } = useHomeData();
 
   const medicineCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'medicine'),
     [dashboardCategories],
   );
+  const { images: bannerImages } = useBanners('medicine', medicineCategoryId);
+  const screenWidth = Dimensions.get('window').width;
 
-  // All Medicines: customers/products/ with pagination (full catalog).
-  // Do not block on service_category_id — empty filter returns all products.
-  const productFilter = useMemo(() => ({}), []);
+  const productFilter = useMemo(
+    () =>
+      medicineCategoryId
+        ? { service_category_id: medicineCategoryId }
+        : {},
+    [medicineCategoryId],
+  );
 
   const {
     products,
@@ -104,14 +111,14 @@ const MedicineScreen = (props: any) => {
     refresh,
     loadMore,
   } = useCategoryProducts(productFilter, medicineProducts, {
-    enabled: true,
+    enabled: !homeLoading,
   });
 
   const {
     categories: healthConcerns,
     loading: healthConcernsLoading,
     refresh: refreshHealthConcerns,
-  } = useHealthConcernCategories(null);
+  } = useHealthConcernCategories(medicineCategoryId);
 
   const { brands, refresh: refreshBrands } = useBrands();
   const { recentProducts, loading: ordersLoading, refresh: refreshOrders } =
@@ -139,8 +146,11 @@ const MedicineScreen = (props: any) => {
   );
 
   const handleSearchPress = useCallback(() => {
-    navigateToSearchScreen(navigation);
-  }, [navigation]);
+    navigateToSearchScreen(navigation, {
+      categoryMode: 'health',
+      serviceCategoryId: medicineCategoryId || undefined,
+    });
+  }, [navigation, medicineCategoryId]);
 
   const handleViewOrderHistory = useCallback(() => {
     navigation.navigate('OrderHistory');
@@ -148,12 +158,19 @@ const MedicineScreen = (props: any) => {
 
   const onRefresh = useCallback(async () => {
     await Promise.all([
+      refreshHomeData(),
       refresh(),
       refreshOrders(),
       refreshBrands(),
       refreshHealthConcerns(),
     ]);
-  }, [refresh, refreshOrders, refreshBrands, refreshHealthConcerns]);
+  }, [
+    refreshHomeData,
+    refresh,
+    refreshOrders,
+    refreshBrands,
+    refreshHealthConcerns,
+  ]);
 
   const actionItems: ActionItem[] = useMemo(
     () => [
@@ -201,8 +218,18 @@ const MedicineScreen = (props: any) => {
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -211,7 +238,7 @@ const MedicineScreen = (props: any) => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
 
   useWishlistSync(setProducts);
@@ -297,6 +324,7 @@ const MedicineScreen = (props: any) => {
             data={safeHealthConcerns}
             navigation={navigation}
             mode="health"
+            serviceCategoryId={medicineCategoryId}
           />
         )}
 
@@ -329,12 +357,15 @@ const MedicineScreen = (props: any) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top','bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <Header
         title="Medicine Store"
         backIcon={Images.backIcon}
-        onBack={() => safeGoBack(props.navigation)}
+        onBack={() => safeGoBack(navigation)}
         subtitle="Health & Wellness"
         onSearchPress={handleSearchPress}
       />
@@ -393,7 +424,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     paddingHorizontal: H_PAD,
-    backgroundColor: '#FDFDFB',
+    backgroundColor: SCREEN_THEME.screenBackground,
   },
   listContent: {
     paddingTop: 4,

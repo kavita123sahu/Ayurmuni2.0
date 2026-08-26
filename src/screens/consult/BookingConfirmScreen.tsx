@@ -25,6 +25,7 @@ import {
   formatAppointmentWeekday,
   formatAppointmentDayLabel,
 } from '../../utils/appointmentUtils';
+import { formatRupee } from '../../utils/currencyUtils';
 
 const { width, height } = Dimensions.get('window');
 const SHEET_HEIGHT = height / 1.85;
@@ -450,12 +451,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
               <DetailRow
                 iconName="cash"
                 label="Amount paid"
-                value={
-                  String(booking.amount).startsWith('₹') ||
-                    String(booking.amount).startsWith('Rs')
-                    ? String(booking.amount)
-                    : `₹ ${booking.amount}`
-                }
+                value={formatRupee(booking.amount)}
                 last
               />
             )}

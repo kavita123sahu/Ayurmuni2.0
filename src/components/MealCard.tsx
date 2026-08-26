@@ -11,6 +11,7 @@ import { Colors } from "../common/Colors";
 import TablerIcon from "./TablerIcon";
 import { normalizeDietFoodItem, resolveMealImage } from "../utils/dietPlanUtils";
 import { resolveImageSource } from "../utils/imageUtils";
+import { DIET_UI, RADIUS, SPACING, TYPO } from "../constants/responsive";
 
 interface MealProps {
     data: any;
@@ -35,63 +36,73 @@ const MealCard = ({ data, navigation, onLog }: MealProps) => {
     const subtitle = toDisplayText(data?.subtitle);
     const type = toDisplayText(data?.type, 'MEAL');
     const time = toDisplayText(data?.time);
+    const canLog = data?.status === 'log';
+
+    const openDetails = () =>
+        navigation?.navigate?.('MealDetails', { item: data });
 
     return (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigation?.navigate?.('MealDetails', { item: data })}
-            activeOpacity={0.9}
-        >
-            <Image source={imageSource} style={styles.image} />
+        <View style={styles.card}>
+            <View style={styles.imageWrap}>
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={openDetails}
+                    style={styles.imageHit}
+                >
+                    <Image source={imageSource} style={styles.image} />
+                </TouchableOpacity>
 
-            <View style={styles.content}>
+                <TouchableOpacity
+                    style={[styles.logOverlay, !canLog && styles.logOverlayDone]}
+                    onPress={onLog}
+                    activeOpacity={0.85}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                >
+                    {canLog ? (
+                        <Text style={styles.logText}>LOG</Text>
+                    ) : (
+                        <TablerIcon
+                            name="circle-check"
+                            size={16}
+                            color={Colors.primaryColor}
+                        />
+                    )}
+                </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+                style={styles.content}
+                onPress={openDetails}
+                activeOpacity={0.9}
+            >
                 <View style={styles.topRow}>
-                    <Text style={styles.type}>{type}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TablerIcon name="clock" size={20} color="#6B7280" />
-                        <Text style={styles.time}>  {time}</Text>
-                    </View>
+                    <Text style={styles.type} numberOfLines={1}>
+                        {type}
+                    </Text>
+                    {!!time && (
+                        <View style={styles.timeRow}>
+                            <TablerIcon name="clock" size={13} color="#6B7280" />
+                            <Text style={styles.time}>{time}</Text>
+                        </View>
+                    )}
                 </View>
 
-                <Text style={styles.title} numberOfLines={2}>
+                <Text style={styles.title} numberOfLines={1}>
                     {title}
                 </Text>
 
-                {!!subtitle && (
+                {!!subtitle ? (
                     <Text style={styles.subtitle} numberOfLines={1}>
                         {subtitle}
                     </Text>
-                )}
+                ) : null}
 
-                <View style={styles.bottomRow}>
-                    <Text style={styles.kcal}>
-                        {Number(data?.kcal) || 0} <Text style={styles.kcalText}>KCAL</Text>
-                    </Text>
-
-                    {data?.status === "log" ? (
-                        <TouchableOpacity
-                            style={styles.logBtn}
-                            onPress={e => {
-                                e?.stopPropagation?.();
-                                onLog?.();
-                            }}
-                        >
-                            <Text style={styles.logText}>LOG</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity
-                            style={styles.doneBtn}
-                            onPress={e => {
-                                e?.stopPropagation?.();
-                                onLog?.();
-                            }}
-                        >
-                            <TablerIcon name="circle-check" size={28} color={Colors.primaryColor} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </View>
-        </TouchableOpacity>
+                <Text style={styles.kcal}>
+                    {Number(data?.kcal) || 0}{' '}
+                    <Text style={styles.kcalText}>KCAL</Text>
+                </Text>
+            </TouchableOpacity>
+        </View>
     );
 };
 
@@ -100,25 +111,65 @@ export default MealCard;
 const styles = StyleSheet.create({
     card: {
         flexDirection: "row",
-        backgroundColor: "#ffff",
-        borderRadius: 20,
+        height: DIET_UI.mealCardHeight,
+        backgroundColor: "#FFFFFF",
+        borderRadius: RADIUS.lg,
         borderWidth: 1,
         borderColor: Colors.borderColor,
-        marginBottom: 14,
+        marginBottom: SPACING.md,
         overflow: "hidden",
     },
 
-    image: {
-        width: 110,
-        height: "100%",
+    imageWrap: {
+        width: DIET_UI.mealImageWidth,
+        height: DIET_UI.mealImageHeight,
         backgroundColor: Colors.cardBackground,
+        borderRightWidth: 1,
+        borderRightColor: Colors.borderColor,
+    },
+
+    imageHit: {
+        width: '100%',
+        height: '100%',
+    },
+
+    image: {
+        width: '100%',
+        height: '100%',
+    },
+
+    logOverlay: {
+        position: 'absolute',
+        left: 8,
+        right: 8,
+        bottom: 8,
+        height: 28,
+        borderRadius: RADIUS.pill,
+        backgroundColor: Colors.primaryColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 4,
+        elevation: 4,
+    },
+
+    logOverlayDone: {
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: Colors.borderColor
+        borderColor: Colors.primaryColor,
+    },
+
+    logText: {
+        color: "#fff",
+        fontSize: TYPO.caption,
+        fontFamily: Fonts.PoppinsSemiBold,
+        letterSpacing: 0.4,
     },
 
     content: {
         flex: 1,
-        padding: 14,
+        minWidth: 0,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm + 2,
         justifyContent: "space-between",
     },
 
@@ -126,71 +177,54 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        gap: SPACING.sm,
     },
 
     type: {
-        fontSize: 11,
+        flex: 1,
+        minWidth: 0,
+        fontSize: TYPO.caption,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
-        letterSpacing: 0.5,
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
+    },
+
+    timeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        flexShrink: 0,
     },
 
     time: {
-        fontSize: 12,
+        fontSize: TYPO.sm,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsMedium,
     },
 
     title: {
-        fontSize: 14,
+        fontSize: TYPO.body,
         color: Colors.black,
         fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: -5
+        lineHeight: 18,
     },
 
     subtitle: {
-        fontSize: 12,
+        fontSize: TYPO.sm,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsRegular,
     },
 
-    bottomRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: 8,
-    },
-
     kcal: {
-        fontSize: 16,
+        fontSize: TYPO.md,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
     kcalText: {
-        fontSize: 12,
+        fontSize: TYPO.sm,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsMedium,
-    },
-
-    logBtn: {
-        backgroundColor: Colors.primaryColor,
-        paddingHorizontal: 25,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-
-    logText: {
-        color: "#fff",
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    doneBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        justifyContent: "center",
-        alignItems: "center",
     },
 });

@@ -1029,6 +1029,7 @@ import { requireAuth } from '../../services/guestAuth';
 import { showSuccessToast } from '../../config/Key';
 import FavouriteButton from '../../components/FavouriteButton';
 import TablerIcon from '../../components/TablerIcon';
+import { RupeeAmount } from '../../utils/currencyUtils';
 import {
     collectReviewImageUrls,
     isReviewVideoUrl,
@@ -1053,7 +1054,10 @@ interface DoctorData {
     total_reviews?: number;
     experience_display?: string;
     consultation_fee?: number;
-    specialized_therapies?: string[];
+    doctor_specialization?: string[] | string;
+    specializations?: string[] | string;
+    specialization?: string[] | string;
+    specialization_name?: string;
 }
 
 interface StatItem {
@@ -1155,8 +1159,59 @@ const ReviewCard = memo(
     ),
 );
 
-const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
-    if (!therapies?.length) {
+const toSpecializationLabels = (value: any): string[] => {
+    if (value == null || value === '') return [];
+    if (Array.isArray(value)) {
+        return value
+            .map(item => {
+                if (typeof item === 'string') return item.trim();
+                if (item?.name) return String(item.name).trim();
+                if (item?.title) return String(item.title).trim();
+                if (item?.label) return String(item.label).trim();
+                return '';
+            })
+            .filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+    }
+    return [];
+};
+
+/** Doctor specialization only — never specialized_therapies */
+const resolveDoctorSpecializations = (doctor: any): string[] => {
+    const candidates = [
+        doctor?.doctor_specialization,
+        doctor?.specializations,
+        doctor?.specialization,
+        doctor?.specialization_name,
+        doctor?.speciality,
+        doctor?.specialty,
+    ];
+    for (const c of candidates) {
+        const list = toSpecializationLabels(c);
+        if (list.length) return list;
+    }
+    return [];
+};
+
+
+const resolveDoctorHealthDiseases = (doctor: any): string[] => {
+  const diseases = doctor?.health_diseases;
+
+  if (!Array.isArray(diseases)) return [];
+
+  return diseases
+    .map((item: any) =>
+      typeof item === 'string' ? item : item?.name
+    )
+    .filter(Boolean);
+};
+const SpecializationTags = memo(({ items }: { items: string[] }) => {
+    if (!items?.length) {
         return (
             <Text style={styles.emptyText}>
                 No specializations listed
@@ -1166,8 +1221,8 @@ const SpecializationTags = memo(({ therapies }: { therapies: string[] }) => {
 
     return (
         <View style={styles.tagsWrapper}>
-            {therapies.map((item, index) => (
-                <View key={index} style={styles.tag}>
+            {items.map((item, index) => (
+                <View key={`${item}-${index}`} style={styles.tag}>
                     <Text style={styles.tagText}>{item}</Text>
                 </View>
             ))}
@@ -1221,14 +1276,12 @@ const DoctorProfile = ({ navigation, route }: any) => {
     ], [doctor]);
 
     const specializations = useMemo(
-        () =>
-            doctor?.specialized_therapies ||
-            doctor?.specializations ||
-            [],
-        [
-            doctor?.specialized_therapies,
-            doctor?.specializations,
-        ]
+        () => resolveDoctorSpecializations(doctor),
+        [doctor],
+    );
+    const healthDiseasesText = useMemo(
+        () => resolveDoctorHealthDiseases(doctor),
+        [doctor],
     );
 
     const reviews = useMemo(
@@ -1470,20 +1523,25 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         {doctor?.full_name || 'Doctor'}
                     </Text>
 
-                    {!!(doctor?.designation) && (
+                    {!!(doctor?.designation || specializations[0]) && (
                         <View style={styles.designationChip}>
                             <TablerIcon name="stethoscope" size={14} color={Colors.primaryColor} />
                             <Text numberOfLines={1} style={styles.speciality}>
-                                {doctor?.designation}
+                                {doctor?.designation || specializations[0]}
                             </Text>
                         </View>
                     )}
 
                     {!!doctor?.consultation_fee && (
-                        <Text style={styles.heroFeeHint}>
-                            Consultation from{' '}
-                            <Text style={styles.heroFeeValue}>{doctor?.consultation_fee}</Text>
-                        </Text>
+                        <View style={styles.heroFeeHintRow}>
+                            <Text style={styles.heroFeeHint}>Consultation from </Text>
+                            <RupeeAmount
+                                value={doctor?.consultation_fee}
+                                style={styles.heroFeeValue}
+                                iconSize={14}
+                                iconColor={Colors.primaryColor}
+                            />
+                        </View>
                     )}
                 </View>
 
@@ -1501,10 +1559,19 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     </Text>
                 </View>
 
-                <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Specializations</Text>
-                    <SpecializationTags therapies={specializations} />
-                </View>
+                {/* {specializations?.length > 0 && ( */}
+                    <View style={styles.sectionCard}>
+                        <Text style={styles.sectionTitle}>Specializations</Text>
+                        <SpecializationTags items={specializations} />
+                    </View>
+                    {/* )} */}
+
+                      {/* {specializations?.length > 0 && ( */}
+                    <View style={styles.sectionCard}>
+                        <Text style={styles.sectionTitle}>Health Conditions</Text>
+                        <SpecializationTags items={healthDiseasesText} />
+                    </View>
+                    {/* )} */}
 
                 <View style={styles.sectionCard}>
                     <TouchableOpacity style={styles.reviewHeader} onPress={openAllReviews}>
@@ -1553,9 +1620,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     ) : null}
 
                     {reviews?.length > 0 ? (
-                        formattedReviews.slice(0, 3).map((review: any) => (
+                        formattedReviews.slice(0, 3).map((review: any, index: number) => (
                             <ReviewCard
-                                key={review.id}
+                                key={String(review?.id ?? `review-${index}`)}
                                 review={review}
                                 onOpenMedia={openReviewGallery}
                             />
@@ -1569,7 +1636,12 @@ const DoctorProfile = ({ navigation, route }: any) => {
             <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
                 <View style={styles.priceContainer}>
                     <Text style={styles.feeText}>Consult Fee</Text>
-                    <Text style={styles.price}>{doctor?.consultation_fee}</Text>
+                    <RupeeAmount
+                        value={doctor?.consultation_fee}
+                        style={styles.price}
+                        iconSize={16}
+                        iconColor={Colors.primaryColor}
+                    />
                 </View>
 
                 <TouchableOpacity
@@ -1714,6 +1786,13 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
+    },
+    heroFeeHintRow: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 4,
     },
     heroFeeValue: {
         color: Colors.primaryColor,

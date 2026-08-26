@@ -1833,7 +1833,7 @@
 
 
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import {
 
@@ -1879,6 +1879,7 @@ import { showSuccessToast } from '../../config/Key';
 import { resolveImageUri, resolveProductImageUri } from '../../utils/imageUtils';
 import { resolveCartItemImage } from '../../common/DataInterface';
 import { isOrderVerifySuccessful } from '../../utils/orderPayload';
+import { isCodAvailableForItems, resolvePayOnDelivery } from '../../utils/payOnDeliveryUtils';
 
 
 
@@ -2002,7 +2003,21 @@ const Checkout: React.FC = (props: any) => {
 
     const [deliveryMethod, setDeliveryMethod] = useState('standard');
 
-    const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cod');
+    const codAvailable = useMemo(
+        () => isCodAvailableForItems(selectedProducts),
+        [selectedProducts],
+    );
+
+    const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
+        isCodAvailableForItems(selectedProducts) ? 'cod' : 'online',
+    );
+
+    console.log('selectedProductsselectedProductsselectedProducts', selectedProducts);
+    useEffect(() => {
+        if (!codAvailable && selectedMethod === 'cod') {
+            setSelectedMethod('online');
+        }
+    }, [codAvailable, selectedMethod]);
 
     // Profile/addresses only — avoid full home API bundle on checkout
     const { customerData } = useCustomerProfile({ refreshOnFocus: true });
@@ -2045,6 +2060,8 @@ const Checkout: React.FC = (props: any) => {
                 source: item.source,
 
                 gift_wrap: Boolean(item.gift_wrap),
+
+                pay_on_delivery: resolvePayOnDelivery(item),
 
             })),
 
@@ -2096,6 +2113,14 @@ const Checkout: React.FC = (props: any) => {
 
 
     const handleCOD = async () => {
+
+        if (!codAvailable) {
+
+            showSuccessToast('COD is disabled for this order', 'error');
+
+            return;
+
+        }
 
         if (!defaultAddress?.id) {
 
@@ -2206,6 +2231,10 @@ const Checkout: React.FC = (props: any) => {
 
 
         if (selectedMethod === 'cod') {
+            if (!codAvailable) {
+                showSuccessToast('COD is disabled for this order', 'error');
+                return;
+            }
             handleCOD();
         } else {
             handleOnline();
@@ -2392,11 +2421,17 @@ const Checkout: React.FC = (props: any) => {
                     style={[
                         styles.methodCard,
                         selectedMethod === 'cod' && styles.methodCardSelected,
+                        !codAvailable && styles.methodCardDisabled,
                     ]}
 
-                    onPress={() => setSelectedMethod('cod')}
+                    onPress={() => {
+                        if (!codAvailable) return;
+                        setSelectedMethod('cod');
+                    }}
 
-                    activeOpacity={0.8}
+                    disabled={!codAvailable}
+
+                    activeOpacity={codAvailable ? 0.8 : 1}
 
                 >
 
@@ -2424,7 +2459,9 @@ const Checkout: React.FC = (props: any) => {
 
                             <Text style={styles.methodDesc}>
 
-                                Pay ₹{codChargeDefault} extra as COD charges
+                                {codAvailable
+                                    ? `Pay ₹${codChargeDefault} extra as COD charges`
+                                    : 'COD is disabled for this order'}
 
                             </Text>
 

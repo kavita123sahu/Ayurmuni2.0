@@ -103,7 +103,7 @@ const ConsultHistory = (props: any) => {
             return doctorName.includes(keyword) || concern.includes(keyword);
         });
     }, [history, debouncedSearch]);
-
+console.log("filteredHistory", filteredHistory);
     useEffect(() => {
         fetchConsultHistory(getPayload(activeTab));
     }, [activeTab, fetchConsultHistory]);
@@ -196,7 +196,14 @@ const ConsultHistory = (props: any) => {
                 <FlatList
                     data={filteredHistory}
                     renderItem={renderItem}
-                    keyExtractor={item => item.consultation_id}
+                    keyExtractor={(item, index) =>
+                        String(
+                            item?.consultation_id ??
+                                // item?.appointment_id ??
+                                // item?.id ??
+                                `consult-${index}`,
+                        )
+                    }
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     refreshControl={

@@ -28,7 +28,9 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { resolveProductImageUri } from '../utils/imageUtils';
+import { SCREEN_PADDING_H } from '../constants/layout';
 
 interface Props {
   data: any[];
@@ -42,6 +44,7 @@ interface Props {
   onExternalScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   home?: boolean;
   onViewAllPress?: () => void;
+  edgeScroll?: boolean;
 }
 
 const SPACING = 12;
@@ -61,6 +64,7 @@ const TopSellingList: React.FC<Props> = ({
   onExternalScroll,
   home = false,
   onViewAllPress,
+  edgeScroll = false,
 }) => {
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(state => state.cart.variantQuantities);
@@ -110,11 +114,21 @@ const TopSellingList: React.FC<Props> = ({
         return;
       }
 
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
+
       // Seed variant image cache so cart/checkout can show cover after add
       resolveProductImageUri(item);
 
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
 
       if (syncCartQuantity.rejected.match(result)) {
@@ -124,7 +138,7 @@ const TopSellingList: React.FC<Props> = ({
         );
       }
     },
-    [dispatch, resolveVariantId],
+    [dispatch, resolveVariantId, variantQuantities],
   );
 
   useWishlistSync(setProductData, {
@@ -222,6 +236,7 @@ const TopSellingList: React.FC<Props> = ({
       contentContainerStyle={[
         styles.listContent,
         home && styles.listContentHome,
+        home && edgeScroll && styles.listContentEdge,
         isGrid && styles.gridContent,
       ]}
       columnWrapperStyle={
@@ -263,6 +278,10 @@ const styles = StyleSheet.create({
   },
   listContentHome: {
     paddingBottom: 0,
+  },
+  listContentEdge: {
+    paddingLeft: 0,
+    paddingRight: SCREEN_PADDING_H,
   },
   gridContent: {
     paddingHorizontal: 0,

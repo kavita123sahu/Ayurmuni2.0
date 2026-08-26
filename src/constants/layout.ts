@@ -22,8 +22,8 @@ export const HOME_STICKY_TOP_GAP = 8;
 export const HOME_HEADER_SEARCH_GAP = 8;
 /** Equal gap under header row / above categories */
 export const HOME_CATEGORY_GAP = 8;
-/** Blinkit-style category row (tile + label) */
-export const HOME_CATEGORY_ROW_HEIGHT = 82;
+/** Blinkit-style category row (icon + label) */
+export const HOME_CATEGORY_ROW_HEIGHT = 58;
 /** Equal bottom padding under category row in header chrome */
 export const HOME_HEADER_BOTTOM_GAP = 8;
 
@@ -71,3 +71,15 @@ export const getDetailBottomPadding = (insets: EdgeInsets) =>
 
 export const getScreenPaddingH = () =>
   SCREEN_W < 360 ? 16 : SCREEN_PADDING_H;
+
+/** Break out of screen padding so horizontal lists scroll edge-to-edge. */
+export const getHorizontalScrollBleedStyle = () => ({
+  marginHorizontal: -getScreenPaddingH(),
+  width: SCREEN.width,
+});
+
+/** Standard horizontal list insets — flush left, breathing room on the right. */
+export const HORIZONTAL_SCROLL_CONTENT = {
+  paddingLeft: 0,
+  paddingRight: SCREEN_PADDING_H,
+} as const;

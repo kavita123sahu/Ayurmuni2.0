@@ -3,6 +3,7 @@ import { BaseUrl, Method } from "../config/Key";
 import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";
 import { formatExperienceParam } from "../utils/searchUtils";
+import { Buffer } from 'buffer';
 
 export const filteredParams = (
     params?: Record<string, any>,
@@ -160,29 +161,192 @@ export const getAppointmentDetail = async (lookupId: string) => {
             { method: 'GET' },
         );
 
-    try {
-        let response = await tryFetch('appointment_id');
-        if (response?.success) {
-            return response;
-        }
-
-        const message = String(response?.message || '').toLowerCase();
-        const notFound =
-            response?.status === 404 ||
-            message.includes('not found') ||
-            message.includes('does not exist');
-
-        if (notFound) {
-            response = await tryFetch('consultation_id');
-        }
-
+    let response = await tryFetch('appointment_id');
+    if (response?.success) {
         return response;
-    } catch (error) {
-        throw error;
     }
+
+    const message = String(response?.message || '').toLowerCase();
+    const notFound =
+        response?.status === 404 ||
+        message.includes('not found') ||
+        message.includes('does not exist');
+
+    if (notFound || !response?.success) {
+        response = await tryFetch('consultation_id');
+    }
+
+    return response;
 };
 
+/**
+ * Download prescription PDF from backend (same pattern as order invoice).
+ * GET customers/prescription/download/?prescription_id=...
+ */
+export const downloadPrescriptionFile = async (
+  prescriptionID: string | number,
+) => {
+  const token: string | null = await Utils.getData('_TOKEN');
 
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const url =
+    `${BaseUrl?.base_url}` +
+    `customers/prescription/download/?prescription_id=${prescriptionID}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/pdf, application/octet-stream, application/json, */*',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    let errMsg = `Prescription download failed: ${response.status}`;
+
+    try {
+      const errBody = await response.text();
+      if (errBody) {
+        errMsg += ` — ${errBody.slice(0, 300)}`;
+      }
+    } catch {}
+
+    throw new Error(errMsg);
+  }
+
+  const contentType = (
+    response.headers.get('content-type') || ''
+  ).toLowerCase();
+
+  console.log('Prescription content type:', contentType);
+
+  /**
+   * CASE 1:
+   * Backend directly returns PDF
+   */
+  if (contentType.includes('application/pdf')) {
+    const arrayBuffer = await response.arrayBuffer();
+
+    return {
+      success: true,
+      status: response.status,
+      data: arrayBuffer,
+    };
+  }
+
+  /**
+   * CASE 2:
+   * Backend returns JSON
+   */
+  if (contentType.includes('application/json')) {
+    const json = await response.json();
+
+    console.log(
+      'Prescription JSON response:',
+      JSON.stringify(json, null, 2),
+    );
+
+    /**
+     * Check all commonly used URL keys.
+     */
+    const pdfUrl =
+      json?.data?.url ||
+      json?.data?.file_url ||
+      json?.data?.pdf_url ||
+      json?.data?.prescription_url ||
+      json?.data?.download_url ||
+      json?.url ||
+      json?.file_url ||
+      json?.pdf_url ||
+      json?.prescription_url ||
+      json?.download_url;
+
+    /**
+     * Backend returned a PDF URL
+     */
+    if (pdfUrl) {
+      console.log('Prescription PDF URL:', pdfUrl);
+
+      const pdfResponse = await fetch(pdfUrl);
+
+      if (!pdfResponse.ok) {
+        throw new Error(
+          `Prescription PDF fetch failed: ${pdfResponse.status}`,
+        );
+      }
+
+      const pdfContentType =
+        pdfResponse.headers.get('content-type') || '';
+
+      console.log(
+        'Downloaded PDF content type:',
+        pdfContentType,
+      );
+
+      return {
+        success: true,
+        status: pdfResponse.status,
+        data: await pdfResponse.arrayBuffer(),
+      };
+    }
+
+    /**
+     * Backend may directly return base64
+     */
+    const base64 =
+      json?.data?.base64 ||
+      json?.base64 ||
+      json?.data?.pdf_base64 ||
+      json?.pdf_base64;
+
+    if (base64) {
+      return {
+        success: true,
+        status: response.status,
+        base64,
+      };
+    }
+
+    /**
+     * API returns structured prescription JSON (no PDF URL).
+     * Caller formats + saves this locally (same pattern as medical receipt).
+     */
+    const prescriptionData =
+      json?.data && typeof json.data === 'object' ? json.data : null;
+
+    if (
+      prescriptionData &&
+      (prescriptionData.prescription_code ||
+        prescriptionData.medicines ||
+        prescriptionData.id ||
+        prescriptionData.doctor ||
+        prescriptionData.patient)
+    ) {
+      return {
+        success: true,
+        status: response.status,
+        prescriptionData,
+      };
+    }
+
+    throw new Error(
+      'Prescription PDF URL/data not found in API response',
+    );
+  }
+
+  /**
+   * Fallback:
+   * Assume response is binary PDF.
+   */
+  return {
+    success: true,
+    status: response.status,
+    data: await response.arrayBuffer(),
+  };
+};
 
 export const getPrescriptionDetail = async (doctor_id: string) => {
     try {
@@ -196,6 +360,17 @@ export const getPrescriptionDetail = async (doctor_id: string) => {
         throw error;
     }
 }
+
+export const getRecentVisitedDoctors = async () => {
+    try {
+        const response = await apiClient('customers/doctors/recent/', {
+            method: 'GET',
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
 
 export const RecentConsultHistory = async () => {
     try {

@@ -15,7 +15,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -34,12 +34,13 @@ import {
 } from '../../simmerScreen/ShimmerHook';
 import { RootStackParamList } from '../../../type';
 import { Colors } from '../../common/Colors';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 import { Fonts } from '../../common/Fonts';
 import { useConsultData } from '../../hooks/useConsultData';
 import PromoCard from '../../components/PromoCard';
 import Detailimages from '../../components/Detailimages';
 import { useBanners } from '../../hooks/useBanners';
-import { SCREEN_PADDING_H } from '../../constants/layout';
+import { SCREEN_PADDING_H, getScreenBottomPadding } from '../../constants/layout';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
@@ -63,6 +64,11 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import { useHomeData } from '../../hooks/UseHomeData';
+import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
+import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
+import { goBackToHomeTab } from '../../navigation/navigationUtils';
 
 const SCREEN_PAD = getScreenPaddingH();
 const GRID_GAP = 10;
@@ -76,7 +82,14 @@ type NavigationProp =
   >;
 
 const ConsultHome = () => {
-  const { images: bannerImages } = useBanners('consult');
+  const insets = useSafeAreaInsets();
+  const listBottomPad = getScreenBottomPadding(insets);
+  const { categories: dashboardCategories } = useHomeData();
+  const consultCategoryId = useMemo(
+    () => getServiceCategoryId(dashboardCategories, 'consult'),
+    [dashboardCategories],
+  );
+  const { images: bannerImages } = useBanners('consult', consultCategoryId);
 
   const navigation =
     useNavigation<NavigationProp>();
@@ -87,7 +100,7 @@ const ConsultHome = () => {
     categories,
     topDoctors,
     onRefresh,
-  } = useConsultData();
+  } = useConsultData({ fetchDoctors: true, fetchCategories: true });
 
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
@@ -155,8 +168,17 @@ const ConsultHome = () => {
         showSuccessToast('Not enough stock available', 'error');
         return;
       }
+      const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
+        return;
+      }
       const result = await dispatch(
-        syncCartQuantity({ variantId, quantity: newQty }),
+        syncCartQuantity({
+          variantId,
+          quantity: newQty,
+          currentQuantity: currentQty,
+          prescriptionRequired: item?.prescription_required,
+        }),
       );
       if (syncCartQuantity.rejected.match(result)) {
         showSuccessToast(
@@ -165,7 +187,7 @@ const ConsultHome = () => {
         );
       }
     },
-    [dispatch],
+    [dispatch, variantQuantities],
   );
      const handleSearchPress = useCallback(() => {
     navigateToSearchScreen(navigation);
@@ -315,10 +337,8 @@ const ConsultHome = () => {
       style={styles.container}>
 
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor={
-          Colors.background
-        }
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
       />
 
       {/* HEADER */}
@@ -326,9 +346,7 @@ const ConsultHome = () => {
       <Header
         title="Doctors Consultation"
         subtitle="Find best doctor"
-        onBack={() =>
-          navigation.goBack()
-        }
+        onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
         // onSearchPress={() => setSearchExpanded(true)}
         onRefreshPress={onRefresh}
@@ -337,7 +355,14 @@ const ConsultHome = () => {
 
       <FlatList
         data={filteredHistory}
-        keyExtractor={(item) => String(item?.id)}
+        keyExtractor={(item, index) =>
+          String(
+            item?.consultation_id ??
+              item?.appointment_id ??
+              item?.id ??
+              `consult-${index}`,
+          )
+        }
         renderItem={renderRecentDoctor}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
@@ -400,15 +425,13 @@ const ConsultHome = () => {
 
             {loading && <DoctorCardSkeleton />} */}
 
-            {(loading || filteredHistory?.length > 0) && (
+            {(filteredHistory?.length ?? 0) > 0 && (
               <>
                 <SectionHeader
                   title="Recent Consultation"
                   actionText="View History"
                   onPress={() => navigation.navigate('ConsultHistory')}
                 />
-
-                {loading && <DoctorCardSkeleton />}
               </>
             )}
 
@@ -430,18 +453,27 @@ const ConsultHome = () => {
           loading ? (
             <>
               <HomeCategorySkeleton />
-              <TopDoctorsCardSkeleton />
-              <View style={{ height: 120 }} />
+              <TopDoctorsCardSkeleton count={6} />
+              <SectionHeader title="Suggested Products" />
+              <ProductGridSkeleton
+                cardWidth={CARD_W}
+                gap={GRID_GAP}
+                count={4}
+              />
+              <View style={{ height: 40 }} />
             </>
           ) : (
             <>
-              <SectionHeader title="Consult by Concern" />
-
-              <CategoryList
-                data={categories}
-                navigation={navigation}
-                doctor
-              />
+              {categories?.length > 0 && (
+                <>
+                  <SectionHeader title="Consult by Concern" />
+                  <CategoryList
+                    data={categories}
+                    navigation={navigation}
+                    doctor
+                  />
+                </>
+              )}
 
               {filteredTopDoctors?.length > 0 && (
                 <>
@@ -454,27 +486,32 @@ const ConsultHome = () => {
                   <TopDoctorsCard
                     data={filteredTopDoctors}
                     navigation={navigation}
+                    layout="grid"
+                    limit={6}
                   />
                 </>
               )}
 
-              {(productsLoading || productList.length > 0) && (
+              {(productList.length > 0 || productsLoading) && (
                 <>
                   <SectionHeader
                     title="Suggested Products"
-                    actionText={productList.length > 0 ? 'View all' : ''}
-                    onPress={() =>
-                      navigateToCategoryProducts(navigation, {
-                        categoryMode: 'product',
-                        categoryName: 'All Products',
-                      })
+                    actionText={productList.length > 0 ? 'View all' : undefined}
+                    onPress={
+                      productList.length > 0
+                        ? () =>
+                            navigateToCategoryProducts(navigation, {
+                              categoryMode: 'product',
+                              categoryName: 'All Products',
+                            })
+                        : undefined
                     }
                   />
                   {productsLoading && productList.length === 0 ? (
                     <ProductGridSkeleton
                       cardWidth={CARD_W}
                       gap={GRID_GAP}
-                      count={6}
+                      count={4}
                     />
                   ) : (
                     <FlatList
@@ -495,22 +532,19 @@ const ConsultHome = () => {
                           />
                         ) : null
                       }
-                      ListEmptyComponent={
-                        <Text style={styles.emptyProducts}>
-                          No products available
-                        </Text>
-                      }
                     />
                   )}
                 </>
               )}
 
-              <View style={{ height: 120 }} />
+              {!productList.length && !productsLoading ? (
+                <AyurmuniBrandShade compact />
+              ) : null}
             </>
           )
         }
 
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: listBottomPad }]}
       />
 
     </SafeAreaView>
@@ -525,12 +559,12 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: '#FDFDFB',
+    backgroundColor: SCREEN_THEME.screenBackground,
     paddingHorizontal: getScreenPaddingH(),
   },
 
   content: {
-    paddingBottom: SPACING.xxl,
+    paddingBottom: SPACING.lg,
   },
 
   productColumn: {

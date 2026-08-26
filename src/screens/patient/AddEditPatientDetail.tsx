@@ -26,13 +26,19 @@ export const GENDER_OPTIONS = [
 ];
 
 export const RELATION_OPTIONS = [
-    // { label: 'Self', value: 'self' },
     { label: 'Spouse', value: 'Spouse' },
     { label: 'Father', value: 'Father' },
     { label: 'Mother', value: 'Mother' },
     { label: 'Child', value: 'Child' },
     { label: 'Other', value: 'Others' },
 ];
+
+const isSelfRelation = (value?: string | null) =>
+    String(value ?? '').trim().toLowerCase() === 'self';
+
+const EDITABLE_RELATION_OPTIONS = RELATION_OPTIONS.filter(
+    option => !isSelfRelation(option.value),
+);
 
 export const BLOOD_GROUP_OPTIONS = [
     { label: 'A+', value: 'A+' },
@@ -78,7 +84,7 @@ export default function AddEditPatientDetail(props: any) {
             valid: '',
         });
 
-    const isSelf = formData.relation?.toLowerCase() === 'self';
+    const isSelf = isSelfRelation(formData.relation);
 
     const nameParts =
         formData.fullname.trim().split(' ');
@@ -171,6 +177,18 @@ export default function AddEditPatientDetail(props: any) {
             return 'Relation is required';
         }
 
+        if (isSelfRelation(formData.relation) && mode !== 'edit') {
+            return 'Self relation cannot be selected';
+        }
+
+        if (
+            mode === 'edit' &&
+            !isSelfRelation(patientData?.relation) &&
+            isSelfRelation(formData.relation)
+        ) {
+            return 'Self relation cannot be selected';
+        }
+
         // if (!formData.height) {
         //     return 'Height is required';
         // }
@@ -260,6 +278,12 @@ export default function AddEditPatientDetail(props: any) {
                 Alert.alert('Validation Error', error);
                 return;
             }
+        } else if (
+            !isSelfRelation(patientData?.relation) &&
+            isSelfRelation(formData.relation)
+        ) {
+            Alert.alert('Validation Error', 'Self relation cannot be selected');
+            return;
         }
 
 
@@ -270,7 +294,9 @@ export default function AddEditPatientDetail(props: any) {
             dob: formatToISODate(formData.dob),
             gender: formData.gender.toLowerCase(),
             blood_group: formData.bloodG,
-            relation: formData.relation.toLowerCase(),
+            relation: isSelf
+                ? 'self'
+                : formData.relation.toLowerCase(),
 
             height: Number(formData.height) || 0,
             weight: Number(formData.weight) || 0,
@@ -482,27 +508,20 @@ export default function AddEditPatientDetail(props: any) {
                             label="Relation *"
                             value={formData.relation}
                             placeholder="Select Relation"
-                            rightIconName="chevron-down"
+                            rightIconName={isSelf ? undefined : 'chevron-down'}
                             containerStyle={{
                                 flex: 1,
                                 marginLeft: 8,
                             }}
-
-                            options={RELATION_OPTIONS}
-                            // options={RELATION_OPTIONS}
-                            disabled={formData.relation?.toLowerCase() === 'self'}
-                            onSelect={(value: string) =>
+                            options={EDITABLE_RELATION_OPTIONS}
+                            disabled={isSelf}
+                            onSelect={(value: string) => {
+                                if (isSelf || isSelfRelation(value)) return;
                                 setFormData(prev => ({
                                     ...prev,
                                     relation: value,
-                                }))
-                            }
-                        // onSelect={(item: any) =>
-                        //     setFormData(prev => ({
-                        //         ...prev,
-                        //         relation: item.value,
-                        //     }))
-                        // }
+                                }));
+                            }}
                         />
 
                     </View>

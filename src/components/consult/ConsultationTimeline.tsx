@@ -14,6 +14,8 @@ import {
   getPatientMeta,
   hasPrescribedData,
 } from '../../utils/doctorSlipUtils';
+import { getMedicinePrice, getMedicineScheduleChips } from '../../utils/prescriptionDetailUtils';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const COLORS = {
   primary: '#0D614E',
@@ -49,13 +51,21 @@ export const ConsultationTimeline = ({
       onPressItem(item);
       return;
     }
+    const appointmentId =
+      item?.appointment_id ||
+      item?.consultation_id ||
+      item?.id ||
+      '';
     navigation?.navigate('PrescriptionDetail', {
+      appointment_id: appointmentId,
+      consultation_id: item?.consultation_id,
       PrisData: item,
       doctorData: doctor,
     });
   };
 
   const renderConsultationCard = (item: any, index: number) => {
+
     const canViewPrescription = hasPrescribedData(item);
     const patientMeta = getPatientMeta(item?.patient);
     const timeRange = formatSlipTimeRange(item?.start_time, item?.end_time);
@@ -115,9 +125,12 @@ export const ConsultationTimeline = ({
                 )}
               </View>
               {fee != null && (
-                <Text style={styles.feeText}>
-                  ₹{Number(fee).toLocaleString('en-IN')}
-                </Text>
+                <RupeeAmount
+                  value={fee}
+                  style={styles.feeText}
+                  iconSize={13}
+                  iconColor={COLORS.primary}
+                />
               )}
             </View>
           )}
@@ -158,7 +171,12 @@ export const ConsultationTimeline = ({
         if (!item) return null;
         return (
           <View
-            key={item.consultation_id ?? item.appointment_id ?? index}
+            key={String(
+              item?.consultation_id ??
+                item?.appointment_id ??
+                item?.id ??
+                `consult-${index}`,
+            )}
           >
             {renderConsultationCard(item, index)}
           </View>
@@ -174,43 +192,56 @@ export const StitchedRegimenList = ({ items }: { items: any[] }) => {
   }
 
   return (
-    <>
-      {items.map((item, index) => (
-        <View
-          key={item?.id ?? `${item?.medicine_name}-${index}`}
-          style={styles.medicineCard}
-        >
-          <View style={styles.medicineTopRow}>
-            <View style={styles.medicineLeft}>
+    <View style={styles.regimenList}>
+      {items.map((item, index) => {
+        const price = getMedicinePrice(item);
+        const chips = getMedicineScheduleChips(item);
+
+        return (
+          <View
+            key={item?.id ?? `${item?.medicine_name}-${index}`}
+            style={styles.medicineCard}
+          >
+            <View style={styles.medicineTopRow}>
               <View style={styles.iconWrapper}>
                 <Text style={styles.medicineIconText}>
                   {(item?.medicine_name || 'M').charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View style={styles.medicineInfo}>
-                <Text style={styles.medicineName}>{item?.medicine_name}</Text>
+                <Text style={styles.medicineName} numberOfLines={2}>
+                  {item?.medicine_name || item?.product_name || 'Medicine'}
+                </Text>
                 {!!item?.instruction && (
-                  <Text style={styles.medicineDesc}>{item.instruction}</Text>
+                  <Text style={styles.medicineDesc} numberOfLines={2}>
+                    {item.instruction}
+                  </Text>
                 )}
+                {chips.length > 0 ? (
+                  <View style={styles.chipRow}>
+                    {chips.map(chip => (
+                      <View key={chip.key} style={styles.chip}>
+                        <Text style={styles.chipText}>
+                          {chip.caption}: {chip.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
-            </View>
-            <View style={styles.timeWrapper}>
-              {!!item?.frequency && (
-                <Text style={styles.timeText}>{item.frequency} frequency</Text>
-              )}
-              {!!item?.dosage && (
-                <Text style={styles.timeText}>{item.dosage} dosage</Text>
-              )}
+              {price != null ? (
+                <RupeeAmount
+                  value={price}
+                  style={styles.medicinePrice}
+                  iconSize={12}
+                  iconColor={COLORS.primary}
+                />
+              ) : null}
             </View>
           </View>
-          {!!item?.duration && (
-            <View style={styles.regimenBottomRow}>
-              <Text style={styles.durationText}>{item.duration} duration</Text>
-            </View>
-          )}
-        </View>
-      ))}
-    </>
+        );
+      })}
+    </View>
   );
 };
 
@@ -349,16 +380,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
   },
   medicineCard: {
-    marginTop: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#94A3B833',
-    padding: 15,
+    borderColor: '#E8EEEB',
+    padding: 12,
+  },
+  regimenList: {
+    gap: 8,
   },
   medicineTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
   },
   medicineLeft: {
     flex: 1,
@@ -366,33 +400,55 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   iconWrapper: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0051470D',
-    marginRight: 12,
+    backgroundColor: '#E8F3EF',
   },
   medicineIconText: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.primaryColor,
     fontFamily: Fonts.semiBold,
   },
   medicineInfo: {
     flex: 1,
+    minWidth: 0,
   },
   medicineName: {
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 19,
     color: '#0F172A',
     fontFamily: Fonts.semiBold,
   },
   medicineDesc: {
     marginTop: 2,
-    fontSize: 13,
-    lineHeight: 22,
+    fontSize: 12,
+    lineHeight: 17,
     color: '#64748B',
+    fontFamily: Fonts.medium,
+  },
+  medicinePrice: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontFamily: Fonts.semiBold,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  chip: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  chipText: {
+    fontSize: 11,
+    color: '#475569',
     fontFamily: Fonts.medium,
   },
   timeWrapper: {

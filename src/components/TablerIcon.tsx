@@ -74,6 +74,15 @@ import IconWallet from '@tabler/icons-react-native/IconWallet';
 import IconHistory from '@tabler/icons-react-native/IconHistory';
 import IconMoodSmile from '@tabler/icons-react-native/IconMoodSmile';
 import IconMoodSad from '@tabler/icons-react-native/IconMoodSad';
+import IconFlame from '@tabler/icons-react-native/IconFlame';
+import IconVolume from '@tabler/icons-react-native/IconVolume';
+import IconVolumeOff from '@tabler/icons-react-native/IconVolumeOff';
+import IconPlayerPlay from '@tabler/icons-react-native/IconPlayerPlay';
+import IconPlayerPause from '@tabler/icons-react-native/IconPlayerPause';
+import IconMaximize from '@tabler/icons-react-native/IconMaximize';
+import IconMinimize from '@tabler/icons-react-native/IconMinimize';
+import IconLeaf from '@tabler/icons-react-native/IconLeaf';
+import IconHeartHandshake from '@tabler/icons-react-native/IconHeartHandshake';
 import { Colors } from '../common/Colors';
 
 const IconFileMedical = IconStethoscope;
@@ -153,6 +162,16 @@ const ICON_MAP = {
   history: IconHistory,
   'mood-smile': IconMoodSmile,
   'mood-sad': IconMoodSad,
+  trophy: IconCertificate,
+  flame: IconFlame,
+  volume: IconVolume,
+  'volume-off': IconVolumeOff,
+  play: IconPlayerPlay,
+  pause: IconPlayerPause,
+  maximize: IconMaximize,
+  minimize: IconMinimize,
+  leaf: IconLeaf,
+  'heart-handshake': IconHeartHandshake,
   approved: IconCircleCheck,
   verify: IconCircleCheck,
   unverify: IconAlertCircle,

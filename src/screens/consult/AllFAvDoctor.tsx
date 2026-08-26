@@ -28,6 +28,7 @@ import { ExpandableSearch } from '../../components/SearchBar';
 import { useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
 import { useDebounce } from '../../hooks/useDebaunce';
+import { doctorListKey } from '../../utils/listKeys';
 
 
 const AllFavDoctors = (props: any) => {
@@ -40,7 +41,10 @@ const AllFavDoctors = (props: any) => {
 
     const debouncedSearch = useDebounce(search, 400);
 
-    const { favDoctor, onRefresh, loading, refreshing } = useConsultData();
+    const { favDoctor, onRefresh, loading, refreshing } = useConsultData({
+        fetchCategories: false,
+        fetchDoctors: true,
+    });
 
     const filteredDoctors = useMemo(() => {
         let list = favDoctor.filter(item => item?.is_favorite);
@@ -134,8 +138,8 @@ const AllFavDoctors = (props: any) => {
                         data={filteredDoctors
 
                         }
-                        keyExtractor={(item) =>
-                            String(item?.id)
+                        keyExtractor={(item, index) =>
+                            doctorListKey(item, index)
                         }
                         refreshControl={
                             <RefreshControl
@@ -173,14 +177,6 @@ const AllFavDoctors = (props: any) => {
                         }
 
                         renderItem={renderDoctorItem}
-
-                        ItemSeparatorComponent={() => (
-                            <View
-                                style={{
-                                    height: 14,
-                                }}
-                            />
-                        )}
 
                         ListEmptyComponent={() => (
 

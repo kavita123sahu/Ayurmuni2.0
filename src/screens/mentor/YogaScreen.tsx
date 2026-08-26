@@ -147,7 +147,7 @@ const YogaScreen = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <Header
         title="Yoga Sessions"
@@ -202,14 +202,16 @@ export default YogaScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+
+    paddingHorizontal: 20,
     backgroundColor: Colors.background,
   },
   searchWrap: {
-    paddingHorizontal: 16,
+    // paddingHorizontal: 16,
     paddingBottom: 8,
   },
   listContent: {
-    paddingHorizontal: 16,
+    // paddingHorizontal: 16,
     paddingBottom: 28,
   },
   card: {

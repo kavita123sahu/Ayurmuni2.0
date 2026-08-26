@@ -16,16 +16,14 @@ import Animated, {
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
-import { SCREEN_PADDING_H } from '../../constants/layout';
+import { HORIZONTAL_SCROLL_CONTENT, SCREEN_PADDING_H } from '../../constants/layout';
 import { navigateToCategoryProducts } from '../../navigation/productNavigation';
 
 const SCREEN_W = Dimensions.get('window').width;
-const VISIBLE_COUNT = 5;
-const ITEM_GAP = 10;
-const ITEM_WIDTH =
-  (SCREEN_W - SCREEN_PADDING_H * 2 - ITEM_GAP * (VISIBLE_COUNT - 1)) /
-  VISIBLE_COUNT;
-const TILE_SIZE = Math.min(64, ITEM_WIDTH - 4);
+const ITEM_GAP = 8;
+const ITEM_WIDTH = Math.floor((SCREEN_W - 16) / 5.15);
+const TILE_W = Math.min(52, ITEM_WIDTH - 6);
+const TILE_H = 40;
 
 interface Category {
   id: string;
@@ -38,7 +36,7 @@ const CATEGORY_ICONS: Record<string, TablerIconName> = {
   consult: 'stethoscope',
   medicine: 'pill',
   products: 'package',
-  yoga: 'user',
+  yoga: 'users',
   diet: 'heart',
 };
 
@@ -48,15 +46,6 @@ const CATEGORY_ROUTES: Record<string, string> = {
   products: 'ProductsScreen',
   yoga: 'YogaScreen',
   diet: 'DietScreen',
-};
-
-const CATEGORY_BG: Record<string, string> = {
-  all: '#EAF7F2',
-  consult: '#E8F5E9',
-  medicine: '#FFF4E5',
-  products: '#E8F1FF',
-  yoga: '#F3E8FF',
-  diet: '#FFE8EC',
 };
 
 const ALL_ITEM: Category = {
@@ -77,7 +66,6 @@ const CategoryTile = ({
   const scale = useSharedValue(1);
   const key = item?.name?.trim().toLowerCase() ?? 'all';
   const iconName = CATEGORY_ICONS[key] ?? 'package';
-  const tileBg = CATEGORY_BG[key] ?? '#F0FAF7';
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -85,14 +73,7 @@ const CategoryTile = ({
 
   return (
     <Pressable onPress={onPress} style={styles.item}>
-      <Animated.View
-        style={[
-          styles.tile,
-          // { backgroundColor: tileBg },
-          active && styles.tileActive,
-          animStyle,
-        ]}
-      >
+      <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>
         {item?.image_url ? (
           <Image
             source={{ uri: item.image_url }}
@@ -100,15 +81,18 @@ const CategoryTile = ({
             resizeMode="contain"
           />
         ) : (
-          <TablerIcon name={iconName} size={26} color={Colors.primaryColor} />
+          <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
         )}
       </Animated.View>
 
-      <Text numberOfLines={1} style={[styles.label, active && styles.labelActive]}>
+      <Text
+        numberOfLines={1}
+        style={[styles.label, active && styles.labelActive]}
+      >
         {item.name}
       </Text>
 
-      {active ? <View style={styles.activeBar} /> : <View style={styles.activeSpacer} />}
+      <View style={active ? styles.activeIndicator : styles.activeIndicatorSpacer} />
     </Pressable>
   );
 };
@@ -122,7 +106,12 @@ type Props = {
 const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
   const [activeId, setActiveId] = useState('all');
 
-  const listData = useMemo(() => [ALL_ITEM, ...data], [data]);
+  const services = useMemo(
+    () => (Array.isArray(data) ? data.filter(Boolean) : []),
+    [data],
+  );
+
+  const listData = useMemo(() => [ALL_ITEM, ...services], [services]);
 
   const handlePress = useCallback(
     (item: Category) => {
@@ -141,6 +130,7 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
         categoryName: item.name,
         healthCategoryId: item.id,
         categoryMode: 'health',
+        serviceCategoryId: item.id,
       });
     },
     [navigation],
@@ -157,7 +147,7 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
     [activeId, handlePress],
   );
 
-  if (!listData.length) {
+  if (!services.length) {
     return null;
   }
 
@@ -170,8 +160,8 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
         renderItem={renderItem}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.container}
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
         windowSize={5}
         decelerationRate="fast"
         getItemLayout={(_, index) => ({
@@ -196,39 +186,35 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   container: {
-    paddingRight: 0,
+    ...HORIZONTAL_SCROLL_CONTENT,
+    paddingLeft: SCREEN_PADDING_H,
     paddingVertical: 0,
   },
   item: {
-    width: ITEM_WIDTH,
+    width: ITEM_WIDTH - 15,
     alignItems: 'center',
     marginRight: ITEM_GAP,
   },
   tile: {
-    width: TILE_SIZE,
-    height: TILE_SIZE / 1.5,
-    borderRadius: 16,
-    overflow: 'hidden',
+    width: TILE_W - 6,
+    height: TILE_H - 6,
     justifyContent: 'center',
     alignItems: 'center',
-    // borderWidth: 1,
-    marginBottom: -2,
-    borderColor: 'transparent',
   },
   tileActive: {
-    borderColor: Colors.primaryColor,
+    opacity: 1,
   },
   tileImage: {
-    width: '58%',
-    height: '58%',
+    width: TILE_W - 10,
+    height: TILE_H - 10,
   },
   label: {
-    // marginTop: 2,
-    fontSize: 11,
-    lineHeight: 14,
-    height: 14,
+    marginTop: 2,
+    fontSize: 10,
+    lineHeight: 13,
+    height: 13,
     textAlign: 'center',
-    color: '#64748B',
+    color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
     width: ITEM_WIDTH,
   },
@@ -236,15 +222,19 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  activeBar: {
+  activeIndicator: {
     marginTop: 4,
-    width: 22,
-    height: 3,
-    borderRadius: 2,
+    width: 35,
+    height: 4,
+    borderTopLeftRadius: 999,
+    borderTopRightRadius: 999,
+    borderBottomLeftRadius: 999,
+    borderBottomRightRadius: 999,
     backgroundColor: Colors.primaryColor,
   },
-  activeSpacer: {
+  activeIndicatorSpacer: {
     marginTop: 4,
-    height: 3,
+    width: 18,
+    height: 4,
   },
 });

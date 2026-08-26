@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getHealthCategories, mapProductCategory, normalizeApiList } from '../services/ProductServices';
+import {
+  getHealthCategories,
+  mapProductCategory,
+  normalizeApiList,
+} from '../services/ProductServices';
 
 const MEDICINE_SERVICE_NAMES = new Set(['medicine', 'medicines']);
 
@@ -12,32 +16,43 @@ const mapHealthItem = (item: any): HealthConcernItem => ({
   ...mapProductCategory(item),
   service_category_id: item?.service_category_id
     ? String(item.service_category_id)
-    : undefined,
+    : item?.parent_id
+      ? String(item.parent_id)
+      : undefined,
   service_category_name: item?.service_category_name
     ? String(item.service_category_name)
     : undefined,
 });
 
+/** Prefer medicine-tagged rows; never drop the whole list when API already scoped by service id. */
 const filterMedicineConcerns = (
   list: HealthConcernItem[],
   serviceCategoryId?: string | null,
-) => {
-  if (!list.length) {
-    return list;
+): HealthConcernItem[] => {
+  const withId = list.filter(item => !!item.id);
+  if (!withId.length) return [];
+
+  if (!serviceCategoryId) {
+    return withId.filter(item => {
+      const serviceName = item.service_category_name?.trim().toLowerCase() ?? '';
+      if (!serviceName) return true;
+      return MEDICINE_SERVICE_NAMES.has(serviceName);
+    });
   }
 
-  return list.filter(item => {
-    if (!item.id) {
-      return false;
-    }
-
-    if (serviceCategoryId) {
-      return item.service_category_id === String(serviceCategoryId);
-    }
-
+  const sid = String(serviceCategoryId);
+  const scoped = withId.filter(item => {
+    const itemServiceId = String(
+      item.service_category_id || item.parent_id || '',
+    );
     const serviceName = item.service_category_name?.trim().toLowerCase() ?? '';
-    return MEDICINE_SERVICE_NAMES.has(serviceName);
+    if (!itemServiceId && !serviceName) return true;
+    if (itemServiceId && itemServiceId === sid) return true;
+    if (MEDICINE_SERVICE_NAMES.has(serviceName)) return true;
+    return false;
   });
+
+  return scoped.length > 0 ? scoped : withId;
 };
 
 export const useHealthConcernCategories = (serviceCategoryId?: string | null) => {
@@ -56,7 +71,9 @@ export const useHealthConcernCategories = (serviceCategoryId?: string | null) =>
         }
         setError(null);
 
-        let response = await getHealthCategories(serviceCategoryId ?? undefined);
+        const response = await getHealthCategories(
+          serviceCategoryId ?? undefined,
+        );
         if (reqId !== requestIdRef.current) {
           return;
         }
@@ -67,16 +84,10 @@ export const useHealthConcernCategories = (serviceCategoryId?: string | null) =>
           return;
         }
 
-        let list = normalizeApiList(response).map(mapHealthItem);
-
-        // Flat health categories — no parent/service tree.
-        // When a service id is provided, keep client-side filter as optional narrowing.
-        if (serviceCategoryId) {
-          list = filterMedicineConcerns(list, serviceCategoryId);
-        } else {
-          list = list.filter(item => !!item.id);
-        }
-
+        const list = filterMedicineConcerns(
+          normalizeApiList(response).map(mapHealthItem),
+          serviceCategoryId,
+        );
         setCategories(list);
       } catch (err) {
         if (reqId !== requestIdRef.current) {

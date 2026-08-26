@@ -1,11 +1,12 @@
 import { Asset } from 'react-native-image-picker';
 import { UploadProfilePhoto } from '../services/ProfileServices';
 
-export type ReviewEntityType = 'doctor' | 'product';
+export type ReviewEntityType = 'doctor' | 'product' | 'diet_plan';
 
 export const REVIEW_UPLOAD_DIRS = {
   doctor: 'review_files',
   product: 'review_files',
+  diet_plan: 'review_files',
 } as const;
 
 export type ReviewSubmitPayload = {
@@ -15,6 +16,7 @@ export type ReviewSubmitPayload = {
   appointment_id?: string;
   order_id?: string;
   variant_id?: string;
+  patient_diet_plan_id?: string;
   tags?: string[];
 };
 
@@ -36,9 +38,7 @@ export const extractUploadUrl = (response: any): string => {
 };
 
 export const getReviewUploadDir = (entityType: ReviewEntityType) =>
-  entityType === 'doctor'
-    ? REVIEW_UPLOAD_DIRS.doctor
-    : REVIEW_UPLOAD_DIRS.product;
+  REVIEW_UPLOAD_DIRS[entityType] || REVIEW_UPLOAD_DIRS.product;
 
 export const buildReviewSubmitPayload = ({
   rating,
@@ -48,6 +48,7 @@ export const buildReviewSubmitPayload = ({
   appointmentId,
   orderId,
   variantId,
+  patientDietPlanId,
   tags,
 }: {
   rating: number;
@@ -57,6 +58,7 @@ export const buildReviewSubmitPayload = ({
   appointmentId?: string;
   orderId?: string;
   variantId?: string;
+  patientDietPlanId?: string;
   isEdit?: boolean;
   tags?: string[];
 }): ReviewSubmitPayload => {
@@ -77,6 +79,10 @@ export const buildReviewSubmitPayload = ({
   if (entityType === 'product') {
     if (orderId) payload.order_id = orderId;
     if (variantId) payload.variant_id = variantId;
+  }
+
+  if (entityType === 'diet_plan' && patientDietPlanId) {
+    payload.patient_diet_plan_id = patientDietPlanId;
   }
 
   if (tags?.length) {
