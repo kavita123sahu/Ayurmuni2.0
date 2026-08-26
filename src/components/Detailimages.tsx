@@ -242,7 +242,7 @@ const Detailimages: React.FC<Props> = ({
         <View
           style={[
             styles.indicatorContainer,
-            (isBanner || embedded) && styles.indicatorOverlay,
+            // (isBanner || embedded) && styles.indicatorOverlay,
             isBanner && styles.indicatorBanner,
             embedded && styles.indicatorEmbedded,
           ]}

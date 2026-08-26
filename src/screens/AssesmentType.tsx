@@ -135,7 +135,7 @@ const AssessmentType = (props: any) => {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.heroTitle}>Personalize{'\n'}your care</Text>
+          <Text style={styles.heroTitle}>Personalize your care</Text>
           <Text style={styles.heroSubtitle}>
             Pick an assessment to tailor doctors, products, and daily guidance.
           </Text>
