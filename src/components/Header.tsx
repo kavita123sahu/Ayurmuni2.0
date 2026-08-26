@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageSourcePropType,
+  ActivityIndicator,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -18,6 +19,7 @@ interface HeaderProps {
   backIcon?: ImageSourcePropType;
   onSearchPress?: () => void;
   onRefreshPress?: () => void;
+  refreshing?: boolean;
   rightIconName?: TablerIconName;
   onRightPress?: () => void;
 }
@@ -27,10 +29,12 @@ const Header: React.FC<HeaderProps> = ({
   subtitle,
   onBack,
   onSearchPress,
+  onRefreshPress,
+  refreshing = false,
   rightIconName,
   onRightPress,
 }) => {
-  const hasRightActions = !!(onSearchPress || rightIconName);
+  const hasRightActions = !!(onSearchPress || onRefreshPress || rightIconName);
 
   return (
     <View style={styles.shell}>
@@ -61,6 +65,21 @@ const Header: React.FC<HeaderProps> = ({
                 activeOpacity={0.75}
               >
                 <TablerIcon name="search" size={20} color={Colors.primaryColor} />
+              </TouchableOpacity>
+            ) : null}
+            {onRefreshPress ? (
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={onRefreshPress}
+                activeOpacity={0.75}
+                disabled={refreshing}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {refreshing ? (
+                  <ActivityIndicator size="small" color={Colors.primaryColor} />
+                ) : (
+                  <TablerIcon name="refresh" size={20} color={Colors.primaryColor} />
+                )}
               </TouchableOpacity>
             ) : null}
             {rightIconName ? (

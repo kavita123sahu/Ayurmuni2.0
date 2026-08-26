@@ -7,15 +7,24 @@ import { safeGoBack } from '../../navigation/navigationUtils';
 type Props = {
   navigation: any;
   mode: QuestionnaireMode;
+  /** When false (onboarding / home CTA), exit on step 0 is blocked. */
+  allowBack?: boolean;
 };
 
-const QuestionnaireScreen = ({ navigation, mode }: Props) => {
-  const flow = useQuestionnaireFlow(navigation, mode);
+const QuestionnaireScreen = ({
+  navigation,
+  mode,
+  allowBack = true,
+}: Props) => {
+  const flow = useQuestionnaireFlow(navigation, mode, { allowBack });
   const { config } = QUESTIONNAIRE_SETUP[mode];
 
   const onExit = useCallback(() => {
+    if (!allowBack) {
+      return;
+    }
     safeGoBack(navigation);
-  }, [navigation]);
+  }, [allowBack, navigation]);
 
   return (
     <PrakritiQuestLayout
@@ -23,6 +32,7 @@ const QuestionnaireScreen = ({ navigation, mode }: Props) => {
       mode={mode}
       config={config}
       onExit={onExit}
+      allowExit={allowBack}
     />
   );
 };

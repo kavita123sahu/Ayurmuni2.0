@@ -9,19 +9,32 @@ export type OrderTrackingStep = {
   active: boolean;
 };
 
+/**
+ * Maps backend `order_status` enum → tracker step rank.
+ * Enum flow:
+ *   pending → confirmed → processing → packed →
+ *   dispatched → shipped → in_transit → out_for_delivery → delivered
+ *   (+ cancelled / returned)
+ *
+ * Tracker steps:
+ *   0 Placed → 1 Confirmed → 2 Processing → 3 Packed →
+ *   4 Dispatched → 5 Shipped → 6 Out for delivery → 7 Delivered
+ */
 const STATUS_RANK: Record<string, number> = {
   pending: 0,
   placed: 0,
   confirmed: 1,
-  processing: 1,
-  verified: 1,
-  packed: 2,
-  shipped: 2,
-  in_transit: 2,
-  out_for_delivery: 3,
-  delivered: 4,
-  completed: 4,
+  processing: 2,
+  verified: 2,
+  packed: 3,
+  dispatched: 4,
+  shipped: 5,
+  in_transit: 5,
+  out_for_delivery: 6,
+  delivered: 7,
+  completed: 7,
   cancelled: -1,
+  returned: -1,
 };
 
 const normalizeStatus = (status?: string | null) =>
@@ -36,6 +49,7 @@ export const buildOrderTrackingSteps = (
   const currentStatus = normalizeStatus(order?.order_status);
   const currentRank = getOrderStatusRank(currentStatus);
   const isCancelled = currentStatus === 'cancelled';
+  const isReturned = currentStatus === 'returned';
 
   const history = Array.isArray(order?.status_history)
     ? order.status_history
@@ -63,46 +77,7 @@ export const buildOrderTrackingSteps = (
     });
   };
 
-  const steps: OrderTrackingStep[] = [
-    {
-      key: 'placed',
-      label: 'Order Placed',
-      subtitle: 'We received your order',
-      date: formatStepDate(order?.created_at ?? findHistoryDate('placed', 'pending', 'confirmed')),
-      completed: currentRank >= 0 && !isCancelled,
-      active: currentRank === 0,
-    },
-    {
-      key: 'processing',
-      label: 'Processing',
-      subtitle: 'Packing your items',
-      date: formatStepDate(findHistoryDate('processing', 'verified', 'packed')),
-      completed: currentRank >= 1 && !isCancelled,
-      active: currentRank === 1,
-    },
-    {
-      key: 'shipped',
-      label: 'Shipped',
-      subtitle: 'On the way to you',
-      date: formatStepDate(findHistoryDate('shipped', 'transit', 'out_for_delivery')),
-      completed: currentRank >= 2 && !isCancelled,
-      active: currentRank === 2 || currentRank === 3,
-    },
-    {
-      key: 'delivered',
-      label: 'Delivered',
-      subtitle: 'Order completed',
-      date: formatStepDate(
-        order?.delivered_at ??
-          order?.updated_at ??
-          findHistoryDate('delivered', 'completed'),
-      ),
-      completed: currentRank >= 4,
-      active: currentRank >= 4,
-    },
-  ];
-
-  if (isCancelled) {
+  if (isCancelled || isReturned) {
     return [
       {
         key: 'placed',
@@ -112,9 +87,12 @@ export const buildOrderTrackingSteps = (
         active: false,
       },
       {
-        key: 'cancelled',
-        label: 'Cancelled',
-        subtitle: order?.cancellation_reason ?? 'Order was cancelled',
+        key: isReturned ? 'returned' : 'cancelled',
+        label: isReturned ? 'Returned' : 'Cancelled',
+        subtitle:
+          order?.cancellation_reason ??
+          order?.return_reason ??
+          (isReturned ? 'Order was returned' : 'Order was cancelled'),
         date: formatStepDate(order?.updated_at),
         completed: true,
         active: true,
@@ -122,7 +100,77 @@ export const buildOrderTrackingSteps = (
     ];
   }
 
-  return steps;
+  return [
+    {
+      key: 'placed',
+      label: 'Order Placed',
+      subtitle: 'We received your order',
+      date: formatStepDate(order?.created_at ?? findHistoryDate('placed', 'pending')),
+      completed: currentRank >= 0,
+      active: currentRank === 0,
+    },
+    {
+      key: 'confirmed',
+      label: 'Confirmed',
+      subtitle: 'Order confirmed by pharmacy',
+      date: formatStepDate(findHistoryDate('confirmed')),
+      completed: currentRank >= 1,
+      active: currentRank === 1,
+    },
+    {
+      key: 'processing',
+      label: 'Processing',
+      subtitle: 'Preparing your items',
+      date: formatStepDate(findHistoryDate('processing', 'verified')),
+      completed: currentRank >= 2,
+      active: currentRank === 2,
+    },
+    {
+      key: 'packed',
+      label: 'Packed',
+      subtitle: 'Ready for dispatch',
+      date: formatStepDate(findHistoryDate('packed')),
+      completed: currentRank >= 3,
+      active: currentRank === 3,
+    },
+    {
+      key: 'dispatched',
+      label: 'Dispatched',
+      subtitle: 'Handed to courier',
+      date: formatStepDate(findHistoryDate('dispatched')),
+      completed: currentRank >= 4,
+      active: currentRank === 4,
+    },
+    {
+      key: 'shipped',
+      label: 'Shipped',
+      subtitle:
+        currentStatus === 'in_transit'
+          ? 'In transit to your city'
+          : 'On the way to you',
+      date: formatStepDate(findHistoryDate('shipped', 'in_transit', 'transit')),
+      completed: currentRank >= 5,
+      active: currentRank === 5,
+    },
+    {
+      key: 'out_for_delivery',
+      label: 'Out for Delivery',
+      subtitle: 'Arriving today',
+      date: formatStepDate(findHistoryDate('out_for_delivery')),
+      completed: currentRank >= 6,
+      active: currentRank === 6,
+    },
+    {
+      key: 'delivered',
+      label: 'Delivered',
+      subtitle: 'Order completed',
+      date: formatStepDate(
+        order?.delivered_at ?? findHistoryDate('delivered', 'completed'),
+      ),
+      completed: currentRank >= 7,
+      active: currentRank >= 7,
+    },
+  ];
 };
 
 export const formatDeliveryAddress = (address?: any) => {

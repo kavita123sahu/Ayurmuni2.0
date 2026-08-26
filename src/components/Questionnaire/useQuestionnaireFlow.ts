@@ -24,14 +24,16 @@ import {
   isChoiceSelected,
   toggleAnswer,
 } from './utils';
-import { promoteToFullUser } from '../../services/guestAuth';
+import { promoteToFullUser, resolveAccessLikeProfile } from '../../services/guestAuth';
 import { XP_PER_LEVEL, STREAK_BONUS } from './PrakritiQuestTheme';
 
 export const useQuestionnaireFlow = (
   navigation: any,
   mode: QuestionnaireMode,
+  options?: { allowBack?: boolean },
 ) => {
   const isPrakriti = mode === 'prakriti';
+  const allowBack = options?.allowBack !== false;
   const setup = QUESTIONNAIRE_SETUP[mode];
 
   const [rawQuestions, setRawQuestions] = useState<any[]>([]);
@@ -218,6 +220,7 @@ export const useQuestionnaireFlow = (
       // Customer profile + prakriti complete → upgrade guest → full user
       if (isPrakriti) {
         await promoteToFullUser();
+        await resolveAccessLikeProfile();
       }
 
       navigation.replace(setup.finishRoute, setup.finishParams);
@@ -279,11 +282,14 @@ export const useQuestionnaireFlow = (
   const handleBack = useCallback(() => {
     pendingAdvanceRef.current = false;
     if (step === 0) {
+      if (!allowBack) {
+        return;
+      }
       safeGoBack(navigation);
       return;
     }
     setStep(prev => prev - 1);
-  }, [navigation, step]);
+  }, [allowBack, navigation, step]);
 
   const handleSkip = useCallback(() => {
     if (step === 0 || step >= steps.length - 1) {

@@ -26,6 +26,7 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
   const loadingLockRef = useRef(false);
   const hasMoreRef = useRef(true);
   const pageRef = useRef(1);
+  const requestIdRef = useRef(0);
 
   const fetchPage = useCallback(
     async (pageToLoad: number, mode: 'replace' | 'append' | 'refresh') => {
@@ -34,10 +35,13 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
         return;
       }
 
+      // Only block pagination while another request is in flight.
+      // Refresh / replace must always be allowed so the header button works.
       if (loadingLockRef.current && mode === 'append') {
         return;
       }
 
+      const requestId = ++requestIdRef.current;
       loadingLockRef.current = true;
 
       try {
@@ -55,6 +59,11 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
           page_size: pageSize,
         });
 
+        // Ignore stale responses (e.g. focus refresh finished after a newer tap)
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
         const list = normalizeOrdersList(response);
         let more = hasMoreOrderPages(response, list.length, pageSize);
 
@@ -69,7 +78,6 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
             seen.add(id);
             return true;
           });
-          // If API ignored page and returned duplicates, stop paging
           if (unique.length === 0) {
             more = false;
           }
@@ -80,6 +88,9 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
         setHasMore(more);
         hasMoreRef.current = more;
       } catch {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
         setError('Unable to load orders');
         if (mode !== 'append') {
           setOrders([]);
@@ -87,10 +98,12 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
           hasMoreRef.current = false;
         }
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
-        loadingLockRef.current = false;
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+          loadingLockRef.current = false;
+        }
       }
     },
     [enabled, pageSize],
@@ -121,6 +134,7 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
     pageRef.current = 1;
     hasMoreRef.current = true;
     setHasMore(true);
+    // Force a new request even if one is already in flight
     fetchPage(1, 'refresh');
   }, [fetchPage]);
 

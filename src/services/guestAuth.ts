@@ -21,6 +21,7 @@
 import { Utils } from '../common/Utils';
 import { navigationRef } from '../navigation/navigationRef';
 import { showSuccessToast } from '../config/Key';
+import * as ProfileServices from './ProfileServices';
 
 export const ACCESS_KEYS = {
   TOKEN: '_TOKEN',
@@ -31,6 +32,37 @@ export const ACCESS_KEYS = {
 } as const;
 
 export type AccessLevel = 'logged_out' | 'guest' | 'full';
+
+type ProfileLike = {
+  is_onboarded?: boolean;
+  is_profile?: boolean | string | number;
+  is_customer_profile_created?: boolean | string | number;
+  /** Backend alias used on some payloads */
+  customer_created?: boolean | string | number;
+  prakriti_progress?: number | string | null;
+  first_name?: string | null;
+  customer_id?: string | number | null;
+  id?: string | number | null;
+  [key: string]: unknown;
+} | null;
+
+const truthy = (v: unknown) =>
+  v === true || v === 'true' || v === 1 || v === '1';
+
+const falsy = (v: unknown) =>
+  v === false || v === 'false' || v === 0 || v === '0';
+
+const profileCreatedFlag = (profile?: ProfileLike) =>
+  profile?.is_customer_profile_created ??
+  profile?.customer_created ??
+  profile?.is_profile;
+
+const hasCustomerIdentity = (profile?: ProfileLike) =>
+  Boolean(
+    profile &&
+      String(profile.first_name ?? '').trim() &&
+      (profile.customer_id || profile.id),
+  );
 
 export async function isAuthenticated(): Promise<boolean> {
   const token = await Utils.getData(ACCESS_KEYS.TOKEN);
@@ -61,80 +93,45 @@ export async function promoteToFullUser(): Promise<void> {
 }
 
 /** True when profile looks finished enough to leave guest mode. */
-export function isProfileComplete(profile?: {
-  is_onboarded?: boolean;
-  /** Some APIs return this key instead of is_onboarded. */
-  is_profile?: boolean | string | number;
-  /** Alternate backend flag for customer profile readiness. */
-  is_customer_profile_created?: boolean | string | number;
-  prakriti_progress?: number | string | null;
-  first_name?: string | null;
-  customer_id?: string | number | null;
-  id?: string | number | null;
-} | null): boolean {
+export function isProfileComplete(profile?: ProfileLike): boolean {
   if (!profile) return false;
 
-  const truthy = (v: unknown) =>
-    v === true || v === 'true' || v === 1 || v === '1';
-
-  // Explicit profile flags from backend
-  if (truthy(profile.is_profile)) return true;
-  if (truthy(profile.is_customer_profile_created)) return true;
+  // Explicit profile flags from backend (any alias)
+  if (truthy(profileCreatedFlag(profile))) return true;
   if (profile.is_onboarded === true) return true;
   if (Number(profile.prakriti_progress) >= 100) return true;
   // Completed customer onboarding (name + id) — clears stuck guest flag
-  if (profile.first_name && (profile.customer_id || profile.id)) return true;
+  if (hasCustomerIdentity(profile)) return true;
   return false;
 }
 
 /** True when backend says customer profile is not ready → treat as guest. */
-export function shouldStayGuest(profile?: {
-  is_profile?: boolean | string | number;
-  is_customer_profile_created?: boolean | string | number;
-  is_onboarded?: boolean;
-} | null): boolean {
+export function shouldStayGuest(profile?: ProfileLike): boolean {
   if (!profile) return true;
-  const falsy = (v: unknown) =>
-    v === false || v === 'false' || v === 0 || v === '0';
-
-  // Explicit false flags force guest even if other fields exist
-  if (falsy(profile.is_profile)) return true;
-  if (falsy(profile.is_customer_profile_created)) return true;
-  return !isProfileComplete(profile);
+  // Never demote a clearly completed onboarding profile
+  if (isProfileComplete(profile)) return false;
+  if (falsy(profileCreatedFlag(profile))) return true;
+  return true;
 }
 
 /**
  * Keep local access flag in sync with profile API.
- * - is_profile / is_customer_profile_created false → guest
- * - completed / onboarded / has customer profile → full user
- * - otherwise incomplete → guest
+ * Completed identity / true flags always win over stale `false` flags.
  */
-export async function syncAccessFromProfile(profile?: {
-  is_onboarded?: boolean;
-  is_profile?: boolean | string | number;
-  is_customer_profile_created?: boolean | string | number;
-  prakriti_progress?: number | string | null;
-  first_name?: string | null;
-  customer_id?: string | number | null;
-  id?: string | number | null;
-} | null): Promise<AccessLevel> {
+export async function syncAccessFromProfile(
+  profile?: ProfileLike,
+): Promise<AccessLevel> {
   if (!(await isAuthenticated())) return 'logged_out';
-
-  const falsy = (v: unknown) =>
-    v === false || v === 'false' || v === 0 || v === '0';
-
-  // Explicit incomplete profile flags win — force guest mode
-  if (
-    profile &&
-    (falsy(profile.is_profile) || falsy(profile.is_customer_profile_created))
-  ) {
-    await markAsGuest();
-    return 'guest';
-  }
 
   if (isProfileComplete(profile)) {
     await promoteToFullUser();
     return 'full';
+  }
+
+  // Explicit incomplete only when there is no completed identity evidence
+  if (profile && falsy(profileCreatedFlag(profile)) && !hasCustomerIdentity(profile)) {
+    await markAsGuest();
+    return 'guest';
   }
 
   if (await isGuestUser()) {
@@ -143,6 +140,19 @@ export async function syncAccessFromProfile(profile?: {
 
   await markAsGuest();
   return 'guest';
+}
+
+/** Persist onboarding / profile payload and upgrade access immediately. */
+export async function persistProfileAndSyncAccess(
+  profile?: ProfileLike,
+): Promise<AccessLevel> {
+  if (profile && typeof profile === 'object') {
+    const prev = (await Utils.getData(ACCESS_KEYS.USER_INFO)) || {};
+    const merged = { ...prev, ...profile };
+    await Utils.storeData(ACCESS_KEYS.USER_INFO, merged);
+    return syncAccessFromProfile(merged);
+  }
+  return syncAccessFromProfile(profile);
 }
 
 /** Legacy name used after OTP — now means “session started”; stays guest until promoted. */
@@ -159,6 +169,52 @@ export function navigateToLogin(message?: string): void {
     // @ts-expect-error nested auth stack screen
     navigationRef.navigate('AuthStack', { screen: 'Login' });
   }
+}
+
+/**
+ * Same readiness check ProfileScreen uses before showing guest vs full UI.
+ * Fetches fresh profile when needed and promotes guest → full when complete.
+ */
+export async function resolveAccessLikeProfile(): Promise<{
+  level: AccessLevel;
+  profile: any | null;
+  isComplete: boolean;
+}> {
+  if (!(await isAuthenticated())) {
+    return { level: 'logged_out', profile: null, isComplete: false };
+  }
+
+  const cached = (await Utils.getData(ACCESS_KEYS.USER_INFO)) || null;
+  let profile: any = cached;
+
+  try {
+    const res: any = await ProfileServices.user_profile();
+    if (res?.data) {
+      // Merge so onboarding fields are not wiped if API lags on flags
+      profile = { ...(cached || {}), ...res.data };
+      await Utils.storeData(ACCESS_KEYS.USER_INFO, profile);
+    }
+  } catch {
+    // Fall back to cached USER_INFO
+  }
+
+  // Explicit completed profile always wins (never keep stuck guest flag)
+  if (isProfileComplete(profile)) {
+    await promoteToFullUser();
+    return { level: 'full', profile, isComplete: true };
+  }
+
+  const level = await syncAccessFromProfile(profile);
+  if (level === 'full' || isProfileComplete(profile)) {
+    await promoteToFullUser();
+    return { level: 'full', profile, isComplete: true };
+  }
+
+  return {
+    level,
+    profile,
+    isComplete: false,
+  };
 }
 
 /** Opens the single “Complete details to proceed” gate UI. */
@@ -179,7 +235,8 @@ export function navigateToCompleteDetails(message?: string): void {
 /**
  * Gate for purchase / book / wishlist / other mutations.
  * - No token → Login
- * - Guest     → CompleteDetails UI
+ * - Guest with incomplete profile → CompleteDetails UI
+ * - Guest but profile already created (like ProfileScreen) → allow + promote
  * - Full user → allow
  */
 export async function requireAuth(
@@ -190,7 +247,13 @@ export async function requireAuth(
     return false;
   }
 
+  // Always re-check profile when guest — do not wait for ProfileScreen
   if (await isGuestUser()) {
+    const { isComplete } = await resolveAccessLikeProfile();
+    if (isComplete) {
+      return true;
+    }
+
     const guestMessage =
       !message || /login/i.test(message)
         ? 'Complete your profile and prakriti assessment to continue.'
@@ -199,6 +262,7 @@ export async function requireAuth(
     return false;
   }
 
+  // Even full users: if cache is empty, soft-sync once (no modal)
   return true;
 }
 

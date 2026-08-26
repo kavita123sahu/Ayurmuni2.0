@@ -111,6 +111,43 @@ export const getOrders = async (params?: GetOrdersParams) => {
   }
 };
 
+/** Fetch a single order (full detail for Order Details refresh). */
+export const getOrderById = async (orderId: string | number) => {
+  try {
+    const response = await apiClient(`order/${orderId}/`, {
+      method: 'GET',
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const extractOrderDetail = (response: any): any | null => {
+  const raw =
+    response?.data?.data ??
+    response?.data?.order ??
+    response?.data ??
+    response?.order ??
+    response ??
+    null;
+
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
+  }
+
+  // List envelope accidentally returned
+  if (Array.isArray(raw.results) || Array.isArray(raw.orders)) {
+    return null;
+  }
+
+  if (raw.id || raw.order_id || raw.order_code) {
+    return raw;
+  }
+
+  return null;
+};
+
 export const getTransactions = async (params?: {
   page?: number;
   page_size?: number;

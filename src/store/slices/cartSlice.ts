@@ -308,6 +308,14 @@ const patchPrescribedItemQuantity = (
         return normalizeCartLineItem({
           ...item,
           quantity: Number(quantity),
+          // Keep unit prices so line selling/MRP totals update with qty
+          selling_price:
+            item?.selling_price ?? item?.variant?.selling_price,
+          mrp: item?.mrp ?? item?.variant?.mrp,
+          price:
+            item?.selling_price ??
+            item?.variant?.selling_price ??
+            item?.price,
         });
       })
       .filter(Boolean),
@@ -466,7 +474,8 @@ export const addToCart = createAsyncThunk(
         return rejectWithValue('Prescription required');
       }
 
-      // Prescribed lines are never removed (qty 0 blocked).
+      // Prescribed lines: same cart URL as my_cart (no source= query).
+      // Never remove (qty 0). Client still patches prescription_cart locally.
       if (source === 'prescribed') {
         if (Boolean(prescriptionRequired)) {
           return rejectWithValue('Prescription required');
@@ -485,7 +494,6 @@ export const addToCart = createAsyncThunk(
           variant_id: String(variantId),
           quantity,
           cart_item_id: prescribedCartItemId,
-          source: 'prescribed',
         });
 
         const prescribedCartItem =
@@ -517,7 +525,6 @@ export const addToCart = createAsyncThunk(
         variant_id: String(variantId),
         quantity,
         cart_item_id: safeCartItemId,
-        source: source === 'prescribed' ? 'prescribed' : undefined,
       });
 
       // Accept success flag or a returned cart item payload.
@@ -686,7 +693,12 @@ export const queueCartLineSync = createAsyncThunk(
                 lastConfirmedQty.delete(key);
               }
 
-              if (!result.payload?.cartItem) {
+              // Prescribed + any response without a cart item → refresh so
+              // subtotal / selling / MRP match the server like my_cart lines.
+              if (
+                latest.source === 'prescribed' ||
+                !result.payload?.cartItem
+              ) {
                 await dispatch(fetchCart({ force: true, silent: true }));
               }
 

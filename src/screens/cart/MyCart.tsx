@@ -131,21 +131,6 @@ const MyCart = ({ navigation }: any) => {
                         item,
                         prescription?.doctor_name,
                     );
-                    const variantId = String(product.variant_id ?? '');
-                    const extraQty = (
-                        CartData?.my_cart?.items ?? []
-                    ).reduce((sum: number, cartItem: any) => {
-                        const cartVariantId = String(
-                            cartItem?.variant_id ??
-                                cartItem?.variant?.variant_id ??
-                                cartItem?.variant?.id ??
-                                '',
-                        );
-                        if (cartVariantId && cartVariantId === variantId) {
-                            return sum + (Number(cartItem?.quantity) || 0);
-                        }
-                        return sum;
-                    }, 0);
 
                     return {
                         ...product,
@@ -154,7 +139,13 @@ const MyCart = ({ navigation }: any) => {
                         source: 'prescribed' as const,
                         prescription_id: prescription?.prescription_id,
                         prescription_cart_id: prescription?.id,
-                        extra_qty: extraQty,
+                        // Ensure qty / prices stay in sync with cart API patches
+                        quantity: Number(item?.quantity ?? product.quantity) || 0,
+                        price:
+                            resolveCartItemSellingPrice(item) ||
+                            Number(product.price) ||
+                            0,
+                        prescription_required: isPrescriptionRequired(item),
                     };
                 })
                 .filter(isRenderableCartProduct);
@@ -324,8 +315,8 @@ const MyCart = ({ navigation }: any) => {
             /**
              * Prescribed list:
              * - prescription_required true → alert, cannot increase / add / remove
-             * - prescription_required false → user can adjust prescribed qty
-             * - never remove prescribed line (qty 0)
+             * - prescription_required false → can increase; cannot remove; floor qty = 1
+             * - same cart API as my_cart (variant_id + quantity + cart_item_id)
              */
             if (isPrescribed) {
                 if (action === 'remove') {
@@ -337,7 +328,7 @@ const MyCart = ({ navigation }: any) => {
                     return;
                 }
 
-                const oldQty = line.quantity;
+                const oldQty = Math.max(1, Number(line.quantity) || 1);
 
                 if (action === 'plus') {
                     dispatch(
@@ -868,7 +859,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: SCREEN_THEME.contentPaddingHorizontal,
-        backgroundColor: SCREEN_THEME.screenBackground,
+        // backgroundColor: SCREEN_THEME.screenBackground,
     },
 
     scrollView: {

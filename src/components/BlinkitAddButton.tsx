@@ -15,6 +15,8 @@ type Props = {
   isAdding?: boolean;
   locked?: boolean;
   outOfStock?: boolean;
+  /** Floor for decrement (e.g. prescribed lines cannot go below 1). */
+  minQuantity?: number;
   maxQuantity?: number | null;
   onAdd: () => void;
   onIncrement: () => void;
@@ -27,12 +29,14 @@ const BlinkitAddButton: React.FC<Props> = ({
   isAdding = false,
   locked = false,
   outOfStock = false,
+  minQuantity = 0,
   maxQuantity = null,
   onAdd,
   onIncrement,
   onDecrement,
   compact = false,
 }) => {
+  const atMin = quantity <= Math.max(0, minQuantity);
   const atMax =
     maxQuantity != null && Number.isFinite(maxQuantity) && quantity >= maxQuantity;
 
@@ -70,11 +74,16 @@ const BlinkitAddButton: React.FC<Props> = ({
     <View style={[styles.stepper, compact && styles.stepperCompact, locked && styles.stepperLocked]}>
       <TouchableOpacity
         onPress={onDecrement}
-        disabled={isAdding || locked}
-        style={styles.stepBtn}
+        disabled={isAdding || locked || atMin}
+        style={[styles.stepBtn, atMin && styles.stepBtnDisabled]}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <TablerIcon name="minus" size={compact ? 14 : 16} color="#fff" strokeWidth={2.5} />
+        <TablerIcon
+          name="minus"
+          size={compact ? 14 : 16}
+          color={atMin ? 'rgba(255,255,255,0.45)' : '#fff'}
+          strokeWidth={2.5}
+        />
       </TouchableOpacity>
 
       <Text style={[styles.qtyText, compact && styles.qtyTextCompact]}>{quantity}</Text>

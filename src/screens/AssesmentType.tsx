@@ -156,7 +156,9 @@ const AssessmentType = (props: any) => {
               meta="~5 min"
               icon="chart-pie"
               gradient={['#0D614E', '#1A8F6E']}
-              onPress={() => props.navigation.navigate('PatientFAQ')}
+              onPress={() =>
+                props.navigation.navigate('PatientFAQ', { allowBack: false })
+              }
             />
           )}
 

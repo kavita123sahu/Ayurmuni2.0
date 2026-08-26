@@ -2,7 +2,7 @@
  * Single gate UI for guest actions (cart, book, wishlist, etc.).
  * Browse stays open; only mutations land here via requireAuth().
  */
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,14 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import {
   getOnboardingEntryScreen,
   markAsGuest,
+  resolveAccessLikeProfile,
 } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
 
@@ -25,13 +27,49 @@ const CompleteDetailsScreen = ({ navigation, route }: any) => {
     route?.params?.reason ||
     'Complete your profile and prakriti assessment to continue.';
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  // If profile is already created, dismiss this gate (same check as ProfileScreen)
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          setChecking(true);
+          const { isComplete } = await resolveAccessLikeProfile();
+          if (!cancelled && isComplete) {
+            if (navigation.canGoBack?.()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('TabStack', { screen: 'Home' });
+            }
+            return;
+          }
+        } finally {
+          if (!cancelled) setChecking(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [navigation]),
+  );
 
   const onComplete = async () => {
     try {
       setLoading(true);
+      const { isComplete } = await resolveAccessLikeProfile();
+      if (isComplete) {
+        if (navigation.canGoBack?.()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate('TabStack', { screen: 'Home' });
+        }
+        return;
+      }
+
       await markAsGuest();
       const next = await getOnboardingEntryScreen();
-      // navigate (not replace) so Back returns here / previous screen
       if (next === 'AssessmentType') {
         navigation.navigate('AssessmentType', { form: 'all' });
       } else {
@@ -41,6 +79,18 @@ const CompleteDetailsScreen = ({ navigation, route }: any) => {
       setLoading(false);
     }
   };
+
+  if (checking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={[styles.content, styles.checkingWrap]}>
+          <ActivityIndicator size="large" color={Colors.primaryColor} />
+          <Text style={styles.checkingText}>Checking your profile…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -115,6 +165,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 12,
+  },
+  checkingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
   },
   closeBtn: {
     alignSelf: 'flex-end',

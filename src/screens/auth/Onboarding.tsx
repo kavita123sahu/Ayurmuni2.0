@@ -28,6 +28,7 @@ import { launchImageLibrary, launchCamera, MediaType, ImagePickerResponse, Image
 import { EmailValidator } from '../../common/Validator';
 import { RouteProp, useIsFocused, useRoute } from '@react-navigation/native';
 import { genderOptions } from '../../common/DataInterface';
+import { persistProfileAndSyncAccess } from '../../services/guestAuth';
 import CommonButton from '../../components/CommonButton';
 import { Images } from '../../common/Images';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -449,11 +450,25 @@ const Onboarding = (props: any) => {
 
             if (response?.success) {
 
-                // STORE USER
-                await Utils.storeData(
-                    '_USER_INFO',
-                    response?.data
-                );
+                // STORE USER + clear guest immediately (don't wait for ProfileScreen)
+                const profilePayload = {
+                  ...(response?.data || {}),
+                  first_name:
+                    response?.data?.first_name || send_data.first_name,
+                  last_name:
+                    response?.data?.last_name || send_data.last_name,
+                  email: response?.data?.email || send_data.email,
+                  gender: response?.data?.gender || send_data.gender,
+                  is_customer_profile_created:
+                    response?.data?.is_customer_profile_created ??
+                    response?.data?.customer_created ??
+                    true,
+                  customer_created:
+                    response?.data?.customer_created ??
+                    response?.data?.is_customer_profile_created ??
+                    true,
+                };
+                await persistProfileAndSyncAccess(profilePayload);
 
                 showSuccessToast(
                     response?.message || 'Welcome to Ayurmuni',

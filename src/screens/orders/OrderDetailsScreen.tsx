@@ -39,7 +39,7 @@ import { resolveProductImageUri } from '../../utils/imageUtils';
 import { extractReviewsList } from '../../utils/reviewUtils';
 import { consumePendingProductReview } from '../../utils/pendingProductReview';
 import { getStatusColor } from '../../common/DataInterface';
-import { cancelOrder, downloadInvoiceFile, pollOrderTracking } from '../../services/OrderService';
+import { cancelOrder, downloadInvoiceFile, extractOrderDetail, getOrderById, getOrders, normalizeOrdersList, pollOrderTracking } from '../../services/OrderService';
 import { Buffer } from 'buffer';
 import Toast from 'react-native-toast-message';
 import RNFS from 'react-native-fs';
@@ -75,6 +75,8 @@ const ORDER_STATUS = {
   PACKED: 'packed',
   DISPATCHED: 'dispatched',
   SHIPPED: 'shipped',
+  IN_TRANSIT: 'in_transit',
+  OUT_FOR_DELIVERY: 'out_for_delivery',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
   RETURNED: 'returned',
@@ -93,6 +95,8 @@ const INVOICE_ALLOWED: OrderStatus[] = [
   ORDER_STATUS.PACKED,
   ORDER_STATUS.DISPATCHED,
   ORDER_STATUS.SHIPPED,
+  ORDER_STATUS.IN_TRANSIT,
+  ORDER_STATUS.OUT_FOR_DELIVERY,
   ORDER_STATUS.DELIVERED,
   ORDER_STATUS.RETURNED,
 ];
@@ -188,7 +192,10 @@ const STATUS_META: Record<string, { label: string; bg: string; text: string }> =
   packed: { label: 'Packed', bg: '#E0F2FE', text: '#0369A1' },
   dispatched: { label: 'Dispatched', bg: '#EDE9FE', text: '#5B21B6' },
   shipped: { label: 'Shipped', bg: '#FEF3C7', text: '#92400E' },
+  in_transit: { label: 'In Transit', bg: '#FEF3C7', text: '#92400E' },
+  out_for_delivery: { label: 'Out for Delivery', bg: '#FFEDD5', text: '#9A3412' },
   delivered: { label: 'Delivered', bg: '#DCFCE7', text: '#166534' },
+  completed: { label: 'Completed', bg: '#DCFCE7', text: '#166534' },
   cancelled: { label: 'Cancelled', bg: '#FEE2E2', text: '#991B1B' },
   returned: { label: 'Returned', bg: '#F1F5F9', text: '#475569' },
 };
@@ -349,15 +356,50 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
     if (!order?.id) return;
     try {
       setTrackingLoading(true);
-      const res = await pollOrderTracking(order.id);
-      const updated = res?.data?.data ?? res?.data ?? res;
-      if (updated) setOrder((prev: any) => ({ ...prev, ...updated }));
+
+      // 1) Reload full order detail (status, items, totals, tracking fields)
+      let detail: any = null;
+      try {
+        const detailRes = await getOrderById(order.id);
+        detail = extractOrderDetail(detailRes);
+      } catch {
+        // Fallback: find this order in the list if detail endpoint is unavailable
+        try {
+          const listRes = await getOrders({ page: 1, page_size: 50 });
+          const list = normalizeOrdersList(listRes);
+          detail =
+            list.find(
+              (o: any) =>
+                String(o?.id) === String(order.id) ||
+                String(o?.order_code) === String(order?.order_code ?? ''),
+            ) ?? null;
+        } catch {
+          detail = null;
+        }
+      }
+
+      // 2) Poll live shipment tracking and merge on top
+      let pollPayload: any = null;
+      try {
+        const pollRes = await pollOrderTracking(order.id);
+        pollPayload = pollRes?.data?.data ?? pollRes?.data ?? pollRes ?? null;
+      } catch {
+        pollPayload = null;
+      }
+
+      if (detail || pollPayload) {
+        setOrder((prev: any) => ({
+          ...prev,
+          ...(detail || {}),
+          ...(pollPayload && typeof pollPayload === 'object' ? pollPayload : {}),
+        }));
+      }
     } catch {
-      // silent
+      // silent — spinner still clears in finally
     } finally {
       setTrackingLoading(false);
     }
-  }, [order?.id]);
+  }, [order?.id, order?.order_code]);
 
   const handleCancel = useCallback(async () => {
     if (!order?.id || cancelLoading || !finalReason || !canCancel) return;
@@ -665,12 +707,16 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
                       styles.trackDot,
                       step.completed && styles.trackDotDone,
                       showInProgress && styles.trackDotActive,
-                      (step.key === 'cancelled') && styles.trackDotCancelled,
+                      (step.key === 'cancelled' || step.key === 'returned') && styles.trackDotCancelled,
                     ]}
                   >
                     {(step.completed || step.active) && (
                       <TablerIcon
-                        name={step.key === 'cancelled' ? 'x' : 'check'}
+                        name={
+                          step.key === 'cancelled' || step.key === 'returned'
+                            ? 'x'
+                            : 'check'
+                        }
                         size={8}
                         color="#FFFFFF"
                       />
@@ -687,7 +733,8 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
                     style={[
                       styles.trackLabel,
                       (step.completed || step.active) && styles.trackLabelActive,
-                      step.key === 'cancelled' && styles.trackLabelCancelled,
+                      (step.key === 'cancelled' || step.key === 'returned') &&
+                      styles.trackLabelCancelled,
                       (step.key === 'delivered' && step.completed) && styles.trackLabelDelivered,
                     ]}
                   >

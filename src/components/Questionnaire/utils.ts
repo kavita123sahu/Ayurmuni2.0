@@ -44,15 +44,17 @@ export const buildMedicalInitialAnswers = (questions: any[]) => {
   const answers = getPrefilledAnswers(questions);
 
   questions.forEach(question => {
-    if (!question?.question?.toLowerCase().includes('height')) {
+    const q = String(question?.question ?? '').toLowerCase();
+    if (!q.includes('height') && !q.includes('weight') && !q.includes('body')) {
       return;
     }
 
     const id = String(question.id);
-    const value = question?.answer ?? '';
+    const value = String(question?.answer ?? '');
+    if (!value) return;
     const [height = '', weight = ''] = value.split(',');
-    answers[`${id}_height`] = height.replace('cm', '').trim();
-    answers[`${id}_weight`] = weight.replace('kg', '').trim();
+    answers[`${id}_height`] = height.replace(/cm/gi, '').trim();
+    answers[`${id}_weight`] = weight.replace(/kg/gi, '').trim();
   });
 
   return answers;
@@ -62,28 +64,34 @@ export const findBasicQuestions = (questions: any[]) => {
   const find = (keyword: string) =>
     questions.find(q => q?.question?.toLowerCase().includes(keyword));
 
+  const height =
+    find('height') ||
+    find('weight') ||
+    find('body type') ||
+    find('body');
+
   return {
-    age: find('age'),
-    gender: find('gender'),
-    height: find('height'),
+    age: undefined,
+    gender: undefined,
+    height,
     weight: find('weight'),
   };
 };
 
 export const collapseBasicInfoSteps = (questions: any[]): QuestionStep[] => {
   const basics = findBasicQuestions(questions);
-  const basicIds = [
-    basics.age?.id,
-    basics.gender?.id,
-    basics.height?.id,
-    basics.weight?.id,
-  ].filter(Boolean);
+  const basicIds = new Set(
+    [basics.age?.id, basics.gender?.id, basics.height?.id, basics.weight?.id]
+      .filter(id => id != null && String(id).trim() !== '')
+      .map(id => String(id)),
+  );
 
   let basicAdded = false;
 
   return questions
     .filter(item => {
-      if (!basicIds.includes(item?.id)) {
+      const id = String(item?.id ?? '');
+      if (!basicIds.has(id)) {
         return true;
       }
       if (basicAdded) {
@@ -103,12 +111,16 @@ export const isBasicInfoStep = (
     return false;
   }
 
+  const stepId = String(step.id ?? '');
   return [
     basics.age?.id,
     basics.gender?.id,
     basics.height?.id,
     basics.weight?.id,
-  ].includes(step.id);
+  ]
+    .filter(id => id != null)
+    .map(id => String(id))
+    .includes(stepId);
 };
 
 export const toggleAnswer = (
@@ -157,16 +169,20 @@ export const isAnswerEmpty = (
   }
 
   if (isBasicInfoStep(step, basics)) {
-    const ageId = String(basics?.age?.id ?? '');
-    const genderId = String(basics?.gender?.id ?? '');
-    const heightId = String(basics?.height?.id ?? '');
+    const heightId =
+      basics?.height?.id != null
+        ? String(basics.height.id)
+        : basics?.weight?.id != null
+          ? String(basics.weight.id)
+          : '';
 
-    return (
-      !answers[ageId] ||
-      answers[genderId] === undefined ||
-      !answers[`${heightId}_height`] ||
-      !answers[`${heightId}_weight`]
-    );
+    // Medical basic-info flow currently uses only the measurement fields
+    // returned by the API (height / weight or combined body-type question).
+    if (heightId) {
+      if (!answers[`${heightId}_height`]) return true;
+      if (!answers[`${heightId}_weight`]) return true;
+    }
+    return false;
   }
 
   const key = getStepKey(step);

@@ -8,12 +8,7 @@ import {
   Image,
 } from 'react-native';
 
-import { Ionicons } from '../../common/Vector';
-
 import {
-
-  COLORS,
-  scale,
   styles,
 } from '../../components/MedicalHistory/styles/MedicalHistor';
 
@@ -93,148 +88,91 @@ const BasicInfoSection = ({
 }: any) => {
 
   /* =====================================================
-     FIND QUESTIONS
+     FIND QUESTIONS — show whichever basic fields API returns
   ===================================================== */
 
-  const ageQuestion = useMemo(() => {
-
-    return questions.find((item: any) =>
-      item?.question
-        ?.toLowerCase()
-        ?.includes('age'),
-    );
-
-  }, [questions]);
-
-  const genderQuestion = useMemo(() => {
-
-    return questions.find((item: any) =>
-      item?.question
-        ?.toLowerCase()
-        ?.includes('gender'),
-    );
-
-  }, [questions]);
+  // const ageQuestion = useMemo(() => {
+  //   return questions.find((item: any) =>
+  //     item?.question?.toLowerCase()?.includes('age'),
+  //   );
+  // }, [questions]);
 
   const heightQuestion = useMemo(() => {
-    return questions.find((item: any) =>
-      item?.question?.toLowerCase()?.includes('height'),
-    );
+    return questions.find((item: any) => {
+      const q = item?.question?.toLowerCase?.() ?? '';
+      return q.includes('height') || q.includes('weight') || q.includes('body');
+    });
   }, [questions]);
 
-  if (!ageQuestion || !genderQuestion || !heightQuestion) {
+  const weightQuestion = useMemo(() => {
+    const heightId = heightQuestion?.id;
+    return questions.find((item: any) => {
+      const q = item?.question?.toLowerCase?.() ?? '';
+      if (!q.includes('weight')) return false;
+      // Prefer a dedicated weight question when height is separate
+      return !heightId || item.id !== heightId || !q.includes('height');
+    });
+  }, [questions, heightQuestion?.id]);
+
+  // Body-type flow should render only the measurement fields returned by API.
+  if (!heightQuestion && !weightQuestion) {
     return null;
   }
 
-  const ageId = String(ageQuestion.id);
-  const genderId = String(genderQuestion.id);
-  const heightId = String(heightQuestion.id);
+  const heightId = heightQuestion
+    ? String(heightQuestion.id)
+    : weightQuestion
+      ? String(weightQuestion.id)
+      : '';
+  const heightContainsWeight =
+    !!heightQuestion?.question?.toLowerCase?.().includes('weight') ||
+    !!heightQuestion?.question?.toLowerCase?.().includes('height');
 
   return (
     <View style={styles.basicInfoWrapper}>
 
-      <InputCard
-        label="Age *"
-        placeholder="Enter your age"
-        value={selectedAnswers?.[ageId] || ''}
-        onChangeText={(text: any) => onChange(ageId, text)}
-        unit="Years"
-        icon={require('../../assets/images/SVG.png')}
-      />
+      {/* {ageQuestion ? (
+        <InputCard
+          label="Age *"
+          placeholder="Enter your age"
+          value={selectedAnswers?.[ageId] || ''}
+          onChangeText={(text: any) => onChange(ageId, text)}
+          unit="Years"
+          icon={require('../../assets/images/SVG.png')}
+        />
+      ) : null} */}
 
-      {/* ================= GENDER ================= */}
-
-      <View style={styles.basicCard}>
-
-        <View style={styles.inputRow}>
-
-          <View style={styles.iconCircle}>
-
-            {
-              genderQuestion?.icon ? (
-                <Image
-                  source={{
-                    uri: genderQuestion?.image_path,
-                  }}
-                  style={styles.basicIcon}
-                />
-              ) : (
-                <Image
-                  source={require('../../assets/images/SVG1.png')}
-                  style={styles.basicIcon}
-                />
-                // <Ionicons
-                //   name="male-female-outline"
-                //   size={20}
-                //   color={COLORS.primary}
-                // />
-              )
+      {heightId ? (
+        <>
+          <InputCard
+            label="Height *"
+            placeholder="Enter height"
+            value={selectedAnswers?.[`${heightId}_height`] || ''}
+            onChangeText={(text: string) =>
+              onChange(`${heightId}_height`, text)
             }
-          </View>
+            unit="cm"
+            icon={require('../../assets/images/SVG2.png')}
+          />
 
-          <Text style={styles.label}>
-            Gender *
-          </Text>
-        </View>
-
-        <View style={styles.genderWrapper}>
-
-          {
-            genderQuestion?.choices?.map(
-              (item: any) => {
-
-                const active = selectedAnswers?.[genderId] === item?.index;
-
-                return (
-                  <TouchableOpacity
-                    key={item?.index}
-                    activeOpacity={0.8}
-                    onPress={() => onChange(genderId, item.index)}
-                    style={[
-                      styles.genderBtn,
-
-                      active &&
-                      styles.activeGenderBtn,
-                    ]}
-                  >
-
-                    <Text
-                      style={[
-                        styles.genderText,
-
-                        active &&
-                        styles.activeGenderText,
-                      ]}
-                    >
-                      {item?.value}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              },
-            )
-          }
-        </View>
-      </View>
-
-      {/* ================= HEIGHT ================= */}
-
-      <InputCard
-        label="Height *"
-        placeholder="Enter height"
-        value={selectedAnswers?.[`${heightId}_height`] || ''}
-        onChangeText={(text: string) => onChange(`${heightId}_height`, text)}
-        unit="cm"
-        icon={require('../../assets/images/SVG2.png')}
-      />
-
-      <InputCard
-        label="Weight *"
-        placeholder="Enter weight"
-        value={selectedAnswers?.[`${heightId}_weight`] || ''}
-        onChangeText={(text: string) => onChange(`${heightId}_weight`, text)}
-        unit="kg"
-        icon={require('../../assets/images/SVG3.png')}
-      />
+          <InputCard
+            label="Weight *"
+            placeholder="Enter weight"
+            value={
+              selectedAnswers?.[`${heightId}_weight`] ||
+              (weightQuestion && !heightContainsWeight
+                ? selectedAnswers?.[String(weightQuestion.id)]
+                : '') ||
+              ''
+            }
+            onChangeText={(text: string) =>
+              onChange(`${heightId}_weight`, text)
+            }
+            unit="kg"
+            icon={require('../../assets/images/SVG3.png')}
+          />
+        </>
+      ) : null}
     </View>
   );
 };

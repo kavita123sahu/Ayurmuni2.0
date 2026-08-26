@@ -33,7 +33,8 @@ const OrderCard: React.FC<Props> = ({
   moreCount = 0,
   onPress,
 }) => {
-  const isDelivered = status === 'deliverd';
+  const isDelivered =
+    status?.toLowerCase() === 'delivered' || status?.toLowerCase() === 'completed';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>

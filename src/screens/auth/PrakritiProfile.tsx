@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Dimensions,
   StatusBar,
   Image,
+  BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
@@ -165,8 +166,29 @@ const PrakritiProfile = (props: any) => {
     });
   };
 
+  const handleHeaderBack = useCallback(() => {
+    // After PatientFAQ assessment → back is disabled; use Continue to Home
+    if (fromAssessment) {
+      return;
+    }
+    props.navigation.goBack();
+  }, [fromAssessment, props.navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!fromAssessment) {
+        return undefined;
+      }
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Block hardware back after assessment; stay on results
+        return true;
+      });
+      return () => sub.remove();
+    }, [fromAssessment]),
+  );
+
   const handleEditAssessment = () => {
-    props.navigation.navigate('PatientFAQ');
+    props.navigation.navigate('PatientFAQ', { allowBack: true });
   };
 
   const renderEmptyState = () => (
@@ -348,7 +370,11 @@ const PrakritiProfile = (props: any) => {
       <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
       {/* ===== HEADER ===== */}
       <View style={styles.header}>
-        <BackIconButton onPress={() => props.navigation.goBack()} style={styles.iconBtn} />
+        {fromAssessment ? (
+          <View style={[styles.iconBtn, styles.iconBtnPlaceholder]} />
+        ) : (
+          <BackIconButton onPress={handleHeaderBack} style={styles.iconBtn} />
+        )}
 
         <Text style={styles.headerTitle}>Prakriti Analysis</Text>
 

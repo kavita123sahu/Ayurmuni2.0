@@ -36,12 +36,12 @@ const STATUS_FILTERS: { key: StatusFilter; label: string; color: string; bg: str
   { key: 'cancelled',  label: 'Cancelled',  color: '#991B1B', bg: '#FEE2E2' },
 ];
 
-// Statuses that map to each filter key
+// Statuses that map to each filter key (aligned with order_status enum)
 const STATUS_GROUPS: Record<StatusFilter, string[]> = {
   all:        [],
   pending:    ['pending', 'confirmed'],
-  processing: ['processing', 'packed', 'dispatched'],
-  shipped:    ['shipped', 'in_transit', 'out_for_delivery'],
+  processing: ['processing', 'packed'],
+  shipped:    ['dispatched', 'shipped', 'in_transit', 'out_for_delivery'],
   delivered:  ['delivered', 'completed'],
   cancelled:  ['cancelled', 'returned'],
 };
@@ -56,7 +56,6 @@ const OrderHistory = (props: any) => {
   const debouncedSearch = useDebounce(searchText, 400);
 
   const {
-    orders,
     orderListItems,
     loading,
     loadingMore,
@@ -67,22 +66,21 @@ const OrderHistory = (props: any) => {
     loadMore,
   } = useOrders();
 
-  // Smart refresh: only re-fetch when a status actually changed after returning
-  const prevSnapshotRef = useRef<string>('');
-
+  // Refresh when returning to this screen (not on first mount — useOrders already loads)
+  const isFirstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
-      const snap = orders.map((o: any) => `${o?.id}:${o?.order_status}`).join(',');
-      if (prevSnapshotRef.current && prevSnapshotRef.current !== snap) {
-        refresh();
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
       }
-      return () => {
-        prevSnapshotRef.current = orders
-          .map((o: any) => `${o?.id}:${o?.order_status}`)
-          .join(',');
-      };
-    }, [orders, refresh]),
+      refresh();
+    }, [refresh]),
   );
+
+  const handleRefresh = useCallback(() => {
+    refresh();
+  }, [refresh]);
 
   // Filter by search + status chip
   const filteredOrders = useMemo(() => {
@@ -140,7 +138,7 @@ const OrderHistory = (props: any) => {
         subtitle="Track your medicines & labs"
         onBack={() => props.navigation.goBack()}
         onSearchPress={() => setSearchExpanded(true)}
-        onRefreshPress={refresh}
+       
       />
 
       <ExpandableSearch
@@ -217,7 +215,7 @@ const OrderHistory = (props: any) => {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={refresh}
+              onRefresh={handleRefresh}
               colors={[Colors.primaryColor]}
             />
           }

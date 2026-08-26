@@ -52,8 +52,8 @@ const MyProductCard = ({
     const rxRequired = isPrescriptionRequired(item);
     const isPrescribed = type === 'prescribed';
 
-    // prescription_required true → locked qty, no increase / no remove on prescribed
-    // prescription_required false on prescribed → +/- extras to my_cart, no remove
+    // prescription_required true → locked qty (no increase / remove)
+    // prescription_required false on prescribed → increase OK, min qty 1, no remove
     // regular cart → normal controls (increase still blocked in handler if Rx)
     const showLockedQty = isPrescribed && rxRequired;
     const showPrescribedAdjust = isPrescribed && !rxRequired;
@@ -156,6 +156,7 @@ const MyProductCard = ({
                     <BlinkitAddButton
                         quantity={displayQty}
                         compact
+                        minQuantity={1}
                         onAdd={() => updateQuantity(String(item.id), 'plus')}
                         onIncrement={() =>
                             updateQuantity(String(item.id), 'plus')

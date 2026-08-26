@@ -214,16 +214,26 @@ export const getStatusColor = (status: string) => {
   switch (status?.toLowerCase()) {
     case 'deliverd':
     case 'delivered':
+    case 'completed':
       return '#1B5E54'; // Green
 
     case 'pending':
+    case 'confirmed':
       return '#F59E0B'; // Orange
 
     case 'cancelled':
+    case 'returned':
       return '#EF4444'; // Red
 
     case 'processing':
+    case 'packed':
       return '#3366FF'; // Blue
+
+    case 'dispatched':
+    case 'shipped':
+    case 'in_transit':
+    case 'out_for_delivery':
+      return '#92400E'; // Amber/brown
 
     default:
       return '#3366FF';

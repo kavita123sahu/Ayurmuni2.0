@@ -1039,7 +1039,7 @@ import {
     isProfileComplete,
     navigateToCompleteDetails,
     promoteToFullUser,
-    syncAccessFromProfile,
+    resolveAccessLikeProfile,
 } from '../../services/guestAuth';
 import { logoutOneSignalUser } from '../../services/pushNotificationService';
 import LinearGradient from 'react-native-linear-gradient';
@@ -1092,29 +1092,13 @@ const ProfilePage = ({ navigation }: any) => {
                         return;
                     }
 
-                    let profile = await Utils.getData('_USER_INFO');
-
-                    try {
-                        const res: any = await ProfileServices.user_profile();
-                        if (res?.data) {
-                            profile = res.data;
-                            await Utils.storeData('_USER_INFO', res.data);
-                        }
-                    } catch (error) {
-                        console.log('Profile Error:', error);
-                    }
+                    // Same readiness check used by requireAuth / CompleteDetails
+                    const { level, profile, isComplete } =
+                        await resolveAccessLikeProfile();
 
                     if (cancelled) return;
 
-                    // Sync guest/full safely from server profile (never demote completed users)
-                    const level = await syncAccessFromProfile(profile);
-                    const guest =
-                        level === 'guest' &&
-                        (await isGuestUser()) &&
-                        !isProfileComplete(profile);
-
-                    // Extra safety: completed profile always shows full UI
-                    if (isProfileComplete(profile) || level === 'full') {
+                    if (isComplete || level === 'full' || isProfileComplete(profile)) {
                         await promoteToFullUser();
                         if (!cancelled) {
                             setIsGuest(false);
@@ -1123,6 +1107,7 @@ const ProfilePage = ({ navigation }: any) => {
                         return;
                     }
 
+                    const guest = level === 'guest' && (await isGuestUser());
                     if (!cancelled) {
                         setIsGuest(guest);
                         setUser(guest ? null : profile);

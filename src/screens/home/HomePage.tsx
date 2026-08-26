@@ -847,9 +847,7 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
                 style={styles.yesButton}
                 onPress={() => {
                   setShowPrakritiModal(false);
-                  props.navigation.navigate(
-                    "PatientFAQ"
-                  );
+                  props.navigation.navigate('PatientFAQ', { allowBack: false });
                 }}
               >
                 <Text style={styles.yesText}>

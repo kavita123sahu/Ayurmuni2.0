@@ -97,6 +97,8 @@ type FlowProps = {
 type Props = FlowProps & {
   config: QuestionnaireConfig;
   onExit?: () => void;
+  /** When false, header back / exit on first step is disabled */
+  allowExit?: boolean;
 };
 
 const DoshaPill = memo(
@@ -328,6 +330,7 @@ const QuestLayoutInner = ({
   streak = 0,
   xp,
   onExit,
+  allowExit = true,
   mode = 'prakriti',
   basicInfoStep,
   rawQuestions,
@@ -338,6 +341,7 @@ const QuestLayoutInner = ({
   const theme = isMedical ? THEME.medical : THEME.prakriti;
   const { play, muted, toggleMuted } = useQuestSound();
   useQuestStartSound(!loading && !!currentStep);
+  const canExitQuest = allowExit || step > 0;
 
   const prevStepForSound = useRef(step);
   const cardKey = `${getStepKey(currentStep)}-${step}`;
@@ -376,8 +380,15 @@ const QuestLayoutInner = ({
     handleSelect(item);
   };
 
-  const onHeaderBack = () => handleBack();
-  const onExitQuest = () => (onExit ? onExit() : handleBack());
+  const onHeaderBack = () => {
+    if (!canExitQuest && step === 0) return;
+    handleBack();
+  };
+  const onExitQuest = () => {
+    if (!allowExit) return;
+    if (onExit) onExit();
+    else handleBack();
+  };
 
   if (loading && !currentStep) {
     return (
@@ -420,8 +431,17 @@ const QuestLayoutInner = ({
       <SafeAreaView style={styles.safeOuter} edges={['top', 'bottom']}>
         {/* Dense brand + actions row */}
         <View style={styles.topBar}>
-          <Pressable onPress={onHeaderBack} style={styles.iconBtn} hitSlop={8}>
-            <TablerIcon name="arrow-left" size={18} color={QUEST.ink} />
+          <Pressable
+            onPress={onHeaderBack}
+            style={[styles.iconBtn, !canExitQuest && step === 0 && styles.iconBtnDisabled]}
+            hitSlop={8}
+            disabled={!canExitQuest && step === 0}
+          >
+            <TablerIcon
+              name="arrow-left"
+              size={18}
+              color={!canExitQuest && step === 0 ? '#CBD5E1' : QUEST.ink}
+            />
           </Pressable>
 
           <View style={styles.brandRow}>
@@ -703,6 +723,9 @@ const styles = StyleSheet.create({
     borderColor: QUEST.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconBtnDisabled: {
+    opacity: 0.4,
   },
   brandRow: {
     flex: 1,
