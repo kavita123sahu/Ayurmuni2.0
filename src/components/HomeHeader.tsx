@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     container: {
         // Keep equal top/bottom — matches HOME_HEADER_CONTENT_HEIGHT
         paddingTop: 8,
-        paddingBottom: 8,
+        paddingBottom: 4,
         backgroundColor: '#fff',
         paddingHorizontal: 0,
     },

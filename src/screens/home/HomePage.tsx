@@ -696,7 +696,7 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
               navigation={props.navigation}
               home
             />
-            <ProductDiscoverySection
+            <ProductDiscoverySection0
               section="personalized"
               navigation={props.navigation}
               home
@@ -886,6 +886,8 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     overflow: 'hidden',
     borderRadius: 14,
+    paddingTop: 4,
+    marginBottom: -26,
   },
   horizontalList: HORIZONTAL_SCROLL_CONTENT,
   comingSoonGroup: {
@@ -960,6 +962,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
     overflow: 'visible',
     justifyContent: 'flex-start',
+    marginBottom: 4,
   },
   categoryDock: {
     ...getHorizontalScrollBleedStyle(),

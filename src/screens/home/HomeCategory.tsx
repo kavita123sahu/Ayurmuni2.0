@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   item: {
-    width: ITEM_WIDTH - 15,
+    width: ITEM_WIDTH - 19,
     alignItems: 'center',
     marginRight: ITEM_GAP,
   },
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   label: {
-    marginTop: 2,
+    marginTop: 1,
     fontSize: 10,
     lineHeight: 13,
     height: 13,

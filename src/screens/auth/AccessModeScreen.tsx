@@ -63,7 +63,7 @@ const AccessModeScreen = ({ navigation }: any) => {
             </View>
             <View style={styles.verifiedRow}>
               <TablerIcon name="circle-check" size={16} color="#D4AF37" />
-              <Text style={styles.verifiedText}>Phone verified</Text>
+              <Text style={styles.verifiedText}>Your phone number is verified</Text>
             </View>
             <Text style={styles.heroTitle}>Welcome to Ayurmuni</Text>
             <Text style={styles.heroSub}>
@@ -105,7 +105,7 @@ const AccessModeScreen = ({ navigation }: any) => {
               {loading === 'onboard' ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
+                <TablerIcon name="chevron-right" size={18} color="#FFFFFF" />
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -172,6 +172,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
+    alignSelf: 'center',
   },
   logo: {
     width: 40,
