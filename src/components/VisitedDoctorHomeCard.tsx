@@ -21,7 +21,6 @@ import type { RecentVisitedDoctor } from '../hooks/useRecentVisitedDoctors';
 type Props = {
   item: RecentVisitedDoctor;
   onPress?: () => void;
-  onConsultPress?: () => void;
 };
 
 const canConsultAgain = (item: RecentVisitedDoctor) => {
@@ -29,7 +28,7 @@ const canConsultAgain = (item: RecentVisitedDoctor) => {
   return item.is_active !== false && status !== 'suspended';
 };
 
-const VisitedDoctorHomeCard = ({ item, onPress, onConsultPress }: Props) => {
+const VisitedDoctorHomeCard = ({ item, onPress }: Props) => {
   const photo = item.doctor_image
     ? { uri: String(item.doctor_image) }
     : Images.doctorImage;
@@ -69,9 +68,10 @@ const VisitedDoctorHomeCard = ({ item, onPress, onConsultPress }: Props) => {
             <Text style={styles.name} numberOfLines={1}>
               {item.doctor_name}
             </Text>
-            {item.is_favorite ? (
-              <TablerIcon name="heart-filled" size={13} color="#E11D48" />
-            ) : null}
+            <View style={styles.ratingBadge}>
+              <TablerIcon name="star-filled" size={11} color="#F59E0B" />
+              <Text style={styles.ratingText}>{ratingLabel}</Text>
+            </View>
           </View>
 
           <View style={styles.specialtyRow}>
@@ -84,11 +84,6 @@ const VisitedDoctorHomeCard = ({ item, onPress, onConsultPress }: Props) => {
               </Text>
             )}
           </View>
-
-          <View style={styles.ratingBadge}>
-            <TablerIcon name="star-filled" size={11} color="#F59E0B" />
-            <Text style={styles.ratingText}>{ratingLabel}</Text>
-          </View>
         </View>
       </View>
 
@@ -100,20 +95,19 @@ const VisitedDoctorHomeCard = ({ item, onPress, onConsultPress }: Props) => {
 
       <View style={styles.footer}>
         <Text style={styles.fee} numberOfLines={1}>
-          {feeLabel || 'Consult'}
+          {feeLabel || 'Consultation'}
         </Text>
-        <Pressable
-          style={[styles.cta, !available && styles.ctaOff]}
-          onPress={e => {
-            e.stopPropagation();
-            if (available) onConsultPress?.();
-          }}
-          disabled={!available}
-        >
-          <Text style={styles.ctaText}>
-            {available ? 'Consult again' : 'Unavailable'}
-          </Text>
-        </Pressable>
+        {available ? (
+          <View style={styles.availablePill}>
+            <Text style={styles.availablePillText}>Available</Text>
+          </View>
+        ) : (
+          <View style={[styles.availablePill, styles.unavailablePill]}>
+            <Text style={[styles.availablePillText, styles.unavailablePillText]}>
+              Unavailable
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -176,7 +170,6 @@ const styles = StyleSheet.create({
   specialtyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 8,
     marginTop: 2,
   },
@@ -198,7 +191,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -229,18 +221,24 @@ const styles = StyleSheet.create({
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  cta: {
-    backgroundColor: Colors.primaryColor,
+  availablePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
-  ctaOff: {
-    backgroundColor: '#94A3B8',
-  },
-  ctaText: {
+  availablePillText: {
     fontSize: 11,
-    color: '#FFFFFF',
+    color: '#047857',
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  unavailablePill: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+  },
+  unavailablePillText: {
+    color: '#64748B',
   },
 });

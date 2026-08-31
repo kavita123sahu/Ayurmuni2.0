@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchCart, syncCartQuantity, selectCartCount } from '../store/slices/cartSlice';
-import { showSuccessToast } from '../config/Key';
 import { requireAuth } from '../services/guestAuth';
 
 type FetchCartOptions = boolean | { force?: boolean; silent?: boolean };
@@ -124,13 +123,7 @@ export const useCartActions = (): UseCartActionsReturn => {
       if (syncCartQuantity.rejected.match(result)) {
         return false;
       }
-      console.log("cartttttAPIIIIIIIIIIIIIII", result);
-      if (syncCartQuantity.fulfilled.match(result)) {
-        //result.payload?.message ||
-        showSuccessToast('Added to cart', 'success');
-        return true;
-      }
-      return false;
+      return syncCartQuantity.fulfilled.match(result);
     },
     [dispatch],
   );

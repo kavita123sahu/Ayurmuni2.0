@@ -27,25 +27,20 @@ export const HOME_DOCTOR = {
 //   HOME_DOCTOR.cardPadding;
 
 export const HOME_DOCTOR_CARD_HEIGHT =
-  HOME_DOCTOR.cardPadding * 4 +
+  HOME_DOCTOR.cardPadding * 2 +
   // Avatar
-  (HOME_DOCTOR.avatarSize + 12) +
-  6 +
+  (HOME_DOCTOR.avatarSize + 14) +
+  8 +
   // Name
   HOME_DOCTOR.nameHeight +
   // Qualification
   HOME_DOCTOR.qualHeight +
-  // Rating + Consultations
+  // Rating + Experience
   28 +
   8 +
-  // Experience + Feedback
-  48 +
-  7 +
   // Fee
   20 +
-  6 +
-  // CTA
-  HOME_DOCTOR.ctaHeight;
+  HOME_DOCTOR.cardPadding;
 
 export const getHomeDoctorCardWidth = () =>
   PixelRatio.roundToNearestPixel(
@@ -75,8 +70,6 @@ export const DOCTOR_GRID_BODY_HEIGHT =
   DOCTOR_GRID.specialtyHeight +
   6 +
   DOCTOR_GRID.statsHeight +
-  6 +
-  DOCTOR_GRID.ctaHeight +
   DOCTOR_GRID.cardPaddingBottom;
 
 export const DOCTOR_GRID_CARD_HEIGHT =

@@ -123,6 +123,7 @@ export type DietPlanListParams = {
     page?: number;
     page_size?: number;
     search?: string;
+    health_category_id?: string | number;
     health_disease_id?: string | number;
     prakriti?: string;
     is_paid?: boolean | string;
@@ -148,6 +149,12 @@ export const getDietPlans = async (params?: DietPlanListParams) => {
         // }
         if (params?.search != null && String(params.search).trim() !== '') {
             query.set('search', String(params.search).trim());
+        }
+        if (
+            params?.health_category_id != null &&
+            String(params.health_category_id).trim() !== ''
+        ) {
+            query.set('health_category_id', String(params.health_category_id));
         }
         if (
             params?.health_disease_id != null &&

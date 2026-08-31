@@ -283,8 +283,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   compact: {
-    height: 40,
-    borderRadius: 10,
+    height: 44,
+    borderRadius: 12,
   },
   icon: {
     width: 18,

@@ -261,7 +261,7 @@ export const buildVariantGallery = (variant: any): any[] => {
     const key = dedupeKey(m) || uri;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push(m);
+    out.push(typeof m === 'string' ? { media_url: uri, media_type: 'image' } : m);
   };
 
   if (cover) push(cover);
@@ -274,6 +274,185 @@ export const buildVariantGallery = (variant: any): any[] => {
     .forEach(push);
 
   return out;
+};
+
+const asMediaList = (value: unknown): any[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const uri = sanitizeImageUri(value);
+    return uri ? [{ media_url: uri, media_type: 'image' }] : [];
+  }
+  if (typeof value === 'object') return [value];
+  return [];
+};
+
+/**
+ * Product + variant gallery: variant media first, then product-level /
+ * A+ / additional images so the carousel has more than a single cover.
+ */
+export const buildProductGallery = (variant: any, product?: any): any[] => {
+  const seen = new Set<string>();
+  const out: any[] = [];
+
+  const push = (m: any) => {
+    if (!m) return;
+    const uri = mediaItemUrl(m) || resolveImageUri(m);
+    if (!uri) return;
+    const key = String(m?.id ?? uri);
+    if (seen.has(key) || seen.has(uri)) return;
+    seen.add(key);
+    seen.add(uri);
+    out.push(
+      typeof m === 'string' || !m?.media_url
+        ? { media_url: uri, media_type: 'image' }
+        : m,
+    );
+  };
+
+  buildVariantGallery(variant).forEach(push);
+
+  const productSources = [
+    product?.cover_image,
+    ...(asMediaList(product?.media)),
+    ...(asMediaList(product?.images)),
+    ...(asMediaList(product?.product_images)),
+    ...(asMediaList(product?.gallery_images)),
+    ...(asMediaList(product?.additional_images)),
+    ...(asMediaList(product?.a_plus_images)),
+    ...(asMediaList(product?.a_plus_content?.images)),
+    ...(asMediaList(product?.a_plus?.images)),
+    ...(asMediaList(product?.rich_content?.images)),
+  ];
+
+  productSources.forEach(push);
+
+  // Nested A+ blocks that may carry image_url / media_url
+  const aPlusBlocks = extractAPlusBlocks(product);
+  aPlusBlocks.forEach(block => {
+    if (block.imageUri) {
+      push({ media_url: block.imageUri, media_type: 'image' });
+    }
+  });
+
+  return out;
+};
+
+export type APlusBlock = {
+  id: string;
+  title?: string;
+  body?: string;
+  imageUri?: string;
+};
+
+/** Normalize A+ / rich product marketing content from varied API shapes. */
+export const extractAPlusBlocks = (product: any): APlusBlock[] => {
+  if (!product) return [];
+
+  const blocks: APlusBlock[] = [];
+  const pushBlock = (raw: any, index: number) => {
+    if (!raw) return;
+    if (typeof raw === 'string') {
+      const uri = sanitizeImageUri(raw);
+      if (uri) {
+        blocks.push({ id: `aplus-img-${index}`, imageUri: uri });
+        return;
+      }
+      const text = raw.trim();
+      if (text) {
+        blocks.push({ id: `aplus-text-${index}`, body: text });
+      }
+      return;
+    }
+
+    const imageUri =
+      mediaItemUrl(raw) ||
+      resolveImageUri(raw?.image) ||
+      resolveImageUri(raw?.image_url) ||
+      resolveImageUri(raw?.media_url) ||
+      resolveImageUri(raw?.banner_image);
+
+    const title = String(
+      raw?.title || raw?.heading || raw?.name || '',
+    ).trim();
+    const body = String(
+      raw?.description ||
+        raw?.body ||
+        raw?.content ||
+        raw?.text ||
+        raw?.html ||
+        '',
+    ).trim();
+
+    if (!imageUri && !title && !body) return;
+    blocks.push({
+      id: String(raw?.id ?? `aplus-${index}`),
+      title: title || undefined,
+      body: body || undefined,
+      imageUri: imageUri || undefined,
+    });
+  };
+
+  const candidates = [
+    product?.a_plus_content,
+    product?.a_plus,
+    product?.aplus_content,
+    product?.rich_content,
+    product?.enhanced_content,
+    product?.marketing_content,
+  ];
+
+  candidates.forEach(candidate => {
+    if (!candidate) return;
+    if (Array.isArray(candidate)) {
+      candidate.forEach(pushBlock);
+      return;
+    }
+    if (Array.isArray(candidate?.blocks)) {
+      candidate.blocks.forEach(pushBlock);
+      return;
+    }
+    if (Array.isArray(candidate?.sections)) {
+      candidate.sections.forEach(pushBlock);
+      return;
+    }
+    if (Array.isArray(candidate?.images)) {
+      candidate.images.forEach(pushBlock);
+    }
+    if (typeof candidate === 'object') {
+      pushBlock(candidate, blocks.length);
+    }
+  });
+
+  // Deduplicate by image/body
+  const seen = new Set<string>();
+  return blocks.filter(block => {
+    const key = `${block.imageUri || ''}|${block.title || ''}|${block.body || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+/** Split long text into highlight-style bullet lines when possible. */
+export const splitHighlightLines = (text?: string | null): string[] => {
+  const value = String(text || '').trim();
+  if (!value) return [];
+
+  const byBreak = value
+    .split(/\n+|•|●|◆|■|\u2022/)
+    .map(s => s.replace(/^[-–—\d.)\s]+/, '').trim())
+    .filter(Boolean);
+
+  if (byBreak.length > 1) return byBreak.slice(0, 8);
+
+  const bySentence = value
+    .split(/[.!?]+\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 12);
+
+  if (bySentence.length > 1) return bySentence.slice(0, 6);
+  return [value];
 };
 
 export const resolveImageSource = (image: unknown) => {

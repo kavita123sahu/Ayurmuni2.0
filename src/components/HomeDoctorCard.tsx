@@ -1,11 +1,9 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { Fonts } from '../common/Fonts';
-import { Colors } from '../common/Colors';
 import { Ionicons } from '../common/Vector';
 import { Images } from '../common/Images';
 import AvailabilityDot from './AvailabilityDot';
-import { formatCompactCount } from '../utils/formatCount';
 import {
   HOME_DOCTOR,
   HOME_DOCTOR_CARD_HEIGHT,
@@ -31,23 +29,15 @@ const HomeDoctorCard = ({
   speciality,
   qualification,
   ratingLabel,
-  reviews,
   experience,
   feeLabel,
-  totalPatients,
   imageUri,
   available = false,
   onPress,
   cardWidth,
 }: Props) => {
   const photo = imageUri ? { uri: imageUri } : Images.doctorImage;
-  const reviewCount =
-    reviews != null && String(reviews).trim() !== '' ? String(reviews) : '0';
   const subtitle = qualification || speciality || 'Ayurveda Specialist';
-
-  const consultLabel = formatCompactCount(
-    totalPatients ?? reviews ?? 0,
-  );
 
   return (
     <Pressable
@@ -85,7 +75,6 @@ const HomeDoctorCard = ({
         {subtitle}
       </Text>
 
-      {/* Rating + Consultation */}
       <View style={styles.topStatsRow}>
         <View style={styles.topStat}>
           <Ionicons name="star" size={12} color="#F5B301" />
@@ -97,52 +86,16 @@ const HomeDoctorCard = ({
         <View style={styles.divider} />
 
         <View style={styles.topStat}>
-          <Ionicons name="people-outline" size={12} color="#64748B" />
+          <Ionicons name="time-outline" size={12} color="#16A34A" />
           <Text style={styles.topStatText} numberOfLines={1}>
-            {consultLabel} Consults
+            {experience}+ yrs
           </Text>
         </View>
       </View>
 
-      {/* Experience + Feedback */}
-      <View style={styles.highlightStats}>
-        <View style={styles.highlightStat}>
-          <Text style={styles.highlightValue} numberOfLines={1}>
-            {experience}+
-          </Text>
-          <Text style={styles.highlightLabel}>
-            Years Experience
-          </Text>
-        </View>
-
-        <View style={styles.highlightDivider} />
-
-        <View style={styles.highlightStat}>
-          <Text style={styles.highlightValue} numberOfLines={1}>
-            {reviewCount}
-          </Text>
-          <Text style={styles.highlightLabel}>
-            Feedback
-          </Text>
-        </View>
-      </View>
-
-      {/* Fee */}
       <View style={styles.feeRow}>
         <Text style={styles.feeLabel}>Fees</Text>
-
-        {feeLabel ? (
-          <Text style={styles.fee}>
-            ₹{feeLabel}
-          </Text>
-        ) : null}
-      </View>
-
-      {/* CTA */}
-      <View style={styles.cta}>
-        <Text style={styles.ctaText}>
-          Consult Now
-        </Text>
+        {feeLabel ? <Text style={styles.fee}>₹{feeLabel}</Text> : null}
       </View>
     </Pressable>
   );
@@ -243,44 +196,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsRegular,
     textAlign: 'center',
   },
-  statsRow: {
-    width: '100%',
-    height: HOME_DOCTOR.statsHeight,
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaPill: {
-    flex: 1,
-    minWidth: 0,
-    height: HOME_DOCTOR.statsHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    backgroundColor: '#F4F7F6',
-    borderRadius: 999,
-    paddingHorizontal: 4,
-  },
-  metaText: {
-    flexShrink: 1,
-    fontSize: 10,
-    lineHeight: 14,
-    color: '#475569',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  feeAboveCta: {
-    width: '100%',
-    textAlign: 'right',
-    fontSize: 12,
-    lineHeight: 16,
-    color: '#C2410C',
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginTop: 8,
-    minHeight: 16,
-  },
-
   topStatsRow: {
     width: '100%',
     height: 28,
@@ -292,7 +207,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 7,
   },
-
   topStat: {
     flex: 1,
     flexDirection: 'row',
@@ -301,7 +215,6 @@ const styles = StyleSheet.create({
     gap: 3,
     minWidth: 0,
   },
-
   topStatText: {
     flexShrink: 1,
     fontSize: 9.5,
@@ -309,53 +222,11 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
   },
-
   divider: {
     width: 1,
     height: 14,
     backgroundColor: '#DCE4E0',
   },
-
-  highlightStats: {
-    width: '100%',
-    marginTop: 8,
-    paddingVertical: 7,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F9F5',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#DCEFE6',
-  },
-
-  highlightStat: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  highlightValue: {
-    fontSize: 14,
-    lineHeight: 18,
-    color: '#0D614E',
-    fontFamily: Fonts.PoppinsBold,
-  },
-
-  highlightLabel: {
-    marginTop: 1,
-    fontSize: 8.5,
-    lineHeight: 12,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-    textAlign: 'center',
-  },
-
-  highlightDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#CFE5DC',
-  },
-
   feeRow: {
     width: '100%',
     marginTop: 7,
@@ -364,33 +235,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 20,
   },
-
   feeLabel: {
     fontSize: 9,
     color: '#404751',
     fontFamily: Fonts.PoppinsSemiBold,
   },
-
   fee: {
     fontSize: 13,
     lineHeight: 18,
     color: '#C2410C',
     fontFamily: Fonts.PoppinsBold,
-  },
-
-  cta: {
-    width: '100%',
-    height: HOME_DOCTOR.ctaHeight,
-    marginTop: 6,
-    borderRadius: HOME_DOCTOR.ctaRadius,
-    backgroundColor: Colors.primaryColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

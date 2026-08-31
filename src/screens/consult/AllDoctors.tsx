@@ -29,6 +29,10 @@ import AppHeader from '../../components/AppHeader';
 import AllDoctorCard from '../../components/AllDoctorCard';
 import { Images } from '../../common/Images';
 import { doctorListKey } from '../../utils/listKeys';
+import {
+    DOCTOR_GRID,
+    getDoctorGridCardWidth,
+} from '../../constants/doctorGridLayout';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
@@ -37,7 +41,7 @@ import { generateDates, formatDate, AVAILABILITY_OPTIONS, EXPERIENCE_OPTIONS } f
 import { useAllDoctors, useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
 import { useDebounce, } from '../../hooks/useDebaunce';
-import { DoctorCardSkeleton } from '../../simmerScreen/ShimmerHook';
+import { TopDoctorsCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import FilterTabs from '../../components/FilterTab';
 
 type SelectedFilters = {
@@ -48,7 +52,15 @@ type SelectedFilters = {
     experience: string;
 };
 
+type HubSection = 'doctors' | 'products' | 'diet';
 
+const HUB_SECTIONS: Array<{ key: HubSection; label: string }> = [
+    { key: 'doctors', label: 'Doctors' },
+    { key: 'products', label: 'Products' },
+    { key: 'diet', label: 'Diet' },
+];
+
+const CARD_W = getDoctorGridCardWidth();
 
 const AllDoctors = (props: any) => {
     const insets = useSafeAreaInsets();
@@ -87,6 +99,7 @@ const AllDoctors = (props: any) => {
     const [selectedDateLabel, setSelectedDateLabel] = useState('');
     const [searchText, setSearchText] = useState('');
     const [searchExpanded, setSearchExpanded] = useState(false);
+    const [hubSection, setHubSection] = useState<HubSection>('doctors');
 
     const { categories } = useConsultData({
         fetchCategories: true,
@@ -263,20 +276,32 @@ const AllDoctors = (props: any) => {
             [props.navigation],
         );
 
-
+    const handleHubSectionPress = useCallback(
+        (section: HubSection) => {
+            if (section === 'doctors') {
+                setHubSection('doctors');
+                return;
+            }
+            if (section === 'products') {
+                props.navigation.navigate('ProductsScreen');
+                return;
+            }
+            props.navigation.navigate('DietScreen');
+        },
+        [props.navigation],
+    );
 
     const renderDoctorItem =
         useCallback(
             ({ item }: any) => (
-
-                <AllDoctorCard
-                    item={item}
-                    onPress={() =>
-                        handleDoctorPress(item)
-                    }
-                // refrsh={props?.route?.params?.refrsh}
-                />
-
+                <View style={styles.cardWrap}>
+                    <AllDoctorCard
+                        item={item}
+                        variant="grid"
+                        cardWidth={CARD_W}
+                        onPress={() => handleDoctorPress(item)}
+                    />
+                </View>
             ),
             [handleDoctorPress],
         );
@@ -301,17 +326,42 @@ const AllDoctors = (props: any) => {
 
                 <View style={styles.headerWrap}>
                     <AppHeader
-                        title="All Doctors"
+                        title="Explore"
                         leftIconName='arrow-left'
                         onLeftPress={() =>
                             props.navigation.goBack()
                         }
                         onSearchPress={() => setSearchExpanded(true)}
-                        // onRefreshPress={refresh}
                     />
                 </View>
 
                 <View style={styles.body}>
+                    <View style={styles.hubRow}>
+                        {HUB_SECTIONS.map(section => {
+                            const active = hubSection === section.key;
+                            return (
+                                <TouchableOpacity
+                                    key={section.key}
+                                    activeOpacity={0.85}
+                                    onPress={() => handleHubSectionPress(section.key)}
+                                    style={[
+                                        styles.hubChip,
+                                        active && styles.hubChipActive,
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.hubChipText,
+                                            active && styles.hubChipTextActive,
+                                        ]}
+                                    >
+                                        {section.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
                     <ExpandableSearch
                         placeholder="Search doctors..."
                         value={searchText}
@@ -336,22 +386,19 @@ const AllDoctors = (props: any) => {
                         setShowCalendar={setShowCalendar}
                     />
 
-
-
                     {loading ?
-                        <DoctorCardSkeleton />
+                        <TopDoctorsCardSkeleton count={6} />
 
                         : <FlatList
                             data={doctorData}
-
                             keyExtractor={(item, index) =>
                                 doctorListKey(item, index)
                             }
-
+                            numColumns={2}
+                            columnWrapperStyle={styles.columnWrap}
                             showsVerticalScrollIndicator={
                                 false
                             }
-
                             contentContainerStyle={[
                                 styles.listContent,
                                 { paddingBottom: insets.bottom + 24 },
@@ -364,16 +411,13 @@ const AllDoctors = (props: any) => {
                                     tintColor={Colors.primaryColor}
                                 />
                             }
-
                             renderItem={renderDoctorItem}
-
                             initialNumToRender={10}
                             maxToRenderPerBatch={10}
                             windowSize={5}
                             removeClippedSubviews
                             updateCellsBatchingPeriod={50}
                             ListEmptyComponent={() => (
-
                                 <EmptyState
                                     image={Images.doctorImage}
                                     title="No doctor found"
@@ -487,8 +531,49 @@ const styles = StyleSheet.create({
     },
 
     listContent: {
-        // paddingHorizontal: 20,
         paddingBottom: 120,
+    },
+
+    hubRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 12,
+    },
+
+    hubChip: {
+        flex: 1,
+        height: 36,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+
+    hubChipActive: {
+        backgroundColor: '#ECFDF5',
+        borderColor: Colors.primaryColor,
+    },
+
+    hubChipText: {
+        fontSize: 13,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+
+    hubChipTextActive: {
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    columnWrap: {
+        justifyContent: 'space-between',
+        marginBottom: DOCTOR_GRID.gap,
+    },
+
+    cardWrap: {
+        width: CARD_W,
     },
 
     modalOverlay: {

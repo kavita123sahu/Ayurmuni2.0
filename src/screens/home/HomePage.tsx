@@ -107,7 +107,7 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
-console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts)
+  console.log("storeProductsstoreProductsstoreProductsstoreProducts", storeProducts)
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -423,7 +423,6 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
           <HomeHeader
             progress1={Math.round(customerData?.prakriti_progress || 0)}
             progress2={Math.round(customerData?.medical_history_progress || 0)}
-            onSearchPress={handleSearchPress}
           />
         </Animated.View>
 
@@ -434,16 +433,11 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
             showMicIcon
             onMicPress={handleSearchPress}
             compact
+            containerStyle={styles.homeSearchBar}
           />
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.categoryDock,
-            { marginTop: 4 },
-            categoryAnimatedStyle,
-          ]}
-        >
+        <Animated.View style={[styles.categoryDock, categoryAnimatedStyle]}>
           {loadingCategories ? (
             <HomeCategorySkeleton compact />
           ) : (
@@ -539,22 +533,22 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
                         />
                       ) : null}
                       {homeAppointmentList?.length > 0 ? (
-                          <FlatList
-                            horizontal
-                            data={homeAppointmentList}
-                            keyExtractor={(item, index) =>
-                              `${item?.consultation_id || index}`
-                            }
-                            contentContainerStyle={styles.horizontalList}
-                            renderItem={({ item }) => (
-                              <RenderAppoint
-                                item={item}
-                                navigation={props.navigation}
-                                isHorizontal
-                              />
-                            )}
-                            showsHorizontalScrollIndicator={false}
-                          />
+                        <FlatList
+                          horizontal
+                          data={homeAppointmentList}
+                          keyExtractor={(item, index) =>
+                            `${item?.consultation_id || index}`
+                          }
+                          contentContainerStyle={styles.horizontalList}
+                          renderItem={({ item }) => (
+                            <RenderAppoint
+                              item={item}
+                              navigation={props.navigation}
+                              isHorizontal
+                            />
+                          )}
+                          showsHorizontalScrollIndicator={false}
+                        />
                       ) : null}
                     </>
                   )}
@@ -587,7 +581,7 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
             )}
 
             {(loadingVisitedDoctors && visitedDoctors.length === 0) ||
-            visitedDoctors.length > 0 ? (
+              visitedDoctors.length > 0 ? (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
@@ -619,14 +613,6 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
                             props.navigation;
                           stackNav.navigate('DoctorProfile', {
                             doctorData: mapRecentDoctorToNavPayload(item),
-                          });
-                        }}
-                        onConsultPress={() => {
-                          const stackNav =
-                            props.navigation.getParent?.() ||
-                            props.navigation;
-                          stackNav.navigate('DoctorSlot', {
-                            doctorDetails: mapRecentDoctorToNavPayload(item),
                           });
                         }}
                       />
@@ -690,13 +676,12 @@ console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts
                 />
               </View>
             )}
-
             <ProductDiscoverySection
               section="featured"
               navigation={props.navigation}
               home
             />
-            <ProductDiscoverySection0
+            <ProductDiscoverySection
               section="personalized"
               navigation={props.navigation}
               home
@@ -969,6 +954,18 @@ const styles = StyleSheet.create({
   },
   searchDock: {
     width: '100%',
+  },
+  homeSearchBar: {
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E1',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   containerprakriti: {
     flexDirection: 'row',

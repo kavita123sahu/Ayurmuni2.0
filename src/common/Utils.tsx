@@ -107,6 +107,19 @@ export type WishlistUpdatedPayload = {
   isWishlisted: boolean;
 };
 
+/** Broadcast cart adds so root overlay can show "Added to cart" without navigating. */
+export const CartEvents = new SimpleEventEmitter();
+
+export const CART_ITEM_ADDED = 'CART_ITEM_ADDED';
+
+export type CartItemAddedPayload = {
+  variantId: string;
+  quantity: number;
+  productName?: string;
+  image?: string;
+  cartCount?: number;
+};
+
 /** Home Join banner should refresh / hide after call ends. */
 export const CallEvents = new SimpleEventEmitter();
 

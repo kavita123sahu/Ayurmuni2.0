@@ -943,6 +943,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
+    Image,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
@@ -971,9 +972,11 @@ import TablerIcon from '../../components/TablerIcon';
 import ProductDetailsDiscovery from '../../components/ProductDetailsDiscovery';
 import { TogglewishlistProduct } from '../../services/ProductServices';
 import {
-    buildVariantGallery,
+    buildProductGallery,
     cacheVariantImage,
+    extractAPlusBlocks,
     resolveProductImageUri,
+    splitHighlightLines,
 } from '../../utils/imageUtils';
 import {
     canAddProductWithoutPrescription,
@@ -1053,7 +1056,7 @@ const ProductDetails = (props: any) => {
 
     useEffect(() => {
         // Quantity picker is "how many to add", not absolute cart qty.
-        setQuantity(1);
+        setQuantity(parseInt(selectedVariant?.cart_quantity));
     }, [selectedVariant?.id]);
 
     useEffect(() => {
@@ -1070,8 +1073,13 @@ const ProductDetails = (props: any) => {
     ]);
 
     const galleryImages = useMemo(
-        () => buildVariantGallery(selectedVariant),
-        [selectedVariant],
+        () => buildProductGallery(selectedVariant, ProductData),
+        [selectedVariant, ProductData],
+    );
+
+    const aPlusBlocks = useMemo(
+        () => extractAPlusBlocks(ProductData),
+        [ProductData],
     );
 
     const coverImageUri = useMemo(
@@ -1124,9 +1132,7 @@ const ProductDetails = (props: any) => {
             currentQuantity: existingCartQty,
             prescriptionRequired: isPrescriptionRequired(productForRx),
         });
-        if (success) {
-            props.navigation.navigate('MyCart');
-        } else {
+        if (!success) {
             showSuccessToast('Try again to add into cart', 'error');
         }
     };
@@ -1186,10 +1192,21 @@ const ProductDetails = (props: any) => {
         (Number(selectedVariant?.selling_price) || 0),
     );
 
-    const fullDescription = String(ProductData?.full_description || '').trim();
-    const shortDescription =
-        fullDescription.length > 140 && !descExpanded
-            ? `${fullDescription.slice(0, 140).trim()}…`
+    const fullDescription = String(
+        ProductData?.full_description || ProductData?.description || '',
+    ).trim();
+    const shortDescription = String(
+        ProductData?.short_description || '',
+    ).trim();
+    const highlightSource =
+        ProductData?.benifits || ProductData?.highlights || '';
+    const highlightLines = useMemo(
+        () => splitHighlightLines(highlightSource),
+        [highlightSource],
+    );
+    const aboutPreview =
+        fullDescription.length > 180 && !descExpanded
+            ? `${fullDescription.slice(0, 180).trim()}…`
             : fullDescription;
 
     const sheetBody = useMemo(() => {
@@ -1352,23 +1369,7 @@ const ProductDetails = (props: any) => {
                     <Text style={styles.productName}>{ProductData?.name}</Text>
 
                     {!!shortDescription && (
-                        <View>
-                            <Text style={styles.description}>{shortDescription}</Text>
-                            {fullDescription.length > 140 ? (
-                                <TouchableOpacity
-                                    onPress={() =>
-                                        descExpanded
-                                            ? setDescExpanded(false)
-                                            : setActiveSheet('description')
-                                    }
-                                    hitSlop={8}
-                                >
-                                    <Text style={styles.readMore}>
-                                        {descExpanded ? 'Show less' : 'Read more'}
-                                    </Text>
-                                </TouchableOpacity>
-                            ) : null}
-                        </View>
+                        <Text style={styles.shortDescription}>{shortDescription}</Text>
                     )}
 
                     <View style={styles.priceBlock}>
@@ -1510,6 +1511,72 @@ const ProductDetails = (props: any) => {
                         }
                     />
                 </View> */}
+
+                {/* Flipkart/Amazon-style highlights + about */}
+                {(highlightLines.length > 0 || !!fullDescription) && (
+                    <View style={styles.card}>
+                        {highlightLines.length > 0 ? (
+                            <>
+                                <SectionHeader title="Highlights" />
+                                <View style={styles.highlightList}>
+                                    {highlightLines.map((line, index) => (
+                                        <View key={`hl-${index}`} style={styles.highlightRow}>
+                                            <View style={styles.highlightBullet} />
+                                            <Text style={styles.highlightText}>{line}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </>
+                        ) : null}
+
+                        {!!fullDescription && (
+                            <View
+                                style={
+                                    highlightLines.length > 0
+                                        ? styles.aboutBlock
+                                        : undefined
+                                }
+                            >
+                                <SectionHeader title="About this item" />
+                                <Text style={styles.description}>{aboutPreview}</Text>
+                                {fullDescription.length > 180 ? (
+                                    <TouchableOpacity
+                                        onPress={() => setDescExpanded(prev => !prev)}
+                                        hitSlop={8}
+                                    >
+                                        <Text style={styles.readMore}>
+                                            {descExpanded ? 'Show less' : 'Read more'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* A+ / enriched product content */}
+                {aPlusBlocks.length > 0 && (
+                    <View style={styles.card}>
+                        <SectionHeader title="From the brand" />
+                        {aPlusBlocks.map(block => (
+                            <View key={block.id} style={styles.aPlusBlock}>
+                                {!!block.imageUri && (
+                                    <Image
+                                        source={{ uri: block.imageUri }}
+                                        style={styles.aPlusImage}
+                                        resizeMode="cover"
+                                    />
+                                )}
+                                {!!block.title && (
+                                    <Text style={styles.aPlusTitle}>{block.title}</Text>
+                                )}
+                                {!!block.body && (
+                                    <Text style={styles.aPlusBody}>{block.body}</Text>
+                                )}
+                            </View>
+                        ))}
+                    </View>
+                )}
 
                 {/* Complete details — tap opens modal (Flipkart-style) */}
                 {detailLinks.length > 0 && (
@@ -1763,6 +1830,13 @@ const styles = StyleSheet.create({
         lineHeight: 28,
         marginBottom: 8,
     },
+    shortDescription: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#64748B',
+        lineHeight: 20,
+        marginBottom: 4,
+    },
     description: {
         fontSize: 13,
         fontFamily: Fonts.PoppinsRegular,
@@ -1774,6 +1848,57 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: Colors.primaryColor,
+    },
+    highlightList: {
+        gap: 8,
+        marginBottom: 4,
+    },
+    highlightRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    highlightBullet: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginTop: 7,
+        backgroundColor: Colors.primaryColor,
+    },
+    highlightText: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 20,
+        color: '#334155',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    aboutBlock: {
+        marginTop: 14,
+        paddingTop: 14,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: '#E2E8F0',
+    },
+    aPlusBlock: {
+        marginBottom: 14,
+    },
+    aPlusImage: {
+        width: '100%',
+        height: 180,
+        borderRadius: 12,
+        backgroundColor: '#F1F5F9',
+        marginBottom: 10,
+    },
+    aPlusTitle: {
+        fontSize: 15,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 4,
+    },
+    aPlusBody: {
+        fontSize: 13,
+        lineHeight: 20,
+        color: '#475569',
+        fontFamily: Fonts.PoppinsRegular,
     },
 
     priceBlock: { marginTop: 14 },

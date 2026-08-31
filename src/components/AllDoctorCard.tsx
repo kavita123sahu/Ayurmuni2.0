@@ -26,9 +26,16 @@ interface Props {
   item: DoctorItem;
   onPress?: (item: DoctorItem) => void;
   onChatPress?: (item: DoctorItem) => void;
+  variant?: 'list' | 'grid';
+  cardWidth?: number;
 }
 
-const AllDoctorCard: React.FC<Props> = ({ item, onPress }) => {
+const AllDoctorCard: React.FC<Props> = ({
+  item,
+  onPress,
+  variant = 'list',
+  cardWidth,
+}) => {
   const [isWishlisted, setIsWishlisted] = useState(item?.is_favorite ?? false);
 
   const speciality = useMemo(() => {
@@ -74,6 +81,8 @@ const AllDoctorCard: React.FC<Props> = ({ item, onPress }) => {
       imageUri={item?.profile_image?.trim?.() || ''}
       available={item?.has_availability === true}
       onPress={() => onPress?.(item)}
+      variant={variant}
+      cardWidth={cardWidth}
       topRight={
         <FavouriteButton
           isFavourite={isWishlisted}

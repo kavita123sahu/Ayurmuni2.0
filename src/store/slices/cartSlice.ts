@@ -8,8 +8,39 @@ import {
   mergeCartLineWithApiItem,
   normalizeCartLineItem,
 } from '../../utils/cartPriceUtils';
+import { notifyCartItemAdded } from '../../utils/cartEvents';
+import { resolveProductImageUri } from '../../utils/imageUtils';
 
 const CART_CACHE_KEY = 'cart_data';
+
+const maybeNotifyCartAdded = (
+  variantId: string,
+  quantity: number,
+  previousQty: number,
+  source: string | undefined,
+  cartItem: any | null,
+) => {
+  if (source === 'prescribed') {
+    return;
+  }
+  if (Number(quantity) <= Number(previousQty)) {
+    return;
+  }
+
+  const productName =
+    cartItem?.variant?.variant_title ??
+    cartItem?.variant?.title ??
+    cartItem?.product_name ??
+    cartItem?.name ??
+    'Item';
+
+  notifyCartItemAdded({
+    variantId: String(variantId),
+    quantity: Number(quantity),
+    productName: String(productName),
+    image: resolveProductImageUri(cartItem) || undefined,
+  });
+};
 
 type CartData = {
   my_cart?: { items?: any[]; subtotal?: number };
@@ -539,6 +570,15 @@ export const addToCart = createAsyncThunk(
       }
 
       invalidateCache(CART_CACHE_KEY);
+
+      maybeNotifyCartAdded(
+        String(variantId),
+        Number(cartItem?.quantity ?? quantity),
+        previousQty,
+        source,
+        cartItem,
+      );
+
       return {
         variantId: String(variantId),
         quantity: Number(cartItem?.quantity ?? quantity),

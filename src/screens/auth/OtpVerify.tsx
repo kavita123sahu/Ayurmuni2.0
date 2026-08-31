@@ -35,11 +35,10 @@ import { resetRootToHomeStack } from '../../navigation/navigationUtils';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import CommonModal from '../../components/LogoutModal';
 import {
+  completeWelcomePushFlow,
   loginOneSignalUser,
   requestNotificationPermission,
-  welcome_notification,
 } from '../../services/pushNotificationService';
-import { OneSignal } from 'react-native-onesignal';
 
 
 const C = {
@@ -433,232 +432,49 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         );
 
         // ==========================================
-        // STEP 11: OneSignal Login
+        // STEP 11–12: OneSignal ready → Welcome Push
+        // Customer already created; auth tokens stored.
+        // Flow:
+        //   permission → wait subscription+token →
+        //   OneSignal.login(userId) → verify association →
+        //   welcome notification API
         // ==========================================
 
-        console.log(
-          '🔵 [STEP 11] Calling loginOneSignalUser...',
-        );
-
-        console.log(
-          '👤 [STEP 11] User ID:',
-          userId,
-        );
-
-        try {
-          // ==========================================
-          // STEP 11.1
-          // Login + Get Subscription Data
-          // ==========================================
-
-          const oneSignalData =
-            await loginOneSignalUser(userId);
-
+        if (!isNotificationEnabled) {
           console.log(
-            '🟢 [STEP 11] OneSignal Response:',
-            oneSignalData,
+            '🔕 [STEP 11] Notifications disabled — skipping welcome push',
           );
-
-          if (!oneSignalData) {
+        } else {
+          try {
             console.log(
-              '❌ [STEP 11] OneSignal login failed',
-            );
-          } else {
-            // ==========================================
-            // STEP 11.2
-            // Get Data Returned By Service
-            // ==========================================
-
-            const {
-              externalId,
-              subscriptionId,
-              fcmToken,
-              optedIn,
-            } = oneSignalData;
-
-            console.log(
-              '🆔 [STEP 11.2] External ID:',
-              externalId,
+              '🔵 [STEP 11] Starting completeWelcomePushFlow for user:',
+              userId,
             );
 
-            console.log(
-              '🆔 [STEP 11.2] Subscription ID:',
-              subscriptionId,
-            );
+            const welcomeResult = await completeWelcomePushFlow(userId);
 
             console.log(
-              '🔥 [STEP 11.2] FCM Token:',
-              fcmToken,
+              '🟢 [STEP 12] Welcome push flow result:',
+              welcomeResult,
             );
 
-            console.log(
-              '🔔 [STEP 11.2] Opted In:',
-              optedIn,
-            );
-
-            // ==========================================
-            // STEP 12: Check Notification Preference
-            // ==========================================
-
-            if (!isNotificationEnabled) {
+            if (welcomeResult.success) {
               console.log(
-                '🔕 [STEP 12] User disabled notifications',
+                '🎉 [STEP 12] WELCOME PUSH SUCCESS',
               );
-
+            } else {
               console.log(
-                '⏭️ [STEP 12] Welcome Push will NOT be sent',
+                '⚠️ [STEP 12] WELCOME PUSH NOT DELIVERED:',
+                welcomeResult.reason,
               );
             }
-
-            // ==========================================
-            // STEP 12.1: Subscription Ready Check
-            // ==========================================
-
-            else if (
-              optedIn === true &&
-              !!subscriptionId &&
-              !!fcmToken
-            ) {
-              console.log(
-                '✅ [STEP 12] OneSignal subscription READY',
-              );
-
-              console.log(
-                '🆔 [STEP 12] Subscription ID:',
-                subscriptionId,
-              );
-
-              console.log(
-                '🔥 [STEP 12] FCM Token exists:',
-                !!fcmToken,
-              );
-
-              console.log(
-                '🔔 [STEP 12] Opted In:',
-                optedIn,
-              );
-
-              // ==========================================
-              // STEP 12.2: Wait 3 Seconds
-              // ==========================================
-
-              console.log(
-                '⏳ [STEP 12.2] Waiting 3 seconds before Welcome Push...',
-              );
-
-
-
-              await new Promise<void>(resolve =>
-                setTimeout(resolve, 5000),
-              );
-
-
-              console.log(
-                '⏰ [STEP 12.2] 3 seconds completed',
-              );
-
-              // ==========================================
-              // STEP 12.3: Welcome Notification API
-              // ==========================================
-
-              console.log(
-                '🚀 [STEP 12.3] Calling welcome_notification...',
-              );
-
-              console.log(
-                '🔐 [STEP 12.3] Auth token should be attached by apiClient',
-              );
-
-              try {
-                const welcomeResponse =
-                  await welcome_notification();
-
-                console.log(
-                  '🟢 [STEP 12.3] Welcome API Response:',
-                  welcomeResponse,
-                );
-
-                if (
-                  welcomeResponse?.success
-                ) {
-                  console.log(
-                    '🎉 [STEP 12.3] WELCOME PUSH SUCCESS',
-                  );
-                } else {
-                  console.log(
-                    '⚠️ [STEP 12.3] WELCOME PUSH NOT DELIVERED:',
-                    welcomeResponse,
-                  );
-                }
-              } catch (
-              welcomeError: any
-              ) {
-                console.error(
-                  '❌ [STEP 12.3] Welcome Push ERROR:',
-                  welcomeError,
-                );
-
-                console.error(
-                  '❌ [STEP 12.3] Error Message:',
-                  welcomeError?.message,
-                );
-
-                console.error(
-                  '❌ [STEP 12.3] Error Response:',
-                  welcomeError?.response?.data,
-                );
-
-                console.error(
-                  '❌ [STEP 12.3] Error Status:',
-                  welcomeError?.response?.status,
-                );
-
-                // IMPORTANT:
-                // Don't break registration if
-                // welcome notification fails.
-              }
-            }
-
-            // ==========================================
-            // STEP 12.4: Subscription NOT Ready
-            // ==========================================
-
-            else {
-              console.log(
-                '⚠️ [STEP 12] Welcome Push SKIPPED',
-              );
-
-              console.log(
-                '⚠️ [STEP 12] Subscription NOT READY:',
-                {
-                  isNotificationEnabled,
-                  optedIn,
-                  subscriptionId,
-                  fcmToken,
-                },
-              );
-            }
+          } catch (oneSignalError: any) {
+            console.error(
+              '❌ [STEP 11] OneSignal / welcome flow ERROR:',
+              oneSignalError?.message ?? oneSignalError,
+            );
+            // Do not break registration.
           }
-        } catch (
-        oneSignalError: any
-        ) {
-          console.error(
-            '❌ [STEP 11] OneSignal ERROR:',
-            oneSignalError,
-          );
-
-          console.error(
-            '❌ [STEP 11] Error Message:',
-            oneSignalError?.message,
-          );
-
-          console.error(
-            '❌ [STEP 11] Error Response:',
-            oneSignalError?.response,
-          );
-
-          // IMPORTANT:
-          // Don't break registration.
         }
 
         // ==========================================

@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     Image,
 } from 'react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 import TablerIcon from './TablerIcon';
 import CartBadge from './CartBadge';
 import { useCartCount } from '../hooks/Cart';
@@ -13,7 +14,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import *as _PROFILE_SERVICES from '../services/ProfileServices';
+import { PRAKRITI_IMAGES } from '../common/DataInterface';
+import * as _PROFILE_SERVICES from '../services/ProfileServices';
 import LocationBottomSheet from './LocationBottomSheet';
 import { useHomeData } from '../hooks/UseHomeData';
 import { requireAuth } from '../services/guestAuth';
@@ -22,22 +24,12 @@ import { savedAddressToParsed } from '../services/locationService';
 import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
 import { useUnreadNotificationCount } from '../hooks/useNotification';
-
-interface Address {
-    id: string;
-    city: string;
-    address_line_1?: string;
-    is_default: boolean;
-    state: string;
-    zipcode: string;
-}
-
+import { DOSHA } from './Questionnaire/PrakritiQuestTheme';
 
 interface AddressItem {
     id: string;
     type?: string;
     is_default: boolean;
-
     address_type: string;
     address_type_name: string;
     address_line_1?: string;
@@ -45,61 +37,144 @@ interface AddressItem {
     state?: string;
     zipcode?: string;
 }
+
 type Props = {
     progress1?: number;
     progress2?: number;
-    onSearchPress?: () => void;
+};
+
+const AVATAR = 42;
+const RING = 50;
+const STROKE = 3;
+
+const resolvePrakritiName = (customer: any, fallback?: string) => {
+    const raw =
+        customer?.prakriti_type ||
+        customer?.prakriti_result ||
+        customer?.prakriti_name ||
+        customer?.prakriti ||
+        customer?.result ||
+        customer?.dosha_type ||
+        customer?.dominant_prakriti ||
+        fallback ||
+        '';
+    return String(raw).trim();
+};
+
+const normalizePrakritiKey = (name: string) =>
+    name
+        .trim()
+        .replace(/[_\s]+/g, '-')
+        .replace(/-+/g, '-')
+        .split('-')
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join('-');
+
+const getPrakritiTheme = (name: string) => {
+    const key = name.toLowerCase();
+    if (key.includes('vata') && key.includes('pitta')) {
+        return { color: DOSHA.pitta.color, soft: '#FFF8EF', imageKey: 'Vata-Pitta' };
+    }
+    if (key.includes('pitta') && key.includes('kapha')) {
+        return { color: DOSHA.pitta.color, soft: DOSHA.pitta.soft, imageKey: 'Pitta-Kapha' };
+    }
+    if (key.includes('vata') && key.includes('kapha')) {
+        return { color: DOSHA.vata.color, soft: DOSHA.vata.soft, imageKey: 'Vata-Kapha' };
+    }
+    if (key.includes('tridosha') || (key.includes('vata') && key.includes('pitta') && key.includes('kapha'))) {
+        return { color: Colors.primaryColor, soft: '#ECFDF5', imageKey: 'Tridosha' };
+    }
+    if (key.includes('vata')) {
+        return { color: DOSHA.vata.color, soft: DOSHA.vata.soft, imageKey: 'Vata' };
+    }
+    if (key.includes('pitta')) {
+        return { color: DOSHA.pitta.color, soft: DOSHA.pitta.soft, imageKey: 'Pitta' };
+    }
+    if (key.includes('kapha')) {
+        return { color: DOSHA.kapha.color, soft: DOSHA.kapha.soft, imageKey: 'Kapha' };
+    }
+    return { color: Colors.primaryColor, soft: '#ECFDF5', imageKey: '' };
+};
+
+const ProgressRing = ({
+    progress,
+    color,
+    children,
+}: {
+    progress: number;
+    color: string;
+    children: React.ReactNode;
+}) => {
+    const size = RING;
+    const radius = (size - STROKE) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const clamped = Math.max(0, Math.min(100, progress));
+    const offset = circumference - (clamped / 100) * circumference;
+
+    return (
+        <View style={styles.ringWrap}>
+            <Svg width={size} height={size} style={styles.ringSvg}>
+                <Circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke="#E2E8F0"
+                    strokeWidth={STROKE}
+                    fill="none"
+                />
+                <G rotation="-90" originX={size / 2} originY={size / 2}>
+                    <Circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        stroke={color}
+                        strokeWidth={STROKE}
+                        fill="none"
+                        strokeDasharray={`${circumference} ${circumference}`}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                    />
+                </G>
+            </Svg>
+            <View style={styles.ringInner}>{children}</View>
+        </View>
+    );
 };
 
 const HomeHeader = ({
     progress1 = 0,
-    progress2 = 0,
-    onSearchPress,
 }: Props) => {
     const navigation = useNavigation<any>();
     const stackNavigation = navigation.getParent?.() || navigation;
     const dispatch = useAppDispatch();
     const cartCount = useCartCount();
     const { unreadCount, refreshUnreadCount } = useUnreadNotificationCount();
-    const [localAddresses, setLocalAddresses] =
-        useState<AddressItem[]>([]);
+    const [localAddresses, setLocalAddresses] = useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
+    const [prakritiResultName, setPrakritiResultName] = useState('');
 
+    const { customerData, fetchCustomerData } = useHomeData();
     const {
-        customerData,
-        fetchCustomerData
-    } = useHomeData();
+        currentAddress,
+        deliveryLocation,
+        loadingLocation,
+        setDeliveryLocation,
+    } = useLocation();
 
-    const { currentAddress, deliveryLocation, loadingLocation, setDeliveryLocation } = useLocation();
-
-    console.log("curentlocationnnnn", currentAddress, deliveryLocation, loadingLocation)
-
-
-    const savedAddresses =
-        localAddresses || [];
-
+    const savedAddresses = localAddresses || [];
 
     const defaultAddress = useMemo(
-        () =>
-            savedAddresses.find(
-                item => item?.is_default,
-            ) || null,
+        () => savedAddresses.find(item => item?.is_default) || null,
         [savedAddresses],
     );
 
-
     const activeLocation = useMemo(() => {
-        if (deliveryLocation) {
-            return deliveryLocation;
-        }
-        if (defaultAddress) {
-            return savedAddressToParsed(defaultAddress);
-        }
+        if (deliveryLocation) return deliveryLocation;
+        if (defaultAddress) return savedAddressToParsed(defaultAddress);
         return currentAddress;
     }, [deliveryLocation, defaultAddress, currentAddress]);
 
     const shortAddress = useMemo(() => {
-        console.log("adresssloationnn", activeLocation);
         if (loadingLocation && !activeLocation) {
             return 'Detecting location...';
         }
@@ -107,27 +182,47 @@ const HomeHeader = ({
             return 'Select location';
         }
         const area =
-            activeLocation.formatted_address || activeLocation.city ||
-            activeLocation.address_line_1
-            ;
+            activeLocation.formatted_address 
+            // ||
+            // activeLocation.city ||
+            // activeLocation.address_line_1;
         const suffix = activeLocation.state ? `, ${activeLocation.state}` : '';
         return `${area}${suffix}`.slice(0, 44);
     }, [activeLocation, loadingLocation]);
 
+    const prakritiProgress = Math.max(
+        0,
+        Math.min(100, Math.round(Number(progress1) || 0)),
+    );
+    const isPrakritiComplete = prakritiProgress >= 100;
 
+    const prakritiName = useMemo(() => {
+        const fromCustomer = resolvePrakritiName(customerData, prakritiResultName);
+        return fromCustomer ? normalizePrakritiKey(fromCustomer) : '';
+    }, [customerData, prakritiResultName]);
 
-    const locationSubtext = 'Deliver to';
+    const theme = useMemo(
+        () => getPrakritiTheme(prakritiName || 'vata'),
+        [prakritiName],
+    );
 
-    const profileImage =
-        customerData?.profile_picture || '';
+    const locationSubtext = isPrakritiComplete && prakritiName
+        ? prakritiName
+        : isPrakritiComplete
+            ? 'Your Prakriti'
+            : 'Deliver to';
+
+    const profileImage = customerData?.profile_picture || '';
+    const prakritiImage =
+        (prakritiName &&
+            (PRAKRITI_IMAGES[prakritiName] ||
+                PRAKRITI_IMAGES[theme.imageKey])) ||
+        '';
 
     const firstLetter =
-        customerData?.first_name
-            ?.charAt(0)
-            ?.toUpperCase() || '';
+        customerData?.first_name?.charAt(0)?.toUpperCase() || '';
 
-    const addressCount =
-        customerData?.addresses?.length || 0;
+    const addressCount = customerData?.addresses?.length || 0;
 
     useFocusEffect(
         useCallback(() => {
@@ -137,125 +232,152 @@ const HomeHeader = ({
         }, [fetchCustomerData, dispatch, refreshUnreadCount]),
     );
 
-
     useEffect(() => {
         if (customerData?.addresses) {
-            setLocalAddresses(
-                customerData.addresses,
-            );
+            setLocalAddresses(customerData.addresses);
         }
     }, [customerData]);
 
-
-    const UpdateDefaultAddress =
-        useCallback(
-            async (item: AddressItem) => {
-
-                if (item?.is_default) {
-                    return;
+    useEffect(() => {
+        let cancelled = false;
+        const loadPrakritiName = async () => {
+            if (!isPrakritiComplete) return;
+            if (resolvePrakritiName(customerData)) return;
+            try {
+                const res: any = await _PROFILE_SERVICES.get_prakriti_info();
+                const name = resolvePrakritiName(res?.data, res?.data?.result);
+                if (!cancelled && name) {
+                    setPrakritiResultName(name);
                 }
+            } catch {
+                // ignore — header still works with fallback label
+            }
+        };
+        loadPrakritiName();
+        return () => {
+            cancelled = true;
+        };
+    }, [isPrakritiComplete, customerData]);
 
-                const previousAddresses =
-                    [...localAddresses];
+    const UpdateDefaultAddress = useCallback(
+        async (item: AddressItem) => {
+            if (item?.is_default) return;
 
-                console.log("localAddress", localAddresses);
-
-                setLocalAddresses(prev =>
-                    prev.map(address => ({
-                        ...address,
-                        is_default:
-                            address.id === item.id,
-                    })),
+            const previousAddresses = [...localAddresses];
+            setLocalAddresses(prev =>
+                prev.map(address => ({
+                    ...address,
+                    is_default: address.id === item.id,
+                })),
+            );
+            try {
+                const res: any = await _PROFILE_SERVICES.UpdateAddresses(
+                    item.id,
+                    { is_default: true },
                 );
-                try {
 
-                    const payload = {
-                        is_default: true,
-                    };
-
-                    console.log(
-                        'DEFAULT_ADDRESS_PAYLOAD',
-                        payload,
-                    );
-
-                    const res: any =
-                        await _PROFILE_SERVICES.UpdateAddresses(
-                            item.id,
-                            payload,
-                        );
-
-                    console.log(
-                        'DEFAULT_ADDRESS_RESPONSE',
-                        res,
-                    );
-
-                    if (
-                        res?.success ||
-                        res?.status === 200
-                    ) {
-                        setShowSheet(false);
-                        await setDeliveryLocation(savedAddressToParsed(item));
-
-                        await fetchCustomerData();
-
-                        AddressEvents.emit(
-                            ADDRESS_UPDATED,
-                            res,
-                        );
-                    }
-
-                } catch (error) {
-                    setLocalAddresses(
-                        previousAddresses,
-                    );
-                    console.log(
-                        'DEFAULT_ADDRESS_ERROR',
-                        error,
-                    );
+                if (res?.success || res?.status === 200) {
+                    setShowSheet(false);
+                    await setDeliveryLocation(savedAddressToParsed(item));
+                    await fetchCustomerData();
+                    AddressEvents.emit(ADDRESS_UPDATED, res);
                 }
-            }, [
-            fetchCustomerData, setDeliveryLocation]);
+            } catch (error) {
+                setLocalAddresses(previousAddresses);
+                console.log('DEFAULT_ADDRESS_ERROR', error);
+            }
+        },
+        [fetchCustomerData, setDeliveryLocation, localAddresses],
+    );
 
+    const openPrakriti = useCallback(() => {
+        if (isPrakritiComplete) {
+            stackNavigation.navigate('PrakritiProfile');
+            return;
+        }
+        stackNavigation.navigate('PatientFAQ', { allowBack: true });
+    }, [isPrakritiComplete, stackNavigation]);
 
+    const openLocationSheet = useCallback(() => {
+        setShowSheet(true);
+    }, []);
+
+    const ringColor = isPrakritiComplete
+        ? theme.color
+        : prakritiProgress > 0
+            ? Colors.primaryColor
+            : '#CBD5E1';
 
     return (
         <View style={styles.container}>
             <View style={styles.topRow}>
-
-                {/* LEFT */}
                 <View style={styles.leftSection}>
-
-                    {/* PROFILE IMAGE / LETTER */}
                     <TouchableOpacity
-                        style={styles.profileCircle}
-                        onPress={() => navigation.navigate('Profile')}
+                        style={styles.avatarPress}
+                        onPress={openPrakriti}
+                        activeOpacity={0.85}
                     >
-                        {profileImage ? (
+                        <ProgressRing progress={prakritiProgress} color={ringColor}>
+                            {isPrakritiComplete && prakritiImage ? (
+                                <Image
+                                    source={{ uri: prakritiImage }}
+                                    style={styles.profileImage}
+                                />
+                            ) : profileImage ? (
+                                <Image
+                                    source={{ uri: profileImage }}
+                                    style={styles.profileImage}
+                                />
+                            ) : (
+                                <View
+                                    style={[
+                                        styles.profileFallback,
+                                        isPrakritiComplete && {
+                                            backgroundColor: theme.color,
+                                        },
+                                    ]}
+                                >
+                                    <Text style={styles.profileText}>
+                                        {firstLetter || 'A'}
+                                    </Text>
+                                </View>
+                            )}
+                        </ProgressRing>
 
-                            <Image
-                                source={{ uri: profileImage }}
-                                style={styles.profileImage}
-                            />
-
-                        ) : (
-
-                            <Text style={styles.profileText}>
-                                {firstLetter}
-                            </Text>
-
-                        )}
+                        {!isPrakritiComplete ? (
+                            <View style={styles.percentBadge}>
+                                <Text style={styles.percentText}>
+                                    {prakritiProgress}%
+                                </Text>
+                            </View>
+                        ) : null}
                     </TouchableOpacity>
 
+                    <View style={styles.locationContainer}>
+                        <TouchableOpacity
+                            onPress={
+                                isPrakritiComplete ? openPrakriti : openLocationSheet
+                            }
+                            activeOpacity={0.85}
+                        >
+                            <Text
+                                style={[
+                                    styles.locationLabel,
+                                    isPrakritiComplete && {
+                                        color: theme.color,
+                                    },
+                                ]}
+                                numberOfLines={1}
+                            >
+                                {locationSubtext}
+                            </Text>
+                        </TouchableOpacity>
 
-
-                    <TouchableOpacity style={styles.locationContainer} onPress={() => setShowSheet(true)}>
-
-                        <Text style={styles.locationLabel}>
-                            {locationSubtext}
-                        </Text>
-
-                        <View style={styles.locationRow}>
-
+                        <TouchableOpacity
+                            style={styles.locationRow}
+                            onPress={openLocationSheet}
+                            activeOpacity={0.85}
+                        >
                             <Text
                                 style={styles.locationText}
                                 numberOfLines={1}
@@ -263,8 +385,6 @@ const HomeHeader = ({
                             >
                                 {shortAddress}
                             </Text>
-
-                            {/* ICON WRAPPER */}
                             <View style={styles.iconWrapper}>
                                 <TablerIcon
                                     name="chevron-down"
@@ -272,35 +392,31 @@ const HomeHeader = ({
                                     color="#111827"
                                 />
                             </View>
-
-                        </View>
-                    </TouchableOpacity>
-
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                {/* RIGHT */}
                 <View style={styles.rightIcons}>
-
-                    <TouchableOpacity
-                        style={styles.bellButton}
-                        onPress={onSearchPress}
-                        disabled={!onSearchPress}
-                    >
-                        <TablerIcon name="search" size={20} color={Colors.primaryColor} />
-                    </TouchableOpacity>
-
                     <TouchableOpacity
                         style={styles.bellButton}
                         onPress={() => stackNavigation.navigate('MyCart')}
                     >
-                        <TablerIcon name="shopping-cart" size={20} color={Colors.primaryColor} />
+                        <TablerIcon
+                            name="shopping-cart"
+                            size={20}
+                            color={Colors.primaryColor}
+                        />
                         <CartBadge count={cartCount} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.bellButton}
                         onPress={async () => {
-                            if (await requireAuth('Please login to view notifications')) {
+                            if (
+                                await requireAuth(
+                                    'Please login to view notifications',
+                                )
+                            ) {
                                 stackNavigation.navigate('Notifications');
                             }
                         }}
@@ -308,11 +424,8 @@ const HomeHeader = ({
                         <TablerIcon name="bell" size={20} color="#000" />
                         <CartBadge count={unreadCount} />
                     </TouchableOpacity>
-
                 </View>
-
             </View>
-
 
             <LocationBottomSheet
                 visible={showSheet}
@@ -327,100 +440,99 @@ const HomeHeader = ({
                     stackNavigation.navigate('ManageAdrees');
                 }}
             />
-
-
         </View>
     );
 };
 
 export default React.memo(HomeHeader);
 
-
 const styles = StyleSheet.create({
-
     container: {
-        // Keep equal top/bottom — matches HOME_HEADER_CONTENT_HEIGHT
         paddingTop: 8,
         paddingBottom: 4,
         backgroundColor: '#fff',
         paddingHorizontal: 0,
     },
+    topRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    leftSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        minWidth: 0,
+        marginRight: 10,
+    },
+    avatarPress: {
+        width: RING,
+        height: RING,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    ringWrap: {
+        width: RING,
+        height: RING,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    ringSvg: {
+        position: 'absolute',
+    },
+    ringInner: {
+        width: AVATAR,
+        height: AVATAR,
+        borderRadius: AVATAR / 2,
+        overflow: 'hidden',
+        backgroundColor: Colors.primaryColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     profileImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 21,
+        borderRadius: AVATAR / 2,
         resizeMode: 'cover',
+    },
+    profileFallback: {
+        width: '100%',
+        height: '100%',
+        borderRadius: AVATAR / 2,
+        backgroundColor: Colors.primaryColor,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     profileText: {
         fontSize: 16,
         fontFamily: Fonts.PoppinsMedium,
         color: Colors.white,
     },
-
-    profileCircle: {
-        height: 42,
-        width: 42,
-        borderRadius: 21,
+    percentBadge: {
+        position: 'absolute',
+        right: -2,
+        bottom: -2,
+        minWidth: 28,
+        height: 18,
+        borderRadius: 9,
+        paddingHorizontal: 4,
         backgroundColor: Colors.primaryColor,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
         justifyContent: 'center',
-        alignItems: 'center',
     },
-
-    topRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-
-    profileCompletionCard: {
-        marginTop: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        borderRadius: 12,
-        backgroundColor: "#ECFDF3",
-        borderWidth: 1,
-        borderColor: "#ABEFC6",
-        flexDirection: "row",
-        alignItems: "center",
-    },
-
-    profileTitle: {
-        fontSize: 12,
-        color: "#027A48",
+    percentText: {
+        fontSize: 9,
+        lineHeight: 12,
+        color: '#FFFFFF',
         fontFamily: Fonts.PoppinsSemiBold,
     },
-
-    profileSubtitle: {
-        fontSize: 10,
-        color: "#039855",
-        fontFamily: Fonts.PoppinsRegular,
-        marginTop: 1,
-    },
-
-    editButton: {
-        height: 28,
-        width: 28,
-        borderRadius: 8,
-        backgroundColor: "#fff",
-        justifyContent: "center",
-        alignItems: "center",
-        marginLeft: 8,
-    },
-    leftSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-
-        flex: 1,
-        minWidth: 0,
-        marginRight: 10, // right icons se spacing
-    },
-
     locationContainer: {
         flex: 1,
         minWidth: 0,
-        marginLeft: 12,
+        marginLeft: 10,
     },
-
     locationLabel: {
         fontSize: 11,
         lineHeight: 14,
@@ -430,41 +542,33 @@ const styles = StyleSheet.create({
         letterSpacing: 0.2,
         flexShrink: 1,
     },
-
     locationRow: {
         flexDirection: 'row',
         alignItems: 'center',
-
         flexShrink: 1,
         minWidth: 0,
-        alignSelf: 'flex-start', // ⭐ icon text ke paas rahega
+        alignSelf: 'flex-start',
     },
-
     locationText: {
-        fontSize: 15,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
         maxWidth: '92%',
         flexShrink: 1,
         marginRight: 2,
     },
-
     iconWrapper: {
         justifyContent: 'center',
         alignItems: 'center',
-
         marginTop: 1,
-
         flexShrink: 0,
     },
-
     rightIcons: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        marginRight:5,
+        marginRight: 5,
     },
-
     bellButton: {
         height: 35,
         width: 35,
@@ -476,220 +580,4 @@ const styles = StyleSheet.create({
         position: 'relative',
         overflow: 'visible',
     },
-
-    // STYLES
-
-    searchContainer: {
-        height: 56,
-
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-
-        paddingHorizontal: 16,
-
-        flexDirection: 'row',
-        alignItems: 'center',
-
-        marginBottom: 18,
-
-        borderWidth: 1,
-        borderColor: Colors.borderColor,
-    },
-
-    searchText: {
-        marginLeft: 12,
-
-        fontSize: 15,
-        color: '#98A2B3',
-
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    bigCard: {
-        backgroundColor: '#FFFFFF',
-
-        borderRadius: 22,
-
-        overflow: 'hidden',
-
-        borderWidth: 1,
-        borderColor: '#F2F4F7',
-
-        marginBottom: 20,
-    },
-
-    rowCard: {
-        minHeight: 72,
-
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-
-    leftRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-
-        flex: 1,
-        minWidth: 0,
-    },
-
-    currentLocationIcon: {
-        height: 46,
-        width: 46,
-
-        borderRadius: 23,
-
-        backgroundColor: Colors.BGIcon,
-
-        justifyContent: 'center',
-        alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    plusWrapper: {
-        height: 46,
-        width: 46,
-
-        borderRadius: 23,
-
-        backgroundColor: '#EEF2FF',
-
-        justifyContent: 'center',
-        alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    textContainer: {
-        flex: 1,
-        minWidth: 0,
-    },
-
-    greenTitle: {
-        fontSize: 16,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    subText: {
-
-        fontSize: 13,
-        lineHeight: 20,
-
-        color: '#667085',
-
-        fontFamily: Fonts.PoppinsRegular,
-    },
-
-    divider: {
-        height: 1,
-        backgroundColor: '#F2F4F7',
-    },
-
-    savedTitle: {
-        marginBottom: 10,
-        fontSize: 18,
-        color: '#111827',
-
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    sheetContainer: {
-        paddingHorizontal: 20,
-        paddingTop: 10,
-    },
-
-    savedHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 15,
-        marginBottom: 10,
-    },
-
-    viewAllText: {
-        fontSize: 15,
-        marginBottom: 10,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    savedCard: {
-        backgroundColor: '#FFFFFF',
-
-        borderRadius: 22,
-
-        padding: 16,
-
-        flexDirection: 'row',
-        alignItems: 'center',
-
-        borderWidth: 1,
-        borderColor: '#F2F4F7',
-    },
-
-    activeSavedCard: {
-        borderColor: Colors.primaryColor,
-        backgroundColor: '#F8FFFB',
-    },
-    radioOuter: {
-        height: 22,
-        width: 22,
-        borderRadius: 11,
-        borderWidth: 2,
-        borderColor: '#D0D5DD',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    radioOuterActive: {
-        borderColor: Colors.primaryColor,
-    },
-
-    radioInner: {
-        height: 10,
-        width: 10,
-        borderRadius: 5,
-        backgroundColor: Colors.primaryColor,
-    },
-
-    homeBox: {
-        height: 50,
-        width: 50,
-
-        borderRadius: 16,
-
-        backgroundColor: '#EEF2FF',
-
-        justifyContent: 'center',
-        alignItems: 'center',
-
-        marginRight: 14,
-    },
-
-    savedContent: {
-        flex: 1,
-        minWidth: 0,
-    },
-
-    homeTitle: {
-        fontSize: 16,
-        color: '#111827',
-        marginBottom: 1,
-
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    savedAddress: {
-        fontSize: 12,
-        lineHeight: 20,
-        color: '#667085',
-
-        fontFamily: Fonts.PoppinsRegular,
-    },
 });
-

@@ -10,7 +10,11 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { Fontisto } from '../../common/Vector';
 import { Utils } from '../../common/Utils';
 import { showSuccessToast } from '../../config/Key';
-import { logoutOneSignalUser } from '../../services/pushNotificationService';
+import { OneSignal } from 'react-native-onesignal';
+import {
+  logoutOneSignalUser,
+  requestNotificationPermission,
+} from '../../services/pushNotificationService';
 
 const SettingsScreen = (props: any) => {
   const navigation = props.navigation;
@@ -134,6 +138,19 @@ const SettingsScreen = (props: any) => {
   const handleToggle = (title: string, value: boolean) => {
     if (title === 'Push Notifications') {
       setPushEnabled(value);
+      if (value) {
+        requestNotificationPermission(true).then(granted => {
+          if (!granted) {
+            setPushEnabled(false);
+          }
+        });
+      } else {
+        try {
+          OneSignal.User.pushSubscription.optOut();
+        } catch {
+          // ignore
+        }
+      }
       return;
     }
     if (title === 'Email Updates') {

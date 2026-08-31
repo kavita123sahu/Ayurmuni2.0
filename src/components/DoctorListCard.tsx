@@ -116,10 +116,6 @@ const DoctorListCard = ({
               </Text>
             </View>
           </View>
-
-          <View style={styles.gridCta}>
-            <Text style={styles.gridCtaText}>Consult Now</Text>
-          </View>
         </View>
       </Pressable>
     );
@@ -165,10 +161,6 @@ const DoctorListCard = ({
           <Text style={styles.expText} numberOfLines={1}>
             {experience} yrs
           </Text>
-        </View>
-
-        <View style={styles.consultBtn}>
-          <Text style={styles.consultText}>Consult Now</Text>
         </View>
       </View>
     </Pressable>
@@ -306,19 +298,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: DOCTOR_GRID.nameHeight,
   },
-  gridCta: {
-    height: DOCTOR_GRID.ctaHeight,
-    marginTop: 6,
-    borderRadius: DOCTOR_GRID.ctaRadius,
-    backgroundColor: Colors.primaryColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridCtaText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
   listCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -418,18 +397,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
-  },
-  consultBtn: {
-    marginTop: 8,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: Colors.primaryColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  consultText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

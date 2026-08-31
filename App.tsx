@@ -129,7 +129,6 @@
 
 import React, {
   useEffect,
-  useRef,
 } from 'react';
 
 import {
@@ -177,21 +176,18 @@ import FloatingVideoOverlay from './src/components/FloatingVideoOverlay';
 
 import WishlistToastBar from './src/components/WishlistToastBar';
 
+import CartAddedToastBar from './src/components/CartAddedToastBar';
+
+import InAppNotificationWatcher from './src/components/InAppNotificationWatcher';
+
 import {
   initializeOneSignal,
+  ensureDeviceNotificationsEnabled,
 } from './src/services/pushNotificationService';
 
-import CustomNotification, {
-  CustomNotificationRef,
-} from './src/components/CustomNotification';
-
 import {
-  handleNotificationNavigation,
-} from './src/screens/notifications/notificationRouter';
-
-import {
-  navigationRef,
-} from './src/navigation/navigationRef';
+  setupOneSignalInAppListeners,
+} from './src/services/inAppNotificationService';
 
 
 // =====================================================
@@ -271,9 +267,9 @@ const toastConfig = {
 
 
 
-console.log = () => { };
-console.warn = () => { };
-console.error = () => { };
+// console.log = () => { };
+// console.warn = () => { };
+// console.error = () => { };
 
 // =====================================================
 // APP
@@ -282,63 +278,14 @@ console.error = () => { };
 const App = () => {
 
   // ===================================================
-  // CUSTOM NOTIFICATION REF
-  // ===================================================
-
-  const notificationRef =
-    useRef<CustomNotificationRef>(
-      null,
-    );
-
-
-  // ===================================================
-  // CUSTOM NOTIFICATION PRESS
-  // ===================================================
-
-  const handleCustomNotificationPress = (
-    data: any,
-  ) => {
-
-    console.log(
-      '====================================',
-    );
-
-    console.log(
-      '🔘 CUSTOM NOTIFICATION PRESSED',
-    );
-
-    console.log(
-      '📦 Notification Data:',
-      data,
-    );
-
-    console.log(
-      '====================================',
-    );
-
-
-    // Send notification data
-    // to notification router
-
-    handleNotificationNavigation(
-      navigationRef,
-      data,
-    );
-  };
-
-
-  // ===================================================
   // ONESIGNAL INITIALIZATION
   // ===================================================
 
   useEffect(() => {
-
-    console.log(
-      '🔵 App: Initializing OneSignal',
-    );
-
-    initializeOneSignal();
-
+    initializeOneSignal().then(() => {
+      setupOneSignalInAppListeners();
+      ensureDeviceNotificationsEnabled();
+    });
   }, []);
 
 
@@ -370,49 +317,17 @@ const App = () => {
                 }}
               >
 
-                {/* ===================================
-                    APP DATA INITIALIZER
-                =================================== */}
-
                 <AppDataInitializer />
-
-
-                {/* ===================================
-                    NAVIGATION
-                =================================== */}
 
                 <Navigator />
 
-
-                {/* ===================================
-                    FLOATING VIDEO
-                =================================== */}
-
                 <FloatingVideoOverlay />
-
-
-                {/* ===================================
-                    WISHLIST TOAST
-                =================================== */}
 
                 <WishlistToastBar />
 
+                <CartAddedToastBar />
 
-                {/* ===================================
-                    CUSTOM PUSH NOTIFICATION
-                =================================== */}
-
-                <CustomNotification
-                  ref={notificationRef}
-                  onPress={
-                    handleCustomNotificationPress
-                  }
-                />
-
-
-                {/* ===================================
-                    TOAST
-                =================================== */}
+                <InAppNotificationWatcher />
 
                 <Toast
                   config={toastConfig}

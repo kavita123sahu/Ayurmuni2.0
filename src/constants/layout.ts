@@ -13,9 +13,9 @@ export const HOME_SECTION_HEADER_MB = 10;
 export const CARD_PADDING = 14;
 export const CARD_RADIUS = 16;
 
-/** Profile row (~42) + equal vertical padding (8+8) */
-export const HOME_HEADER_CONTENT_HEIGHT = 58;
-export const HOME_SEARCH_BAR_HEIGHT = 40;
+/** Profile row (~50 ring) + equal vertical padding (8+8) */
+export const HOME_HEADER_CONTENT_HEIGHT = 66;
+export const HOME_SEARCH_BAR_HEIGHT = 44;
 /** Gap below status bar when search sticks on scroll */
 export const HOME_STICKY_TOP_GAP = 8;
 /** Gap between search bar and category row */
@@ -38,6 +38,8 @@ export const getHomeHeaderTotalHeight = (insets: EdgeInsets) =>
   (insets.top || 0) +
   HOME_HEADER_CONTENT_HEIGHT +
   HOME_CATEGORY_GAP +
+  HOME_SEARCH_BAR_HEIGHT +
+  HOME_HEADER_SEARCH_GAP +
   HOME_CATEGORY_ROW_HEIGHT +
   HOME_HEADER_BOTTOM_GAP;
 

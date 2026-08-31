@@ -37,8 +37,6 @@ const HIDE_THRESHOLD = 6;
 const SHOW_AT_TOP = 20;
 const TAB_SLIDE = TAB_BAR_HEIGHT + 12;
 const COLLAPSE_DISTANCE = 68;
-const SEARCH_REVEAL_START = 8;
-
 const springConfig = {
   damping: 24,
   stiffness: 260,
@@ -88,31 +86,17 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
     overflow: 'hidden' as const,
   }));
 
+  /** Search stays visible from first paint so users can find it without scrolling. */
   const searchBarAnimatedStyle = useAnimatedStyle(() => ({
-    maxHeight: interpolate(
-      scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE],
-      [0, HOME_SEARCH_BAR_HEIGHT],
-      Extrapolation.CLAMP,
-    ),
-    opacity: interpolate(
-      scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE * 0.85],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
+    maxHeight: HOME_SEARCH_BAR_HEIGHT,
+    opacity: 1,
     marginTop: interpolate(
       scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE],
-      [0, HOME_STICKY_TOP_GAP],
+      [0, COLLAPSE_DISTANCE],
+      [HOME_CATEGORY_GAP, HOME_STICKY_TOP_GAP],
       Extrapolation.CLAMP,
     ),
-    marginBottom: interpolate(
-      scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE],
-      [0, HOME_HEADER_SEARCH_GAP],
-      Extrapolation.CLAMP,
-    ),
+    marginBottom: HOME_HEADER_SEARCH_GAP,
     overflow: 'hidden' as const,
   }));
 
@@ -125,40 +109,21 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
       [HOME_HEADER_CONTENT_HEIGHT, 0],
       Extrapolation.CLAMP,
     );
-    const searchH = interpolate(
-      scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE],
-      [0, HOME_SEARCH_BAR_HEIGHT],
-      Extrapolation.CLAMP,
-    );
     const stickyTopGap = interpolate(
       scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE],
-      [0, HOME_STICKY_TOP_GAP],
-      Extrapolation.CLAMP,
-    );
-    const searchBottomGap = interpolate(
-      scrollY.value,
-      [SEARCH_REVEAL_START, COLLAPSE_DISTANCE],
-      [0, HOME_HEADER_SEARCH_GAP],
-      Extrapolation.CLAMP,
-    );
-    const headerCategoryGap = interpolate(
-      scrollY.value,
-      [0, SEARCH_REVEAL_START],
-      [HOME_CATEGORY_GAP, 0],
+      [0, COLLAPSE_DISTANCE],
+      [HOME_CATEGORY_GAP, HOME_STICKY_TOP_GAP],
       Extrapolation.CLAMP,
     );
 
-    // Total chrome height (safe-area + header row + gaps + categories + bottom pad)
+    // Total chrome: safe-area + header + always-visible search + categories
     return {
       height:
         (insets.top || 0) +
-        stickyTopGap +
         headerH +
-        searchH +
-        searchBottomGap +
-        headerCategoryGap +
+        stickyTopGap +
+        HOME_SEARCH_BAR_HEIGHT +
+        HOME_HEADER_SEARCH_GAP +
         HOME_CATEGORY_ROW_HEIGHT +
         HOME_HEADER_BOTTOM_GAP,
     };
