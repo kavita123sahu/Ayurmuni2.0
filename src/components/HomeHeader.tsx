@@ -14,7 +14,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { PRAKRITI_IMAGES } from '../common/DataInterface';
 import * as _PROFILE_SERVICES from '../services/ProfileServices';
 import LocationBottomSheet from './LocationBottomSheet';
 import { useHomeData } from '../hooks/UseHomeData';
@@ -169,8 +168,10 @@ const HomeHeader = ({
     );
 
     const activeLocation = useMemo(() => {
+        if (defaultAddress) {
+            return savedAddressToParsed(defaultAddress);
+        }
         if (deliveryLocation) return deliveryLocation;
-        if (defaultAddress) return savedAddressToParsed(defaultAddress);
         return currentAddress;
     }, [deliveryLocation, defaultAddress, currentAddress]);
 
@@ -182,10 +183,10 @@ const HomeHeader = ({
             return 'Select location';
         }
         const area =
-            activeLocation.formatted_address 
-            // ||
-            // activeLocation.city ||
-            // activeLocation.address_line_1;
+            activeLocation.formatted_address
+        // ||
+        // activeLocation.city ||
+        // activeLocation.address_line_1;
         const suffix = activeLocation.state ? `, ${activeLocation.state}` : '';
         return `${area}${suffix}`.slice(0, 44);
     }, [activeLocation, loadingLocation]);
@@ -213,11 +214,6 @@ const HomeHeader = ({
             : 'Deliver to';
 
     const profileImage = customerData?.profile_picture || '';
-    const prakritiImage =
-        (prakritiName &&
-            (PRAKRITI_IMAGES[prakritiName] ||
-                PRAKRITI_IMAGES[theme.imageKey])) ||
-        '';
 
     const firstLetter =
         customerData?.first_name?.charAt(0)?.toUpperCase() || '';
@@ -231,6 +227,19 @@ const HomeHeader = ({
             refreshUnreadCount();
         }, [fetchCustomerData, dispatch, refreshUnreadCount]),
     );
+
+    useEffect(() => {
+        const onAddressUpdated = () => {
+            fetchCustomerData();
+        };
+        const subscription = AddressEvents.addListener(
+            ADDRESS_UPDATED,
+            onAddressUpdated,
+        );
+        return () => {
+            subscription.remove();
+        };
+    }, [fetchCustomerData]);
 
     useEffect(() => {
         if (customerData?.addresses) {
@@ -290,6 +299,15 @@ const HomeHeader = ({
         [fetchCustomerData, setDeliveryLocation, localAddresses],
     );
 
+    const openProfile = useCallback(() => {
+        const tabNav = navigation.getParent?.();
+        // if (tabNav?.navigate) {
+        //     tabNav.navigate('Profile');
+        //     return;
+        // }
+        stackNavigation.navigate('TabStack', { screen: 'Profile' });
+    }, [navigation, stackNavigation]);
+
     const openPrakriti = useCallback(() => {
         if (isPrakritiComplete) {
             stackNavigation.navigate('PrakritiProfile');
@@ -314,16 +332,11 @@ const HomeHeader = ({
                 <View style={styles.leftSection}>
                     <TouchableOpacity
                         style={styles.avatarPress}
-                        onPress={openPrakriti}
+                        onPress={openProfile}
                         activeOpacity={0.85}
                     >
                         <ProgressRing progress={prakritiProgress} color={ringColor}>
-                            {isPrakritiComplete && prakritiImage ? (
-                                <Image
-                                    source={{ uri: prakritiImage }}
-                                    style={styles.profileImage}
-                                />
-                            ) : profileImage ? (
+                            {profileImage ? (
                                 <Image
                                     source={{ uri: profileImage }}
                                     style={styles.profileImage}

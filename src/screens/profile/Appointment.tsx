@@ -160,8 +160,8 @@ const AppointmentScreen = (props: any) => {
         const inScope =
           listScope === 'upcoming'
             ? UPCOMING_STATUS.includes(status) ||
-              status === 'upcoming' ||
-              !PAST_STATUS.includes(status)
+            status === 'upcoming' ||
+            !PAST_STATUS.includes(status)
             : PAST_STATUS.includes(status) || status === 'past';
         if (!inScope && listScope === 'past') return false;
         if (
@@ -444,14 +444,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chipRow: {
-    paddingVertical: 2,
+    paddingVertical: 1,
     gap: 8,
-    paddingRight: 8,
+    paddingRight: 5,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',

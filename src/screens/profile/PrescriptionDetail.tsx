@@ -1864,14 +1864,15 @@ import {
     getSymptomDescription,
     normalizePrescriptionPayload,
 } from '../../utils/prescriptionDetailUtils';
+import { formatPrescriptionId } from '../../utils/formatDisplayId';
 import { getDoctorLocationLine } from '../../utils/doctorSlipUtils';
 import { showSuccessToast } from '../../config/Key';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import {
-    saveAndOpenPdfBase64,
-    saveAndOpenTextFile,
+    downloadPdfToDevice,
 } from '../../utils/fileDownloadUtils';
-import { Buffer } from 'buffer';
+import { createPrescriptionPdfBytes } from '../../utils/buildConsultationDocumentPdf';
+import { createPlainTextPdfBytes } from '../../utils/pdfPlainTextFallback';
 
 const { width } = Dimensions.get('window');
 
@@ -2053,9 +2054,11 @@ const PrescriptionDetail = (props: any) => {
     const paymentAmount = getPaymentAmount(payload);
     const concernText = getConcernText(payload);
     const diagnosisText = getDiagnosisText(prescription);
-    const prescriptionCode = String(
-        prescription?.prescription_code || '',
-    ).trim();
+    const prescriptionCode = formatPrescriptionId(
+        prescription?.prescription_code ||
+            prescription?.id ||
+            normalized.prescriptionId,
+    );
     const symptomText = getSymptomDescription(prescription);
     const allergies = getAllergiesList(prescription);
     const pastIllnessText = getPastIllnessText(prescription);
@@ -2166,39 +2169,56 @@ const PrescriptionDetail = (props: any) => {
       throw new Error('Prescription PDF data not found');
     }
 
-    const code = String(
+    const code = formatPrescriptionId(
       response.prescriptionData?.prescription_code ||
         prescription?.prescription_code ||
         prescriptionId,
-    )
-      .replace(/[^a-zA-Z0-9._-]/g, '_')
-      .slice(0, 40);
+    ).replace(/[^a-zA-Z0-9._-]/g, '_');
 
     /**
      * API returned structured JSON — save as text (same as medical receipt).
      */
     if (response.prescriptionData) {
-      const content = buildPrescriptionDownloadText(
-        response.prescriptionData,
-      );
-      const fileName = `Ayurmuni_Prescription_${code}.txt`;
-      await saveAndOpenTextFile(content, fileName);
-      showSuccessToast(
-        Platform.OS === 'android'
-          ? 'Prescription saved to Downloads'
-          : 'Prescription saved successfully',
-        'success',
-      );
+      const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+      const mergedPayload = {
+        ...(payload ?? {}),
+        ...response.prescriptionData,
+        doctor:
+          response.prescriptionData.doctor ??
+          payload?.doctor ??
+          params.doctorData,
+        patient: response.prescriptionData.patient ?? payload?.patient,
+        appointment:
+          response.prescriptionData.appointment ?? payload?.appointment,
+        prescription:
+          response.prescriptionData.prescription ?? response.prescriptionData,
+        diets:
+          response.prescriptionData.diets ??
+          payload?.diets ??
+          payload?.appointment?.diets,
+      };
+      try {
+        const pdfBytes = await createPrescriptionPdfBytes(mergedPayload);
+        await downloadPdfToDevice({ fileName, pdfBytes });
+      } catch (pdfBuildError) {
+        console.log('PRESCRIPTION_PDF_BUILD_ERROR', pdfBuildError);
+        const fallbackText = buildPrescriptionDownloadText(mergedPayload);
+        const plainBytes = await createPlainTextPdfBytes(fallbackText);
+        await downloadPdfToDevice({ fileName, pdfBytes: plainBytes });
+      }
+      return;
+    }
+
+    if (response.data && !response.base64) {
+      const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+      await downloadPdfToDevice({
+        fileName,
+        arrayBuffer: response.data as ArrayBuffer,
+      });
       return;
     }
 
     let base64 = '';
-
-    if (response.data) {
-      base64 = Buffer.from(
-        new Uint8Array(response.data),
-      ).toString('base64');
-    }
 
     if (response.base64) {
       base64 = response.base64;
@@ -2209,12 +2229,7 @@ const PrescriptionDetail = (props: any) => {
     }
 
     const fileName = `Ayurmuni_Prescription_${code}.pdf`;
-    const { savedLabel } = await saveAndOpenPdfBase64(base64, fileName);
-
-    showSuccessToast(
-      `Prescription saved to ${savedLabel}`,
-      'success',
-    );
+    await downloadPdfToDevice({ fileName, base64 });
   } catch (e: any) {
     console.log(
       'Prescription download error:',
@@ -2892,14 +2907,14 @@ const PrescriptionDetail = (props: any) => {
                             { paddingBottom: Math.max(insets.bottom, 16) },
                         ]}
                     >
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                             activeOpacity={0.8}
                             style={styles.shareBtn}
                             onPress={onShare}
                         >
                             <TablerIcon name="share" size={16} color={COLORS.secondary} />
                             <Text style={styles.shareText}>Share Record</Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
 
                         <TouchableOpacity
                             activeOpacity={0.8}

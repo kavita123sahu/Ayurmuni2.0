@@ -40,12 +40,14 @@ import { safeGoBack } from '../navigation/navigationUtils';
 type RouteParams = {
   returnScreen?: string;
   returnParams?: Record<string, unknown>;
+  useGps?: boolean;
 };
 
 const LocationPickerScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const params = (route.params || {}) as RouteParams;
+  const useGpsOnly = params.useGps === true;
   const { currentAddress, deliveryLocation, refreshCurrentLocation, setDeliveryLocation } = useLocation();
 
   const initialCoords =
@@ -144,7 +146,9 @@ const LocationPickerScreen = () => {
       } else if (deliveryLocation?.zipcode) {
         setPincodeInput(deliveryLocation.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
       }
-      loadCurrentLocation();
+      if (useGpsOnly) {
+        loadCurrentLocation();
+      }
       return;
     }
     loadCurrentLocation();

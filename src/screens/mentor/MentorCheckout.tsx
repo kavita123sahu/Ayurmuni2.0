@@ -10,6 +10,7 @@ import PaymentMethodCard from "../../components/PaymentCard";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import PaymentPlan from "./PaymentPlan";
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 
 
@@ -111,12 +112,19 @@ export default function CheckoutScreen(props: any) {
       <View style={styles.summarycontainer}>
         <View style={styles.row}>
           <Text style={{ fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: Colors.subTextColor }}>CONSULTATION FEE</Text>
-          <Text style={{ fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, color: Colors.black }}>Rs. 1999</Text>
+          <RupeeAmount
+            value={1999}
+            style={{ fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, color: Colors.black }}
+          />
         </View>
 
         <View style={styles.row}>
           <Text style={{ fontSize: 14, fontFamily: Fonts.PoppinsMedium, color: Colors.primaryColor }}>Promo Applied</Text>
-          <Text style={{ fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor }}>rS. -199.00</Text>
+          <RupeeAmount
+            value={199}
+            prefix="- "
+            style={{ fontSize: 14, fontFamily: Fonts.PoppinsSemiBold, color: Colors.primaryColor }}
+          />
         </View>
 
         <View style={styles.divider} />
@@ -124,7 +132,7 @@ export default function CheckoutScreen(props: any) {
         <View style={styles.row}>
           <View>
             <Text style={styles.total}>Grand Total</Text>
-            <Text style={styles.totalValue}>Rs. 1699</Text>
+            <RupeeAmount value={1699} style={styles.totalValue} />
 
           </View>
 

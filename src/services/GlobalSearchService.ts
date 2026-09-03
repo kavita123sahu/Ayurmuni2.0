@@ -1,5 +1,6 @@
 import { apiClient } from './APIconfig';
 import { resolveImageUri } from '../utils/imageUtils';
+import { formatRupee } from '../utils/currencyUtils';
 
 export const DEFAULT_SEARCH_TYPES =
   'products,brands,doctors,yoga_sessions,diet_plans';
@@ -134,7 +135,9 @@ const detectType = (
 const formatPrice = (value: unknown): string => {
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value ?? '');
-  return `₹${n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)}`;
+  return formatRupee(n, {
+    decimals: n % 1 === 0 ? false : 2,
+  });
 };
 
 const pickTitle = (item: any, type: GlobalSearchEntityType): string => {

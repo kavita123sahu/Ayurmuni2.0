@@ -5,17 +5,18 @@ import {
   Image,
   StyleSheet,
   Pressable,
+  TouchableOpacity,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Ionicons } from '../common/Vector';
 import { Images } from '../common/Images';
-import AvailabilityDot from './AvailabilityDot';
 import {
   DOCTOR_GRID,
   DOCTOR_GRID_BODY_HEIGHT,
   DOCTOR_GRID_CARD_HEIGHT,
 } from '../constants/doctorGridLayout';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 type Props = {
   name: string;
@@ -26,13 +27,22 @@ type Props = {
   feeLabel?: string | null;
   imageUri?: string;
   available?: boolean;
+  availabilityLabel?: string;
   onPress?: () => void;
+  onConsultPress?: () => void;
   topRight?: React.ReactNode;
   variant?: 'list' | 'grid';
   cardWidth?: number;
 };
 
 const LIST_PHOTO_W = 108;
+
+const formatExperience = (value: string | number) => {
+  const raw = String(value ?? '').trim();
+  if (/yrs exp/i.test(raw)) return raw;
+  const match = raw.match(/(\d+)/);
+  return `${match ? match[1] : '0'} Yrs Exp`;
+};
 
 const DoctorListCard = ({
   name,
@@ -43,7 +53,9 @@ const DoctorListCard = ({
   feeLabel,
   imageUri,
   available = false,
+  availabilityLabel,
   onPress,
+  onConsultPress,
   topRight,
   variant = 'list',
   cardWidth,
@@ -54,6 +66,90 @@ const DoctorListCard = ({
     reviews != null && String(reviews).trim() !== ''
       ? ` (${reviews})`
       : '';
+  const expLabel = formatExperience(experience);
+  const statusLabel =
+    availabilityLabel || (available ? 'Available' : 'Unavailable');
+
+  const handleConsult = () => {
+    if (onConsultPress) {
+      onConsultPress();
+      return;
+    }
+    onPress?.();
+  };
+
+  const renderStatusBadge = () => (
+    <View
+      style={[
+        styles.statusBadge,
+        available ? styles.statusBadgeAvailable : styles.statusBadgeUnavailable,
+      ]}
+    >
+      <Text style={styles.statusBadgeText} numberOfLines={1}>
+        {statusLabel}
+      </Text>
+    </View>
+  );
+
+  const renderAvailabilityStrip = () => (
+    <View
+      style={[
+        styles.availabilityStrip,
+        available ? styles.availabilityStripOn : styles.availabilityStripOff,
+      ]}
+    >
+      <Text
+        style={[
+          styles.availabilityStripText,
+          available
+            ? styles.availabilityStripTextOn
+            : styles.availabilityStripTextOff,
+        ]}
+        numberOfLines={1}
+      >
+        {statusLabel}
+      </Text>
+    </View>
+  );
+
+  const renderStatsFeeRow = (compact = false) => (
+    <View style={styles.statsFeeRow}>
+      <View style={styles.statsLeft}>
+        <View style={styles.statItem}>
+          <Ionicons name="star" size={compact ? 12 : 13} color="#F5B301" />
+          <Text
+            style={[styles.ratingText, compact && styles.gridRatingText]}
+            numberOfLines={1}
+          >
+            {ratingLabel}
+            {reviewText}
+          </Text>
+        </View>
+        {/* <View style={styles.statSep} /> */}
+        <View style={styles.statItem}>
+          <Ionicons
+            name="time-outline"
+            size={compact ? 12 : 13}
+            color="#16A34A"
+          />
+          <Text
+            style={[styles.expText, compact && styles.gridExpText]}
+            numberOfLines={1}
+          >
+            {expLabel}
+          </Text>
+        </View>
+      </View>
+      {feeLabel ? (
+        <RupeeAmount
+          value={feeLabel}
+          style={[styles.fee, compact && styles.gridFee]}
+        />
+      ) : (
+        <View style={styles.feePlaceholder} />
+      )}
+    </View>
+  );
 
   if (isGrid) {
     const w = cardWidth ?? 160;
@@ -62,60 +158,40 @@ const DoctorListCard = ({
       <Pressable
         style={({ pressed }) => [
           styles.gridCard,
-          {
-            width: w,
-            height: DOCTOR_GRID_CARD_HEIGHT,
-          },
+          { width: w, height: DOCTOR_GRID_CARD_HEIGHT },
           pressed && styles.cardPressed,
         ]}
         onPress={onPress}
       >
         <View style={styles.gridPhotoOuter}>
           <Image source={photo} style={styles.gridPhoto} resizeMode="cover" />
-          {available ? (
-            <View style={styles.onlineBadge}>
-              <AvailabilityDot available size={7} />
-              {/* <Text style={styles.onlineText}>Online</Text> */}
-            </View>
-          ) : null}
+          {renderStatusBadge()}
           {topRight ? <View style={styles.overlayRight}>{topRight}</View> : null}
         </View>
 
         <View style={[styles.gridBody, { height: DOCTOR_GRID_BODY_HEIGHT }]}>
-          <View style={styles.gridTopRow}>
-            <Text style={styles.gridName} numberOfLines={1}>
-              {name}
-            </Text>
-            {feeLabel ? (
-              <Text style={styles.gridFee} numberOfLines={1}>
-                ₹{feeLabel}
-              </Text>
-            ) : (
-              <View style={styles.feePlaceholder} />
-            )}
-          </View>
+          {/* {renderAvailabilityStrip()} */}
+
+          <Text style={styles.gridName} numberOfLines={2}>
+            {name}
+          </Text>
 
           <Text style={styles.gridSpeciality} numberOfLines={1}>
             {speciality || 'Ayurveda Specialist'}
           </Text>
 
-          <View style={styles.gridStatsRow}>
-            <View style={styles.gridRatingWrap}>
-              <Ionicons name="star" size={12} color="#F5B301" />
-              <Text style={styles.gridRatingText} numberOfLines={1}>
-                {ratingLabel}
-                {reviewText}
-              </Text>
-            </View>
+          {renderStatsFeeRow(true)}
 
-            <View style={styles.gridExpWrap}>
-              <View style={styles.gridStatsSep} />
-              <Ionicons name="time-outline" size={12} color="#16A34A" />
-              <Text style={styles.gridExpText} numberOfLines={1}>
-                {experience} yrs
-              </Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            style={styles.gridCta}
+            activeOpacity={0.88}
+            onPress={e => {
+              e?.stopPropagation?.();
+              handleConsult();
+            }}
+          >
+            <Text style={styles.gridCtaText}>Consult Now</Text>
+          </TouchableOpacity>
         </View>
       </Pressable>
     );
@@ -128,22 +204,16 @@ const DoctorListCard = ({
     >
       <View style={styles.photoCol}>
         <Image source={photo} style={styles.listPhoto} />
-        {available ? (
-          <View style={styles.listOnlineBadge}>
-            <AvailabilityDot available size={7} />
-            <Text style={styles.onlineText}>Online</Text>
-          </View>
-        ) : null}
+        {renderStatusBadge()}
         {topRight ? <View style={styles.overlayRight}>{topRight}</View> : null}
       </View>
 
       <View style={styles.listBody}>
-        <View style={styles.topRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {name}
-          </Text>
-          {feeLabel ? <Text style={styles.fee}>₹{feeLabel}</Text> : null}
-        </View>
+        {renderAvailabilityStrip()}
+
+        <Text style={styles.name} numberOfLines={2}>
+          {name}
+        </Text>
 
         {speciality ? (
           <Text style={styles.listSpeciality} numberOfLines={1}>
@@ -151,17 +221,18 @@ const DoctorListCard = ({
           </Text>
         ) : null}
 
-        <View style={styles.metaRow}>
-          <Ionicons name="star" size={13} color="#F5B301" />
-          <Text style={styles.ratingText} numberOfLines={1}>
-            {ratingLabel}
-            {reviewText}
-          </Text>
-          <View style={styles.sep} />
-          <Text style={styles.expText} numberOfLines={1}>
-            {experience} yrs
-          </Text>
-        </View>
+        {renderStatsFeeRow(false)}
+
+        <TouchableOpacity
+          style={styles.consultBtn}
+          activeOpacity={0.88}
+          onPress={e => {
+            e?.stopPropagation?.();
+            handleConsult();
+          }}
+        >
+          <Text style={styles.consultText}>Consult Now</Text>
+        </TouchableOpacity>
       </View>
     </Pressable>
   );
@@ -172,6 +243,81 @@ export default React.memo(DoctorListCard);
 const styles = StyleSheet.create({
   cardPressed: {
     opacity: 0.96,
+  },
+  statusBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderBottomRightRadius: 10,
+    zIndex: 5,
+    maxWidth: '78%',
+  },
+  statusBadgeAvailable: {
+    backgroundColor: '#059669',
+  },
+  statusBadgeUnavailable: {
+    backgroundColor: '#64748B',
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+  availabilityStrip: {
+    alignSelf: 'stretch',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 4,
+  },
+  availabilityStripOn: {
+    backgroundColor: '#ECFDF5',
+  },
+  availabilityStripOff: {
+    backgroundColor: '#F1F5F9',
+  },
+  availabilityStripText: {
+    fontSize: 9,
+    lineHeight: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  availabilityStripTextOn: {
+    color: '#047857',
+  },
+  availabilityStripTextOff: {
+    color: '#64748B',
+  },
+  statsFeeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 6,
+  },
+  statsLeft: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  statSep: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 6,
   },
   gridCard: {
     backgroundColor: '#FFFFFF',
@@ -191,112 +337,63 @@ const styles = StyleSheet.create({
     borderTopRightRadius: DOCTOR_GRID.imageRadius,
     overflow: 'hidden',
     backgroundColor: '#F8FAFB',
+    position: 'relative',
   },
   gridPhoto: {
     width: '100%',
     height: '100%',
-  },
-  onlineBadge: {
-    position: 'absolute',
-    left: 8,
-    bottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  onlineText: {
-    fontSize: 10,
-    lineHeight: 12,
-    color: '#047857',
-    fontFamily: Fonts.PoppinsSemiBold,
   },
   gridBody: {
     paddingHorizontal: DOCTOR_GRID.cardPaddingH,
     paddingTop: 8,
     paddingBottom: DOCTOR_GRID.cardPaddingBottom,
   },
-  gridTopRow: {
-    height: DOCTOR_GRID.nameHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
   gridName: {
-    flex: 1,
     fontSize: 13,
-    lineHeight: DOCTOR_GRID.nameHeight,
+    lineHeight: 16,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+    minHeight: DOCTOR_GRID.nameHeight,
   },
   gridSpeciality: {
-    height: DOCTOR_GRID.specialtyHeight,
-    marginTop: 0,
+    // marginTop: 2,
     fontSize: 11,
     lineHeight: DOCTOR_GRID.specialtyHeight,
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,
   },
-  gridStatsRow: {
-    height: DOCTOR_GRID.statsHeight,
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    // justifyContent: 'space-between',
-  },
-  gridRatingWrap: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
   gridRatingText: {
-    flex: 1,
-    minWidth: 0,
     fontSize: 11,
-    lineHeight: DOCTOR_GRID.statsHeight,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
-  gridExpWrap: {
-    flexShrink: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    // marginLeft: 6,
-    maxWidth: '42%',
-  },
-  gridStatsSep: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E1',
-    // marginRight: 2,
-  },
   gridExpText: {
-    flexShrink: 1,
-    fontSize: 11,
-    lineHeight: DOCTOR_GRID.statsHeight,
+    fontSize: 10,
     color: '#16A34A',
     fontFamily: Fonts.PoppinsMedium,
   },
   gridFee: {
     fontSize: 13,
-    lineHeight: DOCTOR_GRID.nameHeight,
     color: '#C2410C',
     fontFamily: Fonts.PoppinsSemiBold,
     flexShrink: 0,
-    maxWidth: '46%',
     textAlign: 'right',
   },
   feePlaceholder: {
-    width: 36,
-    height: DOCTOR_GRID.nameHeight,
+    width: 28,
+  },
+  gridCta: {
+    height: DOCTOR_GRID.ctaHeight,
+    marginTop: 6,
+    borderRadius: DOCTOR_GRID.ctaRadius,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridCtaText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   listCard: {
     flexDirection: 'row',
@@ -306,30 +403,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E8EEEA',
-    minHeight: 125,
+    minHeight: 158,
   },
   photoCol: {
     width: LIST_PHOTO_W,
     alignSelf: 'stretch',
     backgroundColor: '#E8F3EE',
+    position: 'relative',
+    overflow: 'hidden',
   },
   listPhoto: {
     ...StyleSheet.absoluteFillObject,
     width: LIST_PHOTO_W,
     height: '100%',
     resizeMode: 'cover',
-  },
-  listOnlineBadge: {
-    position: 'absolute',
-    left: 6,
-    bottom: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 999,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
   },
   overlayRight: {
     position: 'absolute',
@@ -341,6 +428,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 6,
   },
   listBody: {
     flex: 1,
@@ -348,24 +436,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   name: {
-    flex: 1,
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 19,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   fee: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 19,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
     flexShrink: 0,
+    textAlign: 'right',
   },
   listSpeciality: {
     marginTop: 2,
@@ -373,29 +456,29 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
   ratingText: {
-    marginLeft: 4,
     flexShrink: 1,
     fontSize: 12,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
-  sep: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E1',
-    marginHorizontal: 6,
-  },
   expText: {
-    flexShrink: 0,
-    fontSize: 12,
-    color: '#64748B',
+    // flexShrink: 1,
+    fontSize: 11,
+    color: '#16A34A',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  consultBtn: {
+    marginTop: 8,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  consultText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

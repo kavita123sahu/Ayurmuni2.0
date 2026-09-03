@@ -16,6 +16,7 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../../components/TablerIcon';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 interface OrderItem {
     id: string;
@@ -63,7 +64,7 @@ const OrderStatus: React.FC = (props : any) => {
                     </View>
                 </View>
 
-                <Text style={styles.price}>Rs. {item.price}</Text>
+                <RupeeAmount value={item.price} style={styles.price} />
             </View>
         );
     };
@@ -117,7 +118,7 @@ const OrderStatus: React.FC = (props : any) => {
 
                     <View style={styles.totalRow}>
                         <Text style={styles.totalText}>Total Paid</Text>
-                        <Text style={styles.totalAmount}>Rs. 498.00</Text>
+                        <RupeeAmount value={498} style={styles.totalAmount} decimals={2} />
                     </View>
                 </View>
 

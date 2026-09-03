@@ -1359,140 +1359,135 @@ export const HorizontalAppointmentSkeleton = () => {
 type Props = {
   prescribed?: boolean;
 };
+
+const CART_SKELETON_COUNT = 4;
+
+/** Matches MyProductCard row layout: checkbox, 72px image, text block, qty + remove. */
 export const MyProductCardSkeleton = () => {
   return (
-    <View>
-      {[1, 2, 3, 4, 5].map(item => (
-        <SkeletonPlaceholder
-          key={item}
-          backgroundColor="#E5E7EB"
-          highlightColor="#F8FAFC"
-        >
+    <ScrollView
+      style={cartSkeletonStyles.scroll}
+      contentContainerStyle={cartSkeletonStyles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <SkeletonPlaceholder
+        backgroundColor="#E5E7EB"
+        highlightColor="#F8FAFC"
+        borderRadius={12}
+      >
+        <SkeletonPlaceholder.Item marginBottom={14}>
+          <SkeletonPlaceholder.Item width="72%" height={18} borderRadius={6} />
           <SkeletonPlaceholder.Item
-            marginBottom={14}
-            borderRadius={20}
-            padding={14}
+            marginTop={6}
+            width="55%"
+            height={12}
+            borderRadius={6}
+          />
+        </SkeletonPlaceholder.Item>
+      </SkeletonPlaceholder>
+
+      {Array.from({ length: CART_SKELETON_COUNT }).map((_, index) => (
+        <View key={`cart-skeleton-${index}`} style={cartSkeletonStyles.card}>
+          <SkeletonPlaceholder
+            backgroundColor="#E5E7EB"
+            highlightColor="#F8FAFC"
+            borderRadius={12}
           >
-            {/* Card */}
             <SkeletonPlaceholder.Item
-              backgroundColor="#FFF"
-              borderRadius={20}
-              padding={14}
+              flexDirection="row"
+              alignItems="center"
+              borderRadius={14}
+              padding={10}
             >
-              {/* Top Row */}
               <SkeletonPlaceholder.Item
-                flexDirection="row"
-                alignItems="center"
-              >
-                {/* Checkbox */}
-                <SkeletonPlaceholder.Item
-                  width={24}
-                  height={24}
-                  borderRadius={8}
-                />
+                width={22}
+                height={22}
+                borderRadius={7}
+              />
 
-                {/* Product Image */}
-                <SkeletonPlaceholder.Item
-                  width={74}
-                  height={74}
-                  borderRadius={18}
-                  marginLeft={12}
-                />
-
-                {/* Details */}
-                <SkeletonPlaceholder.Item
-                  marginLeft={12}
-                  flex={1}
-                >
-                  <SkeletonPlaceholder.Item
-                    width={140}
-                    height={16}
-                    borderRadius={6}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    marginTop={8}
-                    width={90}
-                    height={12}
-                    borderRadius={6}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    marginTop={10}
-                    width={70}
-                    height={18}
-                    borderRadius={6}
-                  />
-                </SkeletonPlaceholder.Item>
-
-                {/* Quantity Box */}
-                <SkeletonPlaceholder.Item
-                  width={42}
-                  height={110}
-                  borderRadius={14}
-                >
-                  <SkeletonPlaceholder.Item
-                    width={34}
-                    height={34}
-                    borderRadius={10}
-                    marginLeft={4}
-                    marginTop={4}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    width={18}
-                    height={12}
-                    borderRadius={4}
-                    marginTop={12}
-                    marginLeft={12}
-                  />
-
-                  <SkeletonPlaceholder.Item
-                    width={34}
-                    height={34}
-                    borderRadius={10}
-                    marginTop={12}
-                    marginLeft={4}
-                  />
-                </SkeletonPlaceholder.Item>
-              </SkeletonPlaceholder.Item>
-
-              {/* Prescribed Section */}
               <SkeletonPlaceholder.Item
-                marginTop={14}
-                paddingTop={12}
-              >
-                <SkeletonPlaceholder.Item
-                  height={1}
-                  width="100%"
-                  marginBottom={12}
-                />
+                width={72}
+                height={72}
+                borderRadius={12}
+                marginLeft={10}
+              />
 
+              <SkeletonPlaceholder.Item flex={1} marginLeft={10}>
                 <SkeletonPlaceholder.Item
+                  width="92%"
+                  height={14}
+                  borderRadius={6}
+                />
+                <SkeletonPlaceholder.Item
+                  marginTop={6}
+                  width="78%"
+                  height={14}
+                  borderRadius={6}
+                />
+                <SkeletonPlaceholder.Item
+                  marginTop={8}
+                  width="55%"
+                  height={11}
+                  borderRadius={6}
+                />
+                <SkeletonPlaceholder.Item
+                  marginTop={8}
                   flexDirection="row"
                   alignItems="center"
                 >
                   <SkeletonPlaceholder.Item
-                    width={24}
-                    height={24}
-                    borderRadius={12}
+                    width={52}
+                    height={16}
+                    borderRadius={6}
                   />
-
                   <SkeletonPlaceholder.Item
-                    width={180}
+                    width={44}
                     height={12}
                     borderRadius={6}
                     marginLeft={8}
                   />
                 </SkeletonPlaceholder.Item>
               </SkeletonPlaceholder.Item>
+
+              <SkeletonPlaceholder.Item marginLeft={10} alignItems="center">
+                <SkeletonPlaceholder.Item
+                  width={84}
+                  height={32}
+                  borderRadius={10}
+                />
+                <SkeletonPlaceholder.Item
+                  marginTop={6}
+                  width={84}
+                  height={28}
+                  borderRadius={8}
+                />
+              </SkeletonPlaceholder.Item>
             </SkeletonPlaceholder.Item>
-          </SkeletonPlaceholder.Item>
-        </SkeletonPlaceholder>
+          </SkeletonPlaceholder>
+        </View>
       ))}
-    </View>
+    </ScrollView>
   );
 };
+
+const cartSkeletonStyles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8EEEA',
+    overflow: 'hidden',
+  },
+});
 
 export const PrakritiProfileSkeleton = () => {
   return (

@@ -9,6 +9,7 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
@@ -18,13 +19,15 @@ import SectionHeader from '../../components/SectionHeader';
 import ProductCard from '../../components/ProductCard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
+import { Images } from '../../common/Images';
+import TablerIcon from '../../components/TablerIcon';
 import AllDoctorCard from '../../components/AllDoctorCard';
 import { Fonts } from '../../common/Fonts';
 import { useAllDoctors } from '../../hooks/useConsultData';
 import {
-  AllDoctorCardSkeleton,
   ProductGridSkeleton,
   DiseaseChipSkeleton,
+  TopDoctorsCardSkeleton,
 } from '../../simmerScreen/ShimmerHook';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
@@ -35,18 +38,35 @@ import { TogglewishlistProduct } from '../../services/ProductServices';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
 import { navigateToProductDetails } from '../../navigation/productNavigation';
-import { getScreenBottomPadding } from '../../constants/layout';
+import {
+  getScreenBottomPadding,
+  FILTER_CHIP_PADDING_H,
+  FILTER_CHIP_PADDING_V,
+  FILTER_CHIP_RADIUS,
+} from '../../constants/layout';
+import {
+  DOCTOR_GRID,
+  getDoctorGridCardWidth,
+} from '../../constants/doctorGridLayout';
 import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import SuggestedCard from '../../components/SuggestedCard';
+import * as _PATIENT from '../../services/PatientServices';
+import * as _YOGA_SERVICES from '../../services/YogaServices';
+import { normalizeDietPlanList } from '../../utils/dietPlanUtils';
+import { mapDietPlanForHome } from '../../store/slices/homeSlice';
+import { normalizeYogaSessionList } from '../../utils/yogaUtils';
+import { itemMatchesHealthConcern } from '../../utils/healthConcernMatch';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const H_PAD = 20;
 const GRID_GAP = 10;
-const CARD_W = (SCREEN_W - H_PAD * 2 - GRID_GAP) / 2;
-const DOCTOR_PREVIEW_COUNT = 4;
+const CARD_W = getDoctorGridCardWidth();
+const PRODUCT_CARD_W = (SCREEN_W - H_PAD * 2 - GRID_GAP) / 2;
+const DIET_YOGA_PREVIEW = 6;
 
 /**
  * Consult by Concern → details:
@@ -69,6 +89,10 @@ const CategoryDoctor = (props: any) => {
   const [selectedDiseaseId, setSelectedDiseaseId] = useState<string | null>(
     null,
   );
+  const [dietPlans, setDietPlans] = useState<any[]>([]);
+  const [yogaSessions, setYogaSessions] = useState<any[]>([]);
+  const [dietLoading, setDietLoading] = useState(false);
+  const [yogaLoading, setYogaLoading] = useState(false);
 
   const { categoryName, categoryId } = route.params || {};
   const concernId = categoryId ? String(categoryId) : '';
@@ -125,7 +149,7 @@ const CategoryDoctor = (props: any) => {
     return {
       ...(concernId
         ? {
-            health_category_id: selectedDiseaseId ?? concernId,
+            health_category_id: concernId,
             ...(selectedDiseaseId
               ? { health_disease_id: selectedDiseaseId }
               : {}),
@@ -149,34 +173,152 @@ const CategoryDoctor = (props: any) => {
     enabled: Boolean(concernId) || Boolean(debouncedSearch.trim()),
   });
 
-  const previewDoctors = useMemo(
-    () =>
-      Array.isArray(doctorData)
-        ? doctorData.slice(0, DOCTOR_PREVIEW_COUNT)
-        : [],
-    [doctorData],
-  );
-
-  const hasDoctors = previewDoctors.length > 0;
-  const showDiseases =
-    Boolean(concernId) && (diseasesLoading || diseases.length > 0);
-
   const selectedDiseaseName = useMemo(
     () => diseases.find(d => d.id === selectedDiseaseId)?.name,
     [diseases, selectedDiseaseId],
   );
 
+  const concernMatch = useMemo(
+    () => ({
+      healthCategoryId: concernId || null,
+      healthDiseaseId: selectedDiseaseId,
+      categoryName: categoryName || null,
+      diseaseName: selectedDiseaseName || null,
+      strict: Boolean(concernId),
+    }),
+    [concernId, selectedDiseaseId, categoryName, selectedDiseaseName],
+  );
+
+  const filterByConcern = useCallback(
+    (list: any[]) =>
+      (Array.isArray(list) ? list : []).filter(item =>
+        itemMatchesHealthConcern(item, concernMatch),
+      ),
+    [concernMatch],
+  );
+
+  const diseaseIdSet = useMemo(
+    () => new Set(diseases.map(d => String(d.id)).filter(Boolean)),
+    [diseases],
+  );
+
+  const doctorMatchesConcern = useCallback(
+    (doctor: any) => {
+      if (filterByConcern([doctor]).length > 0) return true;
+      if (!concernId || selectedDiseaseId) return false;
+      const docDiseases = doctor?.health_diseases;
+      if (!Array.isArray(docDiseases)) return false;
+      return docDiseases.some((entry: any) =>
+        diseaseIdSet.has(String(entry?.id ?? entry)),
+      );
+    },
+    [concernId, selectedDiseaseId, filterByConcern, diseaseIdSet],
+  );
+
+  const doctorList = useMemo(() => {
+    const raw = Array.isArray(doctorData) ? doctorData : [];
+    if (!concernId) return raw;
+    return raw.filter(doctorMatchesConcern);
+  }, [doctorData, concernId, doctorMatchesConcern]);
+
+  const hasDoctors = doctorList.length > 0;
+  const showDiseases =
+    Boolean(concernId) && (diseasesLoading || diseases.length > 0);
+
+  const loadConcernDiet = useCallback(async () => {
+    if (!concernId && !debouncedSearch.trim()) {
+      setDietPlans([]);
+      return;
+    }
+    setDietLoading(true);
+    try {
+      const res = await _PATIENT.getDietPlans({
+        type: 'all',
+        page: 1,
+        page_size: 24,
+        ...(selectedDiseaseId
+          ? { health_disease_id: selectedDiseaseId }
+          : concernId
+            ? { health_category_id: concernId }
+            : {}),
+        ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+      });
+      const list = filterByConcern(normalizeDietPlanList(res))
+        .map(mapDietPlanForHome)
+        .filter(item => item.id)
+        .slice(0, DIET_YOGA_PREVIEW);
+      setDietPlans(list);
+    } catch {
+      setDietPlans([]);
+    } finally {
+      setDietLoading(false);
+    }
+  }, [concernId, selectedDiseaseId, debouncedSearch, filterByConcern]);
+
+  const loadConcernYoga = useCallback(async () => {
+    if (!concernId && !debouncedSearch.trim()) {
+      setYogaSessions([]);
+      return;
+    }
+    setYogaLoading(true);
+    try {
+      const res = await _YOGA_SERVICES.getYogaSession({
+        ...(selectedDiseaseId
+          ? { health_disease_id: selectedDiseaseId }
+          : concernId
+            ? { health_category_id: concernId }
+            : {}),
+        ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+      });
+      const list = filterByConcern(normalizeYogaSessionList(res)).slice(
+        0,
+        DIET_YOGA_PREVIEW,
+      );
+      setYogaSessions(list);
+    } catch {
+      setYogaSessions([]);
+    } finally {
+      setYogaLoading(false);
+    }
+  }, [concernId, selectedDiseaseId, debouncedSearch, filterByConcern]);
+
+  useEffect(() => {
+    loadConcernDiet();
+    loadConcernYoga();
+  }, [loadConcernDiet, loadConcernYoga]);
+
   const productSectionTitle = selectedDiseaseName
     ? `${selectedDiseaseName} Products`
-    : 'Related Products';
+    : `${categoryName || 'Related'} Products`;
+
+  const dietSectionTitle = selectedDiseaseName
+    ? `${selectedDiseaseName} Diet Plans`
+    : `${categoryName || 'Related'} Diet Plans`;
+
+  const yogaSectionTitle = selectedDiseaseName
+    ? `${selectedDiseaseName} Yoga`
+    : `${categoryName || 'Related'} Yoga`;
+
+  const scopedProducts = useMemo(
+    () => (concernId ? filterByConcern(products) : products),
+    [products, concernId, filterByConcern],
+  );
 
   const onRefresh = useCallback(async () => {
     await Promise.all([
       refreshDoctors(),
       refreshProducts(),
       refreshDiseases(),
+      loadConcernDiet(),
+      loadConcernYoga(),
     ]);
-  }, [refreshDoctors, refreshProducts, refreshDiseases]);
+  }, [
+    refreshDoctors,
+    refreshProducts,
+    refreshDiseases,
+    loadConcernDiet,
+    loadConcernYoga,
+  ]);
 
   const handleDoctorPress = useCallback(
     (item: any) => {
@@ -193,6 +335,23 @@ const CategoryDoctor = (props: any) => {
         : { health_category_id: concernId }),
     });
   }, [navigation, concernId, categoryName, selectedDiseaseId]);
+
+  const handleViewAllDiet = useCallback(() => {
+    navigation.navigate('DietScreen', {
+      listType: 'all',
+      health_category_id: concernId || undefined,
+      health_disease_id: selectedDiseaseId || undefined,
+      categoryName: categoryName || undefined,
+    });
+  }, [navigation, concernId, selectedDiseaseId, categoryName]);
+
+  const handleViewAllYoga = useCallback(() => {
+    navigation.navigate('YogaScreen', {
+      health_category_id: concernId || undefined,
+      health_disease_id: selectedDiseaseId || undefined,
+      categoryName: categoryName || undefined,
+    });
+  }, [navigation, concernId, selectedDiseaseId, categoryName]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -294,6 +453,13 @@ const CategoryDoctor = (props: any) => {
                   onPress={() => setSelectedDiseaseId(null)}
                   activeOpacity={0.85}
                 >
+                  <View style={styles.diseaseChipIconWrap}>
+                    <TablerIcon
+                      name="layout-grid"
+                      size={16}
+                      color={!selectedDiseaseId ? Colors.primaryColor : '#64748B'}
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.diseaseChipText,
@@ -306,6 +472,10 @@ const CategoryDoctor = (props: any) => {
 
                 {diseases.map((item, index) => {
                   const active = selectedDiseaseId === item.id;
+                  const imageUri =
+                    item?.image_url && typeof item.image_url === 'string'
+                      ? item.image_url
+                      : '';
                   return (
                     <TouchableOpacity
                       key={String(item?.id ?? `disease-${index}`)}
@@ -316,6 +486,21 @@ const CategoryDoctor = (props: any) => {
                       onPress={() => setSelectedDiseaseId(item.id)}
                       activeOpacity={0.85}
                     >
+                      <View style={styles.diseaseChipIconWrap}>
+                        {imageUri ? (
+                          <Image
+                            source={{ uri: imageUri }}
+                            style={styles.diseaseChipImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Image
+                            source={Images.cardiology}
+                            style={styles.diseaseChipImage}
+                            resizeMode="cover"
+                          />
+                        )}
+                      </View>
                       <Text
                         style={[
                           styles.diseaseChipText,
@@ -334,36 +519,25 @@ const CategoryDoctor = (props: any) => {
         ) : null}
 
         <SectionHeader
-          title="Related Doctors"
-          actionText={
-            doctorData.length > DOCTOR_PREVIEW_COUNT ? 'View all' : ''
-          }
-          onPress={
-            doctorData.length > DOCTOR_PREVIEW_COUNT
-              ? handleViewAllDoctors
-              : undefined
-          }
+          title={`${categoryName || 'Related'} Doctors`}
+          actionText={doctorList.length > 0 ? 'View all' : ''}
+          onPress={doctorList.length > 0 ? handleViewAllDoctors : undefined}
         />
 
         {doctorsLoading && !hasDoctors ? (
-          <AllDoctorCardSkeleton count={3} />
+          <TopDoctorsCardSkeleton count={4} />
         ) : hasDoctors ? (
-          <View style={styles.doctorsBlock}>
-            {previewDoctors.map((item: any, index: number) => (
-              <AllDoctorCard
-                key={String(item?.id ?? item?.doctor_id ?? `doc-${index}`)}
-                item={item}
-                onPress={() => handleDoctorPress(item)}
-              />
+          <View style={styles.doctorGrid}>
+            {doctorList.map((item: any, index: number) => (
+              <View key={String(item?.id ?? item?.doctor_id ?? `doc-${index}`)} style={styles.doctorCardWrap}>
+                <AllDoctorCard
+                  item={item}
+                  variant="grid"
+                  cardWidth={CARD_W}
+                  onPress={() => handleDoctorPress(item)}
+                />
+              </View>
             ))}
-            {doctorData.length > DOCTOR_PREVIEW_COUNT ? (
-              <Text
-                style={styles.viewAllHint}
-                onPress={handleViewAllDoctors}
-              >
-                View all {doctorData.length} doctors
-              </Text>
-            ) : null}
           </View>
         ) : (
           <View style={styles.sectionEmptyBox}>
@@ -374,12 +548,82 @@ const CategoryDoctor = (props: any) => {
           </View>
         )}
 
+        <SectionHeader
+          title={dietSectionTitle}
+          actionText={dietPlans.length > 0 ? 'View all' : ''}
+          onPress={dietPlans.length > 0 ? handleViewAllDiet : undefined}
+        />
+        {dietLoading && dietPlans.length === 0 ? (
+          <View style={styles.inlineSkeleton}>
+            <TopDoctorsCardSkeleton count={2} />
+          </View>
+        ) : dietPlans.length > 0 ? (
+          <SuggestedCard
+            data={dietPlans}
+            navigation={navigation}
+            home
+            edgeScroll
+          />
+        ) : (
+          <View style={styles.sectionEmptyBox}>
+            <Text style={styles.emptyTitle}>No diet plans</Text>
+            <Text style={styles.emptySub}>
+              Diet plans for this concern will appear here.
+            </Text>
+          </View>
+        )}
+
+        <SectionHeader
+          title={yogaSectionTitle}
+          actionText={yogaSessions.length > 0 ? 'View all' : ''}
+          onPress={yogaSessions.length > 0 ? handleViewAllYoga : undefined}
+        />
+        {yogaLoading && yogaSessions.length === 0 ? (
+          <View style={styles.inlineSkeleton}>
+            <TopDoctorsCardSkeleton count={2} />
+          </View>
+        ) : yogaSessions.length > 0 ? (
+          <SuggestedCard
+            data={yogaSessions}
+            navigation={navigation}
+            home
+            edgeScroll
+          />
+        ) : (
+          <View style={styles.sectionEmptyBox}>
+            <Text style={styles.emptyTitle}>No yoga sessions</Text>
+            <Text style={styles.emptySub}>
+              Yoga sessions for this concern will appear here.
+            </Text>
+          </View>
+        )}
+
         <SectionHeader title={productSectionTitle} />
-        {!productsLoading && products.length > 0 ? (
+        {productsLoading && scopedProducts.length === 0 ? (
+          <View style={styles.inlineSkeleton}>
+            <TopDoctorsCardSkeleton count={2} />
+          </View>
+        ) : scopedProducts.length > 0 ? (
+          <SuggestedCard
+            data={scopedProducts}
+            navigation={navigation}
+            home
+            edgeScroll
+          />
+        ) : (
+          <View style={styles.sectionEmptyBox}>
+            <Text style={styles.emptyTitle}>No products</Text>
+            <Text style={styles.emptySub}>
+              Products for this concern will appear here.
+            </Text>
+          </View>
+        )}
+
+        {/* {!productsLoading && products.length > 0 ? (
           <Text style={styles.resultCount}>
             {products.length} product{products.length === 1 ? '' : 's'}
           </Text>
-        ) : null}
+        ) : null} */}
       </>
     ),
     [
@@ -390,15 +634,24 @@ const CategoryDoctor = (props: any) => {
       diseasesLoading,
       diseases,
       selectedDiseaseId,
-      doctorData.length,
+      doctorList.length,
       doctorsLoading,
       hasDoctors,
-      previewDoctors,
+      doctorList,
       handleDoctorPress,
       handleViewAllDoctors,
+      dietSectionTitle,
+      dietPlans,
+      dietLoading,
+      handleViewAllDiet,
+      yogaSectionTitle,
+      yogaSessions,
+      yogaLoading,
+      handleViewAllYoga,
       productSectionTitle,
       productsLoading,
-      products.length,
+      scopedProducts,
+      navigation,
     ],
   );
 
@@ -411,7 +664,7 @@ const CategoryDoctor = (props: any) => {
           <ProductCard
             item={item}
             variant="grid"
-            gridWidth={CARD_W}
+            gridWidth={PRODUCT_CARD_W}
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             onPress={() =>
@@ -444,7 +697,7 @@ const CategoryDoctor = (props: any) => {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <Header
         title={categoryName || 'Concern'}
-        subtitle="Doctors, conditions & products"
+        subtitle="Doctors, products, diet & yoga"
         onBack={() => navigation.goBack()}
         onSearchPress={() => setSearchExpanded(true)}
         onRefreshPress={onRefresh}
@@ -453,7 +706,7 @@ const CategoryDoctor = (props: any) => {
       {showProductSkeleton && products.length === 0 && !hasDoctors ? (
         <View style={styles.pad}>
           <ListHeader />
-          <ProductGridSkeleton cardWidth={CARD_W} gap={GRID_GAP} count={6} />
+          <ProductGridSkeleton cardWidth={PRODUCT_CARD_W} gap={GRID_GAP} count={6} />
         </View>
       ) : (
         <FlatList
@@ -483,28 +736,28 @@ const CategoryDoctor = (props: any) => {
           ListFooterComponent={
             loadingMore ? (
               <ProductGridSkeleton
-                cardWidth={CARD_W}
+                cardWidth={PRODUCT_CARD_W}
                 gap={GRID_GAP}
                 count={2}
               />
             ) : null
           }
-          ListEmptyComponent={
-            !productsLoading && products.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyTitle}>
-                  {hasActiveProductFilters
-                    ? 'No products found'
-                    : 'No products available'}
-                </Text>
-                <Text style={styles.emptySub}>
-                  {hasActiveProductFilters
-                    ? 'Try clearing search or selecting another disease.'
-                    : 'Products will appear here when available.'}
-                </Text>
-              </View>
-            ) : null
-          }
+        // ListEmptyComponent={
+        //   !productsLoading && products.length === 0 ? (
+        //     <View style={styles.emptyBox}>
+        //       <Text style={styles.emptyTitle}>
+        //         {hasActiveProductFilters
+        //           ? 'No products found'
+        //           : 'No products available'}
+        //       </Text>
+        //       <Text style={styles.emptySub}>
+        //         {hasActiveProductFilters
+        //           ? 'Try clearing search or selecting another disease.'
+        //           : 'Products will appear here when available.'}
+        //       </Text>
+        //     </View>
+        //   ) : null
+        // }
         />
       )}
     </SafeAreaView>
@@ -527,27 +780,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardWrap: {
+    width: PRODUCT_CARD_W,
+    marginBottom: 4,
+  },
+  doctorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: DOCTOR_GRID.gap,
+    marginBottom: 8,
+  },
+  doctorCardWrap: {
     width: CARD_W,
-    marginBottom: 4,
   },
-  doctorsBlock: {
-    marginBottom: 4,
-    gap: 0,
-  },
-  viewAllHint: {
-    marginTop: 2,
-    marginBottom: 6,
-    textAlign: 'center',
-    fontSize: 13,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
+  inlineSkeleton: {
+    marginBottom: 8,
   },
   diseaseSection: {
     marginBottom: 6,
     marginTop: 2,
   },
   diseaseTitle: {
-    fontSize: 13,
+    
+        // fontSize: TYPO.lg + 1,
+    fontSize: 17,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
     marginBottom: 8,
@@ -556,18 +812,34 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingRight: 4,
     paddingBottom: 2,
+    paddingHorizontal: 0,
   },
   diseaseChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     minWidth: 68,
-    maxWidth: 140,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
+    maxWidth: 160,
+    paddingHorizontal: FILTER_CHIP_PADDING_H,
+    paddingVertical: FILTER_CHIP_PADDING_V,
+    borderRadius: FILTER_CHIP_RADIUS,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  diseaseChipIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  diseaseChipImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   diseaseChipActive: {
     backgroundColor: '#EAF8F4',

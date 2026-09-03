@@ -5,7 +5,6 @@ import TopSellingList from './TopSellingList';
 import { Colors } from '../common/Colors';
 import { useProductSection } from '../hooks/useProductSection';
 import type { ProductSectionType } from '../services/ProductServices';
-import { HOME_SECTION_GAP } from '../constants/layout';
 
 type Props = {
   section: ProductSectionType | string;
@@ -74,10 +73,10 @@ export default memo(ProductDiscoverySection);
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 8,
+    marginBottom: 0,
   },
   homeWrap: {
-    marginBottom: HOME_SECTION_GAP,
+    width: '100%',
   },
   loader: {
     height: 120,

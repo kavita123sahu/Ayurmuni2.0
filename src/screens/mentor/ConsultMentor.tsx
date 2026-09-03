@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
-import AppHeader from '../../components/AppHeader';
+import { RupeeAmount } from '../../utils/currencyUtils';
 import { Colors } from '../../common/Colors';
 import SectionHeader from '../../components/SectionHeader';
 import { CalenderCard } from '../../components/CalenderCard';
@@ -68,7 +68,7 @@ const ServiceCard = memo(
                                 <Image source={item.image} style={styles.serviceImage} />
                             )}
 
-                            <Text style={styles.price}>Rs. {item.price}</Text>
+                            <RupeeAmount value={item.price} style={styles.price} />
                         </TouchableOpacity>
                     );
                 })}

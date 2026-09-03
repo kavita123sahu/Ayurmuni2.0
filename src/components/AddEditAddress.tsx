@@ -25,7 +25,9 @@ import { Fonts } from '../common/Fonts';
 import { showSuccessToast } from '../config/Key';
 import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import TablerIcon, { TablerIconName } from './TablerIcon';
-import { geocodePincode } from '../services/locationService';
+import { geocodePincode, savedAddressToParsed } from '../services/locationService';
+import { useLocation } from '../context/LocationContext';
+import { popToHomeAfterAddressSave } from '../navigation/navigationUtils';
 
 const ADDRESS_TYPES: { label: string; value: string; iconName: TablerIconName }[] = [
     {
@@ -50,8 +52,10 @@ const AddEditAddress = ({ navigation, route }: any) => {
     const editData = route?.params?.data;
     const type = route?.params?.type;
     const selectedLocation = route?.params?.selectedLocation;
+    const returnToHome = route?.params?.returnToHome === true;
 
     const isEdit = type === 'EDIT';
+    const { setDeliveryLocation } = useLocation();
 
     const [loading, setLoading] =
         useState(false);
@@ -147,6 +151,38 @@ const AddEditAddress = ({ navigation, route }: any) => {
         return parts.length > 0 ? parts.join(', ') : 'Pin your location on the map';
     }, [selectedLocation, address1, city, stateValue, zip]);
 
+    const finishAfterSave = async (savedItem: any) => {
+        const addressRow =
+            savedItem?.data ??
+            savedItem?.address ??
+            savedItem ??
+            null;
+
+        if (addressRow) {
+            await setDeliveryLocation(savedAddressToParsed(addressRow));
+        } else {
+            await setDeliveryLocation(
+                savedAddressToParsed({
+                    address_line_1: address1,
+                    address_line_2: address2,
+                    city,
+                    state: stateValue,
+                    zipcode: zip,
+                    country: 'India',
+                }),
+            );
+        }
+
+        AddressEvents.emit(ADDRESS_UPDATED, savedItem);
+
+        if (returnToHome) {
+            popToHomeAfterAddressSave(navigation);
+            return;
+        }
+
+        navigation.goBack();
+    };
+
     const handleSubmit = async () => {
 
         try {
@@ -194,14 +230,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                 );
 
                 if (res?.success) {
-
-                    AddressEvents.emit(
-                        ADDRESS_UPDATED,
-                        res,
-                    );
                     showSuccessToast('Address updated successfully', 'success');
-
-                    navigation.goBack();
+                    await finishAfterSave(res?.data ?? editData);
                 }
 
             } else {
@@ -241,20 +271,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                 );
 
                 if (res?.success) {
-
-
-                    AddressEvents.emit(
-                        ADDRESS_UPDATED,
-                        res.data,
-                    );
                     showSuccessToast('Address added successfully', 'success');
-
-                    // Alert.alert(
-                    //     'Success',
-                    //     'Address added successfully',
-                    // );
-
-                    navigation.goBack();
+                    await finishAfterSave(res?.data ?? res);
                 }
 
             }
@@ -315,7 +333,11 @@ const AddEditAddress = ({ navigation, route }: any) => {
                             onPress={() =>
                                 navigation.navigate('LocationPickerScreen', {
                                     returnScreen: 'AddEditAddress',
-                                    returnParams: { type, data: editData },
+                                    returnParams: {
+                                        type,
+                                        data: editData,
+                                        returnToHome,
+                                    },
                                 })
                             }
                             style={styles.locationBadge}
@@ -329,7 +351,11 @@ const AddEditAddress = ({ navigation, route }: any) => {
                             onPress={() =>
                                 navigation.navigate('LocationPickerScreen', {
                                     returnScreen: 'AddEditAddress',
-                                    returnParams: { type, data: editData },
+                                    returnParams: {
+                                        type,
+                                        data: editData,
+                                        returnToHome,
+                                    },
                                     useGps: true,
                                 })
                             }

@@ -18,7 +18,7 @@ import {
 } from '../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { resolveProductImageUri } from '../utils/imageUtils';
-import { formatRupee } from '../utils/currencyUtils';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -82,7 +82,12 @@ const ProductCard: React.FC<Props> = ({
   const isOutOfStock = isProductOutOfStock(item);
   const maxQuantity =
     stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
-  const productImageUri = resolveProductImageUri(item);
+  // const productImageUri = resolveProductImageUri(item);
+
+    const productImageUri = item?.image_url || '';
+
+console.log('ProductCarditem', item);
+  console.log('ProductCardproductImageUri', productImageUri);
 
   const handleAdd = () => {
     if (isOutOfStock || actionsLocked) return;
@@ -127,7 +132,7 @@ const ProductCard: React.FC<Props> = ({
             <TablerIcon name="package" size={36} color="#CBD5E1" />
           </View>
         )}
-
++
         {isOutOfStock ? (
           <View style={styles.outOfStockBadge}>
             <Text style={styles.outOfStockText}>Out of Stock</Text>
@@ -171,13 +176,12 @@ const ProductCard: React.FC<Props> = ({
 
         <View style={styles.bottomRow}>
           <View style={styles.priceBlock}>
-            <Text style={styles.price} numberOfLines={1}>
-              {formatRupee(item?.selling_price || item?.price || 0)}
-            </Text>
+            <RupeeAmount
+              value={item?.selling_price || item?.price || 0}
+              style={styles.price}
+            />
             {Number(item?.mrp) > Number(item?.selling_price || 0) && (
-              <Text style={styles.oldPrice} numberOfLines={1}>
-                {formatRupee(item.mrp)}
-              </Text>
+              <RupeeAmount value={item.mrp} style={styles.oldPrice} />
             )}
           </View>
 

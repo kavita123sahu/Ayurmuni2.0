@@ -33,6 +33,10 @@ import {
     DOCTOR_GRID,
     getDoctorGridCardWidth,
 } from '../../constants/doctorGridLayout';
+import {
+    FILTER_CHIP_PADDING_H,
+    FILTER_CHIP_RADIUS,
+} from '../../constants/layout';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
@@ -542,8 +546,9 @@ const styles = StyleSheet.create({
 
     hubChip: {
         flex: 1,
-        height: 36,
-        borderRadius: 10,
+        minHeight: 36,
+        borderRadius: FILTER_CHIP_RADIUS,
+        paddingHorizontal: FILTER_CHIP_PADDING_H,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F1F5F9',

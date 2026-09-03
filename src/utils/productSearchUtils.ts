@@ -1,15 +1,17 @@
 import { matchesSearch } from './searchUtils';
 
+import { formatRupee } from './currencyUtils';
+
 export type ProductSortKey = 'relevance' | 'price_low' | 'price_high' | 'discount';
 
 export type PriceRangeKey = 'all' | 'under_200' | '200_500' | '500_1000' | 'above_1000';
 
 export const PRICE_RANGE_OPTIONS: { key: PriceRangeKey; label: string; min?: number; max?: number }[] = [
   { key: 'all', label: 'All prices' },
-  { key: 'under_200', label: 'Under ₹200', max: 200 },
-  { key: '200_500', label: '₹200 - ₹500', min: 200, max: 500 },
-  { key: '500_1000', label: '₹500 - ₹1000', min: 500, max: 1000 },
-  { key: 'above_1000', label: 'Above ₹1000', min: 1000 },
+  { key: 'under_200', label: `Under ${formatRupee(200)}`, max: 200 },
+  { key: '200_500', label: `${formatRupee(200)} - ${formatRupee(500)}`, min: 200, max: 500 },
+  { key: '500_1000', label: `${formatRupee(500)} - ${formatRupee(1000)}`, min: 500, max: 1000 },
+  { key: 'above_1000', label: `Above ${formatRupee(1000)}`, min: 1000 },
 ];
 
 export const PRODUCT_SORT_OPTIONS: { key: ProductSortKey; label: string }[] = [

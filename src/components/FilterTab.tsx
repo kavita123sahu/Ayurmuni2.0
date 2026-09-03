@@ -4,6 +4,11 @@ import { TABS } from "../common/DataInterface";
 import { Ionicons } from "../common/Vector";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
+import {
+  FILTER_CHIP_PADDING_H,
+  FILTER_CHIP_PADDING_V,
+  FILTER_CHIP_RADIUS,
+} from "../constants/layout";
 
 
 type FilterTabsProps = {
@@ -215,10 +220,10 @@ export const styles = StyleSheet.create({
         justifyContent: 'space-between',
 
         minHeight: 42,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: FILTER_CHIP_PADDING_H,
+        paddingVertical: FILTER_CHIP_PADDING_V,
 
-        borderRadius: 14,
+        borderRadius: FILTER_CHIP_RADIUS,
         borderWidth: 1,
         borderColor: '#E2E8F0',
 

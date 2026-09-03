@@ -12,6 +12,7 @@ import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 
 type Props = {
     route: any;
@@ -107,7 +108,7 @@ const TransactionDetailsScreen = ({ route, navigation }: Props) => {
                     <View style={styles.heroIcon}>
                         <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
                     </View>
-                    <Text style={styles.heroAmount}>₹{amount}</Text>
+                    <RupeeAmount value={amount} style={styles.heroAmount} />
                     <View style={[styles.statusPill, { backgroundColor: `${statusColor}18` }]}>
                         <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
                         <Text style={[styles.statusText, { color: statusColor }]}>
@@ -154,7 +155,7 @@ const TransactionDetailsScreen = ({ route, navigation }: Props) => {
                         />
                         <DetailRow
                             label="Order Amount"
-                            value={`₹${Number(transaction.order.total_amount ?? 0).toLocaleString('en-IN')}`}
+                            value={formatRupee(transaction.order.total_amount ?? 0)}
                         />
                         <TouchableOpacity
                             style={styles.linkBtn}

@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FDFDFB',
+    //  backgroundColor: '#868633',
   },
   row: {
     flexDirection: 'row',
@@ -189,11 +189,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 6,
     overflow: 'visible',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
+    // shadowColor: '#0F172A',
+    // shadowOpacity: 0.08,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
+    elevation: 1,
   },
   sideGroup: {
     flex: 1,

@@ -274,15 +274,15 @@ const WelcomeScreen = ({ navigation }: any) => {
         colors={
           item.kind === 'video'
             ? [
-                'rgba(3, 22, 18, 0.02)',
-                'rgba(3, 22, 18, 0.12)',
-                'rgba(3, 22, 18, 0.82)',
-              ]
+              'rgba(3, 22, 18, 0.02)',
+              'rgba(3, 22, 18, 0.12)',
+              'rgba(3, 22, 18, 0.82)',
+            ]
             : [
-                'rgba(3, 22, 18, 0.05)',
-                'rgba(3, 22, 18, 0.2)',
-                'rgba(3, 22, 18, 0.88)',
-              ]
+              'rgba(3, 22, 18, 0.05)',
+              'rgba(3, 22, 18, 0.2)',
+              'rgba(3, 22, 18, 0.88)',
+            ]
         }
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFillObject}
@@ -337,7 +337,7 @@ const WelcomeScreen = ({ navigation }: any) => {
           />
           <View>
             <Text style={styles.wordmark}>AYURMUNI</Text>
-            <Text style={styles.tagline}>ANCIENT WISDOM · MODERN WELLNESS</Text>
+            <Text style={styles.tagline}>Your Ayurveda</Text>
           </View>
         </View>
 

@@ -1163,6 +1163,17 @@ const CategoryProductsScreen = (props: any) => {
                   ]}
                   onPress={() => setSelectedSubcategoryId(null)}
                 >
+                  <View style={styles.subcategoryChipIconWrap}>
+                    <TablerIcon
+                      name="list"
+                      size={14}
+                      color={
+                        !selectedSubcategoryId
+                          ? Colors.primaryColor
+                          : '#64748B'
+                      }
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.subcategoryChipText,
@@ -1175,6 +1186,10 @@ const CategoryProductsScreen = (props: any) => {
 
                 {subcategories.map(item => {
                   const active = selectedSubcategoryId === item.id;
+                  const imageUri =
+                    item?.image_url && typeof item.image_url === 'string'
+                      ? item.image_url
+                      : '';
                   return (
                     <TouchableOpacity
                       key={item.id}
@@ -1184,6 +1199,21 @@ const CategoryProductsScreen = (props: any) => {
                       ]}
                       onPress={() => setSelectedSubcategoryId(item.id)}
                     >
+                      <View style={styles.subcategoryChipIconWrap}>
+                        {imageUri ? (
+                          <Image
+                            source={{ uri: imageUri }}
+                            style={styles.subcategoryChipImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Image
+                            source={Images.cardiology}
+                            style={styles.subcategoryChipImage}
+                            resizeMode="cover"
+                          />
+                        )}
+                      </View>
                       <Text
                         style={[
                           styles.subcategoryChipText,
@@ -1192,7 +1222,6 @@ const CategoryProductsScreen = (props: any) => {
                         numberOfLines={1}
                       >
                         {item.name}
-                        {/* {renderCategoryName(item.name, styles.subcategoryChipText)} */}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1271,6 +1300,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDFDFB',
   },
   headerWrap: {
+    
     paddingHorizontal: CONTENT_PADDING,
   },
   body: {
@@ -1280,6 +1310,7 @@ const styles = StyleSheet.create({
   productPanel: {
     flex: 1,
     paddingLeft: 6,
+    marginTop: 5,
     paddingRight: CONTENT_PADDING,
   },
   productList: {
@@ -1355,30 +1386,60 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   subcategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+
     minWidth: 64,
-    maxWidth: 120,
+    maxWidth: 140,
+    minHeight: 38,
+
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 7,
+    gap: 6,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+
+  subcategoryChipIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    overflow: 'hidden',
+    backgroundColor: '#E2E8F0',
+
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
+
+  subcategoryChipImage: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+
+  subcategoryChipText: {
+    flexShrink: 1,
+
+    fontSize: 11,
+    lineHeight: 16,
+
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+    textAlign: 'center',
+
+    includeFontPadding: false,
+  },
+
   subcategoryChipActive: {
     backgroundColor: '#EAF8F4',
     borderColor: Colors.primaryColor,
   },
-  subcategoryChipText: {
-    fontSize: 11,
-    color: '#475569',
-    fontFamily: Fonts.PoppinsMedium,
-    textAlign: 'center',
-  },
   subcategoryChipTextActive: {
     color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
   },
   resultCount: {
     fontSize: 11,

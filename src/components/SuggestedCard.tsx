@@ -18,6 +18,7 @@ import {
   resolveYogaVideoUri,
 } from '../utils/yogaUtils';
 import { formatDietPlanRatingBadgeText } from '../utils/dietPlanUtils';
+import { RupeeAmount } from '../utils/currencyUtils';
 import { SCREEN_PADDING_H } from '../constants/layout';
 
 interface Props {
@@ -105,6 +106,8 @@ const SuggestedCard: React.FC<Props> = ({
       ? [...displayData, { id: 'empty', empty: true }]
       : displayData;
 
+  console.log('formattedData', formattedData);
+
   const ListHeaderComponent = () => (
     <>
       <PromoCard
@@ -157,6 +160,9 @@ const SuggestedCard: React.FC<Props> = ({
             .filter(Boolean)
             .join(', ') ||
           '';
+          const dieseases = item?.health_diseases
+            ?.map((d: any) => d?.name)
+            .filter(Boolean)
         const prakriti = String(item?.prakriti || '').trim();
         const season = String(item?.season || '').trim();
         const badgeText = item?.difficulty || season || '';
@@ -241,13 +247,13 @@ const SuggestedCard: React.FC<Props> = ({
                       </Text>
                     </View>
                   </View>
-                ) : !!subtitle ? (
+                ) : !!dieseases ? (
                   <Text
                     style={styles.subtitle}
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {subtitle}
+                    {dieseases.join(', ')}
                   </Text>
                 ) : null}
 
@@ -268,11 +274,11 @@ const SuggestedCard: React.FC<Props> = ({
                 </View>
                 {price && (
                   <View style={styles.priceContainer}>
-                    <Text style={styles.price}>
-                      {item?.is_paid === false || Number(item?.price) === 0
-                        ? 'Free'
-                        : `Rs. ${item.price}`}
-                    </Text>
+                    {item?.is_paid === false || Number(item?.price) === 0 ? (
+                      <Text style={styles.price}>Free</Text>
+                    ) : (
+                      <RupeeAmount value={item.price} style={styles.price} />
+                    )}
                   </View>
                 )}
               </View>
@@ -474,7 +480,7 @@ const styles = StyleSheet.create({
   prakritiBadge: {
     backgroundColor: '#D1FAE5',
     borderColor: '#047857',
-    borderWidth: 0.5,
+    // borderWidth: 0.5,
   },
   prakritiBadgeText: {
     color: '#047857',

@@ -1184,7 +1184,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.brandHint}>ANCIENT WISDOM · MODERN CARE</Text>
+              <Text style={styles.brandHint}>Your Ayurveda</Text>
             </View>
           </View>
 

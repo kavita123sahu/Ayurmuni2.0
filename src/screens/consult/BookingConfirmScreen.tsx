@@ -18,6 +18,9 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { getAppointmentShareMessage } from '../../helper/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
+import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
+import { createAppointmentPdfBytes } from '../../utils/buildConsultationDocumentPdf';
+import { showSuccessToast } from '../../config/Key';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import {
   formatAppointmentDateFull,
@@ -25,7 +28,9 @@ import {
   formatAppointmentWeekday,
   formatAppointmentDayLabel,
 } from '../../utils/appointmentUtils';
+import { formatAppointmentId } from '../../utils/formatDisplayId';
 import { formatRupee } from '../../utils/currencyUtils';
+import Utils from '../../common/Utils';
 
 const { width, height } = Dimensions.get('window');
 const SHEET_HEIGHT = height / 1.85;
@@ -132,6 +137,7 @@ const DetailRow = memo(
 const BookingConfrimScreen = ({ navigation, route }: any) => {
   const { SlotsDetail } = route?.params || {};
   const [visible, setVisible] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -211,6 +217,15 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
         slot?.patient?.patient_name,
         SlotsDetail?.appointment?.patient?.patient_name,
       ),
+      patientPhone: pickFirst(
+        SlotsDetail?.patient?.phone_number,
+        SlotsDetail?.patient?.phone,
+        slot?.patient?.phone_number,
+        slot?.patient?.phone,
+        SlotsDetail?.patient_phone,
+        SlotsDetail?.appointment?.patient?.phone_number,
+        SlotsDetail?.appointment?.patient?.phone,
+      ),
       hospitalName: pickFirst(
         SlotsDetail?.hospital_name,
         info?.hospital_name,
@@ -239,13 +254,35 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     };
   }, [SlotsDetail]);
 
+  const [registeredPhone, setRegisteredPhone] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const info = (await Utils.getData('_USER_INFO')) as
+          | { phone_number?: string; phone?: string }
+          | null;
+        if (!active) return;
+        const phone = pickFirst(info?.phone_number, info?.phone);
+        if (phone) setRegisteredPhone(phone);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const shareMessage = getAppointmentShareMessage({
     doctorName: booking.doctorName,
-    specialization: booking.specialization,
+    patientPhone: booking.patientPhone || registeredPhone,
     date: [booking.weekday, booking.dateLabel].filter(Boolean).join(', '),
     time: booking.timeRange,
     status: booking.status,
     hospitalName: booking.hospitalName,
+    consultationMode: booking.consultationMode,
   });
 
   useEffect(() => {
@@ -297,6 +334,23 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     },
     [closeBottomSheet, shareMessage],
   );
+
+  const downloadAppointmentPdf = useCallback(async () => {
+    if (downloadingPdf) return;
+    try {
+      setDownloadingPdf(true);
+      const pdfBytes = await createAppointmentPdfBytes(SlotsDetail);
+      const fileName = `Appointment_${formatAppointmentId(booking.bookingId).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+      await downloadPdfToDevice({ fileName, pdfBytes });
+    } catch (error: any) {
+      showSuccessToast(
+        error?.message || 'Unable to download appointment PDF',
+        'error',
+      );
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }, [SlotsDetail, booking.bookingId, downloadingPdf]);
 
   const goHome = useCallback(() => {
     navigation.replace('HomeStack', { screen: 'Home' });
@@ -444,7 +498,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             <DetailRow
               iconName="receipt"
               label="Booking ID"
-              value={booking.bookingId}
+              value={formatAppointmentId(booking.bookingId)}
               last={!booking.amount}
             />
             {!!booking.amount && (
@@ -485,6 +539,18 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           >
             <TablerIcon name="calendar" size={16} color={Colors.primaryColor} />
             <Text style={styles.secondaryText}>Add to Calendar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={downloadAppointmentPdf}
+            disabled={downloadingPdf}
+            style={[styles.secondaryBtn, styles.actionHalf]}
+          >
+            <TablerIcon name="download" size={16} color={Colors.primaryColor} />
+            <Text style={styles.secondaryText}>
+              {downloadingPdf ? 'Downloading…' : 'Download PDF'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity

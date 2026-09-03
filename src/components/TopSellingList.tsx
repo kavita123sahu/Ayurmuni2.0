@@ -81,6 +81,7 @@ const TopSellingList: React.FC<Props> = ({
       ? [...displayData, { id: 'empty', empty: true }]
       : displayData;
 
+      console.log('formattedData', formattedData);
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       hideOnScroll(e);
@@ -92,9 +93,9 @@ const TopSellingList: React.FC<Props> = ({
   const resolveVariantId = useCallback((item: any) => {
     return (
       item?.variant_id ??
-      item?.variant?.variant_id ??
-      item?.variant?.id ??
-      item?.id ??
+      // item?.variant?.variant_id ??
+      // item?.variant?.id ??
+      // item?.id ??
       null
     );
   }, []);

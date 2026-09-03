@@ -5,7 +5,7 @@ import {
 
 /**
  * Navigate from OneSignal / in-app notification payloads.
- * Prefer `route` / `screen` from template `data` (see push templates).
+ * Prefer `route` / `screen` / template `name` from push templates.
  */
 export const handleNotificationNavigation = (
   navigationRef: any,
@@ -23,6 +23,7 @@ export const handleNotificationNavigation = (
       '',
   ).trim();
 
+  const templateName = String(data?.name ?? '').trim().toLowerCase();
   const event = String(data?.event ?? '').toLowerCase();
   const orderStatus = String(data?.order_status ?? '').toLowerCase();
 
@@ -49,7 +50,12 @@ export const handleNotificationNavigation = (
       screen: 'DietScreen',
       params: {
         dietId: data?.diet_id ?? data?.dietId,
-        planId: data?.plan_id ?? data?.planId,
+        planId: data?.plan_id ?? data?.planId ?? data?.diet_plan_id,
+        item: data?.plan_id
+          ? { id: String(data.plan_id) }
+          : data?.diet_plan_id
+            ? { id: String(data.diet_plan_id) }
+            : undefined,
       },
     });
   };
@@ -89,6 +95,31 @@ export const handleNotificationNavigation = (
       params: { varientID: String(productId) },
     });
   };
+
+  // Template name (OneSignal `name` field) — highest priority for Ayurmuni templates
+  if (templateName) {
+    if (templateName === 'customer_welcome') {
+      goHome();
+      return;
+    }
+
+    if (
+      templateName.startsWith('order_status_') ||
+      templateName.includes('order_status')
+    ) {
+      goOrderDetails();
+      return;
+    }
+
+    if (
+      templateName.startsWith('diet_') ||
+      templateName.startsWith('diet_plan_') ||
+      templateName.includes('diet_water')
+    ) {
+      goDiet();
+      return;
+    }
+  }
 
   // Template route / screen (preferred)
   const normalizedRoute = route.toLowerCase();

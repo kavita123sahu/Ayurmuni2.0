@@ -1,5 +1,5 @@
-import { Alert } from 'react-native';
 import { showSuccessToast } from '../config/Key';
+import { showPrescriptionModal } from '../services/prescriptionModalService';
 
 /**
  * API flag on product / variant list responses.
@@ -22,16 +22,14 @@ const PRESCRIPTION_TITLE = 'Prescription required';
 const PRESCRIPTION_MSG =
   'You cannot increase the quantity or add this medicine to cart without a doctor’s prescription.';
 
-/** Toast + optional native alert for prescription-gated products */
+/** Custom modal (Consult Now) or toast for prescription-gated products */
 export const showPrescriptionRequiredMessage = (options?: {
   useAlert?: boolean;
   message?: string;
 }) => {
   const message = options?.message || PRESCRIPTION_MSG;
   if (options?.useAlert !== false) {
-    Alert.alert(PRESCRIPTION_TITLE, message, [
-      { text: 'OK', style: 'default' },
-    ]);
+    showPrescriptionModal({ message });
     return;
   }
   showSuccessToast(message, 'error');

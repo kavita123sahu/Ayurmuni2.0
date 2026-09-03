@@ -1147,7 +1147,7 @@ const ProfilePage = ({ navigation }: any) => {
         { id: 5, title: 'Medical Records', icon: 'file-medical' },
         { id: 6, title: 'Favourite Doctor', icon: 'heart' },
         { id: 7, title: 'Wishlist', icon: 'heart-filled' },
-        { id: 8, title: 'Mentor', icon: 'school' },
+        // { id: 8, title: 'Mentor', icon: 'school' },
         { id: 9, title: 'Cart', icon: 'shopping-cart' },
         { id: 10, title: 'Analysis', icon: 'chart-pie' },
         { id: 11, title: 'Delete Account', icon: 'trash' },

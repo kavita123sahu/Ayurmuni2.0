@@ -9,6 +9,9 @@ export const SCREEN_PADDING_H = 20;
 export const SECTION_GAP = 18;
 export const HOME_SECTION_GAP = 16;
 export const HOME_SECTION_HEADER_MB = 10;
+export const FILTER_CHIP_RADIUS = 10;
+export const FILTER_CHIP_PADDING_H = 15;
+export const FILTER_CHIP_PADDING_V = 8;
 
 export const CARD_PADDING = 14;
 export const CARD_RADIUS = 16;

@@ -17,10 +17,7 @@ import { HORIZONTAL_SCROLL_CONTENT } from '../constants/layout';
 
 const { width } = Dimensions.get('window');
 
-const ITEM_SIZE = Math.min(102, Math.round(width / 3.9));
-const CONCERN_CARD_WIDTH = Math.min(70, Math.round(width / 3.15));
-
-// Circle size is a % of the item width, giving room for the label below
+const CATEGORY_TILE_WIDTH = Math.min(70, Math.round(width / 3.15));
 const CIRCLE_RATIO = 0.78;
 
 interface Category {
@@ -90,7 +87,7 @@ const CategoryList = ({
   edgeScroll = false,
 }: any) => {
   const isConcern = doctor || variant === 'concern';
-  const itemWidth = isConcern ? CONCERN_CARD_WIDTH : ITEM_SIZE;
+  const itemWidth = CATEGORY_TILE_WIDTH;
   const circleSize = Math.round(itemWidth * CIRCLE_RATIO);
 
   const handlePress = useCallback(

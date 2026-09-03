@@ -86,6 +86,7 @@ const ProductsScreen = () => {
     enabled: Boolean(productsCategoryId) || !homeLoading,
   });
 
+  console.log('ProductsScreen products', products);
   const { categories: productCategories, loading: categoriesLoading } =
     useProductCategories(null);
   const { onScroll } = useScrollHide();
@@ -190,16 +191,18 @@ const ProductsScreen = () => {
               enablePreview={false}
             />
           </View>
-        ) : (
-          <PromoCard
-            title="Up to 40% OFF on Supplements"
-            desc="Keep your immunity strong this season."
-            tag="SUMMER SALE"
-            buttontext="Shop Now"
-            showButton
-            onPress={() => { }}
-          />
-        )}
+        ) : null
+        //  (
+        //   <PromoCard
+        //     title="Up to 40% OFF on Supplements"
+        //     desc="Keep your immunity strong this season."
+        //     tag="SUMMER SALE"
+        //     buttontext="Shop Now"
+        //     showButton
+        //     onPress={() => { }}
+        //   />
+        // )
+        }
 
         <SectionHeader
           title="Shop by Category"

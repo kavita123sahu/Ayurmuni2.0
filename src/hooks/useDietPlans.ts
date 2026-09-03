@@ -2374,6 +2374,7 @@ import type { DietPlanListParams } from '../services/PatientServices';
 export type DietListFilters = {
   search?: string;
   prakriti?: string;
+  health_category_id?: string | number;
   health_disease_id?: string | number;
   is_paid?: boolean | string;
   duration?: string | number;
@@ -2407,6 +2408,11 @@ const normalizeListFilters = (filters?: DietListFilters): DietListFilters => {
   if (!filters) return {};
   const search = String(filters.search || '').trim();
   const prakriti = String(filters.prakriti || '').trim();
+  const health_category_id =
+    filters.health_category_id != null &&
+      String(filters.health_category_id).trim() !== ''
+      ? filters.health_category_id
+      : undefined;
   const health_disease_id =
     filters.health_disease_id != null &&
       String(filters.health_disease_id).trim() !== ''
@@ -2436,6 +2442,7 @@ const normalizeListFilters = (filters?: DietListFilters): DietListFilters => {
   return {
     ...(search ? { search } : {}),
     ...(prakriti && prakriti.toLowerCase() !== 'all' ? { prakriti } : {}),
+    ...(health_category_id != null ? { health_category_id } : {}),
     ...(health_disease_id != null ? { health_disease_id } : {}),
     ...(is_paid != null ? { is_paid } : {}),
     ...(duration != null ? { duration } : {}),

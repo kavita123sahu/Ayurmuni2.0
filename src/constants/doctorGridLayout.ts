@@ -7,7 +7,8 @@ export const HOME_DOCTOR = {
   cardRadius: 18,
   cardPadding: 10,
   avatarSize: 64,
-  nameHeight: 18,
+  nameHeight: 32,
+  availabilityStripHeight: 16,
   qualHeight: 14,
   statsHeight: 20,
   ctaHeight: 32,
@@ -28,18 +29,14 @@ export const HOME_DOCTOR = {
 
 export const HOME_DOCTOR_CARD_HEIGHT =
   HOME_DOCTOR.cardPadding * 2 +
-  // Avatar
   (HOME_DOCTOR.avatarSize + 14) +
   8 +
-  // Name
+  HOME_DOCTOR.availabilityStripHeight +
+  4 +
   HOME_DOCTOR.nameHeight +
-  // Qualification
   HOME_DOCTOR.qualHeight +
-  // Rating + Experience
-  28 +
   8 +
-  // Fee
-  20 +
+  34 +
   HOME_DOCTOR.cardPadding;
 
 export const getHomeDoctorCardWidth = () =>
@@ -54,22 +51,25 @@ export const DOCTOR_GRID = {
   imageRadius: 16,
   cardPaddingH: 10,
   cardPaddingTop: 0,
-  cardPaddingBottom: 10,
-  /** Photo block height (not square — stable across widths). */
-  photoHeight: 132,
-  nameHeight: 18,
+  cardPaddingBottom: 6, // 10 → 6
+  photoHeight: 130,
+  nameHeight: 20,
+  availabilityStripHeight: 16,
   specialtyHeight: 16,
   statsHeight: 18,
   ctaHeight: 34,
   ctaRadius: 10,
 } as const;
-
 export const DOCTOR_GRID_BODY_HEIGHT =
-  8 +
+  6 +
+  DOCTOR_GRID.availabilityStripHeight +
+  2 +
   DOCTOR_GRID.nameHeight +
   DOCTOR_GRID.specialtyHeight +
-  6 +
+  4 +
   DOCTOR_GRID.statsHeight +
+  4 +
+  DOCTOR_GRID.ctaHeight +
   DOCTOR_GRID.cardPaddingBottom;
 
 export const DOCTOR_GRID_CARD_HEIGHT =

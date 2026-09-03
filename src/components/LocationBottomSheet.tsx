@@ -54,7 +54,7 @@ const LocationBottomSheet: React.FC<Props> = ({
   const openAddAddressForm = useCallback(() => {
     onClose();
     setTimeout(() => {
-      stackNav.navigate('AddEditAddress', { type: 'ADD' });
+      stackNav.navigate('AddEditAddress', { type: 'ADD', returnToHome: true });
     }, 280);
   }, [onClose, stackNav]);
 
@@ -65,7 +65,7 @@ const LocationBottomSheet: React.FC<Props> = ({
         if (returnToForm) {
           stackNav.navigate('LocationPickerScreen', {
             returnScreen: 'AddEditAddress',
-            returnParams: { type: 'ADD' },
+            returnParams: { type: 'ADD', returnToHome: true },
           });
         } else {
           stackNav.navigate('LocationPickerScreen');

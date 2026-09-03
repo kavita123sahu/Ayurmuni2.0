@@ -14,7 +14,6 @@ import {
   Linking,
   Platform,
   Dimensions,
-  Share,
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,10 +39,10 @@ import { extractReviewsList } from '../../utils/reviewUtils';
 import { consumePendingProductReview } from '../../utils/pendingProductReview';
 import { getStatusColor } from '../../common/DataInterface';
 import { cancelOrder, downloadInvoiceFile, extractOrderDetail, getOrderById, getOrders, normalizeOrdersList, pollOrderTracking } from '../../services/OrderService';
-import { Buffer } from 'buffer';
+import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
+import { formatOrderId } from '../../utils/formatDisplayId';
 import Toast from 'react-native-toast-message';
-import RNFS from 'react-native-fs';
-import FileViewer from 'react-native-file-viewer';
+import { formatRupee, RUPEE_SYMBOL } from '../../utils/currencyUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -115,10 +114,8 @@ const CANCELLATION_REASONS = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const formatCurrency = (value?: string | number) => {
-  const num = Number(value ?? 0);
-  return `₹${Number.isFinite(num) ? num.toFixed(2) : '0.00'}`;
-};
+const formatCurrency = (value?: string | number) =>
+  formatRupee(value, { decimals: 2, fallback: `${RUPEE_SYMBOL}0.00` });
 
 const resolveOrderItemsTotal = (order: any): number => {
   const candidates = [
@@ -435,37 +432,10 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
         throw new Error('Invoice PDF data not found');
       }
 
-      const base64 = Buffer.from(new Uint8Array(response.data)).toString('base64');
-      const fileName = `Invoice_${order?.order_code ?? order.id}.pdf`;
-
-      // Save to a persistent, user-accessible location
-      const saveDir =
-        Platform.OS === 'android'
-          ? RNFS.DownloadDirectoryPath          // /sdcard/Download — visible in Files app
-          : RNFS.DocumentDirectoryPath;          // iOS Documents — accessible via Files
-
-      const filePath = `${saveDir}/${fileName}`;
-
-      await RNFS.writeFile(filePath, base64, 'base64');
-
-      const exists = await RNFS.exists(filePath);
-      if (!exists) throw new Error('Invoice file was not saved');
-
-      // Try to open directly; fall back to Share sheet
-      try {
-        await FileViewer.open(filePath, { showOpenWithDialog: true });
-      } catch {
-        await Share.share({
-          title: fileName,
-          url: Platform.OS === 'android' ? `file://${filePath}` : filePath,
-          message: `Invoice for order #${order?.order_code ?? order.id}`,
-        });
-      }
-
-      Toast.show({
-        type: 'success',
-        text1: 'Invoice saved',
-        text2: `Saved to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`,
+      const fileName = `Invoice_${formatOrderId(order?.order_code ?? order.id).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+      await downloadPdfToDevice({
+        fileName,
+        arrayBuffer: response.data as ArrayBuffer,
       });
     } catch (err: any) {
       Toast.show({
@@ -504,7 +474,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       navigation.navigate('ShareExperienceScreen', {
         entityType: 'product',
         entityName: target.name,
-        entitySubtitle: `Order #${order?.order_code ?? order?.id ?? ''}`,
+        entitySubtitle: `Order ${formatOrderId(order?.order_code ?? order?.id)}`,
         variantId: target.variantId,
         orderId: String(order?.id ?? ''),
         initialRating: rating,
@@ -623,7 +593,9 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
           <View style={styles.heroTop}>
             <View style={styles.heroLeft}>
               <Text style={styles.heroLabel}>ORDER ID</Text>
-              <Text style={styles.heroOrderId}>#{order?.order_code ?? order?.id}</Text>
+              <Text style={styles.heroOrderId}>
+                #{formatOrderId(order?.order_code ?? order?.id)}
+              </Text>
               <Text style={styles.heroDate}>
                 {formatOrderDateTime(order?.created_at)}
               </Text>

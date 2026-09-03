@@ -76,7 +76,13 @@ const tryGoogleRequest = async (buildUrl: (key: string) => string) => {
         return { data, key };
       }
       lastError = getGoogleApiSetupHint(data.status, data.error_message);
-      console.log('GOOGLE_API_STATUS', data.status, data.error_message);
+      console.log(
+        'GOOGLE_API_STATUS',
+        data.status,
+        data.error_message || '',
+        'key_suffix:',
+        key.slice(-6),
+      );
     } catch (error: any) {
       lastError = error?.message || lastError;
     }

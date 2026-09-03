@@ -1937,9 +1937,20 @@ const litersLabel = (ml: number) => `${((Number(ml) || 0) / 1000).toFixed(1)}L`;
 
 const DietScreen = (props: any) => {
   const routeItem = props?.route?.params?.item;
+  const routeHealthCategoryId =
+    props?.route?.params?.health_category_id != null
+      ? String(props.route.params.health_category_id)
+      : '';
+  const routeHealthDiseaseId =
+    props?.route?.params?.health_disease_id != null
+      ? String(props.route.params.health_disease_id)
+      : '';
+  const routeCategoryName = String(props?.route?.params?.categoryName || '').trim();
   const routeWantsAll =
     props?.route?.params?.listType === 'all' ||
-    props?.route?.params?.viewAll === true;
+    props?.route?.params?.viewAll === true ||
+    Boolean(routeHealthCategoryId) ||
+    Boolean(routeHealthDiseaseId);
   // Prefer catalog diet_plan_id; never open detail with patient assignment id
   const initialPlanId = (() => {
     const catalog =
@@ -1954,7 +1965,10 @@ const DietScreen = (props: any) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [prakritiFilter, setPrakritiFilter] = useState(ALL_VALUE);
   const [diseaseFilter, setDiseaseFilter] = useState<DiseaseOption | null>(
-    null,
+  () =>
+    routeHealthDiseaseId
+      ? { id: routeHealthDiseaseId, name: routeCategoryName || 'Concern' }
+      : null,
   );
   const [paidFilter, setPaidFilter] = useState(ALL_VALUE);
   const [durationFilter, setDurationFilter] = useState(ALL_VALUE);
@@ -1983,7 +1997,11 @@ const DietScreen = (props: any) => {
         prakritiFilter && prakritiFilter !== ALL_VALUE
           ? prakritiFilter
           : undefined,
-      health_disease_id: diseaseFilter?.id || undefined,
+      health_category_id:
+        !diseaseFilter?.id && routeHealthCategoryId
+          ? routeHealthCategoryId
+          : undefined,
+      health_disease_id: diseaseFilter?.id || routeHealthDiseaseId || undefined,
       is_paid:
         paidFilter === 'true' || paidFilter === 'false'
           ? paidFilter
@@ -2014,6 +2032,8 @@ const DietScreen = (props: any) => {
       caloriesFilter,
       ratingFilter,
       sortFilter,
+      routeHealthCategoryId,
+      routeHealthDiseaseId,
     ],
   );
 

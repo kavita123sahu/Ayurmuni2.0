@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon, { TablerIconName } from './TablerIcon';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 interface Props {
     name: string;
@@ -56,7 +57,7 @@ const TransactionCard: React.FC<Props> = ({
             </View>
 
             <View style={styles.right}>
-                <Text style={styles.amount}>₹{amount}</Text>
+                <RupeeAmount value={amount} style={styles.amount} />
                 <Text style={[styles.status, { color: getStatusColor(status) }]}>
                     {status}
                 </Text>

@@ -26,6 +26,8 @@ import {
     CartLineItem,
 } from '../../store/slices/cartSlice';
 import { resolveProductImageUri } from '../../utils/imageUtils';
+import { formatOrderId } from '../../utils/formatDisplayId';
+import { formatRupee } from '../../utils/currencyUtils';
 
 type DeliveryAddress = {
     id: string;
@@ -70,10 +72,8 @@ type OrderResult = {
     items: OrderItemType[];
 };
 
-const formatCurrency = (val?: string | number) => {
-    const num = Number(val ?? 0);
-    return `Rs. ${num.toFixed(2)}`;
-};
+const formatCurrency = (val?: string | number) =>
+    formatRupee(val, { decimals: 2 });
 
 const formatDate = (dateStr?: string, addDays = 0) => {
     if (!dateStr) return '—';
@@ -326,7 +326,9 @@ const OrderConfirmation: React.FC = (props: any) => {
 
                     <View style={styles.rowBetween}>
                         <Text style={styles.label}>Order ID</Text>
-                        <Text style={styles.orderId}>#{orderResult?.order_code ?? '—'}</Text>
+                        <Text style={styles.orderId}>
+                            #{formatOrderId(orderResult?.order_code ?? orderResult?.id)}
+                        </Text>
                     </View>
 
                     <View style={styles.rowBetween}>

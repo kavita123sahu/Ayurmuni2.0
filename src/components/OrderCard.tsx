@@ -10,6 +10,7 @@ import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 import { getStatusColor } from '../common/DataInterface';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 type Props = {
   title: string;
@@ -100,7 +101,7 @@ const OrderCard: React.FC<Props> = ({
 
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.label}>TOTAL AMOUNT</Text>
-          <Text style={styles.amount}>Rs. {amount}</Text>
+          <RupeeAmount value={amount} style={styles.amount} />
         </View>
       </View>
     </TouchableOpacity>

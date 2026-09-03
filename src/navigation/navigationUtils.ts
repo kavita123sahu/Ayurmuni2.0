@@ -159,6 +159,26 @@ export const goBackToHomeTab = (navigation: any) => {
   safeGoBack(navigation);
 };
 
+/** After saving address from Home location modal — land on Home tab, not map picker. */
+export const popToHomeAfterAddressSave = (navigation: any) => {
+  const stackNav = getStackNavigation(navigation) ?? navigation;
+
+  stackNav.dispatch(
+    CommonActions.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'TabStack',
+          state: {
+            routes: [{ name: 'Home' }],
+            index: 0,
+          },
+        },
+      ],
+    }),
+  );
+};
+
 /**
  * Leave video call and land on Appointments without leaving
  * PatientVideoCallScreen in the stack (avoids back → video call again).

@@ -10,7 +10,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import TablerIcon from './TablerIcon';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { formatRupee } from '../utils/currencyUtils';
+import { RupeeAmount } from '../utils/currencyUtils';
 import {
   getDietListStatus,
   getDietRepeatCount,
@@ -162,9 +162,11 @@ const DietPlanCard = ({ item, onPress }: Props) => {
             )}
             <View style={styles.footerItem}>
               <TablerIcon name="receipt" size={13} color="#94A3B8" />
-              <Text style={styles.footerText}>
-                {isFree ? 'Free' : formatRupee(item.price)}
-              </Text>
+              {isFree ? (
+                <Text style={styles.footerText}>Free</Text>
+              ) : (
+                <RupeeAmount value={item.price} style={styles.footerText} />
+              )}
             </View>
             {!!ratingText && (
               <View style={styles.footerItem}>

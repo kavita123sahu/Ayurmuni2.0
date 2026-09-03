@@ -1,4 +1,5 @@
 import { resolveProductImageUri } from './imageUtils';
+import { formatOrderId } from './formatDisplayId';
 
 export type OrderListItem = {
   id: string;
@@ -55,7 +56,7 @@ export const mapOrderToListItem = (order: any): OrderListItem => {
 
   return {
     id: String(order?.id ?? order?.order_code ?? ''),
-    orderCode: String(order?.order_code ?? order?.id ?? ''),
+    orderCode: formatOrderId(order?.order_code ?? order?.id),
     title,
     status: String(order?.order_status ?? 'pending'),
     date: formatOrderDate(order?.created_at),

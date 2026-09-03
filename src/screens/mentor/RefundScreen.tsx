@@ -21,6 +21,7 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const reasons = [
     'Product damaged',
@@ -157,7 +158,7 @@ const RefundScreen = (props: any) => {
                                 <Text style={styles.cardType}>MEDICINES</Text>
                                 <Text style={styles.cardTitle}>Prescription Bundle</Text>
                                 <Text style={styles.cardSub}>Included: 3 items • Qty: 1</Text>
-                                <Text style={styles.price}>Rs. 1240.00</Text>
+                                <RupeeAmount value={1240} style={styles.price} decimals={2} />
                             </View>
                         </View>
 

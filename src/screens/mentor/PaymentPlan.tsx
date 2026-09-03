@@ -6,14 +6,15 @@ import { Fonts } from "../../common/Fonts";
 import { Colors } from "../../common/Colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import TablerIcon from '../../components/TablerIcon';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const PaymentPlan = ({ onClose, navigation }: any) => {
     const [selected, setSelected] = useState("3");
 
     const plans = [
-        { id: "3", title: "3 Months", price: "Rs. 566/mo", sub: "No Cost EMI", recommended: true },
-        { id: "6", title: "6 Months", price: "Rs. 295/mo", sub: "12% p.a.", recommended: true },
-        { id: "9", title: "9 Months", price: "Rs. 205/mo", sub: "15% p.a.", recommended: false },
+        { id: "3", title: "3 Months", monthlyAmount: 566, sub: "No Cost EMI", recommended: true },
+        { id: "6", title: "6 Months", monthlyAmount: 295, sub: "12% p.a.", recommended: true },
+        { id: "9", title: "9 Months", monthlyAmount: 205, sub: "15% p.a.", recommended: false },
     ];
 
 
@@ -29,7 +30,7 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, flexGrow: 1, backgroundColor: '#FDFDFB', paddingBottom: 30 }}>
 
                 <Text style={styles.label}>AMOUNT TO PAY</Text>
-                <Text style={styles.amount}>Rs. 1699.00</Text>
+                <RupeeAmount value={1699} style={styles.amount} decimals={2} />
 
                 <View style={styles.badgeContainer}>
                     <TablerIcon name="approved" size={15} color={Colors.primaryColor} />
@@ -69,9 +70,19 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
 
                                 <View>
                                     <Text style={[styles.price, active && styles.greenText]}>
-                                        {item?.price}
+                                        <RupeeAmount
+                                            value={item.monthlyAmount}
+                                            style={[styles.price, active && styles.greenText]}
+                                        />
+                                        /mo
                                     </Text>
-                                    <Text style={styles.total}>{item?.price}</Text>
+                                    <Text style={styles.total}>
+                                        <RupeeAmount
+                                            value={item.monthlyAmount}
+                                            style={styles.total}
+                                        />
+                                        /mo
+                                    </Text>
                                 </View>
                             </View>
 

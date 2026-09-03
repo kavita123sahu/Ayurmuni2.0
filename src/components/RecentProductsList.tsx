@@ -14,6 +14,7 @@ import { requireAuth } from '../services/guestAuth';
 import { showSuccessToast } from '../config/Key';
 import { navigateToCheckoutWithProduct } from '../navigation/productNavigation';
 import { Colors } from '../common/Colors';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 interface Props {
   data?: Product[];
@@ -85,9 +86,11 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
               </View>
 
               <View style={styles.bottomRow}>
-                <Text style={styles.price}>
-                  Rs. {item.price.toFixed(2)}
-                </Text>
+                <RupeeAmount
+                  value={item.price}
+                  style={styles.price}
+                  decimals={2}
+                />
 {/* 
                 <TouchableOpacity
                   style={styles.btn}

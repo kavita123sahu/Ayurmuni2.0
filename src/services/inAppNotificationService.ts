@@ -1,4 +1,8 @@
 import { OneSignal } from 'react-native-onesignal';
+import type {
+  NotificationClickEvent,
+  NotificationWillDisplayEvent,
+} from 'react-native-onesignal';
 import {
   handleNotificationNavigation,
   refreshUnreadBadge,
@@ -55,10 +59,14 @@ export const normalizeNotificationPayload = (
     raw?.contents ?? nested?.contents ?? raw?.message ?? raw?.body,
   );
 
+  const templateName = String(
+    raw?.name ?? nested?.name ?? raw?.template ?? nested?.template ?? '',
+  ).trim();
+
   return {
     ...nested,
     ...raw,
-    name: String(raw?.name ?? nested?.name ?? 'Ayurmuni'),
+    name: templateName || 'Ayurmuni',
     headings: headings || 'New notification',
     contents: contents || 'Tap to open',
     title: headings || raw?.title,
@@ -94,7 +102,6 @@ const mapOneSignalPayload = (notification: any): PushNotificationData => {
     {};
 
   return normalizeNotificationPayload({
-    name: additional?.name ?? 'Ayurmuni',
     headings: notification?.title ?? additional?.headings,
     contents:
       notification?.body ??
@@ -119,7 +126,7 @@ export const setupOneSignalInAppListeners = () => {
 
   OneSignal.Notifications.addEventListener(
     'foregroundWillDisplay',
-    event => {
+    (event: NotificationWillDisplayEvent) => {
       // Show default device notification even while app is open.
       try {
         event.getNotification().display();
@@ -130,7 +137,9 @@ export const setupOneSignalInAppListeners = () => {
     },
   );
 
-  OneSignal.Notifications.addEventListener('click', event => {
+  OneSignal.Notifications.addEventListener(
+    'click',
+    (event: NotificationClickEvent) => {
     const payload = mapOneSignalPayload(event.notification);
     if (navigationRef.isReady()) {
       handleNotificationNavigation(navigationRef, payload);

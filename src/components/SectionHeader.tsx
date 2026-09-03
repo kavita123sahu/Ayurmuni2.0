@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
 
   container: {
 
+    marginTop: 0,
     marginBottom: HOME_SECTION_HEADER_MB,
 
     flexDirection: 'row',

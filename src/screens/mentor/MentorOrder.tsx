@@ -14,6 +14,7 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TablerIcon from '../../components/TablerIcon';
+import { formatRupee } from '../../utils/currencyUtils';
 
 const MentorOrder = ( props : any) => {
 
@@ -26,7 +27,7 @@ const MentorOrder = ( props : any) => {
         items: {
             title: "Medicines Order",
             subtitle: "Prescription Bundle · 1 Unit",
-            price: "₹1240.00",
+            price: formatRupee(1240, { decimals: 2 }),
             qty: 1,
             image: undefined
         },

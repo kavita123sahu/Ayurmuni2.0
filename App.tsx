@@ -180,6 +180,8 @@ import CartAddedToastBar from './src/components/CartAddedToastBar';
 
 import InAppNotificationWatcher from './src/components/InAppNotificationWatcher';
 
+import PrescriptionRequiredModalHost from './src/components/PrescriptionRequiredModalHost';
+
 import {
   initializeOneSignal,
   ensureDeviceNotificationsEnabled,
@@ -271,6 +273,7 @@ const toastConfig = {
 // console.warn = () => { };
 // console.error = () => { };
 
+
 // =====================================================
 // APP
 // =====================================================
@@ -328,6 +331,8 @@ const App = () => {
                 <CartAddedToastBar />
 
                 <InAppNotificationWatcher />
+
+                <PrescriptionRequiredModalHost />
 
                 <Toast
                   config={toastConfig}

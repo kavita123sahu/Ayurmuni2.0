@@ -1036,6 +1036,11 @@ import {
     normalizeReviewMediaUrls,
     normalizeReviewsForDisplay,
 } from '../../utils/reviewUtils';
+import {
+    getDoctorId,
+    getDoctorFavoriteState,
+    getFavoriteStateFromToggleResponse,
+} from '../../utils/doctorUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -1243,7 +1248,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
     const [refreshing, setRefreshing] = useState(false);
     const [showFullAbout, setShowFullAbout] = useState(false);
-    const [isFavourite, setIsFavourite] = useState(false);
+    const [isFavourite, setIsFavourite] = useState(
+        getDoctorFavoriteState(doctorData),
+    );
 
     const [doctorDetails, setDoctorDetails] = useState<any>(null);
     const [patientReviews, setPatientReviews] = useState<any[] | null>(null);
@@ -1406,35 +1413,42 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
 
     const handleFavourite = async () => {
+        const doctorId = getDoctorId(doctor);
+        if (!doctorId) {
+            showSuccessToast('Doctor unavailable', 'error');
+            return;
+        }
+        if (!(await requireAuth('Please login to save favourite doctors'))) {
+            return;
+        }
+
         const prev = isFavourite;
-
-        console.log(
-            'FAVOURITE DOCTOR ID =>',
-            doctorData?.id,
-            prev
-        );
-
         setIsFavourite(!prev);
 
         try {
-            const resposne = await _CONSULT_SERVICES.ToggleFavDoctor(
-                doctorData?.id,
+            const response = await _CONSULT_SERVICES.ToggleFavDoctor(
+                doctorId,
                 'POST',
             );
-            showSuccessToast(resposne?.message, 'success');
-            console.log(
-                'FAVOURITE SUCCESS =>',
-                resposne
-            );
 
-        } catch (error) {
+            if (!response?.success) {
+                setIsFavourite(prev);
+                showSuccessToast(
+                    response?.message || 'Failed to update favourite',
+                    'error',
+                );
+                return;
+            }
+
+            const next = getFavoriteStateFromToggleResponse(response);
+            if (next !== undefined) {
+                setIsFavourite(next);
+            } else {
+                showSuccessToast(response?.message || 'Favourite updated', 'success');
+            }
+        } catch {
             setIsFavourite(prev);
-            showSuccessToast('Failed to update favourite status', 'error')
-
-            console.log(
-                'FAVOURITE ERROR =>',
-                error,
-            );
+            showSuccessToast('Failed to update favourite status', 'error');
         }
     };
 
@@ -1448,10 +1462,13 @@ const DoctorProfile = ({ navigation, route }: any) => {
     }, [getDoctorDetails, fetchDoctorReviews]);
 
     useEffect(() => {
-        setIsFavourite(
-            doctor?.is_favorite ?? false
-        );
-    }, [doctor?.is_favorite]);
+        setIsFavourite(getDoctorFavoriteState(doctor));
+    }, [
+        doctor?.is_favorite,
+        doctor?.is_favourite,
+        doctor?.id,
+        doctor?.doctor_id,
+    ]);
 
 
     // Handlers

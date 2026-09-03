@@ -46,6 +46,7 @@ import {
 import {
     resolveCartItemSellingPrice,
 } from '../../utils/cartPriceUtils';
+import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 
 /** Skip incomplete API rows (no variant / name) so empty shells never render. */
 const isRenderableCartProduct = (product: {
@@ -559,7 +560,9 @@ const MyCart = ({ navigation }: any) => {
                 </View>
             ) :  */}
             {loading ? (
-                <MyProductCardSkeleton />
+                <View style={styles.skeletonWrap}>
+                    <MyProductCardSkeleton />
+                </View>
             ) : !hasCartItems ? (
                 <View style={styles.emptyContainer}>
                     <TablerIcon name="shopping-cart" size={64} color={Colors.primaryColor} />
@@ -742,18 +745,17 @@ const MyCart = ({ navigation }: any) => {
                                 <>
                                     <BillRow
                                         label="Subtotal"
-                                        value={`Rs. ${Math.round(subtotal)}`}
-                                    // value={`Rs. ${subtotal}`}
+                                        value={formatRupee(Math.round(subtotal))}
                                     />
 
                                     <BillRow
                                         label="Delivery Fee"
-                                        value={`Rs. ${deliveryFee}`}
+                                        value={formatRupee(deliveryFee)}
                                     />
 
                                     <BillRow
                                         label="Discount"
-                                        value="Rs. 0"
+                                        value={formatRupee(0)}
                                     />
 
                                     <View style={styles.divider} />
@@ -762,7 +764,7 @@ const MyCart = ({ navigation }: any) => {
 
                             <BillRow
                                 label="Total"
-                                value={`Rs. ${Math.round(total)}`}
+                                value={formatRupee(Math.round(total))}
                                 isTotal
                             />
                         </View>
@@ -806,9 +808,10 @@ const MyCart = ({ navigation }: any) => {
                                 }}
                             >
 
-                                <Text style={styles.checkoutPrice}>
-                                    Rs. {Math.round(total)}
-                                </Text>
+                                <RupeeAmount
+                                    value={Math.round(total)}
+                                    style={styles.checkoutPrice}
+                                />
 
                             </View>
                         </TouchableOpacity>
@@ -867,12 +870,16 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-        paddingHorizontal: SCREEN_THEME.contentPaddingHorizontal,
-        // backgroundColor: SCREEN_THEME.screenBackground,
+        backgroundColor: Colors?.background,
+    },
+
+    skeletonWrap: {
+        flex: 1,
     },
 
     scrollView: {
         flex: 1,
+        paddingHorizontal: SCREEN_THEME.contentPaddingHorizontal,
     },
 
     scrollContent: {
@@ -1218,6 +1225,8 @@ const styles = StyleSheet.create({
 
     checkoutFooter: {
         paddingTop: 12,
+        
+        paddingHorizontal: SCREEN_THEME.contentPaddingHorizontal,
         backgroundColor: SCREEN_THEME.screenBackground,
         borderTopWidth: 1,
         borderTopColor: '#E2E8F0',
@@ -1231,6 +1240,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
+        
+        // paddingHorizontal: SCREEN_THEME.contentPaddingHorizontal,
     },
 
     checkoutBtnDisabled: {

@@ -304,7 +304,7 @@ const PhoneAuthScreen = (props: any) => {
               <View style={styles.logoPill}>
                 <Image source={Images.FinalLogo2} style={styles.logoImg} resizeMode="contain" />
               </View>
-              <Text style={styles.brandHint}>ANCIENT WISDOM · MODERN CARE</Text>
+              <Text style={styles.brandHint}>Your Ayurveda</Text>
             </View>
           </View>
 

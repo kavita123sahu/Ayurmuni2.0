@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -32,17 +32,17 @@ const InteractiveMapPicker: React.FC<Props> = ({
 }) => {
   const webRef = useRef<WebViewHandle | null>(null);
   const lastCoords = useRef(center);
-
-  const html = useMemo(
-    () => buildMapHtml(center),
-    [center.latitude, center.longitude],
-  );
+  const [mapHtml] = useState(() => buildMapHtml(center));
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
       try {
         const data = JSON.parse(event.nativeEvent.data);
-        if (data?.lat != null && data?.lng != null) {
+        if (data?.type === 'map_log') {
+          console.log('[MapPicker]', data.message, data.extra ?? '');
+          return;
+        }
+        if (data?.type === 'location' || (data?.lat != null && data?.lng != null)) {
           const coords = { latitude: data.lat, longitude: data.lng };
           lastCoords.current = coords;
           onCenterChange(coords);
@@ -83,12 +83,19 @@ const InteractiveMapPicker: React.FC<Props> = ({
       <MapWebView
         ref={webRef}
         originWhitelist={['*']}
-        source={{ html }}
+        source={{ html: mapHtml, baseUrl: 'https://localhost' }}
         style={styles.webview}
         onMessage={handleMessage}
+        onError={event => {
+          console.log('[MapPicker] WebView error', event.nativeEvent);
+        }}
+        onHttpError={event => {
+          console.log('[MapPicker] HTTP error', event.nativeEvent.statusCode, event.nativeEvent.url);
+        }}
         javaScriptEnabled
         domStorageEnabled
         geolocationEnabled
+        mixedContentMode="always"
         startInLoadingState
         renderLoading={() => (
           <View style={styles.loader}>

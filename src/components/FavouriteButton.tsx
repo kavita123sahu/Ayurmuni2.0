@@ -49,6 +49,7 @@ const FavouriteButton = ({
     <TouchableOpacity
       activeOpacity={0.8}
       style={style}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       onPress={handlePress}>
       <Animated.View
         style={{

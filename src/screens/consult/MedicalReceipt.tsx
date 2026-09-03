@@ -9,7 +9,6 @@ import {
     Dimensions,
     StatusBar,
     ActivityIndicator,
-    Platform,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import AppHeader from '../../components/AppHeader';
@@ -19,9 +18,11 @@ import { Colors } from '../../common/Colors';
 import * as _CONSULT_SERVICE from '../../services/ConsultServce';
 import TablerIcon from '../../components/TablerIcon';
 import { showSuccessToast } from '../../config/Key';
-import { saveAndOpenTextFile } from '../../utils/fileDownloadUtils';
+import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
+import { createMedicalReceiptPdfBytes } from '../../utils/buildConsultationDocumentPdf';
 import { formatDate } from '../../common/DataInterface';
 import { RupeeAmount } from '../../utils/currencyUtils';
+import { formatDisplayIdHash, formatReceiptId } from '../../utils/formatDisplayId';
 const { width } = Dimensions.get('window');
 
 interface ReceiptData {
@@ -98,40 +99,13 @@ const MedicalReceipt = (props: any) => {
             showSuccessToast('Receipt data not loaded yet', 'error');
             return;
         }
-
         try {
-            const specializationText =
-                Array.isArray(receipt?.info?.doctor_specialization)
-                    ? receipt.info.doctor_specialization.join(', ')
-                    : receipt?.info?.doctor_specialization || '';
-
-            const receiptText = [
-                'AYURMUNI CLINIC',
-                'Digital Consultation Receipt',
-                '----------------------------------------',
-                `Receipt ID: ${receipt?.consultation_id ?? '-'}`,
-                `Patient Name: ${receipt?.patient_name ?? '-'}`,
-                `Doctor: ${receipt?.info?.doctor_name ?? receipt?.doctor_name ?? '-'}`,
-                `Specialization: ${specializationText || '-'}`,
-                `Date: ${receipt?.date ?? '-'}`,
-                `Consultation Fee: Rs.${receipt?.consultation_fees ?? 0}`,
-                `Administrative Charges: Rs.${receipt?.administrative_charges ?? 0}`,
-                `Digital Report Access: Rs.${receipt?.digital_report_access ?? 0}`,
-                '----------------------------------------',
-                `TOTAL PAID: Rs.${receipt?.total_amount ?? receipt?.consultation_fees ?? 0}`,
-                '',
-                'This is a computer generated receipt.',
-            ].join('\n');
-
-            const fileName = `Medical_Receipt_${receipt?.consultation_id ?? Date.now()}.txt`;
-            await saveAndOpenTextFile(receiptText, fileName);
-
-            showSuccessToast(
-                Platform.OS === 'android'
-                    ? 'Receipt saved to your device'
-                    : 'Receipt saved successfully',
-                'success',
-            );
+            const pdfBytes = await createMedicalReceiptPdfBytes(receipt);
+            const fileName = `Medical_Receipt_${formatReceiptId(receipt?.consultation_id ?? receipt?.payment_id).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+            await downloadPdfToDevice({
+                fileName,
+                pdfBytes,
+            });
         } catch (error: any) {
             console.log('RECEIPT SAVE ERROR:', error);
             showSuccessToast(
@@ -195,14 +169,19 @@ const MedicalReceipt = (props: any) => {
                                         <TablerIcon name="plus-bag" size={30} color={Colors.primaryColor} />
                                     </View>
 
-                                    <Text style={styles.title}>HealthConnect Clinic</Text>
+                                    <Text style={styles.title}>Tru Indya Wellness</Text>
                                     <Text style={styles.subtitle}>DIGITAL CONSULTATION RECEIPT</Text>
 
                                     {/* INFO ROWS */}
                                     <View style={styles.infoRow}>
                                         <View>
                                             <Text style={styles.label}>Receipt No.</Text>
-                                            <Text style={styles.value} numberOfLines={1}>#RC-983421</Text>
+                                            <Text style={styles.value} numberOfLines={1}>
+                                                {formatDisplayIdHash(
+                                                    'RCP',
+                                                    receipt?.payment_id ?? receipt?.consultation_id,
+                                                )}
+                                            </Text>
                                         </View>
 
                                         <View style={{ alignItems: 'flex-end' }}>
@@ -220,7 +199,7 @@ const MedicalReceipt = (props: any) => {
                                         <View style={{ alignItems: 'flex-end' }}>
                                             <Text style={styles.label}>Payment Method</Text>
                                             <Text style={[styles.value, { color: Colors.primaryColor }]}>
-                                                Credit Card
+                                                {receipt?.payment_method ?? receipt?.payment_type ?? '—'}
                                             </Text>
                                         </View>
                                     </View>

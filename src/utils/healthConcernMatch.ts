@@ -6,6 +6,8 @@ export const itemMatchesHealthConcern = (
     healthDiseaseId?: string | null;
     categoryName?: string | null;
     diseaseName?: string | null;
+    /** When true, items without health metadata are excluded */
+    strict?: boolean;
   },
 ): boolean => {
   if (!item) return false;
@@ -88,5 +90,5 @@ export const itemMatchesHealthConcern = (
     Array.isArray(item?.health_diseases) ||
     Array.isArray(item?.health_categories);
 
-  return !hasHealthMeta;
+  return !opts.strict && !hasHealthMeta;
 };

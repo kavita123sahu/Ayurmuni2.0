@@ -11,7 +11,7 @@ import { Colors } from '../common/Colors';
 import { Images } from '../common/Images';
 import TablerIcon from './TablerIcon';
 import AvailabilityDot from './AvailabilityDot';
-import { formatRupee } from '../utils/currencyUtils';
+import { RupeeAmount } from '../utils/currencyUtils';
 import {
   formatAppointmentDateFull,
   formatAppointmentTimeLabel,
@@ -45,10 +45,7 @@ const VisitedDoctorHomeCard = ({ item, onPress }: Props) => {
   const lastDate = formatAppointmentDateFull(item.last_consulted_date || '');
   const lastTime = formatAppointmentTimeLabel(item.last_start_time || '');
   const lastVisit = [lastDate, lastTime].filter(Boolean).join(' · ');
-  const feeLabel =
-    item.consultation_fee != null
-      ? formatRupee(item.consultation_fee)
-      : null;
+  const feeValue = item.consultation_fee;
 
   return (
     <Pressable
@@ -94,9 +91,13 @@ const VisitedDoctorHomeCard = ({ item, onPress }: Props) => {
       )}
 
       <View style={styles.footer}>
-        <Text style={styles.fee} numberOfLines={1}>
-          {feeLabel || 'Consultation'}
-        </Text>
+        {feeValue != null ? (
+          <RupeeAmount value={feeValue} style={styles.fee} />
+        ) : (
+          <Text style={styles.fee} numberOfLines={1}>
+            Consultation
+          </Text>
+        )}
         {available ? (
           <View style={styles.availablePill}>
             <Text style={styles.availablePillText}>Available</Text>

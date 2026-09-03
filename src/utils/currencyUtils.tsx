@@ -1,89 +1,127 @@
 import React from 'react';
-import { Text, TextStyle, StyleProp, View, ViewStyle } from 'react-native';
+import { Text, TextStyle, StyleProp, StyleSheet } from 'react-native';
 import { Fonts } from '../common/Fonts';
 
-/** Format any amount as Indian Rupees (always with ₹). */
-export const formatRupee = (
+export const RUPEE_SYMBOL = '₹';
+
+export type RupeeFormatOptions = {
+  fallback?: string;
+  /** Decimal places. Default: round to integer (Flipkart-style product prices). */
+  decimals?: number | false;
+};
+
+/** Format numeric amount only (no symbol). */
+export const formatAmountOnly = (
   value?: string | number | null,
-  opts?: { fallback?: string },
-): string => {
+  opts?: RupeeFormatOptions,
+): string | null => {
   if (value == null || value === '') {
-    return opts?.fallback ?? '—';
+    return null;
   }
+
   const n = Number(value);
   if (!Number.isFinite(n)) {
-    const raw = String(value).trim();
-    if (!raw) return opts?.fallback ?? '—';
-    return raw.startsWith('₹') ? raw : `₹${raw}`;
+    const raw = String(value).trim().replace(/^₹\s?/, '').replace(/^Rs\.?\s?/i, '');
+    return raw || null;
   }
-  return `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+  if (opts?.decimals === false || opts?.decimals == null) {
+    return Math.round(n).toLocaleString('en-IN');
+  }
+
+  const places = typeof opts.decimals === 'number' ? opts.decimals : 2;
+  return n.toLocaleString('en-IN', {
+    minimumFractionDigits: places,
+    maximumFractionDigits: places,
+  });
+};
+
+/** Format as ₹ + amount with no space (Flipkart-style). */
+export const formatRupee = (
+  value?: string | number | null,
+  opts?: RupeeFormatOptions,
+): string => {
+  const amount = formatAmountOnly(value, opts);
+  if (amount == null) {
+    return opts?.fallback ?? '—';
+  }
+  return `${RUPEE_SYMBOL}${amount}`;
 };
 
 type RupeeAmountProps = {
   value?: string | number | null;
   style?: StyleProp<TextStyle>;
+  symbolStyle?: StyleProp<TextStyle>;
+  /** Legacy prop — sets symbol size when style.fontSize is absent. */
   iconSize?: number;
   iconColor?: string;
-  /** Show ₹ badge icon beside amount (not a cash/wallet icon). */
+  /** When false, renders amount digits only. */
   showIcon?: boolean;
-  containerStyle?: StyleProp<ViewStyle>;
   fallback?: string;
+  decimals?: number | false;
+  /** Optional prefix such as "MRP " or "You save " */
+  prefix?: string;
 };
 
-/** Amount row with ₹ icon badge + formatted amount text. */
+const readFontSize = (style: StyleProp<TextStyle>): number | undefined =>
+  StyleSheet.flatten(style)?.fontSize;
+
+/**
+ * Flipkart-style inline rupee: semibold ₹ symbol flush against the amount (zero gap).
+ */
 export const RupeeAmount = ({
   value,
   style,
-  iconSize = 14,
-  iconColor = '#0D614E',
+  symbolStyle,
+  iconSize,
+  iconColor,
   showIcon = true,
-  containerStyle,
   fallback = '—',
+  decimals,
+  prefix,
 }: RupeeAmountProps) => {
-  const label = formatRupee(value, { fallback });
-  if (label === fallback && (value == null || value === '')) {
+  const amount = formatAmountOnly(value, { decimals });
+  if (amount == null) {
     return <Text style={style}>{fallback}</Text>;
   }
 
-  // Avoid double ₹ when badge is shown
-  const amountOnly = label.startsWith('₹') ? label.slice(1) : label;
+  const baseFontSize = iconSize ?? readFontSize(style) ?? 14;
+  const flatStyle = StyleSheet.flatten(style);
+  const symbolColor =
+    iconColor ?? (flatStyle?.color as string | undefined) ?? '#111827';
+
+  const symbolTextStyle: TextStyle = {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: Math.round(baseFontSize * 0.94),
+    color: symbolColor,
+    includeFontPadding: false,
+    letterSpacing: 0,
+  };
 
   if (!showIcon) {
-    return <Text style={style}>{label}</Text>;
+    return (
+      <Text style={[styles.inline, style]}>
+        {prefix}
+        {amount}
+      </Text>
+    );
   }
 
-  const badgeSize = Math.max(iconSize + 6, 18);
-
   return (
-    <View
-      style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 5 },
-        containerStyle,
-      ]}
-    >
-      <View
-        style={{
-          width: badgeSize,
-          height: badgeSize,
-          borderRadius: badgeSize / 2,
-          backgroundColor: `${iconColor}14`,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text
-          style={{
-            fontSize: iconSize,
-            lineHeight: iconSize + 2,
-            color: iconColor,
-            fontFamily: Fonts.PoppinsSemiBold,
-            includeFontPadding: false,
-          }}
-        >
-          ₹
-        </Text>
-      </View>
-      <Text style={style}>{amountOnly}</Text>
-    </View>
+    <Text style={[styles.inline, style]}>
+      {prefix}
+      <Text style={[symbolTextStyle, symbolStyle]}>{RUPEE_SYMBOL}</Text>
+      {amount}
+    </Text>
   );
 };
+
+/** Alias for RupeeAmount — same Flipkart-style inline display. */
+export const RupeeText = RupeeAmount;
+
+const styles = StyleSheet.create({
+  inline: {
+    includeFontPadding: false,
+    letterSpacing: 0,
+  },
+});

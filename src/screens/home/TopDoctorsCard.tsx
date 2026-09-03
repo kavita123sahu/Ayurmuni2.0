@@ -129,7 +129,6 @@ const TopDoctorsCard = ({
         const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
 
         const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
-        // console.log(item,"itemitemitemitemitemitemitemitemitemitem")
         const cardProps = {
           name: item.full_name || item.name || 'Doctor',
           speciality: labels[0] || 'Ayurveda Specialist',
@@ -166,6 +165,7 @@ const TopDoctorsCard = ({
             variant="grid"
             cardWidth={cardWidth}
             {...cardProps}
+            onConsultPress={() => openDoctorProfile(item)}
           />
         );
       })}

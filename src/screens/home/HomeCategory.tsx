@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   Pressable,
+  Image,
   Dimensions,
 } from 'react-native';
 import Animated, {
@@ -64,6 +65,16 @@ const resolveCategoryIcon = (item: Category): TablerIconName => {
   return CATEGORY_ICONS[nameKey] ?? 'category-filled';
 };
 
+const resolveCategoryImageUri = (item: Category): string => {
+  const raw =
+    item?.image_url ||
+    (item as any)?.image ||
+    (item as any)?.icon_url ||
+    (item as any)?.media_url ||
+    '';
+  return typeof raw === 'string' ? raw.trim() : '';
+};
+
 const CategoryTile = ({
   item,
   active,
@@ -75,6 +86,8 @@ const CategoryTile = ({
 }) => {
   const scale = useSharedValue(1);
   const iconName = resolveCategoryIcon(item);
+  const imageUri = resolveCategoryImageUri(item);
+  const showImage = item.id !== 'all' && imageUri.length > 0;
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -83,7 +96,15 @@ const CategoryTile = ({
   return (
     <Pressable onPress={onPress} style={styles.item}>
       <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>
-        <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
+        {showImage ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.tileImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <TablerIcon name={iconName} size={22} color={Colors.primaryColor} />
+        )}
       </Animated.View>
 
       <Text
@@ -212,6 +233,10 @@ const styles = StyleSheet.create({
     height: TILE_H - 6,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tileImage: {
+    width: TILE_W - 10,
+    height: TILE_H - 10,
   },
   tileActive: {
     opacity: 1,

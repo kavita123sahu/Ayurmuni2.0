@@ -18,6 +18,7 @@ import {
     resolveCartItemMrp,
     resolveCartItemSellingPrice,
 } from '../utils/cartPriceUtils';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 type Props = {
     item: any;
@@ -106,13 +107,16 @@ const MyProductCard = ({
                 </View>
 
                 <View style={styles.priceRow}>
-                    <Text style={styles.sellingPrice}>
-                        ₹{Math.round(sellingLineTotal)}
-                    </Text>
+                    <RupeeAmount
+                        value={Math.round(sellingLineTotal)}
+                        style={styles.sellingPrice}
+                    />
                       {showMrp ? (
-                    <Text style={styles.mrpStrike}>
-                        MRP ₹{mrpLineTotal}
-                    </Text>
+                    <RupeeAmount
+                        value={mrpLineTotal}
+                        style={styles.mrpStrike}
+                        prefix="MRP "
+                    />
                 ) : null}
                     {/* {showMrp ? (
                         <Text style={styles.mrpStrike}>

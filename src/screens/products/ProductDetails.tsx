@@ -987,6 +987,7 @@ import {
     isProductLowStock,
     isProductOutOfStock,
 } from '../../utils/productStockUtils';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const Divider = () => <View style={styles.divider} />;
 
@@ -1033,6 +1034,7 @@ const ProductDetails = (props: any) => {
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
 
     const variants = ProductData?.variants || [];
+    console.log("variantsvariantsvariants", variants)
     const defaultVariant =
         variants.find((v: any) => v?.is_default) || variants[0];
     const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
@@ -1374,10 +1376,14 @@ const ProductDetails = (props: any) => {
 
                     <View style={styles.priceBlock}>
                         <View style={styles.priceRow}>
-                            <Text style={styles.sellingPrice}>
-                                ₹{selectedVariant?.selling_price}
-                            </Text>
-                            <Text style={styles.mrpPrice}>₹{selectedVariant?.mrp}</Text>
+                            <RupeeAmount
+                                value={selectedVariant?.selling_price}
+                                style={styles.sellingPrice}
+                            />
+                            <RupeeAmount
+                                value={selectedVariant?.mrp}
+                                style={styles.mrpPrice}
+                            />
                             {!!selectedVariant?.discount && (
                                 <View style={styles.discountBadge}>
                                     <Text style={styles.discountText}>
@@ -1388,7 +1394,11 @@ const ProductDetails = (props: any) => {
                         </View>
                         {saveAmount > 0 ? (
                             <Text style={styles.saveText}>
-                                You save ₹{saveAmount.toFixed(0)}
+                                You save{' '}
+                                <RupeeAmount
+                                    value={saveAmount.toFixed(0)}
+                                    style={styles.saveText}
+                                />
                             </Text>
                         ) : null}
                         <Text style={styles.taxNote}>Inclusive of all taxes</Text>
@@ -1446,6 +1456,49 @@ const ProductDetails = (props: any) => {
                             {variants.map((item: any) => {
                                 const selected = selectedVariant?.id === item?.id;
                                 return (
+                                  <TouchableOpacity
+    key={item?.id}
+    activeOpacity={0.75}
+    onPress={() => setSelectedVariant(item)}
+    style={[
+        styles.variantCard,
+        selected && styles.variantCardSelected,
+    ]}
+>
+    {/* Variant Name */}
+    <Text
+        numberOfLines={1}
+        style={[
+            styles.variantName,
+            selected && styles.variantNameSelected,
+        ]}
+    >
+        {item?.title}
+    </Text>
+
+    {/* Variant Details */}
+    <Text
+        numberOfLines={1}
+        style={[
+            styles.variantDetails,
+            selected && styles.variantDetailsSelected,
+        ]}
+    >
+        {[
+            item?.size,
+            item?.weightage,
+            item?.physical_state,
+        ]
+            .filter(Boolean)
+            .join(' ')}
+    </Text>
+</TouchableOpacity>
+                                );
+                            })}
+
+                            {/* {variants.map((item: any) => {
+                                const selected = selectedVariant?.id === item?.id;
+                                return (
                                     <TouchableOpacity
                                         key={item?.id}
                                         activeOpacity={0.75}
@@ -1466,7 +1519,7 @@ const ProductDetails = (props: any) => {
                                         </Text>
                                     </TouchableOpacity>
                                 );
-                            })}
+                            })} */}
                         </ScrollView>
                     </View>
                 )}
@@ -1482,7 +1535,10 @@ const ProductDetails = (props: any) => {
                         />
                         <View style={styles.qtyRight}>
                             <Text style={styles.qtyTotalLabel}>Total</Text>
-                            <Text style={styles.qtyTotalPrice}>₹{totalPrice.toFixed(0)}</Text>
+                            <RupeeAmount
+                                value={totalPrice.toFixed(0)}
+                                style={styles.qtyTotalPrice}
+                            />
                         </View>
                     </View>
                 </View>
@@ -1649,7 +1705,10 @@ const ProductDetails = (props: any) => {
             >
                 <View style={styles.stickyPriceBox}>
                     <Text style={styles.stickyPriceLabel}>Total</Text>
-                    <Text style={styles.stickyPriceValue}>₹{totalPrice.toFixed(0)}</Text>
+                    <RupeeAmount
+                        value={totalPrice.toFixed(0)}
+                        style={styles.stickyPriceValue}
+                    />
                 </View>
                 <TouchableOpacity
                     style={[
@@ -2014,31 +2073,46 @@ const styles = StyleSheet.create({
     },
 
     variantRow: { paddingVertical: 4, gap: 10 },
-    variantChip: {
-        minWidth: 80,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1.5,
-        borderColor: '#CBD5E1',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        backgroundColor: '#F8FAFC',
-    },
-    variantChipSelected: {
-        backgroundColor: '#0D614E',
-        borderColor: '#0D614E',
-    },
-    variantChipText: {
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#334155',
-    },
-    variantChipTextSelected: {
-        color: '#FFFFFF',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
+    variantCard: {
+    minWidth: 120,
+    minHeight: 64,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    marginRight: 8,
+},
 
+variantCardSelected: {
+    backgroundColor: '#0D614E',
+    borderColor: '#0D614E',
+},
+
+variantName: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#1E293B',
+    marginBottom: 3,
+},
+
+variantNameSelected: {
+    color: '#FFFFFF',
+},
+
+variantDetails: {
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#64748B',
+},
+
+variantDetailsSelected: {
+    color: '#E2F3EE',
+},
+
+  
     qtySection: {
         flexDirection: 'row',
         alignItems: 'center',

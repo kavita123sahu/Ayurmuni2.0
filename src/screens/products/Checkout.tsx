@@ -707,7 +707,7 @@
 
 //                         {[
 
-//                             'No COD charges — save ₹0',
+//                             `No COD charges — save ${formatRupee(0)}`,
 
 //                             'Instant payment confirmation',
 
@@ -1880,6 +1880,7 @@ import { resolveImageUri, resolveProductImageUri } from '../../utils/imageUtils'
 import { resolveCartItemImage } from '../../common/DataInterface';
 import { isOrderVerifySuccessful } from '../../utils/orderPayload';
 import { isCodAvailableForItems, resolvePayOnDelivery } from '../../utils/payOnDeliveryUtils';
+import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 
 
 
@@ -2460,7 +2461,7 @@ const Checkout: React.FC = (props: any) => {
                             <Text style={styles.methodDesc}>
 
                                 {codAvailable
-                                    ? `Pay ₹${codChargeDefault} extra as COD charges`
+                                    ? `Pay ${formatRupee(codChargeDefault)} extra as COD charges`
                                     : 'COD is disabled for this order'}
 
                             </Text>
@@ -2539,7 +2540,7 @@ const Checkout: React.FC = (props: any) => {
 
                         {[
 
-                            'No COD charges — save ₹0',
+                            `No COD charges — save ${formatRupee(0)}`,
 
                             'Instant payment confirmation',
 
@@ -2614,11 +2615,10 @@ const Checkout: React.FC = (props: any) => {
 
 
 
-                            <Text style={styles.itemPrice}>
-
-                                ₹{Math.round(Number(item.price) * Number(item.quantity))}
-
-                            </Text>
+                            <RupeeAmount
+                                value={Math.round(Number(item.price) * Number(item.quantity))}
+                                style={styles.itemPrice}
+                            />
 
                         </TouchableOpacity>
 
@@ -2630,13 +2630,13 @@ const Checkout: React.FC = (props: any) => {
 
 
 
-                    <Row label="Subtotal" value={`₹${Math.round(subtotal)}`} />
+                    <Row label="Subtotal" value={formatRupee(Math.round(subtotal))} />
 
                     <Row
 
                         label="Shipping"
 
-                        value={isFreeShip ? 'Free' : `₹${shippingFee}`}
+                        value={isFreeShip ? 'Free' : formatRupee(shippingFee)}
 
                         isFree={isFreeShip}
 
@@ -2644,7 +2644,7 @@ const Checkout: React.FC = (props: any) => {
 
                     {selectedMethod === 'cod' ? (
 
-                        <Row label="COD charges" value={`₹${codFee}`} />
+                        <Row label="COD charges" value={formatRupee(codFee)} />
 
                     ) : null}
 
@@ -2654,7 +2654,7 @@ const Checkout: React.FC = (props: any) => {
 
 
 
-                    <Row label="Total payable" value={`₹${Math.round(total)}`} isTotal />
+                    <Row label="Total payable" value={formatRupee(Math.round(total))} isTotal />
 
                 </View>
 
@@ -2688,7 +2688,10 @@ const Checkout: React.FC = (props: any) => {
 
                     </Text>
 
-                    <Text style={styles.stickyTotal}>₹{Math.round(total)}</Text>
+                    <RupeeAmount
+                        value={Math.round(total)}
+                        style={styles.stickyTotal}
+                    />
 
                 </View>
 

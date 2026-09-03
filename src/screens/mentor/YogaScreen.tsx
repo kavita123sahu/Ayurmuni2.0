@@ -25,6 +25,7 @@ import {
   resolveYogaThumbnailUri,
   resolveYogaVideoUri,
 } from '../../utils/yogaUtils';
+import { itemMatchesHealthConcern } from '../../utils/healthConcernMatch';
 
 const YogaListVideoThumb = ({ item }: { item: any }) => {
   const videoUri = resolveYogaVideoUri(item);
@@ -77,18 +78,46 @@ const YogaListVideoThumb = ({ item }: { item: any }) => {
 };
 
 const YogaScreen = (props: any) => {
+  const routeHealthCategoryId =
+    props?.route?.params?.health_category_id != null
+      ? String(props.route.params.health_category_id)
+      : '';
+  const routeHealthDiseaseId =
+    props?.route?.params?.health_disease_id != null
+      ? String(props.route.params.health_disease_id)
+      : '';
+  const routeCategoryName = String(props?.route?.params?.categoryName || '').trim();
+
   const [searchText, setSearchText] = useState('');
   const debouncedSearch = useDebounce(searchText, 400);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const concernMatch = useMemo(
+    () => ({
+      healthCategoryId: routeHealthCategoryId || null,
+      healthDiseaseId: routeHealthDiseaseId || null,
+      categoryName: routeCategoryName || null,
+    }),
+    [routeHealthCategoryId, routeHealthDiseaseId, routeCategoryName],
+  );
+
   const loadSessions = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
-      const res = await _YOGA_SERVICES.getYogaSession();
-      setSessions(normalizeYogaSessionList(res));
+      const res = await _YOGA_SERVICES.getYogaSession({
+        ...(routeHealthDiseaseId
+          ? { health_disease_id: routeHealthDiseaseId }
+          : routeHealthCategoryId
+            ? { health_category_id: routeHealthCategoryId }
+            : {}),
+      });
+      const list = normalizeYogaSessionList(res).filter(item =>
+        itemMatchesHealthConcern(item, concernMatch),
+      );
+      setSessions(list);
     } catch (e) {
       console.log('YOGA_LIST_ERROR', e);
       setSessions([]);
@@ -96,7 +125,7 @@ const YogaScreen = (props: any) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [routeHealthCategoryId, routeHealthDiseaseId, concernMatch]);
 
   useEffect(() => {
     loadSessions();
@@ -150,7 +179,7 @@ const YogaScreen = (props: any) => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <Header
-        title="Yoga Sessions"
+        title={routeCategoryName ? `${routeCategoryName} Yoga` : 'Yoga Sessions'}
         subtitle="Practice with guided videos"
         onBack={() => props.navigation.goBack()}
       />
@@ -187,7 +216,7 @@ const YogaScreen = (props: any) => {
               <Text style={styles.emptySub}>
                 {debouncedSearch.trim()
                   ? 'Try another search.'
-                  : 'Sessions will appear here when available.'}
+                  : 'Sessions for this concern will appear here when available.'}
               </Text>
             </View>
           }
@@ -202,16 +231,13 @@ export default YogaScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
     paddingHorizontal: 20,
     backgroundColor: Colors.background,
   },
   searchWrap: {
-    // paddingHorizontal: 16,
     paddingBottom: 8,
   },
   listContent: {
-    // paddingHorizontal: 16,
     paddingBottom: 28,
   },
   card: {

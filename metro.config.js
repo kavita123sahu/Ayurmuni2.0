@@ -40,6 +40,11 @@ const unusedTablerIcons = new RegExp(
   )})\\.(?:mjs|cjs)$).+\\.(?:mjs|cjs)$`,
 );
 
+const pdfLibDist = path.resolve(
+  __dirname,
+  'node_modules/pdf-lib/dist/pdf-lib.js',
+);
+
 /** @type {import('metro-config').MetroConfig} */
 const config = {
   maxWorkers: 1,
@@ -55,8 +60,20 @@ const config = {
     blockList: exclusionList([
       unusedTablerIcons,
       /node_modules[/\\]@tabler[/\\]icons-react-native[/\\]dist[/\\](?:esm|cjs)[/\\]tabler-icons-react-native\.(?:mjs|cjs)$/,
-      /node_modules[/\\]pdf-lib[/\\]cjs[/\\].*/,
+      /node_modules[/\\]pdf-lib[/\\](?:cjs|es|src)[/\\].*/,
     ]),
+    resolveRequest: (context, moduleName, platform) => {
+      if (
+        moduleName === 'pdf-lib' ||
+        moduleName.startsWith('pdf-lib/')
+      ) {
+        return {
+          type: 'sourceFile',
+          filePath: pdfLibDist,
+        };
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
   },
 };
 

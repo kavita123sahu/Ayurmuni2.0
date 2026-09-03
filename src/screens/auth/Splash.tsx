@@ -311,7 +311,8 @@ const Splash = (props: any) => {
         >
           <Text style={styles.brand}>AYURMUNI</Text>
           <View style={styles.goldLine} />
-          <Text style={styles.tagline}>Heal · Balance · Thrive</Text>
+          <Text style={styles.tagline}>Your Ayurveda Journey</Text>
+          {/* <Text style={styles.tagline}>Heal · Balance · Thrive</Text> */}
         </Animated.View>
       </View>
 

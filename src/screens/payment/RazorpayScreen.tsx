@@ -44,6 +44,7 @@ import { openRazorpayPayment } from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
 import BackIconButton from '../../components/BackIconButton';
 import { formatTo12Hour } from '../../common/DataInterface';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 
@@ -381,7 +382,7 @@ const RazorpayScreen = ({
                                         </Text>
                                     </View>
                                 </View>
-                                <Text style={styles.totalAmount}>₹{totalAmount}</Text>
+                                <RupeeAmount value={totalAmount} style={styles.totalAmount} />
                             </View>
                         </View>
 

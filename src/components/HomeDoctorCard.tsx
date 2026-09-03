@@ -3,11 +3,13 @@ import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Ionicons } from '../common/Vector';
 import { Images } from '../common/Images';
-import AvailabilityDot from './AvailabilityDot';
+import { Colors } from '../common/Colors';
 import {
   HOME_DOCTOR,
   HOME_DOCTOR_CARD_HEIGHT,
 } from '../constants/doctorGridLayout';
+import { formatDoctorExperience } from '../utils/doctorUtils';
+import { RupeeAmount } from '../utils/currencyUtils';
 
 type Props = {
   name: string;
@@ -20,6 +22,7 @@ type Props = {
   totalPatients?: string | number | null;
   imageUri?: string;
   available?: boolean;
+  availabilityLabel?: string;
   onPress?: () => void;
   cardWidth: number;
 };
@@ -29,15 +32,22 @@ const HomeDoctorCard = ({
   speciality,
   qualification,
   ratingLabel,
+  reviews,
   experience,
   feeLabel,
   imageUri,
   available = false,
+  availabilityLabel,
   onPress,
   cardWidth,
 }: Props) => {
   const photo = imageUri ? { uri: imageUri } : Images.doctorImage;
   const subtitle = qualification || speciality || 'Ayurveda Specialist';
+  const expLabel = formatDoctorExperience(experience);
+  const reviewText =
+    reviews != null && String(reviews).trim() !== '' ? ` (${reviews})` : '';
+  const statusLabel =
+    availabilityLabel || (available ? 'Available' : 'Unavailable');
 
   return (
     <Pressable
@@ -48,26 +58,45 @@ const HomeDoctorCard = ({
       ]}
       onPress={onPress}
     >
-      {available ? (
-        <View style={styles.availableBadge}>
-          <Text style={styles.availableText}>Available</Text>
-        </View>
-      ) : null}
+      <View
+        style={[
+          styles.statusBadge,
+          available ? styles.statusBadgeOn : styles.statusBadgeOff,
+        ]}
+      >
+        <Text style={styles.statusBadgeText} numberOfLines={1}>
+          {statusLabel}
+        </Text>
+      </View>
 
       <View style={styles.avatarRing}>
         <View style={styles.avatarRingInner}>
           <View style={styles.avatarWrap}>
             <Image source={photo} style={styles.avatar} resizeMode="cover" />
-            {available ? (
-              <View style={styles.onlineDot}>
-                <AvailabilityDot available size={8} />
-              </View>
-            ) : null}
           </View>
         </View>
       </View>
 
-      <Text style={styles.name} numberOfLines={1}>
+      <View
+        style={[
+          styles.availabilityStrip,
+          available ? styles.availabilityStripOn : styles.availabilityStripOff,
+        ]}
+      >
+        <Text
+          style={[
+            styles.availabilityStripText,
+            available
+              ? styles.availabilityStripTextOn
+              : styles.availabilityStripTextOff,
+          ]}
+          numberOfLines={1}
+        >
+          {statusLabel}
+        </Text>
+      </View>
+
+      <Text style={styles.name} numberOfLines={2}>
         {name}
       </Text>
 
@@ -75,27 +104,26 @@ const HomeDoctorCard = ({
         {subtitle}
       </Text>
 
-      <View style={styles.topStatsRow}>
-        <View style={styles.topStat}>
-          <Ionicons name="star" size={12} color="#F5B301" />
-          <Text style={styles.topStatText} numberOfLines={1}>
-            {ratingLabel}
-          </Text>
+      <View style={styles.statsFeeRow}>
+        <View style={styles.statsLeft}>
+          <View style={styles.statItem}>
+            <Ionicons name="star" size={12} color="#F5B301" />
+            <Text style={styles.statText} numberOfLines={1}>
+              {ratingLabel}
+              {reviewText}
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.statItem}>
+            <Ionicons name="time-outline" size={12} color="#16A34A" />
+            <Text style={styles.statText} numberOfLines={1}>
+              {expLabel}
+            </Text>
+          </View>
         </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.topStat}>
-          <Ionicons name="time-outline" size={12} color="#16A34A" />
-          <Text style={styles.topStatText} numberOfLines={1}>
-            {experience}+ yrs
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.feeRow}>
-        <Text style={styles.feeLabel}>Fees</Text>
-        {feeLabel ? <Text style={styles.fee}>₹{feeLabel}</Text> : null}
+        {feeLabel ? (
+          <RupeeAmount value={feeLabel} style={styles.fee} />
+        ) : null}
       </View>
     </Pressable>
   );
@@ -117,25 +145,57 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+    position: 'relative',
   },
   pressed: {
     opacity: 0.96,
   },
-  availableBadge: {
+  statusBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    zIndex: 2,
+    top: 0,
+    left: 0,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderBottomRightRadius: 10,
+    zIndex: 3,
+    maxWidth: '72%',
   },
-  availableText: {
+  statusBadgeOn: {
+    backgroundColor: '#059669',
+  },
+  statusBadgeOff: {
+    backgroundColor: '#64748B',
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+  availabilityStrip: {
+    alignSelf: 'stretch',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 4,
+  },
+  availabilityStripOn: {
+    backgroundColor: '#ECFDF5',
+  },
+  availabilityStripOff: {
+    backgroundColor: '#F1F5F9',
+  },
+  availabilityStripText: {
     fontSize: 9,
     lineHeight: 12,
-    color: '#047857',
     fontFamily: Fonts.PoppinsSemiBold,
+    textAlign: 'center',
+  },
+  availabilityStripTextOn: {
+    color: '#047857',
+  },
+  availabilityStripTextOff: {
+    color: '#64748B',
   },
   avatarRing: {
     width: HOME_DOCTOR.avatarSize + 14,
@@ -165,7 +225,7 @@ const styles = StyleSheet.create({
     width: HOME_DOCTOR.avatarSize,
     height: HOME_DOCTOR.avatarSize,
     borderRadius: HOME_DOCTOR.avatarSize / 2,
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   avatar: {
     width: HOME_DOCTOR.avatarSize,
@@ -173,16 +233,11 @@ const styles = StyleSheet.create({
     borderRadius: HOME_DOCTOR.avatarSize / 2,
     backgroundColor: '#F1F5F9',
   },
-  onlineDot: {
-    position: 'absolute',
-    right: 0,
-    bottom: 2,
-  },
   name: {
     width: '100%',
-    height: HOME_DOCTOR.nameHeight,
+    minHeight: 32,
     fontSize: 13,
-    lineHeight: HOME_DOCTOR.nameHeight,
+    lineHeight: 16,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
@@ -196,26 +251,32 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsRegular,
     textAlign: 'center',
   },
-  topStatsRow: {
+  statsFeeRow: {
     width: '100%',
-    height: 28,
     marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#F8FAF9',
     borderRadius: 8,
     paddingHorizontal: 7,
+    paddingVertical: 6,
+    gap: 6,
   },
-  topStat: {
+  statsLeft: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 3,
+    flexShrink: 1,
     minWidth: 0,
   },
-  topStatText: {
+  statText: {
     flexShrink: 1,
     fontSize: 9.5,
     lineHeight: 13,
@@ -226,24 +287,13 @@ const styles = StyleSheet.create({
     width: 1,
     height: 14,
     backgroundColor: '#DCE4E0',
-  },
-  feeRow: {
-    width: '100%',
-    marginTop: 7,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 20,
-  },
-  feeLabel: {
-    fontSize: 9,
-    color: '#404751',
-    fontFamily: Fonts.PoppinsSemiBold,
+    marginHorizontal: 4,
   },
   fee: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#C2410C',
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsBold,
+    flexShrink: 0,
   },
 });

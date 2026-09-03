@@ -107,7 +107,7 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
-  console.log("storeProductsstoreProductsstoreProductsstoreProducts", storeProducts)
+  console.log("storeProductsstoreProducts", storeProducts)
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -430,8 +430,8 @@ const HomePage: React.FC = (props: any) => {
           <SearchBar
             placeholder="Search doctors, medicine and products..."
             onPress={handleSearchPress}
-            showMicIcon
-            onMicPress={handleSearchPress}
+            // showMicIcon
+            // onMicPress={handleSearchPress}
             compact
             containerStyle={styles.homeSearchBar}
           />
@@ -646,8 +646,15 @@ const HomePage: React.FC = (props: any) => {
                   navigation={props.navigation}
                   layout="grid"
                   limit={4}
-                  home
                 />
+
+                {/* <TopDoctorsCard
+                  data={Array.isArray(SuggestDoctor) ? SuggestDoctor : []}
+                  navigation={props.navigation}
+                  layout="grid"
+                  limit={4}
+                  home
+                /> */}
               </View>
             )}
 
@@ -881,25 +888,36 @@ const styles = StyleSheet.create({
   comingSoonStrip: {
     backgroundColor: '#F3F7F5',
     borderRadius: 14,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#D7E8E1',
-    paddingHorizontal: 12,
+    paddingHorizontal: -0,
     paddingVertical: 10,
+    alignItems: 'center',
   },
+
+
+
   comingSoonStripTitle: {
     fontSize: 12,
     color: '#0F766E',
     fontFamily: Fonts.PoppinsSemiBold,
     marginBottom: 8,
+    textAlign: 'center',
+    width: '100%',
   },
   comingSoonChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   comingSoonChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
