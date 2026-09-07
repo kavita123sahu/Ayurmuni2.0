@@ -70,6 +70,7 @@ export const useCategoryProducts = (
   const requestIdRef = useRef(0);
   const fallbackRef = useRef(fallbackProducts);
   const loadingLockRef = useRef(false);
+  const productsLengthRef = useRef(0);
 
   const filterKey = useMemo(
     () =>
@@ -99,6 +100,10 @@ export const useCategoryProducts = (
     fallbackRef.current = fallbackProducts;
   }, [fallbackProducts]);
 
+  useEffect(() => {
+    productsLengthRef.current = products.length;
+  }, [products.length]);
+
   const fetchPage = useCallback(
     async (
       pageNumber: number,
@@ -111,7 +116,8 @@ export const useCategoryProducts = (
         if (append) {
           setLoadingMore(true);
         } else if (!options?.refresh) {
-          setLoading(true);
+          // Only show full skeleton when we have nothing to display yet
+          setLoading(prev => (productsLengthRef.current > 0 ? prev : true));
         }
 
         const parsedFilter = JSON.parse(filterKey) as CategoryProductFilter & {
@@ -218,7 +224,7 @@ export const useCategoryProducts = (
     }
     setPage(1);
     setHasMore(true);
-    setProducts([]);
+    // Soft filter/search: keep previous rows so the screen does not remount
     fetchPage(1);
   }, [fetchPage, enabled]);
 

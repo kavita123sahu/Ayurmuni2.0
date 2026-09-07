@@ -414,9 +414,9 @@ const CategoryDoctor = (props: any) => {
     [setProducts],
   );
 
-  const ListHeader = useCallback(
+  const StickyFilters = useMemo(
     () => (
-      <>
+      <View>
         <ExpandableSearch
           value={searchText}
           onChangeText={setSearchText}
@@ -425,15 +425,6 @@ const CategoryDoctor = (props: any) => {
           expanded={searchExpanded}
           onExpandedChange={setSearchExpanded}
         />
-        <PromoCard
-          title={`${categoryName || 'Health'} Care`}
-          desc="Specialists & remedies for this health concern"
-          imageLeftIconName="plus-bag"
-          image={require('../../assets/images/doctorbanner.png')}
-          buttontext="Book an appointment online"
-          showButton={false}
-        />
-
         {showDiseases ? (
           <View style={styles.diseaseSection}>
             <Text style={styles.diseaseTitle}>Diseases</Text>
@@ -444,6 +435,7 @@ const CategoryDoctor = (props: any) => {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.diseaseRow}
+                keyboardShouldPersistTaps="handled"
               >
                 <TouchableOpacity
                   style={[
@@ -517,6 +509,29 @@ const CategoryDoctor = (props: any) => {
             )}
           </View>
         ) : null}
+      </View>
+    ),
+    [
+      searchText,
+      searchExpanded,
+      showDiseases,
+      diseasesLoading,
+      diseases,
+      selectedDiseaseId,
+    ],
+  );
+
+  const ListHeader = useCallback(
+    () => (
+      <>
+        <PromoCard
+          title={`${categoryName || 'Health'} Care`}
+          desc="Specialists & remedies for this health concern"
+          imageLeftIconName="plus-bag"
+          image={require('../../assets/images/doctorbanner.png')}
+          buttontext="Book an appointment online"
+          showButton={false}
+        />
 
         <SectionHeader
           title={`${categoryName || 'Related'} Doctors`}
@@ -627,13 +642,7 @@ const CategoryDoctor = (props: any) => {
       </>
     ),
     [
-      searchText,
-      searchExpanded,
       categoryName,
-      showDiseases,
-      diseasesLoading,
-      diseases,
-      selectedDiseaseId,
       doctorList.length,
       doctorsLoading,
       hasDoctors,
@@ -701,20 +710,26 @@ const CategoryDoctor = (props: any) => {
         onBack={() => navigation.goBack()}
         onSearchPress={() => setSearchExpanded(true)}
         onRefreshPress={onRefresh}
+        showCart
       />
 
       {showProductSkeleton && products.length === 0 && !hasDoctors ? (
         <View style={styles.pad}>
+          {StickyFilters}
           <ListHeader />
           <ProductGridSkeleton cardWidth={PRODUCT_CARD_W} gap={GRID_GAP} count={6} />
         </View>
       ) : (
-        <FlatList
+        <View style={{ flex: 1 }}>
+          {StickyFilters}
+          <FlatList
           data={products}
           keyExtractor={(item, i) => String(item.variant_id || i)}
           numColumns={2}
           renderItem={renderProduct}
           ListHeaderComponent={ListHeader}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: bottomPadding },
@@ -742,23 +757,8 @@ const CategoryDoctor = (props: any) => {
               />
             ) : null
           }
-        // ListEmptyComponent={
-        //   !productsLoading && products.length === 0 ? (
-        //     <View style={styles.emptyBox}>
-        //       <Text style={styles.emptyTitle}>
-        //         {hasActiveProductFilters
-        //           ? 'No products found'
-        //           : 'No products available'}
-        //       </Text>
-        //       <Text style={styles.emptySub}>
-        //         {hasActiveProductFilters
-        //           ? 'Try clearing search or selecting another disease.'
-        //           : 'Products will appear here when available.'}
-        //       </Text>
-        //     </View>
-        //   ) : null
-        // }
         />
+        </View>
       )}
     </SafeAreaView>
   );

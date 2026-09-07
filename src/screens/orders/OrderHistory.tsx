@@ -22,6 +22,7 @@ import { useOrders } from '../../hooks/useOrders';
 import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
 import { OrderHistorySkeleton } from '../../simmerScreen/ShimmerHook';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 
 // ─── Status filter config ─────────────────────────────────────────────────────
 
@@ -131,7 +132,10 @@ const OrderHistory = (props: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <Header
         title="Order History"
