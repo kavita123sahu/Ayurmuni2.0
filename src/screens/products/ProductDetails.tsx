@@ -988,12 +988,10 @@ import {
     isProductOutOfStock,
 } from '../../utils/productStockUtils';
 import { RupeeAmount } from '../../utils/currencyUtils';
+import SectionHeader from '../../components/SectionHeader';
+import CommonModal from '../../components/LogoutModal';
 
 const Divider = () => <View style={styles.divider} />;
-
-const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
-);
 
 const InfoRow = ({ title, value }: { title: string; value?: string | null }) => {
     if (!value) return null;
@@ -1050,6 +1048,7 @@ const ProductDetails = (props: any) => {
     const [activeSheet, setActiveSheet] = useState<DetailSheetKey>(null);
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [wishlistBusy, setWishlistBusy] = useState(false);
+    const [showAddConfirm, setShowAddConfirm] = useState(false);
 
     console.log("selectedVariantselectedVariantselectedVariant", selectedVariant)
     useEffect(() => {
@@ -1057,8 +1056,8 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        // Quantity picker is "how many to add", not absolute cart qty.
-        setQuantity(parseInt(selectedVariant?.cart_quantity));
+        // Quantity picker is "how many to add", always start at 1 for the selected variant
+        setQuantity(1);
     }, [selectedVariant?.id]);
 
     useEffect(() => {
@@ -1108,7 +1107,7 @@ const ProductDetails = (props: any) => {
     const increaseQty = () => setQuantity((q: number) => q + 1);
     const decreaseQty = () => setQuantity((q: number) => (q > 1 ? q - 1 : 1));
 
-    const handleAddToCart = async () => {
+    const requestAddToCart = async () => {
         if (!(await requireAuth('Please login to add items to cart'))) return;
 
         const productForRx = {
@@ -1121,6 +1120,20 @@ const ProductDetails = (props: any) => {
         if (!canAddProductWithoutPrescription(productForRx)) {
             return;
         }
+
+        setShowAddConfirm(true);
+    };
+
+    const handleAddToCart = async () => {
+        setShowAddConfirm(false);
+
+        const productForRx = {
+            ...ProductData,
+            ...selectedVariant,
+            prescription_required:
+                selectedVariant?.prescription_required ??
+                ProductData?.prescription_required,
+        };
 
         // Cache real cover before cart API returns placeholder image_url
         if (selectedVariant?.id && coverImageUri) {
@@ -1138,6 +1151,15 @@ const ProductDetails = (props: any) => {
             showSuccessToast('Try again to add into cart', 'error');
         }
     };
+
+    const addConfirmSubtitle = useMemo(() => {
+        const addQty = Math.max(1, Number(quantity) || 1);
+        const nextQty = existingCartQty + addQty;
+        if (existingCartQty > 0) {
+            return `${addQty} more item${addQty > 1 ? 's' : ''} will be added to My Cart (total ${nextQty}). Continue?`;
+        }
+        return `${addQty} item${addQty > 1 ? 's' : ''} will be added to My Cart. Continue?`;
+    }, [quantity, existingCartQty]);
 
     const handleToggleWishlist = async () => {
         if (wishlistBusy) return;
@@ -1292,6 +1314,7 @@ const ProductDetails = (props: any) => {
                 <AppHeader
                     title="Product Details"
                     onLeftPress={() => props.navigation.goBack()}
+                    showCart
                 />
                 <ProductDetailShimmer />
             </SafeAreaView>
@@ -1312,6 +1335,7 @@ const ProductDetails = (props: any) => {
                 }
                 onSecondaryRightPress={handleToggleWishlist}
                 rightIconName="share"
+                showCart
                 onLeftPress={() => props.navigation.goBack()}
                 onRightPress={() =>
                     handleShareAction({
@@ -1715,7 +1739,7 @@ const ProductDetails = (props: any) => {
                         styles.addToCartBtn,
                         (isOutOfStock || isAdding) && styles.addToCartBtnDisabled,
                     ]}
-                    onPress={handleAddToCart}
+                    onPress={requestAddToCart}
                     activeOpacity={0.85}
                     disabled={isOutOfStock || isAdding}
                 >
@@ -1734,6 +1758,18 @@ const ProductDetails = (props: any) => {
                     )}
                 </TouchableOpacity>
             </View>
+
+            <CommonModal
+                visible={showAddConfirm}
+                title="Add to Cart?"
+                subtitle={addConfirmSubtitle}
+                icon="🛒"
+                cancelText="No"
+                confirmText="Yes"
+                loading={isAdding}
+                onClose={() => setShowAddConfirm(false)}
+                onConfirm={handleAddToCart}
+            />
 
             {/* Detail bottom sheet modal */}
             <Modal

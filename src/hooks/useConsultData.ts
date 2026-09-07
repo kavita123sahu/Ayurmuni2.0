@@ -295,12 +295,18 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
     const [refreshing, setRefreshing] = useState(false);
     const [doctorData, setDoctorData] = useState<any[]>([]);
     const requestIdRef = useRef(0);
+    const doctorDataRef = useRef(0);
+
+    useEffect(() => {
+        doctorDataRef.current = doctorData.length;
+    }, [doctorData.length]);
 
     const getAllDoctors = useCallback(async (options?: { isRefresh?: boolean }) => {
         const reqId = ++requestIdRef.current;
         try {
             if (!options?.isRefresh) {
-                setLoading(true);
+                // Soft filter: don't flash loading when list already has data
+                setLoading(prev => (doctorDataRef.current > 0 ? false : true));
             }
 
             // Only send defined filters — never force empty specialization (avoids fetching all)

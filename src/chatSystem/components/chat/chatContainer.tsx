@@ -237,7 +237,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     const isDoctor = participantRole === 'doctor';
 
-    const keyboardOffset = Platform.OS === 'ios' ? insets.top : 0;
+    const keyboardOffset =
+        Platform.OS === 'ios' ? Math.max(insets.top, 8) + 52 : 24;
 
 
 

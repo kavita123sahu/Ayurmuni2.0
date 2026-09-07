@@ -195,25 +195,48 @@ export type OrderItemReview = {
   isRated: boolean;
 };
 
-const buildOrderItemReview = (source: any): OrderItemReview => ({
-  rating: Number(source?.rating ?? 0),
-  review: String(source?.review ?? source?.comment ?? ''),
-  images: Array.isArray(source?.attachments)
-    ? source.attachments
-    : Array.isArray(source?.image_urls)
-      ? source.image_urls
-      : [],
-  isRated:
-    source?.is_reviewed === true ||
-    source?.is_rated === true ||
-    Number(source?.rating ?? 0) > 0,
-});
+/** Accept true / "true" / 1 from API flags. */
+export const isTruthyReviewFlag = (value: unknown): boolean => {
+  if (value === true || value === 1) return true;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+  return false;
+};
 
-const getItemVariantId = (item: any) =>
+const buildOrderItemReview = (source: any): OrderItemReview => {
+  const rating = Number(source?.rating ?? 0);
+  const flagged =
+    isTruthyReviewFlag(source?.is_reviewed) ||
+    isTruthyReviewFlag(source?.is_rated);
+  // Only count star rating when this is explicitly a review record —
+  // never treat catalog avg_rating / variant.rating as "already reviewed".
+  const looksLikeReviewRecord =
+    flagged ||
+    Boolean(source?.order_id || source?.id || source?.review_id) ||
+    Boolean(String(source?.review ?? source?.comment ?? '').trim());
+
+  return {
+    rating: Number.isFinite(rating) ? rating : 0,
+    review: String(source?.review ?? source?.comment ?? ''),
+    images: Array.isArray(source?.attachments)
+      ? source.attachments
+      : Array.isArray(source?.image_urls)
+        ? source.image_urls
+        : [],
+    isRated: flagged || (looksLikeReviewRecord && rating > 0),
+  };
+};
+
+/** Resolve product variant id from order line item shapes. */
+export const resolveOrderItemVariantId = (item: any): string =>
   String(
     item?.variant?.variant_id ??
       item?.variant_id ??
       item?.product_variant_id ??
+      item?.variant?.id ??
+      item?.product?.variant_id ??
       '',
   );
 
@@ -226,7 +249,7 @@ export const getOrderItemReview = (
   order?: any,
   fetchedByVariant?: Record<string, any> | null,
 ): OrderItemReview | null => {
-  const variantId = getItemVariantId(item);
+  const variantId = resolveOrderItemVariantId(item);
   const orderId = getOrderId(order);
 
   // 1) Explicit review fetched for this order item (GET review/?variant_id=)
@@ -234,12 +257,17 @@ export const getOrderItemReview = (
     return buildOrderItemReview(fetchedByVariant[variantId]);
   }
 
-  // 2) Nested review on the line item
+  // 2) Nested review on the line item (user review only)
   if (
     item?.review &&
-    (item.review.is_reviewed === true ||
-      item.review.is_rated ||
-      Number(item.review.rating ?? 0) > 0)
+    typeof item.review === 'object' &&
+    (isTruthyReviewFlag(item.review.is_reviewed) ||
+      isTruthyReviewFlag(item.review.is_rated) ||
+      (Number(item.review.rating ?? 0) > 0 &&
+        (item.review.order_id ||
+          item.review.id ||
+          item.review.review_id ||
+          String(item.review.review ?? item.review.comment ?? '').trim())))
   ) {
     return buildOrderItemReview(item.review);
   }
@@ -266,10 +294,10 @@ export const getOrderItemReview = (
         if (orderId && reviewOrder) {
           return reviewOrder === orderId;
         }
+        // Without order_id, only accept explicit "already reviewed" flags
         return (
-          review?.is_reviewed === true ||
-          review?.is_rated === true ||
-          Number(review?.rating ?? 0) > 0
+          isTruthyReviewFlag(review?.is_reviewed) ||
+          isTruthyReviewFlag(review?.is_rated)
         );
       });
 
@@ -279,16 +307,20 @@ export const getOrderItemReview = (
     }
   }
 
-  // 4) Flag only (is_reviewed) — may have no star count until fetch completes
-  if (item?.is_reviewed === true || item?.variant?.is_reviewed === true) {
+  // 4) Flag only (is_reviewed / is_rated) — may have no star count until fetch completes
+  if (
+    isTruthyReviewFlag(item?.is_reviewed) ||
+    isTruthyReviewFlag(item?.is_rated) ||
+    isTruthyReviewFlag(item?.variant?.is_reviewed) ||
+    isTruthyReviewFlag(item?.variant?.is_rated) ||
+    isTruthyReviewFlag(item?.review?.is_reviewed) ||
+    isTruthyReviewFlag(item?.review?.is_rated)
+  ) {
     return buildOrderItemReview({
       is_reviewed: true,
-      rating:
-        item?.review?.rating ??
-        item?.variant?.rating ??
-        item?.rating ??
-        item?.variant?.review_rating ??
-        0,
+      rating: Number(
+        item?.review?.rating ?? item?.variant?.review_rating ?? 0,
+      ),
       review:
         item?.review?.review ??
         item?.variant?.review ??
@@ -301,25 +333,20 @@ export const getOrderItemReview = (
   return null;
 };
 
-/** True when API marks the line/variant as already reviewed (`is_reviewed`). */
+/** True when this order line was already reviewed by the user (one-time). */
 export const isOrderItemRated = (item: any, order?: any) => {
   if (
-    item?.variant?.is_reviewed === true ||
-    item?.is_reviewed === true ||
-    item?.review?.is_reviewed === true
+    isTruthyReviewFlag(item?.variant?.is_reviewed) ||
+    isTruthyReviewFlag(item?.variant?.is_rated) ||
+    isTruthyReviewFlag(item?.is_reviewed) ||
+    isTruthyReviewFlag(item?.is_rated) ||
+    isTruthyReviewFlag(item?.review?.is_reviewed) ||
+    isTruthyReviewFlag(item?.review?.is_rated)
   ) {
     return true;
   }
 
-  if (getOrderItemReview(item, order)?.isRated) {
-    return true;
-  }
-
-  if (item?.is_rated === true) {
-    return true;
-  }
-
-  return false;
+  return Boolean(getOrderItemReview(item, order)?.isRated);
 };
 
 export const formatOrderDateTime = (value?: string | null) => {

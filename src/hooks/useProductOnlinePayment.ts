@@ -274,6 +274,11 @@ type OnlinePaymentArgs = {
   shippingFee: number;
   codCharges?: number;
   shippingMethod?: 'STD' | 'EXPRESS';
+  coupon_code?: string;
+  /** Local UI discount only — not sent on place-order */
+  couponDiscount?: number;
+  prepaidAmount?: number;
+  onCouponRejected?: () => void;
   onSuccess: (
     orderResult: any,
     orderedCartItems: Array<{
@@ -343,6 +348,10 @@ export const useProductOnlinePayment = () => {
       shippingFee,
       codCharges = 0,
       shippingMethod = 'STD',
+      coupon_code,
+      couponDiscount,
+      prepaidAmount,
+      onCouponRejected,
       onSuccess,
     }: OnlinePaymentArgs) => {
       if (isPaying || paymentStartedRef.current) return;
@@ -364,13 +373,17 @@ export const useProductOnlinePayment = () => {
         (sum, item) => sum + Number(item.price) * Number(item.quantity),
         0,
       );
-      const payableAmount = Math.round(subtotal + (Number(shippingFee) || 0));
+      const payableAmount = Math.round(
+        prepaidAmount ??
+          Math.max(0, subtotal + (Number(shippingFee) || 0) - (Number(couponDiscount) || 0)),
+      );
 
       try {
         setIsPaying(true);
         paymentStartedRef.current = true;
 
         // Online place-order: do NOT send payment_method (Razorpay chooses later)
+        // Match Postman: coupon_code optional only — no coupon_discount field
         const placePayload = buildPrepaidOrderPayload({
           delivery_address_id: address.id,
           cartItems,
@@ -378,6 +391,7 @@ export const useProductOnlinePayment = () => {
           cod_charges: 0,
           shipping_method: shippingMethod,
           prepaid_amount: payableAmount,
+          coupon_code,
         });
         delete (placePayload as any).payment_method;
 
@@ -392,7 +406,22 @@ export const useProductOnlinePayment = () => {
         console.log('ONLINE_ORDER_RESPONSE =>', orderResponse);
 
         if (!orderResponse?.success) {
-          showSuccessToast(orderResponse?.message ?? 'Order failed', 'error');
+          const failMsg = orderResponse?.message ?? 'Order failed';
+          const lower = failMsg.toLowerCase();
+          if (
+            coupon_code &&
+            (lower.includes('coupon') ||
+              lower.includes('matching product') ||
+              lower.includes('does not apply'))
+          ) {
+            onCouponRejected?.();
+            showSuccessToast(
+              'This coupon does not apply to items in your cart. Coupon removed — try again.',
+              'error',
+            );
+            return;
+          }
+          showSuccessToast(failMsg, 'error');
           return;
         }
 

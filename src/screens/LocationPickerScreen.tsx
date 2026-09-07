@@ -41,6 +41,7 @@ type RouteParams = {
   returnScreen?: string;
   returnParams?: Record<string, unknown>;
   useGps?: boolean;
+  returnTo?: string;
 };
 
 const LocationPickerScreen = () => {
@@ -256,7 +257,11 @@ const LocationPickerScreen = () => {
       return;
     }
 
-    navigation.navigate('AddEditAddress', { type: 'ADD', selectedLocation });
+    navigation.navigate('AddEditAddress', {
+      type: 'ADD',
+      selectedLocation,
+      returnTo: params.returnTo,
+    });
   };
 
   return (

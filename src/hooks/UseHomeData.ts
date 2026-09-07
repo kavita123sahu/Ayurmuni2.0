@@ -24,8 +24,8 @@ export const useHomeData = () => {
     await dispatch(fetchHomeData(true));
   }, [dispatch]);
 
-  const fetchCustomerDataFn = useCallback(async () => {
-    await dispatch(fetchCustomerData(true));
+  const fetchCustomerDataFn = useCallback(async (force = false) => {
+    await dispatch(fetchCustomerData(force));
   }, [dispatch]);
 
   const fetchDietPlansFn = useCallback(async (force = true) => {

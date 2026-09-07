@@ -73,7 +73,7 @@ const CompleteDetailsScreen = ({ navigation, route }: any) => {
       if (next === 'AssessmentType') {
         navigation.navigate('AssessmentType', { form: 'all' });
       } else {
-        navigation.navigate('TermsCondition', { agreed: false });
+        navigation.navigate('Onboarding');
       }
     } finally {
       setLoading(false);

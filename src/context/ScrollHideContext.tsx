@@ -29,6 +29,7 @@ type ScrollHideContextType = {
   tabBarAnimatedStyle: ReturnType<typeof useAnimatedStyle>;
   chromeVisible: SharedValue<number>;
   scrollY: SharedValue<number>;
+  setHasHomeCategories: (has: boolean) => void;
 };
 
 const ScrollHideContext = createContext<ScrollHideContextType | null>(null);
@@ -50,6 +51,11 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
   const lastY = useRef(0);
   const visible = useSharedValue(1);
   const scrollY = useSharedValue(0);
+  const hasHomeCategories = useSharedValue(1);
+
+  const setHasHomeCategories = useCallback((has: boolean) => {
+    hasHomeCategories.value = has ? 1 : 0;
+  }, [hasHomeCategories]);
 
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -116,7 +122,7 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
       Extrapolation.CLAMP,
     );
 
-    // Total chrome: safe-area + header + always-visible search + categories
+    // Total chrome: safe-area + header + always-visible search + categories (if any)
     return {
       height:
         (insets.top || 0) +
@@ -124,7 +130,7 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
         stickyTopGap +
         HOME_SEARCH_BAR_HEIGHT +
         HOME_HEADER_SEARCH_GAP +
-        HOME_CATEGORY_ROW_HEIGHT +
+        HOME_CATEGORY_ROW_HEIGHT * hasHomeCategories.value +
         HOME_HEADER_BOTTOM_GAP,
     };
   });
@@ -162,6 +168,7 @@ export const ScrollHideProvider: React.FC<{ children: React.ReactNode }> = ({
         tabBarAnimatedStyle,
         chromeVisible: visible,
         scrollY,
+        setHasHomeCategories,
       }}
     >
       {children}
@@ -182,6 +189,7 @@ export const useScrollHide = () => {
       headerAnimatedStyle: {},
       chromeVisible: null,
       scrollY: null,
+      setHasHomeCategories: () => {},
     };
   }
   return {

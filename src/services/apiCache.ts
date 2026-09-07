@@ -42,8 +42,9 @@ export const fetchWithCache = async <T>(
     if (cached !== null) return cached;
   }
 
+  // Always share in-flight requests — force only bypasses TTL, not dedupe
   const pending = inflight.get(key);
-  if (pending && !options?.force) {
+  if (pending) {
     return pending as Promise<T>;
   }
 

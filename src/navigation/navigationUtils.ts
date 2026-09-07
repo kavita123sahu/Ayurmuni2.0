@@ -159,6 +159,27 @@ export const goBackToHomeTab = (navigation: any) => {
   safeGoBack(navigation);
 };
 
+/** Pop stack routes after a named screen so back lands on that screen. */
+export const popToScreen = (navigation: any, screenName: string) => {
+  const stackNav = getStackNavigation(navigation) ?? navigation;
+  const state = stackNav?.getState?.();
+  const routes: Array<{ name: string }> = state?.routes ?? [];
+  const index = routes.findIndex(route => route.name === screenName);
+
+  if (index < 0) {
+    stackNav?.navigate?.(screenName);
+    return;
+  }
+
+  stackNav.dispatch(
+    CommonActions.reset({
+      ...state,
+      index,
+      routes: routes.slice(0, index + 1),
+    }),
+  );
+};
+
 /** After saving address from Home location modal — land on Home tab, not map picker. */
 export const popToHomeAfterAddressSave = (navigation: any) => {
   const stackNav = getStackNavigation(navigation) ?? navigation;

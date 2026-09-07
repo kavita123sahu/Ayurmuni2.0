@@ -292,26 +292,34 @@ const ReviewPage = (props: any) => {
 
                         <View style={styles.reviewCard}>
                             <View style={styles.reviewHeaderRow}>
-
-
                                 <View style={styles.avatar}>
-                                    {item?.reviewer_profile_image  ? (
-                                         <Image
-    source={{ uri: item.reviewer_profile_image }}
-    style={styles.userImage}
-  />
-                                 
-                                    ):(
-                                    <Text style={styles.avatarText}>
-                                        {getInitials(item?.patient_name ||
-                                            item?.reviewer_name)}
-                                    </Text>)}
+                                    {item?.reviewer_profile_image ? (
+                                        <Image
+                                            source={{ uri: item.reviewer_profile_image }}
+                                            style={styles.userImage}
+                                        />
+                                    ) : (
+                                        <Text style={styles.avatarText}>
+                                            {getInitials(
+                                                item?.patient_name || item?.reviewer_name,
+                                            )}
+                                        </Text>
+                                    )}
                                 </View>
 
-                                <View style={{ flex: 1, marginLeft: 10 }}>
-                                    <Text style={styles.name}>{item?.patient_name || item?.reviewer_name}</Text>
+                                <View style={styles.reviewMeta}>
+                                    <View style={styles.reviewNameRow}>
+                                        <Text style={styles.name} numberOfLines={1}>
+                                            {item?.patient_name || item?.reviewer_name}
+                                        </Text>
+                                        <Text style={styles.reviewCardStars}>
+                                            {'⭐'.repeat(Number(item?.rating || 0))}
+                                        </Text>
+                                    </View>
                                     <Text style={styles.verified}>
-                                        {entityType === 'doctor' ? 'VERIFIED PATIENT' : 'VERIFIED PURCHASE'}
+                                        {entityType === 'doctor'
+                                            ? 'VERIFIED PATIENT'
+                                            : 'VERIFIED PURCHASE'}
                                     </Text>
                                 </View>
 
@@ -321,10 +329,6 @@ const ReviewPage = (props: any) => {
                                         : ''}
                                 </Text>
                             </View>
-
-                            <Text style={styles.stars}>
-                                {"⭐".repeat(Number(item?.rating || 0))}
-                            </Text>
 
                             {!!item?.review?.trim?.() ? (
                                 <Text style={styles.reviewText}>{item.review}</Text>
@@ -487,10 +491,11 @@ const styles = StyleSheet.create({
 
     reviewCard: {
         backgroundColor: '#f8f6f6',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
         marginHorizontal: 10,
-        marginTop: 10,
+        marginTop: 8,
     },
 
     reviewHeaderRow: {
@@ -499,56 +504,77 @@ const styles = StyleSheet.create({
     },
 
     avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: '#0D614E1A',
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     userImage: {
-  width: 48,
-  height: 48,
-  borderRadius: 24,
-},
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
     avatarText: {
         color: '#0D614E',
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
+    reviewMeta: {
+        flex: 1,
+        minWidth: 0,
+        marginLeft: 8,
+    },
+
+    reviewNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
     name: {
+        flexShrink: 1,
         fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 14,
-        lineHeight: 20,
-        color: '#0F172A'
+        fontSize: 13,
+        lineHeight: 18,
+        color: '#0F172A',
     },
 
     verified: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#64748B',
-        lineHeight: 15,
-        fontFamily: Fonts.PoppinsMedium
+        lineHeight: 13,
+        fontFamily: Fonts.PoppinsMedium,
+        marginTop: 1,
     },
 
     time: {
-        fontSize: 12,
+        fontSize: 10,
         color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium
+        fontFamily: Fonts.PoppinsMedium,
+        marginLeft: 6,
+        flexShrink: 0,
+    },
+
+    reviewCardStars: {
+        fontSize: 10,
+        flexShrink: 0,
     },
 
     reviewText: {
-        marginTop: 8,
+        marginTop: 6,
         color: '#475569',
-        fontSize: 14,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsMedium,
-        lineHeight: 22,
+        lineHeight: 18,
     },
 
     imageRow: {
         flexDirection: 'row',
-        marginTop: 12,
+        marginTop: 8,
     },
 
     reviewImage: {
@@ -572,30 +598,30 @@ const styles = StyleSheet.create({
     cardImageRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 10,
+        gap: 6,
+        marginTop: 6,
     },
     cardImage: {
-        width: 68,
-        height: 68,
-        borderRadius: 12,
+        width: 56,
+        height: 56,
+        borderRadius: 10,
         backgroundColor: '#E2E8F0',
     },
     cardVideoBadge: {
         position: 'absolute',
-        top: 6,
-        left: 6,
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        top: 4,
+        left: 4,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
         backgroundColor: 'rgba(0,0,0,0.55)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     doctorReplyBox: {
-        marginTop: 12,
-        padding: 12,
-        borderRadius: 12,
+        marginTop: 6,
+        padding: 8,
+        borderRadius: 10,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E8F2EE',

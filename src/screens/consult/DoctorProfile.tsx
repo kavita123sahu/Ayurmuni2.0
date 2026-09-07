@@ -1014,6 +1014,7 @@ import {
     Dimensions,
     RefreshControl,
     Animated,
+    Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -1115,25 +1116,31 @@ const ReviewCard = memo(
                     )}
 
                     <View style={styles.userInfo}>
-                        <Text numberOfLines={1} style={styles.userName}>
-                            {review.name}
-                        </Text>
-                        <View style={styles.ratingRow}>
-                            {Array.from({ length: 5 }).map((_, star) => (
-                                <Ionicons
-                                    key={star}
-                                    name={star < Number(review.rating || 0) ? 'star' : 'star-outline'}
-                                    size={12}
-                                    color="#F59E0B"
-                                />
-                            ))}
+                        <View style={styles.reviewNameRow}>
+                            <Text numberOfLines={1} style={styles.userName}>
+                                {review.name}
+                            </Text>
+                            <View style={styles.ratingRow}>
+                                {Array.from({ length: 5 }).map((_, star) => (
+                                    <Ionicons
+                                        key={star}
+                                        name={
+                                            star < Number(review.rating || 0)
+                                                ? 'star'
+                                                : 'star-outline'
+                                        }
+                                        size={11}
+                                        color="#F59E0B"
+                                    />
+                                ))}
+                            </View>
                         </View>
                     </View>
                 </View>
                 <Text style={styles.time}>{review.time}</Text>
             </View>
             {!!review.review && (
-                <Text style={styles.reviewText}>"{review.review}"</Text>
+                <Text style={styles.reviewText}>{review.review}</Text>
             )}
             {!!review.mediaUrls?.length && (
                 <View style={styles.reviewMediaRow}>
@@ -1205,15 +1212,15 @@ const resolveDoctorSpecializations = (doctor: any): string[] => {
 
 
 const resolveDoctorHealthDiseases = (doctor: any): string[] => {
-  const diseases = doctor?.health_diseases;
+    const diseases = doctor?.health_diseases;
 
-  if (!Array.isArray(diseases)) return [];
+    if (!Array.isArray(diseases)) return [];
 
-  return diseases
-    .map((item: any) =>
-      typeof item === 'string' ? item : item?.name
-    )
-    .filter(Boolean);
+    return diseases
+        .map((item: any) =>
+            typeof item === 'string' ? item : item?.name
+        )
+        .filter(Boolean);
 };
 const SpecializationTags = memo(({ items }: { items: string[] }) => {
     if (!items?.length) {
@@ -1240,11 +1247,48 @@ const SpecializationTags = memo(({ items }: { items: string[] }) => {
 /* -------------------------------------------------------------------------- */
 
 const DoctorProfile = ({ navigation, route }: any) => {
-    const { doctorData } = route?.params;
+    const rawDoctorParam =
+        route?.params?.doctorData ??
+        route?.params?.doctor ??
+        route?.params?.doctorId ??
+        route?.params?.id;
+
+    // Banner may pass a bare UUID string — normalize to { id, doctor_id }
+    const doctorData = useMemo(() => {
+        if (rawDoctorParam == null || rawDoctorParam === '') {
+            return null;
+        }
+        if (typeof rawDoctorParam === 'string' || typeof rawDoctorParam === 'number') {
+            const id = String(rawDoctorParam).trim();
+            return id ? { id, doctor_id: id } : null;
+        }
+        if (typeof rawDoctorParam === 'object') {
+            const id = String(
+                rawDoctorParam.id ??
+                    rawDoctorParam.doctor_id ??
+                    rawDoctorParam.doctorId ??
+                    '',
+            ).trim();
+            if (!id && !rawDoctorParam.full_name && !rawDoctorParam.doctor_name) {
+                return rawDoctorParam;
+            }
+            return {
+                ...rawDoctorParam,
+                id: id || rawDoctorParam.id,
+                doctor_id:
+                    rawDoctorParam.doctor_id ||
+                    rawDoctorParam.doctorId ||
+                    id ||
+                    rawDoctorParam.id,
+            };
+        }
+        return null;
+    }, [rawDoctorParam]);
+
     const insets = useSafeAreaInsets();
     const footerBottomPad = Math.max(insets.bottom, 12);
 
-    console.log("docororpf", doctorData);
+    console.log('docororpf', doctorData);
 
     const [refreshing, setRefreshing] = useState(false);
     const [showFullAbout, setShowFullAbout] = useState(false);
@@ -1257,10 +1301,10 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
     const doctor = useMemo(
         () => ({
-            ...doctorData,
+            ...(doctorData && typeof doctorData === 'object' ? doctorData : {}),
             ...doctorDetails,
         }),
-        [doctorData, doctorDetails]
+        [doctorData, doctorDetails],
     );
 
     // Memoized Values
@@ -1355,10 +1399,125 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
 
     const aboutText = useMemo(
-        () => doctor?.bio || '',
-        [doctor?.bio]
+        () =>
+            String(
+                doctor?.bio ||
+                    doctor?.about ||
+                    doctor?.description ||
+                    '',
+            ).trim(),
+        [doctor?.bio, doctor?.about, doctor?.description],
     );
-    const shouldTruncate = aboutText.length > 150;
+    const shouldTruncate = aboutText.length > 180;
+
+    const pickDoctorField = useCallback(
+        (...keys: string[]) => {
+            for (const key of keys) {
+                const value = doctor?.[key];
+                if (value == null) continue;
+                if (typeof value === 'string' && value.trim()) {
+                    return value.trim();
+                }
+                if (typeof value === 'number' && Number.isFinite(value)) {
+                    return String(value);
+                }
+            }
+            return '';
+        },
+        [doctor],
+    );
+
+    const profileDetails = useMemo(() => {
+        const rows: { label: string; value: string }[] = [];
+        const gender = pickDoctorField(
+            'gender',
+            'sex',
+            'doctor_gender',
+        );
+        const nationality = pickDoctorField(
+            'nationality',
+            'country',
+            'country_name',
+        );
+        const language = pickDoctorField(
+            'preferred_language',
+            'preferred_languages',
+            'language',
+            'languages',
+            'speaking_language',
+        );
+        const certificate = pickDoctorField(
+            'medical_certificate',
+            'medical_certificate_number',
+            'certificate_number',
+            'registration_number',
+            'medical_registration_number',
+            'license_number',
+        );
+        if (gender) rows.push({ label: 'Gender', value: gender });
+        if (nationality) rows.push({ label: 'Nationality', value: nationality });
+        if (language) rows.push({ label: 'Preferred Language', value: language });
+        if (certificate) {
+            rows.push({ label: 'Medical Certificate', value: certificate });
+        }
+        return rows;
+    }, [pickDoctorField]);
+
+    const socialAccounts = useMemo(() => {
+        const social =
+            doctor?.social_media ||
+            doctor?.social_links ||
+            doctor?.social ||
+            doctor?.socials ||
+            {};
+        const entries: {
+            label: string;
+            url: string;
+            icon: 'website' | 'facebook' | 'instagram' | 'x' | 'linkedin' | 'youtube';
+        }[] = [
+            {
+                label: 'Website',
+                icon: 'website',
+                url: pickDoctorField(
+                    'website',
+                    'website_url',
+                    'web_url',
+                ) || String(social?.website || social?.web || ''),
+            },
+            {
+                label: 'Facebook',
+                icon: 'facebook',
+                url: pickDoctorField('facebook', 'facebook_url') ||
+                    String(social?.facebook || social?.fb || ''),
+            },
+            {
+                label: 'Instagram',
+                icon: 'instagram',
+                url: pickDoctorField('instagram', 'instagram_url') ||
+                    String(social?.instagram || social?.ig || ''),
+            },
+            {
+                label: 'Twitter / X',
+                icon: 'x',
+                url: pickDoctorField('twitter', 'twitter_url', 'x_url') ||
+                    String(social?.twitter || social?.x || ''),
+            },
+            {
+                label: 'LinkedIn',
+                icon: 'linkedin',
+                url: pickDoctorField('linkedin', 'linkedin_url') ||
+                    String(social?.linkedin || ''),
+            },
+            {
+                label: 'YouTube',
+                icon: 'youtube',
+                url: pickDoctorField('youtube', 'youtube_url') ||
+                    String(social?.youtube || ''),
+            },
+        ];
+        return entries.filter(item => String(item.url || '').trim());
+    }, [doctor, pickDoctorField]);
+
 
     const truncatedAbout = useMemo(() => {
         if (!shouldTruncate || showFullAbout) return aboutText;
@@ -1367,26 +1526,37 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
 
     const getDoctorDetails = useCallback(async () => {
+        const id =
+            getDoctorId(doctorData) ||
+            doctorData?.id ||
+            doctorData?.doctor_id;
+        if (!id) {
+            console.log('DOCTOR DETAILS SKIPPED — missing id', doctorData);
+            return;
+        }
         try {
             const res = await getDoctorSlots({
-                id: doctorData?.id
-            }
-            );
-            console.log("dattaaa", res?.data);
+                id: String(id),
+            });
+            console.log('dattaaa', res?.data);
             if (res?.data) {
-                setDoctorDetails(res?.data
+                setDoctorDetails(res?.data);
+            } else if (res?.success === false) {
+                showSuccessToast(
+                    res?.message || 'Doctor not found',
+                    'error',
                 );
             }
         } catch (error) {
-            console.log(
-                'DOCTOR DETAILS ERROR =>',
-                error
-            );
+            console.log('DOCTOR DETAILS ERROR =>', error);
         }
-    }, [doctorData?.id]);
+    }, [doctorData]);
 
     const fetchDoctorReviews = useCallback(async () => {
-        const id = doctorData?.id || doctorData?.doctor_id;
+        const id =
+            getDoctorId(doctorData) ||
+            doctorData?.id ||
+            doctorData?.doctor_id;
         if (!id) return;
         try {
             const res = await getReviewsAll({
@@ -1402,14 +1572,18 @@ const DoctorProfile = ({ navigation, route }: any) => {
         } catch (error) {
             console.log('DOCTOR REVIEWS ERROR =>', error);
         }
-    }, [doctorData?.id, doctorData?.doctor_id]);
+    }, [doctorData]);
 
     useEffect(() => {
-        if (doctorData?.id || doctorData?.doctor_id) {
+        const id =
+            getDoctorId(doctorData) ||
+            doctorData?.id ||
+            doctorData?.doctor_id;
+        if (id) {
             getDoctorDetails();
             fetchDoctorReviews();
         }
-    }, [doctorData?.id, doctorData?.doctor_id, getDoctorDetails, fetchDoctorReviews]);
+    }, [doctorData, getDoctorDetails, fetchDoctorReviews]);
 
 
     const handleFavourite = async () => {
@@ -1551,7 +1725,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
                     {!!doctor?.consultation_fee && (
                         <View style={styles.heroFeeHintRow}>
-                            <Text style={styles.heroFeeHint}>Consultation from </Text>
+                            <Text style={styles.heroFeeHint}>Consultation Fees </Text>
                             <RupeeAmount
                                 value={doctor?.consultation_fee}
                                 style={styles.heroFeeValue}
@@ -1566,29 +1740,81 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
                 <View style={styles.sectionCard}>
                     <Text style={styles.sectionTitle}>About</Text>
-                    <Text style={styles.aboutText}>
-                        {truncatedAbout || 'No bio available yet.'}
-                        {shouldTruncate && (
-                            <Text onPress={handleToggleAbout} style={styles.readMore}>
-                                {showFullAbout ? ' Read Less' : '... Read More'}
-                            </Text>
-                        )}
-                    </Text>
+                    {aboutText ? (
+                        <Text style={styles.aboutText}>
+                            {truncatedAbout}
+                            {shouldTruncate ? (
+                                <Text onPress={handleToggleAbout} style={styles.readMore}>
+                                    {showFullAbout ? ' Read Less' : '... Read More'}
+                                </Text>
+                            ) : null}
+                        </Text>
+                    ) : (
+                        <Text style={styles.aboutTextEmpty}>
+                            No bio available yet.
+                        </Text>
+                    )}
                 </View>
 
-                {/* {specializations?.length > 0 && ( */}
+                {profileDetails.length > 0 ? (
                     <View style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>Specializations</Text>
-                        <SpecializationTags items={specializations} />
+                        <Text style={styles.sectionTitle}>Profile Details</Text>
+                        {profileDetails.map(row => (
+                            <View key={row.label} style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>{row.label}</Text>
+                                <Text style={styles.detailValue} numberOfLines={2}>
+                                    {row.value}
+                                </Text>
+                            </View>
+                        ))}
                     </View>
-                    {/* )} */}
+                ) : null}
 
-                      {/* {specializations?.length > 0 && ( */}
+                {socialAccounts.length > 0 ? (
                     <View style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>Health Conditions</Text>
-                        <SpecializationTags items={healthDiseasesText} />
+                        <Text style={styles.sectionTitle}>Social Media</Text>
+                        <View style={styles.socialRow}>
+                            {socialAccounts.map(item => (
+                                <TouchableOpacity
+                                    key={item.label}
+                                    style={styles.socialChip}
+                                    activeOpacity={0.8}
+                                    onPress={() => {
+                                        const url = String(item.url || '').trim();
+                                        if (!url) return;
+                                        const href = /^https?:\/\//i.test(url)
+                                            ? url
+                                            : `https://${url}`;
+                                        Linking.openURL(href).catch(() => {});
+                                    }}
+                                >
+                                    <TablerIcon
+                                        name={item.icon}
+                                        size={16}
+                                        color={Colors.primaryColor}
+                                    />
+                                    <Text style={styles.socialChipText} numberOfLines={1}>
+                                        {item.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                    {/* )} */}
+                ) : null}
+
+                {specializations?.length > 0 ? (
+                <View style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Specializations</Text>
+                    <SpecializationTags items={specializations} />
+                </View>
+                ) : null}
+
+                {healthDiseasesText?.length > 0 ? (
+                <View style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Health Conditions</Text>
+                    <SpecializationTags items={healthDiseasesText} />
+                </View>
+                ) : null}
 
                 <View style={styles.sectionCard}>
                     <TouchableOpacity style={styles.reviewHeader} onPress={openAllReviews}>
@@ -1659,6 +1885,8 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         iconSize={16}
                         iconColor={Colors.primaryColor}
                     />
+
+                    
                 </View>
 
                 <TouchableOpacity
@@ -1852,25 +2080,81 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     sectionCard: {
-        marginTop: 14,
+        marginTop: 12,
         marginHorizontal: 16,
-        padding: 16,
-        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 14,
+        borderRadius: 18,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E8F2EE',
     },
     sectionTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
+        marginBottom: 2,
     },
     aboutText: {
-        marginTop: 10,
+        marginTop: 8,
         fontSize: 14,
-        lineHeight: 23,
+        lineHeight: 22,
         fontFamily: Fonts.PoppinsRegular,
+        color: '#475569',
+    },
+    aboutTextEmpty: {
+        marginTop: 8,
+        fontSize: 13,
+        lineHeight: 20,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#94A3B8',
+    },
+    detailRow: {
+        marginTop: 10,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    detailLabel: {
+        width: 130,
+        fontSize: 12,
+        lineHeight: 18,
+        fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
+    },
+    detailValue: {
+        flex: 1,
+        textAlign: 'right',
+        fontSize: 13,
+        lineHeight: 18,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+        textTransform: 'capitalize',
+    },
+    socialRow: {
+        marginTop: 10,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    socialChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 999,
+        backgroundColor: '#F0FDFA',
+        borderWidth: 1,
+        borderColor: '#CCFBF1',
+    },
+    socialChipText: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
+        color: Colors.primaryColor,
+        maxWidth: 110,
     },
     readMore: {
         color: Colors.primaryColor,
@@ -1912,17 +2196,19 @@ const styles = StyleSheet.create({
         color: Colors.primaryColor,
     },
     reviewCard: {
-        marginTop: 12,
-        padding: 14,
-        borderRadius: 16,
-        backgroundColor: '#F8FBF9',
+        marginTop: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: '#EAF3EF',
+        borderColor: '#E8EEF2',
     },
     reviewTop: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
+        marginBottom: 0,
     },
     userRow: {
         flexDirection: 'row',
@@ -1934,52 +2220,61 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0,
     },
+    reviewNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        minWidth: 0,
+    },
     userImage: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        marginRight: 12,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        marginRight: 8,
     },
     avatarPlaceholder: {
-        width: 44,
-        height: 44,
-        marginRight: 12,
-        borderRadius: 22,
+        width: 34,
+        height: 34,
+        marginRight: 8,
+        borderRadius: 17,
         backgroundColor: '#E7F5EF',
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: 16,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: Colors.primaryColor,
     },
     userName: {
-        fontSize: 14,
+        flexShrink: 1,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
     },
     ratingRow: {
         flexDirection: 'row',
-        marginTop: 4,
-        gap: 2,
+        alignItems: 'center',
+        flexShrink: 0,
+        gap: 1,
     },
     time: {
-        fontSize: 11,
+        fontSize: 10,
         fontFamily: Fonts.PoppinsMedium,
         color: '#94A3B8',
-        marginLeft: 10,
+        marginLeft: 8,
+        flexShrink: 0,
     },
     reviewText: {
-        marginTop: 10,
-        fontSize: 13,
-        lineHeight: 21,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#64748B',
+        marginTop: 6,
+        fontSize: 12,
+        lineHeight: 18,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#475569',
     },
     photosLabel: {
-        marginTop: 14,
-        marginBottom: 8,
+        marginTop: 10,
+        marginBottom: 6,
         fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#64748B',
@@ -2025,13 +2320,13 @@ const styles = StyleSheet.create({
     reviewMediaRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 10,
+        gap: 6,
+        marginTop: 6,
     },
     reviewMediaThumbWrap: {
-        width: 64,
-        height: 64,
-        borderRadius: 12,
+        width: 52,
+        height: 52,
+        borderRadius: 10,
         overflow: 'hidden',
         backgroundColor: '#E8F2EE',
     },
@@ -2051,22 +2346,22 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     doctorReplyBox: {
-        marginTop: 10,
-        padding: 10,
-        borderRadius: 12,
+        marginTop: 6,
+        padding: 8,
+        borderRadius: 10,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E8F2EE',
     },
     doctorReplyLabel: {
-        fontSize: 11,
+        fontSize: 10,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 4,
+        marginBottom: 2,
     },
     doctorReplyText: {
-        fontSize: 13,
-        lineHeight: 20,
+        fontSize: 12,
+        lineHeight: 18,
         color: '#475569',
         fontFamily: Fonts.PoppinsMedium,
     },

@@ -24,6 +24,7 @@ type ChargeConfig = {
   /** Only for prepaid when already known from Razorpay */
   payment_method?: string | null;
   shipping_method?: 'STD' | 'EXPRESS';
+  coupon_code?: string;
 };
 
 export const usePlaceOrder = () => {
@@ -39,6 +40,10 @@ export const usePlaceOrder = () => {
       setOrderError(null);
 
       const isCod = config.payment_type === 'cod';
+      const prepaidAmount = Math.max(
+        0,
+        Math.round(Number(config.prepaid_amount) || 0),
+      );
 
       const payload = isCod
         ? buildCodOrderPayload({
@@ -47,6 +52,8 @@ export const usePlaceOrder = () => {
           shipping_charges: config.shipping_charges,
           cod_charges: config.cod_charges,
           shipping_method: config.shipping_method ?? 'STD',
+          prepaid_amount: prepaidAmount,
+          coupon_code: config.coupon_code,
         })
         : buildPrepaidOrderPayload({
           delivery_address_id: config.delivery_address_id,
@@ -54,8 +61,8 @@ export const usePlaceOrder = () => {
           shipping_charges: config.shipping_charges,
           cod_charges: 0,
           shipping_method: config.shipping_method ?? 'STD',
-          prepaid_amount: config.prepaid_amount ?? 0,
-          // Online: never send payment_method on place-order
+          prepaid_amount: prepaidAmount,
+          coupon_code: config.coupon_code,
         });
 
       console.log('ORDER_PAYLOAD =>', JSON.stringify(payload, null, 2));

@@ -47,6 +47,7 @@ import {
     resolveCartItemSellingPrice,
 } from '../../utils/cartPriceUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
+import CommonModal from '../../components/LogoutModal';
 
 /** Skip incomplete API rows (no variant / name) so empty shells never render. */
 const isRenderableCartProduct = (product: {
@@ -71,6 +72,14 @@ const MyCart = ({ navigation }: any) => {
     const { CartData, loading, fetchAllData, hasCachedCart } =
         useAllCartData();
     const [refreshing, setRefreshing] = useState(false);
+    const [qtyConfirm, setQtyConfirm] = useState<{
+        itemId: string;
+        variantId: string;
+        cartItemId: string;
+        oldQty: number;
+        nextQty: number;
+    } | null>(null);
+    const qtyConfirmBusyRef = useRef(false);
 
     const onRefresh = useCallback(async () => {
 
@@ -98,13 +107,43 @@ const MyCart = ({ navigation }: any) => {
     const sections = useMemo<SectionType[]>(() => {
         const next: SectionType[] = [];
 
+        // Variant / line ids already shown under Prescribed — never duplicate in My Cart
+        const prescribedVariantIds = new Set<string>();
+        const prescribedLineIds = new Set<string>();
+        (CartData?.prescription_cart?.items ?? []).forEach((prescription: any) => {
+            const lineItems = Array.isArray(prescription?.items)
+                ? prescription.items
+                : [];
+            lineItems.forEach((item: any) => {
+                const lineId = String(item?.id ?? '').trim();
+                if (lineId) prescribedLineIds.add(lineId);
+                const variantId = String(
+                    item?.variant_id ??
+                        item?.variant?.variant_id ??
+                        item?.variant?.id ??
+                        '',
+                ).trim();
+                if (variantId) prescribedVariantIds.add(variantId);
+            });
+        });
+
         if (CartData?.my_cart?.items?.length) {
             const cartItems = CartData.my_cart.items
                 .map((item: any) => ({
                     ...getProductData(item),
                     source: 'cart' as const,
                 }))
-                .filter(isRenderableCartProduct);
+                .filter(isRenderableCartProduct)
+                .filter(item => {
+                    const id = String(item.id ?? '').trim();
+                    const variantId = String(item.variant_id ?? '').trim();
+                    // Qty bumps on prescribed lines must not surface a second card here
+                    if (id && prescribedLineIds.has(id)) return false;
+                    if (variantId && prescribedVariantIds.has(variantId)) {
+                        return false;
+                    }
+                    return true;
+                });
 
             if (cartItems.length) {
                 next.push({
@@ -132,22 +171,6 @@ const MyCart = ({ navigation }: any) => {
                         item,
                         prescription?.doctor_name,
                     );
-                    const variantId = String(product.variant_id ?? '');
-                    const extraQty = (
-                        CartData?.my_cart?.items ?? []
-                    ).reduce((sum: number, cartItem: any) => {
-                        const cartVariantId = String(
-                            cartItem?.variant_id ??
-                            cartItem?.variant?.variant_id ??
-                            cartItem?.variant?.id ??
-                            '',
-                        );
-                        if (cartVariantId && cartVariantId === variantId) {
-                            return sum + (Number(cartItem?.quantity) || 0);
-                        }
-                        return sum;
-                    }, 0);
-
                     return {
                         ...product,
                         id: lineId,
@@ -155,7 +178,7 @@ const MyCart = ({ navigation }: any) => {
                         source: 'prescribed' as const,
                         prescription_id: prescription?.prescription_id,
                         prescription_cart_id: prescription?.id,
-                        extra_qty: extraQty,
+                        extra_qty: 0,
                     };
                 })
                 .filter(isRenderableCartProduct);
@@ -188,7 +211,11 @@ const MyCart = ({ navigation }: any) => {
         useCallback(() => {
             selectAllPendingRef.current = true;
             setFocusTick(tick => tick + 1);
-            fetchAllData({ force: true, silent: hasCachedCart });
+            // Use cache when available — only force on pull-to-refresh
+            fetchAllData({
+                force: !hasCachedCart,
+                silent: true,
+            });
         }, [fetchAllData, hasCachedCart]),
     );
 
@@ -325,7 +352,7 @@ const MyCart = ({ navigation }: any) => {
             /**
              * Prescribed list:
              * - prescription_required true → alert, cannot increase / add / remove
-             * - prescription_required false → user can adjust prescribed qty
+             * - prescription_required false → confirm then +1 only (never double)
              * - never remove prescribed line (qty 0)
              */
             if (isPrescribed) {
@@ -338,19 +365,20 @@ const MyCart = ({ navigation }: any) => {
                     return;
                 }
 
-                const oldQty = line.quantity;
+                const oldQty = Math.max(0, Number(line.quantity) || 0);
 
                 if (action === 'plus') {
-                    dispatch(
-                        queueCartLineSync({
-                            variantId: line.variant_id,
-                            quantity: oldQty + 1,
-                            source: 'prescribed',
-                            cartItemId: line.cart_item_id,
-                            currentQuantity: oldQty,
-                            prescriptionRequired: false,
-                        }),
-                    );
+                    // Ask before bumping — prevents accidental / double adds
+                    if (qtyConfirmBusyRef.current || qtyConfirm) {
+                        return;
+                    }
+                    setQtyConfirm({
+                        itemId: String(itemId),
+                        variantId: line.variant_id,
+                        cartItemId: String(line.cart_item_id ?? itemId),
+                        oldQty,
+                        nextQty: oldQty + 1,
+                    });
                     return;
                 }
 
@@ -378,7 +406,7 @@ const MyCart = ({ navigation }: any) => {
                 return;
             }
 
-            const oldQty = line.quantity;
+            const oldQty = Math.max(0, Number(line.quantity) || 0);
             const newQty =
                 action === 'remove'
                     ? 0
@@ -399,8 +427,36 @@ const MyCart = ({ navigation }: any) => {
                 }),
             );
         },
-        [findLineInCartData, dispatch],
+        [findLineInCartData, dispatch, qtyConfirm],
     );
+
+    const confirmPrescribedQtyIncrease = useCallback(() => {
+        if (!qtyConfirm || qtyConfirmBusyRef.current) return;
+        qtyConfirmBusyRef.current = true;
+
+        const { variantId, cartItemId, oldQty, nextQty } = qtyConfirm;
+        // Absolute SET to oldQty + 1 only — never oldQty + oldQty
+        dispatch(
+            queueCartLineSync({
+                variantId,
+                quantity: nextQty,
+                source: 'prescribed',
+                cartItemId,
+                currentQuantity: oldQty,
+                prescriptionRequired: false,
+            }),
+        );
+
+        setQtyConfirm(null);
+        setTimeout(() => {
+            qtyConfirmBusyRef.current = false;
+        }, 500);
+    }, [qtyConfirm, dispatch]);
+
+    const cancelPrescribedQtyIncrease = useCallback(() => {
+        setQtyConfirm(null);
+        qtyConfirmBusyRef.current = false;
+    }, []);
 
     const selectedProducts =
         useMemo(() => {
@@ -819,6 +875,20 @@ const MyCart = ({ navigation }: any) => {
                 </>
             )}
 
+            <CommonModal
+                visible={Boolean(qtyConfirm)}
+                title="Update quantity?"
+                subtitle={
+                    qtyConfirm
+                        ? `1 more item will be added to your cart (total ${qtyConfirm.nextQty}). Continue?`
+                        : ''
+                }
+                icon="🛒"
+                cancelText="No"
+                confirmText="Yes"
+                onClose={cancelPrescribedQtyIncrease}
+                onConfirm={confirmPrescribedQtyIncrease}
+            />
 
         </SafeAreaView>
     );

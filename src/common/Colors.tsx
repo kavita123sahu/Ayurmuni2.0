@@ -28,9 +28,9 @@ export const Colors = {
   cardBackground: "#E5E7EB",
   grey1: '#8183BB',
   transparent: '#0000',
-  /** Page body — slightly off-white so white headers stand out */
-  background: '#F4F7F6',
-  screenBackground: '#F4F7F6',
+  /** Page body — match Profile / ScreenShell cream-white */
+  background: '#FDFDFB',
+  screenBackground: '#FDFDFB',
   headerBackground: '#FFFFFF',
 
   orangeColor: '#2576BC',

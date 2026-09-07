@@ -61,14 +61,7 @@ const MyProductCard = ({
     const showNormalControls = !isPrescribed;
 
     return (
-        <Pressable
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-            onPress={() =>
-                navigation.navigate('ProductDetails', {
-                    varientID: item?.variant_id,
-                })
-            }
-        >
+        <View style={styles.card}>
             <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => toggleItemSelection(item.id)}
@@ -79,70 +72,75 @@ const MyProductCard = ({
                 )}
             </TouchableOpacity>
 
-            <View style={styles.imageWrap}>
-                {imageUri ? (
-                    <Image source={{ uri: imageUri }} style={styles.image} />
-                ) : (
-                    <View style={styles.imagePlaceholder}>
-                        <TablerIcon name="package" size={28} color="#CBD5E1" />
-                    </View>
-                )}
-            </View>
-
-            <View style={styles.info}>
-                <Text numberOfLines={2} style={styles.name}>
-                    {item.name}
-                </Text>
-
-                <View style={styles.metaRow}>
-                    {!!item.brand_name && (
-                        <Text numberOfLines={1} style={styles.brand}>
-                            {item.brand_name}
-                        </Text>
-                    )}
-
-                    {!!item.size && (
-                        <Text style={styles.size}>({item.size})</Text>
+            <Pressable
+                style={({ pressed }) => [
+                    styles.cardMain,
+                    pressed && styles.cardPressed,
+                ]}
+                onPress={() =>
+                    navigation.navigate('ProductDetails', {
+                        varientID: item?.variant_id,
+                    })
+                }
+            >
+                <View style={styles.imageWrap}>
+                    {imageUri ? (
+                        <Image source={{ uri: imageUri }} style={styles.image} />
+                    ) : (
+                        <View style={styles.imagePlaceholder}>
+                            <TablerIcon name="package" size={28} color="#CBD5E1" />
+                        </View>
                     )}
                 </View>
 
-                <View style={styles.priceRow}>
-                    <RupeeAmount
-                        value={Math.round(sellingLineTotal)}
-                        style={styles.sellingPrice}
-                    />
-                      {showMrp ? (
-                    <RupeeAmount
-                        value={mrpLineTotal}
-                        style={styles.mrpStrike}
-                        prefix="MRP "
-                    />
-                ) : null}
-                    {/* {showMrp ? (
-                        <Text style={styles.mrpStrike}>
-                            ₹{Math.round(unitMrp)}
-                        </Text>
-                    ) : null} */}
-                    {/* <Text style={styles.lineTotal}>
-                        ₹{sellingLineTotal}
-                    </Text> */}
-                </View>
+                <View style={styles.info}>
+                    <Text numberOfLines={2} style={styles.name}>
+                        {item.name}
+                    </Text>
 
-              
+                    <View style={styles.metaRow}>
+                        {!!item.brand_name && (
+                            <Text numberOfLines={1} style={styles.brand}>
+                                {item.brand_name}
+                            </Text>
+                        )}
 
-                {isPrescribed && !!item.doctorName && (
-                    <View style={styles.prescribedPill}>
-                        <TablerIcon name="stethoscope" size={12} color="#047857" />
-                        <Text numberOfLines={1} style={styles.prescribedText}>
-                            {/^dr\.?\s/i.test(String(item.doctorName).trim())
-                                ? item.doctorName
-                                : `${item.doctorName}`}
-                        </Text>
+                        {!!item.size && (
+                            <Text style={styles.size}>({item.size})</Text>
+                        )}
                     </View>
-                )}
-            </View>
 
-            <View style={styles.qtyWrap}>
+                    <View style={styles.priceRow}>
+                        <RupeeAmount
+                            value={Math.round(sellingLineTotal)}
+                            style={styles.sellingPrice}
+                        />
+                        {showMrp ? (
+                            <RupeeAmount
+                                value={mrpLineTotal}
+                                style={styles.mrpStrike}
+                                prefix="MRP "
+                            />
+                        ) : null}
+                    </View>
+
+                    {isPrescribed && !!item.doctorName && (
+                        <View style={styles.prescribedPill}>
+                            <TablerIcon name="stethoscope" size={12} color="#047857" />
+                            <Text numberOfLines={1} style={styles.prescribedText}>
+                                {/^dr\.?\s/i.test(String(item.doctorName).trim())
+                                    ? item.doctorName
+                                    : `${item.doctorName}`}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </Pressable>
+
+            <View
+                style={styles.qtyWrap}
+                onStartShouldSetResponder={() => true}
+            >
                 {showLockedQty ? (
                     <TouchableOpacity
                         activeOpacity={0.85}
@@ -197,7 +195,7 @@ const MyProductCard = ({
                     </>
                 ) : null}
             </View>
-        </Pressable>
+        </View>
     );
 };
 
@@ -211,6 +209,13 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         padding: 10,
         marginBottom: 10,
+        gap: 10,
+    },
+    cardMain: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        minWidth: 0,
         gap: 10,
     },
     cardPressed: {

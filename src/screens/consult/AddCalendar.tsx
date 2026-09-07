@@ -16,6 +16,7 @@ import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import BackIconButton from '../../components/BackIconButton';
 import {
   buildAppointmentCalendarEvent,
   openGoogleCalendar,
@@ -157,6 +158,12 @@ const AddCalendar = ({ navigation, route }: any) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
+      <View style={styles.topBar}>
+        <BackIconButton onPress={() => navigation.goBack()} />
+        <Text style={styles.topTitle}>Add to Calendar</Text>
+        <View style={styles.topSpacer} />
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
@@ -194,6 +201,11 @@ const AddCalendar = ({ navigation, route }: any) => {
               {!!display.specialization && (
                 <Text style={styles.speciality} numberOfLines={1}>
                   {display.specialization}
+                </Text>
+              )}
+              {!!display.hospitalName && (
+                <Text style={styles.hospitalHint} numberOfLines={1}>
+                  {display.hospitalName}
                 </Text>
               )}
             </View>
@@ -314,10 +326,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E2E8F0',
+  },
+  topTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+  },
+  topSpacer: {
+    width: 40,
+    height: 40,
+  },
   scrollContainer: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 40,
+  },
+  hospitalHint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
   },
   successWrapper: {
     alignItems: 'center',

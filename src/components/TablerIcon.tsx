@@ -80,6 +80,13 @@ import IconRefresh from '@tabler/icons-react-native/IconRefresh';
 import IconArrowsExchange from '@tabler/icons-react-native/IconArrowsExchange';
 import IconCurrentLocation from '@tabler/icons-react-native/IconCurrentLocation';
 import IconBrandWhatsapp from '@tabler/icons-react-native/IconBrandWhatsapp';
+import IconBrandInstagram from '@tabler/icons-react-native/IconBrandInstagram';
+import IconBrandFacebook from '@tabler/icons-react-native/IconBrandFacebook';
+import IconBrandLinkedin from '@tabler/icons-react-native/IconBrandLinkedin';
+import IconBrandYoutube from '@tabler/icons-react-native/IconBrandYoutube';
+import IconBrandX from '@tabler/icons-react-native/IconBrandX';
+import IconBrandTwitter from '@tabler/icons-react-native/IconBrandTwitter';
+import IconWorld from '@tabler/icons-react-native/IconWorld';
 import IconMicrophone from '@tabler/icons-react-native/IconMicrophone';
 import IconCertificate from '@tabler/icons-react-native/IconCertificate';
 import IconShieldCheck from '@tabler/icons-react-native/IconShieldCheck';
@@ -181,6 +188,14 @@ const ICON_MAP = {
   exchange: IconArrowsExchange,
   'current-location': IconCurrentLocation,
   whatsapp: IconBrandWhatsapp,
+  instagram: IconBrandInstagram,
+  facebook: IconBrandFacebook,
+  linkedin: IconBrandLinkedin,
+  youtube: IconBrandYoutube,
+  x: IconBrandX,
+  twitter: IconBrandTwitter,
+  website: IconWorld,
+  world: IconWorld,
   mic: IconMicrophone,
   certificate: IconCertificate,
   shield: IconShieldCheck,

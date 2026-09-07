@@ -1,55 +1,38 @@
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import * as _CONSULT_SERVICE from '../services/ConsultServce';
 import {
   fetchUnreadNotificationCount,
   publishUnreadCount,
 } from '../hooks/useNotification';
 
-const POLL_MS = 15_000;
+/** Badge sync — slow on purpose; OneSignal handles realtime push UI. */
+const POLL_MS = 90_000;
 
 /**
  * Keeps the unread badge in sync while the app is open.
  * Does NOT show an in-app or device popup — OneSignal owns push UI
  * (custom modal in foreground, system tray in background).
+ *
+ * One API call per tick (no duplicate list fetch).
  */
 const InAppNotificationWatcher = () => {
-  const lastSeenIdRef = useRef<string | null>(null);
-  const primedRef = useRef(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     const refreshBadge = async () => {
-      if (appStateRef.current !== 'active') {
+      if (appStateRef.current !== 'active' || inFlightRef.current) {
         return;
       }
 
+      inFlightRef.current = true;
       try {
         const count = await fetchUnreadNotificationCount();
         publishUnreadCount(count);
-
-        const res = await _CONSULT_SERVICE.getNotification({
-          view: 'list',
-          is_read: false,
-          page: 1,
-          page_size: 1,
-        });
-
-        const latest = (res?.data?.results ?? res?.results ?? [])[0];
-        if (!latest?.id) {
-          return;
-        }
-
-        const latestId = String(latest.id);
-        if (!primedRef.current) {
-          primedRef.current = true;
-          lastSeenIdRef.current = latestId;
-          return;
-        }
-
-        lastSeenIdRef.current = latestId;
       } catch {
         // ignore
+      } finally {
+        inFlightRef.current = false;
       }
     };
 
@@ -57,8 +40,10 @@ const InAppNotificationWatcher = () => {
     const interval = setInterval(refreshBadge, POLL_MS);
 
     const sub = AppState.addEventListener('change', nextState => {
+      const wasBackground = appStateRef.current !== 'active';
       appStateRef.current = nextState;
-      if (nextState === 'active') {
+      // Refresh once when returning to foreground — not while staying idle
+      if (wasBackground && nextState === 'active') {
         refreshBadge();
       }
     });

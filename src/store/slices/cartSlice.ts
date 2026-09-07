@@ -261,6 +261,10 @@ const patchMyCartItemQuantity = (
       mergeCartLineWithApiItem(existing, cartItemFromApi, quantity, variantId),
       variantId,
     );
+  } else if (lineId) {
+    // Line id was supplied but not found — do not invent a new My Cart row
+    // (prescribed qty bumps must stay on the prescription card only).
+    return data;
   } else {
     const seed = findSeedCartItemByVariant(data, variantId);
     items.push(

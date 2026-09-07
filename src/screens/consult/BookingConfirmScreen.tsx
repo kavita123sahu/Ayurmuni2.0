@@ -385,53 +385,6 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           <Badge status={booking.status} />
         </View>
 
-        {/* Schedule highlight */}
-        <View style={styles.scheduleCard}>
-          <Text style={styles.scheduleEyebrow}>APPOINTMENT SCHEDULE</Text>
-
-          <View style={styles.scheduleGrid}>
-            <View style={styles.scheduleCell}>
-              <View style={styles.scheduleIcon}>
-                <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
-              </View>
-              <Text style={styles.scheduleLabel}>Day</Text>
-              <Text style={styles.scheduleValue} numberOfLines={1}>
-                {booking.weekday || booking.dayLabel || '—'}
-              </Text>
-              {!!booking.dayLabel &&
-                booking.dayLabel !== booking.weekday &&
-                (booking.dayLabel === 'Today' ||
-                  booking.dayLabel === 'Tomorrow') && (
-                  <Text style={styles.scheduleHint}>{booking.dayLabel}</Text>
-                )}
-            </View>
-
-            <View style={styles.scheduleDivider} />
-
-            <View style={styles.scheduleCell}>
-              <View style={styles.scheduleIcon}>
-                <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
-              </View>
-              <Text style={styles.scheduleLabel}>Date</Text>
-              <Text style={styles.scheduleValue} numberOfLines={2}>
-                {booking.dateLabel || '—'}
-              </Text>
-            </View>
-
-            <View style={styles.scheduleDivider} />
-
-            <View style={styles.scheduleCell}>
-              <View style={styles.scheduleIcon}>
-                <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
-              </View>
-              <Text style={styles.scheduleLabel}>Time</Text>
-              <Text style={styles.scheduleValue} numberOfLines={2}>
-                {booking.timeRange || '—'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* Doctor + details */}
         <View style={styles.card}>
           <View style={styles.doctorRow}>
@@ -541,7 +494,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             <Text style={styles.secondaryText}>Add to Calendar</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             activeOpacity={0.85}
             onPress={downloadAppointmentPdf}
             disabled={downloadingPdf}
@@ -551,7 +504,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             <Text style={styles.secondaryText}>
               {downloadingPdf ? 'Downloading…' : 'Download PDF'}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             activeOpacity={0.85}

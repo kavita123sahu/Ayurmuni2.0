@@ -58,7 +58,7 @@ const ProfileHeader = ({ user, navigation }: any) => {
 
   useFocusEffect(
     useCallback(() => {
-      refreshDashboardStats();
+      refreshDashboardStats(false);
     }, [refreshDashboardStats]),
   );
 

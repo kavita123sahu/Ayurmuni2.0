@@ -46,22 +46,14 @@ type ActionKey =
     | 'view_details'
     | 'reschedule';
 
+/** Stable API period keys — avoid space-filled labels as filter keys */
 const TABS = [
-    { key: 'All', label: 'All' },
-    { key: 'Last 30 Days', label: 'Last 30 Days' },
-    { key: 'Last 90 Days', label: 'Last 90 Days' },
+    { key: 'all', label: 'All' },
+    { key: 'last_30_days', label: 'Last 30 Days' },
+    { key: 'last_90_days', label: 'Last 90 Days' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['key'];
-
-const getPayload = (tab: Tab) => {
-    const payloadMap = {
-        All: { period: 'all' },
-        'Last 30 Days': { period: 'last_30_days' },
-        'Last 90 Days': { period: 'last_90_days' },
-    };
-    return payloadMap[tab];
-};
 
 const ConsultHistory = (props: any) => {
     const navigation = useNavigation<any>();
@@ -70,15 +62,20 @@ const ConsultHistory = (props: any) => {
     const debouncedSearch = useDebounce(searchText, 400);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<Tab>('All');
+    const [activeTab, setActiveTab] = useState<Tab>('all');
     const [history, setHistory] = useState([]);
+    const historyLenRef = React.useRef(0);
 
-    const fetchConsultHistory = useCallback(async (payload: object, isRefresh = false) => {
+    useEffect(() => {
+        historyLenRef.current = history.length;
+    }, [history.length]);
+
+    const fetchConsultHistory = useCallback(async (period: Tab, isRefresh = false) => {
         try {
             if (!isRefresh) {
-                setLoading(true);
+                setLoading(historyLenRef.current === 0);
             }
-            const response = await getConsultHistory(payload);
+            const response = await getConsultHistory({ period });
             setHistory(response?.data?.results || []);
         } catch (error) {
             console.log('CONSULT HISTORY ERROR => ', error);
@@ -90,7 +87,7 @@ const ConsultHistory = (props: any) => {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchConsultHistory(getPayload(activeTab), true);
+        fetchConsultHistory(activeTab, true);
     }, [activeTab, fetchConsultHistory]);
 
     const filteredHistory = useMemo(() => {
@@ -100,12 +97,17 @@ const ConsultHistory = (props: any) => {
         return (history || []).filter((item: any) => {
             const doctorName = item?.doctor?.doctor_name?.toLowerCase?.() || '';
             const concern = item?.concern?.toLowerCase?.() || '';
-            return doctorName.includes(keyword) || concern.includes(keyword);
+            const status = String(item?.status || '').toLowerCase();
+            return (
+                doctorName.includes(keyword) ||
+                concern.includes(keyword) ||
+                status.includes(keyword)
+            );
         });
     }, [history, debouncedSearch]);
-console.log("filteredHistory", filteredHistory);
+
     useEffect(() => {
-        fetchConsultHistory(getPayload(activeTab));
+        fetchConsultHistory(activeTab);
     }, [activeTab, fetchConsultHistory]);
 
     const handleAction = (actionKey: ActionKey, item: Appointment) => {
@@ -153,6 +155,8 @@ console.log("filteredHistory", filteredHistory);
         <AppointmentCard item={item}  navigation={navigation} onAction={handleAction} />
     );
 
+    const showSkeleton = loading && history.length === 0;
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
@@ -165,23 +169,26 @@ console.log("filteredHistory", filteredHistory);
                 onRefreshPress={onRefresh}
             />
 
-            <ExpandableSearch
-                placeholder="Search doctors..."
-                value={searchText}
-                onChangeText={setSearchText}
-                showTrigger={false}
-                expanded={searchExpanded}
-                onExpandedChange={setSearchExpanded}
-            />
+            <View style={styles.filtersBlock}>
+                <ExpandableSearch
+                    placeholder="Search doctors..."
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    showTrigger={false}
+                    expanded={searchExpanded}
+                    onExpandedChange={setSearchExpanded}
+                />
 
-            <SegmentTabs
-                tabs={[...TABS]}
-                activeKey={activeTab}
-                onChange={key => setActiveTab(key as Tab)}
-                variant="pill"
-            />
+                <SegmentTabs
+                    tabs={[...TABS]}
+                    activeKey={activeTab}
+                    onChange={key => setActiveTab(key as Tab)}
+                    variant="pill"
+                    style={styles.tabs}
+                />
+            </View>
 
-            {loading ? (
+            {showSkeleton ? (
                 <AppointmentSkeletonList />
             ) : filteredHistory?.length === 0 ? (
                 <EmptyState
@@ -189,7 +196,7 @@ console.log("filteredHistory", filteredHistory);
                     subtitle={
                         history?.length === 0
                             ? 'Your consultations will appear here.'
-                            : 'Try another doctor name.'
+                            : 'Try another doctor name or clear filters.'
                     }
                 />
             ) : (
@@ -199,13 +206,12 @@ console.log("filteredHistory", filteredHistory);
                     keyExtractor={(item, index) =>
                         String(
                             item?.consultation_id ??
-                                // item?.appointment_id ??
-                                // item?.id ??
                                 `consult-${index}`,
                         )
                     }
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -228,8 +234,17 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.background,
         paddingHorizontal: getScreenPaddingH(),
     },
+    filtersBlock: {
+        marginTop: SPACING.xs,
+        marginBottom: SPACING.sm,
+        gap: SPACING.sm,
+    },
+    tabs: {
+        marginTop: 0,
+    },
     listContent: {
         gap: SPACING.md,
         paddingBottom: SPACING.xxl,
+        paddingTop: SPACING.xs,
     },
 });

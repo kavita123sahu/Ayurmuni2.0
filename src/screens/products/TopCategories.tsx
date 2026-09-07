@@ -243,6 +243,7 @@ const TopCategories = (props: any) => {
         subtitle="Organic product"
         onBack={() => navigation.goBack()}
         onSearchPress={handleSearchPress}
+        showCart
       />
 
       <View style={styles.flexContain}>

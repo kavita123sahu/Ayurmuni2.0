@@ -39,6 +39,7 @@ import DoctorConsultationSection from '../../components/consult/DoctorConsultati
 import { consultationHasPrescription } from '../../utils/prescriptionDetailUtils';
 import { hasPrescribedData } from '../../utils/doctorSlipUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 
 const PrimaryButton = ({
   title,
@@ -212,7 +213,11 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const routeLookupId = resolveAppointmentLookupId({
     consultation_id: route.params?.consultation_id,
-    appointment_id: route.params?.appointment_id,
+    appointment_id:
+      route.params?.appointment_id ??
+      route.params?.appointmentId ??
+      route.params?.id,
+    id: route.params?.id ?? route.params?.appointmentId,
   });
 
   const [loading1, setLoading] = React.useState(true);
@@ -533,17 +538,21 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     ));
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <AppHeader
         title="Appointment Details"
         onLeftPress={() => navigation.goBack()}
-      // rightIconName="search"
-      // onRightPress={() => console.log('Search clicked')}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: Theme.bg }} refreshControl={
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ backgroundColor: SCREEN_THEME.screenBackground }}
+        refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
@@ -555,7 +564,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           <AppointmentDetailSkeleton />
         ) : (
           <>
-            {normalizedAppointment?.status && (
+            {!!normalizedAppointment?.status ? (
               <View style={styles.statusRow}>
                 <View style={[styles.statusPill, { backgroundColor: statusStyle.backgroundColor }]}>
                   <View style={[styles.statusDot, { backgroundColor: statusStyle.color }]} />
@@ -564,7 +573,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   </Text>
                 </View>
               </View>
-            )}
+            ) : null}
 
             <DoctorDetail
               refreshData={() => fetchDetail?.()}
@@ -593,7 +602,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               </>
             )}
 
-            {detail?.appointment?.concern && (
+            {!!detail?.appointment?.concern ? (
               <>
                 <View style={styles.sectionHeaderRow}>
                   <Ionicons name="document-text-outline" size={15} color={Theme.gold} />
@@ -601,10 +610,10 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </View>
 
                 <View style={styles.card}>
-                  {/* <Foundation name="quote" size={20} color={Theme.goldSoft} style={{ marginBottom: 4 }} /> */}
                   <Text style={styles.reason}>{detail?.appointment?.concern}</Text>
                 </View>
-              </>)}
+              </>
+            ) : null}
 
 
             {/* {(consultationHasPrescription(detail) ||
@@ -612,7 +621,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 prescription:
                   detail?.prescription || detail?.appointment?.prescription,
               }) || */}
-            {detail?.prescription && (
+            {detail?.prescription ? (
               <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
                 <TouchableOpacity
                   activeOpacity={0.88}
@@ -633,10 +642,10 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
 
 
-            {appointmentStatus === 'completed' && (
+            {appointmentStatus === 'completed' ? (
               <>
                 <View style={styles.sectionHeaderRow}>
                   <Ionicons name="star-outline" size={15} color={Theme.gold} />
@@ -682,12 +691,12 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   )}
                 </View>
               </>
-            )}
+            ) : null}
 
-            <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 0 : 8 }}>
+            <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 4 : 10 }}>
               <TouchableOpacity
                 activeOpacity={0.85}
-                style={styles.outlineBtn}
+                style={styles.calendarBtn}
                 onPress={() => {
                   const appt = detail?.appointment ?? {};
                   const doctor = detail?.doctor ?? {};
@@ -719,21 +728,27 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   });
                 }}
               >
-                <Ionicons name="calendar-outline" size={17} color={Theme.emerald} />
-                <Text style={styles.outlineBtnText}>Add to Calendar</Text>
+                <View style={styles.calendarIconWrap}>
+                  <Ionicons name="calendar-outline" size={18} color={Theme.emerald} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.calendarTitle}>Add to Calendar</Text>
+                  <Text style={styles.calendarSub}>Save this visit on your device</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
-            {showButtons && (
-              <View style={{ paddingHorizontal: 16 }}>
+            {showButtons ? (
+              <View style={styles.actionRow}>
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  style={styles.outlineBtn}
+                  style={styles.rescheduleBtn}
                   onPress={() => setShowRescheduleModal(true)}
                 >
-                  <Ionicons name="calendar-outline" size={17} color={Theme.emerald} />
-                  <Text style={styles.outlineBtnText}>
-                    {isRescheduleRequest ? 'Request To Change' : 'Reschedule'}
+                  <Ionicons name="time-outline" size={16} color={Theme.emerald} />
+                  <Text style={styles.rescheduleBtnText} numberOfLines={1}>
+                    {isRescheduleRequest ? 'Request Change' : 'Reschedule'}
                   </Text>
                 </TouchableOpacity>
 
@@ -742,10 +757,12 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   style={styles.cancelBtn}
                   onPress={() => setShowCancelModal(true)}
                 >
-                  <Text style={styles.cancelBtnText}>Cancel Appointment</Text>
+                  <Text style={styles.cancelBtnText} numberOfLines={1}>
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
 
           </>
         )}
@@ -803,7 +820,7 @@ export default AppointmentDetailScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.bg,
+    backgroundColor: SCREEN_THEME.screenBackground,
   },
 
   // ---------- Status pill (top) ----------
@@ -1171,6 +1188,64 @@ const styles = StyleSheet.create({
     color: Theme.emerald,
   },
 
+  calendarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8E6',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  calendarIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#E8F3F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarTitle: {
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+  },
+  calendarSub: {
+    marginTop: 2,
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+  },
+
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 24,
+  },
+
+  rescheduleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.2,
+    borderColor: Theme.emerald,
+    backgroundColor: '#FFFFFF',
+  },
+  rescheduleBtnText: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Theme.emerald,
+  },
+
   prescriptionBtn: {
     minHeight: 50,
     borderRadius: 14,
@@ -1190,16 +1265,18 @@ const styles = StyleSheet.create({
   },
 
   cancelBtn: {
-    marginTop: 8,
-    marginBottom: 24,
-    paddingVertical: 12,
+    flex: 1,
+    marginTop: 0,
+    marginBottom: 0,
+    paddingVertical: 13,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Theme.dangerSoft,
   },
 
   cancelBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Theme.danger,
   },

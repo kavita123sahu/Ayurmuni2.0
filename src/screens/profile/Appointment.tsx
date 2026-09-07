@@ -43,7 +43,7 @@ const FOLLOW_UP_FILTERS = [
 
 const UPCOMING_STATUS_FILTERS = [
   { key: 'all', label: 'All status' },
-  { key: 'pending', label: 'Pending' },
+  { key: 'cancelled', label: 'Cancelled' },
   { key: 'confirmed', label: 'Confirmed' },
   { key: 'reschedule', label: 'Reschedule' },
 ] as const;
@@ -441,17 +441,18 @@ const styles = StyleSheet.create({
   },
   filtersBlock: {
     marginTop: SPACING.sm,
-    gap: 8,
+    marginBottom: 4,
+    gap: 10,
   },
   chipRow: {
-    paddingVertical: 1,
+    paddingVertical: 2,
     gap: 8,
     paddingRight: 5,
   },
   chip: {
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',

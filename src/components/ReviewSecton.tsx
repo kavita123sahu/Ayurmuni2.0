@@ -294,11 +294,10 @@ const styles = StyleSheet.create({
   },
   reviewCard: {
     backgroundColor: Colors.bgcolor,
-    //   marginHorizontal: 20,
-    marginTop: 10,
-    borderRadius: 16,
-    padding: 10,
-
+    marginTop: 6,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
 
   reviewTop: {
@@ -307,16 +306,16 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: "#E6F2EF",
     justifyContent: "center",
     alignItems: "center",
   },
 
   avatarText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
     color: "#0B6B57",
   },
@@ -325,10 +324,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 6,
   },
 
   name: {
-    fontSize: 14,
+    flexShrink: 1,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
     color: "#111",
   },
@@ -358,50 +359,51 @@ const styles = StyleSheet.create({
   },
 
   stars: {
-    fontSize: 12,
+    fontSize: 11,
+    flexShrink: 0,
   },
 
   reviewText: {
-    marginTop: 10,
-    fontSize: 13,
+    marginTop: 6,
+    fontSize: 12,
     color: "#4B5563",
     fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
   },
   cardImageRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
+    gap: 6,
+    marginTop: 6,
   },
   cardImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     backgroundColor: '#E2E8F0',
   },
   doctorReplyBox: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 12,
+    marginTop: 6,
+    padding: 8,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E8F2EE',
   },
   doctorReplyLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   doctorReplyText: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
     color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
   },

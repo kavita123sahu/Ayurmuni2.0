@@ -1,5 +1,5 @@
 import { OneSignal, LogLevel } from 'react-native-onesignal';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { apiClient } from './APIconfig';
 
 const ONE_SIGNAL_APP_ID =
@@ -12,6 +12,40 @@ const wait = (ms: number) =>
     setTimeout(() => resolve(), ms);
   });
 
+const HeadsUpNative = NativeModules.HeadsUpNotification as
+  | {
+      show?: (payload: { title?: string; message?: string }) => void;
+      ensureChannels?: () => void;
+    }
+  | undefined;
+
+/** WhatsApp-style system tray / heads-up banner (Android). */
+export const showDeviceHeadsUpNotification = (payload: {
+  title?: string;
+  message?: string;
+}) => {
+  try {
+    if (Platform.OS === 'android' && HeadsUpNative?.show) {
+      HeadsUpNative.show({
+        title: payload.title || 'Ayurmuni',
+        message: payload.message || 'You have a new notification',
+      });
+    }
+  } catch {
+    // ignore native failures
+  }
+};
+
+export const ensureHeadsUpChannels = () => {
+  try {
+    if (Platform.OS === 'android' && HeadsUpNative?.ensureChannels) {
+      HeadsUpNative.ensureChannels();
+    }
+  } catch {
+    // ignore
+  }
+};
+
 export type OneSignalPushReady = {
   subscriptionId: string;
   fcmToken: string;
@@ -19,8 +53,7 @@ export type OneSignalPushReady = {
 };
 
 /**
- * Initialize OneSignal
- * Call this once when the application starts.
+ * Initialize OneSignal once. Does not request OS permission.
  */
 export const initializeOneSignal = async () => {
   try {
@@ -31,30 +64,14 @@ export const initializeOneSignal = async () => {
     OneSignal.Debug.setLogLevel(LogLevel.Verbose);
     OneSignal.initialize(ONE_SIGNAL_APP_ID);
     initialized = true;
-
-    try {
-      OneSignal.User.pushSubscription.optIn();
-    } catch {
-      // ignore
-    }
-
-    OneSignal.User.pushSubscription.addEventListener(
-      'change',
-      async () => {
-        try {
-          await getOneSignalPushData();
-        } catch {
-          // ignore
-        }
-      },
-    );
+    ensureHeadsUpChannels();
   } catch {
     // ignore init errors — callers retry via wait helpers
   }
 };
 
 /**
- * Request OS notification permission (after themed UI prompt).
+ * Request OS notification permission (OTP / Settings only — not app start).
  */
 export const requestNotificationPermission = async (
   fallbackToSettings = true,
@@ -83,6 +100,7 @@ export const requestNotificationPermission = async (
       } catch {
         // ignore
       }
+      ensureHeadsUpChannels();
     }
 
     return Boolean(granted);
@@ -92,8 +110,7 @@ export const requestNotificationPermission = async (
 };
 
 /**
- * Ask for device notification permission on every cold start
- * (covers users who skipped the OTP prompt).
+ * Ensure permission + opt-in. Call only after OTP / Settings — never on cold start.
  */
 export const ensureDeviceNotificationsEnabled = async (): Promise<boolean> => {
   try {
@@ -123,6 +140,7 @@ export const ensureDeviceNotificationsEnabled = async (): Promise<boolean> => {
     } catch {
       // ignore
     }
+    ensureHeadsUpChannels();
     return true;
   } catch {
     return false;
@@ -166,7 +184,6 @@ const isPushReady = (data: {
 
 /**
  * Wait until OneSignal has a real device subscription + FCM/APNS token.
- * Critical for first install / first customer in release builds.
  */
 export const waitForPushSubscriptionReady = async (options?: {
   timeoutMs?: number;
@@ -264,7 +281,6 @@ export const waitForExternalIdAssociation = async (
 
 /**
  * Connect backend user with OneSignal AFTER device subscription is ready.
- * Does not call welcome API — use completeWelcomePushFlow for that.
  */
 export const loginOneSignalUser = async (
   userId: string | number,
@@ -282,7 +298,6 @@ export const loginOneSignalUser = async (
 
     await initializeOneSignal();
 
-    // First-install devices often have no token yet — wait before login.
     const readyBeforeLogin = await waitForPushSubscriptionReady({
       timeoutMs: 45_000,
       intervalMs: 600,
@@ -296,15 +311,17 @@ export const loginOneSignalUser = async (
       intervalMs: 500,
     });
 
-    // Login can briefly reset subscription — wait again before welcome API.
     const readyAfterLogin =
       (await waitForPushSubscriptionReady({
         timeoutMs: 25_000,
         intervalMs: 600,
       })) ?? readyBeforeLogin;
 
-    // Extra settle time so OneSignal backend associates the player.
-    await wait(1_500);
+    try {
+      OneSignal.User.pushSubscription.optIn();
+    } catch {
+      // ignore
+    }
 
     return {
       externalId,
@@ -334,8 +351,13 @@ export const welcome_notification = async () => {
 };
 
 /**
- * Full welcome-push pipeline for newly created customers:
- * permission → wait subscription/token → login → verify → welcome API
+ * Full welcome-push pipeline for newly created customers.
+ *
+ * Timing (critical):
+ * 1) permission + OneSignal.login + local subscription ready
+ * 2) HARD setTimeout ≥4s after that (OneSignal cloud still "Unsubscribed" before this)
+ * 3) only then POST notifications/push/welcome/
+ * 4) if backend still says unsubscribed → wait another 4s and retry once
  */
 export const completeWelcomePushFlow = async (
   userId: string | number,
@@ -344,18 +366,16 @@ export const completeWelcomePushFlow = async (
   reason?: string;
   response?: any;
 }> => {
+  const WELCOME_SETTLE_MS = 4_000;
+
   try {
     await initializeOneSignal();
 
-    // 1) Permission (first-install release must prompt here)
     const permissionOk = await ensureDeviceNotificationsEnabled();
     if (!permissionOk) {
       return { success: false, reason: 'permission_denied' };
     }
 
-    // 2–4) Wait subscription+token → OneSignal.login → verify association
-    // loginOneSignalUser itself waits for a fresh device token before login
-    // so the first customer on a clean install is covered.
     const loginResult = await loginOneSignalUser(userId);
     if (!loginResult) {
       return { success: false, reason: 'onesignal_login_failed' };
@@ -365,17 +385,99 @@ export const completeWelcomePushFlow = async (
       return { success: false, reason: 'external_id_not_associated' };
     }
 
-    if (
-      !loginResult.optedIn ||
-      !loginResult.subscriptionId ||
-      !loginResult.fcmToken
-    ) {
-      return { success: false, reason: 'subscription_missing_after_login' };
+    // Force opt-in again — login can briefly leave push as Unsubscribed.
+    try {
+      OneSignal.User.pushSubscription.optIn();
+    } catch {
+      // ignore
     }
 
-    // 5) Welcome API only after association + token are confirmed
-    const response = await welcome_notification();
+    // Confirm local SDK has subscription + token BEFORE the settle clock.
+    const readyBeforeSettle = await waitForPushSubscriptionReady({
+      timeoutMs: 45_000,
+      intervalMs: 500,
+    });
+
+    if (
+      !readyBeforeSettle?.optedIn ||
+      !readyBeforeSettle.subscriptionId ||
+      !readyBeforeSettle.fcmToken
+    ) {
+      const latest = await getOneSignalPushData();
+      console.log('⚠️ [WelcomePush] Not ready before settle:', latest);
+      return {
+        success: false,
+        reason: latest.optedIn
+          ? 'subscription_missing_before_settle'
+          : 'still_unsubscribed_before_settle',
+      };
+    }
+
+    // HARD wait — do not call welcome API until this finishes.
+    // Backend OneSignal lookup stays "Unsubscribed" if we hit too early.
+    const settleStartedAt = Date.now();
+    console.log(
+      `⏳ [WelcomePush] Subscription ready locally. Hard wait ${WELCOME_SETTLE_MS}ms before welcome API...`,
+      {
+        subscriptionId: readyBeforeSettle.subscriptionId,
+        startedAt: settleStartedAt,
+      },
+    );
+    await wait(WELCOME_SETTLE_MS);
+    console.log('⏳ [WelcomePush] Settle finished', {
+      waitedMs: Date.now() - settleStartedAt,
+      minRequiredMs: WELCOME_SETTLE_MS,
+    });
+
+    const settled = await getOneSignalPushData();
+    if (!settled.optedIn || !settled.subscriptionId || !settled.fcmToken) {
+      console.log('⚠️ [WelcomePush] Lost subscription after settle:', settled);
+      return {
+        success: false,
+        reason: settled.optedIn
+          ? 'subscription_missing_after_settle'
+          : 'still_unsubscribed_after_settle',
+      };
+    }
+
+    const callWelcome = async () => {
+      console.log('🟢 [WelcomePush] Calling welcome API (after ≥4s settle)', {
+        subscriptionId: settled.subscriptionId,
+        waitedMs: Date.now() - settleStartedAt,
+      });
+      return welcome_notification();
+    };
+
+    let response = await callWelcome();
+
+    const looksUnsubscribed = (res: any) => {
+      const msg = String(
+        res?.message ?? res?.data?.message ?? res?.error ?? '',
+      ).toLowerCase();
+      return (
+        msg.includes('unsubscrib') ||
+        msg.includes('not subscrib') ||
+        msg.includes('no subscription') ||
+        msg.includes('subscription')
+      );
+    };
+
+    // Backend may still lag — one more hard 4s + retry.
+    if (response?.success === false && looksUnsubscribed(response)) {
+      console.log(
+        '⏳ [WelcomePush] Backend still unsubscribed — waiting another 4s then retry...',
+      );
+      await wait(WELCOME_SETTLE_MS);
+      try {
+        OneSignal.User.pushSubscription.optIn();
+      } catch {
+        // ignore
+      }
+      response = await callWelcome();
+    }
+
     if (response?.success === false) {
+      console.log('❌ [WelcomePush] welcome API failed:', response);
       return {
         success: false,
         reason: 'welcome_api_failed',
@@ -383,6 +485,7 @@ export const completeWelcomePushFlow = async (
       };
     }
 
+    console.log('🎉 [WelcomePush] Welcome API success', response);
     return { success: true, response };
   } catch (error: any) {
     return {

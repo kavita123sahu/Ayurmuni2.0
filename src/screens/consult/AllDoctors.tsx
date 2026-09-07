@@ -15,6 +15,7 @@ import {
     ActivityIndicator,
     Modal,
     RefreshControl,
+    Pressable,
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -328,7 +329,7 @@ const AllDoctors = (props: any) => {
                     }
                 />
 
-                <View style={styles.headerWrap}>
+                {/* <View style={styles.headerWrap}> */}
                     <AppHeader
                         title="Explore"
                         leftIconName='arrow-left'
@@ -337,7 +338,7 @@ const AllDoctors = (props: any) => {
                         }
                         onSearchPress={() => setSearchExpanded(true)}
                     />
-                </View>
+                {/* </View> */}
 
                 <View style={styles.body}>
                     <View style={styles.hubRow}>
@@ -436,10 +437,17 @@ const AllDoctors = (props: any) => {
             </SafeAreaView>
 
             {showCalendar && (
-                <Modal transparent animationType="fade">
-                    <View style={styles.modalOverlay}>
-
-                        <View style={styles.modalBox}>
+                <Modal transparent animationType="fade" onRequestClose={() => setShowCalendar(false)}>
+                    <Pressable
+                        style={styles.modalOverlay}
+                        onPress={() => {
+                            setShowCalendar(false);
+                            setCalendarStep('from');
+                            setTempFromDate(null);
+                            setTempToDate(null);
+                        }}
+                    >
+                        <Pressable style={styles.modalBox} onPress={e => e.stopPropagation?.()}>
 
                             <Text style={styles.modalTitle}>
                                 {calendarStep === 'from'
@@ -504,8 +512,8 @@ const AllDoctors = (props: any) => {
 
                             </View>
 
-                        </View>
-                    </View>
+                        </Pressable>
+                    </Pressable>
                 </Modal>
             )}
 
@@ -521,7 +529,7 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.background,
     },
 
     body: {

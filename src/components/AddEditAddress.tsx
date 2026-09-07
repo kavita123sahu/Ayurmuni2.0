@@ -27,7 +27,10 @@ import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
 import TablerIcon, { TablerIconName } from './TablerIcon';
 import { geocodePincode, savedAddressToParsed } from '../services/locationService';
 import { useLocation } from '../context/LocationContext';
-import { popToHomeAfterAddressSave } from '../navigation/navigationUtils';
+import {
+    popToHomeAfterAddressSave,
+    popToScreen,
+} from '../navigation/navigationUtils';
 
 const ADDRESS_TYPES: { label: string; value: string; iconName: TablerIconName }[] = [
     {
@@ -53,6 +56,7 @@ const AddEditAddress = ({ navigation, route }: any) => {
     const type = route?.params?.type;
     const selectedLocation = route?.params?.selectedLocation;
     const returnToHome = route?.params?.returnToHome === true;
+    const returnTo = route?.params?.returnTo as string | undefined;
 
     const isEdit = type === 'EDIT';
     const { setDeliveryLocation } = useLocation();
@@ -92,6 +96,10 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const lastPincodeLookupRef = useRef('');
+    // City/state locked after GPS or pincode autofill (and when editing saved address)
+    const [cityStateLocked, setCityStateLocked] = useState(
+        Boolean(editData?.city && editData?.state),
+    );
 
     const isDisabled =
         !address1 ||
@@ -107,6 +115,9 @@ const AddEditAddress = ({ navigation, route }: any) => {
             setCity(selectedLocation.city || '');
             setStateValue(selectedLocation.state || '');
             setZip(selectedLocation.zipcode || '');
+            if (selectedLocation.city || selectedLocation.state) {
+                setCityStateLocked(true);
+            }
         }
     }, [selectedLocation]);
 
@@ -124,6 +135,9 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     lastPincodeLookupRef.current = cleaned;
                     setCity(result.city || '');
                     setStateValue(result.state || '');
+                    if (result.city || result.state) {
+                        setCityStateLocked(true);
+                    }
                     if (!address1.trim()) {
                         setAddress1(result.address_line_1 || '');
                     }
@@ -177,6 +191,11 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
         if (returnToHome) {
             popToHomeAfterAddressSave(navigation);
+            return;
+        }
+
+        if (returnTo === 'Checkout') {
+            popToScreen(navigation, 'Checkout');
             return;
         }
 
@@ -337,7 +356,9 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                         type,
                                         data: editData,
                                         returnToHome,
+                                        returnTo,
                                     },
+                                    returnTo,
                                 })
                             }
                             style={styles.locationBadge}
@@ -355,7 +376,9 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                         type,
                                         data: editData,
                                         returnToHome,
+                                        returnTo,
                                     },
+                                    returnTo,
                                     useGps: true,
                                 })
                             }
@@ -476,9 +499,13 @@ const AddEditAddress = ({ navigation, route }: any) => {
                             <TextInput
                                 value={city}
                                 onChangeText={setCity}
+                                editable={!cityStateLocked}
                                 placeholder="City"
                                 placeholderTextColor="#98A2B3"
-                                style={styles.input}
+                                style={[
+                                    styles.input,
+                                    cityStateLocked && styles.inputLocked,
+                                ]}
                             />
 
                         </View>
@@ -498,6 +525,10 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                         text.replace(/[^0-9]/g, '').slice(0, 6);
                                     if (cleanedText !== zip) {
                                         lastPincodeLookupRef.current = '';
+                                    }
+                                    // Unlock city/state only when user edits away from a full pincode
+                                    if (zip.length === 6 && cleanedText.length < 6) {
+                                        setCityStateLocked(false);
                                     }
                                     setZip(cleanedText);
                                 }}
@@ -528,10 +559,19 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     <TextInput
                         value={stateValue}
                         onChangeText={setStateValue}
+                        editable={!cityStateLocked}
                         placeholder="State"
                         placeholderTextColor="#98A2B3"
-                        style={styles.input}
+                        style={[
+                            styles.input,
+                            cityStateLocked && styles.inputLocked,
+                        ]}
                     />
+                    {cityStateLocked ? (
+                        <Text style={styles.lockedHint}>
+                            City & state are filled from pincode / GPS and can&apos;t be edited
+                        </Text>
+                    ) : null}
 
                 </ScrollView>
 
@@ -743,6 +783,20 @@ const styles = StyleSheet.create({
         color: '#111827',
 
         fontFamily: Fonts.PoppinsMedium,
+    },
+
+    inputLocked: {
+        backgroundColor: '#F3F4F6',
+        color: '#6B7280',
+        borderColor: '#E5E7EB',
+    },
+
+    lockedHint: {
+        marginTop: -10,
+        marginBottom: 14,
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
     },
 
     row: {

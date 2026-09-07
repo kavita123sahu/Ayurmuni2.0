@@ -1362,7 +1362,7 @@ type Props = {
 
 const CART_SKELETON_COUNT = 4;
 
-/** Matches MyProductCard row layout: checkbox, 72px image, text block, qty + remove. */
+/** Matches MyCart layout: tabs strip + product rows (checkbox, image, info, qty). */
 export const MyProductCardSkeleton = () => {
   return (
     <ScrollView
@@ -1375,14 +1375,14 @@ export const MyProductCardSkeleton = () => {
         highlightColor="#F8FAFC"
         borderRadius={12}
       >
-        <SkeletonPlaceholder.Item marginBottom={14}>
-          <SkeletonPlaceholder.Item width="72%" height={18} borderRadius={6} />
-          <SkeletonPlaceholder.Item
-            marginTop={6}
-            width="55%"
-            height={12}
-            borderRadius={6}
-          />
+        <SkeletonPlaceholder.Item
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="space-between"
+          marginBottom={14}
+        >
+          <SkeletonPlaceholder.Item width={110} height={28} borderRadius={8} />
+          <SkeletonPlaceholder.Item width={120} height={28} borderRadius={8} />
         </SkeletonPlaceholder.Item>
       </SkeletonPlaceholder>
 
@@ -1396,7 +1396,6 @@ export const MyProductCardSkeleton = () => {
             <SkeletonPlaceholder.Item
               flexDirection="row"
               alignItems="center"
-              borderRadius={14}
               padding={10}
             >
               <SkeletonPlaceholder.Item
@@ -1414,50 +1413,33 @@ export const MyProductCardSkeleton = () => {
 
               <SkeletonPlaceholder.Item flex={1} marginLeft={10}>
                 <SkeletonPlaceholder.Item
-                  width="92%"
+                  width="88%"
                   height={14}
                   borderRadius={6}
                 />
                 <SkeletonPlaceholder.Item
                   marginTop={6}
-                  width="78%"
-                  height={14}
+                  width="62%"
+                  height={12}
                   borderRadius={6}
                 />
                 <SkeletonPlaceholder.Item
-                  marginTop={8}
-                  width="55%"
-                  height={11}
+                  marginTop={10}
+                  width={72}
+                  height={16}
                   borderRadius={6}
                 />
-                <SkeletonPlaceholder.Item
-                  marginTop={8}
-                  flexDirection="row"
-                  alignItems="center"
-                >
-                  <SkeletonPlaceholder.Item
-                    width={52}
-                    height={16}
-                    borderRadius={6}
-                  />
-                  <SkeletonPlaceholder.Item
-                    width={44}
-                    height={12}
-                    borderRadius={6}
-                    marginLeft={8}
-                  />
-                </SkeletonPlaceholder.Item>
               </SkeletonPlaceholder.Item>
 
-              <SkeletonPlaceholder.Item marginLeft={10} alignItems="center">
+              <SkeletonPlaceholder.Item marginLeft={8} alignItems="center">
                 <SkeletonPlaceholder.Item
-                  width={84}
-                  height={32}
+                  width={78}
+                  height={30}
                   borderRadius={10}
                 />
                 <SkeletonPlaceholder.Item
-                  marginTop={6}
-                  width={84}
+                  marginTop={8}
+                  width={28}
                   height={28}
                   borderRadius={8}
                 />
@@ -1466,6 +1448,22 @@ export const MyProductCardSkeleton = () => {
           </SkeletonPlaceholder>
         </View>
       ))}
+
+      <SkeletonPlaceholder
+        backgroundColor="#E5E7EB"
+        highlightColor="#F8FAFC"
+        borderRadius={12}
+      >
+        <SkeletonPlaceholder.Item marginTop={8}>
+          <SkeletonPlaceholder.Item width="100%" height={56} borderRadius={14} />
+          <SkeletonPlaceholder.Item
+            marginTop={12}
+            width="100%"
+            height={48}
+            borderRadius={14}
+          />
+        </SkeletonPlaceholder.Item>
+      </SkeletonPlaceholder>
     </ScrollView>
   );
 };
@@ -1475,8 +1473,8 @@ const cartSkeletonStyles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 24,
   },
   card: {

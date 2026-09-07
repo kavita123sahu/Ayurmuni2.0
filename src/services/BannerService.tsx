@@ -148,7 +148,6 @@ export const getBanners = async (
     if (!response?.success && response?.success !== undefined) {
       return { success: false, data: [] as any[], images: [] as string[] };
     }
-
     const raw = toList(response?.data ?? response);
     const filtered = screen
       ? filterBannersForScreen(raw, screen, serviceCategoryId)
@@ -161,7 +160,6 @@ export const getBanners = async (
       images,
     };
   } catch (error) {
-    console.log('getBanners error', error);
     return { success: false, data: [] as any[], images: [] as string[] };
   }
 };

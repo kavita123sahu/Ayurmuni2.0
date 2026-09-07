@@ -15,6 +15,7 @@ import {
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { Colors } from '../../common/Colors';
+import { shouldRunThrottled } from '../../utils/fetchThrottle';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
@@ -28,7 +29,7 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useLocation } from '../../context/LocationContext';
 import HomeCategory from './HomeCategory';
 import SuggestedCard from '../../components/SuggestedCard';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 import { useScrollHide } from '../../context/ScrollHideContext';
 import {
@@ -42,18 +43,12 @@ import {
 } from '../../constants/layout';
 import { useHomeData } from '../../hooks/UseHomeData';
 import { HomeCategorySkeleton, HorizontalAppointmentSkeleton, TopDoctorsCardSkeleton, TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
-import RenderAppoint from '../../components/RenderAppoint';
-import JoinCallBanner from '../../components/JoinCallBanner';
+import HomeJoinAppointmentsSection from '../../components/HomeJoinAppointmentsSection';
 import CategoryList from '../../components/CategoryList';
-import {
-  getJoinableAppointment,
-  sortAppointmentsByDateTime,
-} from '../../utils/appointmentUtils';
 import { useUpcomingAppointmentsPreview } from '../../hooks/useConsultData';
 import { useHealthConcernCategories } from '../../hooks/useHealthConcernCategories';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
-import { requireAuth, } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToSearchScreen } from '../../navigation/productNavigation';
 import { useBanners } from '../../hooks/useBanners';
@@ -68,6 +63,7 @@ import {
   mapRecentDoctorToNavPayload,
   useRecentVisitedDoctors,
 } from '../../hooks/useRecentVisitedDoctors';
+import ScreenShell from '../../components/ScreenShell';
 
 
 const { width } = Dimensions.get('window');
@@ -82,12 +78,14 @@ const HomePage: React.FC = (props: any) => {
     loading: bannersLoading,
     refresh: refreshBanners,
   } = useBanners('home');
+
   const homeBannerImages = useMemo(() => {
     if (bannerImages.length > 0) return bannerImages;
     // Avoid flashing local require() ids while API banners load
     if (bannersLoading) return [];
     return product.images;
   }, [bannerImages, bannersLoading]);
+
   const {
     categories,
     SuggestDoctor,
@@ -107,7 +105,6 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
-  console.log("storeProductsstoreProducts", storeProducts)
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -150,9 +147,16 @@ const HomePage: React.FC = (props: any) => {
     searchBarAnimatedStyle,
     categoryAnimatedStyle,
     headerShellAnimatedStyle,
+    setHasHomeCategories,
   } = useScrollHide();
-  const headerTotalHeight = getHomeHeaderTotalHeight(insets);
+  const hasHomeCategories =
+    loadingCategories || (Array.isArray(categories) && categories.length > 0);
+  const headerTotalHeight = getHomeHeaderTotalHeight(insets, hasHomeCategories);
   const bottomPadding = getScreenBottomPadding(insets);
+
+  useEffect(() => {
+    setHasHomeCategories?.(hasHomeCategories);
+  }, [hasHomeCategories, setHasHomeCategories]);
 
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
 
@@ -173,8 +177,10 @@ const HomePage: React.FC = (props: any) => {
 
   useFocusEffect(
     useCallback(() => {
-      refreshActiveDiet();
-      refreshVisitedDoctors();
+      if (shouldRunThrottled('home-diet-doctors', 60_000)) {
+        refreshActiveDiet();
+        refreshVisitedDoctors();
+      }
     }, [refreshActiveDiet, refreshVisitedDoctors]),
   );
 
@@ -190,18 +196,13 @@ const HomePage: React.FC = (props: any) => {
       }
 
       return () => clearTimeout(timer);
-    }, [promptLocationOnHome, fetchDietPlans, dietProducts?.length]),
+      // Intentionally omit dietProducts?.length — avoids re-running when diet fills
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [promptLocationOnHome, fetchDietPlans]),
   );
 
   // Re-evaluate Join banner when the 5‑min window / end time crosses
-  const [joinBannerTick, setJoinBannerTick] = useState(0);
   const [endedCallIds, setEndedCallIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    // Re-check join window often so banner appears as soon as ≤5 min left
-    const timer = setInterval(() => setJoinBannerTick(t => t + 1), 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const sub = CallEvents.addListener(CALL_ENDED, (...args: unknown[]) => {
@@ -220,76 +221,17 @@ const HomePage: React.FC = (props: any) => {
         });
       }
       refreshPreview();
-      setJoinBannerTick(t => t + 1);
     });
     return () => sub.remove();
   }, [refreshPreview]);
 
   useFocusEffect(
     useCallback(() => {
-      refreshPreview();
+      if (shouldRunThrottled('home-appointments-preview', 45_000)) {
+        refreshPreview();
+      }
     }, [refreshPreview]),
   );
-
-  /** Confirmed upcoming only — join banner never removes items from this list */
-  const sortedUpcomingAppointments = useMemo(
-    () =>
-      sortAppointmentsByDateTime(
-        upcomingAppointments.filter(item => {
-          const status = String(item?.status || '')
-            .trim()
-            .toLowerCase();
-          return status === 'confirmed';
-        }),
-      ),
-    [upcomingAppointments],
-  );
-
-  /**
-   * Join banner only (≤5 min / live). Uses a separate copy with ended flags
-   * so it never removes or changes items in `sortedUpcomingAppointments`.
-   */
-  const joinableAppointment = useMemo(() => {
-    const bannerSource = sortedUpcomingAppointments.map(item => {
-      const candidateIds = [
-        item?.appointment_id,
-        item?.consultation_id,
-        item?.rawData?.id,
-        item?.rawData?.appointment?.id,
-        item?.rawData?.consultation_id,
-      ]
-        .map(v => String(v || '').trim())
-        .filter(Boolean);
-      const wasEnded = candidateIds.some(id => endedCallIds.has(id));
-      if (!wasEnded) return item;
-      return {
-        ...item,
-        call_status: 'ended',
-        rawData: {
-          ...(item.rawData ?? item),
-          call_status: 'ended',
-          appointment: {
-            ...((item.rawData ?? item)?.appointment ?? {}),
-            call_status: 'ended',
-          },
-        },
-      };
-    });
-    return getJoinableAppointment(bannerSource, 5);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick re-checks 5‑min window
-  }, [sortedUpcomingAppointments, endedCallIds, joinBannerTick]);
-
-  const homeAppointmentList = useMemo(() => {
-    if (!joinableAppointment) {
-      return sortedUpcomingAppointments;
-    }
-
-    const joinId = joinableAppointment.item.consultation_id;
-    return sortedUpcomingAppointments.filter(
-      item => item.consultation_id !== joinId,
-    );
-  }, [sortedUpcomingAppointments, joinableAppointment]);
-
 
   const onRefresh = useCallback(async () => {
     try {
@@ -403,7 +345,8 @@ const HomePage: React.FC = (props: any) => {
   }, [YogaSession?.length, dietProducts?.length]);
 
   return (
-    <View style={styles.container}>
+    // <ScreenShell contentStyle={styles.shellContent}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar
         backgroundColor={SCREEN_THEME.statusBarBackground}
         barStyle={SCREEN_THEME.statusBarStyle}
@@ -419,6 +362,7 @@ const HomePage: React.FC = (props: any) => {
           headerShellAnimatedStyle,
         ]}
       >
+
         <Animated.View style={headerContentAnimatedStyle}>
           <HomeHeader
             progress1={Math.round(customerData?.prakriti_progress || 0)}
@@ -440,13 +384,13 @@ const HomePage: React.FC = (props: any) => {
         <Animated.View style={[styles.categoryDock, categoryAnimatedStyle]}>
           {loadingCategories ? (
             <HomeCategorySkeleton compact />
-          ) : (
+          ) : categories?.length > 0 ? (
             <HomeCategory
               data={categories}
               navigation={props.navigation}
               sticky
             />
-          )}
+          ) : null}
         </Animated.View>
       </Animated.View>
 
@@ -487,7 +431,7 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
-            {activeDietPreview ? (
+            {(activeDietPreview ? (
               <View style={styles.homeSection}>
                 <ActiveDietHomeCard
                   data={activeDietPreview}
@@ -500,60 +444,14 @@ const HomePage: React.FC = (props: any) => {
                   }}
                 />
               </View>
-            ) : null}
+            ) : null)}
 
-            {(joinableAppointment ||
-              (!loadingAppointments &&
-                (homeAppointmentList?.length ?? 0) > 0)) && (
-                <View style={styles.homeSection}>
-                  <SectionHeader
-                    home
-                    title="Upcoming Appointments"
-                    actionText={
-                      !loadingAppointments && sortedUpcomingAppointments.length > 1
-                        ? 'View all'
-                        : ''
-                    }
-                    onPress={async () => {
-                      if (await requireAuth('Please login to view appointments')) {
-                        props.navigation.navigate('Appointments', {
-                          mode: 'upcoming',
-                        });
-                      }
-                    }}
-                  />
-                  {loadingAppointments ? (
-                    <HorizontalAppointmentSkeleton />
-                  ) : (
-                    <>
-                      {joinableAppointment ? (
-                        <JoinCallBanner
-                          joinable={joinableAppointment}
-                          navigation={props.navigation}
-                        />
-                      ) : null}
-                      {homeAppointmentList?.length > 0 ? (
-                        <FlatList
-                          horizontal
-                          data={homeAppointmentList}
-                          keyExtractor={(item, index) =>
-                            `${item?.consultation_id || index}`
-                          }
-                          contentContainerStyle={styles.horizontalList}
-                          renderItem={({ item }) => (
-                            <RenderAppoint
-                              item={item}
-                              navigation={props.navigation}
-                              isHorizontal
-                            />
-                          )}
-                          showsHorizontalScrollIndicator={false}
-                        />
-                      ) : null}
-                    </>
-                  )}
-                </View>
-              )}
+            <HomeJoinAppointmentsSection
+              appointments={upcomingAppointments}
+              endedCallIds={endedCallIds}
+              loading={loadingAppointments}
+              navigation={props.navigation}
+            />
 
             {homeHealthConcerns.length > 0 && (
               <View style={styles.homeSection}>
@@ -851,15 +749,23 @@ const HomePage: React.FC = (props: any) => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
+    // </ScreenShell>
 
   );
 };
 
 
+
 const styles = StyleSheet.create({
+  shellContent: {
+    flex: 1,
+    paddingTop: 0,
+  },
+
   container: {
     flex: 1,
+    // backgroundColor: '#F4F1EA',
     backgroundColor: Colors.background,
   },
   list: {

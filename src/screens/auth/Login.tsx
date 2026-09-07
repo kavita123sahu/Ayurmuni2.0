@@ -170,9 +170,18 @@ const PhoneAuthScreen = (props: any) => {
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const [phone, setPhone] = useState('');
-  const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+
+  const openPolicy = (policyType: 'terms_of_service' | 'privacy_policy') => {
+    props.navigation.navigate('PolicyDetail', {
+      policyType,
+      title:
+        policyType === 'terms_of_service'
+          ? 'Terms of Use'
+          : 'Privacy Policy',
+    });
+  };
 
   const onChangePhone = (text: string) => {
     const digits = text.replace(/[^0-9]/g, '').slice(0, 10);
@@ -218,6 +227,7 @@ const PhoneAuthScreen = (props: any) => {
       };
 
       const response: any = await _AUTH_SERVICE.send_otp(send_data);
+
       const OTP = response?.data?.otp;
       const deletedInfo = parseDeletedAccountInfo(response);
 
@@ -231,32 +241,39 @@ const PhoneAuthScreen = (props: any) => {
           retention_days: deletedInfo.retentionDays,
           held_at: Date.now(),
         });
+
         Utils.storeData('_OTP', OTP);
-        // showSuccessToast(
-        //   `This number was deleted. Enter OTP to recover within ${deletedInfo.retentionDays} days, or use a new number.`,
-        //   'error',
-        // );
+
         props.navigation.navigate('OtpVerify', {
           phone,
           customer: isCustomer,
           accountDeleted: true,
           retentionDays: deletedInfo.retentionDays,
         });
+
         return;
       }
 
       if (response?.success) {
         Utils.storeData('_OTP', OTP);
-        showSuccessToast(response.message || 'OTP sent successfully', 'success');
+
+        showSuccessToast(
+          response.message || 'OTP sent successfully',
+          'success',
+        );
+
         props.navigation.navigate('OtpVerify', {
           phone,
           customer: isCustomer,
         });
       } else {
-        showSuccessToast(
-          response?.message || 'Please Enter Valid Mobile Number',
-          'error',
-        );
+        // ✅ Show field-level API validation error first
+        const errorMessage =
+          response?.data?.errors?.phone_number?.[0] ||
+          response?.message ||
+          'Please enter a valid mobile number';
+
+        showSuccessToast(errorMessage, 'error');
       }
     } catch (error) {
       console.error('Send OTP Error:', error);
@@ -350,28 +367,18 @@ const PhoneAuthScreen = (props: any) => {
               ) : null}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.termsRow}
-              activeOpacity={0.8}
-              onPress={() => setAgreed(!agreed)}
-            >
-              <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
-                {agreed ? (
-                  <MaterialCommunityIcons name="check" size={13} color="#fff" />
-                ) : null}
-              </View>
-              <Text style={styles.termsText}>
-                By continuing, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms</Text> and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
+            <View style={styles.termsBlock}>
+              
+              <Text style={styles.termsNote}>
+                Agreeing to Terms and Privacy Policy is mandatory when you complete customer onboarding.
               </Text>
-            </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
-              style={[styles.cta, (!agreed || isLoading) && styles.ctaDisabled]}
+              style={[styles.cta,  isLoading && styles.ctaDisabled]}
               activeOpacity={0.88}
               onPress={onLogin}
-              disabled={!agreed || isLoading}
+              disabled={isLoading}
             >
               <Text style={styles.ctaText}>
                 {isLoading ? 'Sending...' : 'GET OTP'}
@@ -541,12 +548,15 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
+  termsBlock: {
+    marginTop: 5,  alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    marginTop: 12,
-    marginBottom: 14,
   },
   checkbox: {
     width: 22,
@@ -574,6 +584,15 @@ const styles = StyleSheet.create({
     color: C.link,
     fontFamily: Fonts.PoppinsSemiBold,
     textDecorationLine: 'underline',
+  },
+  termsNote: {
+    // marginTop: 8,
+    // marginLeft: 32,
+    
+    fontSize: 11,
+    lineHeight: 16,
+    color: C.body,
+    fontFamily: Fonts.PoppinsRegular,
   },
 
   cta: {

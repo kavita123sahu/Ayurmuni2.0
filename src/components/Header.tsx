@@ -7,10 +7,13 @@ import {
   ImageSourcePropType,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon, { TablerIconName } from './TablerIcon';
 import BackIconButton from './BackIconButton';
+import CartBadge from './CartBadge';
+import { useCartCount } from '../hooks/Cart';
 
 interface HeaderProps {
   title: string;
@@ -22,6 +25,8 @@ interface HeaderProps {
   refreshing?: boolean;
   rightIconName?: TablerIconName;
   onRightPress?: () => void;
+  /** Homepage-style cart icon with badge */
+  showCart?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -33,8 +38,18 @@ const Header: React.FC<HeaderProps> = ({
   refreshing = false,
   rightIconName,
   onRightPress,
+  showCart = false,
 }) => {
-  const hasRightActions = !!(onSearchPress || onRefreshPress || rightIconName);
+  const navigation = useNavigation<any>();
+  const cartCount = useCartCount();
+  const stackNavigation = navigation.getParent?.() || navigation;
+
+  const hasRightActions = !!(
+    onSearchPress ||
+    onRefreshPress ||
+    rightIconName ||
+    showCart
+  );
 
   return (
     <View style={styles.shell}>
@@ -95,6 +110,20 @@ const Header: React.FC<HeaderProps> = ({
                 />
               </TouchableOpacity>
             ) : null}
+            {showCart ? (
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => stackNavigation.navigate('MyCart')}
+                activeOpacity={0.75}
+              >
+                <TablerIcon
+                  name="shopping-cart"
+                  size={20}
+                  color={Colors.primaryColor}
+                />
+                <CartBadge count={cartCount} />
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : (
           <View style={styles.iconPlaceholder} />
@@ -109,7 +138,7 @@ export default Header;
 
 const styles = StyleSheet.create({
   shell: {
-    // backgroundColor: Colors.headerBackground,
+    backgroundColor: Colors.headerBackground,
   },
   row: {
     flexDirection: 'row',

@@ -63,7 +63,7 @@ const PrescriptionUpload: React.FC<Props> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Upload Documents
+        Attach Medical Documents
         <Text style={styles.optional}> (optional)</Text>
       </Text>
 
@@ -74,7 +74,7 @@ const PrescriptionUpload: React.FC<Props> = ({
           </View>
 
           <View style={styles.headerText}>
-            <Text style={styles.uploadTitle}>Attach Documents</Text>
+            <Text style={styles.uploadTitle}>Upload Documents</Text>
             <Text style={styles.uploadSubTitle}>
               Photo or PDF — helps your doctor prepare
             </Text>
