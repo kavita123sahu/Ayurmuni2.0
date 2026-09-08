@@ -101,6 +101,7 @@ import { Colors } from '../common/Colors';
 const IconFileMedical = IconStethoscope;
 
 const ICON_MAP = {
+  'circle-x': IconX,
   'shopping-cart': IconShoppingCart,
   bell: IconBell,
   'chevron-down': IconChevronDown,

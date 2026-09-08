@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { BANNER, getContentWidth, getScreenPaddingH, TYPO } from '../constants/responsive';
+import { BANNER, getContentWidth, getScreenPaddingH, SCREEN, TYPO } from '../constants/responsive';
 import TablerIcon from './TablerIcon';
 import ProductImagePreviewModal from './ProductImagePreviewModal';
 
@@ -28,10 +28,14 @@ type Props = {
   DynamicResize?: 'cover' | 'contain';
   autoSlide?: boolean;
   embedded?: boolean;
+  /** Edge-to-edge product gallery (Flipkart / Zepto PDP) */
+  fullBleed?: boolean;
   /** Home promo banners vs product gallery */
   mode?: 'product' | 'banner';
   /** Disable fullscreen preview (banner default) */
   enablePreview?: boolean;
+  /** Hide the Preview chip (image tap still opens preview) */
+  showPreviewChip?: boolean;
 };
 
 const getUriFromSource = (source: ImageSourcePropType | null): string | null => {
@@ -49,22 +53,28 @@ const Detailimages: React.FC<Props> = ({
   showIndicator = true,
   autoSlide = true,
   embedded = false,
+  fullBleed = false,
   mode = 'product',
   enablePreview,
+  showPreviewChip,
 }) => {
   const isBanner = mode === 'banner';
+  const isFlush = embedded || fullBleed;
   const resizeMode = DynamicResize ?? (isBanner ? 'cover' : 'cover');
   const allowPreview = enablePreview ?? !isBanner;
+  const showChip = showPreviewChip ?? allowPreview;
 
   const paddingH = getScreenPaddingH();
-  const fallbackWidth = itemWidth ?? getContentWidth(paddingH);
+  const fallbackWidth = fullBleed
+    ? SCREEN.width
+    : (itemWidth ?? getContentWidth(paddingH));
   const [layoutWidth, setLayoutWidth] = useState(0);
   const finalWidth =
-    isBanner && layoutWidth > 0 ? layoutWidth : fallbackWidth;
+    (isBanner || fullBleed) && layoutWidth > 0 ? layoutWidth : fallbackWidth;
   const finalHeight =
     itemHeight ?? PixelRatio.roundToNearestPixel(finalWidth / aspectRatio);
 
-  const slideGap = embedded ? 0 : SPACING;
+  const slideGap = isFlush ? 0 : SPACING;
   const slideSize = finalWidth + slideGap;
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -153,11 +163,12 @@ const Detailimages: React.FC<Props> = ({
     <View
       style={[
         styles.wrapper,
-        embedded && styles.wrapperEmbedded,
+        isFlush && styles.wrapperEmbedded,
+        fullBleed && styles.wrapperFullBleed,
         isBanner && styles.wrapperBanner,
       ]}
       onLayout={e => {
-        if (!isBanner) return;
+        if (!isBanner && !fullBleed) return;
         const w = Math.round(e.nativeEvent.layout.width);
         if (w > 0 && w !== layoutWidth) {
           setLayoutWidth(w);
@@ -180,10 +191,10 @@ const Detailimages: React.FC<Props> = ({
         maxToRenderPerBatch={Math.min(resolvedImages.length, 6)}
         windowSize={Math.min(resolvedImages.length, 5)}
         contentContainerStyle={[
-          embedded ? styles.listContentEmbedded : styles.listContent,
+          isFlush ? styles.listContentEmbedded : styles.listContent,
           {
             paddingHorizontal:
-              embedded || isBanner ? 0 : SPACING,
+              isFlush || isBanner ? 0 : SPACING,
           },
         ]}
         onMomentumScrollEnd={e => {
@@ -205,6 +216,7 @@ const Detailimages: React.FC<Props> = ({
               style={[
                 styles.slide,
                 isBanner && styles.slideBanner,
+                fullBleed && styles.slideFullBleed,
                 {
                   marginLeft: index === 0 ? 0 : slideGap,
                   width: finalWidth,
@@ -226,7 +238,7 @@ const Detailimages: React.FC<Props> = ({
         }}
       />
 
-      {allowPreview ? (
+      {allowPreview && showChip ? (
         <TouchableOpacity
           style={styles.previewBtn}
           onPress={() => openPreview(activeIndex)}
@@ -242,7 +254,7 @@ const Detailimages: React.FC<Props> = ({
         <View
           style={[
             styles.indicatorContainer,
-            // (isBanner || embedded) && styles.indicatorOverlay,
+            fullBleed && styles.indicatorPdp,
             isBanner && styles.indicatorBanner,
             embedded && styles.indicatorEmbedded,
           ]}
@@ -276,10 +288,10 @@ const Detailimages: React.FC<Props> = ({
                     opacity: opacityAnim,
                     backgroundColor:
                       index === activeIndex
-                        ? isBanner
+                        ? isBanner || fullBleed
                           ? '#FFFFFF'
                           : Colors.primaryColor
-                        : isBanner
+                        : isBanner || fullBleed
                           ? 'rgba(255,255,255,0.45)'
                           : '#C5D9D2',
                   },
@@ -348,6 +360,24 @@ const styles = StyleSheet.create({
   placeholder: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  wrapperFullBleed: {
+    backgroundColor: '#FFFFFF',
+  },
+  slideFullBleed: {
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: '#FFFFFF',
+  },
+  indicatorPdp: {
+    position: 'absolute',
+    bottom: 10,
+    marginTop: 0,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.32)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   previewBtn: {
     position: 'absolute',
