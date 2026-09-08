@@ -108,6 +108,7 @@ import { Colors } from '../common/Colors';
 const IconFileMedical = IconStethoscope;
 
 const ICON_MAP = {
+  'circle-x': IconX,
   'shopping-cart': IconShoppingCart,
   bell: IconBell,
   'chevron-down': IconChevronDown,
@@ -192,7 +193,7 @@ const ICON_MAP = {
   facebook: IconBrandFacebook,
   linkedin: IconBrandLinkedin,
   youtube: IconBrandYoutube,
-  x: IconBrandX,
+  // x: IconBrandX,
   twitter: IconBrandTwitter,
   website: IconWorld,
   world: IconWorld,
