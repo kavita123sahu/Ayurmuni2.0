@@ -135,6 +135,10 @@ const CategoryList = ({
     </TouchableOpacity>
   );
 
+  if (!Array.isArray(data) || data.length === 0) {
+    return null;
+  }
+
   return (
     <FlatList
       horizontal

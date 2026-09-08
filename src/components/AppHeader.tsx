@@ -5,10 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon, { TablerIconName } from './TablerIcon';
 import BackIconButton from './BackIconButton';
+import CartBadge from './CartBadge';
+import { useCartCount } from '../hooks/Cart';
 
 type Props = {
   title: string;
@@ -27,6 +30,8 @@ type Props = {
   rightLabel?: string;
   /** Custom right-side content (e.g. Mark all / Clear) */
   rightContent?: ReactNode;
+  /** Homepage-style cart icon with badge */
+  showCart?: boolean;
 };
 
 const AppHeader: React.FC<Props> = ({
@@ -41,9 +46,14 @@ const AppHeader: React.FC<Props> = ({
   secondaryRightIconColor,
   rightLabel,
   rightContent,
+  showCart = false,
 }) => {
+  const navigation = useNavigation<any>();
+  const cartCount = useCartCount();
+  const stackNavigation = navigation.getParent?.() || navigation;
+
   const hasRightActions = Boolean(
-    onSearchPress || rightIconName || secondaryRightIconName,
+    onSearchPress || rightIconName || secondaryRightIconName || showCart,
   );
 
   return (
@@ -93,6 +103,20 @@ const AppHeader: React.FC<Props> = ({
                   color={rightIconColor || Colors.primaryColor}
                 />
               </TouchableOpacity>
+            ) : null}
+            {showCart ? (
+              <TouchableOpacity
+                onPress={() => stackNavigation.navigate('MyCart')}
+                style={styles.iconBox}
+                activeOpacity={0.75}
+              >
+                <TablerIcon
+                  name="shopping-cart"
+                  size={22}
+                  color={Colors.primaryColor}
+                />
+                <CartBadge count={cartCount} />
+              </TouchableOpacity>
             ) : !hasRightActions ? (
               <View style={styles.iconPlaceholder} />
             ) : null}
@@ -111,11 +135,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.headerBackground,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8E6',
-    shadowColor: '#0D614E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    // shadowColor: '#0D614E',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.06,
+    // shadowRadius: 6,
+    // elevation: 2,
   },
   container: {
     flexDirection: 'row',

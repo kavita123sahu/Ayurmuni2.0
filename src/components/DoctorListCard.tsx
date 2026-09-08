@@ -67,8 +67,7 @@ const DoctorListCard = ({
       ? ` (${reviews})`
       : '';
   const expLabel = formatExperience(experience);
-  const statusLabel =
-    availabilityLabel || (available ? 'Available' : 'Unavailable');
+  const statusLabel = (available ? 'Available' : '');
 
   const handleConsult = () => {
     if (onConsultPress) {
@@ -82,7 +81,7 @@ const DoctorListCard = ({
     <View
       style={[
         styles.statusBadge,
-        available ? styles.statusBadgeAvailable : styles.statusBadgeUnavailable,
+        available ? styles.statusBadgeAvailable : null,
       ]}
     >
       <Text style={styles.statusBadgeText} numberOfLines={1}>
@@ -95,7 +94,7 @@ const DoctorListCard = ({
     <View
       style={[
         styles.availabilityStrip,
-        available ? styles.availabilityStripOn : styles.availabilityStripOff,
+        available ? styles.availabilityStripOn : null,
       ]}
     >
       <Text
@@ -103,7 +102,7 @@ const DoctorListCard = ({
           styles.availabilityStripText,
           available
             ? styles.availabilityStripTextOn
-            : styles.availabilityStripTextOff,
+            : null,
         ]}
         numberOfLines={1}
       >
@@ -170,7 +169,6 @@ const DoctorListCard = ({
         </View>
 
         <View style={[styles.gridBody, { height: DOCTOR_GRID_BODY_HEIGHT }]}>
-          {/* {renderAvailabilityStrip()} */}
 
           <Text style={styles.gridName} numberOfLines={2}>
             {name}

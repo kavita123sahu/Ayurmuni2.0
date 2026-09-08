@@ -6,6 +6,7 @@ export type RecentVisitedDoctor = {
   id: string;
   doctor_id: string;
   doctor_name: string;
+  has_availability?: boolean;
   doctor_image?: string | null;
   doctor_designation?: string | null;
   qualification?: string | null;

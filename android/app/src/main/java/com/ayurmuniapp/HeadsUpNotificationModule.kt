@@ -19,12 +19,26 @@ class HeadsUpNotificationModule(
   override fun getName(): String = "HeadsUpNotification"
 
   @ReactMethod
+  fun ensureChannels() {
+    ensureChannel()
+    // Also bump common OneSignal channel ids to HIGH so background pushes heads-up.
+    ensureChannelWithId(
+      "fcm_fallback_notification_channel",
+      "Ayurmuni alerts",
+    )
+    ensureChannelWithId(
+      "onesignal_default_channel_id",
+      "Ayurmuni notifications",
+    )
+  }
+
+  @ReactMethod
   fun show(payload: ReadableMap?) {
     val title = payload?.getString("title")?.takeIf { it.isNotBlank() } ?: "Ayurmuni"
     val message = payload?.getString("message")?.takeIf { it.isNotBlank() }
       ?: "You have a new notification"
 
-    ensureChannel()
+    ensureChannels()
 
     val intent = Intent(reactContext, MainActivity::class.java).apply {
       flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -41,13 +55,12 @@ class HeadsUpNotificationModule(
       .setContentTitle(title)
       .setContentText(message)
       .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-      .setPriority(NotificationCompat.PRIORITY_HIGH)
+      .setPriority(NotificationCompat.PRIORITY_MAX)
       .setCategory(NotificationCompat.CATEGORY_MESSAGE)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setDefaults(NotificationCompat.DEFAULT_ALL)
       .setAutoCancel(true)
       .setContentIntent(pendingIntent)
-      // Stay in the tray until the user swipes / taps — never auto-expire.
       .build()
 
     val id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
@@ -55,14 +68,24 @@ class HeadsUpNotificationModule(
   }
 
   private fun ensureChannel() {
+    ensureChannelWithId(CHANNEL_ID, "Messages & alerts")
+  }
+
+  private fun ensureChannelWithId(channelId: String, name: String) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
     val manager = reactContext.getSystemService(NotificationManager::class.java) ?: return
-    val existing = manager.getNotificationChannel(CHANNEL_ID)
-    if (existing != null) return
+
+    val existing = manager.getNotificationChannel(channelId)
+    if (existing != null && existing.importance >= NotificationManager.IMPORTANCE_HIGH) {
+      return
+    }
+    if (existing != null) {
+      manager.deleteNotificationChannel(channelId)
+    }
 
     val channel = NotificationChannel(
-      CHANNEL_ID,
-      "Messages & alerts",
+      channelId,
+      name,
       NotificationManager.IMPORTANCE_HIGH,
     ).apply {
       description = "WhatsApp-style pop-up for new messages"
@@ -70,6 +93,7 @@ class HeadsUpNotificationModule(
       enableLights(true)
       setShowBadge(true)
       lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+      setBypassDnd(false)
     }
     manager.createNotificationChannel(channel)
   }

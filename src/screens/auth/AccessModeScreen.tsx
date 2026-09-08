@@ -39,7 +39,7 @@ const AccessModeScreen = ({ navigation }: any) => {
     try {
       setLoading('onboard');
       await markAsGuest();
-      navigation.navigate('TermsCondition', { agreed: false });
+      navigation.navigate('Onboarding');
     } finally {
       setLoading(null);
     }

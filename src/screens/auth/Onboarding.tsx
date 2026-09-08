@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -54,7 +54,7 @@ interface FormErrors {
     email: string;
     gender: string;
     dob: string;
-    // profileImage: string;
+    terms: string;
 }
 
 
@@ -136,14 +136,35 @@ const Onboarding = (props: any) => {
     });
 
 
+    const [agreedToPolicies, setAgreedToPolicies] = useState(false);
+
+    const [dob, setDob] = useState({ day: '', month: '', year: '' });
     const [errors, setErrors] = useState<FormErrors>({
         firstName: '',
         lastName: '',
         email: '',
         gender: '',
         dob: '',
-        // profileImage: ''
+        terms: '',
     });
+
+    const openPolicy = (policyType: 'terms_of_service' | 'privacy_policy') => {
+        props.navigation.navigate('PolicyDetail', {
+            policyType,
+            title:
+                policyType === 'terms_of_service'
+                    ? 'Terms of Use'
+                    : 'Privacy Policy',
+        });
+    };
+
+    const onToggleAgree = () => {
+        const next = !agreedToPolicies;
+        setAgreedToPolicies(next);
+        if (next && errors.terms) {
+            setErrors(prev => ({ ...prev, terms: '' }));
+        }
+    };
 
     const isFocused = useIsFocused();
 
@@ -319,6 +340,7 @@ const Onboarding = (props: any) => {
             email: '',
             gender: '',
             dob: '',
+            terms: '',
         };
 
         // FIRST NAME
@@ -404,10 +426,83 @@ const Onboarding = (props: any) => {
             }
         }
 
+        if (!agreedToPolicies) {
+            newErrors.terms = 'Agreeing to Terms and Privacy Policy is mandatory';
+            isValid = false;
+        }
+
         setErrors(newErrors);
 
         return isValid;
     };
+
+    const isFormValid = () => {
+        // Required fields
+        if (!formData.firstName.trim()) return false;
+        if (!formData.lastName.trim()) return false;
+        if (!formData.gender) return false;
+
+        // DOB required
+        const day = Number(dob.day);
+        const month = Number(dob.month);
+        const year = Number(dob.year);
+
+        if (!day || !month || !year) return false;
+
+        // Validate actual date
+        const enteredDate = new Date(year, month - 1, day);
+        const today = new Date();
+
+        const isRealDate =
+            enteredDate.getFullYear() === year &&
+            enteredDate.getMonth() === month - 1 &&
+            enteredDate.getDate() === day;
+
+        if (!isRealDate) return false;
+
+        // Future DOB
+        if (enteredDate > today) return false;
+
+        // Age validation
+        let age = today.getFullYear() - year;
+
+        const monthDiff =
+            today.getMonth() - (month - 1);
+
+        if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < day)
+        ) {
+            age--;
+        }
+
+        if (age < 1) return false;
+
+        // Email is optional
+        // But if entered, it must be valid
+        if (
+            formData.email.trim() &&
+            !EmailValidator(formData.email.trim())
+        ) {
+            return false;
+        }
+
+        // Terms mandatory
+        if (!agreedToPolicies) return false;
+
+        return true;
+    };
+
+    const canProceed = useMemo(() => {
+        return isFormValid();
+    }, [
+        formData.firstName,
+        formData.lastName,
+        formData.email,
+        formData.gender,
+        dob.day,
+        agreedToPolicies,
+    ]);
 
     const handleProcees = async () => {
 
@@ -420,7 +515,7 @@ const Onboarding = (props: any) => {
 
             setIsLoading(true);
 
-            const send_data = {
+            const send_data: Record<string, any> = {
                 first_name: formData.firstName.trim(),
                 last_name: formData.lastName.trim(),
                 email: formData.email.trim(),
@@ -429,6 +524,10 @@ const Onboarding = (props: any) => {
                 gender: formData.gender,
                 date_of_birth: `${dob.year}-${dob.month}-${dob.day}`,
             };
+
+            if (agreedToPolicies) {
+                send_data.type = 'all';
+            }
 
             console.log(
                 'IMAGE URL ===>',
@@ -452,21 +551,21 @@ const Onboarding = (props: any) => {
 
                 // STORE USER + clear guest immediately (don't wait for ProfileScreen)
                 const profilePayload = {
-                  ...(response?.data || {}),
-                  first_name:
-                    response?.data?.first_name || send_data.first_name,
-                  last_name:
-                    response?.data?.last_name || send_data.last_name,
-                  email: response?.data?.email || send_data.email,
-                  gender: response?.data?.gender || send_data.gender,
-                  is_customer_profile_created:
-                    response?.data?.is_customer_profile_created ??
-                    response?.data?.customer_created ??
-                    true,
-                  customer_created:
-                    response?.data?.customer_created ??
-                    response?.data?.is_customer_profile_created ??
-                    true,
+                    ...(response?.data || {}),
+                    first_name:
+                        response?.data?.first_name || send_data.first_name,
+                    last_name:
+                        response?.data?.last_name || send_data.last_name,
+                    email: response?.data?.email || send_data.email,
+                    gender: response?.data?.gender || send_data.gender,
+                    is_customer_profile_created:
+                        response?.data?.is_customer_profile_created ??
+                        response?.data?.customer_created ??
+                        true,
+                    customer_created:
+                        response?.data?.customer_created ??
+                        response?.data?.is_customer_profile_created ??
+                        true,
                 };
                 await persistProfileAndSyncAccess(profilePayload);
 
@@ -508,7 +607,6 @@ const Onboarding = (props: any) => {
     };
 
 
-    const [dob, setDob] = useState({ day: '', month: '', year: '' });
 
     return (
 
@@ -718,6 +816,7 @@ const Onboarding = (props: any) => {
                                     value={dob.day}
                                     keyboardType="number-pad"
                                     maxLength={2}
+                                    textAlign="center"
                                     style={[
                                         styles.dobInput,
                                         dob.day && styles.inputFilled,
@@ -761,6 +860,7 @@ const Onboarding = (props: any) => {
                                     value={dob.month}
                                     keyboardType="number-pad"
                                     maxLength={2}
+                                    textAlign="center"
                                     style={[
                                         styles.dobInput,
                                         dob.month && styles.inputFilled,
@@ -810,6 +910,7 @@ const Onboarding = (props: any) => {
                                     onBlur={() => setFocusedField(null)}
                                     keyboardType="number-pad"
                                     maxLength={4}
+                                    textAlign="center"
                                     style={[
                                         styles.dobInput,
                                         styles.dobYearInput,
@@ -842,18 +943,70 @@ const Onboarding = (props: any) => {
                                     {errors.dob}
                                 </Text>
                             ) : null}
-                            {/* <Text style={[styles.errorText, { top: -15 }]}>{errors.dob}</Text> */}
+
+                            <View style={styles.termsBlock}>
+                                <View style={styles.termsRow}>
+                                    <TouchableOpacity
+                                        activeOpacity={0.85}
+                                        onPress={onToggleAgree}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.checkbox,
+                                                agreedToPolicies && styles.checkboxOn,
+                                                !!errors.terms && !agreedToPolicies && styles.checkboxError,
+                                            ]}
+                                        >
+                                            {agreedToPolicies ? (
+                                                <TablerIcon name="check" size={14} color="#FFFFFF" />
+                                            ) : null}
+                                        </View>
+                                    </TouchableOpacity>
+                                    <Text style={styles.termsText} onPress={onToggleAgree}>
+                                        I agree to the{' '}
+                                        <Text
+                                            style={styles.termsLink}
+                                            onPress={() => openPolicy('terms_of_service')}
+                                        >
+                                            Terms of Use
+                                        </Text>
+                                        {' '}and{' '}
+                                        <Text
+                                            style={styles.termsLink}
+                                            onPress={() => openPolicy('privacy_policy')}
+                                        >
+                                            Privacy Policy
+                                        </Text>
+                                        {' '}
+                                        <Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text>
+                                    </Text>
+                                </View>
+                                {!!errors.terms && (
+                                    <Text style={styles.errorText}>{errors.terms}</Text>
+                                )}
+                            </View>
                         </View>
                     </View>
                 </ScrollView>
 
-                <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                <View
+                    style={[
+                        styles.bottom,
+                        !canProceed && styles.ctaDisabled,
+                        {
+                            paddingBottom: Math.max(insets.bottom, 12),
+                        },
+                    ]}
+                >
                     <CommonButton
                         title="Proceed"
                         onPress={handleProcees}
                         loading={isLoading}
+                        disabled={!canProceed || isLoading}
                     />
                 </View>
+
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -1194,41 +1347,69 @@ const styles = StyleSheet.create({
     },
 
     dobInput: {
-        // flex: 1,
-        // height: 54,
-        // borderWidth: 1,
-        // borderColor: '#E5E7EB',
-        // borderRadius: 16,
-        // backgroundColor: '#FFFFFF',
-        // textAlign: 'center',
-        // color: '#111827',
-        // fontSize: 14,
-        // fontFamily: Fonts.PoppinsSemiBold,
-        // paddingHorizontal: 10,
-
-
         width: '30%',
         height: 50,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 12,
         backgroundColor: '#fff',
-
-        // ✅ MAIN FIX
         textAlign: 'center',
-        textAlignVertical: 'center', // Android fix
-
+        textAlignVertical: 'center',
+        includeFontPadding: false,
         fontFamily: Fonts.PoppinsMedium,
+        fontSize: 14,
         color: '#111827',
-
-        paddingVertical: 0,
-        paddingHorizontal: 0,
-
+        paddingTop: 0,
+        paddingBottom: 0,
+        paddingLeft: 0,
+        paddingRight: 0,
+        writingDirection: 'ltr',
     },
 
     dobYearInput: {
         flex: 1.3,
         width: '34%',
+        textAlign: 'center',
+    },
+
+    termsBlock: {
+        marginTop: 4,
+        marginBottom: 10,
+    },
+    termsRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 7,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 1,
+    },
+    checkboxOn: {
+        backgroundColor: Colors.primaryColor,
+        borderColor: Colors.primaryColor,
+    },
+    checkboxError: {
+        borderColor: '#EF4444',
+    },
+    termsText: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 20,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#64748B',
+    },
+    termsLink: {
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+        textDecorationLine: 'underline',
     },
 
     /* ---------------- ERROR ---------------- */
@@ -1249,6 +1430,19 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF4F2',
         borderTopWidth: 1,
         borderTopColor: '#E2E8F0',
+    },
+    disabledBottom: {
+        paddingTop: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#EEF4F2',
+        opacity: 0.6,
+        pointerEvents: 'none',
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+    },
+    ctaDisabled: {
+        opacity: 0.6,
+        pointerEvents: 'none',
     },
 
     button: {

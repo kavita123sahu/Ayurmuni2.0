@@ -23,7 +23,11 @@ import {
     buildVideoCallNavParams,
 } from '../utils/appointmentUtils';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
+import { handleNotificationNavigation } from './notifications/notificationRouter';
+import { normalizeNotificationPayload } from '../services/inAppNotificationService';
+import { navigationRef } from '../navigation/navigationRef';
 import { getDetailBottomPadding } from '../constants/layout';
+import SectionHeader from '../components/SectionHeader';
 
 const getNotificationImageSource = (image: unknown) => {
     if (!image) return null;
@@ -105,14 +109,6 @@ const renderStyledText = (text: string) => {
 
     return <Text style={styles.desc}>{text}</Text>;
 };
-
-/* ------------------------------------------------------------------ */
-/*  SECTION HEADER                                                     */
-/* ------------------------------------------------------------------ */
-
-const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
-);
 
 /* ------------------------------------------------------------------ */
 /*  FILTER TABS (All / Unread / Read + type chips)                     */
@@ -500,6 +496,49 @@ const NotificationsScreen = (props: any) => {
     const [modalVisible, setModalVisible] = useState(false);
 
     const openDetail = (item: NotificationItem) => {
+        const raw = item.rawData ?? item;
+        const payload = normalizeNotificationPayload({
+          ...(typeof raw === 'object' ? raw : {}),
+          ...(typeof raw?.data === 'object' ? raw.data : {}),
+          title: item.title,
+          message: item.description,
+          type:
+            raw?.type ??
+            raw?.notification_type ??
+            raw?.data?.type ??
+            item.type,
+          route: raw?.route ?? raw?.data?.route ?? raw?.screen,
+          order_id: raw?.order_id ?? raw?.data?.order_id,
+          appointment_id:
+            raw?.appointment_id ??
+            raw?.data?.appointment_id ??
+            item.appointmentId,
+          product_id: raw?.product_id ?? raw?.data?.product_id,
+          prescription_id:
+            raw?.prescription_id ?? raw?.data?.prescription_id,
+          diet_id: raw?.diet_id ?? raw?.data?.diet_id,
+          doctor_id: raw?.doctor_id ?? raw?.data?.doctor_id,
+        });
+
+        // Prefer deep-link navigation for any typed notification
+        if (
+          payload.route ||
+          payload.screen ||
+          payload.order_id ||
+          payload.appointment_id ||
+          payload.product_id ||
+          payload.prescription_id ||
+          payload.diet_id ||
+          payload.doctor_id ||
+          payload.type
+        ) {
+          handleNotificationNavigation(
+            props.navigation ?? navigationRef,
+            payload,
+          );
+          return;
+        }
+
         setSelectedItem(item);
         setModalVisible(true);
     };
@@ -554,10 +593,19 @@ const NotificationsScreen = (props: any) => {
     };
 
     const handleViewDetails = (item: NotificationItem) => {
-        navigateToStackScreen(
-            props.navigation,
-            'AppointmentDetails',
-            buildAppointmentDetailsParams(item.rawData ?? item),
+        const raw = item.rawData ?? item;
+        const payload = normalizeNotificationPayload({
+          ...(typeof raw === 'object' ? raw : {}),
+          ...(typeof raw?.data === 'object' ? raw.data : {}),
+          route: raw?.route ?? raw?.data?.route ?? 'AppointmentDetails',
+          appointment_id:
+            raw?.appointment_id ??
+            raw?.data?.appointment_id ??
+            item.appointmentId,
+        });
+        handleNotificationNavigation(
+          props.navigation ?? navigationRef,
+          payload,
         );
     };
 

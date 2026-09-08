@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { isAuthenticated } from '../services/guestAuth';
 import { getConsultHistory } from '../services/ConsultServce';
 import { getOrders } from '../services/OrderService';
 import { getAllMedicalRecord } from '../services/PatientServices';
+import { shouldRunThrottled } from '../utils/fetchThrottle';
 
 export type ProfileDashboardStat = {
   value: string;
@@ -14,6 +15,8 @@ const DEFAULT_STATS: ProfileDashboardStat[] = [
   { value: '--', label: 'ORDERS' },
   { value: '--', label: 'REPORTS' },
 ];
+
+const STATS_TTL_MS = 90_000;
 
 const formatCount = (count: number) =>
   String(Math.max(0, count)).padStart(2, '0');
@@ -40,8 +43,9 @@ const resolveCount = (payload: any, listKeys: string[] = ['results', 'data']) =>
 export function useProfileDashboardStats() {
   const [stats, setStats] = useState<ProfileDashboardStat[]>(DEFAULT_STATS);
   const [loading, setLoading] = useState(true);
+  const loadedOnceRef = useRef(false);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = false) => {
     if (!(await isAuthenticated())) {
       setStats([
         { value: '00', label: 'CONSULTS' },
@@ -49,6 +53,14 @@ export function useProfileDashboardStats() {
         { value: '00', label: 'REPORTS' },
       ]);
       setLoading(false);
+      return;
+    }
+
+    if (
+      !force &&
+      loadedOnceRef.current &&
+      !shouldRunThrottled('profile-dashboard-stats', STATS_TTL_MS)
+    ) {
       return;
     }
 
@@ -81,6 +93,7 @@ export function useProfileDashboardStats() {
         { value: formatCount(ordersCount), label: 'ORDERS' },
         { value: formatCount(reportsCount), label: 'REPORTS' },
       ]);
+      loadedOnceRef.current = true;
     } catch {
       setStats(DEFAULT_STATS);
     } finally {

@@ -33,13 +33,13 @@ const joinAddress = (address: any): string => {
 
 /** Same seller block as order invoice PDF (used when API omits wellness fields). */
 export const INVOICE_SELLER_FALLBACK = {
-  wellness_name: 'Tru Indya Wellness Private Limited',
-  company_name: 'Tru Indya Wellness Private Limited',
+  wellness_name: 'TruIndyaWellness Private Limited',
+  company_name: 'TruIndyaWellness Private Limited',
   seller_address:
-    '3rd Floor, Tower 3A, DLF Corporate Greens, Sector 74A, Narsinghpur, Gurugram, Haryana - 122004, India',
-  seller_phone: '+91 72678 72000',
-  gstin: '',
-  company_email: 'info@ayurmuni.in',
+    'C-158,Amar Gyan Industrial Estate, Khopat, Thane Maharashtra - 400601, Maharashtra (27), India',
+  seller_phone: '+91 94180 12698',
+  gstin: 'GSTIN',
+  company_email: 'https://ayurmuni.com/',
 };
 
 export const mergeWithInvoiceSellerDefaults = (source: any) => {

@@ -20,7 +20,7 @@ import {
 } from '../utils/chatAccessUtils';
 import { dedupeMessages } from '../utils/messageUtils';
 
-const POLL_INTERVAL_MS = 2500;
+const POLL_INTERVAL_MS = 12_000;
 /** Drop identical outbound texts within this window (double tap / double invoke). */
 const SEND_DEDUPE_MS = 5000;
 

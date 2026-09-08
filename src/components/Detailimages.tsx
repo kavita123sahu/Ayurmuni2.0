@@ -9,12 +9,15 @@ import {
   ImageSourcePropType,
   PixelRatio,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import { BANNER, getContentWidth, getScreenPaddingH, SCREEN, TYPO } from '../constants/responsive';
 import TablerIcon from './TablerIcon';
+import { useNavigation } from '@react-navigation/native';
 import ProductImagePreviewModal from './ProductImagePreviewModal';
+import { resolveBannerNavigation } from '../utils/bannerNavigation';
 
 const SPACING = 10;
 const AUTO_SLIDE_MS = 4500;
@@ -44,6 +47,7 @@ const getUriFromSource = (source: ImageSourcePropType | null): string | null => 
   return uri ? String(uri) : null;
 };
 
+
 const Detailimages: React.FC<Props> = ({
   images,
   itemWidth,
@@ -55,6 +59,7 @@ const Detailimages: React.FC<Props> = ({
   embedded = false,
   fullBleed = false,
   mode = 'product',
+
   enablePreview,
   showPreviewChip,
 }) => {
@@ -77,6 +82,8 @@ const Detailimages: React.FC<Props> = ({
   const slideGap = isFlush ? 0 : SPACING;
   const slideSize = finalWidth + slideGap;
 
+  const navigation = useNavigation<any>();
+
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
   const prefetchedRef = useRef<Set<string>>(new Set());
@@ -89,15 +96,28 @@ const Detailimages: React.FC<Props> = ({
     [images],
   );
 
-  const getImageSource = useCallback((item: any): ImageSourcePropType | null => {
-    if (!item) return null;
-    if (typeof item === 'number') return item;
-    if (typeof item === 'string' && item.length > 0) return { uri: item };
-    if (item?.uri) return item;
-    const uri =
-      item?.media_url || item?.image_url || item?.image || item?.url;
-    return uri ? { uri: String(uri) } : null;
-  }, []);
+  const getImageSource = useCallback(
+    (item: any): ImageSourcePropType | null => {
+      if (!item) return null;
+
+      if (typeof item === 'number') return item;
+
+      if (typeof item === 'string' && item.length > 0) {
+        return { uri: item };
+      }
+
+      if (item?.uri) return item;
+
+      const uri =
+        item?.image_url ||
+        item?.media_url ||
+        item?.image ||
+        item?.url;
+
+      return uri ? { uri: String(uri) } : null;
+    },
+    [],
+  );
 
   const resolvedImages = useMemo(() => {
     const out: { item: any; source: ImageSourcePropType; uri: string | null }[] =
@@ -129,6 +149,30 @@ const Detailimages: React.FC<Props> = ({
       });
     });
   }, [resolvedImages]);
+
+  const handleBannerPress = useCallback(
+    (item: any) => {
+      if (!isBanner) return;
+
+      const target = resolveBannerNavigation(item?.redirect_url, item);
+
+      if (!target) {
+        return;
+      }
+
+      if (target.screen === '__external__' && target.params?.url) {
+        Linking.openURL(String(target.params.url)).catch(() => undefined);
+        return;
+      }
+
+      if (target.params) {
+        navigation.navigate(target.screen, target.params);
+      } else {
+        navigation.navigate(target.screen);
+      }
+    },
+    [isBanner, navigation],
+  );
 
   useEffect(() => {
     if (!autoSlide || resolvedImages.length <= 1 || previewVisible) return;
@@ -207,12 +251,20 @@ const Detailimages: React.FC<Props> = ({
         )}
         scrollEventThrottle={16}
         renderItem={({ item: entry, index }) => {
-          const source = entry.source;
+          // const source = entry.source;
           return (
             <TouchableOpacity
-              activeOpacity={allowPreview ? 0.92 : 1}
-              disabled={!allowPreview}
-              onPress={() => openPreview(index)}
+              activeOpacity={
+                isBanner ? 0.92 : allowPreview ? 0.92 : 1
+              }
+              disabled={!isBanner && !allowPreview}
+              onPress={() => {
+                if (isBanner) {
+                  handleBannerPress(entry.item);
+                } else {
+                  openPreview(index);
+                }
+              }}
               style={[
                 styles.slide,
                 isBanner && styles.slideBanner,
@@ -224,9 +276,9 @@ const Detailimages: React.FC<Props> = ({
                 },
               ]}
             >
-              {source ? (
+              {entry?.source ? (
                 <Image
-                  source={source}
+                  source={entry.source}
                   style={styles.image}
                   resizeMode={resizeMode}
                 />

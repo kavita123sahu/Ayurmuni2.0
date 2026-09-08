@@ -97,7 +97,7 @@ const TopDoctorsCard = ({
     () => (home ? getHomeDoctorCardWidth() : getDoctorGridCardWidth()),
     [home],
   );
-
+  console.log('homehomehomehome', home);
   const openDoctorProfile = useCallback(
     (item: Doctor) => {
       navigation?.navigate?.('DoctorProfile', { doctorData: item });
@@ -145,19 +145,19 @@ const TopDoctorsCard = ({
           onPress: () => openDoctorProfile(item),
         };
 
-        if (home) {
-          return (
-            <HomeDoctorCard
-              key={String(item?.id ?? `top-doc-${index}`)}
-              cardWidth={cardWidth}
-              qualification={
-                String(item?.qualification || item?.designation || '').trim() ||
-                undefined
-              }
-              {...cardProps}
-            />
-          );
-        }
+        // if (home) {
+        //   return (
+        //     <HomeDoctorCard
+        //       key={String(item?.id ?? `top-doc-${index}`)}
+        //       cardWidth={cardWidth}
+        //       qualification={
+        //         String(item?.qualification || item?.designation || '').trim() ||
+        //         undefined
+        //       }
+        //       {...cardProps}
+        //     />
+        //   );
+        // }
 
         return (
           <DoctorListCard

@@ -1044,6 +1044,7 @@ import {
 import { logoutOneSignalUser } from '../../services/pushNotificationService';
 import LinearGradient from 'react-native-linear-gradient';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
+import { shouldRunThrottled } from '../../utils/fetchThrottle';
 
 
 
@@ -1083,6 +1084,15 @@ const ProfilePage = ({ navigation }: any) => {
 
             const loadUser = async () => {
                 try {
+                    // Already have a full profile on this session — don't re-hit API every focus
+                    if (
+                        user &&
+                        isGuest === false &&
+                        !shouldRunThrottled('profile-page-access', 90_000)
+                    ) {
+                        return;
+                    }
+
                     const token = await Utils.getData('_TOKEN');
                     if (!token) {
                         if (!cancelled) {
@@ -1134,7 +1144,7 @@ const ProfilePage = ({ navigation }: any) => {
             return () => {
                 cancelled = true;
             };
-        }, [])
+        }, [user, isGuest])
     );
 
     const logout = () => setLogoutVisible(true);
@@ -1147,6 +1157,7 @@ const ProfilePage = ({ navigation }: any) => {
         { id: 5, title: 'Medical Records', icon: 'file-medical' },
         { id: 6, title: 'Favourite Doctor', icon: 'heart' },
         { id: 7, title: 'Wishlist', icon: 'heart-filled' },
+        { id: 14, title: 'My Rewards', icon: 'trophy' },
         // { id: 8, title: 'Mentor', icon: 'school' },
         { id: 9, title: 'Cart', icon: 'shopping-cart' },
         { id: 10, title: 'Analysis', icon: 'chart-pie' },
@@ -1156,6 +1167,8 @@ const ProfilePage = ({ navigation }: any) => {
     const preferenceMenu: MenuEntry[] = [
         { id: 6, title: 'Payments', icon: 'credit-card' },
         { id: 7, title: 'Settings', icon: 'settings' },
+        { id: 12, title: 'Privacy Center', icon: 'shield' },
+        { id: 13, title: 'Feedback & Information', icon: 'help' },
         { id: 8, title: 'FAQ', icon: 'help' },
     ];
 
@@ -1239,6 +1252,9 @@ const ProfilePage = ({ navigation }: any) => {
             case 'Wishlist':
                 stackNav.navigate('Wishlist');
                 break;
+            case 'My Rewards':
+                stackNav.navigate('Rewards');
+                break;
             case 'Mentor':
                 stackNav.navigate('Mentor');
                 break;
@@ -1250,6 +1266,12 @@ const ProfilePage = ({ navigation }: any) => {
                 break;
             case 'Settings':
                 stackNav.navigate('Settings');
+                break;
+            case 'Privacy Center':
+                stackNav.navigate('PrivacyCenter');
+                break;
+            case 'Feedback & Information':
+                stackNav.navigate('FeedbackInformation');
                 break;
             case 'FAQ':
                 stackNav.navigate('HelpCenterScreen');

@@ -106,7 +106,9 @@ const SuggestedCard: React.FC<Props> = ({
       ? [...displayData, { id: 'empty', empty: true }]
       : displayData;
 
-  console.log('formattedData', formattedData);
+  if (safeData.length === 0) {
+    return null;
+  }
 
   const ListHeaderComponent = () => (
     <>

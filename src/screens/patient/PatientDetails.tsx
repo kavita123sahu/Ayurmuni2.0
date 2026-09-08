@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { shouldRunThrottled } from '../../utils/fetchThrottle';
 
 import PatientCard from './PatientCard';
 import Header from '../../components/Header';
@@ -109,7 +110,9 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
   // ─── Effects ───────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
-      loadAllData();
+      if (shouldRunThrottled('patient-details-focus', 45_000)) {
+        loadAllData();
+      }
     }, [loadAllData])
   );
 

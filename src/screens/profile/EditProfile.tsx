@@ -245,7 +245,7 @@ const EditProfile = ({
 
             const payload = {
                 first_name: formData.first_name,
-                last_name: formData.last_name,
+                last_name: String(formData.last_name || '').trim(),
                 email: formData.email,
                 secondary_number: formData.secondary_number,
                 gender: formData.gender,
@@ -456,6 +456,10 @@ const EditProfile = ({
                                     }
                                 >
                                     Last Name
+                                    <Text style={styles.optionalLabel}>
+                                        {' '}
+                                        (optional)
+                                    </Text>
                                 </Text>
 
                                 <View
@@ -658,6 +662,11 @@ const EditProfile = ({
                                         styles.inputContainer
                                     }
                                 >
+                                    <Feather
+                                        name="calendar"
+                                        size={16}
+                                        color="#94A3B8"
+                                    />
 
                                     <Text
                                         style={[
@@ -676,13 +685,6 @@ const EditProfile = ({
                                         }
 
                                     </Text>
-
-                                    <Feather
-                                        name="calendar"
-                                        size={18}
-                                        color="#98A2B3"
-                                    />
-
                                 </TouchableOpacity>
 
                                 {
@@ -895,6 +897,12 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
         marginBottom: 8,
         marginTop: 4,
+    },
+
+    optionalLabel: {
+        fontSize: 12,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsRegular,
     },
 
     inputContainer: {

@@ -254,10 +254,10 @@ export type Appointment = {
   rawData?: any;
 };
 export const UPCOMING_STATUS = [
-  "pending",
   "confirmed",
   "reschedule",
   "rescheduled",
+  "cancelled",
 ];
 
 export const PAST_STATUS = [
@@ -613,7 +613,7 @@ export const generateFutureDates = (
 };
 
 export const Theme = {
-  bg: '#FAF8F3',
+  bg: Colors.background || '#FDFDFB',
   cardBg: '#FFFFFF',
   cardBorder: '#EFE6D8',
   gold: '#B8933F',

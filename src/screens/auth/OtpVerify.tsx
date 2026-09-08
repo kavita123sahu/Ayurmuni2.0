@@ -38,8 +38,8 @@ import {
   completeWelcomePushFlow,
   loginOneSignalUser,
   requestNotificationPermission,
+  ensureDeviceNotificationsEnabled,
 } from '../../services/pushNotificationService';
-
 
 const C = {
   collageBg: '#1A2E28',
@@ -440,6 +440,10 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         //   welcome notification API
         // ==========================================
 
+        // ==========================================
+        // STEP 11–12: OneSignal ready → Welcome Push
+        // ==========================================
+
         if (!isNotificationEnabled) {
           console.log(
             '🔕 [STEP 11] Notifications disabled — skipping welcome push',
@@ -451,29 +455,53 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
               userId,
             );
 
-            const welcomeResult = await completeWelcomePushFlow(userId);
+            // Wait 4 seconds before calling welcome push flow
+            console.log(
+              '⏳ [STEP 11] Waiting 4 seconds before completeWelcomePushFlow...',
+            );
+
+            await new Promise<void>(resolve => {
+              setTimeout(() => {
+                resolve();
+              }, 4000);
+            });
+
+            console.log(
+              '✅ [STEP 11] 4 seconds completed',
+            );
+
+            // Now call welcome push API
+            console.log(
+              '🚀 [STEP 12] Calling completeWelcomePushFlow for user:',
+              userId,
+            );
+
+            const welcomeResult =
+              await completeWelcomePushFlow(userId);
 
             console.log(
               '🟢 [STEP 12] Welcome push flow result:',
               welcomeResult,
             );
 
-            if (welcomeResult.success) {
+            if (welcomeResult?.success) {
               console.log(
                 '🎉 [STEP 12] WELCOME PUSH SUCCESS',
               );
             } else {
               console.log(
                 '⚠️ [STEP 12] WELCOME PUSH NOT DELIVERED:',
-                welcomeResult.reason,
+                welcomeResult?.reason,
               );
             }
           } catch (oneSignalError: any) {
             console.error(
               '❌ [STEP 11] OneSignal / welcome flow ERROR:',
-              oneSignalError?.message ?? oneSignalError,
+              oneSignalError?.message ??
+              oneSignalError,
             );
-            // Do not break registration.
+
+            // Do not break registration
           }
         }
 
@@ -610,152 +638,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
   const onSkipNotifications = async () => {
     await submitRegisterWithNotificationPreference(false);
   };
-  //   const handleVerifyOTP = async () => {
-  //   Keyboard.dismiss();
 
-  //   const otpCode = otp.join('');
-
-  //   if (otpCode.length !== 4) {
-  //     showSuccessToast('Please enter valid OTP', 'error');
-  //     shake();
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-
-  //   try {
-  //     const send_data = {
-  //       phone_number: `+91${phoneNumber}`,
-  //       otp: otpCode,
-  //     };
-
-  //     const response: any =
-  //       await _AUTH_SERVICE.verify_otp(send_data);
-
-  //     if (response?.success) {
-  //       // ==========================================
-  //       // 1. Get user ID from backend
-  //       // ==========================================
-
-  //       const userId = response?.data?.user_id;
-
-  //       console.log('====================================');
-  //       console.log('✅ OTP LOGIN SUCCESS');
-  //       console.log('👤 Backend User ID:', userId);
-  //       console.log('====================================');
-
-  //       if (!userId) {
-  //         console.log(
-  //           '❌ User ID not received from login API',
-  //         );
-
-  //         showSuccessToast(
-  //           'User information not received. Please try again.',
-  //           'error',
-  //         );
-
-  //         return;
-  //       }
-
-  //       // ==========================================
-  //       // 2. Store authentication data
-  //       // ==========================================
-
-  //       await Utils.storeData(
-  //         '_USER_ID',
-  //         String(userId),
-  //       );
-
-  //       await Utils.storeData(
-  //         '_TOKEN',
-  //         response?.data?.access,
-  //       );
-
-  //       await Utils.storeData(
-  //         '_REFRESH_TOKEN',
-  //         response?.data?.refresh,
-  //       );
-
-  //       console.log(
-  //         '✅ Authentication data stored',
-  //       );
-
-  //       // ==========================================
-  //       // 3. Login user into OneSignal
-  //       // ==========================================
-
-  //       try {
-  //         console.log(
-  //           '🔵 Logging user into OneSignal...',
-  //         );
-
-  //         const oneSignalExternalId =
-  //           await loginOneSignalUser(userId);
-
-  //         if (oneSignalExternalId) {
-  //           console.log(
-  //             '✅ OneSignal External ID:',
-  //             oneSignalExternalId,
-  //           );
-  //         } else {
-  //           console.log(
-  //             '⚠️ OneSignal login did not return External ID',
-  //           );
-  //         }
-  //       } catch (oneSignalError) {
-  //         // Don't break application login if
-  //         // OneSignal has a temporary problem.
-  //         console.log(
-  //           '⚠️ OneSignal login error:',
-  //           oneSignalError,
-  //         );
-  //       }
-
-  //       // ==========================================
-  //       // 4. Existing guest/access flow
-  //       // ==========================================
-
-  //       await markAsGuest();
-
-  //       showSuccessToast(
-  //         response.message ||
-  //           'OTP verified successfully',
-  //         'success',
-  //       );
-
-  //       // ==========================================
-  //       // 5. Navigate to AccessMode
-  //       // ==========================================
-
-  //       resetRootToHomeStack(
-  //         props.navigation,
-  //         'AccessMode',
-  //       );
-  //     } else {
-  //       showSuccessToast(
-  //         response?.message ||
-  //           'Failed to verify OTP',
-  //         'error',
-  //       );
-
-  //       shake();
-  //     }
-  //   } catch (error) {
-  //     console.error(
-  //       '❌ Verify OTP Error:',
-  //       error,
-  //     );
-
-  //     showSuccessToast(
-  //       'Something went wrong. Please try again.',
-  //       'error',
-  //     );
-
-  //     shake();
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
   const LoginVerfiyOTP = async () => {
     Keyboard.dismiss();
 
@@ -864,6 +747,9 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
               'OneSignal External ID:',
               String(userId),
             );
+
+            // Permission only after OTP (never on app start)
+            await ensureDeviceNotificationsEnabled();
 
             const oneSignalData =
               await loginOneSignalUser(
@@ -990,75 +876,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
     }
   };
 
-  // const LoginVerfiyOTP = async () => {
-  //   Keyboard.dismiss();
-
-  //   const otpCode = otp.join('');
-  //   if (otpCode.length !== 4) {
-  //     showSuccessToast('Please enter valid OTP', 'error');
-  //     shake();
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-
-  //   try {
-  //     const send_data = {
-  //       phone_number: `+91${phoneNumber}`,
-  //       otp: otpCode,
-  //     };
-
-  //     const response: any = await _AUTH_SERVICE.verify_otp_login(send_data);
-
-  //     if (response?.success) {
-  //       showSuccessToast(response.message || 'OTP verified successfully', 'success');
-
-  //       await Utils.storeData('_USER_ID', response?.data?.user_id);
-  //       await Utils.storeData('_TOKEN', response?.data?.access);
-  //       await Utils.storeData('_REFRESH_TOKEN', response?.data?.refresh);
-
-  //       const customerOnboard = response?.data?.customer;
-  //       const hasCustomer =
-  //         !!customerOnboard && customerOnboard.customer_id != null;
-
-  //       if (!hasCustomer) {
-  //         await markAsGuest();
-  //         resetRootToHomeStack(props.navigation, 'AccessMode');
-  //         return;
-  //       }
-
-  //       try {
-  //         const profileRes: any = await _PROFILE_SERVICES.user_profile();
-  //         if (profileRes?.data) {
-  //           await Utils.storeData('_USER_INFO', profileRes.data);
-  //         }
-  //         const level = await syncAccessFromProfile(profileRes?.data);
-  //         if (level === 'full') {
-  //           resetRootToHomeStack(props.navigation, 'TabStack', {
-  //             screen: 'Home',
-  //           });
-  //         } else {
-  //           await markAsGuest();
-  //           resetRootToHomeStack(props.navigation, 'AccessMode');
-  //         }
-  //       } catch {
-  //         await markAsGuest();
-  //         resetRootToHomeStack(props.navigation, 'TabStack', {
-  //           screen: 'Home',
-  //         });
-  //       }
-  //     } else {
-  //       showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
-  //       shake();
-  //     }
-  //   } catch (error) {
-  //     console.error('Send OTP Error:', error);
-  //     showSuccessToast('Something went wrong. Please try again.', 'error');
-  //     shake();
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
 
   const handleOTPChange = (text: string, index: number) => {
     const cleaned = text.replace(/[^0-9]/g, '');
@@ -1254,12 +1071,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
               </Animated.View>
 
               <View style={styles.metaRow}>
-                <View style={styles.timerChip}>
-                  <MaterialCommunityIcons name="clock-outline" size={13} color={C.cta} />
-                  <Text style={styles.timer}>
-                    00:{resendTimer < 10 ? `0${resendTimer}` : resendTimer}
-                  </Text>
-                </View>
+
 
                 <TouchableOpacity onPress={onResendPress} disabled={resendTimer > 0}>
                   <Text
@@ -1487,8 +1299,8 @@ const styles = StyleSheet.create({
   },
 
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    // flexDirection: 'row',
+    alignItems: "flex-end",
     justifyContent: 'space-between',
     marginBottom: 12,
   },

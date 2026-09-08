@@ -139,6 +139,7 @@ const ProductDetails = (props: any) => {
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [wishlistBusy, setWishlistBusy] = useState(false);
+    const [showAddConfirm, setShowAddConfirm] = useState(false);
 
     useEffect(() => {
         if (defaultVariant) setSelectedVariant(defaultVariant);
@@ -240,6 +241,15 @@ const ProductDetails = (props: any) => {
             props.navigation.navigate('MyCart');
         }
     };
+
+    const addConfirmSubtitle = useMemo(() => {
+        const addQty = Math.max(1, Number(quantity) || 1);
+        const nextQty = existingCartQty + addQty;
+        if (existingCartQty > 0) {
+            return `${addQty} more item${addQty > 1 ? 's' : ''} will be added to My Cart (total ${nextQty}). Continue?`;
+        }
+        return `${addQty} item${addQty > 1 ? 's' : ''} will be added to My Cart. Continue?`;
+    }, [quantity, existingCartQty]);
 
     const handleToggleWishlist = async () => {
         if (wishlistBusy) return;
@@ -436,6 +446,7 @@ const ProductDetails = (props: any) => {
                 <AppHeader
                     title="Product Details"
                     onLeftPress={() => props.navigation.goBack()}
+                    showCart
                 />
                 <ProductDetailShimmer />
             </SafeAreaView>
@@ -454,6 +465,7 @@ const ProductDetails = (props: any) => {
             <AppHeader
                 title="Product Details"
                 rightIconName="share"
+                showCart
                 onLeftPress={() => props.navigation.goBack()}
                 onRightPress={() =>
                     handleShareAction({

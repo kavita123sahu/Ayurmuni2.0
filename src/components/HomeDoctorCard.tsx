@@ -47,8 +47,8 @@ const HomeDoctorCard = ({
   const reviewText =
     reviews != null && String(reviews).trim() !== '' ? ` (${reviews})` : '';
   const statusLabel =
-    availabilityLabel || (available ? 'Available' : 'Unavailable');
-
+    availabilityLabel || (available ? 'Available' : null);
+console.log('availabilityLabel', availabilityLabel, available, statusLabel);
   return (
     <Pressable
       style={({ pressed }) => [

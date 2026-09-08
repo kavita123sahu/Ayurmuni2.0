@@ -109,9 +109,9 @@ export const RupeeAmount = ({
 
   return (
     <Text style={[styles.inline, style]}>
-      {prefix}
+      {prefix ? <Text>{prefix}</Text> : null}
       <Text style={[symbolTextStyle, symbolStyle]}>{RUPEE_SYMBOL}</Text>
-      {amount}
+      <Text style={style}>{amount}</Text>
     </Text>
   );
 };

@@ -71,7 +71,24 @@ export type RootStackParamList = {
     MentorOrder: undefined;
     PatientDetails: undefined;
     RefundScreen: undefined;
-    TermsCondition: undefined;
+    TermsCondition:
+      | {
+          agreed?: boolean;
+          policyType?: string;
+        }
+      | undefined;
+    PolicyDetail:
+      | {
+          policyType?: string;
+          policyId?: string;
+          title?: string;
+          requireAccept?: boolean;
+          agreed?: boolean;
+        }
+      | undefined;
+    LegalPoliciesHub: undefined;
+    PrivacyCenter: undefined;
+    FeedbackInformation: undefined;
     YogaScreen: undefined;
     PatientFAQ: undefined;
     AddEditPatientDetail: undefined;
@@ -99,6 +116,7 @@ export type RootStackParamList = {
     Checkout: undefined;
     DietScreen: undefined;
     Wishlist: undefined;
+    Rewards: undefined;
     MedicalRecords: undefined;
     OrderConfirmation: undefined;
     MedicineScreen: undefined;

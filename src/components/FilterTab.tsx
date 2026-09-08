@@ -1,296 +1,298 @@
 import React, { useMemo } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { TABS } from "../common/DataInterface";
 import { Ionicons } from "../common/Vector";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
-import {
-  FILTER_CHIP_PADDING_H,
-  FILTER_CHIP_PADDING_V,
-  FILTER_CHIP_RADIUS,
-} from "../constants/layout";
-
 
 type FilterTabsProps = {
-    activeTab: string | null;
-    setActiveTab: (val: string | null) => void;
+  activeTab: string | null;
+  setActiveTab: (val: string | null) => void;
 
-    selectedFilters: {
-        specialization: any;
-        date_range: string;
-        from_date: string;
-        to_date: string;
-        experience: string;
-    };
+  selectedFilters: {
+    specialization: any;
+    date_range: string;
+    from_date: string;
+    to_date: string;
+    experience: string;
+  };
 
-    setSelectedFilters: React.Dispatch<React.SetStateAction<any>>;
+  setSelectedFilters: React.Dispatch<React.SetStateAction<any>>;
 
-    clearFilter: (key: string) => void;
+  clearFilter: (key: string) => void;
 
-    dropdownOptions: { label: string; value: string }[];
+  dropdownOptions: { label: string; value: string }[];
 
-    getTabLabel: (tab: any) => string;
+  getTabLabel: (tab: any) => string;
 
-    setTempFromDate: (date: Date | null) => void;
-    setTempToDate: (date: Date | null) => void;
+  setTempFromDate: (date: Date | null) => void;
+  setTempToDate: (date: Date | null) => void;
 
-    setCalendarStep: (step: "from" | "to") => void;
+  setCalendarStep: (step: "from" | "to") => void;
 
-    setShowCalendar: (val: boolean) => void;
+  setShowCalendar: (val: boolean) => void;
 
-    getPresetDates: (type: string) => { from: string; to: string };
+  getPresetDates: (type: string) => { from: string; to: string };
 };
 
 const FilterTabs = React.memo((props: FilterTabsProps) => {
-    const {
-        activeTab,
-        setActiveTab,
-        selectedFilters,
-        clearFilter,
-        dropdownOptions,
-        getTabLabel,
-        setTempFromDate,
-        setTempToDate,
-        setCalendarStep,
-        setShowCalendar,
-        setSelectedFilters,
-        getPresetDates,
-    } = props;
+  const {
+    activeTab,
+    setActiveTab,
+    selectedFilters,
+    clearFilter,
+    dropdownOptions,
+    getTabLabel,
+    setTempFromDate,
+    setTempToDate,
+    setCalendarStep,
+    setShowCalendar,
+    setSelectedFilters,
+    getPresetDates,
+  } = props;
 
-    console.log("CHILD activeTab =>", activeTab);
+  const openTab = useMemo(
+    () => TABS.find(tab => tab.key === activeTab) || null,
+    [activeTab],
+  );
 
-    return (
-        <View style={styles.tabsRow}>
-            {TABS.map(tab => {
-                const isOpen = activeTab === tab.key;
-                const isSelected =
-                    (tab.key === "speciality" && !!selectedFilters.specialization) ||
-                    (tab.key === "experience" && !!selectedFilters.experience) ||
-                    (tab.key === "availability" && !!selectedFilters.date_range);
+  const closeDropdown = () => setActiveTab(null);
 
-                return (
-                    <View key={tab.key} style={styles.tabWrapper}>
+  const applyOption = (tabKey: string, item: { label: string; value: string }) => {
+    if (tabKey === "availability" && item.value === "custom_date") {
+      setShowCalendar(true);
+      setTempFromDate(null);
+      setTempToDate(null);
+      setCalendarStep("from");
+      setActiveTab(null);
+      return;
+    }
 
-                        {/* TAB BUTTON */}
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => {
-                                console.log("Pressed Tab =>", tab.key);
+    if (tabKey === "availability") {
+      const range = getPresetDates(item.value);
+      setSelectedFilters((prev: any) => ({
+        ...prev,
+        date_range: item.value,
+        from_date: range.from,
+        to_date: range.to,
+      }));
+      setActiveTab(null);
+      return;
+    }
 
-                                setActiveTab(
-                                    activeTab === tab.key
-                                        ? null
-                                        : tab.key
-                                );
-                            }}
-                            style={[
-                                styles.tabBtn,
-                                isSelected && styles.activeTab,
-                            ]}
-                        >
-                            <Text
-                                style={[
-                                    styles.tabText,
-                                    isSelected && styles.activeTabText,
-                                ]}
-                                numberOfLines={1}
-                            >
-                                {getTabLabel?.(tab) ?? tab.label}
-                            </Text>
+    setSelectedFilters((prev: any) => ({
+      ...prev,
+      [tabKey === "speciality" ? "specialization" : "experience"]: item.value,
+    }));
+    setActiveTab(null);
+  };
 
-                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+  return (
+    <View style={styles.tabsRow}>
+      {TABS.map(tab => {
+        const isOpen = activeTab === tab.key;
+        const isSelected =
+          (tab.key === "speciality" && !!selectedFilters.specialization) ||
+          (tab.key === "experience" && !!selectedFilters.experience) ||
+          (tab.key === "availability" && !!selectedFilters.date_range);
 
-                                {/* CLEAR */}
-                                {isSelected && (
-                                    <TouchableOpacity
+        return (
+          <View key={tab.key} style={styles.tabWrapper}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() =>
+                setActiveTab(activeTab === tab.key ? null : tab.key)
+              }
+              style={[styles.tabBtn, isSelected && styles.activeTab]}
+            >
+              <Text
+                style={[styles.tabText, isSelected && styles.activeTabText]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {getTabLabel?.(tab) ?? tab.label}
+              </Text>
 
-                                        onPress={(e) => {
-                                            e.stopPropagation?.();
-                                            clearFilter(tab.key);
-                                        }}
-                                        style={{ marginRight: 6 }}
-                                    >
-                                        <Ionicons name="close" size={14} color={isSelected ? "#fff" : "#0F172A"} />
-                                    </TouchableOpacity>
-                                )}
+              <View style={styles.tabIcons}>
+                {isSelected ? (
+                  <TouchableOpacity
+                    onPress={e => {
+                      e.stopPropagation?.();
+                      clearFilter(tab.key);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.clearIconWrap}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={12}
+                      color={isSelected ? "#fff" : "#0F172A"}
+                    />
+                  </TouchableOpacity>
+                ) : null}
+                <Ionicons
+                  name={isOpen ? "chevron-up" : "chevron-down"}
+                  size={14}
+                  color={isSelected ? "#fff" : "#64748B"}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+        );
+      })}
 
-                                {/* ARROW */}
-                                <Ionicons
-                                    name={isOpen ? "chevron-up" : "chevron-down"}
-                                    size={18}
-                                    color={isSelected ? "#fff" : "#0F172A"}
-                                />
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* DROPDOWN */}
-                        {isOpen && (
-                            <View style={styles.dropdown}>
-                                <FlatList
-                                    data={dropdownOptions}
-                                    keyExtractor={(item, index) => String(index)}
-                                    renderItem={({ item }) => (
-                                        <TouchableOpacity
-                                            style={styles.option}
-                                            onPress={() => {
-
-                                                // CUSTOM DATE
-                                                if (tab.key === "availability" && item.value === "custom_date") {
-
-                                                    setShowCalendar(true);
-                                                    setTempFromDate(null);
-                                                    setTempToDate(null);
-                                                    setCalendarStep("from");
-                                                    setActiveTab(null);
-                                                    return;
-                                                }
-
-                                                // PRESET DATE
-                                                if (tab.key === "availability") {
-                                                    const range = getPresetDates(item.value);
-
-                                                    setSelectedFilters((prev: any) => ({
-                                                        ...prev,
-                                                        date_range: item.value,
-                                                        from_date: range.from,
-                                                        to_date: range.to,
-                                                    }));
-
-                                                    setActiveTab(null);
-                                                    return;
-                                                }
-
-                                                // SPECIALITY / EXPERIENCE
-                                                // setSelectedFilters(prev => ({
-                                                //     ...prev,
-                                                //     [tab.key === "speciality"
-                                                //         ? "specialization"
-                                                //         : "experience"
-                                                //     ]: item.value,
-                                                // }));
-
-
-                                                setSelectedFilters((prev: any) => ({
-                                                    ...prev,
-                                                    [tab.key === "speciality"
-                                                        ? "specialization"
-                                                        : "experience"
-                                                    ]: item.value,
-                                                }));
-
-                                                setActiveTab(null);
-                                            }}
-                                        >
-                                            <Text style={styles.optionText}>{item.label}</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                />
-                            </View>
-                        )}
-
-                    </View>
-                );
-            })}
+      <Modal
+        visible={!!openTab}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDropdown}
+      >
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.backdrop} onPress={closeDropdown} />
+          <View style={styles.dropdownSheet}>
+            <Text style={styles.dropdownTitle}>
+              {openTab ? getTabLabel(openTab) : "Filter"}
+            </Text>
+            <FlatList
+              data={dropdownOptions}
+              keyExtractor={(item, index) => `${item.value}-${index}`}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.option}
+                  onPress={() => openTab && applyOption(openTab.key, item)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.optionText} numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
         </View>
-    );
+      </Modal>
+    </View>
+  );
 });
 
 export default FilterTabs;
 
-
 export const styles = StyleSheet.create({
-    tabsRow: {
-        flexDirection: "row",
-        paddingHorizontal: 4,
-        paddingVertical: 10,
-        backgroundColor: "#FFFFFF",
-        // borderBottomWidth: 1,
-        borderBottomColor: "#E5E7EB",
-        gap: 10,
-    },
+  tabsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
+    gap: 8,
+    zIndex: 20,
+  },
 
-    tabWrapper: {
-        position: "relative",
-        flex: 1,
-    },
+  tabWrapper: {
+    flex: 1,
+    minWidth: 0,
+  },
 
-    tabBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+  tabBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 34,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#fff",
+  },
 
-        minHeight: 42,
-        paddingHorizontal: FILTER_CHIP_PADDING_H,
-        paddingVertical: FILTER_CHIP_PADDING_V,
+  activeTab: {
+    backgroundColor: Colors.primaryColor,
+    borderColor: Colors.primaryColor,
+  },
 
-        borderRadius: FILTER_CHIP_RADIUS,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+  tabText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: Fonts.PoppinsMedium,
+    color: "#0F172A",
+    marginRight: 4,
+    textTransform: "capitalize",
+  },
 
-        backgroundColor: '#fff',
-    },
+  activeTabText: {
+    color: "#fff",
+  },
 
-    activeTab: {
-        backgroundColor: Colors.primaryColor,
-        borderColor: Colors.primaryColor,
-    },
+  tabIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
 
-    tabText: {
-        flex: 1,
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#0F172A',
-        marginRight: 6,
-    },
+  clearIconWrap: {
+    padding: 2,
+  },
 
-    activeTabText: {
-        color: '#fff',
-    },
-    dropdown: {
-        position: "absolute",
-        top: 48,
-        left: 0,
-        right: 0,
-        backgroundColor: "#FFFFFF",
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: "#E5E7EB",
-        maxHeight: 200,
+  modalRoot: {
+    flex: 1,
+    justifyContent: "flex-start",
+    paddingTop: 120,
+    paddingHorizontal: 16,
+  },
 
-        // shadow (iOS)
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.28)",
+  },
 
-        // shadow (Android)
-        elevation: 6,
+  dropdownSheet: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    maxHeight: 280,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+  },
 
-        zIndex: 999,
-        overflow: "hidden",
-    },
+  dropdownTitle: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: "#0F172A",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E2E8F0",
+    textTransform: "capitalize",
+  },
 
+  option: {
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F1F5F9",
+    backgroundColor: "#fff",
+  },
 
-    option: {
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: "#F1F5F9",
-        backgroundColor: "#fff",
-    },
-
-    optionText: {
-        fontSize: 13,
-        color: "#111827",
-        fontWeight: "500",
-    },
-
-    optionActive: {
-        backgroundColor: "#EFF6FF",
-    },
-
-    clearIconWrap: {
-        marginRight: 6,
-        padding: 2,
-    },
+  optionText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#111827",
+    fontFamily: Fonts.PoppinsMedium,
+  },
 });

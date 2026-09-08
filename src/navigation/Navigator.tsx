@@ -20,6 +20,10 @@ import AppointmentDetailsScreen from "../screens/profile/AppointmentDetails";
 import { RootBottomParamList, RootStackParamList } from "../../type";
 import PatientDetails from "../screens/patient/PatientDetails";
 import TermsCondition from "../screens/TermsCondition";
+import PolicyDetailScreen from "../screens/legal/PolicyDetailScreen";
+import LegalPoliciesHubScreen from "../screens/legal/LegalPoliciesHubScreen";
+import PrivacyCenterScreen from "../screens/legal/PrivacyCenterScreen";
+import FeedbackInformationScreen from "../screens/legal/FeedbackInformationScreen";
 import Onboarding from "../screens/auth/Onboarding";
 import PatientFAQ from "../screens/PatientFAQ";
 import OrderDetailsScreen from "../screens/orders/OrderDetailsScreen";
@@ -54,6 +58,7 @@ import VerifyPresciption from "../screens/medicines/VerifyPresciption";
 import MedicineCheckOut from "../screens/medicines/CheckOut";
 import OrderStatus from "../screens/medicines/OrderStatus";
 import Wishlist from "../screens/profile/Wishlist";
+import RewardsScreen from "../screens/profile/RewardsScreen";
 import MedicalHistory from "../screens/MedicalHistory";
 import AssessmentType from "../screens/AssesmentType";
 import MentorProfile from "../screens/mentor/MentorProfile";
@@ -91,6 +96,7 @@ import AllFavDoctors from "../screens/consult/AllFAvDoctor";
 import ConsultHome from "../screens/consult/ConsultHome";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
+import { flushPendingNotificationNavigation } from "../screens/notifications/notificationRouter";
 import PatientVideoCall from "../screens/consult/PatientVideoCall";
 import { ScrollHideProvider } from "../context/ScrollHideContext";
 import { useHomeExitBackHandler } from "../hooks/useHomeExitBackHandler";
@@ -150,6 +156,10 @@ const HomeStackNavigator = () => (
       options={{ headerShown: false, animation: 'slide_from_bottom' }}
     />
     <Stack.Screen name="TermsCondition" component={TermsCondition} />
+    <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
+    <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
+    <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />
+    <Stack.Screen name="FeedbackInformation" component={FeedbackInformationScreen} />
     <Stack.Screen name="TopCategories" component={TopCategories} />
     <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} />
     <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
@@ -176,6 +186,7 @@ const HomeStackNavigator = () => (
     <Stack.Screen name="MedicineCheckOut" component={MedicineCheckOut} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="OrderStatus" component={OrderStatus} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="Wishlist" component={Wishlist} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="Rewards" component={RewardsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="MedicalHistory" component={MedicalHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="AssessmentType" component={AssessmentType} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="Mentor" component={MentorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -238,6 +249,8 @@ const AuthStack = () => {
         headerShown: false,
         animation: 'slide_from_right',
       }} />
+      <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
+      <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
     </Stack.Navigator>
   );
 };
@@ -274,7 +287,12 @@ const Navigator = () => {
   const isConnected = useNetworkStatus();
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        flushPendingNotificationNavigation();
+      }}
+    >
       {isConnected === false ? <NetworkError /> : <MainNavigator />}
     </NavigationContainer>
   );

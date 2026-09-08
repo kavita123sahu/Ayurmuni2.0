@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,13 +15,44 @@ import {
   logoutOneSignalUser,
   requestNotificationPermission,
 } from '../../services/pushNotificationService';
+import { update_Profile } from '../../services/ProfileServices';
+import { useCustomerProfile } from '../../hooks/useCustomerProfile';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
+import { invalidateCache } from '../../services/apiCache';
+import { SCREEN_THEME } from '../../constants/screenTheme';
+import { markThrottledRun } from '../../utils/fetchThrottle';
+
+const readNotificationEnabled = (customer: any): boolean => {
+  const value =
+    customer?.is_notification_enabled ??
+    customer?.notification_enabled ??
+    customer?.push_notification_enabled;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const key = value.trim().toLowerCase();
+    return key === 'true' || key === '1' || key === 'yes';
+  }
+  return false;
+};
 
 const SettingsScreen = (props: any) => {
   const navigation = props.navigation;
+  const dispatch = useAppDispatch();
+  // Single path: hydrate from Redux; refresh on focus only if cache is stale
+  const { customerData } = useCustomerProfile({
+    refreshOnFocus: true,
+  });
 
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSaving, setPushSaving] = useState(false);
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  useEffect(() => {
+    setPushEnabled(readNotificationEnabled(customerData));
+  }, [customerData]);
 
   const settingsData = useMemo(
     () => [
@@ -49,6 +80,13 @@ const SettingsScreen = (props: any) => {
             type: 'arrow',
             screen: 'ManageAdrees',
           },
+          {
+            title: 'My Rewards',
+            subtitle: 'Coupons, referrals and reward offers',
+            iconName: 'trophy',
+            type: 'arrow',
+            screen: 'Rewards',
+          },
         ] as SettingItemData[],
       },
       {
@@ -68,31 +106,17 @@ const SettingsScreen = (props: any) => {
             type: 'arrow',
             screen: 'Notifications',
           },
-          {
-            title: 'Email Updates',
-            subtitle: 'Monthly reports and newsletters',
-            iconName: 'mail',
-            type: 'toggle',
-            value: emailEnabled,
-          },
         ] as SettingItemData[],
       },
       {
         section: 'SECURITY & PRIVACY',
         data: [
           {
-            title: 'Biometric Lock',
-            subtitle: 'Use Face ID or fingerprint',
-            iconName: 'shield',
-            type: 'toggle',
-            value: biometricEnabled,
-          },
-          {
-            title: 'Privacy Policy',
-            subtitle: 'How we handle your medical data',
+            title: 'Privacy Center',
+            subtitle: 'Privacy policy and data controls',
             iconName: 'shield',
             type: 'arrow',
-            screen: 'TermsCondition',
+            screen: 'PrivacyCenter',
           },
           {
             title: 'Payments',
@@ -107,13 +131,6 @@ const SettingsScreen = (props: any) => {
         section: 'SUPPORT',
         data: [
           {
-            title: 'Help Center',
-            subtitle: 'FAQs and contact information',
-            iconName: 'help',
-            type: 'arrow',
-            screen: 'HelpCenterScreen',
-          },
-          {
             title: 'FAQ',
             subtitle: 'Common questions answered',
             iconName: 'help',
@@ -121,12 +138,22 @@ const SettingsScreen = (props: any) => {
             screen: 'HelpCenterScreen',
           },
           {
+            title: 'Feedback & Information',
+            subtitle: 'Terms, policies and licenses',
+            iconName: 'file-medical',
+            type: 'arrow',
+            screen: 'FeedbackInformation',
+          },
+          {
             title: 'About Ayurmuni',
             subtitle: 'App version 1.0',
             iconName: 'help',
             type: 'arrow',
             onPress: () => {
-              Alert.alert('Ayurmuni', 'Version 1.0\nYour Ayurvedic wellness companion.');
+              Alert.alert(
+                'Ayurmuni',
+                'Version 1.0\nYour Ayurvedic wellness companion.',
+              );
             },
           },
         ] as SettingItemData[],
@@ -135,21 +162,58 @@ const SettingsScreen = (props: any) => {
     [pushEnabled, emailEnabled, biometricEnabled],
   );
 
-  const handleToggle = (title: string, value: boolean) => {
+  const persistNotificationPreference = useCallback(
+    async (enabled: boolean) => {
+      const response = await update_Profile({
+        is_notification_enabled: enabled,
+      });
+      if (response?.success === false) {
+        throw new Error(response?.message || 'Unable to update notification preference');
+      }
+      invalidateCache('home_customer');
+      markThrottledRun('customer-profile-focus');
+      await dispatch(fetchCustomerData(true));
+    },
+    [dispatch],
+  );
+
+  const handleToggle = async (title: string, value: boolean) => {
     if (title === 'Push Notifications') {
+      if (pushSaving) return;
+      const previous = pushEnabled;
       setPushEnabled(value);
-      if (value) {
-        requestNotificationPermission(true).then(granted => {
+      setPushSaving(true);
+      try {
+        if (value) {
+          const granted = await requestNotificationPermission(true);
           if (!granted) {
             setPushEnabled(false);
+            await persistNotificationPreference(false);
+            showSuccessToast('Notification permission is required', 'error');
+            return;
           }
-        });
-      } else {
-        try {
-          OneSignal.User.pushSubscription.optOut();
-        } catch {
-          // ignore
+          try {
+            OneSignal.User.pushSubscription.optIn();
+          } catch {
+            // ignore OneSignal errors
+          }
+          await persistNotificationPreference(true);
+        } else {
+          try {
+            OneSignal.User.pushSubscription.optOut();
+          } catch {
+            // ignore
+          }
+          await persistNotificationPreference(false);
         }
+      } catch (error: any) {
+        setPushEnabled(previous);
+        showSuccessToast(
+          error?.message || 'Unable to update push notifications',
+          'error',
+        );
+      } finally {
+        setPushSaving(false);
       }
       return;
     }
@@ -174,7 +238,10 @@ const SettingsScreen = (props: any) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
 
       <AppHeader
         title="Settings"
@@ -183,7 +250,7 @@ const SettingsScreen = (props: any) => {
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <View style={styles.content}>
-          {settingsData.map((section, sectionIndex) => (
+          {settingsData.map(section => (
             <View key={section.section} style={styles.sectionWrap}>
               <Text style={styles.sectionTitle}>{section.section}</Text>
 
@@ -202,9 +269,11 @@ const SettingsScreen = (props: any) => {
                               ? biometricEnabled
                               : false
                       }
-                      onToggle={value => handleToggle(item.title, value)}
+                      onToggle={toggleValue => handleToggle(item.title, toggleValue)}
                     />
-                    {index < section.data.length - 1 && <View style={styles.divider} />}
+                    {index < section.data.length - 1 ? (
+                      <View style={styles.divider} />
+                    ) : null}
                   </React.Fragment>
                 ))}
               </View>
@@ -232,10 +301,10 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: SCREEN_THEME.headerBackground,
   },
   scroll: {
-    backgroundColor: '#FDFDFB',
+    backgroundColor: SCREEN_THEME.screenBackground,
   },
   content: {
     paddingHorizontal: 20,

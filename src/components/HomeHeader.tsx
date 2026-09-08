@@ -24,6 +24,7 @@ import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
 import { useUnreadNotificationCount } from '../hooks/useNotification';
 import { DOSHA } from './Questionnaire/PrakritiQuestTheme';
+import { shouldRunThrottled } from '../utils/fetchThrottle';
 
 interface AddressItem {
     id: string;
@@ -147,7 +148,7 @@ const HomeHeader = ({
     const stackNavigation = navigation.getParent?.() || navigation;
     const dispatch = useAppDispatch();
     const cartCount = useCartCount();
-    const { unreadCount, refreshUnreadCount } = useUnreadNotificationCount();
+    const { unreadCount } = useUnreadNotificationCount();
     const [localAddresses, setLocalAddresses] = useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
     const [prakritiResultName, setPrakritiResultName] = useState('');
@@ -155,7 +156,6 @@ const HomeHeader = ({
     const { customerData, fetchCustomerData } = useHomeData();
     const {
         currentAddress,
-        deliveryLocation,
         loadingLocation,
         setDeliveryLocation,
     } = useLocation();
@@ -163,19 +163,30 @@ const HomeHeader = ({
     const savedAddresses = localAddresses || [];
 
     const defaultAddress = useMemo(
-        () => savedAddresses.find(item => item?.is_default) || null,
+        () => savedAddresses.find(item => item?.is_default) || savedAddresses[0] || null,
         [savedAddresses],
     );
 
+    // Home always shows saved active/default address — not live GPS selection
     const activeLocation = useMemo(() => {
         if (defaultAddress) {
             return savedAddressToParsed(defaultAddress);
         }
-        if (deliveryLocation) return deliveryLocation;
         return currentAddress;
-    }, [deliveryLocation, defaultAddress, currentAddress]);
+    }, [defaultAddress, currentAddress]);
 
     const shortAddress = useMemo(() => {
+        if (defaultAddress) {
+            const line =
+                defaultAddress.address_line_1 ||
+                (defaultAddress as any).address ||
+                defaultAddress.address_type_name ||
+                defaultAddress.address_type ||
+                '';
+            const city = defaultAddress.city || '';
+            const text = [line, city].filter(Boolean).join(', ');
+            return (text || 'Saved address').slice(0, 44);
+        }
         if (loadingLocation && !activeLocation) {
             return 'Detecting location...';
         }
@@ -183,13 +194,18 @@ const HomeHeader = ({
             return 'Select location';
         }
         const area =
-            activeLocation.formatted_address
-        // ||
-        // activeLocation.city ||
-        // activeLocation.address_line_1;
-        const suffix = activeLocation.state ? `, ${activeLocation.state}` : '';
+            activeLocation.address_line_1 ||
+            activeLocation.city ||
+            activeLocation.formatted_address ||
+            '';
+        const suffix =
+            activeLocation.city && area !== activeLocation.city
+                ? `, ${activeLocation.city}`
+                : activeLocation.state
+                  ? `, ${activeLocation.state}`
+                  : '';
         return `${area}${suffix}`.slice(0, 44);
-    }, [activeLocation, loadingLocation]);
+    }, [activeLocation, defaultAddress, loadingLocation]);
 
     const prakritiProgress = Math.max(
         0,
@@ -222,10 +238,13 @@ const HomeHeader = ({
 
     useFocusEffect(
         useCallback(() => {
-            fetchCustomerData();
-            dispatch(fetchCart(false));
-            refreshUnreadCount();
-        }, [fetchCustomerData, dispatch, refreshUnreadCount]),
+            // Soft refresh only — cache TTL + throttle avoid hammering APIs on every tab focus
+            if (shouldRunThrottled('home-header-focus', 45_000)) {
+                fetchCustomerData(false);
+                dispatch(fetchCart(false));
+            }
+            // Badge count is kept by InAppNotificationWatcher — no extra call here
+        }, [fetchCustomerData, dispatch]),
     );
 
     useEffect(() => {

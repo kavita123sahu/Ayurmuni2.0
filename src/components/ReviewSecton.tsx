@@ -592,6 +592,9 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
   },
   cardImageRow: {
     flexDirection: 'row',
@@ -615,11 +618,15 @@ const styles = StyleSheet.create({
   },
   doctorReplyLabel: {
     fontSize: 10,
+    fontSize: 10,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
     marginBottom: 2,
+    marginBottom: 2,
   },
   doctorReplyText: {
+    fontSize: 12,
+    lineHeight: 18,
     fontSize: 12,
     lineHeight: 18,
     color: '#475569',

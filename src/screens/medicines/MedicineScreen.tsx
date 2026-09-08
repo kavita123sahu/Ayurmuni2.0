@@ -294,7 +294,7 @@ const MedicineScreen = (props: any) => {
           </View>
         ) : null}
 
-        <ActionCards data={actionItems} onpress={handleActionPress} />
+        {/* <ActionCards data={actionItems} onpress={handleActionPress} /> */}
 
         {(ordersLoading || recentProducts.length > 0) && (
           <>
@@ -314,24 +314,29 @@ const MedicineScreen = (props: any) => {
           </>
         )}
 
-        <SectionHeader title="Shop by Concern" />
         {healthConcernsLoading && safeHealthConcerns.length === 0 ? (
-          <CategoryRowSkeleton />
-        ) : (
-          <CategoryList
-            data={safeHealthConcerns}
-            navigation={navigation}
-            doctor
-            variant="concern"
-          />
-        )}
+          <>
+            <SectionHeader title="Shop by Concern" />
+            <CategoryRowSkeleton />
+          </>
+        ) : safeHealthConcerns.length > 0 ? (
+          <>
+            <SectionHeader title="Shop by Concern" />
+            <CategoryList
+              data={safeHealthConcerns}
+              navigation={navigation}
+              doctor
+              variant="concern"
+            />
+          </>
+        ) : null}
 
-        <SectionHeader title="Trusted Brands" />
-        {brandListData.length === 0 ? (
-          <HorizontalChipSkeleton count={5} width={72} height={72} />
-        ) : (
-          <BrandList data={brandListData} />
-        )}
+        {brandListData.length > 0 ? (
+          <>
+            <SectionHeader title="Trusted Brands" />
+            <BrandList data={brandListData} />
+          </>
+        ) : null}
 
         <SectionHeader title="All Medicines" actionText="" />
       </View>
@@ -353,7 +358,7 @@ const MedicineScreen = (props: any) => {
   const showInitialSkeleton = loading && products.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar
         barStyle={SCREEN_THEME.statusBarStyle}
         backgroundColor={SCREEN_THEME.statusBarBackground}
@@ -365,6 +370,7 @@ const MedicineScreen = (props: any) => {
         onBack={() => safeGoBack(navigation)}
         subtitle="Health & Wellness"
         onSearchPress={handleSearchPress}
+        showCart
       />
 
       {showInitialSkeleton ? (

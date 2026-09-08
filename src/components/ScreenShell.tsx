@@ -40,7 +40,7 @@ const ScreenShell: React.FC<ScreenShellProps> = ({
   scrollProps,
   style,
   contentStyle,
-  backgroundColor = '#FDFDFB',
+  backgroundColor = Colors.background,
   edges = ['top'],
   statusBarStyle = 'dark-content',
 }) => {

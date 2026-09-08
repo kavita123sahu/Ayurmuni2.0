@@ -72,7 +72,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
     const asset = pickedAsset;
     const toSend = trimmed;
-    // Clear immediately so a second press has nothing to send
     setText('');
     setPickedAsset(null);
     Keyboard.dismiss();
@@ -100,6 +99,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       sendGuardRef.current = false;
       globalInputSendLock = false;
       setIsSending(false);
+      // Keep caret ready for the next message without layout jump
+      requestAnimationFrame(() => {
+        inputRef.current?.focus?.();
+      });
     }
   };
 
@@ -109,10 +112,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     <View
       style={[
         styles.container,
-        { paddingBottom: Math.max(insets.bottom, 10) },
+        { paddingBottom: Math.max(insets.bottom, 8) },
       ]}
     >
-      {pickedAsset && (
+      {pickedAsset ? (
         <View style={styles.previewRow}>
           <Image source={{ uri: pickedAsset.uri }} style={styles.previewImage} />
           <TouchableOpacity
@@ -123,7 +126,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             <MaterialIcons name="close" size={14} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.inputContainer}>
         <TouchableOpacity
@@ -145,6 +148,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             editable={canInteract}
             multiline
             blurOnSubmit={false}
+            textAlignVertical="center"
             style={[styles.input, !canInteract && styles.inputDisabled]}
             returnKeyType="default"
           />
@@ -177,6 +181,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E5E7EB',
   },
   previewRow: {
     flexDirection: 'row',
@@ -201,22 +207,25 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
+    minHeight: 48,
   },
   inputWrapper: {
     flex: 1,
     marginHorizontal: 8,
+    justifyContent: 'center',
   },
   input: {
     maxHeight: 100,
-    minHeight: 44,
-    paddingHorizontal: 16,
+    minHeight: 40,
+    paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     backgroundColor: '#F3F4F6',
-    borderRadius: 24,
+    borderRadius: 22,
     fontSize: 15,
+    lineHeight: 20,
     color: '#1F2937',
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -226,9 +235,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -237,9 +246,9 @@ const styles = StyleSheet.create({
   },
   iconDisabled: { opacity: 0.4 },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },

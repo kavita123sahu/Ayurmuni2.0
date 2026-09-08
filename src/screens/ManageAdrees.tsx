@@ -25,6 +25,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import TablerIcon from '../components/TablerIcon';
 import { useLocation } from '../context/LocationContext';
 import { savedAddressToParsed } from '../services/locationService';
+import { popToScreen } from '../navigation/navigationUtils';
 
 interface AddressItem {
     id: string;
@@ -38,11 +39,12 @@ interface AddressItem {
     icon: any;
 }
 
-const ManageAddress: React.FC<any> = ({ navigation }) => {
+const ManageAddress: React.FC<any> = ({ navigation, route }) => {
 
 
 
     const { currentAddress, deliveryLocation, loadingLocation, setDeliveryLocation } = useLocation();
+    const returnTo = route?.params?.returnTo as string | undefined;
 
     const [selectedId, setSelectedId] = useState('current');
     const [loading, setloading] = useState(false);
@@ -123,6 +125,9 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
     const UpdateDefaultAddress = useCallback(
         async (item: AddressItem) => {
             if (item?.is_default) {
+                if (returnTo === 'Checkout') {
+                    popToScreen(navigation, 'Checkout');
+                }
                 return;
             }
 
@@ -155,8 +160,12 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
 
                 if (res?.success || res?.status === 200) {
                     await setDeliveryLocation(savedAddressToParsed(item));
-                    navigation.goBack();
                     AddressEvents.emit(ADDRESS_UPDATED, res?.data ?? res);
+                    if (returnTo === 'Checkout') {
+                        popToScreen(navigation, 'Checkout');
+                    } else {
+                        navigation.goBack();
+                    }
 
                     // showSuccessToast('Default address updated', 'success');
 
@@ -170,7 +179,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                 console.log('DEFAULT_ADDRESS_ERROR', error);
             }
         },
-        [addressData, selectedId, fetchAddresses, setDeliveryLocation],
+        [addressData, selectedId, setDeliveryLocation, navigation, returnTo],
     );
 
 
@@ -269,6 +278,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                                     {
                                         type: 'EDIT',
                                         data: item,
+                                        returnTo,
                                     }
                                 )
                             }
@@ -349,7 +359,9 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             styles.selectedCard,
                         ]}
                         onPress={() =>
-                            navigation.navigate('LocationPickerScreen')
+                            navigation.navigate('LocationPickerScreen', {
+                                returnTo,
+                            })
                         }
                     >
 
@@ -444,6 +456,7 @@ const ManageAddress: React.FC<any> = ({ navigation }) => {
                             'AddEditAddress',
                             {
                                 type: 'ADD',
+                                returnTo,
                             }
                         )
                     }

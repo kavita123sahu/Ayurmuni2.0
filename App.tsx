@@ -184,7 +184,6 @@ import PrescriptionRequiredModalHost from './src/components/PrescriptionRequired
 
 import {
   initializeOneSignal,
-  ensureDeviceNotificationsEnabled,
 } from './src/services/pushNotificationService';
 
 import {
@@ -269,9 +268,9 @@ const toastConfig = {
 
 
 
-// console.log = () => { };
-// console.warn = () => { };
-// console.error = () => { };
+console.log = () => { };
+console.warn = () => { };
+console.error = () => { };
 
 
 // =====================================================
@@ -285,9 +284,10 @@ const App = () => {
   // ===================================================
 
   useEffect(() => {
+    // Init SDK only — do NOT ask notification permission on cold start.
+    // Permission is requested after OTP verify (OtpVerify screen).
     initializeOneSignal().then(() => {
       setupOneSignalInAppListeners();
-      ensureDeviceNotificationsEnabled();
     });
   }, []);
 

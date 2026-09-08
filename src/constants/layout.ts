@@ -8,6 +8,8 @@ export const SCREEN = { width: SCREEN_W, height: SCREEN_H };
 export const SCREEN_PADDING_H = 20;
 export const SECTION_GAP = 18;
 export const HOME_SECTION_GAP = 16;
+/** Equal vertical spacing around every SectionHeader (top + bottom) */
+export const HOME_SECTION_HEADER_MT = 10;
 export const HOME_SECTION_HEADER_MB = 10;
 export const FILTER_CHIP_RADIUS = 10;
 export const FILTER_CHIP_PADDING_H = 15;
@@ -37,14 +39,16 @@ const homeStickyChromeHeight =
   HOME_CATEGORY_ROW_HEIGHT +
   HOME_HEADER_BOTTOM_GAP;
 
-export const getHomeHeaderTotalHeight = (insets: EdgeInsets) =>
+export const getHomeHeaderTotalHeight = (
+  insets: EdgeInsets,
+  hasCategories = true,
+) =>
   (insets.top || 0) +
   HOME_HEADER_CONTENT_HEIGHT +
   HOME_CATEGORY_GAP +
   HOME_SEARCH_BAR_HEIGHT +
   HOME_HEADER_SEARCH_GAP +
-  HOME_CATEGORY_ROW_HEIGHT +
-  HOME_HEADER_BOTTOM_GAP;
+  (hasCategories ? HOME_CATEGORY_ROW_HEIGHT + HOME_HEADER_BOTTOM_GAP : HOME_HEADER_BOTTOM_GAP);
 
 /** Collapsed: search + categories pinned */
 export const getHomeHeaderCollapsedHeight = (insets: EdgeInsets) =>

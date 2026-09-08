@@ -1,20 +1,21 @@
 /**
  * Order API payloads — COD & prepaid (online).
+ * Match backend Postman contract:
  *
- * COD:
  * {
- *   delivery_address_id, payment_type: "cod", payment_method: "cash",
- *   shipping_method, shipping_charges, cod_charges, prepaid_amount: 0,
- *   cart_item_ids: [], gift_wrap_item_ids: []
+ *   delivery_address_id,
+ *   payment_type: "cod" | "prepaid",
+ *   shipping_method: "STD",
+ *   shipping_charges,
+ *   cod_charges,
+ *   prepaid_amount,
+ *   coupon_code?,              // optional
+ *   cart_item_ids: [],
+ *   gift_wrap_item_ids: []
  * }
  *
- * Prepaid (online) — place order BEFORE Razorpay:
- * {
- *   delivery_address_id, payment_type: "prepaid",
- *   // no payment_method — user picks UPI/card/etc in Razorpay
- *   shipping_method, shipping_charges, cod_charges, prepaid_amount,
- *   cart_item_ids: [], gift_wrap_item_ids: []
- * }
+ * COD also sends payment_method: "cash".
+ * Do NOT send coupon_discount on place-order (server computes it).
  */
 
 export type OrderCartLine = {
@@ -35,6 +36,7 @@ export type OrderPayload = {
   prepaid_amount: number;
   cart_item_ids: string[];
   gift_wrap_item_ids: string[];
+  coupon_code?: string;
 };
 
 const hasOrderEntity = (response: any): boolean => {
@@ -221,6 +223,20 @@ type CommonArgs = {
   shipping_charges?: number;
   cod_charges?: number;
   shipping_method?: 'STD' | 'EXPRESS';
+  /** Final payable total (after coupon if applied) — always sent on place-order */
+  prepaid_amount?: number;
+  coupon_code?: string;
+};
+
+const withCouponFields = (
+  payload: OrderPayload,
+  args: { coupon_code?: string },
+): OrderPayload => {
+  const code = String(args.coupon_code || '').trim().toUpperCase();
+  if (code) {
+    payload.coupon_code = code;
+  }
+  return payload;
 };
 
 /** Complete COD order payload */
@@ -230,17 +246,23 @@ export const buildCodOrderPayload = ({
   shipping_charges = 0,
   cod_charges = 0,
   shipping_method = 'STD',
-}: CommonArgs): OrderPayload => ({
-  delivery_address_id,
-  payment_type: 'cod',
-  payment_method: 'cash',
-  shipping_method,
-  shipping_charges: Number(shipping_charges) || 0,
-  cod_charges: Number(cod_charges) || 0,
-  prepaid_amount: 0,
-  cart_item_ids: buildCartItemIds(cartItems),
-  gift_wrap_item_ids: buildGiftWrapItemIds(cartItems),
-});
+  prepaid_amount = 0,
+  coupon_code,
+}: CommonArgs): OrderPayload =>
+  withCouponFields(
+    {
+      delivery_address_id,
+      payment_type: 'cod',
+      payment_method: 'cash',
+      shipping_method,
+      shipping_charges: Number(shipping_charges) || 0,
+      cod_charges: Number(cod_charges) || 0,
+      prepaid_amount: Math.max(0, Math.round(Number(prepaid_amount) || 0)),
+      cart_item_ids: buildCartItemIds(cartItems),
+      gift_wrap_item_ids: buildGiftWrapItemIds(cartItems),
+    },
+    { coupon_code },
+  );
 
 type PrepaidArgs = CommonArgs & {
   prepaid_amount: number;
@@ -262,18 +284,22 @@ export const buildPrepaidOrderPayload = ({
   cod_charges = 0,
   shipping_method = 'STD',
   prepaid_amount,
+  coupon_code,
 }: PrepaidArgs): OrderPayload => {
   // Intentionally ignore payment_method for place-order (online).
-  return {
-    delivery_address_id,
-    payment_type: 'prepaid',
-    shipping_method,
-    shipping_charges: Number(shipping_charges) || 0,
-    cod_charges: Number(cod_charges) || 0,
-    prepaid_amount: Number(prepaid_amount) || 0,
-    cart_item_ids: buildCartItemIds(cartItems),
-    gift_wrap_item_ids: buildGiftWrapItemIds(cartItems),
-  };
+  return withCouponFields(
+    {
+      delivery_address_id,
+      payment_type: 'prepaid',
+      shipping_method,
+      shipping_charges: Number(shipping_charges) || 0,
+      cod_charges: Number(cod_charges) || 0,
+      prepaid_amount: Math.max(0, Math.round(Number(prepaid_amount) || 0)),
+      cart_item_ids: buildCartItemIds(cartItems),
+      gift_wrap_item_ids: buildGiftWrapItemIds(cartItems),
+    },
+    { coupon_code },
+  );
 };
 
 /** Unified builder used by hooks */
@@ -286,6 +312,7 @@ export const buildOrderPayload = (args: {
   shipping_method?: 'STD' | 'EXPRESS';
   mode: 'cod' | 'prepaid';
   payment_method?: string | null;
+  coupon_code?: string;
 }): OrderPayload => {
   if (args.mode === 'cod') {
     return buildCodOrderPayload(args);

@@ -204,25 +204,27 @@ const ProductsScreen = () => {
         // )
         }
 
-        <SectionHeader
-          title="Shop by Category"
-          actionText={productCategories.length > 0 ? 'View all' : ''}
-          onPress={() =>
-            navigateToCategoryProducts(navigation, {
-              categoryMode: 'product',
-              serviceCategoryId: productsCategoryId || undefined,
-            })
-          }
-        />
         {categoriesLoading && productCategories.length === 0 ? (
           <CategoryRowSkeleton />
         ) : productCategories.length > 0 ? (
-          <CategoryList
-            data={productCategories}
-            navigation={navigation}
-            mode="product"
-            serviceCategoryId={productsCategoryId}
-          />
+          <>
+            <SectionHeader
+              title="Shop by Category"
+              actionText={productCategories.length > 1 ? 'View all' : ''}
+              onPress={() =>
+                navigateToCategoryProducts(navigation, {
+                  categoryMode: 'product',
+                  serviceCategoryId: productsCategoryId || undefined,
+                })
+              }
+            />
+            <CategoryList
+              data={productCategories}
+              navigation={navigation}
+              mode="product"
+              serviceCategoryId={productsCategoryId}
+            />
+          </>
         ) : null}
 
         <SectionHeader title="All Products" actionText="" />
@@ -246,6 +248,7 @@ const ProductsScreen = () => {
         onBack={() => goBackToHomeTab(navigation)}
         subtitle="Choose best product"
         onSearchPress={handleSearchPress}
+        showCart
       />
 
       {showInitialSkeleton ? (
@@ -305,6 +308,7 @@ export default ProductsScreen;
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
+    backgroundColor: Colors.background,
     // backgroundColor: SCREEN_THEME.screenBackground,
     paddingHorizontal: H_PAD,
   },

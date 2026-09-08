@@ -36,6 +36,8 @@ interface ReceiptData {
     date: string;
     doctor_name: string;
     patient_name: string;
+    payment_method?: string;
+    payment_type?: string;
 
     patient: {
         name: string;
@@ -47,7 +49,7 @@ interface ReceiptData {
         doctor_name: string;
         doctor_id: string;
         doctor_image: string | null;
-        doctor_specialization: string | null;
+        doctor_specialization: string | string[] | null;
     };
 
     amount: number;
@@ -169,7 +171,7 @@ const MedicalReceipt = (props: any) => {
                                         <TablerIcon name="plus-bag" size={30} color={Colors.primaryColor} />
                                     </View>
 
-                                    <Text style={styles.title}>Tru Indya Wellness</Text>
+                                    <Text style={styles.title}>TruIndyaWellness Private Limited</Text>
                                     <Text style={styles.subtitle}>DIGITAL CONSULTATION RECEIPT</Text>
 
                                     {/* INFO ROWS */}
@@ -209,12 +211,30 @@ const MedicalReceipt = (props: any) => {
 
                                     <View style={styles.doctorRow}>
                                         <Image
-                                            source={Images.doctorImage}
+                                            source={
+                                                receipt?.info?.doctor_image
+                                                    ? { uri: receipt.info.doctor_image }
+                                                    : Images.doctorImage
+                                            }
                                             style={styles.docImg}
                                         />
-                                        <View style={{ paddingLeft: 5, }}>
-                                            <Text style={styles.docName}>{receipt?.info?.doctor_name}</Text>
-                                            <Text style={styles.docSpec}>{specialization}</Text>
+                                        <View style={styles.docMeta}>
+                                            <Text style={styles.docLabel}>Consulting Doctor</Text>
+                                            <Text style={styles.docName} numberOfLines={2}>
+                                                {receipt?.info?.doctor_name ||
+                                                    receipt?.doctor_name ||
+                                                    'Doctor'}
+                                            </Text>
+                                            {!!specialization && (
+                                                <Text style={styles.docSpec} numberOfLines={2}>
+                                                    {specialization}
+                                                </Text>
+                                            )}
+                                            {!!receipt?.info?.doctor_id && (
+                                                <Text style={styles.docId} numberOfLines={1}>
+                                                    ID: {String(receipt.info.doctor_id).slice(0, 8)}…
+                                                </Text>
+                                            )}
                                         </View>
                                     </View>
 
@@ -380,26 +400,53 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginVertical: 10,
+        padding: 12,
+        borderRadius: 14,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E8EEF2',
+        gap: 12,
     },
 
     docImg: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        marginRight: 10,
+        width: 56,
+        height: 56,
+        borderRadius: 14,
+        backgroundColor: '#E2E8F0',
+    },
+
+    docMeta: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    docLabel: {
+        fontSize: 11,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsMedium,
+        marginBottom: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
     },
 
     docName: {
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#1E293B',
-        marginBottom: -3
     },
 
     docSpec: {
+        marginTop: 2,
         fontSize: 12,
-        color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+    },
+
+    docId: {
+        marginTop: 4,
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#94A3B8',
     },
 
     priceRow: {

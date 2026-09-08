@@ -840,15 +840,12 @@ const CategoryProductsScreen = (props: any) => {
 
   const productFilter = useMemo(() => {
     if (categoryMode === 'health') {
-      const healthId =
-        selectedSubcategoryId ??
-        activeCategoryId ??
-        routeParams.healthCategoryId ??
-        null;
-
       return {
-        health_category_id: healthId,
-        health_disease_id: routeParams.healthDiseaseId ?? null,
+        // Parent concern stays as health_category_id; child disease is health_disease_id
+        health_category_id:
+          activeCategoryId ?? routeParams.healthCategoryId ?? null,
+        health_disease_id:
+          selectedSubcategoryId ?? routeParams.healthDiseaseId ?? null,
         brand_name_id: brandId,
         service_category_id: serviceCategoryId,
       };
@@ -1110,6 +1107,7 @@ const CategoryProductsScreen = (props: any) => {
               : subtitle
           }
           onRefreshPress={handleRefresh}
+          showCart
         />
       </View>
 

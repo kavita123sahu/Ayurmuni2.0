@@ -31,6 +31,8 @@ import {
   formatOrderDateTime,
   getOrderItemReview,
   isOrderItemRated,
+  isTruthyReviewFlag,
+  resolveOrderItemVariantId,
 } from '../../utils/orderDetailUtils';
 import { getReviewsAll } from '../../services/ProductServices';
 import { getScreenBottomPadding } from '../../constants/layout';
@@ -43,6 +45,7 @@ import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
 import { formatOrderId } from '../../utils/formatDisplayId';
 import Toast from 'react-native-toast-message';
 import { formatRupee, RUPEE_SYMBOL } from '../../utils/currencyUtils';
+import { SCREEN_THEME } from '../../constants/screenTheme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -77,6 +80,7 @@ const ORDER_STATUS = {
   IN_TRANSIT: 'in_transit',
   OUT_FOR_DELIVERY: 'out_for_delivery',
   DELIVERED: 'delivered',
+  COMPLETED: 'completed',
   CANCELLED: 'cancelled',
   RETURNED: 'returned',
 } as const;
@@ -168,7 +172,7 @@ const mapOrderItems = (
     );
     return {
       id: String(item?.id ?? index),
-      variantId: String(item?.variant?.variant_id ?? item?.variant_id ?? ''),
+      variantId: resolveOrderItemVariantId(item),
       name: String(item?.variant?.variant_title ?? item?.product_name ?? 'Product'),
       subtitle: `Qty: ${qty}`,
       price: formatCurrency(lineTotal > 0 ? lineTotal : unit),
@@ -219,7 +223,16 @@ const DetailRow = ({ label, value }: { label: string; value?: string | number | 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 const OrderDetailsScreen = ({ route, navigation }: any) => {
-  const initialOrder = route?.params?.order;
+  const initialOrder =
+    route?.params?.order ??
+    (route?.params?.orderId || route?.params?.order_id
+      ? {
+          id: String(route.params.orderId ?? route.params.order_id),
+          order_id: String(route.params.orderId ?? route.params.order_id),
+          order_code: route.params.order_code,
+          order_status: route.params.order_status,
+        }
+      : undefined);
   const fromOrderSuccess = Boolean(route?.params?.fromOrderSuccess);
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
@@ -235,6 +248,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const [customReason, setCustomReason] = useState('');
   const [fetchedReviewsByVariant, setFetchedReviewsByVariant] = useState<Record<string, any>>({});
   const reviewFetchAttemptedRef = useRef<Set<string>>(new Set());
+  const autoReviewPromptedRef = useRef(false);
 
   const finalReason = selectedReason === 'Other' ? customReason.trim() : selectedReason;
 
@@ -245,7 +259,9 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const canCancel = CANCEL_ALLOWED.includes(status);
   const canInvoice = INVOICE_ALLOWED.includes(status);
   const canReturn = RETURN_ALLOWED.includes(status);
-  const canReview = status === ORDER_STATUS.DELIVERED;
+  // Delivered / completed orders can rate products (one time per item)
+  const canReview =
+    status === ORDER_STATUS.DELIVERED || status === ORDER_STATUS.COMPLETED;
 
   const items = useMemo(
     () => mapOrderItems(order, fetchedReviewsByVariant),
@@ -285,7 +301,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       dispatch(fetchCart({ force: true, silent: false }));
       navigation.dispatch(
         CommonActions.reset({
-          index: 0,
+          index: 1,
           routes: [
             {
               name: 'TabStack',
@@ -297,9 +313,10 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
                   { name: 'Consult' },
                   { name: 'Profile' },
                 ],
-                index: 2,
+                index: 0,
               },
             },
+            { name: 'OrderHistory' },
           ],
         }),
       );
@@ -339,9 +356,18 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
         return {
           ...prev,
           items: (Array.isArray(prev.items) ? prev.items : []).map((item: any) => {
-            const itemVid = String(item?.variant?.variant_id ?? item?.variant_id ?? '');
+            const itemVid = resolveOrderItemVariantId(item);
             if (itemVid !== vid) return item;
-            return { ...item, is_reviewed: true, variant: { ...(item?.variant ?? {}), is_reviewed: true } };
+            return {
+              ...item,
+              is_reviewed: true,
+              is_rated: true,
+              variant: {
+                ...(item?.variant ?? {}),
+                is_reviewed: true,
+                is_rated: true,
+              },
+            };
           }),
         };
       });
@@ -385,11 +411,20 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
       }
 
       if (detail || pollPayload) {
-        setOrder((prev: any) => ({
-          ...prev,
-          ...(detail || {}),
-          ...(pollPayload && typeof pollPayload === 'object' ? pollPayload : {}),
-        }));
+        setOrder((prev: any) => {
+          const merged = {
+            ...prev,
+            ...(detail || {}),
+            ...(pollPayload && typeof pollPayload === 'object' ? pollPayload : {}),
+          };
+          // Never wipe line items with an empty poll/detail payload
+          const nextItems = Array.isArray(merged.items) ? merged.items : [];
+          const prevItems = Array.isArray(prev?.items) ? prev.items : [];
+          if (!nextItems.length && prevItems.length) {
+            merged.items = prevItems;
+          }
+          return merged;
+        });
       }
     } catch {
       // silent — spinner still clears in finally
@@ -465,7 +500,13 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const openProductReview = useCallback(
     (rating: number) => {
       if (!reviewTarget?.variantId) return;
-      if (reviewTarget.rated || reviewTarget.raw?.variant?.is_reviewed === true) {
+      if (
+        reviewTarget.rated ||
+        isTruthyReviewFlag(reviewTarget.raw?.variant?.is_reviewed) ||
+        isTruthyReviewFlag(reviewTarget.raw?.variant?.is_rated) ||
+        isTruthyReviewFlag(reviewTarget.raw?.is_reviewed) ||
+        isTruthyReviewFlag(reviewTarget.raw?.is_rated)
+      ) {
         setReviewTarget(null);
         return;
       }
@@ -506,12 +547,53 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
     }, [applyLocalReview, fromOrderSuccess, goBack, initialOrder?.id, order?.id]),
   );
 
+  // Load full order detail so is_reviewed / items / status are accurate from history
+  useEffect(() => {
+    const orderId = String(initialOrder?.id ?? initialOrder?.order_id ?? '');
+    if (!orderId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const detailRes = await getOrderById(orderId);
+        const detail = extractOrderDetail(detailRes);
+        if (!cancelled && detail) {
+          setOrder((prev: any) => ({
+            ...(prev || {}),
+            ...detail,
+          }));
+        }
+      } catch {
+        // Keep list payload if detail endpoint fails
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialOrder?.id, initialOrder?.order_id]);
+
   useEffect(() => {
     if (!initialOrder) return;
     reviewFetchAttemptedRef.current = new Set();
+    autoReviewPromptedRef.current = false;
     setFetchedReviewsByVariant({});
     setOrder(initialOrder);
   }, [initialOrder?.id, initialOrder?.order_code]);
+
+  // Auto-open rating once for the first unreviewed delivered item (same idea as consultation)
+  useEffect(() => {
+    if (!canReview || autoReviewPromptedRef.current || reviewTarget) return;
+    const firstUnreviewed = items.find(
+      item => item.variantId && !item.rated && !fetchedReviewsByVariant[item.variantId],
+    );
+    if (!firstUnreviewed) return;
+    autoReviewPromptedRef.current = true;
+    const timer = setTimeout(() => {
+      setReviewTarget(firstUnreviewed);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [canReview, items, reviewTarget, fetchedReviewsByVariant]);
 
   useEffect(() => {
     const orderId = String(order?.id ?? '');
@@ -520,8 +602,12 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
 
     const targets = lineItems
       .map((item: any) => ({
-        variantId: String(item?.variant?.variant_id ?? item?.variant_id ?? ''),
-        isReviewed: item?.variant?.is_reviewed === true || item?.is_reviewed === true,
+        variantId: resolveOrderItemVariantId(item),
+        isReviewed:
+          isTruthyReviewFlag(item?.variant?.is_reviewed) ||
+          isTruthyReviewFlag(item?.variant?.is_rated) ||
+          isTruthyReviewFlag(item?.is_reviewed) ||
+          isTruthyReviewFlag(item?.is_rated),
       }))
       .filter(
         (row: { variantId: string; isReviewed: boolean }) =>
@@ -559,10 +645,15 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
 
   useEffect(() => {
     if (!order?.id) return;
+    const terminal = ['delivered', 'completed', 'cancelled', 'returned'].includes(
+      String(order?.order_status ?? '').toLowerCase(),
+    );
     refreshTracking();
-    const interval = setInterval(refreshTracking, 30000);
+    // Stop background polling once the order is finished
+    if (terminal) return undefined;
+    const interval = setInterval(refreshTracking, 60_000);
     return () => clearInterval(interval);
-  }, [order?.id, refreshTracking]);
+  }, [order?.id, order?.order_status, refreshTracking]);
 
   // ── Empty state ───────────────────────────────────────────────────────────
 
@@ -581,7 +672,10 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar
+        barStyle={SCREEN_THEME.statusBarStyle}
+        backgroundColor={SCREEN_THEME.statusBarBackground}
+      />
       <AppHeader title="Order Details" onLeftPress={goBack} />
 
       <ScrollView
@@ -804,11 +898,13 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
         {/* ── Items ── */}
         <SectionTitle title={`Items (${items.length})`} />
         {items.map(item => {
-          // Check all possible is_reviewed flags — any truthy means already rated
+          // Already reviewed once — show stars, never Rate again
           const isReviewed =
             item.rated ||
-            item?.raw?.variant?.is_reviewed === true ||
-            item?.raw?.is_reviewed === true ||
+            isTruthyReviewFlag(item?.raw?.variant?.is_reviewed) ||
+            isTruthyReviewFlag(item?.raw?.variant?.is_rated) ||
+            isTruthyReviewFlag(item?.raw?.is_reviewed) ||
+            isTruthyReviewFlag(item?.raw?.is_rated) ||
             Boolean(fetchedReviewsByVariant[item.variantId]);
 
           return (
@@ -835,7 +931,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
                 </View>
               </View>
 
-              {/* Rating / review row */}
+              {/* Rating / review row — Rate only when not reviewed yet */}
               {isReviewed ? (
                 <View style={styles.ratedRow}>
                   <TablerIcon name="star-filled" size={13} color="#F59E0B" />
@@ -1020,7 +1116,7 @@ export default OrderDetailsScreen;
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F4F7F6' },
+  safe: { flex: 1, backgroundColor: Colors.background },
 
   scroll: { padding: 16 },
 

@@ -1894,8 +1894,14 @@ const handleCall = (phoneNumber?: string) => {
     Linking.openURL(`tel:${phoneNumber}`).catch(() => undefined);
 };
 
-const SectionTitle = ({ title }: { title: string }) => (
-    <View style={styles.sectionTitleWrap}>
+const SectionTitle = ({
+    title,
+    compact,
+}: {
+    title: string;
+    compact?: boolean;
+}) => (
+    <View style={[styles.sectionTitleWrap, compact && styles.sectionTitleWrapCompact]}>
         <Text style={styles.sectionTitle}>{title}</Text>
         <View style={styles.sectionUnderline} />
     </View>
@@ -1932,31 +1938,35 @@ const HistoryBlock = ({
     icon,
     title,
     tone = 'default',
+    compact,
     children,
 }: {
     icon: 'stethoscope' | 'alert-circle' | 'clipboard-list' | 'users' | 'heart';
     title: string;
     tone?: 'default' | 'alert' | 'family';
+    compact?: boolean;
     children: ReactNode;
 }) => (
     <View
         style={[
             styles.historyCard,
+            compact && styles.historyCardCompact,
             tone === 'alert' && styles.historyCardAlert,
             tone === 'family' && styles.historyCardFamily,
         ]}
     >
-        <View style={styles.historyHeader}>
+        <View style={[styles.historyHeader, compact && styles.historyHeaderCompact]}>
             <View
                 style={[
                     styles.historyIconWrap,
+                    compact && styles.historyIconWrapCompact,
                     tone === 'alert' && styles.historyIconAlert,
                     tone === 'family' && styles.historyIconFamily,
                 ]}
             >
                 <TablerIcon
                     name={icon}
-                    size={15}
+                    size={compact ? 13 : 15}
                     color={
                         tone === 'alert'
                             ? '#B45309'
@@ -1966,7 +1976,9 @@ const HistoryBlock = ({
                     }
                 />
             </View>
-            <Text style={styles.historyTitle}>{title}</Text>
+            <Text style={[styles.historyTitle, compact && styles.historyTitleCompact]}>
+                {title}
+            </Text>
         </View>
         {children}
     </View>
@@ -2056,8 +2068,8 @@ const PrescriptionDetail = (props: any) => {
     const diagnosisText = getDiagnosisText(prescription);
     const prescriptionCode = formatPrescriptionId(
         prescription?.prescription_code ||
-            prescription?.id ||
-            normalized.prescriptionId,
+        prescription?.id ||
+        normalized.prescriptionId,
     );
     const symptomText = getSymptomDescription(prescription);
     const allergies = getAllergiesList(prescription);
@@ -2141,116 +2153,116 @@ const PrescriptionDetail = (props: any) => {
         }
     };
 
-  const onDownloadPdf = useCallback(async () => {
-  if (downloadingPdf) return;
+    const onDownloadPdf = useCallback(async () => {
+        if (downloadingPdf) return;
 
-  const prescriptionId =
-    normalized.prescriptionId ||
-    String(
-      prescription?.id ||
-        prescription?.prescription_id ||
-        '',
-    ).trim();
+        const prescriptionId =
+            normalized.prescriptionId ||
+            String(
+                prescription?.id ||
+                prescription?.prescription_id ||
+                '',
+            ).trim();
 
-  if (!prescriptionId) {
-    showSuccessToast('Prescription id missing', 'error');
-    return;
-  }
+        if (!prescriptionId) {
+            showSuccessToast('Prescription id missing', 'error');
+            return;
+        }
 
-  try {
-    setDownloadingPdf(true);
+        try {
+            setDownloadingPdf(true);
 
-    const response =
-      await _CONSULT_SERVICE.downloadPrescriptionFile(
-        prescriptionId,
-      );
+            const response =
+                await _CONSULT_SERVICE.downloadPrescriptionFile(
+                    prescriptionId,
+                );
 
-    if (!response?.success) {
-      throw new Error('Prescription PDF data not found');
-    }
+            if (!response?.success) {
+                throw new Error('Prescription PDF data not found');
+            }
 
-    const code = formatPrescriptionId(
-      response.prescriptionData?.prescription_code ||
-        prescription?.prescription_code ||
-        prescriptionId,
-    ).replace(/[^a-zA-Z0-9._-]/g, '_');
+            const code = formatPrescriptionId(
+                response.prescriptionData?.prescription_code ||
+                prescription?.prescription_code ||
+                prescriptionId,
+            ).replace(/[^a-zA-Z0-9._-]/g, '_');
 
-    /**
-     * API returned structured JSON — save as text (same as medical receipt).
-     */
-    if (response.prescriptionData) {
-      const fileName = `Ayurmuni_Prescription_${code}.pdf`;
-      const mergedPayload = {
-        ...(payload ?? {}),
-        ...response.prescriptionData,
-        doctor:
-          response.prescriptionData.doctor ??
-          payload?.doctor ??
-          params.doctorData,
-        patient: response.prescriptionData.patient ?? payload?.patient,
-        appointment:
-          response.prescriptionData.appointment ?? payload?.appointment,
-        prescription:
-          response.prescriptionData.prescription ?? response.prescriptionData,
-        diets:
-          response.prescriptionData.diets ??
-          payload?.diets ??
-          payload?.appointment?.diets,
-      };
-      try {
-        const pdfBytes = await createPrescriptionPdfBytes(mergedPayload);
-        await downloadPdfToDevice({ fileName, pdfBytes });
-      } catch (pdfBuildError) {
-        console.log('PRESCRIPTION_PDF_BUILD_ERROR', pdfBuildError);
-        const fallbackText = buildPrescriptionDownloadText(mergedPayload);
-        const plainBytes = await createPlainTextPdfBytes(fallbackText);
-        await downloadPdfToDevice({ fileName, pdfBytes: plainBytes });
-      }
-      return;
-    }
+            /**
+             * API returned structured JSON — save as text (same as medical receipt).
+             */
+            if (response.prescriptionData) {
+                const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+                const mergedPayload = {
+                    ...(payload ?? {}),
+                    ...response.prescriptionData,
+                    doctor:
+                        response.prescriptionData.doctor ??
+                        payload?.doctor ??
+                        params.doctorData,
+                    patient: response.prescriptionData.patient ?? payload?.patient,
+                    appointment:
+                        response.prescriptionData.appointment ?? payload?.appointment,
+                    prescription:
+                        response.prescriptionData.prescription ?? response.prescriptionData,
+                    diets:
+                        response.prescriptionData.diets ??
+                        payload?.diets ??
+                        payload?.appointment?.diets,
+                };
+                try {
+                    const pdfBytes = await createPrescriptionPdfBytes(mergedPayload);
+                    await downloadPdfToDevice({ fileName, pdfBytes });
+                } catch (pdfBuildError) {
+                    console.log('PRESCRIPTION_PDF_BUILD_ERROR', pdfBuildError);
+                    const fallbackText = buildPrescriptionDownloadText(mergedPayload);
+                    const plainBytes = await createPlainTextPdfBytes(fallbackText);
+                    await downloadPdfToDevice({ fileName, pdfBytes: plainBytes });
+                }
+                return;
+            }
 
-    if (response.data && !response.base64) {
-      const fileName = `Ayurmuni_Prescription_${code}.pdf`;
-      await downloadPdfToDevice({
-        fileName,
-        arrayBuffer: response.data as ArrayBuffer,
-      });
-      return;
-    }
+            if (response.data && !response.base64) {
+                const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+                await downloadPdfToDevice({
+                    fileName,
+                    arrayBuffer: response.data as ArrayBuffer,
+                });
+                return;
+            }
 
-    let base64 = '';
+            let base64 = '';
 
-    if (response.base64) {
-      base64 = response.base64;
-    }
+            if (response.base64) {
+                base64 = response.base64;
+            }
 
-    if (!base64) {
-      throw new Error('Prescription PDF data is empty');
-    }
+            if (!base64) {
+                throw new Error('Prescription PDF data is empty');
+            }
 
-    const fileName = `Ayurmuni_Prescription_${code}.pdf`;
-    await downloadPdfToDevice({ fileName, base64 });
-  } catch (e: any) {
-    console.log(
-      'Prescription download error:',
-      e,
-    );
+            const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+            await downloadPdfToDevice({ fileName, base64 });
+        } catch (e: any) {
+            console.log(
+                'Prescription download error:',
+                e,
+            );
 
-    showSuccessToast(
-      e?.message ||
-        'Unable to download prescription PDF',
-      'error',
-    );
-  } finally {
-    setDownloadingPdf(false);
-  }
-}, [
-  downloadingPdf,
-  normalized.prescriptionId,
-  prescription?.id,
-  prescription?.prescription_id,
-  prescription?.prescription_code,
-]);
+            showSuccessToast(
+                e?.message ||
+                'Unable to download prescription PDF',
+                'error',
+            );
+        } finally {
+            setDownloadingPdf(false);
+        }
+    }, [
+        downloadingPdf,
+        normalized.prescriptionId,
+        prescription?.id,
+        prescription?.prescription_id,
+        prescription?.prescription_code,
+    ]);
 
     const specialization = Array.isArray(doctor?.doctor_specialization)
         ? doctor.doctor_specialization.join(', ')
@@ -2339,7 +2351,7 @@ const PrescriptionDetail = (props: any) => {
                                     style={styles.avatar}
                                 />
                             ) : (
-                                <View style={styles.initialAvatar}>
+                                <View style={[styles.avatar, styles.initialAvatar]}>
                                     <Text style={styles.initialText}>
                                         {patient?.patient_name?.charAt(0)?.toUpperCase() || 'P'}
                                     </Text>
@@ -2349,7 +2361,7 @@ const PrescriptionDetail = (props: any) => {
                                 <Text numberOfLines={1} style={styles.patientName}>
                                     {patient?.patient_name || 'Patient'}
                                 </Text>
-                                <Text style={styles.patientSubText}>
+                                <Text style={styles.patientSubText} numberOfLines={2}>
                                     {[
                                         patient?.age != null ? `Age ${patient.age}` : '',
                                         patient?.gender ? String(patient.gender) : '',
@@ -2363,13 +2375,30 @@ const PrescriptionDetail = (props: any) => {
                                 </Text>
                             </View>
                             {paymentAmount != null && (
-                                <RupeeAmount
-                                    value={paymentAmount}
-                                    style={styles.patientFee}
-                                    iconColor={COLORS.primary}
-                                    iconSize={15}
-                                />
+                                <View style={styles.patientFeeWrap}>
+                                    <RupeeAmount
+                                        value={paymentAmount}
+                                        style={styles.patientFee}
+                                        iconColor={COLORS.primary}
+                                        iconSize={15}
+                                    />
+                                </View>
                             )}
+                        </View>
+
+                        {/* Status — top */}
+                        <View style={styles.statusCardTop}>
+                            <View style={styles.activeBadge}>
+                                <View style={styles.activeDot} />
+                                <Text style={styles.activeText}>
+                                    {normalized.status
+                                        ? String(normalized.status).replace(/_/g, ' ')
+                                        : 'Issued'}
+                                </Text>
+                            </View>
+                            <Text style={styles.dateInfo}>
+                                Issued on {formatIssuedLabel(normalized.issuedOn)}
+                            </Text>
                         </View>
 
                         {(!!concernText ||
@@ -2384,16 +2413,34 @@ const PrescriptionDetail = (props: any) => {
                             !!paymentMethod ||
                             !!paymentStatus) && (
                                 <View style={styles.metaCard}>
-                                    {!!prescriptionCode && (
-                                        <View style={styles.metaRow}>
-                                            <Text style={styles.metaLabel}>Prescription Code</Text>
-                                            <Text style={styles.metaValue}>{prescriptionCode}</Text>
-                                        </View>
-                                    )}
-                                    {!!concernText && (
-                                        <View style={styles.metaRow}>
-                                            <Text style={styles.metaLabel}>Chief complaint</Text>
-                                            <Text style={styles.metaValue}>{concernText}</Text>
+                                    {(!!prescriptionCode || !!concernText) && (
+                                        <View style={styles.metaInlineRow}>
+                                            {!!prescriptionCode && (
+                                                <View style={styles.metaInlineItem}>
+                                                    <Text style={styles.metaLabelInline}>
+                                                        Prescription Code
+                                                    </Text>
+                                                    <Text
+                                                        style={styles.metaValueInline}
+                                                        numberOfLines={2}
+                                                    >
+                                                        {prescriptionCode}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                            {!!concernText && (
+                                                <View style={styles.metaInlineItem}>
+                                                    <Text style={styles.metaLabelInline}>
+                                                        Chief Complaint
+                                                    </Text>
+                                                    <Text
+                                                        style={styles.metaValueInline}
+                                                        numberOfLines={2}
+                                                    >
+                                                        {concernText}
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
                                     )}
                                     {!!diagnosisText &&
@@ -2441,13 +2488,13 @@ const PrescriptionDetail = (props: any) => {
 
                         {followUp.hasContent && (
                             <>
-                                <SectionTitle title="Follow-up" />
+                                <SectionTitle title="Follow-up" compact />
                                 <View style={styles.followUpCard}>
                                     <View style={styles.followUpTop}>
                                         <View style={styles.followUpIcon}>
                                             <TablerIcon
                                                 name="calendar"
-                                                size={18}
+                                                size={16}
                                                 color={COLORS.primary}
                                             />
                                         </View>
@@ -2489,66 +2536,106 @@ const PrescriptionDetail = (props: any) => {
                             </>
                         )}
 
-                        {hasClinicalHistory && (
-                            <>
-                                <SectionTitle title="Clinical History" />
-                                <View style={styles.historyList}>
-                                    {!!symptomText && (
-                                        <HistoryBlock
-                                            icon="stethoscope"
-                                            title="Symptoms"
-                                        >
-                                            <Text style={styles.historyBody}>
-                                                {symptomText}
-                                            </Text>
-                                        </HistoryBlock>
-                                    )}
-
-                                    {allergies.length > 0 && (
-                                        <HistoryBlock
-                                            icon="alert-circle"
-                                            title="Allergies"
-                                            tone="alert"
-                                        >
-                                            <View style={styles.allergyChipRow}>
-                                                {allergies.map((item, index) => (
-                                                    <View
-                                                        key={`allergy-${index}`}
-                                                        style={styles.allergyChip}
+                        {(hasClinicalHistory || medicines.length > 0) && (
+                            <View style={styles.dualHistoryRow}>
+                                {hasClinicalHistory ? (
+                                    <View style={styles.dualHistoryCol}>
+                                        <Text style={styles.dualHistoryTitle}>
+                                            Clinical History
+                                        </Text>
+                                        <View style={styles.historyList}>
+                                            {!!symptomText && (
+                                                <HistoryBlock
+                                                    icon="stethoscope"
+                                                    title="Symptoms"
+                                                    compact
+                                                >
+                                                    <Text
+                                                        style={styles.historyBodyCompact}
+                                                        numberOfLines={4}
                                                     >
-                                                        <Text style={styles.allergyChipText}>
-                                                            {item}
-                                                        </Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </HistoryBlock>
-                                    )}
+                                                        {symptomText}
+                                                    </Text>
+                                                </HistoryBlock>
+                                            )}
+                                            {allergies.length > 0 && (
+                                                <HistoryBlock
+                                                    icon="alert-circle"
+                                                    title="Allergies"
+                                                    tone="alert"
+                                                    compact
+                                                >
+                                                    <Text
+                                                        style={styles.historyBodyCompact}
+                                                        numberOfLines={3}
+                                                    >
+                                                        {allergies.join(', ')}
+                                                    </Text>
+                                                </HistoryBlock>
+                                            )}
+                                            {!!pastIllnessText && (
+                                                <HistoryBlock
+                                                    icon="clipboard-list"
+                                                    title="Past illness"
+                                                    compact
+                                                >
+                                                    <Text
+                                                        style={styles.historyBodyCompact}
+                                                        numberOfLines={3}
+                                                    >
+                                                        {pastIllnessText}
+                                                    </Text>
+                                                </HistoryBlock>
+                                            )}
+                                            {!!familyHistoryText && (
+                                                <HistoryBlock
+                                                    icon="users"
+                                                    title="Family history"
+                                                    tone="family"
+                                                    compact
+                                                >
+                                                    <Text
+                                                        style={styles.historyBodyCompact}
+                                                        numberOfLines={3}
+                                                    >
+                                                        {familyHistoryText}
+                                                    </Text>
+                                                </HistoryBlock>
+                                            )}
+                                        </View>
+                                    </View>
+                                ) : null}
 
-                                    {!!pastIllnessText && (
-                                        <HistoryBlock
-                                            icon="clipboard-list"
-                                            title="Past illness"
-                                        >
-                                            <Text style={styles.historyBody}>
-                                                {pastIllnessText}
-                                            </Text>
-                                        </HistoryBlock>
-                                    )}
-
-                                    {!!familyHistoryText && (
-                                        <HistoryBlock
-                                            icon="users"
-                                            title="Family history"
-                                            tone="family"
-                                        >
-                                            <Text style={styles.historyBody}>
-                                                {familyHistoryText}
-                                            </Text>
-                                        </HistoryBlock>
-                                    )}
-                                </View>
-                            </>
+                                {medicines.length > 0 ? (
+                                    <View style={styles.dualHistoryCol}>
+                                        <Text style={styles.dualHistoryTitle}>
+                                            Prescription History
+                                        </Text>
+                                        <View style={styles.rxHistoryCard}>
+                                            {medicines.slice(0, 5).map((medicine: any, index: number) => (
+                                                <Text
+                                                    key={
+                                                        medicine?.id ||
+                                                        `${medicine?.medicine_name}-rx-${index}`
+                                                    }
+                                                    style={styles.rxHistoryItem}
+                                                    numberOfLines={2}
+                                                >
+                                                    •{' '}
+                                                    {medicine?.medicine_name ||
+                                                        medicine?.product_name ||
+                                                        'Medicine'}
+                                                </Text>
+                                            ))}
+                                            {medicines.length > 5 ? (
+                                                <Text style={styles.rxHistoryMore}>
+                                                    +{medicines.length - 5} more
+                                                </Text>
+                                            ) : null}
+                                        </View>
+                                    </View>
+                                ) : null}
+                            </View>
                         )}
 
                         {/* Medicines */}
@@ -2805,17 +2892,51 @@ const PrescriptionDetail = (props: any) => {
                                     }
                                     style={styles.doctorImage}
                                 />
-                                <View style={{ flex: 1 }}>
-                                    <Text numberOfLines={1} style={styles.doctorName}>
+                                <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Text numberOfLines={2} style={styles.doctorName}>
                                         {doctor?.doctor_name || 'Doctor'}
                                     </Text>
                                     {!!specialization && (
-                                        <Text style={styles.doctorSpeciality}>{specialization}</Text>
+                                        <Text style={styles.doctorSpeciality} numberOfLines={2}>
+                                            {specialization}
+                                        </Text>
+                                    )}
+                                    {!!(doctor?.qualification || doctor?.qualifications) && (
+                                        <Text style={styles.doctorMeta} numberOfLines={2}>
+                                            {doctor?.qualification || doctor?.qualifications}
+                                        </Text>
+                                    )}
+                                    {!!(
+                                        doctor?.experience_display ||
+                                        doctor?.experience ||
+                                        doctor?.years_of_experience
+                                    ) && (
+                                        <Text style={styles.doctorMeta}>
+                                            {doctor?.experience_display
+                                                ? `${doctor.experience_display} yrs exp`
+                                                : `${doctor?.experience || doctor?.years_of_experience} yrs exp`}
+                                        </Text>
                                     )}
                                 </View>
                             </View>
 
                             <View style={styles.doctorInfo}>
+                                {!!(
+                                    doctor?.clinic_name ||
+                                    doctor?.hospital_name ||
+                                    doctor?.clinic ||
+                                    doctor?.workplace
+                                ) && (
+                                    <View style={styles.infoRow}>
+                                        <TablerIcon name="building" size={14} color={COLORS.secondary} />
+                                        <Text style={styles.infoText}>
+                                            {doctor?.clinic_name ||
+                                                doctor?.hospital_name ||
+                                                doctor?.clinic ||
+                                                doctor?.workplace}
+                                        </Text>
+                                    </View>
+                                )}
                                 {!!doctorLocation && (
                                     <View style={styles.infoRow}>
                                         <TablerIcon name="map-pin" size={14} color={COLORS.secondary} />
@@ -2848,23 +2969,17 @@ const PrescriptionDetail = (props: any) => {
                                         </Text>
                                     </View>
                                 )}
+                                {!!(doctor?.languages || doctor?.language) && (
+                                    <View style={styles.infoRow}>
+                                        <TablerIcon name="users" size={14} color={COLORS.secondary} />
+                                        <Text style={styles.infoText}>
+                                            {Array.isArray(doctor?.languages)
+                                                ? doctor.languages.join(', ')
+                                                : doctor?.languages || doctor?.language}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
-                        </View>
-
-                        {/* Status */}
-                        <SectionTitle title="Prescription Status" />
-                        <View style={styles.statusCard}>
-                            <View style={styles.activeBadge}>
-                                <View style={styles.activeDot} />
-                                <Text style={styles.activeText}>
-                                    {normalized.status
-                                        ? String(normalized.status).replace(/_/g, ' ')
-                                        : 'Issued'}
-                                </Text>
-                            </View>
-                            <Text style={styles.dateInfo}>
-                                Issued on {formatIssuedLabel(normalized.issuedOn)}
-                            </Text>
                         </View>
 
                         {/* Help */}
@@ -2989,47 +3104,66 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: COLORS.mint,
         borderRadius: 18,
-        padding: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        gap: 12,
     },
     avatar: {
-        width: Math.min(64, width * 0.16),
-        height: Math.min(64, width * 0.16),
-        borderRadius: 18,
-        marginRight: 14,
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        backgroundColor: '#D9EDE6',
     },
     initialAvatar: {
-        width: 64,
-        height: 64,
-        marginRight: 12,
-        borderRadius: 18,
+        marginRight: 0,
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
     },
     initialText: {
         color: '#FFFFFF',
-        fontSize: 20,
+        fontSize: 18,
         fontFamily: Fonts.PoppinsSemiBold,
     },
     patientContent: {
         flex: 1,
         minWidth: 0,
+        justifyContent: 'center',
     },
     patientName: {
-        fontSize: 16,
+        fontSize: 15,
         color: COLORS.text,
         fontFamily: Fonts.PoppinsSemiBold,
     },
     patientSubText: {
         marginTop: 2,
         fontSize: 12,
+        lineHeight: 16,
         color: COLORS.secondary,
         fontFamily: Fonts.PoppinsMedium,
+    },
+    patientFeeWrap: {
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        flexShrink: 0,
     },
     patientFee: {
         fontSize: 13,
         color: COLORS.primary,
         fontFamily: Fonts.PoppinsSemiBold,
+    },
+    statusCardTop: {
+        marginTop: 10,
+        backgroundColor: COLORS.white,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
     },
     metaCard: {
         marginTop: 10,
@@ -3040,6 +3174,28 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         gap: 8,
+    },
+    metaInlineRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    metaInlineItem: {
+        flex: 1,
+        minWidth: 0,
+    },
+    metaLabelInline: {
+        fontSize: 10,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsSemiBold,
+        textTransform: 'uppercase',
+        marginBottom: 3,
+    },
+    metaValueInline: {
+        fontSize: 13,
+        lineHeight: 18,
+        color: COLORS.text,
+        fontFamily: Fonts.PoppinsMedium,
     },
     metaRow: {
         flexDirection: 'row',
@@ -3073,26 +3229,21 @@ const styles = StyleSheet.create({
     },
     followUpCard: {
         backgroundColor: COLORS.white,
-        borderRadius: 16,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: '#D8EBE4',
-        padding: 14,
-        gap: 10,
-        shadowColor: '#0D614E',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        padding: 10,
+        gap: 6,
     },
     followUpTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
     },
     followUpIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 32,
+        height: 32,
+        borderRadius: 10,
         backgroundColor: COLORS.mint,
         alignItems: 'center',
         justifyContent: 'center',
@@ -3102,51 +3253,67 @@ const styles = StyleSheet.create({
         minWidth: 0,
     },
     followUpEyebrow: {
-        fontSize: 11,
+        fontSize: 10,
         color: COLORS.primary,
         fontFamily: Fonts.PoppinsSemiBold,
         textTransform: 'uppercase',
         letterSpacing: 0.3,
     },
     followUpDate: {
-        marginTop: 2,
-        fontSize: 16,
+        marginTop: 1,
+        fontSize: 14,
         color: COLORS.text,
         fontFamily: Fonts.PoppinsSemiBold,
     },
     followUpStatus: {
         backgroundColor: '#ECFDF5',
         borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
     },
     followUpStatusText: {
-        fontSize: 11,
+        fontSize: 10,
         color: '#047857',
         fontFamily: Fonts.PoppinsSemiBold,
         textTransform: 'capitalize',
     },
     followUpBlock: {
         backgroundColor: COLORS.mint,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
     },
     followUpLabel: {
-        fontSize: 11,
+        fontSize: 10,
         color: COLORS.secondary,
         fontFamily: Fonts.PoppinsSemiBold,
         textTransform: 'uppercase',
-        marginBottom: 3,
+        marginBottom: 2,
     },
     followUpValue: {
-        fontSize: 13,
-        lineHeight: 19,
+        fontSize: 12,
+        lineHeight: 17,
         color: COLORS.text,
         fontFamily: Fonts.PoppinsMedium,
     },
-    historyList: {
+    dualHistoryRow: {
+        marginTop: 14,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
         gap: 10,
+    },
+    dualHistoryCol: {
+        flex: 1,
+        minWidth: 0,
+    },
+    dualHistoryTitle: {
+        fontSize: 13,
+        color: COLORS.text,
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 6,
+    },
+    historyList: {
+        gap: 6,
     },
     historyCard: {
         backgroundColor: COLORS.white,
@@ -3154,6 +3321,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: COLORS.border,
         padding: 12,
+    },
+    historyCardCompact: {
+        padding: 8,
+        borderRadius: 12,
     },
     historyCardAlert: {
         borderColor: '#FDE68A',
@@ -3169,6 +3340,10 @@ const styles = StyleSheet.create({
         gap: 8,
         marginBottom: 8,
     },
+    historyHeaderCompact: {
+        marginBottom: 4,
+        gap: 6,
+    },
     historyIconWrap: {
         width: 28,
         height: 28,
@@ -3176,6 +3351,11 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.mint,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    historyIconWrapCompact: {
+        width: 22,
+        height: 22,
+        borderRadius: 7,
     },
     historyIconAlert: {
         backgroundColor: '#FEF3C7',
@@ -3188,11 +3368,39 @@ const styles = StyleSheet.create({
         color: COLORS.text,
         fontFamily: Fonts.PoppinsSemiBold,
     },
+    historyTitleCompact: {
+        fontSize: 11,
+    },
     historyBody: {
         fontSize: 13,
         lineHeight: 20,
         color: '#334155',
         fontFamily: Fonts.PoppinsRegular,
+    },
+    historyBodyCompact: {
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#334155',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    rxHistoryCard: {
+        backgroundColor: COLORS.white,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 10,
+        gap: 6,
+    },
+    rxHistoryItem: {
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#334155',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    rxHistoryMore: {
+        fontSize: 11,
+        color: COLORS.primary,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
     allergyChipRow: {
         flexDirection: 'row',
@@ -3218,6 +3426,10 @@ const styles = StyleSheet.create({
     sectionTitleWrap: {
         marginTop: 16,
         marginBottom: 8,
+    },
+    sectionTitleWrapCompact: {
+        marginTop: 12,
+        marginBottom: 6,
     },
     sectionTitle: {
         fontSize: 15,
@@ -3503,6 +3715,12 @@ const styles = StyleSheet.create({
         color: COLORS.secondary,
         fontFamily: Fonts.PoppinsMedium,
     },
+    doctorMeta: {
+        marginTop: 2,
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
+    },
     doctorInfo: {
         marginTop: 14,
         gap: 10,
@@ -3527,12 +3745,13 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     activeBadge: {
-        alignSelf: 'flex-start',
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 6,
+        alignSelf: 'flex-start',
         backgroundColor: COLORS.successBg,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: 999,
     },
     activeDot: {
@@ -3540,7 +3759,6 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 20,
         backgroundColor: COLORS.success,
-        marginRight: 8,
     },
     activeText: {
         fontSize: 12,
@@ -3549,9 +3767,11 @@ const styles = StyleSheet.create({
         textTransform: 'capitalize',
     },
     dateInfo: {
+        flexShrink: 1,
         fontSize: 12,
         color: COLORS.secondary,
         fontFamily: Fonts.PoppinsMedium,
+        textAlign: 'right',
     },
     helpCard: {
         marginTop: 22,

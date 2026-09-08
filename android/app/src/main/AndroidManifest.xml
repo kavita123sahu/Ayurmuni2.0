@@ -38,6 +38,10 @@
       <meta-data
         android:name="com.google.android.geo.API_KEY"
         android:value="AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA" />
+      <!-- Prefer high-importance channel so OneSignal pushes can heads-up -->
+      <meta-data
+        android:name="com.onesignal.suppressLaunchURLs"
+        android:value="true" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

@@ -542,9 +542,19 @@ export const getConsultCategory = async () => {
 
 export const createConsultationPayment = async (data: object) => {
     try {
+        // Drop empty / undefined fields so optional coupon_code is omitted when unused
+        const clean = Object.fromEntries(
+            Object.entries(data as Record<string, unknown>).filter(
+                ([, v]) =>
+                    v !== undefined &&
+                    v !== null &&
+                    !(typeof v === 'string' && v.trim() === ''),
+            ),
+        );
+        console.log('CONSULT_BOOK_PAYLOAD =>', JSON.stringify(clean, null, 2));
         const response = await apiClient('payments/customer/consultation/payment/book-slot/', {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(clean)
         });
 
         return response;
@@ -552,6 +562,37 @@ export const createConsultationPayment = async (data: object) => {
         throw error;
     }
 }
+
+/**
+ * Retry Razorpay checkout for an appointment whose payment was already created.
+ * GET/POST /payments/customer/consultation/payment/retry/?appointment_id=
+ */
+export const retryConsultationPayment = async (appointmentId: string | number) => {
+    try {
+        const id = encodeURIComponent(String(appointmentId));
+        console.log('CONSULT_RETRY => appointment_id=', appointmentId);
+        const response = await apiClient(
+            `payments/customer/consultation/payment/retry/?appointment_id=${id}`,
+            { method: 'POST' },
+        );
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/** GET /payments/customer/consultation/fee-quote/?slot_id= */
+export const getConsultationFeeQuote = async (slotId: string | number) => {
+    try {
+        const response = await apiClient(
+            `payments/customer/consultation/fee-quote/?slot_id=${encodeURIComponent(String(slotId))}`,
+            { method: 'GET' },
+        );
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
 
 
 export const verifyConsultationPayment = async (data: object) => {
