@@ -27,7 +27,6 @@ export const filterEligibleCoupons = (
       couponMatchesScope(item, scope) &&
       calcCouponDiscount(item, subtotal).ok,
   );
-};
 
 /**
  * Order + consultation share the same rule:
@@ -38,6 +37,7 @@ const filterCheckoutCoupons = (list: Coupon[], scope: CouponScope) =>
     item => isAdminSourceCoupon(item) && couponMatchesScope(item, scope),
   );
 
+  
 export const useCheckoutCoupons = (
   scope: CouponScope,
   subtotal: number,
