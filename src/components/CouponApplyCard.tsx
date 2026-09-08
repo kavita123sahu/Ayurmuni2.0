@@ -235,9 +235,9 @@ const CouponApplyCard = ({
                 </Text>
                 <Text style={styles.sheetSub}>
                   {checkoutScope === 'consultation'
-                    ? 'Offers valid for consultations'
+                    ? 'Admin offers valid for consultations'
                     : checkoutScope === 'product'
-                      ? 'Order offers and rewards for this cart'
+                      ? 'Admin offers valid for this order'
                       : 'Available offers'}
                 </Text>
               </View>

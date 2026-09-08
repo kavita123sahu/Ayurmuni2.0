@@ -29,7 +29,7 @@ export const showInAppNotification = (data: NotificationData) => {
   showDeviceHeadsUp(payload.title, payload.message);
 };
 
-const normalizeNotificationPayload = (
+export const normalizeNotificationPayload = (
   raw: NotificationData,
 ): NotificationData => {
   const type = String(
@@ -49,6 +49,12 @@ const normalizeNotificationPayload = (
     order_id: raw?.order_id ?? raw?.orderId ?? raw?.data?.order_id,
     product_id: raw?.product_id ?? raw?.productId ?? raw?.data?.product_id,
     doctor_id: raw?.doctor_id ?? raw?.doctorId ?? raw?.data?.doctor_id,
+    prescription_id:
+      raw?.prescription_id ??
+      raw?.prescriptionId ??
+      raw?.data?.prescription_id,
+    diet_id: raw?.diet_id ?? raw?.dietId ?? raw?.data?.diet_id,
+    medicine_id: raw?.medicine_id ?? raw?.medicineId ?? raw?.data?.medicine_id,
   };
 };
 
@@ -88,8 +94,7 @@ export const setupOneSignalInAppListeners = () => {
 
   OneSignal.Notifications.addEventListener('click', event => {
     const payload = mapOneSignalPayload(event.notification);
-    if (navigationRef.isReady()) {
-      handleNotificationNavigation(navigationRef, payload);
-    }
+    // Always hand off — router queues if nav is not ready yet
+    handleNotificationNavigation(navigationRef, payload);
   });
 };

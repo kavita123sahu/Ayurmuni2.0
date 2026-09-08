@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: getScreenPaddingH(),
-    backgroundColor: '#F7F8FA',
+    backgroundColor: Colors.background,
   },
   filtersBlock: {
     marginTop: SPACING.sm,

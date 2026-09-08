@@ -16,7 +16,6 @@ import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 import CouponTicket from './CouponTicket';
 import {
-  couponSourceLabel,
   type Coupon,
 } from '../utils/couponUtils';
 import { showSuccessToast } from '../config/Key';
@@ -70,47 +69,24 @@ const CouponOffersPanel = ({
   const filter = controlledFilter ?? localFilter;
 
   const chips = useMemo(() => {
-    // Shared category chips — list is already scoped by checkout type
-    const base: Array<{ key: string; label: string }> = [
+    // Checkout (order + consult): same simple chips — no source/rewards tabs
+    if (checkoutScope === 'product' || checkoutScope === 'consultation') {
+      return [
+        { key: 'all', label: 'All' },
+        { key: 'private', label: 'For you' },
+        { key: 'general', label: 'General' },
+      ];
+    }
+
+    // Non-checkout (if any): keep light filters without dynamic source tabs
+    return [
       { key: 'all', label: 'All' },
       { key: 'private', label: 'For you' },
       { key: 'general', label: 'General' },
+      { key: 'order', label: 'Orders' },
+      { key: 'consultation', label: 'Consult' },
     ];
-
-    if (checkoutScope === 'product') {
-      // Order View all: order coupons + rewards
-      base.push({ key: 'rewards', label: 'Rewards' });
-    } else if (checkoutScope === 'consultation') {
-      // Consult View all: consult coupons only — For you / General already in base
-    } else {
-      base.push(
-        { key: 'source:referral', label: 'Referral' },
-        { key: 'order', label: 'Orders' },
-        { key: 'consultation', label: 'Consult' },
-      );
-    }
-
-    const sources = Array.from(
-      new Set(coupons.map(c => String(c.source || '')).filter(Boolean)),
-    )
-      .filter(
-        source =>
-          source !== 'referral' &&
-          source !== 'reward' &&
-          source !== 'loyalty',
-      )
-      .map(source => ({
-        key: `source:${source}`,
-        label: couponSourceLabel(source),
-      }));
-    const brands = Array.from(
-      new Set(coupons.map(c => c.brand_id).filter(Boolean) as string[]),
-    ).map(brand => ({
-      key: `brand:${brand}`,
-      label: 'Brand',
-    }));
-    return [...base, ...sources, ...brands];
-  }, [checkoutScope, coupons]);
+  }, [checkoutScope]);
 
   const setFilter = (key: CouponFilterKey) => {
     if (onFilterChange) onFilterChange(key);

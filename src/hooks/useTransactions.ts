@@ -141,7 +141,7 @@ export const useTransactions = (options?: { pageSize?: number }) => {
           page: pageToLoad,
           page_size: pageSize,
         });
-        console.log("resresresresresres",res);
+        console.log("resresresresresres", res);
 
         const rawList = normalizeTransactionList(res);
         const mapped = rawList.map(mapTransaction);

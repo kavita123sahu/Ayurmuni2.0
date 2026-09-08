@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../../common/Images';
+import { Colors } from '../../../common/Colors';
 // import logo from '../../../assets/images//backButton.png';
 
 interface ChatHeaderProps {
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.headerBackground,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E7EB',
 

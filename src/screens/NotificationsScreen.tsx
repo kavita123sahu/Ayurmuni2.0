@@ -502,20 +502,35 @@ const NotificationsScreen = (props: any) => {
           ...(typeof raw?.data === 'object' ? raw.data : {}),
           title: item.title,
           message: item.description,
+          type:
+            raw?.type ??
+            raw?.notification_type ??
+            raw?.data?.type ??
+            item.type,
           route: raw?.route ?? raw?.data?.route ?? raw?.screen,
           order_id: raw?.order_id ?? raw?.data?.order_id,
           appointment_id:
             raw?.appointment_id ??
             raw?.data?.appointment_id ??
             item.appointmentId,
+          product_id: raw?.product_id ?? raw?.data?.product_id,
+          prescription_id:
+            raw?.prescription_id ?? raw?.data?.prescription_id,
+          diet_id: raw?.diet_id ?? raw?.data?.diet_id,
+          doctor_id: raw?.doctor_id ?? raw?.data?.doctor_id,
         });
 
-        // If push payload has a route / entity id, go straight there
+        // Prefer deep-link navigation for any typed notification
         if (
           payload.route ||
+          payload.screen ||
           payload.order_id ||
           payload.appointment_id ||
-          payload.screen
+          payload.product_id ||
+          payload.prescription_id ||
+          payload.diet_id ||
+          payload.doctor_id ||
+          payload.type
         ) {
           handleNotificationNavigation(
             props.navigation ?? navigationRef,

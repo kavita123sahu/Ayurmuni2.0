@@ -51,23 +51,17 @@ type DetailState = {
   reward?: Reward | null;
 };
 
-const isReferralItem = (r: Reward) => {
-  const trigger = String(r.trigger || '').toLowerCase();
+const isRewardsScreenItem = (r: Reward) => {
   const source = String(r.source || '').toLowerCase();
   const couponSource = String(r.coupon?.source || '').toLowerCase();
-  const category = String(
-    (r as any)?.category ||
-      (r.coupon as any)?.category ||
-      (r as any)?.reward_category ||
-      '',
-  ).toLowerCase();
-  const title = String(r.title || '').toLowerCase();
+  const trigger = String(r.trigger || '').toLowerCase();
   return (
-    trigger === 'referral' ||
     source === 'referral' ||
+    source === 'reward' ||
     couponSource === 'referral' ||
-    category === 'referral' ||
-    title.includes('referral')
+    couponSource === 'reward' ||
+    trigger === 'referral' ||
+    trigger === 'reward'
   );
 };
 
@@ -88,7 +82,6 @@ const RewardsScreen = ({ navigation }: any) => {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      // Profile Rewards = referral grants only
       const rewardPayload = await fetchRewards();
       setRewards(rewardPayload.rewards);
     } finally {
@@ -105,15 +98,35 @@ const RewardsScreen = ({ navigation }: any) => {
     }, [load, rewards.length]),
   );
 
-  /** Profile screen: referral rewards only */
+  /** Profile Rewards: source = referral | reward only */
   const displayRewards = useMemo(
-    () => rewards.filter(r => r.coupon && isReferralItem(r)),
+    () => rewards.filter(r => r.coupon && isRewardsScreenItem(r)),
     [rewards],
   );
 
   const chips: FilterChip[] = useMemo(() => {
-    // Profile Rewards = referral category only
-    return [{ key: 'all', label: 'Referral', match: () => true }];
+    // Only Referral / Reward tabs — no other source chips
+    return [
+      { key: 'all', label: 'All', match: () => true },
+      {
+        key: 'referral',
+        label: 'Referral',
+        match: r => {
+          const source = String(r.source || r.coupon?.source || '').toLowerCase();
+          const trigger = String(r.trigger || '').toLowerCase();
+          return source === 'referral' || trigger === 'referral';
+        },
+      },
+      {
+        key: 'reward',
+        label: 'Reward',
+        match: r => {
+          const source = String(r.source || r.coupon?.source || '').toLowerCase();
+          const trigger = String(r.trigger || '').toLowerCase();
+          return source === 'reward' || trigger === 'reward';
+        },
+      },
+    ];
   }, []);
 
   const activeFilter = chips.find(c => c.key === filterKey) || chips[0];
@@ -205,7 +218,7 @@ const RewardsScreen = ({ navigation }: any) => {
         backgroundColor={SCREEN_THEME.statusBarBackground}
       />
       <AppHeader
-        title="Referral Rewards"
+        title="My Rewards"
         onLeftPress={() => navigation.goBack()}
       />
 
@@ -262,7 +275,7 @@ const RewardsScreen = ({ navigation }: any) => {
           ListEmptyComponent={
             <EmptyState
               iconName="trophy"
-              title="No referral rewards yet"
+              title="No rewards yet"
               subtitle="Referral coupons you earn will show up here."
               style={{ marginTop: 40 }}
             />

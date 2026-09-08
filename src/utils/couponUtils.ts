@@ -406,3 +406,13 @@ export const couponSourceLabel = (source: string) => {
   if (key === 'campaign') return 'Campaign';
   return key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Offer';
 };
+
+/** Checkout (order + consultation): only admin-sourced coupons */
+export const isAdminSourceCoupon = (coupon: Coupon | null | undefined) =>
+  String(coupon?.source || '').toLowerCase() === 'admin';
+
+/** Rewards screen: referral + reward sources */
+export const isRewardsScreenSource = (source: string | null | undefined) => {
+  const key = String(source || '').toLowerCase();
+  return key === 'referral' || key === 'reward';
+};

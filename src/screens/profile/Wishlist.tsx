@@ -8,6 +8,7 @@ import { WishlistSkeleton } from '../../simmerScreen/ShimmerHook';
 import EmptyState from '../../components/EmptyState';
 import * as _PRODUCT_SERVICES from '../../services/ProductServices';
 import { useWishlistSync } from '../../hooks/useWishlistSync';
+import { Colors } from '../../common/Colors';
 
 const Wishlist = (props: any) => {
   const [wishlistData, setWishlistData] = useState<any[]>([]);
@@ -95,7 +96,7 @@ export default Wishlist;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
   content: {
     flex: 1,

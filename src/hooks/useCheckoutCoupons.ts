@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCoupons, validateCoupon } from '../services/CouponServices';
-import { fetchRewards } from '../services/RewardServices';
 import {
   calcCouponDiscount,
   couponMatchesScope,
   findCouponByCode,
+  isAdminSourceCoupon,
   type Coupon,
   type CouponScope,
 } from '../utils/couponUtils';
@@ -27,25 +27,16 @@ export const filterEligibleCoupons = (
       couponMatchesScope(item, scope) &&
       calcCouponDiscount(item, subtotal).ok,
   );
-
-const mergeByCode = (lists: Coupon[][]): Coupon[] => {
-  const seen = new Set<string>();
-  const out: Coupon[] = [];
-  lists.flat().forEach(item => {
-    const key = item.code || item.id;
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    out.push(item);
-  });
-  return out;
 };
 
-const isRewardSourceCoupon = (coupon: Coupon) => {
-  const source = String(coupon.source || '').toLowerCase();
-  return (
-    source === 'referral' || source === 'reward' || source === 'loyalty'
+/**
+ * Order + consultation share the same rule:
+ * show only source=admin coupons that match applies_to for the scope.
+ */
+const filterCheckoutCoupons = (list: Coupon[], scope: CouponScope) =>
+  list.filter(
+    item => isAdminSourceCoupon(item) && couponMatchesScope(item, scope),
   );
-};
 
 export const useCheckoutCoupons = (
   scope: CouponScope,
@@ -62,41 +53,9 @@ export const useCheckoutCoupons = (
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Scoped coupon list from promotions/coupons/
       const list = await fetchCoupons(scope);
-
-      // Order checkout only: also merge referral/reward grants for orders
-      // Consultation: consult coupons only (no rewards merge)
-      let rewardCoupons: Coupon[] = [];
-      if (scope === 'product') {
-        const rewardPayload = await fetchRewards();
-        rewardCoupons = (rewardPayload.rewards || [])
-          .map(r => r.coupon)
-          .filter((c): c is Coupon => Boolean(c))
-          // Rewards on order checkout: order + both only
-          .filter(c => couponMatchesScope(c, 'product'));
-      }
-
-      // Strict applies_to gate:
-      // product → order | both ; consultation → consultation/consult | both
-      const merged = mergeByCode([list, rewardCoupons]).filter(item =>
-        couponMatchesScope(item, scope),
-      );
-
-      // Consultation checkout: drop referral/reward sources — consult offers only
-      const scoped =
-        scope === 'consultation'
-          ? merged.filter(item => {
-              const source = String(item.source || '').toLowerCase();
-              return (
-                source !== 'referral' &&
-                source !== 'reward' &&
-                source !== 'loyalty'
-              );
-            })
-          : merged;
-
-      setAllCoupons(scoped);
+      // Same logic for order + consultation: admin source only
+      setAllCoupons(filterCheckoutCoupons(list, scope));
     } finally {
       setLoading(false);
     }
@@ -131,8 +90,6 @@ export const useCheckoutCoupons = (
         scope,
       });
 
-      // Only apply when validate API succeeds. Never local-fallback —
-      // that caused "valid in UI" then 400 on order/book-slot.
       if (!validated.ok || !validated.coupon) {
         setApplied(null);
         setValidatedDiscount(null);
@@ -153,11 +110,12 @@ export const useCheckoutCoupons = (
         return { ok: false, discount: 0, coupon: null, error: msg };
       }
 
-      // Consultation checkout: referral/reward coupons belong on orders / profile
-      if (scope === 'consultation' && isRewardSourceCoupon(coupon)) {
+      // Checkout only accepts admin-sourced coupons (order + consultation)
+      if (!isAdminSourceCoupon(coupon)) {
         setApplied(null);
         setValidatedDiscount(null);
-        const msg = 'Use a consultation coupon here. Rewards apply on orders.';
+        const msg =
+          'This coupon is not available at checkout. Check Rewards for referral and reward coupons.';
         setError(msg);
         return { ok: false, discount: 0, coupon: null, error: msg };
       }
@@ -183,7 +141,7 @@ export const useCheckoutCoupons = (
       }
       return { ok: true, discount, coupon };
     },
-    [allCoupons, coupons, scope, subtotal],
+    [allCoupons, scope, subtotal],
   );
 
   const remove = useCallback(() => {
