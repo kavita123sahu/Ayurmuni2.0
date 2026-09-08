@@ -1,5 +1,3 @@
-// BookingConfirmScreen.tsx
-
 import React, {
     useCallback,
     useEffect,
@@ -16,37 +14,27 @@ import {
     Image,
     ActivityIndicator,
     BackHandler,
-    Alert,
     Modal,
     ScrollView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
+import RazorpayCheckout from 'react-native-razorpay';
 
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
-import {
-    SafeAreaView,
-} from 'react-native-safe-area-context';
-
-import {
-    useFocusEffect,
-} from '@react-navigation/native';
-
-import RazorpayCheckout from 'react-native-razorpay';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
-import { Images } from '../../common/Images';
-
-import {
-    showSuccessToast,
-} from '../../config/Key';
-import { Ionicons } from '../../common/Vector';
+import { showSuccessToast } from '../../config/Key';
 import { openRazorpayPayment } from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
-import BackIconButton from '../../components/BackIconButton';
 import { formatTo12Hour } from '../../common/DataInterface';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import CouponApplyCard from '../../components/CouponApplyCard';
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import TablerIcon from '../../components/TablerIcon';
+import AppHeader from '../../components/AppHeader';
+import { getDoctorDisplayName } from '../../utils/doctorUtils';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 /** Persists first book-slot payment so a return visit can call retry. */
@@ -131,46 +119,75 @@ const clearPendingConsultPayment = async (
     }
 };
 
-/* -------------------------------------------------------------------------- */
-/*                                   SCREEN                                   */
-/* -------------------------------------------------------------------------- */
+const resolveProfileImageUri = (doctor: any): string => {
+    const img = doctor?.profile_image;
+    if (!img) return '';
+    if (typeof img === 'string') return img;
+    return String(img?.url || img?.uri || img?.media_url || '').trim();
+};
 
-const RazorpayScreen = ({
-    route,
-    navigation,
-}: any) => {
+const formatDisplayDate = (value?: string) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        weekday: 'short',
+    });
+};
 
+const RazorpayScreen = ({ route, navigation }: any) => {
     const {
         doctorInfo,
         slotId,
         date,
         concern,
         patientsList,
-        selectedTime, medical_record_ids, medical_records = [],
+        selectedTime,
+        medical_record_ids,
+        medical_records = [],
     } = route?.params || {};
 
+    const insets = useSafeAreaInsets();
+    const footerBottomPad = Math.max(insets.bottom, 8);
 
-    console.log("doctorInfodoctorInfodoctorInfo",
-        patientsList,
-    )
-
-
-
-    /* -------------------------------------------------------------------------- */
-    /*                                   STATES                                   */
-    /* -------------------------------------------------------------------------- */
-
-    const [loading, setLoading] =
-        useState(false);
-
-    const [isVerifyingPayment, setIsVerifyingPayment] =
-        useState(false);
-
-    const paymentStartedRef =
-        useRef(false);
-
+    const [loading, setLoading] = useState(false);
+    const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+    const paymentStartedRef = useRef(false);
     const [feeQuote, setFeeQuote] = useState<FeeQuote | null>(null);
     const [feeQuoteLoading, setFeeQuoteLoading] = useState(true);
+
+    const doctorName = useMemo(
+        () => getDoctorDisplayName(doctorInfo),
+        [doctorInfo],
+    );
+    const profileImageUri = useMemo(
+        () => resolveProfileImageUri(doctorInfo),
+        [doctorInfo],
+    );
+    const qualification = useMemo(
+        () =>
+            String(
+                doctorInfo?.qualification ||
+                    doctorInfo?.designation ||
+                    '',
+            ).trim(),
+        [doctorInfo],
+    );
+    const patientName = useMemo(
+        () =>
+            `${patientsList?.first_name || ''} ${patientsList?.last_name || ''}`.trim() ||
+            patientsList?.full_name ||
+            'Patient',
+        [patientsList],
+    );
+    const timeLabel = useMemo(
+        () => formatTo12Hour(selectedTime) || selectedTime || '—',
+        [selectedTime],
+    );
+    const dateLabel = useMemo(() => formatDisplayDate(date) || date || '—', [date]);
 
     const loadFeeQuote = useCallback(async () => {
         const id = slotId?.id;
@@ -181,7 +198,6 @@ const RazorpayScreen = ({
         setFeeQuoteLoading(true);
         try {
             const response = await _CONSULT_SERVICES.getConsultationFeeQuote(id);
-            console.log("feeQuoteResponse", response);
             if (response?.success && response?.data) {
                 const d = response.data;
                 setFeeQuote({
@@ -211,7 +227,6 @@ const RazorpayScreen = ({
         loadFeeQuote();
     }, [loadFeeQuote]);
 
-    // Coupon reduces consultation fee first; GST / platform % apply on that amount
     const consultationFee = useMemo(() => {
         if (feeQuote) return feeQuote.consultation_fee;
         return roundMoney(Number(slotId?.amount || 0));
@@ -231,11 +246,7 @@ const RazorpayScreen = ({
         const gstPercent = feeQuote?.gst_percent ?? 0;
         const platformPercent = feeQuote?.platform_fee_percent ?? 0;
         const convenience = feeQuote?.convenience ?? 0;
-        const discount = Math.min(
-            roundMoney(couponDiscount),
-            consultationFee,
-        );
-        // GST + platform fee are always on the post-coupon amount
+        const discount = Math.min(roundMoney(couponDiscount), consultationFee);
         const feeAfterDiscount = roundMoney(
             Math.max(0, consultationFee - discount),
         );
@@ -284,23 +295,14 @@ const RazorpayScreen = ({
     useFocusEffect(
         React.useCallback(() => {
             if (!isVerifyingPayment) return;
-
             const onBackPress = () => true;
-
             const subscription = BackHandler.addEventListener(
                 'hardwareBackPress',
                 onBackPress,
             );
-
-            return () => {
-                subscription.remove();
-            };
+            return () => subscription.remove();
         }, [isVerifyingPayment]),
     );
-
-    /* -------------------------------------------------------------------------- */
-    /*                              PAYMENT HANDLER                               */
-    /* -------------------------------------------------------------------------- */
 
     const handlePayment = async () => {
         if (loading || paymentStartedRef.current) return;
@@ -311,20 +313,13 @@ const RazorpayScreen = ({
 
             const currentSlotId = slotId?.id;
             const pendingPayment = await getPendingConsultPayment(currentSlotId);
-            console.log('pendingPayment', pendingPayment);
-            // Retry only when a payment/appointment was already created for this slot
+
             let paymentResponse: any;
             if (pendingPayment?.appointment_id) {
-                console.log(
-                    'CONSULT_PAYMENT_RETRY =>',
-                    pendingPayment.appointment_id,
-                );
                 paymentResponse =
                     await _CONSULT_SERVICES.retryConsultationPayment(
                         pendingPayment.appointment_id,
                     );
-
-                console.log('CONSULT_PAYMENT_RETRY_RESPONSE =>', paymentResponse);
             } else {
                 paymentResponse =
                     await _CONSULT_SERVICES.createConsultationPayment({
@@ -335,9 +330,7 @@ const RazorpayScreen = ({
                     });
             }
 
-            console.log('bookslottttttornottt', paymentResponse);
             if (!paymentResponse?.success) {
-                // Stale local pending — clear so next attempt can create fresh
                 if (pendingPayment?.appointment_id) {
                     await clearPendingConsultPayment(currentSlotId);
                 }
@@ -352,7 +345,6 @@ const RazorpayScreen = ({
                 paymentData?.consultation_id ||
                 pendingPayment?.appointment_id;
 
-            // Persist so going back + returning uses retry API next time
             await savePendingConsultPayment(
                 currentSlotId,
                 appointmentId,
@@ -368,7 +360,7 @@ const RazorpayScreen = ({
                 key: paymentData?.razorpay_key,
                 amount: Number(paymentData?.amount) * 100,
                 order_id: paymentData?.razorpay_order_id,
-                name: doctorInfo?.full_name,
+                name: doctorInfo?.full_name || doctorName,
                 email: doctorInfo?.email || 'test@gmail.com',
                 contact: `91${contactNumber}`,
                 themeColor: Colors.primaryColor,
@@ -387,8 +379,6 @@ const RazorpayScreen = ({
                         });
 
                     setIsVerifyingPayment(false);
-
-                    console.log('verfiyResposne', verifyResponse);
 
                     const SlotsDetail = verifyResponse?.data;
                     if (verifyResponse?.success) {
@@ -418,7 +408,6 @@ const RazorpayScreen = ({
                             SlotsDetail,
                         });
                     } else {
-                        console.log('noooooooooooooooo');
                         setIsVerifyingPayment(false);
                         showSuccessToast('Payment verification failed', 'error');
                     }
@@ -427,9 +416,6 @@ const RazorpayScreen = ({
                     setIsVerifyingPayment(false);
                     paymentStartedRef.current = false;
 
-                    console.log('Razorpay Error:', error);
-
-                    // Keep pending payment so next visit for same slot uses retry API
                     if (
                         error?.code === RazorpayCheckout.PAYMENT_CANCELLED ||
                         error?.description?.toLowerCase().includes('cancel') ||
@@ -446,7 +432,6 @@ const RazorpayScreen = ({
                             index: 0,
                             routes: [{ name: 'HomeScreen' }],
                         });
-
                         return;
                     }
 
@@ -454,7 +439,6 @@ const RazorpayScreen = ({
                 });
         } catch (error) {
             setIsVerifyingPayment(false);
-
             showSuccessToast('Something went wrong', 'error');
         } finally {
             setLoading(false);
@@ -462,156 +446,232 @@ const RazorpayScreen = ({
         }
     };
 
-    const CommonLabelText = ({
-        label,
-        value,
-    }: {
-        label: string;
-        value: string;
-    }) => {
-        return (
-            <View style={styles.infoRow}>
-                <Text style={styles.label}>{label}</Text>
-                <Text style={styles.value} numberOfLines={1}>
-                    {value}
-                </Text>
-            </View>
-        );
-    };
-
-
-    /* -------------------------------------------------------------------------- */
-    /*                                   RENDER                                   */
-    /* -------------------------------------------------------------------------- */
+    const payDisabled = loading || feeQuoteLoading;
 
     return (
         <>
             {!isVerifyingPayment && (
-                <SafeAreaView style={styles.container}>
-
+                <SafeAreaView
+                    style={styles.safeArea}
+                    edges={['top', 'left', 'right']}
+                >
                     <StatusBar
                         backgroundColor="#FFFFFF"
                         barStyle="dark-content"
                     />
 
-                    {/* HEADER */}
+                    <AppHeader
+                        title="Confirm Booking"
+                        onLeftPress={() => {
+                            if (isVerifyingPayment) return;
+                            navigation.goBack();
+                        }}
+                    />
 
-                    <View style={styles.header}>
-
-                        {/* {
-                    !paymentProcessing && ( */}
-
-                        <BackIconButton
-                            disabled={isVerifyingPayment}
-                            onPress={() => {
-                                if (isVerifyingPayment) return;
-                                navigation.goBack();
-                            }}
-                        />
-
-                        {/* <BackIconButton onPress={() => navigation.goBack()} /> */}
-                        {/* )
-                } */}
-
-                        <Text style={styles.headerTitle}>
-                            Confirm Booking
-                        </Text>
-
-                        <View style={{ width: 40 }} />
-
-                    </View>
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
                     >
-                        <View style={styles.card}>
-                            <View style={styles.row}>
-                                {doctorInfo?.profile_image ? (
-                                    <View style={[styles.avatarFallback, styles.avatarImageWrap]}>
+                        {/* Doctor hero */}
+                        <LinearGradient
+                            colors={['#E8F8F2', '#FFFFFF']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                            style={styles.heroCard}
+                        >
+                            <View style={styles.heroRow}>
+                                <View style={styles.avatarWrap}>
+                                    {profileImageUri ? (
                                         <Image
-                                            source={{ uri: doctorInfo?.profile_image }}
+                                            source={{ uri: profileImageUri }}
                                             style={styles.avatar}
                                         />
-                                    </View>
-                                ) : (
-                                    <View style={styles.avatarFallback}>
-                                        <Text style={styles.avatarLetter}>
-                                            {doctorInfo?.full_name?.charAt(0)?.toUpperCase() || ''}
-                                        </Text>
-                                    </View>
-                                )}
+                                    ) : (
+                                        <View style={styles.avatarFallback}>
+                                            <Text style={styles.avatarLetter}>
+                                                {doctorName
+                                                    ?.charAt(0)
+                                                    ?.toUpperCase() || 'D'}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
 
-                                <View style={styles.doctorMeta}>
+                                <View style={styles.heroInfo}>
                                     <Text style={styles.doctorName} numberOfLines={2}>
-                                        {doctorInfo?.full_name}
+                                        {doctorName}
                                     </Text>
-                                    {!!doctorInfo?.designation && (
-                                        <Text style={styles.speciality} numberOfLines={1}>
-                                            {doctorInfo?.designation}
+                                    {!!qualification && (
+                                        <Text
+                                            style={styles.qualification}
+                                            numberOfLines={1}
+                                        >
+                                            {qualification}
                                         </Text>
                                     )}
+                                    <View style={styles.secureChip}>
+                                        <TablerIcon
+                                            name="shield"
+                                            size={11}
+                                            color={Colors.primaryColor}
+                                        />
+                                        <Text style={styles.secureChipText}>
+                                            Secure checkout
+                                        </Text>
+                                    </View>
                                 </View>
                             </View>
 
-                            <View style={styles.divider} />
-
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>Date</Text>
-                                <Text style={styles.value}>{date}</Text>
+                            <View style={styles.slotStrip}>
+                                <View style={styles.slotItem}>
+                                    <View
+                                        style={[
+                                            styles.slotIcon,
+                                            { backgroundColor: '#EAF8F4' },
+                                        ]}
+                                    >
+                                        <TablerIcon
+                                            name="calendar"
+                                            size={14}
+                                            color={Colors.primaryColor}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.slotLabel}>Date</Text>
+                                        <Text
+                                            style={styles.slotValue}
+                                            numberOfLines={1}
+                                        >
+                                            {dateLabel}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <View style={styles.slotDivider} />
+                                <View style={styles.slotItem}>
+                                    <View
+                                        style={[
+                                            styles.slotIcon,
+                                            { backgroundColor: '#E0F2FE' },
+                                        ]}
+                                    >
+                                        <TablerIcon
+                                            name="clock"
+                                            size={14}
+                                            color="#0369A1"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.slotLabel}>Time</Text>
+                                        <Text
+                                            style={styles.slotValue}
+                                            numberOfLines={1}
+                                        >
+                                            {timeLabel}
+                                        </Text>
+                                    </View>
+                                </View>
                             </View>
+                        </LinearGradient>
 
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>Time</Text>
-                                <Text style={styles.value}>
-                                    {formatTo12Hour(selectedTime)}
+                        {/* Patient + concern + docs */}
+                        <View style={styles.card}>
+                            <View style={styles.sectionHeader}>
+                                <View
+                                    style={[
+                                        styles.sectionIcon,
+                                        { backgroundColor: '#EEF2FF' },
+                                    ]}
+                                >
+                                    <TablerIcon
+                                        name="user"
+                                        size={14}
+                                        color="#4F46E5"
+                                    />
+                                </View>
+                                <Text style={styles.sectionTitle}>
+                                    Patient details
                                 </Text>
                             </View>
 
-                            {concern ? (
-                                <View style={styles.concernSection}>
-                                    <Text style={styles.label}>Concern</Text>
-                                    <Text style={styles.concernValue}>{concern}</Text>
+                            <View style={styles.patientRow}>
+                                <View style={styles.patientAvatar}>
+                                    <Text style={styles.patientInitial}>
+                                        {patientName?.charAt(0)?.toUpperCase() ||
+                                            'P'}
+                                    </Text>
+                                </View>
+                                <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Text
+                                        style={styles.patientName}
+                                        numberOfLines={1}
+                                    >
+                                        {patientName}
+                                    </Text>
+                                    <Text
+                                        style={styles.patientMeta}
+                                        numberOfLines={1}
+                                    >
+                                        {[
+                                            patientsList?.phone_number,
+                                            patientsList?.relation,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · ') || '—'}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {!!concern ? (
+                                <View style={styles.concernBox}>
+                                    <Text style={styles.concernLabel}>
+                                        Concern
+                                    </Text>
+                                    <Text style={styles.concernValue}>
+                                        {concern}
+                                    </Text>
                                 </View>
                             ) : null}
 
-                            <View style={styles.divider} />
-
-
-
-                            <Text style={styles.label1}>Patient</Text>
-                            <CommonLabelText
-                                label="Name"
-                                value={`${patientsList?.first_name || ''} ${patientsList?.last_name || ''}`.trim()}
-                            />
-                            <CommonLabelText label="Mobile" value={patientsList?.phone_number} />
-                            <CommonLabelText label="Relation" value={patientsList?.relation} />
-
-                            {Array.isArray(medical_records) && medical_records.length > 0 ? (
+                            {Array.isArray(medical_records) &&
+                            medical_records.length > 0 ? (
                                 <View style={styles.docsSection}>
-                                    <Text style={styles.label1}>Attached Documents</Text>
-                                    {medical_records.map((doc: any, index: number) => (
-                                        <View
-                                            key={String(doc?.id ?? index)}
-                                            style={styles.docRow}
-                                        >
-                                            <TablerIcon
-                                                name="file"
-                                                size={16}
-                                                color={Colors.primaryColor}
-                                            />
-                                            <Text style={styles.docName} numberOfLines={1}>
-                                                {doc?.description ||
-                                                    doc?.file_name ||
-                                                    `Document ${index + 1}`}
-                                            </Text>
-                                            <Text style={styles.docType}>
-                                                {String(doc?.file_type || 'file').toUpperCase()}
-                                            </Text>
-                                        </View>
-                                    ))}
+                                    <Text style={styles.docsTitle}>
+                                        Attached documents
+                                    </Text>
+                                    {medical_records.map(
+                                        (doc: any, index: number) => (
+                                            <View
+                                                key={String(doc?.id ?? index)}
+                                                style={styles.docRow}
+                                            >
+                                                <TablerIcon
+                                                    name="file"
+                                                    size={15}
+                                                    color={Colors.primaryColor}
+                                                />
+                                                <Text
+                                                    style={styles.docName}
+                                                    numberOfLines={1}
+                                                >
+                                                    {doc?.description ||
+                                                        doc?.file_name ||
+                                                        `Document ${index + 1}`}
+                                                </Text>
+                                                <Text style={styles.docType}>
+                                                    {String(
+                                                        doc?.file_type || 'file',
+                                                    ).toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        ),
+                                    )}
                                 </View>
                             ) : null}
+                        </View>
 
+                        {/* Coupons */}
+                        <View style={styles.card}>
                             <CouponApplyCard
                                 coupons={coupons}
                                 loading={couponsLoading}
@@ -624,15 +684,31 @@ const RazorpayScreen = ({
                             />
                         </View>
 
-
-                        <View style={styles.paymentCard}>
-                            <Text style={styles.summaryTitle}>Amount Summary</Text>
+                        {/* Amount summary */}
+                        <View style={styles.card}>
+                            <View style={styles.sectionHeader}>
+                                <View
+                                    style={[
+                                        styles.sectionIcon,
+                                        { backgroundColor: '#ECFDF5' },
+                                    ]}
+                                >
+                                    <TablerIcon
+                                        name="receipt"
+                                        size={14}
+                                        color="#15803D"
+                                    />
+                                </View>
+                                <Text style={styles.sectionTitle}>
+                                    Amount summary
+                                </Text>
+                            </View>
 
                             {feeQuoteLoading ? (
                                 <ActivityIndicator
                                     size="small"
                                     color={Colors.primaryColor}
-                                    style={{ marginVertical: 12 }}
+                                    style={{ marginVertical: 14 }}
                                 />
                             ) : (
                                 <>
@@ -649,17 +725,31 @@ const RazorpayScreen = ({
 
                                     {feeBreakdown.discount > 0 ? (
                                         <View style={styles.summaryRow}>
-                                            <Text style={styles.summaryDiscountLabel}>
-                                                Coupon discount
+                                            <Text
+                                                style={
+                                                    styles.summaryDiscountLabel
+                                                }
+                                            >
+                                                Coupon
                                                 {appliedCoupon?.code
                                                     ? ` (${appliedCoupon.code})`
                                                     : ''}
                                             </Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <Text style={styles.summaryDiscountValue}>− </Text>
+                                            <View style={styles.discountRow}>
+                                                <Text
+                                                    style={
+                                                        styles.summaryDiscountValue
+                                                    }
+                                                >
+                                                    −{' '}
+                                                </Text>
                                                 <RupeeAmount
-                                                    value={feeBreakdown.discount}
-                                                    style={styles.summaryDiscountValue}
+                                                    value={
+                                                        feeBreakdown.discount
+                                                    }
+                                                    style={
+                                                        styles.summaryDiscountValue
+                                                    }
                                                     decimals={2}
                                                 />
                                             </View>
@@ -672,7 +762,9 @@ const RazorpayScreen = ({
                                                 After coupon
                                             </Text>
                                             <RupeeAmount
-                                                value={feeBreakdown.feeAfterDiscount}
+                                                value={
+                                                    feeBreakdown.feeAfterDiscount
+                                                }
                                                 style={styles.summaryValue}
                                                 decimals={2}
                                             />
@@ -713,28 +805,33 @@ const RazorpayScreen = ({
                                                 Convenience
                                             </Text>
                                             <RupeeAmount
-                                                value={feeBreakdown.convenience}
+                                                value={
+                                                    feeBreakdown.convenience
+                                                }
                                                 style={styles.summaryValue}
                                                 decimals={2}
                                             />
                                         </View>
                                     ) : null}
 
-                                    <View style={styles.summaryDivider} />
-
-                                    <View style={styles.amountRow}>
+                                    <LinearGradient
+                                        colors={['#ECFDF5', '#D1FAE5']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.totalStrip}
+                                    >
                                         <View>
                                             <Text style={styles.totalLabel}>
-                                                Total Amount
+                                                Total payable
                                             </Text>
-                                            <View style={styles.paymentInfo}>
-                                                <Ionicons
-                                                    name="shield-checkmark"
-                                                    size={14}
+                                            <View style={styles.secureRow}>
+                                                <TablerIcon
+                                                    name="shield"
+                                                    size={12}
                                                     color={Colors.primaryColor}
                                                 />
-                                                <Text style={styles.paymentInfoText}>
-                                                    Secure Razorpay checkout
+                                                <Text style={styles.secureText}>
+                                                    Razorpay secure
                                                 </Text>
                                             </View>
                                         </View>
@@ -742,86 +839,123 @@ const RazorpayScreen = ({
                                             value={totalAmount}
                                             style={styles.totalAmount}
                                             decimals={2}
+                                            iconSize={16}
+                                            iconColor={Colors.primaryColor}
                                         />
-                                    </View>
+                                    </LinearGradient>
                                 </>
                             )}
                         </View>
 
-                        <View style={styles.footer}>
-                            <TouchableOpacity
-                                activeOpacity={0.9}
-                                disabled={loading || feeQuoteLoading}
-                                onPress={handlePayment}
-                                style={[
-                                    styles.payButton,
-                                    (loading || feeQuoteLoading) && styles.payButtonDisabled,
-                                ]}
-                            >
-                                {loading ? (
-                                    <View style={styles.loaderRow}>
-                                        <ActivityIndicator size="small" color="#FFFFFF" />
-                                        <Text style={styles.payText}>Processing...</Text>
-                                    </View>
-                                ) : (
-                                    <View style={styles.buttonContent}>
-                                        <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-                                        <Text style={styles.payText}>Pay Now</Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                activeOpacity={0.8}
-                                style={styles.cancelButton}
-                                onPress={() => navigation.goBack()}
-                            >
-                                <Text style={styles.cancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <View style={{ height: 108 }} />
                     </ScrollView>
 
+                    {/* Sticky pay bar */}
+                    <View
+                        style={[
+                            styles.stickyBar,
+                            { paddingBottom: footerBottomPad },
+                        ]}
+                    >
+                        <View style={styles.stickyRow}>
+                            <View style={styles.stickyPriceBox}>
+                                {feeQuoteLoading ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color={Colors.primaryColor}
+                                    />
+                                ) : (
+                                    <RupeeAmount
+                                        value={totalAmount}
+                                        style={styles.stickyPrice}
+                                        decimals={2}
+                                        iconSize={16}
+                                        iconColor={Colors.primaryColor}
+                                    />
+                                )}
+                                <Text style={styles.stickyHint}>
+                                    Total payable
+                                </Text>
+                            </View>
 
-                </SafeAreaView>)}
+                            <TouchableOpacity
+                                activeOpacity={0.85}
+                                disabled={payDisabled}
+                                onPress={handlePayment}
+                                style={styles.primaryBtnWrap}
+                            >
+                                <LinearGradient
+                                    colors={
+                                        payDisabled
+                                            ? ['#6c9180', '#6c9180']
+                                            : ['#0D614E', '#14937A']
+                                    }
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.primaryBtn}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#FFFFFF"
+                                        />
+                                    ) : (
+                                        <>
+                                            <TablerIcon
+                                                name="credit-card"
+                                                size={16}
+                                                color="#FFFFFF"
+                                            />
+                                            <Text style={styles.primaryBtnText}>
+                                                Pay now
+                                            </Text>
+                                        </>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                        {/* <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.cancelLink}
+                            onPress={() => navigation.goBack()}
+                            disabled={loading}
+                        >
+                            <Text style={styles.cancelLinkText}>Cancel</Text>
+                        </TouchableOpacity> */}
+                    </View>
+                </SafeAreaView>
+            )}
 
             <Modal
                 visible={isVerifyingPayment}
                 transparent={false}
                 animationType="fade"
-                onRequestClose={() => { }}
+                onRequestClose={() => {}}
             >
                 <SafeAreaView style={styles.verificationScreen}>
                     <View style={styles.verificationContent}>
-
                         <ActivityIndicator
                             size="large"
                             color={Colors.primaryColor}
                         />
-
                         <Text style={styles.verificationTitle}>
                             Verifying Payment
                         </Text>
-
                         <Text style={styles.verificationSubtitle}>
-                            Payment is being verified.
-                            {"\n"}
-                            Please do not press Back or close the app.
-                            {"\n"}
+                            Payment is being verified.{'\n'}
+                            Please do not press Back or close the app.{'\n'}
                             This may take a few seconds.
                         </Text>
-
                         <View style={styles.verificationInfo}>
-                            <Ionicons
-                                name="shield-checkmark"
-                                size={18}
+                            <TablerIcon
+                                name="shield"
+                                size={16}
                                 color={Colors.primaryColor}
                             />
-
                             <Text style={styles.verificationInfoText}>
                                 Do not press back or close the app
                             </Text>
                         </View>
-
                     </View>
                 </SafeAreaView>
             </Modal>
@@ -831,158 +965,220 @@ const RazorpayScreen = ({
 
 export default RazorpayScreen;
 
-/* -------------------------------------------------------------------------- */
-/*                                   STYLES                                   */
-/* -------------------------------------------------------------------------- */
-
 const styles = StyleSheet.create({
-    container: {
+    safeArea: {
         flex: 1,
-        backgroundColor: '#F5F8F6',
+        backgroundColor: '#F4F7F6',
     },
-
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 4,
-    },
-
-    backIcon: {
-        width: 40,
-        height: 40,
-    },
-
-    headerTitle: {
-        fontSize: 17,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
     scrollContent: {
-        flexGrow: 1,
-        paddingBottom: 20,
+        paddingBottom: 8,
     },
 
-    card: {
-        backgroundColor: '#FFFFFF',
-        marginHorizontal: 16,
-        marginTop: 12,
-        borderRadius: 16,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+    heroCard: {
+        paddingHorizontal: 14,
+        paddingTop: 12,
+        paddingBottom: 12,
     },
-
-    row: {
+    heroRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 12,
     },
-
+    avatarWrap: {
+        width: 64,
+        height: 64,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: '#F0F7F4',
+        borderWidth: 2,
+        borderColor: '#A7E0CF',
+    },
     avatar: {
         width: '100%',
         height: '100%',
-        borderRadius: 14,
+        resizeMode: 'cover',
     },
-
-    avatarImageWrap: {
-        backgroundColor: Colors.bgcolor || '#F0F7F4',
-        overflow: 'hidden',
-        padding: 0,
-    },
-
     avatarFallback: {
-        width: 56,
-        height: 56,
-        borderRadius: 14,
+        flex: 1,
         backgroundColor: Colors.primaryColor,
-        justifyContent: 'center',
-        marginRight: 12,
         alignItems: 'center',
+        justifyContent: 'center',
     },
-
     avatarLetter: {
-        fontSize: 22,
+        fontSize: 24,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsBold,
     },
-
-    doctorMeta: {
+    heroInfo: {
         flex: 1,
         minWidth: 0,
     },
-
     doctorName: {
-        fontSize: 15,
-        color: '#0F172A',
+        fontSize: 16,
         fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+        lineHeight: 21,
     },
-
-    speciality: {
-        marginTop: 2,
+    qualification: {
+        marginTop: 1,
         fontSize: 12,
-        color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsMedium,
-    },
-
-    divider: {
-        height: 1,
-        backgroundColor: '#E8EEF2',
-        marginVertical: 12,
-    },
-
-    infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-
-    label: {
-        fontSize: 13,
         color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
     },
-
-    label1: {
-        fontSize: 12,
-        color: '#0F172A',
-        marginBottom: 6,
-        letterSpacing: 0.4,
-        textTransform: 'uppercase',
+    secureChip: {
+        marginTop: 6,
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#ECF8F3',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    secureChipText: {
+        fontSize: 10,
         fontFamily: Fonts.PoppinsSemiBold,
+        color: Colors.primaryColor,
+        includeFontPadding: false,
     },
 
-    value: {
+    slotStrip: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D7EBE3',
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+    },
+    slotItem: {
         flex: 1,
-        textAlign: 'right',
-        fontSize: 13,
-        color: '#0F172A',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    slotIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    slotDivider: {
+        width: StyleSheet.hairlineWidth,
+        height: 28,
+        backgroundColor: '#E2E8F0',
+        marginHorizontal: 8,
+    },
+    slotLabel: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
+        includeFontPadding: false,
+    },
+    slotValue: {
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    concernSection: {
-        marginTop: 4,
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#E8EEF2',
-    },
-
-    concernValue: {
-        marginTop: 4,
-        fontSize: 13,
         color: '#0F172A',
-        fontFamily: Fonts.PoppinsRegular,
+        includeFontPadding: false,
+    },
+
+    card: {
+        marginTop: 8,
+        marginHorizontal: 10,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 12,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: '#E8EEF2',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 10,
+    },
+    sectionIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+        includeFontPadding: false,
+    },
+
+    patientRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    patientAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    patientInitial: {
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#4F46E5',
+    },
+    patientName: {
+        fontSize: 14,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+    },
+    patientMeta: {
+        marginTop: 1,
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+    },
+
+    concernBox: {
+        marginTop: 10,
+        padding: 10,
+        borderRadius: 10,
+        backgroundColor: '#F8FAFC',
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: '#E2E8F0',
+    },
+    concernLabel: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#94A3B8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+        marginBottom: 3,
+    },
+    concernValue: {
+        fontSize: 12,
         lineHeight: 18,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#334155',
     },
 
     docsSection: {
         marginTop: 10,
-        marginBottom: 4,
     },
-
+    docsTitle: {
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#64748B',
+        marginBottom: 6,
+    },
     docRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -992,39 +1188,19 @@ const styles = StyleSheet.create({
         marginBottom: 6,
         borderRadius: 10,
         backgroundColor: '#F8FAFC',
-        borderWidth: 1,
+        borderWidth: StyleSheet.hairlineWidth,
         borderColor: '#E2E8F0',
     },
-
     docName: {
         flex: 1,
-        fontSize: 13,
+        fontSize: 12,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsMedium,
     },
-
     docType: {
         fontSize: 10,
         color: '#64748B',
         fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    paymentCard: {
-        backgroundColor: '#FFFFFF',
-        marginHorizontal: 16,
-        marginTop: 12,
-        borderRadius: 16,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-
-    summaryTitle: {
-        fontSize: 14,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 10,
     },
 
     summaryRow: {
@@ -1034,184 +1210,147 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         gap: 8,
     },
-
     summaryLabel: {
         flex: 1,
-        flexShrink: 1,
-        fontSize: 13,
+        fontSize: 12,
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
-        paddingRight: 4,
     },
-
     summaryValue: {
-        flexShrink: 0,
         fontSize: 13,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
-        textAlign: 'right',
     },
-
     summaryDiscountLabel: {
         flex: 1,
-        flexShrink: 1,
-        fontSize: 13,
+        fontSize: 12,
         color: '#15803D',
         fontFamily: Fonts.PoppinsMedium,
-        paddingRight: 4,
     },
-
     summaryDiscountValue: {
-        flexShrink: 0,
         fontSize: 13,
         color: '#15803D',
         fontFamily: Fonts.PoppinsSemiBold,
-        textAlign: 'right',
     },
-
-    summaryDivider: {
-        height: 1,
-        backgroundColor: '#E8EEF2',
-        marginVertical: 10,
+    discountRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-
-    amountRow: {
+    totalStrip: {
+        marginTop: 6,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 10,
     },
-
     totalLabel: {
-        fontSize: 13,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#14532D',
     },
-
+    secureRow: {
+        marginTop: 3,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    secureText: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#3F6212',
+    },
     totalAmount: {
-        fontSize: 24,
-        color: Colors.primaryColor,
+        fontSize: 20,
         fontFamily: Fonts.PoppinsBold,
-    },
-    strikeAmount: {
-        fontSize: 13,
-        color: '#94A3B8',
-        textDecorationLine: 'line-through',
-        fontFamily: Fonts.PoppinsMedium,
-        marginBottom: 2,
+        color: Colors.primaryColor,
+        includeFontPadding: false,
     },
 
-    paymentInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-
-    paymentInfoText: {
-        marginLeft: 5,
-        fontSize: 11,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    footer: {
-        marginTop: 'auto',
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 16,
-    },
-
-    payButton: {
-        height: 50,
-        borderRadius: 14,
-        backgroundColor: Colors.primaryColor,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 16,
-    },
-
-    payButtonDisabled: {
-        opacity: 0.7,
-    },
-
-    loaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    buttonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    payText: {
-        marginLeft: 8,
-        fontSize: 15,
-        color: '#FFFFFF',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    paymentProcessingContainer: {
+    stickyBar: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        paddingVertical: 20,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        marginTop: 12,
-        marginHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: '#E8F2EE',
+        paddingTop: 8,
+        paddingHorizontal: 12,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 3,
+        shadowRadius: 8,
+        elevation: 8,
     },
-
-    processingTitle: {
-        marginTop: 12,
-        fontSize: 16,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    cancelButton: {
-        marginTop: 10,
-        height: 44,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#FECACA',
-        backgroundColor: '#FEF2F2',
-        justifyContent: 'center',
+    stickyRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        gap: 10,
     },
-
-    cancelText: {
-        color: '#EF4444',
-        fontSize: 13,
+    stickyPriceBox: {
+        minWidth: 96,
+    },
+    stickyPrice: {
+        fontSize: 18,
+        fontFamily: Fonts.PoppinsBold,
+        color: Colors.primaryColor,
+        includeFontPadding: false,
+    },
+    stickyHint: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
+        includeFontPadding: false,
+    },
+    primaryBtnWrap: {
+        flex: 1,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    primaryBtn: {
+        minHeight: 50,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+    },
+    primaryBtnText: {
+        fontSize: 15,
         fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
+    },
+    cancelLink: {
+        marginTop: 6,
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    cancelLinkText: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#EF4444',
     },
 
     verificationScreen: {
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
-
     verificationContent: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 28,
     },
-
     verificationTitle: {
         marginTop: 20,
         fontSize: 20,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
     },
-
     verificationSubtitle: {
         marginTop: 8,
         fontSize: 13,
@@ -1220,7 +1359,6 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         fontFamily: Fonts.PoppinsRegular,
     },
-
     verificationInfo: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1229,10 +1367,9 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 12,
         backgroundColor: '#F5F8F6',
+        gap: 8,
     },
-
     verificationInfoText: {
-        marginLeft: 8,
         color: '#475569',
         fontSize: 12,
         fontFamily: Fonts.PoppinsMedium,

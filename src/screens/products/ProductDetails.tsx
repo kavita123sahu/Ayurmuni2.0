@@ -641,44 +641,6 @@ const ProductDetails = (props: any) => {
                         ) : null}
                     </View> */}
                 </View>
-
-                <View style={styles.trustStrip}>
-                    <View style={styles.trustItem}>
-                        <View style={[styles.trustIcon, { backgroundColor: '#E0F2FE' }]}>
-                            <TablerIcon name="truck" size={15} color="#0369A1" />
-                        </View>
-                        <Text style={styles.trustText}>
-                            {selectedVariant?.is_free_shipping ? 'Free delivery' : 'Fast delivery'}
-                        </Text>
-                    </View>
-                    <View style={styles.trustDivider} />
-                    <View style={styles.trustItem}>
-                        <View style={[styles.trustIcon, { backgroundColor: '#FEF3C7' }]}>
-                            <TablerIcon name="cash" size={15} color="#B45309" />
-                        </View>
-                        <Text style={styles.trustText}>
-                            {selectedVariant?.pay_on_delivery ? 'COD available' : 'Online pay'}
-                        </Text>
-                    </View>
-                    <View style={styles.trustDivider} />
-                    <View style={styles.trustItem}>
-                        <View style={[styles.trustIcon, { backgroundColor: '#EAF8F4' }]}>
-                            {
-                                selectedVariant?.is_returnable ? (
-                                    <TablerIcon name="refresh" size={15} color={Colors.primaryColor} />
-                                ) : (
-                                    <TablerIcon name="circle-x" size={15} color={Colors.primaryColor} style={{ backgroundColor: '#EAF8F4' }} />
-                            )
-                            }
-                        </View>
-                        <Text style={styles.trustText}>
-                            {selectedVariant?.returnable_days
-                                ? `${selectedVariant.returnable_days}D return`
-                                : selectedVariant?.is_returnable ? 'Easy returns' : 'Non-returnable'}
-                        </Text>
-                    </View>
-                </View>
-
                 {variants.length > 0 && (
                     <View style={styles.card}>
                         <View style={styles.sectionTitleRow}>
@@ -761,6 +723,44 @@ const ProductDetails = (props: any) => {
                         </ScrollView>
                     </View>
                 )}
+                <View style={styles.trustStrip}>
+                    <View style={styles.trustItem}>
+                        <View style={[styles.trustIcon, { backgroundColor: '#E0F2FE' }]}>
+                            <TablerIcon name="truck" size={15} color="#0369A1" />
+                        </View>
+                        <Text style={styles.trustText}>
+                            {selectedVariant?.is_free_shipping ? 'Free delivery' : 'Fast delivery'}
+                        </Text>
+                    </View>
+                    <View style={styles.trustDivider} />
+                    <View style={styles.trustItem}>
+                        <View style={[styles.trustIcon, { backgroundColor: '#FEF3C7' }]}>
+                            <TablerIcon name="cash" size={15} color="#B45309" />
+                        </View>
+                        <Text style={styles.trustText}>
+                            {selectedVariant?.pay_on_delivery ? 'COD available' : 'Online pay'}
+                        </Text>
+                    </View>
+                    <View style={styles.trustDivider} />
+                    <View style={styles.trustItem}>
+                        <View style={[styles.trustIcon, { backgroundColor: '#EAF8F4' }]}>
+                            {
+                                selectedVariant?.is_returnable ? (
+                                    <TablerIcon name="refresh" size={15} color={Colors.primaryColor} />
+                                ) : (
+                                    <TablerIcon name="circle-x" size={15} color={Colors.primaryColor} style={{ backgroundColor: '#EAF8F4' }} />
+                                )
+                            }
+                        </View>
+                        <Text style={styles.trustText}>
+                            {selectedVariant?.returnable_days
+                                ? `${selectedVariant.returnable_days}D return`
+                                : selectedVariant?.is_returnable ? 'Easy returns' : 'Non-returnable'}
+                        </Text>
+                    </View>
+                </View>
+
+
 
                 {(highlightLines.length > 0 || !!fullDescription) && (
                     <View style={styles.card}>
