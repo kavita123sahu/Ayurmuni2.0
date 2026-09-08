@@ -293,11 +293,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   reviewCard: {
-    backgroundColor: Colors.bgcolor,
-    marginTop: 6,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EEF2F0',
+  },
+  reviewCardLast: {
+    paddingBottom: 0,
   },
 
   reviewTop: {
@@ -309,68 +311,70 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#E6F2EF",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#EAF8F4',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   avatarText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
     color: "#0B6B57",
   },
 
   nameRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
   },
 
   name: {
-    flexShrink: 1,
+    flex: 1,
     fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: "#111",
+    color: '#0F172A',
   },
-
-  ratingBox: {
-    // alignItems: 'center',
-    // justifyContent: 'center',
-    // paddingVertical: 10,
-    // marginTop: 10,
-    // backgroundColor: '#F8F6F6',
-    borderRadius: 12,
+  miniRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  avgRating: {
-    fontSize: 40,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0D614E',
-    lineHeight: 60,
-    marginBottom: -10
-  },
-
-  totalReviews: {
-    // marginTop: 4,
-    color: '#64748B',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 20
-  },
-
-  stars: {
+  miniRatingText: {
     fontSize: 11,
-    flexShrink: 0,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#FFFFFF',
+    includeFontPadding: false,
   },
-
-  reviewText: {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#4B5563",
+  metaLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  verified: {
+    fontSize: 10,
     fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 17,
+    color: '#16A34A',
+  },
+  reviewDate: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#94A3B8',
+  },
+  reviewText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsRegular,
+    lineHeight: 18,
   },
   avatarImage: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -379,29 +383,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 6,
+    marginTop: 8,
   },
   cardImage: {
     width: 52,
     height: 52,
-    borderRadius: 10,
+    borderRadius: 8,
     backgroundColor: '#E2E8F0',
   },
   doctorReplyBox: {
-    marginTop: 6,
+    marginTop: 8,
     padding: 8,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAF9',
     borderWidth: 1,
     borderColor: '#E8F2EE',
   },
   doctorReplyLabel: {
     fontSize: 10,
+    fontSize: 10,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
     marginBottom: 2,
+    marginBottom: 2,
   },
   doctorReplyText: {
+    fontSize: 12,
+    lineHeight: 18,
     fontSize: 12,
     lineHeight: 18,
     color: '#475569',

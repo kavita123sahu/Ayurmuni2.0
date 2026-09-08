@@ -987,24 +987,57 @@ import {
     isProductLowStock,
     isProductOutOfStock,
 } from '../../utils/productStockUtils';
-import { RupeeAmount } from '../../utils/currencyUtils';
-import SectionHeader from '../../components/SectionHeader';
-import CommonModal from '../../components/LogoutModal';
+import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
+import { SCREEN } from '../../constants/responsive';
+import LinearGradient from 'react-native-linear-gradient';
 
-const Divider = () => <View style={styles.divider} />;
+const GALLERY_H = Math.round(Math.min(SCREEN.width * 0.7, 248));
 
-const InfoRow = ({ title, value }: { title: string; value?: string | null }) => {
-    if (!value) return null;
-    return (
-        <>
-            <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>{title}</Text>
-                <Text style={styles.infoValue}>{value}</Text>
-            </View>
-            <Divider />
-        </>
-    );
-};
+const SectionHeader = ({ title }: { title: string }) => (
+    <Text style={styles.sectionHeader}>{title}</Text>
+);
+
+const CompactQtyStepper = ({
+    quantity,
+    onIncrease,
+    onDecrease,
+    disabled,
+}: {
+    quantity: number;
+    onIncrease: () => void;
+    onDecrease: () => void;
+    disabled?: boolean;
+}) => (
+    <View style={[styles.qtyStepper, disabled && styles.qtyStepperDisabled]}>
+        <TouchableOpacity
+            onPress={onDecrease}
+            disabled={disabled || quantity <= 1}
+            style={styles.qtyBtn}
+            hitSlop={8}
+        >
+            <TablerIcon
+                name="minus"
+                size={14}
+                color={disabled || quantity <= 1 ? 'rgba(255,255,255,0.4)' : '#FFFFFF'}
+                strokeWidth={2.6}
+            />
+        </TouchableOpacity>
+        <Text style={styles.qtyValue}>{quantity}</Text>
+        <TouchableOpacity
+            onPress={onIncrease}
+            disabled={disabled}
+            style={styles.qtyBtn}
+            hitSlop={8}
+        >
+            <TablerIcon
+                name="plus"
+                size={14}
+                color={disabled ? 'rgba(255,255,255,0.4)' : '#FFFFFF'}
+                strokeWidth={2.6}
+            />
+        </TouchableOpacity>
+    </View>
+);
 
 type DetailSheetKey =
     | 'description'
@@ -1056,7 +1089,6 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        // Quantity picker is "how many to add", always start at 1 for the selected variant
         setQuantity(1);
     }, [selectedVariant?.id]);
 
@@ -1107,7 +1139,7 @@ const ProductDetails = (props: any) => {
     const increaseQty = () => setQuantity((q: number) => q + 1);
     const decreaseQty = () => setQuantity((q: number) => (q > 1 ? q - 1 : 1));
 
-    const requestAddToCart = async () => {
+    const handleAddToCart = async (goToCart = false) => {
         if (!(await requireAuth('Please login to add items to cart'))) return;
 
         const productForRx = {
@@ -1121,21 +1153,6 @@ const ProductDetails = (props: any) => {
             return;
         }
 
-        setShowAddConfirm(true);
-    };
-
-    const handleAddToCart = async () => {
-        setShowAddConfirm(false);
-
-        const productForRx = {
-            ...ProductData,
-            ...selectedVariant,
-            prescription_required:
-                selectedVariant?.prescription_required ??
-                ProductData?.prescription_required,
-        };
-
-        // Cache real cover before cart API returns placeholder image_url
         if (selectedVariant?.id && coverImageUri) {
             cacheVariantImage(selectedVariant.id, coverImageUri);
         } else {
@@ -1724,77 +1741,45 @@ const ProductDetails = (props: any) => {
             <View
                 style={[
                     styles.stickyBar,
-                    { paddingBottom: Math.max(insets.bottom, 10) },
+                    { paddingBottom: Math.max(insets.bottom, 8) },
                 ]}
             >
-                <View style={styles.stickyPriceBox}>
-                    <Text style={styles.stickyPriceLabel}>Total</Text>
-                    <RupeeAmount
-                        value={totalPrice.toFixed(0)}
-                        style={styles.stickyPriceValue}
-                    />
-                </View>
-                <TouchableOpacity
-                    style={[
-                        styles.addToCartBtn,
-                        (isOutOfStock || isAdding) && styles.addToCartBtnDisabled,
-                    ]}
-                    onPress={requestAddToCart}
-                    activeOpacity={0.85}
-                    disabled={isOutOfStock || isAdding}
-                >
-                    {isAdding ? (
-                        <View style={styles.addToCartInner}>
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                            <Text style={styles.addToCartText}>Adding…</Text>
-                        </View>
-                    ) : (
-                        <View style={styles.addToCartInner}>
-                            <TablerIcon name="shopping-cart" size={18} color="#FFFFFF" />
-                            <Text style={styles.addToCartText}>
-                                {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                <View style={styles.stickyRow}>
+                    <View style={styles.stickyPriceBox}>
+                        <RupeeAmount
+                            value={totalPrice.toFixed(0)}
+                            style={styles.stickyPrice}
+                        />
+                        {existingCartQty > 0 ? (
+                            <Text style={styles.stickyHint}>{existingCartQty} in cart</Text>
+                        ) : saveAmount > 0 ? (
+                            <Text style={styles.stickySave}>
+                                Save {formatRupee(saveAmount * quantity)}
                             </Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            <CommonModal
-                visible={showAddConfirm}
-                title="Add to Cart?"
-                subtitle={addConfirmSubtitle}
-                icon="🛒"
-                cancelText="No"
-                confirmText="Yes"
-                loading={isAdding}
-                onClose={() => setShowAddConfirm(false)}
-                onConfirm={handleAddToCart}
-            />
-
-            {/* Detail bottom sheet modal */}
-            <Modal
-                visible={Boolean(activeSheet)}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setActiveSheet(null)}
-            >
-                <Pressable
-                    style={styles.sheetOverlay}
-                    onPress={() => setActiveSheet(null)}
-                >
-                    <Pressable style={styles.sheetCard} onPress={e => e.stopPropagation()}>
-                        <View style={styles.sheetHandle} />
-                        <View style={styles.sheetHeader}>
-                            <View style={styles.sheetTitleRow}>
-                                {sheetMeta ? (
-                                    <TablerIcon
-                                        name={sheetMeta.icon as any}
-                                        size={18}
-                                        color={Colors.primaryColor}
-                                    />
-                                ) : null}
-                                <Text style={styles.sheetTitle}>
-                                    {sheetMeta?.title || 'Details'}
+                        ) : (
+                            <Text style={styles.stickyHint}>Total</Text>
+                        )}
+                    </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.secondaryBtn,
+                            (isOutOfStock || ctaBusy) && styles.btnDisabled,
+                        ]}
+                        onPress={() => handleAddToCart(false)}
+                        activeOpacity={0.85}
+                        disabled={isOutOfStock || ctaBusy}
+                    >
+                        {addBusy ? (
+                            <ActivityIndicator size="small" color={Colors.primaryColor} />
+                        ) : (
+                            <View style={styles.ctaInner}>
+                                <TablerIcon
+                                    name="shopping-cart"
+                                    size={15}
+                                    color={isOutOfStock ? '#94A3B8' : Colors.primaryColor}
+                                />
+                                <Text style={styles.secondaryBtnText}>
+                                    {isOutOfStock ? 'Sold out' : 'Add'}
                                 </Text>
                             </View>
                             <TouchableOpacity
