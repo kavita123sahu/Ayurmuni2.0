@@ -251,6 +251,7 @@ const Checkout: React.FC = (props: any) => {
 
     const {
         coupons,
+        eligibleCoupons,
         loading: couponsLoading,
         applied: appliedCoupon,
         error: couponError,
@@ -727,6 +728,8 @@ const Checkout: React.FC = (props: any) => {
 
                 <CouponApplyCard
                     coupons={coupons}
+                    eligibleCoupons={eligibleCoupons}
+                    cartAmount={subtotal}
                     loading={couponsLoading}
                     applied={appliedCoupon}
                     discount={couponDiscount}

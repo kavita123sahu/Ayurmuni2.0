@@ -31,6 +31,7 @@ import FeedbackModal from '../../components/FeedbackModal';
 import TablerIcon from '../../components/TablerIcon';
 import {
   buildVideoCallNavParams,
+  formatAppointmentDateFull,
   getAppointmentIds,
   resolveAppointmentLookupId,
 } from '../../utils/appointmentUtils';
@@ -189,7 +190,10 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
                     call_status: data?.appointment?.call_status,
                     appointment_status: data?.appointment?.appointment_status,
                     appointment_date: data?.appointment?.appointment_date,
-                    follow_up: data?.appointment?.follow_up,
+                    follow_up:
+                      data?.appointment?.follow_up ||
+                      data?.prescription?.follow_up ||
+                      data?.follow_up,
                   },
                 });
               }}
@@ -505,7 +509,28 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       label: 'Payment',
       value: formatLabel(paymentStatusValue),
     },
-    { icon: 'repeat-outline', label: 'Follow-up', value: appointment?.follow_up?.date ?? appointment?.follow_up_date },
+    {
+      icon: 'repeat-outline',
+      label: 'Follow-up date',
+      value: (() => {
+        const fu =
+          appointment?.follow_up ||
+          detail?.prescription?.follow_up ||
+          detail?.follow_up ||
+          null;
+        const raw =
+          fu?.date ??
+          fu?.follow_up_date ??
+          appointment?.follow_up_date ??
+          detail?.follow_up_date ??
+          null;
+        if (!raw) {
+          if (fu?.schedule) return 'Scheduled';
+          return null;
+        }
+        return formatAppointmentDateFull(String(raw)) || String(raw);
+      })(),
+    },
     { icon: 'close-circle-outline', label: 'Cancellation Reason', value: appointment?.cancellation_reason },
     { icon: 'refresh-outline', label: 'Reschedule Reason', value: appointment?.reschedule_reason },
   ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
@@ -538,7 +563,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     ));
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right','bottom']}>
       <StatusBar
         barStyle={SCREEN_THEME.statusBarStyle}
         backgroundColor={SCREEN_THEME.statusBarBackground}

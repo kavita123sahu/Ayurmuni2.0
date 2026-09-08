@@ -219,6 +219,7 @@ const RazorpayScreen = ({
 
     const {
         coupons,
+        eligibleCoupons,
         loading: couponsLoading,
         applied: appliedCoupon,
         error: couponError,
@@ -614,6 +615,8 @@ const RazorpayScreen = ({
 
                             <CouponApplyCard
                                 coupons={coupons}
+                                eligibleCoupons={eligibleCoupons}
+                                cartAmount={consultationFee}
                                 loading={couponsLoading}
                                 applied={appliedCoupon}
                                 discount={couponDiscount}

@@ -16,6 +16,7 @@ import TablerIcon from './TablerIcon';
 import { formatRupee } from '../utils/currencyUtils';
 import {
   type Coupon,
+  calcCouponDiscount,
   couponOfferTitle,
   couponMatchesScope,
 } from '../utils/couponUtils';
@@ -26,7 +27,12 @@ import CouponAppliedModal from './CouponAppliedModal';
 import type { ApplyCouponResult } from '../hooks/useCheckoutCoupons';
 
 type Props = {
+  /** Full scoped list for View all (no min_amount filter). */
   coupons: Coupon[];
+  /** Optional pre-filtered eligible list; if omitted, derived from coupons + cartAmount. */
+  eligibleCoupons?: Coupon[];
+  /** Cart / consultation fee — used to filter top-2 preview by min_amount. */
+  cartAmount?: number;
   loading?: boolean;
   applied: Coupon | null;
   discount: number;
@@ -41,6 +47,8 @@ type Props = {
 
 const CouponApplyCard = ({
   coupons,
+  eligibleCoupons,
+  cartAmount = 0,
   loading,
   applied,
   discount,
@@ -58,12 +66,19 @@ const CouponApplyCard = ({
     title?: string;
   } | null>(null);
 
+  /** View all — every coupon matching source + applies_to for this checkout. */
   const scopedCoupons = useMemo(() => {
     if (!checkoutScope) return coupons;
     return coupons.filter(item => couponMatchesScope(item, checkoutScope));
   }, [coupons, checkoutScope]);
 
-  const preview = useMemo(() => scopedCoupons.slice(0, 2), [scopedCoupons]);
+  /** Top 2 — only coupons that pass min_amount for current cart. */
+  const preview = useMemo(() => {
+    const eligible =
+      eligibleCoupons ??
+      scopedCoupons.filter(item => calcCouponDiscount(item, cartAmount).ok);
+    return eligible.slice(0, 2);
+  }, [eligibleCoupons, scopedCoupons, cartAmount]);
 
   const submit = async (raw?: string) => {
     Keyboard.dismiss();
@@ -95,6 +110,8 @@ const CouponApplyCard = ({
         setCode('');
         setSheetOpen(false);
         setSuccess({ code: next, discount: saved, title });
+      } else if (typeof result === 'object' && result?.error) {
+        showSuccessToast(result.error, 'error');
       }
     } finally {
       setApplying(false);
@@ -136,10 +153,10 @@ const CouponApplyCard = ({
             <Text style={styles.headSub}>
               {checkoutScope === 'consultation'
                 ? scopedCoupons.length
-                  ? `${Math.min(2, scopedCoupons.length)} of ${scopedCoupons.length} consult offer${scopedCoupons.length > 1 ? 's' : ''}`
+                  ? `${scopedCoupons.length} consult offer${scopedCoupons.length > 1 ? 's' : ''}`
                   : 'No consultation coupons available'
                 : scopedCoupons.length
-                  ? `${Math.min(2, scopedCoupons.length)} of ${scopedCoupons.length} order offer${scopedCoupons.length > 1 ? 's' : ''}`
+                  ? `${scopedCoupons.length} order offer${scopedCoupons.length > 1 ? 's' : ''}`
                   : 'Enter a code or browse offers'}
             </Text>
           </View>

@@ -27,6 +27,7 @@ export const getRequiredPolicies = async (
 /**
  * POST /policies/customer/accept/
  * body: { type: 'all' } | { policy_type: 'privacy_policy' }
+ * (Legal accept for customer role — same endpoint used by Terms gate)
  */
 export const acceptPolicies = async (body: {
   type?: 'all';

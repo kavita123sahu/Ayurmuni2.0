@@ -11,6 +11,7 @@ import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 import {
   couponExpiryLabel,
+  couponMaxNote,
   couponMinNote,
   couponOfferTitle,
   couponSavingsLabel,
@@ -35,6 +36,7 @@ const CouponTicket = ({
   applyLabel = 'APPLY',
 }: Props) => {
   const minNote = couponMinNote(coupon);
+  const maxNote = couponMaxNote(coupon);
 
   return (
     <View style={[styles.wrap, applied && styles.wrapApplied]}>
@@ -86,8 +88,9 @@ const CouponTicket = ({
 
         <Text style={styles.meta} numberOfLines={1}>
           {[
-            couponExpiryLabel(coupon),
+            maxNote,
             minNote,
+            couponExpiryLabel(coupon),
             coupon.visibility === 'private' ? 'For you' : null,
           ]
             .filter(Boolean)

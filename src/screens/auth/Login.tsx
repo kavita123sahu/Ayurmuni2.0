@@ -25,6 +25,7 @@ import * as _AUTH_SERVICE from '../../services/AuthService';
 import { Utils } from '../../common/Utils';
 import { Colors } from '../../common/Colors';
 import { parseDeletedAccountInfo } from '../../services/ProfileServices';
+import { parsePolicyAcceptedCustomer } from '../../utils/policyUtils';
 
 const C = {
   collageBg: '#1A2E28',
@@ -234,6 +235,11 @@ const PhoneAuthScreen = (props: any) => {
       const isCustomer = response?.data?.user_roles?.some(
         (role: string) => role?.toLowerCase() === 'customer',
       );
+      const policyAcceptedCustomer = parsePolicyAcceptedCustomer(response);
+      await Utils.storeData(
+        '_POLICY_ACCEPTED_CUSTOMER',
+        policyAcceptedCustomer,
+      );
 
       if (deletedInfo) {
         await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
@@ -249,6 +255,7 @@ const PhoneAuthScreen = (props: any) => {
           customer: isCustomer,
           accountDeleted: true,
           retentionDays: deletedInfo.retentionDays,
+          policyAcceptedCustomer,
         });
 
         return;
@@ -265,6 +272,7 @@ const PhoneAuthScreen = (props: any) => {
         props.navigation.navigate('OtpVerify', {
           phone,
           customer: isCustomer,
+          policyAcceptedCustomer,
         });
       } else {
         // ✅ Show field-level API validation error first

@@ -21,6 +21,7 @@ import { RootBottomParamList, RootStackParamList } from "../../type";
 import PatientDetails from "../screens/patient/PatientDetails";
 import TermsCondition from "../screens/TermsCondition";
 import PolicyDetailScreen from "../screens/legal/PolicyDetailScreen";
+import PolicyAcceptScreen from "../screens/legal/PolicyAcceptScreen";
 import LegalPoliciesHubScreen from "../screens/legal/LegalPoliciesHubScreen";
 import PrivacyCenterScreen from "../screens/legal/PrivacyCenterScreen";
 import FeedbackInformationScreen from "../screens/legal/FeedbackInformationScreen";
@@ -156,6 +157,7 @@ const HomeStackNavigator = () => (
       options={{ headerShown: false, animation: 'slide_from_bottom' }}
     />
     <Stack.Screen name="TermsCondition" component={TermsCondition} />
+    <Stack.Screen name="PolicyAccept" component={PolicyAcceptScreen} />
     <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
     <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
     <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />

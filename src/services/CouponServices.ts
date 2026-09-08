@@ -186,6 +186,19 @@ export const validateCoupon = async (data: {
         };
       }
       discount = local.discount;
+    } else if (coupon && amount > 0 && discount > 0) {
+      // Always enforce max_discount_amount / min_amount locally
+      const local = calcCouponDiscount(coupon, amount);
+      if (!local.ok) {
+        return {
+          ok: false,
+          coupon: null,
+          discount: 0,
+          error: local.error || 'Coupon cannot be applied',
+          response,
+        };
+      }
+      discount = Math.min(discount, local.discount);
     }
 
     if (!coupon && discount <= 0) {

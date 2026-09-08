@@ -4,7 +4,7 @@ import {
   calcCouponDiscount,
   couponMatchesScope,
   findCouponByCode,
-  isAdminSourceCoupon,
+  isCheckoutSourceCoupon,
   type Coupon,
   type CouponScope,
 } from '../utils/couponUtils';
@@ -30,13 +30,22 @@ export const filterEligibleCoupons = (
 
 /**
  * Order + consultation share the same rule:
- * show only source=admin coupons that match applies_to for the scope.
+ * show admin/campaign coupons that match applies_to for the scope.
  */
 const filterCheckoutCoupons = (list: Coupon[], scope: CouponScope) =>
   list.filter(
-    item => isAdminSourceCoupon(item) && couponMatchesScope(item, scope),
+    item => isCheckoutSourceCoupon(item) && couponMatchesScope(item, scope),
   );
 
+/** Prefer local max_discount_amount cap over an uncapped API discount. */
+const resolveDiscount = (coupon: Coupon, subtotal: number, apiDiscount: number) => {
+  const local = calcCouponDiscount(coupon, subtotal);
+  if (!local.ok) return 0;
+  if (apiDiscount > 0) {
+    return Math.min(apiDiscount, local.discount);
+  }
+  return local.discount;
+};
   
 export const useCheckoutCoupons = (
   scope: CouponScope,
@@ -54,7 +63,6 @@ export const useCheckoutCoupons = (
     setLoading(true);
     try {
       const list = await fetchCoupons(scope);
-      // Same logic for order + consultation: admin source only
       setAllCoupons(filterCheckoutCoupons(list, scope));
     } finally {
       setLoading(false);
@@ -65,7 +73,11 @@ export const useCheckoutCoupons = (
     load();
   }, [load]);
 
-  const coupons = useMemo(
+  /** Full list for View all — source + applies_to only (no min_amount filter). */
+  const coupons = allCoupons;
+
+  /** Eligible for current cart — used by top-2 preview. */
+  const eligibleCoupons = useMemo(
     () => filterEligibleCoupons(allCoupons, scope, subtotal),
     [allCoupons, scope, subtotal],
   );
@@ -82,6 +94,19 @@ export const useCheckoutCoupons = (
         };
         setError(fail.error);
         return fail;
+      }
+
+      // Local min_amount / max_discount check before (and after) API validate
+      const listed = findCouponByCode(allCoupons, key);
+      if (listed) {
+        const localGate = calcCouponDiscount(listed, subtotal);
+        if (!localGate.ok) {
+          setApplied(null);
+          setValidatedDiscount(null);
+          const msg = localGate.error || 'Coupon cannot be applied';
+          setError(msg);
+          return { ok: false, discount: 0, coupon: null, error: msg };
+        }
       }
 
       const validated = await validateCoupon({
@@ -110,8 +135,7 @@ export const useCheckoutCoupons = (
         return { ok: false, discount: 0, coupon: null, error: msg };
       }
 
-      // Checkout only accepts admin-sourced coupons (order + consultation)
-      if (!isAdminSourceCoupon(coupon)) {
+      if (!isCheckoutSourceCoupon(coupon)) {
         setApplied(null);
         setValidatedDiscount(null);
         const msg =
@@ -120,10 +144,16 @@ export const useCheckoutCoupons = (
         return { ok: false, discount: 0, coupon: null, error: msg };
       }
 
-      const discount =
-        validated.discount > 0
-          ? validated.discount
-          : calcCouponDiscount(coupon, subtotal).discount;
+      const localGate = calcCouponDiscount(coupon, subtotal);
+      if (!localGate.ok) {
+        setApplied(null);
+        setValidatedDiscount(null);
+        const msg = localGate.error || 'Coupon cannot be applied';
+        setError(msg);
+        return { ok: false, discount: 0, coupon: null, error: msg };
+      }
+
+      const discount = resolveDiscount(coupon, subtotal, validated.discount);
 
       if (discount <= 0) {
         setApplied(null);
@@ -152,33 +182,34 @@ export const useCheckoutCoupons = (
 
   const discount = useMemo(() => {
     if (!applied) return 0;
+    const local = calcCouponDiscount(applied, subtotal);
+    if (!local.ok) return 0;
     if (validatedDiscount != null && validatedDiscount > 0) {
-      return Math.min(validatedDiscount, Math.round(subtotal));
+      return Math.min(validatedDiscount, local.discount, Math.round(subtotal));
     }
-    const result = calcCouponDiscount(applied, subtotal);
-    return result.ok ? result.discount : 0;
+    return local.discount;
   }, [applied, subtotal, validatedDiscount]);
 
   useEffect(() => {
     if (!applied) return;
-    if (validatedDiscount != null && validatedDiscount > 0) {
-      if (validatedDiscount > Math.round(subtotal)) {
-        setApplied(null);
-        setValidatedDiscount(null);
-        setError('Coupon no longer valid for this amount');
-      }
-      return;
-    }
     const result = calcCouponDiscount(applied, subtotal);
     if (!result.ok) {
       setApplied(null);
       setValidatedDiscount(null);
       setError(result.error || null);
+      return;
+    }
+    if (validatedDiscount != null && validatedDiscount > 0) {
+      const capped = Math.min(validatedDiscount, result.discount);
+      if (capped !== validatedDiscount) {
+        setValidatedDiscount(capped);
+      }
     }
   }, [applied, subtotal, validatedDiscount]);
 
   return {
     coupons,
+    eligibleCoupons,
     loading,
     applied,
     error,

@@ -238,17 +238,18 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     const isDoctor = participantRole === 'doctor';
 
     const keyboardOffset =
-        Platform.OS === 'ios' ? Math.max(insets.top, 8) + 52 : 24;
+        Platform.OS === 'ios' ? Math.max(insets.top, 4) + 52 : 15;
 
-
+    const bottomPad =
+        Platform.OS === 'ios'
+            ? Math.min(Math.max(insets.bottom, 10), 10)
+            : Math.min(Math.max(insets.bottom, 20), 50);
 
     return (
 
         <SafeAreaView style={styles.container} edges={['top']}>
 
             <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
-
-
 
             <View style={styles.headerWrap}>
 
@@ -267,8 +268,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 />
 
             </View>
-
-
 
             <KeyboardAvoidingView
 
@@ -370,7 +369,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
 
 
-                <View style={styles.inputWrap}>
+                <View style={[styles.inputWrap, { paddingBottom: bottomPad }]}>
 
                     <MessageInput
 
@@ -540,11 +539,8 @@ const styles = StyleSheet.create({
     },
 
     inputWrap: {
-
-        borderTopWidth: 1,
-
+        borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: '#E5E7EB',
-
         backgroundColor: '#FFFFFF',
 
     },

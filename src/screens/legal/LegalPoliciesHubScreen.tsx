@@ -18,6 +18,10 @@ import {
   getPoliciesList,
   getRequiredPolicies,
 } from '../../services/PolicyServices';
+import {
+  getPolicyDoc,
+  isPolicyVersionUpdated,
+} from '../../utils/policyUtils';
 
 const LegalPoliciesHubScreen = (props: any) => {
   const navigation = props.navigation;
@@ -47,7 +51,7 @@ const LegalPoliciesHubScreen = (props: any) => {
   }, [load]);
 
   const openPolicy = (item: any) => {
-    const policy = item?.policy ?? item;
+    const policy = getPolicyDoc(item);
     navigation.navigate('PolicyDetail', {
       policyType: policy?.policy_type,
       title: policy?.title || policy?.name || 'Policy',
@@ -94,7 +98,8 @@ const LegalPoliciesHubScreen = (props: any) => {
 
           <View style={styles.card}>
             {policies.map((item, index) => {
-              const policy = item?.policy ?? item;
+              const policy = getPolicyDoc(item);
+              const updated = isPolicyVersionUpdated(item);
               return (
                 <React.Fragment key={policy?.id || String(index)}>
                   <TouchableOpacity
@@ -118,6 +123,18 @@ const LegalPoliciesHubScreen = (props: any) => {
                           {policy.subtitle}
                         </Text>
                       )}
+                      {updated ? (
+                        <View style={styles.updateNote}>
+                          <TablerIcon
+                            name="alert-circle"
+                            size={12}
+                            color="#B45309"
+                          />
+                          <Text style={styles.updateNoteText}>
+                            Updated — please review the latest version
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                     <TablerIcon name="chevron-right" size={18} color="#9CA3AF" />
                   </TouchableOpacity>
@@ -191,6 +208,22 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,
+  },
+  updateNote: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  updateNoteText: {
+    fontSize: 11,
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsMedium,
   },
   divider: {
     height: 1,

@@ -136,8 +136,6 @@ const Onboarding = (props: any) => {
     });
 
 
-    const [agreedToPolicies, setAgreedToPolicies] = useState(false);
-
     const [dob, setDob] = useState({ day: '', month: '', year: '' });
     const [errors, setErrors] = useState<FormErrors>({
         firstName: '',
@@ -156,14 +154,6 @@ const Onboarding = (props: any) => {
                     ? 'Terms of Use'
                     : 'Privacy Policy',
         });
-    };
-
-    const onToggleAgree = () => {
-        const next = !agreedToPolicies;
-        setAgreedToPolicies(next);
-        if (next && errors.terms) {
-            setErrors(prev => ({ ...prev, terms: '' }));
-        }
     };
 
     const isFocused = useIsFocused();
@@ -426,11 +416,6 @@ const Onboarding = (props: any) => {
             }
         }
 
-        if (!agreedToPolicies) {
-            newErrors.terms = 'Agreeing to Terms and Privacy Policy is mandatory';
-            isValid = false;
-        }
-
         setErrors(newErrors);
 
         return isValid;
@@ -487,9 +472,6 @@ const Onboarding = (props: any) => {
             return false;
         }
 
-        // Terms mandatory
-        if (!agreedToPolicies) return false;
-
         return true;
     };
 
@@ -501,7 +483,8 @@ const Onboarding = (props: any) => {
         formData.email,
         formData.gender,
         dob.day,
-        agreedToPolicies,
+        dob.month,
+        dob.year,
     ]);
 
     const handleProcees = async () => {
@@ -525,10 +508,6 @@ const Onboarding = (props: any) => {
                 date_of_birth: `${dob.year}-${dob.month}-${dob.day}`,
             };
 
-            if (agreedToPolicies) {
-                send_data.type = 'all';
-            }
-
             console.log(
                 'IMAGE URL ===>',
                 formData.profileImageUrl
@@ -536,7 +515,7 @@ const Onboarding = (props: any) => {
 
             console.log('OnboardingData:', send_data);
 
-            // ✅ API CALL
+            // ✅ API CALL (no policy payload — accepted on PolicyAccept screen)
             const response: any =
                 await _AUTH_SERVICES.onBoarding(send_data);
 
@@ -574,8 +553,11 @@ const Onboarding = (props: any) => {
                     'success'
                 );
 
-                props.navigation.replace('AssessmentType', {
-                    form: 'all',
+                props.navigation.replace('PolicyAccept', {
+                    nextRoute: {
+                        name: 'AssessmentType',
+                        params: { form: 'all' },
+                    },
                 });
                 setIsLoading(false);
                 return;
@@ -945,46 +927,23 @@ const Onboarding = (props: any) => {
                             ) : null}
 
                             <View style={styles.termsBlock}>
-                                <View style={styles.termsRow}>
-                                    <TouchableOpacity
-                                        activeOpacity={0.85}
-                                        onPress={onToggleAgree}
-                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                <Text style={styles.termsText}>
+                                    After creating your profile you will review and accept our{' '}
+                                    <Text
+                                        style={styles.termsLink}
+                                        onPress={() => openPolicy('terms_of_service')}
                                     >
-                                        <View
-                                            style={[
-                                                styles.checkbox,
-                                                agreedToPolicies && styles.checkboxOn,
-                                                !!errors.terms && !agreedToPolicies && styles.checkboxError,
-                                            ]}
-                                        >
-                                            {agreedToPolicies ? (
-                                                <TablerIcon name="check" size={14} color="#FFFFFF" />
-                                            ) : null}
-                                        </View>
-                                    </TouchableOpacity>
-                                    <Text style={styles.termsText} onPress={onToggleAgree}>
-                                        I agree to the{' '}
-                                        <Text
-                                            style={styles.termsLink}
-                                            onPress={() => openPolicy('terms_of_service')}
-                                        >
-                                            Terms of Use
-                                        </Text>
-                                        {' '}and{' '}
-                                        <Text
-                                            style={styles.termsLink}
-                                            onPress={() => openPolicy('privacy_policy')}
-                                        >
-                                            Privacy Policy
-                                        </Text>
-                                        {' '}
-                                        <Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text>
+                                        Terms of Use
                                     </Text>
-                                </View>
-                                {!!errors.terms && (
-                                    <Text style={styles.errorText}>{errors.terms}</Text>
-                                )}
+                                    {' '}and{' '}
+                                    <Text
+                                        style={styles.termsLink}
+                                        onPress={() => openPolicy('privacy_policy')}
+                                    >
+                                        Privacy Policy
+                                    </Text>
+                                    .
+                                </Text>
                             </View>
                         </View>
                     </View>

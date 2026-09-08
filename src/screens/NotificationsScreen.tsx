@@ -497,46 +497,112 @@ const NotificationsScreen = (props: any) => {
 
     const openDetail = (item: NotificationItem) => {
         const raw = item.rawData ?? item;
-        const payload = normalizeNotificationPayload({
-          ...(typeof raw === 'object' ? raw : {}),
-          ...(typeof raw?.data === 'object' ? raw.data : {}),
-          title: item.title,
-          message: item.description,
-          type:
-            raw?.type ??
+        const nested =
+            typeof raw?.data === 'object' && raw.data ? raw.data : {};
+        const typeRaw = String(
             raw?.notification_type ??
-            raw?.data?.type ??
-            item.type,
-          route: raw?.route ?? raw?.data?.route ?? raw?.screen,
-          order_id: raw?.order_id ?? raw?.data?.order_id,
-          appointment_id:
-            raw?.appointment_id ??
-            raw?.data?.appointment_id ??
-            item.appointmentId,
-          product_id: raw?.product_id ?? raw?.data?.product_id,
-          prescription_id:
-            raw?.prescription_id ?? raw?.data?.prescription_id,
-          diet_id: raw?.diet_id ?? raw?.data?.diet_id,
-          doctor_id: raw?.doctor_id ?? raw?.data?.doctor_id,
+            raw?.type ??
+            nested?.notification_type ??
+            nested?.type ??
+            item.type ??
+            '',
+        ).toLowerCase();
+
+        const callStatus = String(
+            nested?.call_status ??
+            raw?.call_status ??
+            nested?.appointment?.call_status ??
+            '',
+        ).toLowerCase();
+        const textBlob = `${item.title || ''} ${item.description || ''}`.toLowerCase();
+        const isJoinCall =
+            callStatus === 'in_progress' ||
+            callStatus === 'started' ||
+            callStatus === 'ongoing' ||
+            typeRaw.includes('call') ||
+            typeRaw.includes('video') ||
+            textBlob.includes('join the call') ||
+            textBlob.includes('join call') ||
+            textBlob.includes('join now') ||
+            textBlob.includes('doctor started') ||
+            textBlob.includes('call started') ||
+            textBlob.includes('call now');
+
+        // Doctor started / join call → video call screen
+        if (isJoinCall) {
+            handleJoinCall(item);
+            return;
+        }
+
+        // Prescription notification → respective Prescription History detail
+        if (
+            typeRaw.includes('prescription') ||
+            textBlob.includes('prescription')
+        ) {
+            const appointmentId =
+                nested?.appointment_id ??
+                raw?.appointment_id ??
+                item.appointmentId ??
+                nested?.consultation_id ??
+                raw?.consultation_id;
+            const consultationId =
+                nested?.consultation_id ??
+                raw?.consultation_id ??
+                appointmentId;
+            const prescriptionId =
+                nested?.prescription_id ?? raw?.prescription_id;
+
+            navigateToStackScreen(props.navigation, 'PrescriptionDetail', {
+                appointment_id: appointmentId,
+                consultation_id: consultationId,
+                prescription_id: prescriptionId,
+                PrisData: {
+                    appointment_id: appointmentId,
+                    consultation_id: consultationId,
+                    prescription_id: prescriptionId,
+                    ...nested,
+                },
+            });
+            return;
+        }
+
+        const payload = normalizeNotificationPayload({
+            ...(typeof raw === 'object' ? raw : {}),
+            ...nested,
+            title: item.title,
+            message: item.description,
+            type: typeRaw || item.type,
+            route: raw?.route ?? nested?.route ?? raw?.screen,
+            order_id: raw?.order_id ?? nested?.order_id,
+            appointment_id:
+                raw?.appointment_id ??
+                nested?.appointment_id ??
+                item.appointmentId,
+            product_id: raw?.product_id ?? nested?.product_id,
+            prescription_id:
+                raw?.prescription_id ?? nested?.prescription_id,
+            diet_id: raw?.diet_id ?? nested?.diet_id,
+            doctor_id: raw?.doctor_id ?? nested?.doctor_id,
+            call_status: callStatus,
+            doctor_name: item.doctorName ?? raw?.doctor_name ?? nested?.doctor_name,
         });
 
-        // Prefer deep-link navigation for any typed notification
         if (
-          payload.route ||
-          payload.screen ||
-          payload.order_id ||
-          payload.appointment_id ||
-          payload.product_id ||
-          payload.prescription_id ||
-          payload.diet_id ||
-          payload.doctor_id ||
-          payload.type
+            payload.route ||
+            payload.screen ||
+            payload.order_id ||
+            payload.appointment_id ||
+            payload.product_id ||
+            payload.prescription_id ||
+            payload.diet_id ||
+            payload.doctor_id ||
+            payload.type
         ) {
-          handleNotificationNavigation(
-            props.navigation ?? navigationRef,
-            payload,
-          );
-          return;
+            handleNotificationNavigation(
+                props.navigation ?? navigationRef,
+                payload,
+            );
+            return;
         }
 
         setSelectedItem(item);
@@ -595,17 +661,17 @@ const NotificationsScreen = (props: any) => {
     const handleViewDetails = (item: NotificationItem) => {
         const raw = item.rawData ?? item;
         const payload = normalizeNotificationPayload({
-          ...(typeof raw === 'object' ? raw : {}),
-          ...(typeof raw?.data === 'object' ? raw.data : {}),
-          route: raw?.route ?? raw?.data?.route ?? 'AppointmentDetails',
-          appointment_id:
-            raw?.appointment_id ??
-            raw?.data?.appointment_id ??
-            item.appointmentId,
+            ...(typeof raw === 'object' ? raw : {}),
+            ...(typeof raw?.data === 'object' ? raw.data : {}),
+            route: raw?.route ?? raw?.data?.route ?? 'AppointmentDetails',
+            appointment_id:
+                raw?.appointment_id ??
+                raw?.data?.appointment_id ??
+                item.appointmentId,
         });
         handleNotificationNavigation(
-          props.navigation ?? navigationRef,
-          payload,
+            props.navigation ?? navigationRef,
+            payload,
         );
     };
 

@@ -124,12 +124,15 @@ const ProductDetails = (props: any) => {
 
     const variants = ProductData?.variants || [];
     const defaultVariant =
-        variants.find((v: any) => v?.is_default) || variants[0];
-    const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
+        variants.find((v: any) => v?.is_default) || variants[0] || null;
+    const [selectedVariant, setSelectedVariant] = useState<any>(null);
     const [quantity, setQuantity] = useState(1);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
+
+    // Prefer selected; fall back to default so stock/CTA never use empty initial state
+    const activeVariant = selectedVariant || defaultVariant;
     const cartVariantId = String(
-        selectedVariant?.variant_id ?? selectedVariant?.id ?? varientID ?? '',
+        activeVariant?.variant_id ?? activeVariant?.id ?? varientID ?? '',
     );
     const { addToCart } = useCartActions();
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
@@ -146,24 +149,24 @@ const ProductDetails = (props: any) => {
 
     useEffect(() => {
         setQuantity(1);
-    }, [selectedVariant?.id]);
+    }, [activeVariant?.id]);
 
     useEffect(() => {
         const wishlisted = Boolean(
-            selectedVariant?.is_wishlist_item ??
+            activeVariant?.is_wishlist_item ??
             ProductData?.is_wishlist_item ??
             false,
         );
         setIsWishlisted(wishlisted);
     }, [
-        selectedVariant?.id,
-        selectedVariant?.is_wishlist_item,
+        activeVariant?.id,
+        activeVariant?.is_wishlist_item,
         ProductData?.is_wishlist_item,
     ]);
 
     const galleryImages = useMemo(
-        () => buildProductGallery(selectedVariant, ProductData),
-        [selectedVariant, ProductData],
+        () => buildProductGallery(activeVariant, ProductData),
+        [activeVariant, ProductData],
     );
 
     const aPlusBlocks = useMemo(
@@ -172,26 +175,28 @@ const ProductDetails = (props: any) => {
     );
 
     const coverImageUri = useMemo(
-        () => resolveProductImageUri(selectedVariant) || resolveProductImageUri(ProductData),
-        [selectedVariant, ProductData],
+        () =>
+            resolveProductImageUri(activeVariant) ||
+            resolveProductImageUri(ProductData),
+        [activeVariant, ProductData],
     );
 
     const discoveryProductId = useMemo(() => {
         const id =
             ProductData?.product_id ??
             ProductData?.id ??
-            selectedVariant?.product_id ??
+            activeVariant?.product_id ??
             null;
         return id ? String(id) : null;
-    }, [ProductData?.product_id, ProductData?.id, selectedVariant?.product_id]);
+    }, [ProductData?.product_id, ProductData?.id, activeVariant?.product_id]);
 
     useEffect(() => {
-        if (selectedVariant?.id && coverImageUri) {
-            cacheVariantImage(selectedVariant.id, coverImageUri);
+        if (activeVariant?.id && coverImageUri) {
+            cacheVariantImage(activeVariant.id, coverImageUri);
         }
-    }, [selectedVariant?.id, coverImageUri]);
+    }, [activeVariant?.id, coverImageUri]);
 
-    const stockQty = getProductStockQty(selectedVariant);
+    const stockQty = getProductStockQty(activeVariant);
     const maxQty = stockQty != null && stockQty > 0 ? stockQty : 1;
 
     const increaseQty = () =>
@@ -203,24 +208,24 @@ const ProductDetails = (props: any) => {
 
         const productForRx = {
             ...ProductData,
-            ...selectedVariant,
+            ...activeVariant,
             prescription_required:
-                selectedVariant?.prescription_required ??
+                activeVariant?.prescription_required ??
                 ProductData?.prescription_required,
         };
         if (!canAddProductWithoutPrescription(productForRx)) {
             return;
         }
 
-        if (selectedVariant?.id && coverImageUri) {
-            cacheVariantImage(selectedVariant.id, coverImageUri);
+        if (activeVariant?.id && coverImageUri) {
+            cacheVariantImage(activeVariant.id, coverImageUri);
         } else {
-            resolveProductImageUri(selectedVariant);
+            resolveProductImageUri(activeVariant);
         }
 
         const addQty = Math.max(1, Number(quantity) || 1);
         const nextQty = existingCartQty + addQty;
-        if (!canAddProductQty(selectedVariant, nextQty)) {
+        if (!canAddProductQty(activeVariant, nextQty)) {
             showSuccessToast('Only limited stock left', 'error');
             return;
         }
@@ -248,6 +253,8 @@ const ProductDetails = (props: any) => {
         const variantId = String(
             selectedVariant?.variant_id ??
             selectedVariant?.id ??
+            activeVariant?.variant_id ??
+            activeVariant?.id ??
             varientID ??
             '',
         );
@@ -281,23 +288,23 @@ const ProductDetails = (props: any) => {
         }
     };
 
-    const stockDisplay = getProductStockDisplay(selectedVariant);
-    const isOutOfStock = isProductOutOfStock(selectedVariant);
-    const isLowStock = isProductLowStock(selectedVariant);
+    const stockDisplay = getProductStockDisplay(activeVariant);
+    const isOutOfStock = isProductOutOfStock(activeVariant);
+    const isLowStock = isProductLowStock(activeVariant);
     const rxRequired = isPrescriptionRequired({
         ...ProductData,
-        ...selectedVariant,
+        ...activeVariant,
     });
 
-    const totalPrice = (selectedVariant?.selling_price || 0) * quantity;
+    const totalPrice = (activeVariant?.selling_price || 0) * quantity;
     const saveAmount = Math.max(
         0,
-        (Number(selectedVariant?.mrp) || 0) -
-        (Number(selectedVariant?.selling_price) || 0),
+        (Number(activeVariant?.mrp) || 0) -
+        (Number(activeVariant?.selling_price) || 0),
     );
 
     const ratingValue = Number(
-        selectedVariant?.avg_rating || ProductData?.avg_rating || 0,
+        activeVariant?.avg_rating || ProductData?.avg_rating || 0,
     );
     const reviewCount = ReviewAll?.length || 0;
 
@@ -362,14 +369,14 @@ const ProductDetails = (props: any) => {
                 { label: 'Brand', value: ProductData?.brand_name },
                 {
                     label: 'Pack size',
-                    value: (selectedVariant?.size || selectedVariant?.title) + " " + selectedVariant?.weightage,
+                    value: (activeVariant?.size || activeVariant?.title) + " " + activeVariant?.weightage,
                 },
                 { label: 'Manufacturer', value: ProductData?.manufacturer },
                 { label: 'Origin', value: ProductData?.origin },
                 { label: 'Treatment', value: ProductData?.treatment_type },
                 { label: 'Dosage', value: ProductData?.dosages },
             ].filter(item => Boolean(item.value)),
-        [ProductData, selectedVariant],
+        [ProductData, activeVariant],
     );
 
     const detailLinks = useMemo(() => {
@@ -430,7 +437,7 @@ const ProductDetails = (props: any) => {
         return links.filter(l => l.show);
     }, [ProductData, fullDescription]);
 
-    if (loading) {
+    if (loading || !ProductData || !activeVariant) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <AppHeader
@@ -460,9 +467,9 @@ const ProductDetails = (props: any) => {
                         type: 'native',
                         message: getProductShareMessage({
                             name: ProductData?.name,
-                            size: selectedVariant?.size,
+                            size: activeVariant?.size,
                             price:
-                                selectedVariant?.selling_price ??
+                                activeVariant?.selling_price ??
                                 ProductData?.selling_price,
                             url:
                                 coverImageUri ||
@@ -1023,7 +1030,10 @@ const ProductDetails = (props: any) => {
 export default ProductDetails;
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F4F7F6' },
+    safeArea: { flex: 1, 
+        backgroundColor:Colors.background
+        // backgroundColor: '#F4F7F6' 
+    },
     scrollContent: { paddingBottom: 8 },
     discoveryWrap: {
         marginTop: 6,
