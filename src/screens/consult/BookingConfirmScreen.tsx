@@ -12,28 +12,25 @@ import {
   BackHandler,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { getAppointmentShareMessage } from '../../helper/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
-import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
-import { createAppointmentPdfBytes } from '../../utils/buildConsultationDocumentPdf';
-import { showSuccessToast } from '../../config/Key';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import {
   formatAppointmentDateFull,
   formatAppointmentTimeLabel,
   formatAppointmentWeekday,
-  formatAppointmentDayLabel,
 } from '../../utils/appointmentUtils';
 import { formatAppointmentId } from '../../utils/formatDisplayId';
 import { formatRupee } from '../../utils/currencyUtils';
-import Utils from '../../common/Utils';
+import { Utils } from '../../common/Utils';
 
-const { width, height } = Dimensions.get('window');
-const SHEET_HEIGHT = height / 1.85;
+const { height } = Dimensions.get('window');
+const SHEET_HEIGHT = height / 2.1;
 
 type AppointmentStatus = 'CANCELLED' | 'CONFIRMED' | 'UPCOMING' | string;
 
@@ -64,7 +61,7 @@ const shareOptions = [
   },
   {
     id: 4,
-    title: 'Copy Link',
+    title: 'Copy',
     type: 'copy',
     iconName: 'share' as TablerIconName,
     bg: '#F1F5F9',
@@ -92,6 +89,16 @@ const pickFirst = (...values: any[]) => {
   return '';
 };
 
+/** Prefer readable short ids when API sends nested ids. */
+function SlotDetailId(detail: any) {
+  return pickFirst(
+    detail?.booking_id,
+    detail?.booking_code,
+    detail?.order_code,
+    detail?.reference_code,
+  );
+}
+
 const Badge = memo(({ status }: { status: AppointmentStatus }) => {
   const key = String(status || 'CONFIRMED').toUpperCase();
   const config = BADGE_CONFIG[key] || BADGE_CONFIG.CONFIRMED;
@@ -106,29 +113,50 @@ const Badge = memo(({ status }: { status: AppointmentStatus }) => {
   );
 });
 
-const DetailRow = memo(
+const MetaChip = memo(
   ({
-    iconName,
+    icon,
+    label,
+    value,
+  }: {
+    icon: TablerIconName;
+    label: string;
+    value: string;
+  }) => {
+    if (!value) return null;
+    return (
+      <View style={styles.metaChip}>
+        <View style={styles.metaIcon}>
+          <TablerIcon name={icon} size={13} color={Colors.primaryColor} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.metaLabel}>{label}</Text>
+          <Text style={styles.metaValue} numberOfLines={2}>
+            {value}
+          </Text>
+        </View>
+      </View>
+    );
+  },
+);
+
+const InfoRow = memo(
+  ({
     label,
     value,
     last,
   }: {
-    iconName: TablerIconName;
     label: string;
     value: string;
     last?: boolean;
   }) => {
     if (!value) return null;
-
     return (
-      <View style={[styles.detailRow, last && styles.detailRowLast]}>
-        <View style={styles.iconWrapper}>
-          <TablerIcon name={iconName} size={18} color={Colors.primaryColor} />
-        </View>
-        <View style={styles.detailContent}>
-          <Text style={styles.detailLabel}>{label}</Text>
-          <Text style={styles.detailValue}>{value}</Text>
-        </View>
+      <View style={[styles.infoRow, last && styles.infoRowLast]}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue} numberOfLines={2}>
+          {value}
+        </Text>
       </View>
     );
   },
@@ -136,8 +164,9 @@ const DetailRow = memo(
 
 const BookingConfrimScreen = ({ navigation, route }: any) => {
   const { SlotsDetail } = route?.params || {};
+  const insets = useSafeAreaInsets();
+  const footerBottomPad = Math.max(insets.bottom, 8);
   const [visible, setVisible] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -163,7 +192,6 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     const endTimeRaw = pickFirst(slot?.end_time, SlotsDetail?.end_time);
 
     const weekday = formatAppointmentWeekday(dateRaw, false);
-    const dayLabel = formatAppointmentDayLabel(dateRaw);
     const dateLabel = formatAppointmentDateFull(dateRaw);
     const timeLabel = formatAppointmentTimeLabel(timeRaw);
     const endTimeLabel = endTimeRaw
@@ -173,11 +201,11 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     const specialization = Array.isArray(SlotsDetail?.doctor_specialization)
       ? SlotsDetail.doctor_specialization.filter(Boolean).join(', ')
       : pickFirst(
-        SlotsDetail?.doctor_specialization,
-        info?.specialization,
-        info?.speciality,
-        SlotsDetail?.specialization,
-      );
+          SlotsDetail?.doctor_specialization,
+          info?.specialization,
+          info?.speciality,
+          SlotsDetail?.specialization,
+        );
 
     const status = pickFirst(
       SlotsDetail?.appointment_status,
@@ -201,7 +229,6 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
       specialization,
       dateRaw,
       weekday,
-      dayLabel,
       dateLabel,
       timeLabel,
       endTimeLabel,
@@ -335,23 +362,6 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     [closeBottomSheet, shareMessage],
   );
 
-  const downloadAppointmentPdf = useCallback(async () => {
-    if (downloadingPdf) return;
-    try {
-      setDownloadingPdf(true);
-      const pdfBytes = await createAppointmentPdfBytes(SlotsDetail);
-      const fileName = `Appointment_${formatAppointmentId(booking.bookingId).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
-      await downloadPdfToDevice({ fileName, pdfBytes });
-    } catch (error: any) {
-      showSuccessToast(
-        error?.message || 'Unable to download appointment PDF',
-        'error',
-      );
-    } finally {
-      setDownloadingPdf(false);
-    }
-  }, [SlotsDetail, booking.bookingId, downloadingPdf]);
-
   const goHome = useCallback(() => {
     navigation.replace('HomeStack', { screen: 'Home' });
   }, [navigation]);
@@ -360,32 +370,65 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
     navigation.navigate('Appointments');
   }, [navigation]);
 
+  const addToCalendar = useCallback(() => {
+    navigation.navigate('AddCalendar', {
+      appointment: {
+        doctorName: booking.doctorName,
+        doctorImage: booking.doctorImage,
+        specialization: booking.specialization,
+        date: booking.dateRaw,
+        dateLabel: booking.dateLabel,
+        weekday: booking.weekday,
+        startTime: booking.timeLabel,
+        endTime: booking.endTimeLabel,
+        timeRange: booking.timeRange,
+        concern: booking.concern,
+        hospitalName: booking.hospitalName,
+        bookingId: booking.bookingId,
+        status: booking.status,
+      },
+    });
+  }, [booking, navigation]);
+
+  const dateDisplay = [booking.weekday, booking.dateLabel]
+    .filter(Boolean)
+    .join(', ');
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor="#F4F8F6" barStyle="dark-content" />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor="#F4F7F6" barStyle="dark-content" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Success hero */}
-        <View style={styles.hero}>
-          <View style={styles.successRingOuter}>
-            <View style={styles.successRingInner}>
-              <TablerIcon name="check" size={36} color="#FFFFFF" />
-            </View>
+        {/* Compact success */}
+        <LinearGradient
+          colors={['#E8F8F2', '#F4F7F6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.checkCircle}>
+            <TablerIcon name="check" size={22} color="#FFFFFF" />
           </View>
-
-          <Text style={styles.title}>Booking Confirmed</Text>
+          <Text style={styles.title}>Booking confirmed</Text>
           <Text style={styles.subtitle}>
-            Your consultation is secured. We’ve saved all appointment details
-            below.
+            Your consultation is booked. Details are saved below.
           </Text>
+          <View style={styles.heroMeta}>
+            <Badge status={booking.status} />
+            {!!booking.bookingId && (
+              <View style={styles.idChip}>
+                <Text style={styles.idChipText}>
+                  ID {formatAppointmentId(booking.bookingId)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
 
-          <Badge status={booking.status} />
-        </View>
-
-        {/* Doctor + details */}
+        {/* Doctor + schedule */}
         <View style={styles.card}>
           <View style={styles.doctorRow}>
             <Image
@@ -401,7 +444,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
                 {booking.doctorName}
               </Text>
               {!!booking.specialization && (
-                <Text style={styles.speciality} numberOfLines={2}>
+                <Text style={styles.speciality} numberOfLines={1}>
                   {booking.specialization}
                 </Text>
               )}
@@ -413,121 +456,95 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             </View>
           </View>
 
-          <View style={styles.detailsDivider} />
-
-          <View style={styles.detailsContainer}>
-            <DetailRow
-              iconName="calendar"
-              label="Full date"
-              value={
-                [booking.weekday, booking.dateLabel].filter(Boolean).join(', ')
-              }
-            />
-            <DetailRow
-              iconName="clock"
-              label="Consultation time"
-              value={booking.timeRange}
-            />
-            <DetailRow
-              iconName="video"
+          <View style={styles.metaGrid}>
+            <MetaChip icon="calendar" label="Date" value={dateDisplay} />
+            <MetaChip icon="clock" label="Time" value={booking.timeRange} />
+            <MetaChip
+              icon="video"
               label="Mode"
               value={booking.consultationMode}
             />
-            <DetailRow
-              iconName="user"
-              label="Patient"
-              value={booking.patientName}
-            />
-            <DetailRow
-              iconName="stethoscope"
-              label="Health concern"
-              value={booking.concern}
-            />
-            <DetailRow
-              iconName="building"
-              label="Clinic / Hospital"
-              value={booking.hospitalName}
-            />
-            <DetailRow
-              iconName="receipt"
-              label="Booking ID"
-              value={formatAppointmentId(booking.bookingId)}
-              last={!booking.amount}
-            />
             {!!booking.amount && (
-              <DetailRow
-                iconName="cash"
-                label="Amount paid"
+              <MetaChip
+                icon="cash"
+                label="Paid"
                 value={formatRupee(booking.amount)}
-                last
               />
             )}
           </View>
         </View>
 
-        <View style={styles.actionPair}>
+        {/* More details */}
+        {(booking.patientName || booking.concern) && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Appointment details</Text>
+            <InfoRow label="Patient" value={booking.patientName} />
+            <InfoRow
+              label="Concern"
+              value={booking.concern}
+              last={!booking.hospitalName}
+            />
+            <InfoRow
+              label="Clinic"
+              value={booking.hospitalName}
+              last
+            />
+          </View>
+        )}
 
+        {/* Quick actions */}
+        <View style={styles.actionRow}>
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() =>
-              navigation.navigate('AddCalendar', {
-                appointment: {
-                  doctorName: booking.doctorName,
-                  doctorImage: booking.doctorImage,
-                  specialization: booking.specialization,
-                  date: booking.dateRaw,
-                  dateLabel: booking.dateLabel,
-                  weekday: booking.weekday,
-                  startTime: booking.timeLabel,
-                  endTime: booking.endTimeLabel,
-                  timeRange: booking.timeRange,
-                  concern: booking.concern,
-                  hospitalName: booking.hospitalName,
-                  bookingId: booking.bookingId,
-                  status: booking.status,
-                },
-              })
-            }
-            style={[styles.secondaryBtn, styles.actionHalf]}
+            onPress={addToCalendar}
+            style={styles.actionChip}
           >
-            <TablerIcon name="calendar" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryText}>Add to Calendar</Text>
+            <TablerIcon name="calendar" size={15} color={Colors.primaryColor} />
+            <Text style={styles.actionChipText}>Calendar</Text>
           </TouchableOpacity>
-
-          {/* <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={downloadAppointmentPdf}
-            disabled={downloadingPdf}
-            style={[styles.secondaryBtn, styles.actionHalf]}
-          >
-            <TablerIcon name="download" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryText}>
-              {downloadingPdf ? 'Downloading…' : 'Download PDF'}
-            </Text>
-          </TouchableOpacity> */}
-
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={openBottomSheet}
-            style={[styles.secondaryBtn, styles.actionHalf]}
+            style={styles.actionChip}
           >
-            <TablerIcon name="share" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryText}>Share</Text>
+            <TablerIcon name="share" size={15} color={Colors.primaryColor} />
+            <Text style={styles.actionChipText}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={viewAppointments}
+            style={styles.actionChip}
+          >
+            <TablerIcon
+              name="clipboard-list"
+              size={15}
+              color={Colors.primaryColor}
+            />
+            <Text style={styles.actionChipText}>Appointments</Text>
           </TouchableOpacity>
         </View>
 
+        <View style={{ height: 88 }} />
+      </ScrollView>
+
+      {/* Sticky home CTA */}
+      <View style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}>
         <TouchableOpacity
           activeOpacity={0.9}
-          style={styles.primaryBtn}
           onPress={goHome}
+          style={styles.primaryBtnWrap}
         >
-          <Text style={styles.primaryText}>Go to Home</Text>
+          <LinearGradient
+            colors={['#0D614E', '#14937A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryBtn}
+          >
+            <Text style={styles.primaryText}>Go to Home</Text>
+            <TablerIcon name="arrow-right" size={16} color="#FFFFFF" />
+          </LinearGradient>
         </TouchableOpacity>
-
-        <TouchableOpacity activeOpacity={0.75} onPress={viewAppointments}>
-          <Text style={styles.bottomText}>View my appointments</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       {visible && (
         <View style={styles.absoluteContainer}>
@@ -546,7 +563,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             <View style={styles.handle} />
             <Text style={styles.sheetTitle}>Share details</Text>
             <Text style={styles.sheetSubtitle}>
-              Send this appointment summary to someone you trust.
+              Send this appointment summary
             </Text>
 
             <View style={styles.shareCard}>
@@ -556,29 +573,22 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
                     ? { uri: booking.doctorImage }
                     : Images.doctorImage
                 }
-                style={styles.doctorImage}
+                style={styles.shareAvatar}
               />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.doctorName1} numberOfLines={1}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.shareDoctor} numberOfLines={1}>
                   {booking.doctorName}
                 </Text>
                 {!!booking.specialization && (
-                  <Text style={styles.speciality} numberOfLines={1}>
+                  <Text style={styles.shareSpec} numberOfLines={1}>
                     {booking.specialization}
                   </Text>
                 )}
-                <View style={styles.dateRow}>
-                  <TablerIcon
-                    name="calendar"
-                    size={16}
-                    color={Colors.primaryColor}
-                  />
-                  <Text style={styles.dateText} numberOfLines={2}>
-                    {[booking.weekday, booking.dateLabel, booking.timeRange]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                </View>
+                <Text style={styles.shareWhen} numberOfLines={1}>
+                  {[dateDisplay, booking.timeRange]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
               </View>
             </View>
 
@@ -595,7 +605,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
                   >
                     <TablerIcon
                       name={item.iconName}
-                      size={22}
+                      size={20}
                       color={item.color}
                     />
                   </View>
@@ -618,382 +628,370 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
   );
 };
 
-/** Prefer readable short ids when API sends nested ids. */
-function SlotDetailId(detail: any) {
-  return pickFirst(
-    detail?.booking_id,
-    detail?.booking_code,
-    detail?.order_code,
-    detail?.reference_code,
-  );
-}
-
 export default BookingConfrimScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#F4F8F6',
+    backgroundColor: '#F4F7F6',
   },
-  scrollContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 50,
+  scrollContent: {
+    paddingHorizontal: 10,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
 
   hero: {
     alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  successRingOuter: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: '#D1FAE5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successRingInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: Colors.primaryColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    marginTop: 18,
-    fontSize: 26,
-    lineHeight: 34,
-    textAlign: 'center',
-    color: '#0F172A',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  subtitle: {
-    marginTop: 8,
-    marginBottom: 14,
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
+    paddingTop: 14,
+    paddingBottom: 14,
     paddingHorizontal: 12,
+    borderRadius: 14,
+    marginBottom: 8,
   },
-
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    gap: 6,
-  },
-  badgeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  scheduleCard: {
-    marginTop: 18,
-    backgroundColor: '#FFFFFF',
+  checkCircle: {
+    width: 44,
+    height: 44,
     borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#DCE8E3',
-  },
-  scheduleEyebrow: {
-    fontSize: 11,
-    letterSpacing: 0.8,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 14,
-  },
-  scheduleGrid: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  scheduleCell: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  scheduleIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#E8F5F1',
+    backgroundColor: Colors.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  scheduleLabel: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 4,
-  },
-  scheduleValue: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
-    color: '#0F172A',
+  title: {
+    fontSize: 18,
     fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    includeFontPadding: false,
   },
-  scheduleHint: {
+  subtitle: {
     marginTop: 4,
-    fontSize: 11,
-    color: Colors.primaryColor,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
     fontFamily: Fonts.PoppinsMedium,
+    color: '#64748B',
+    paddingHorizontal: 12,
   },
-  scheduleDivider: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: '#D7E3DE',
-    marginVertical: 4,
+  heroMeta: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+  idChip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D7EBE3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  idChipText: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.primaryColor,
+    includeFontPadding: false,
   },
 
   card: {
-    marginTop: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E8EEF2',
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    marginBottom: 6,
+    includeFontPadding: false,
   },
   doctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
   },
   avatar: {
-    width: Math.min(width * 0.18, 72),
-    height: Math.min(width * 0.18, 72),
-    borderRadius: 18,
-    marginRight: 14,
-    backgroundColor: '#E2E8F0',
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#EAF8F4',
   },
   doctorInfo: {
     flex: 1,
     minWidth: 0,
   },
   doctorName: {
-    fontSize: 18,
-    lineHeight: 26,
-    color: '#0F172A',
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    lineHeight: 19,
   },
   speciality: {
-    marginTop: 2,
-    fontSize: 12,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
+    marginTop: 1,
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#64748B',
   },
   hospitalText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  detailsDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E2E8F0',
-    marginVertical: 16,
-  },
-  detailsContainer: {
-    gap: 0,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  detailRowLast: {
-    marginBottom: 0,
-  },
-  iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#E8F5F1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  detailContent: {
-    flex: 1,
-    minWidth: 0,
-    paddingTop: 1,
-  },
-  detailLabel: {
+    marginTop: 2,
     fontSize: 11,
-    color: '#94A3B8',
-    marginBottom: 2,
     fontFamily: Fonts.PoppinsMedium,
-  },
-  detailValue: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#0F172A',
-    fontFamily: Fonts.PoppinsMedium,
+    color: Colors.primaryColor,
   },
 
-  actionPair: {
-    marginTop: 18,
+  metaGrid: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  actionHalf: {
+  metaChip: {
+    width: '48%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#EEF2F0',
+  },
+  metaIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#EAF8F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metaLabel: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#94A3B8',
+    includeFontPadding: false,
+  },
+  metaValue: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    includeFontPadding: false,
+  },
+
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F1F5F9',
+  },
+  infoRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 2,
+  },
+  infoLabel: {
+    width: 72,
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#94A3B8',
+  },
+  infoValue: {
     flex: 1,
-    marginTop: 0,
+    textAlign: 'right',
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    lineHeight: 16,
   },
-  secondaryBtn: {
-    marginTop: 18,
-    minHeight: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#0D614E33',
+
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  actionChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#D7EBE3',
+  },
+  actionChipText: {
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.primaryColor,
+    includeFontPadding: false,
+  },
+
+  stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E8F2EE',
+    paddingTop: 8,
+    paddingHorizontal: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  primaryBtnWrap: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  primaryBtn: {
+    minHeight: 48,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 10,
-  },
-  secondaryText: {
-    fontSize: 13,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  primaryBtn: {
-    marginTop: 12,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: Colors.primaryColor,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   primaryText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
-  },
-  bottomText: {
-    marginTop: 16,
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
+    color: '#FFFFFF',
   },
 
   absoluteContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
+    zIndex: 20,
   },
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15,23,42,0.45)',
   },
   bottomSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
-    minHeight: height / 2.1,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   handle: {
-    width: 42,
-    height: 5,
-    borderRadius: 20,
-    backgroundColor: '#D1D5DB',
     alignSelf: 'center',
-    marginBottom: 18,
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 10,
   },
   sheetTitle: {
-    fontSize: 22,
-    color: '#0F172A',
+    fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
   },
   sheetSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    lineHeight: 20,
+    marginTop: 2,
+    marginBottom: 12,
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
     color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
   },
   shareCard: {
-    marginTop: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5F1',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#0D614E22',
+    gap: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E8EEF2',
+    marginBottom: 14,
   },
-  doctorImage: {
-    width: 54,
-    height: 54,
-    borderRadius: 14,
-    marginRight: 12,
+  shareAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EAF8F4',
   },
-  doctorName1: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#0F172A',
+  shareDoctor: {
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  dateText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#475569',
+  shareSpec: {
+    marginTop: 1,
+    fontSize: 11,
     fontFamily: Fonts.PoppinsMedium,
+    color: '#64748B',
+  },
+  shareWhen: {
+    marginTop: 3,
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    color: Colors.primaryColor,
   },
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
+    marginBottom: 12,
   },
   optionWrapper: {
-    width: '22%',
     alignItems: 'center',
+    width: '23%',
   },
   iconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
   optionText: {
-    marginTop: 8,
-    fontSize: 11,
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#475569',
     textAlign: 'center',
-    fontFamily: Fonts.PoppinsMedium,
   },
   cancelBtn: {
-    marginTop: 18,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 10,
   },
   cancelText: {
-    fontSize: 15,
-    color: '#334155',
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
+    color: '#64748B',
   },
 });

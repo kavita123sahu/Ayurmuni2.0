@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
+  Platform,
 } from 'react-native';
 
 import { getStatusStyle } from '../common/DataInterface';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { RADIUS, SPACING, TYPO } from '../constants/responsive';
 import AppointAction from './AppointAction';
 import TablerIcon from './TablerIcon';
 import {
@@ -20,50 +20,44 @@ import {
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
 
-const DateTimeCard = ({ item, isHorizontal = false }: any) => {
-  if (isHorizontal) {
-    return (
-      <View style={styles.hMetaRow}>
-        <View style={styles.hMetaChip}>
-          <TablerIcon name="calendar" size={13} color={Colors.primaryColor} />
-          <Text style={styles.hMetaText} numberOfLines={1}>
-            {item.date}
-          </Text>
-        </View>
-        <View style={styles.hMetaChip}>
-          <TablerIcon name="clock" size={13} color={Colors.primaryColor} />
-          <Text style={styles.hMetaText} numberOfLines={1}>
-            {item.time}
-          </Text>
-        </View>
-      </View>
-    );
-  }
+const formatStatusLabel = (status?: string) => {
+  if (status === 'cancellation_requested') return 'Confirmed';
+  const raw = String(status || '')
+    .replace(/_/g, ' ')
+    .trim();
+  if (!raw) return '';
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+};
 
-  return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoItem}>
-        <View style={styles.iconCircle}>
-          <TablerIcon name="calendar" size={18} color={Colors.primaryColor} />
-        </View>
-        <View>
-          <Text style={styles.infoLabel}>Date</Text>
-          <Text style={styles.infoValue}>{item.date}</Text>
-        </View>
+const ScheduleRow = ({ item }: any) => (
+  <View style={styles.scheduleRow}>
+    <View style={styles.scheduleCell}>
+      <View style={styles.scheduleIcon}>
+        <TablerIcon name="calendar" size={15} color={Colors.primaryColor} />
       </View>
-
-      <View style={styles.infoItem}>
-        <View style={styles.iconCircle}>
-          <TablerIcon name="clock" size={18} color={Colors.primaryColor} />
-        </View>
-        <View>
-          <Text style={styles.infoLabel}>Time</Text>
-          <Text style={styles.infoValue}>{item.time}</Text>
-        </View>
+      <View style={styles.scheduleTextWrap}>
+        <Text style={styles.scheduleLabel}>Date</Text>
+        <Text style={styles.scheduleValue} numberOfLines={1}>
+          {item.date}
+        </Text>
       </View>
     </View>
-  );
-};
+
+    <View style={styles.scheduleDivider} />
+
+    <View style={styles.scheduleCell}>
+      <View style={styles.scheduleIcon}>
+        <TablerIcon name="clock" size={15} color={Colors.primaryColor} />
+      </View>
+      <View style={styles.scheduleTextWrap}>
+        <Text style={styles.scheduleLabel}>Time</Text>
+        <Text style={styles.scheduleValue} numberOfLines={1}>
+          {item.time}
+        </Text>
+      </View>
+    </View>
+  </View>
+);
 
 const RenderAppoint = ({
   item,
@@ -72,26 +66,20 @@ const RenderAppoint = ({
   isHorizontal = false,
   onCancel,
 }: any) => {
-  const statusStyle = useMemo(
-    () => getStatusStyle(item?.status),
-    [item],
-  );
+  const statusStyle = useMemo(() => getStatusStyle(item?.status), [item]);
 
   const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
     ? item.rawData.doctor.health_diseases
-      .map((disease: any) => disease.name)
-      .filter(Boolean)
-      .join(', ')
+        .map((disease: any) => disease.name)
+        .filter(Boolean)
+        .join(', ')
     : '';
 
   const therapyPreview = therapies
     ? therapies.split(',').slice(0, 2).join(', ')
-    : item?.specialty || 'Ayurvedic consult';
+    : item?.specialty || 'Ayurvedic consultation';
 
-  const statusLabel =
-    item.status === 'cancellation_requested'
-      ? 'CONFIRMED'
-      : String(item.status).toUpperCase();
+  const statusLabel = formatStatusLabel(item.status);
 
   const openAppointmentDetails = () => {
     navigation.navigate(
@@ -112,7 +100,7 @@ const RenderAppoint = ({
             <Image source={{ uri: item.image }} style={styles.hAvatar} />
           ) : (
             <View style={[styles.hAvatar, styles.avatarFallback]}>
-              <TablerIcon name="user" size={24} color={Colors.primaryColor} />
+              <TablerIcon name="user" size={20} color={Colors.primaryColor} />
             </View>
           )}
 
@@ -123,13 +111,21 @@ const RenderAppoint = ({
 
             <View style={styles.hMetaRow}>
               <View style={styles.hMetaChip}>
-                <TablerIcon name="calendar" size={12} color={Colors.primaryColor} />
+                <TablerIcon
+                  name="calendar"
+                  size={11}
+                  color={Colors.primaryColor}
+                />
                 <Text style={styles.hMetaText} numberOfLines={1}>
                   {item.date}
                 </Text>
               </View>
               <View style={styles.hMetaChip}>
-                <TablerIcon name="clock" size={12} color={Colors.primaryColor} />
+                <TablerIcon
+                  name="clock"
+                  size={11}
+                  color={Colors.primaryColor}
+                />
                 <Text style={styles.hMetaText} numberOfLines={1}>
                   {item.time}
                 </Text>
@@ -159,15 +155,8 @@ const RenderAppoint = ({
       style={styles.card}
       onPress={openAppointmentDetails}
     >
-      {/* <LinearGradient
-        colors={['#E8F5E9', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.vAccentBar}
-      /> */}
-
-      <View style={styles.contentContainer}>
-        <View style={styles.vHeader}>
+      <View style={styles.vHeader}>
+        <View style={styles.avatarRing}>
           {item.image ? (
             <Image source={{ uri: item.image }} style={styles.avatar} />
           ) : (
@@ -175,46 +164,55 @@ const RenderAppoint = ({
               <TablerIcon name="user" size={22} color={Colors.primaryColor} />
             </View>
           )}
-
-          <View style={styles.vHeaderText}>
-            <View style={styles.headerRow}>
-              <Text style={styles.vDoctorName} numberOfLines={1}>
-                {item.doctorName}
-              </Text>
-              <View
-                style={[
-                  styles.status,
-                  { backgroundColor: statusStyle.backgroundColor },
-                ]}
-              >
-                <Text style={[styles.statusText, { color: statusStyle.color }]}>
-                  {statusLabel}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.vSpeciality} numberOfLines={1}>
-              {therapyPreview}
-            </Text>
-
-            {item?.name ? (
-              <Text style={styles.vPatient} numberOfLines={1}>
-                Patient · {item.name}
-              </Text>
-            ) : null}
-
-            {item?.rawData?.follow_up?.date ? (
-              <View style={[styles.followUP, { marginTop: 6 }]}>
-                <Text style={styles.followUPText}>
-                  Follow-up · {item.rawData.follow_up.date}
-                </Text>
-              </View>
-            ) : null}
-          </View>
         </View>
 
-        <DateTimeCard item={item} />
+        <View style={styles.vHeaderText}>
+          <View style={styles.headerRow}>
+            <Text style={styles.vDoctorName} numberOfLines={1}>
+              {item.doctorName}
+            </Text>
+            <View
+              style={[
+                styles.status,
+                { backgroundColor: statusStyle.backgroundColor },
+              ]}
+            >
+              <View
+                style={[styles.statusDot, { backgroundColor: statusStyle.color }]}
+              />
+              <Text style={[styles.statusText, { color: statusStyle.color }]}>
+                {statusLabel}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.vSpeciality} numberOfLines={1}>
+            {therapyPreview}
+          </Text>
+
+          {item?.name ? (
+            <View style={styles.patientRow}>
+              <TablerIcon name="user" size={12} color="#64748B" />
+              <Text style={styles.vPatient} numberOfLines={1}>
+                {item.name}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
+
+      <ScheduleRow item={item} />
+
+      {item?.rawData?.follow_up?.date ? (
+        <View style={styles.followUP}>
+          <TablerIcon name="refresh" size={12} color={Colors.primaryColor} />
+          <Text style={styles.followUPText}>
+            Follow-up scheduled · {item.rawData.follow_up.date}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.actionDivider} />
 
       <AppointAction
         status={item.status}
@@ -264,36 +262,41 @@ export default memo(RenderAppoint);
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E6EFEA',
-    // overflow: 'hidden',
-    // shadowColor: '#0D614E',
-    // shadowOpacity: 0.06,
-    // shadowRadius: 10,
-    // shadowOffset: { width: 0, height: 4 },
-    // elevation: 2,
-  },
-  vAccentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-  },
-  contentContainer: {
-    flexDirection: 'column',
+    borderColor: '#EEF3F1',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0D614E',
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   vHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  avatarRing: {
+    padding: 2,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: '#D8EBE4',
+    backgroundColor: '#FFFFFF',
+  },
   vHeaderText: {
     flex: 1,
     marginLeft: 12,
+    minWidth: 0,
   },
   headerRow: {
     flexDirection: 'row',
@@ -304,28 +307,38 @@ const styles = StyleSheet.create({
   vDoctorName: {
     flex: 1,
     fontSize: 15,
+    lineHeight: 20,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
   vSpeciality: {
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 12,
+    lineHeight: 16,
     color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
+  },
+  patientRow: {
+    marginTop: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   vPatient: {
-    marginTop: 4,
+    flex: 1,
     fontSize: 11,
-    color: '#0D614E',
+    color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
 
   avatar: {
     width: 52,
     height: 52,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E8F5E9',
+    borderRadius: 26,
+    backgroundColor: '#F0FAF7',
   },
   avatarFallback: {
     justifyContent: 'center',
@@ -334,106 +347,149 @@ const styles = StyleSheet.create({
   },
 
   followUP: {
+    marginTop: 10,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    backgroundColor: '#E8F5E9',
-    alignSelf: 'flex-start',
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: Colors.onfillColor,
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#D8EBE4',
   },
   followUPText: {
-    fontSize: TYPO.sm,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0D614E',
+    flex: 1,
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    color: Colors.primaryColor,
+    includeFontPadding: false,
   },
 
   status: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 20,
     alignSelf: 'flex-start',
     flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   statusText: {
     fontSize: 10,
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.3,
+    includeFontPadding: false,
   },
 
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#F4FAF7',
-    padding: 12,
-    borderRadius: 14,
+  scheduleRow: {
     marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#E6EFEA',
-  },
-  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    backgroundColor: '#F7FAF9',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#EEF3F1',
   },
-  iconCircle: {
-    width: 34,
-    height: 34,
+  scheduleCell: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
+  scheduleIcon: {
+    width: 32,
+    height: 32,
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E6EFEA',
+    borderColor: '#E5EBE8',
   },
-  infoLabel: {
+  scheduleTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  scheduleLabel: {
     fontSize: 10,
     color: '#94A3B8',
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
-  infoValue: {
+  scheduleValue: {
+    marginTop: 1,
     fontSize: 12,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+  scheduleDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#E5EBE8',
+    marginHorizontal: 8,
+  },
+
+  actionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E8EEF0',
+    marginTop: 12,
+    marginBottom: 2,
   },
 
   /* Horizontal (Home) */
   hCard: {
-    width: 248,
+    width: 240,
     marginRight: 12,
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E3ECE8',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    // elevation: 2,
+    borderColor: '#EEF3F1',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0D614E',
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   hInner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    gap: 12,
+    gap: 10,
   },
   hBody: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 5,
   },
   hAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 2,
-    borderColor: '#E8F5EF',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#F4FAF7',
   },
   hDoctorName: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 17,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
   hMetaRow: {
     flexDirection: 'row',
@@ -443,16 +499,17 @@ const styles = StyleSheet.create({
   hMetaChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     maxWidth: '100%',
   },
   hMetaText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#475569',
     fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
   hStatus: {
     alignSelf: 'flex-start',
-    marginTop: 2,
+    marginTop: 1,
   },
 });

@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
@@ -24,11 +25,7 @@ import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import { normalizeAppointmentListItem } from '../../utils/appointmentUtils';
 import SegmentTabs from '../../components/SegmentTabs';
-import {
-  getListBottomPadding,
-  getScreenPaddingH,
-  SPACING,
-} from '../../constants/responsive';
+import { getListBottomPadding } from '../../constants/responsive';
 
 const APPOINTMENT_TABS = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -36,20 +33,20 @@ const APPOINTMENT_TABS = [
 ] as const;
 
 const FOLLOW_UP_FILTERS = [
-  { key: 'all', label: 'All' },
+  { key: 'all', label: 'All visits' },
   { key: 'true', label: 'Follow-up' },
   { key: 'false', label: 'Regular' },
 ] as const;
 
 const UPCOMING_STATUS_FILTERS = [
-  { key: 'all', label: 'All status' },
+  { key: 'all', label: 'Any status' },
   { key: 'cancelled', label: 'Cancelled' },
   { key: 'confirmed', label: 'Confirmed' },
   { key: 'reschedule', label: 'Reschedule' },
 ] as const;
 
 const PAST_STATUS_FILTERS = [
-  { key: 'all', label: 'All status' },
+  { key: 'all', label: 'Any status' },
   { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
   { key: 'missed', label: 'Missed' },
@@ -109,7 +106,6 @@ const AppointmentScreen = (props: any) => {
 
   const listScope = upcomingOnly ? 'upcoming' : activeTab;
 
-  // Reset status chip when switching upcoming ↔ past
   const handleTabChange = useCallback((tab: 'upcoming' | 'past') => {
     setActiveTab(tab);
     setStatusFilter('all');
@@ -121,7 +117,7 @@ const AppointmentScreen = (props: any) => {
     if (statusFilter !== 'all') {
       filters.appointment_status = statusFilter;
     } else {
-      filters.appointment_status = listScope; // 'upcoming' | 'past'
+      filters.appointment_status = listScope;
     }
 
     if (followUpFilter !== 'all') {
@@ -151,7 +147,6 @@ const AppointmentScreen = (props: any) => {
     );
   }, [AppointData, loading]);
 
-  // Soft client guard (API already filtered by status/follow_up when supported)
   const appointmentData = useMemo(() => {
     return normalizedData.filter(item => {
       const status = String(item.status ?? '').toLowerCase();
@@ -160,8 +155,8 @@ const AppointmentScreen = (props: any) => {
         const inScope =
           listScope === 'upcoming'
             ? UPCOMING_STATUS.includes(status) ||
-            status === 'upcoming' ||
-            !PAST_STATUS.includes(status)
+              status === 'upcoming' ||
+              !PAST_STATUS.includes(status)
             : PAST_STATUS.includes(status) || status === 'past';
         if (!inScope && listScope === 'past') return false;
         if (
@@ -172,7 +167,6 @@ const AppointmentScreen = (props: any) => {
           return false;
         }
       } else if (status !== statusFilter && status !== `${statusFilter}d`) {
-        // allow reschedule / rescheduled
         if (
           !(
             statusFilter === 'reschedule' &&
@@ -311,16 +305,16 @@ const AppointmentScreen = (props: any) => {
     if (loading || appointmentData.length > 0) return null;
     return (
       <EmptyState
-        iconName="star"
+        iconName="calendar"
         title={
           listScope === 'upcoming'
-            ? 'No Upcoming Appointments'
-            : 'No Past Appointments'
+            ? 'No upcoming appointments'
+            : 'No past appointments'
         }
         subtitle={
           listScope === 'upcoming'
-            ? 'You have no upcoming appointments for these filters.'
-            : 'You have no past appointments for these filters.'
+            ? 'Book a doctor to schedule your next consultation.'
+            : 'Your completed and missed visits will appear here.'
         }
       />
     );
@@ -330,29 +324,39 @@ const AppointmentScreen = (props: any) => {
     props?.navigation.navigate('AllDoctors');
   }, [props?.navigation]);
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <Header
-        title={upcomingOnly ? 'Upcoming Appointments' : 'My Appointments'}
-        subtitle={
-          upcomingOnly
-            ? 'Your next visits'
-            : 'Manage your visits'
-        }
-        onBack={() => props?.navigation.goBack()}
-        rightIconName="plus"
-        onRightPress={handleBookNew}
-        onRefreshPress={refreshUpcoming}
-      />
+  const resultLabel = loading
+    ? 'Loading…'
+    : `${appointmentData.length} ${
+        appointmentData.length === 1 ? 'appointment' : 'appointments'
+      }`;
 
-      {!upcomingOnly ? (
-        <SegmentTabs
-          tabs={[...APPOINTMENT_TABS]}
-          activeKey={activeTab}
-          onChange={key => handleTabChange(key as 'upcoming' | 'past')}
-          variant="underline"
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <View style={styles.topChrome}>
+        <Header
+          title={upcomingOnly ? 'Upcoming' : 'My Appointments'}
+          subtitle={
+            upcomingOnly ? 'Your next consultations' : 'Manage your visits'
+          }
+          onBack={() => props?.navigation.goBack()}
+          rightIconName="plus"
+          onRightPress={handleBookNew}
+          onRefreshPress={refreshUpcoming}
+          refreshing={refreshing}
         />
-      ) : null}
+
+        {!upcomingOnly ? (
+          <SegmentTabs
+            tabs={[...APPOINTMENT_TABS]}
+            activeKey={activeTab}
+            onChange={key => handleTabChange(key as 'upcoming' | 'past')}
+            variant="underline"
+            style={styles.tabs}
+          />
+        ) : null}
+      </View>
 
       <View style={styles.filtersBlock}>
         <FilterChips
@@ -365,6 +369,9 @@ const AppointmentScreen = (props: any) => {
           activeKey={statusFilter}
           onChange={setStatusFilter}
         />
+        {!loading ? (
+          <Text style={styles.resultLabel}>{resultLabel}</Text>
+        ) : null}
       </View>
 
       <FlatList
@@ -394,7 +401,9 @@ const AppointmentScreen = (props: any) => {
         }
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator size="small" color="#0D614E" />
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={Colors.primaryColor} />
+            </View>
           ) : null
         }
       />
@@ -436,26 +445,38 @@ export default AppointmentScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: getScreenPaddingH(),
     backgroundColor: Colors.background,
   },
+  topChrome: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E8EEF0',
+  },
+  tabs: {
+    marginTop: 0,
+    marginBottom: 0,
+    marginHorizontal: 0,
+    borderWidth: 0,
+    borderRadius: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EEF2F6',
+  },
   filtersBlock: {
-    marginTop: SPACING.sm,
-    marginBottom: 4,
-    gap: 10,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 8,
   },
   chipRow: {
-    paddingVertical: 2,
+    paddingHorizontal: 16,
     gap: 8,
-    paddingRight: 5,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5EBE8',
   },
   chipActive: {
     backgroundColor: Colors.onfillColor,
@@ -465,13 +486,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
   chipTextActive: {
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  resultLabel: {
+    marginTop: 2,
+    paddingHorizontal: 16,
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
+  },
   listContent: {
-    paddingTop: SPACING.md,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     flexGrow: 1,
+  },
+  footerLoader: {
+    paddingVertical: 16,
   },
 });

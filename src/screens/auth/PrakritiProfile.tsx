@@ -1,27 +1,37 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   StatusBar,
   Image,
   BackHandler,
+  Animated,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import { Images } from '../../common/Images';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { PrakritiProfileSkeleton } from '../../simmerScreen/ShimmerHook';
 import BackIconButton from '../../components/BackIconButton';
-import TablerIcon from '../../components/TablerIcon';
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import { PRAKRITI_IMAGES } from '../../common/DataInterface';
 
-
-const { width } = Dimensions.get('window');
+type DoshaItem = {
+  id: number;
+  name: string;
+  percentage: number;
+  color: string;
+  soft: string;
+  icon: TablerIconName;
+  label: string;
+};
 
 const getDynamicTitle = (result: string) => {
   switch (result?.toLowerCase()) {
@@ -32,45 +42,82 @@ const getDynamicTitle = (result: string) => {
     case 'kapha':
       return 'The Nurturer';
     case 'vata-pitta':
+    case 'pitta-vata':
       return 'The Dynamic Creator';
     case 'pitta-kapha':
+    case 'kapha-pitta':
       return 'The Strategic Builder';
     case 'vata-kapha':
+    case 'kapha-vata':
       return 'The Calm Innovator';
     default:
       return 'Balanced Soul';
   }
 };
 
+const formatDominantLabel = (result?: string) => {
+  if (!result) return 'Your Prakriti';
+  return String(result)
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join('-');
+};
+
+const resolvePrakritiImage = (result?: string) => {
+  if (!result) return undefined;
+  const raw = String(result).trim();
+  if (PRAKRITI_IMAGES[raw]) return PRAKRITI_IMAGES[raw];
+
+  const titled = raw
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join('-');
+
+  const match = Object.entries(PRAKRITI_IMAGES).find(
+    ([key]) => key.toLowerCase() === raw.toLowerCase() || key.toLowerCase() === titled.toLowerCase(),
+  );
+  return match?.[1];
+};
+
 const formatPrakritiData = (apiData: any) => {
   const dominantType = apiData?.result || '';
 
-  const doshas = [
+  const doshas: DoshaItem[] = [
     {
       id: 1,
       name: 'VATA',
-      percentage: apiData?.vata || 0,
+      label: 'Air & Space',
+      percentage: Number(apiData?.vata) || 0,
       color: '#2563EB',
-      icon: '༄',
+      soft: '#EFF6FF',
+      icon: 'bolt',
     },
     {
       id: 2,
       name: 'PITTA',
-      percentage: apiData?.pitta || 0,
+      label: 'Fire & Water',
+      percentage: Number(apiData?.pitta) || 0,
       color: '#F59E0B',
-      icon: '🔥',
+      soft: '#FFFBEB',
+      icon: 'flame',
     },
     {
       id: 3,
       name: 'KAPHA',
-      percentage: apiData?.kapha || 0,
-      color: '#87ccea',
-      icon: '💧',
+      label: 'Earth & Water',
+      percentage: Number(apiData?.kapha) || 0,
+      color: '#0EA5E9',
+      soft: '#F0F9FF',
+      icon: 'leaf',
     },
   ];
 
   return {
     dominantType,
+    dominantLabel: formatDominantLabel(dominantType),
+    imageUrl: resolvePrakritiImage(dominantType),
     subtitle: 'Your unique Ayurvedic soul-print.',
     doshas,
     coreEssence: {
@@ -102,15 +149,112 @@ const hasValidPrakritiPayload = (response: any) => {
   return hasResult || hasDoshas;
 };
 
+const DoshaMeter = ({ item, index }: { item: DoshaItem; index: number }) => {
+  const widthAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    widthAnim.setValue(0);
+    Animated.timing(widthAnim, {
+      toValue: Math.max(0, Math.min(100, item.percentage)),
+      duration: 700,
+      delay: 120 + index * 120,
+      useNativeDriver: false,
+    }).start();
+  }, [item.percentage, index, widthAnim]);
+
+  return (
+    <View style={styles.meterRow}>
+      <View style={[styles.meterIcon, { backgroundColor: item.soft }]}>
+        <TablerIcon name={item.icon} size={16} color={item.color} />
+      </View>
+      <View style={styles.meterBody}>
+        <View style={styles.meterTop}>
+          <View>
+            <Text style={styles.meterName}>{item.name}</Text>
+            <Text style={styles.meterLabel}>{item.label}</Text>
+          </View>
+          <Text style={[styles.meterPercent, { color: item.color }]}>
+            {item.percentage}%
+          </Text>
+        </View>
+        <View style={styles.meterTrack}>
+          <Animated.View
+            style={[
+              styles.meterFill,
+              {
+                backgroundColor: item.color,
+                width: widthAnim.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+        </View>
+      </View>
+    </View>
+  );
+};
+
 interface GuidelineCardProps {
   title: string;
+  subtitle: string;
   color: string;
-  icon: any;
-  image: any;
+  soft: string;
+  icon: TablerIconName;
   data: any[];
+  positive?: boolean;
 }
 
+const GuidelineCard = React.memo(
+  ({ title, subtitle, color, soft, icon, data, positive }: GuidelineCardProps) => {
+    if (!Array.isArray(data) || data.length === 0) return null;
+
+    return (
+      <View style={styles.guidelineCard}>
+        <View style={styles.guidelineTop}>
+          <View style={[styles.guidelineIconWrap, { backgroundColor: soft }]}>
+            <TablerIcon name={icon} size={18} color={color} />
+          </View>
+          <View style={styles.guidelineTitleWrap}>
+            <Text style={[styles.guidelineCardTitle, { color }]}>{title}</Text>
+            <Text style={styles.guidelineSubtitle}>{subtitle}</Text>
+          </View>
+        </View>
+
+        {data.map((item: any, index: number) => (
+          <View
+            key={`${title}-${index}`}
+            style={[
+              styles.bulletRow,
+              index === data.length - 1 && styles.bulletRowLast,
+            ]}
+          >
+            <View
+              style={[
+                styles.bulletDot,
+                {
+                  backgroundColor: soft,
+                  borderColor: `${color}33`,
+                },
+              ]}
+            >
+              <TablerIcon
+                name={positive ? 'check' : 'x'}
+                size={12}
+                color={color}
+              />
+            </View>
+            <Text style={styles.bulletText}>{item}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  },
+);
+
 const PrakritiProfile = (props: any) => {
+  const insets = useSafeAreaInsets();
   const fromAssessment = Boolean(props?.route?.params?.fromAssessment);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -123,17 +267,9 @@ const PrakritiProfile = (props: any) => {
       setAnalysisData(null);
 
       let response: any = await _PROFILE_SERVICES.get_prakriti_info();
-      console.log('prakiirinanauluysysy', response);
-
-      // Right after submit, result API can lag — one short retry
-      // if (!hasValidPrakritiPayload(response) && fromAssessment) {
-      //   await new Promise(resolve => setTimeout(resolve, 700));
-      //   response = await _PROFILE_SERVICES.get_prakriti_info();
-      // }
 
       if (!hasValidPrakritiPayload(response) && fromAssessment) {
         await new Promise<void>(resolve => setTimeout(resolve, 700));
-
         response = await _PROFILE_SERVICES.get_prakriti_info();
       }
 
@@ -167,7 +303,6 @@ const PrakritiProfile = (props: any) => {
   };
 
   const handleHeaderBack = useCallback(() => {
-    // After PatientFAQ assessment → back is disabled; use Continue to Home
     if (fromAssessment) {
       return;
     }
@@ -179,10 +314,7 @@ const PrakritiProfile = (props: any) => {
       if (!fromAssessment) {
         return undefined;
       }
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        // Block hardware back after assessment; stay on results
-        return true;
-      });
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
       return () => sub.remove();
     }, [fromAssessment]),
   );
@@ -191,44 +323,83 @@ const PrakritiProfile = (props: any) => {
     props.navigation.navigate('PatientFAQ', { allowBack: true });
   };
 
+  const handleStartAssessment = () => {
+    props.navigation.navigate('PatientFAQ');
+  };
+
+  const dominantHighlight = useMemo(() => {
+    if (!analysisData?.doshas?.length) return Colors.primaryColor;
+    const top = [...analysisData.doshas].sort(
+      (a: DoshaItem, b: DoshaItem) => b.percentage - a.percentage,
+    )[0];
+    return top?.color || Colors.primaryColor;
+  }, [analysisData]);
+
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconWrap}>
-        <Image
-          source={Images.FinalLogo}
-          style={{ height: 80, width: 80, tintColor: Colors.primaryColor }}
-        />
-      </View>
-
-      <Text style={styles.emptyTitle}>No Prakriti Assessment Yet</Text>
-
-      <Text style={styles.emptyDescription}>
-        Complete a short Ayurvedic assessment to discover your unique body
-        constitution and receive personalized health recommendations.
-      </Text>
+      <LinearGradient
+        colors={['#E8F8F2', '#F7FAF9']}
+        style={styles.emptyHero}
+      >
+        <View style={styles.emptyIconWrap}>
+          <Image
+            source={Images.FinalLogo}
+            style={styles.emptyLogo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.emptyEyebrow}>Discover your nature</Text>
+        <Text style={styles.emptyTitle}>Know your Prakriti</Text>
+        <Text style={styles.emptyDescription}>
+          A short Ayurvedic assessment reveals your body constitution and unlocks
+          personalized diet & lifestyle guidance.
+        </Text>
+      </LinearGradient>
 
       <View style={styles.featureCard}>
-        <View style={styles.featureRow}>
-          <TablerIcon name="spoon" size={18} color={Colors.primaryColor} />
-          <Text style={styles.featureText}>Personalized Analysis</Text>
-        </View>
-
-        <View style={styles.featureRow}>
-          <TablerIcon name="briefcase" size={18} color={Colors.primaryColor} />
-          <Text style={styles.featureText}>Diet Recommendations</Text>
-        </View>
-
-        <View style={styles.featureRow}>
-          <TablerIcon name="heart" size={18} color={Colors.primaryColor} />
-          <Text style={styles.featureText}>Lifestyle Guidance</Text>
-        </View>
+        {[
+          {
+            icon: 'chart-pie' as TablerIconName,
+            title: 'Dosha balance',
+            copy: 'See your Vata, Pitta & Kapha mix',
+          },
+          {
+            icon: 'leaf' as TablerIconName,
+            title: 'Diet guidance',
+            copy: 'Foods that support your constitution',
+          },
+          {
+            icon: 'heart' as TablerIconName,
+            title: 'Daily rituals',
+            copy: 'Simple do’s and don’ts for balance',
+          },
+        ].map(item => (
+          <View key={item.title} style={styles.featureRow}>
+            <View style={styles.featureIcon}>
+              <TablerIcon name={item.icon} size={18} color={Colors.primaryColor} />
+            </View>
+            <View style={styles.featureCopy}>
+              <Text style={styles.featureTitle}>{item.title}</Text>
+              <Text style={styles.featureText}>{item.copy}</Text>
+            </View>
+          </View>
+        ))}
       </View>
 
       <TouchableOpacity
-        style={styles.startBtn}
-        onPress={() => props.navigation.navigate('PatientFAQ')}
+        activeOpacity={0.9}
+        onPress={handleStartAssessment}
+        style={styles.startBtnWrap}
       >
-        <Text style={styles.startBtnText}>Start Assessment</Text>
+        <LinearGradient
+          colors={['#0D614E', '#14937A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.startBtn}
+        >
+          <Text style={styles.startBtnText}>Start assessment</Text>
+          <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
@@ -240,114 +411,138 @@ const PrakritiProfile = (props: any) => {
 
     return (
       <>
-        <View style={styles.topSection}>
-          <Text style={styles.completedText}>
-            {fromAssessment
-              ? 'ASSESSMENT COMPLETE'
-              : 'PRAKRITI ANALYSIS COMPLETE'}
-          </Text>
-          <Text style={styles.mainTitle}>
-            {analysisData.dominantType || 'Your Prakriti Type'}
-          </Text>
-          <Text style={styles.subtitle}>
-            Your unique Ayurvedic body constitution.
-          </Text>
-        </View>
+        <LinearGradient
+          colors={['#0B7358', '#0D614E', '#0A4F40']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroBadge}>
+            <TablerIcon name="circle-check" size={14} color="#6EE7B7" />
+            <Text style={styles.completedText}>
+              {fromAssessment ? 'Assessment complete' : 'Prakriti analysis'}
+            </Text>
+          </View>
+
+          <View style={styles.heroMain}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroKicker}>Your dominant type</Text>
+              <Text style={styles.mainTitle}>{analysisData.dominantLabel}</Text>
+              <Text style={styles.subtitle}>
+                {analysisData.coreEssence.title} · personalized for your balance
+              </Text>
+            </View>
+
+            {analysisData.imageUrl ? (
+              <View style={styles.heroImageWrap}>
+                <Image
+                  source={{ uri: analysisData.imageUrl }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.heroImageWrap,
+                  styles.heroImageFallback,
+                  { borderColor: dominantHighlight },
+                ]}
+              >
+                <TablerIcon name="leaf" size={28} color="#FFFFFF" />
+              </View>
+            )}
+          </View>
+        </LinearGradient>
 
         <View style={styles.doshaCard}>
-          {analysisData.doshas.map((item: any) => (
-            <View key={item.id} style={styles.doshaItem}>
-              <View style={[styles.iconCircle, { borderColor: item.color }]}>
-                <Text style={[styles.doshaIcon, { color: item.color }]}>
-                  {item.icon}
-                </Text>
-              </View>
-              <Text style={styles.doshaName}>{item.name}</Text>
-              <Text style={styles.doshaPercent}>{item.percentage}%</Text>
-            </View>
+          <View style={styles.doshaHeader}>
+            <Text style={styles.doshaCardTitle}>Dosha composition</Text>
+            <Text style={styles.doshaCardHint}>Your unique mix</Text>
+          </View>
+          {analysisData.doshas.map((item: DoshaItem, index: number) => (
+            <DoshaMeter key={item.id} item={item} index={index} />
           ))}
         </View>
 
-        {/* Ask again — retake / update current body type */}
-        <View style={styles.reassessCard}>
-          <View style={styles.reassessCopy}>
-            <Text style={styles.reassessTitle}>
-              Update your current body type?
-            </Text>
-            <Text style={styles.reassessSub}>
-              Retake the Prakriti assessment anytime if your lifestyle or balance
-              has changed.
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.reassessBtn}
-            activeOpacity={0.9}
-            onPress={() => props.navigation.navigate('PatientFAQ')}
-          >
-            <Text style={styles.reassessBtnText}>Assess again</Text>
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.essenceCard}>
-          <Text style={styles.smallHeading}>CORE ESSENCE</Text>
-          <Text style={styles.essenceTitle}>
-            {analysisData.coreEssence.title}
-          </Text>
-          <Text style={styles.essenceDescription}>
-            {analysisData.coreEssence.description}
-          </Text>
+          <LinearGradient
+            colors={['#0D614E', '#117A64']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.essenceGradient}
+          >
+            <Text style={styles.smallHeading}>Core essence</Text>
+            <Text style={styles.essenceTitle}>
+              {analysisData.coreEssence.title}
+            </Text>
+            {analysisData.coreEssence.description ? (
+              <Text style={styles.essenceDescription}>
+                {analysisData.coreEssence.description}
+              </Text>
+            ) : (
+              <Text style={styles.essenceDescription}>
+                Your constitution guides how you digest, think, and restore.
+                Follow the rituals below to stay in balance.
+              </Text>
+            )}
+          </LinearGradient>
         </View>
 
         <View style={styles.guidelineHeader}>
-          <Text style={styles.guidelineTitle}>Lifestyle Guidelines</Text>
-          <Text style={styles.personalizedText}>Personalized</Text>
+          <View>
+            <Text style={styles.guidelineTitle}>Lifestyle guidelines</Text>
+            <Text style={styles.guidelineLead}>
+              Built around your {analysisData.dominantLabel} nature
+            </Text>
+          </View>
+          <View style={styles.personalizedPill}>
+            <Text style={styles.personalizedText}>For you</Text>
+          </View>
         </View>
 
         <GuidelineCard
-          title="Daily Rituals (Do's)"
+          title="Daily rituals"
+          subtitle="Support balance every day"
           color={Colors.primaryColor}
-          icon={require('../../assets/images/check-icon.png')}
-          image={require('../../assets/images/bullettick.png')}
+          soft="#ECF8F3"
+          icon="circle-check"
+          positive
           data={analysisData.lifestyleGuidelines.doList}
         />
 
         <GuidelineCard
-          title="To Avoid (Don'ts)"
+          title="Things to ease"
+          subtitle="Reduce friction for your dosha"
           color="#EA580C"
-          image={require('../../assets/images/crosstick.png')}
-          icon={require('../../assets/images/DontIcon.png')}
+          soft="#FFF7ED"
+          icon="alert-circle"
           data={analysisData.lifestyleGuidelines.dontList}
         />
 
-        <View style={styles.actionRow}>
+        <View style={styles.secondaryActions}>
           <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => props.navigation.navigate('PatientFAQ')}
+            style={styles.secondaryBtn}
+            activeOpacity={0.85}
+            onPress={handleEditAssessment}
           >
-            <TablerIcon name="edit" size={14} color={Colors.primaryColor} />
-            <Text style={styles.actionText}>Retake Prakriti</Text>
+            <TablerIcon name="refresh" size={16} color={Colors.primaryColor} />
+            <Text style={styles.secondaryBtnText}>Retake assessment</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionBtn, { borderColor: '#FED7AA' }]}
+            style={styles.secondaryBtn}
+            activeOpacity={0.85}
             onPress={() =>
               props.navigation.navigate('AssessmentType', { form: 'medical' })
             }
           >
-            <TablerIcon name="edit" size={14} color={Colors.primaryColor} />
-            <Text style={styles.actionText}>Body Type</Text>
+            <TablerIcon name="clipboard-list" size={16} color={Colors.primaryColor} />
+            <Text style={styles.secondaryBtnText}>Body type</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.homeBtn}
-          onPress={handleGoHome}
-        >
-          <Text style={styles.homeBtnText}>
-            {fromAssessment ? 'Continue to Home' : 'Go to Home'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ height: 88 + insets.bottom }} />
       </>
     );
   };
@@ -365,15 +560,14 @@ const PrakritiProfile = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background} />
-      {/* ===== HEADER ===== */}
       <View style={styles.header}>
         {fromAssessment ? (
-          <View style={[styles.iconBtn, styles.iconBtnPlaceholder]} />
+          <View style={styles.iconBtnPlaceholder} />
         ) : (
-          <BackIconButton onPress={handleHeaderBack} style={styles.iconBtn} />
+          <BackIconButton onPress={handleHeaderBack} />
         )}
 
         <Text style={styles.headerTitle}>Prakriti Analysis</Text>
@@ -384,7 +578,7 @@ const PrakritiProfile = (props: any) => {
             onPress={handleEditAssessment}
             activeOpacity={0.8}
           >
-            {/* <TablerIcon name="" size={22} color={Colors.primaryColor} /> */}
+            <TablerIcon name="edit" size={18} color={Colors.primaryColor} />
           </TouchableOpacity>
         ) : (
           <View style={styles.iconBtnPlaceholder} />
@@ -397,512 +591,516 @@ const PrakritiProfile = (props: any) => {
       >
         {renderBody()}
       </ScrollView>
+
+      {hasPrakriti && !loading ? (
+        <View
+          style={[
+            styles.stickyBar,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
+        >
+          <TouchableOpacity activeOpacity={0.9} onPress={handleGoHome}>
+            <LinearGradient
+              colors={['#0D614E', '#14937A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.homeBtn}
+            >
+              <Text style={styles.homeBtnText}>
+                {fromAssessment ? 'Continue to Home' : 'Go to Home'}
+              </Text>
+              <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
 
 export default PrakritiProfile;
 
-const GuidelineCard = React.memo(
-  ({
-    title,
-    color,
-    icon,
-    image,
-    data,
-  }: GuidelineCardProps) => {
-    return (
-      <View
-        style={[
-          styles.guidelineCard,
-          {
-            borderLeftColor: color,
-          },
-        ]}
-      >
-        <View style={styles.guidelineTop}>
-          <View
-            style={[
-              styles.guidelineIconWrap,
-              {
-                backgroundColor: `${color}15`,
-              },
-            ]}
-          >
-
-            <Image source={icon} style={{ height: 18, width: 18, tintColor: color }} />
-          </View>
-
-          <Text
-            style={[
-              styles.guidelineCardTitle,
-              {
-                color,
-              },
-            ]}
-          >
-            {title}
-          </Text>
-        </View>
-
-        {data.map((item: any, index: any) => (
-          <View key={index} style={styles.bulletRow}>
-            <View
-              style={[
-                styles.bulletDot,
-                {
-                  borderColor: color,
-                },
-              ]}
-            >
-              <Image source={image} style={{ height: 18, tintColor: color, width: 18, resizeMode: 'contain' }} />
-            </View>
-
-            <Text style={styles.bulletText}>
-              {item}
-            </Text>
-          </View>
-        ))}
-      </View>
-    )
-  })
-
-
-// ===== STYLES =====
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background
-    // backgroundColor: '#F5F5F5',
-  },
-
-  scrollContent: {
-    paddingBottom: 40,
-    backgroundColor: Colors.white
-  },
-
-  // ===== HEADER =====
-  header: {
-
     backgroundColor: Colors.background,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+
+  header: {
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E8EEF0',
   },
-
   iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F4F7F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   iconBtnPlaceholder: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
   },
-
-  iconText: {
-    fontSize: 20,
-    color: '#1F2937',
-    fontWeight: '700',
-  },
-
   headerTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#000000',
+    color: '#0F172A',
+    includeFontPadding: false,
   },
 
-
-  //EMPTY CONATINER 
   emptyContainer: {
-    // margin: 20,
-    // // backgroundColor: '#FFFFFF',
-    // borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    // elevation: 4,
-    // shadowColor: '#000',
-    // shadowOpacity: 0.08,
-    // shadowRadius: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-
+  emptyHero: {
+    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D8EBE4',
+  },
   emptyIconWrap: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#E8F8F2',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 14,
   },
-
-  emptyIcon: {
-    fontSize: 42,
+  emptyLogo: {
+    height: 52,
+    width: 52,
+    tintColor: Colors.primaryColor,
   },
-
+  emptyEyebrow: {
+    fontSize: 12,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   emptyTitle: {
-    marginTop: 18,
-    fontSize: 24,
-    color: '#1F2937',
+    marginTop: 6,
+    fontSize: 26,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
+    includeFontPadding: false,
   },
-
   emptyDescription: {
-    marginTop: 10,
+    marginTop: 8,
     fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 22,
+    fontFamily: Fonts.PoppinsRegular,
   },
-
   featureCard: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    marginTop: 24,
-    padding: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    marginTop: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EEF3F1',
+    gap: 14,
   },
-
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
   },
-
-  featureText: {
-    marginLeft: 12,
-    fontSize: 15,
-    color: '#334155',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  startBtn: {
-    marginTop: 28,
-    width: '100%',
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 14,
-    paddingVertical: 15,
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.onfillColor,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  startBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontFamily: Fonts.PoppinsSemiBold,
+  featureCopy: {
+    flex: 1,
+    marginLeft: 12,
   },
-  // ===== TOP SECTION =====
-  topSection: {
-    backgroundColor: '#0B7358',
-    paddingHorizontal: 20,
-    // paddingBottom: 80,
-    paddingTop: 30,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 120
-  },
-
-  completedText: {
-    fontSize: 12,
-    color: '#5AD0B1',
-    fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 10,
-    letterSpacing: 0.5,
-  },
-
-  mainTitle: {
-    fontSize: 42,
-    color: '#FFFFFF',
-    marginBottom: -15,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  subtitle: {
+  featureTitle: {
     fontSize: 14,
-    color: '#FFFFFF99',
-    fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 22,
-  },
-
-  reassessCard: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#D7EBE3',
-  },
-  reassessCopy: {
-    marginBottom: 12,
-  },
-  reassessTitle: {
-    fontSize: 15,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 4,
+    includeFontPadding: false,
   },
-  reassessSub: {
+  featureText: {
+    marginTop: 2,
     fontSize: 12,
-    lineHeight: 18,
     color: '#64748B',
     fontFamily: Fonts.PoppinsRegular,
   },
-  reassessBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  startBtnWrap: {
+    marginTop: 22,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
-  reassessBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  // ===== DOSHA CARD =====
-  doshaCard: {
-    width: width - 32,
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-
-    marginTop: -90,
-    paddingVertical: 24,
+  startBtn: {
+    minHeight: 52,
+    borderRadius: 14,
+    paddingHorizontal: 18,
     flexDirection: 'row',
-    justifyContent: 'space-around',
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-
-  doshaItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  iconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    gap: 8,
+  },
+  startBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
-  doshaIcon: {
-    fontSize: 22,
-    fontWeight: '700',
+  hero: {
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 72,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-
-  doshaName: {
+  heroBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 16,
+  },
+  completedText: {
+    fontSize: 11,
+    color: '#A7F3D0',
+    fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.3,
+    includeFontPadding: false,
+  },
+  heroMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroKicker: {
     fontSize: 12,
-    color: '#9CA3AF',
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 6,
-    letterSpacing: 1,
-  },
-
-  doshaPercent: {
-    fontSize: 20,
-    color: '#061E0E',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  // ===== CORE ESSENCE =====
-  essenceCard: {
-    marginHorizontal: 16,
-    marginTop: 26,
-    borderRadius: 28,
-    padding: 35,
-    backgroundColor: Colors.primaryColor,
-  },
-
-  smallHeading: {
     color: '#B5E6D8',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 1,
-    marginBottom: 14,
-  },
-
-  essenceTitle: {
-    color: '#FFC52D',
-    fontSize: 30,
-    fontFamily: Fonts.PoppinsBold,
-    marginBottom: 8,
-  },
-
-  essenceDescription: {
-    color: '#FFFFFFB2',
-    fontSize: 14,
-    lineHeight: 23,
     fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 4,
+  },
+  mainTitle: {
+    fontSize: 34,
+    lineHeight: 40,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.78)',
+    fontFamily: Fonts.PoppinsMedium,
+    lineHeight: 20,
+  },
+  heroImageWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  heroImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
 
-  // ===== GUIDELINE =====
-  guidelineHeader: {
-    marginTop: 28,
-    marginBottom: 18,
-    marginHorizontal: 18,
+  doshaCard: {
+    marginHorizontal: 16,
+    marginTop: -48,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderWidth: 1,
+    borderColor: '#EEF3F1',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0D614E',
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  doshaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
+  },
+  doshaCardTitle: {
+    fontSize: 15,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  doshaCardHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  meterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 12,
+  },
+  meterIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  meterBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  meterTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  meterName: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.4,
+    includeFontPadding: false,
+  },
+  meterLabel: {
+    marginTop: 1,
+    fontSize: 10,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  meterPercent: {
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+  meterTrack: {
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  meterFill: {
+    height: '100%',
+    borderRadius: 8,
   },
 
+  essenceCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  essenceGradient: {
+    padding: 20,
+  },
+  smallHeading: {
+    color: '#B5E6D8',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  essenceTitle: {
+    color: '#FBBF24',
+    fontSize: 24,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 8,
+    includeFontPadding: false,
+  },
+  essenceDescription: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  guidelineHeader: {
+    marginTop: 24,
+    marginBottom: 12,
+    marginHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   guidelineTitle: {
     fontSize: 18,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#1F2937',
+    color: '#0F172A',
+    includeFontPadding: false,
   },
-
-  personalizedText: {
-    color: '#F5A623',
-    fontSize: 14,
-    fontFamily: Fonts.PoppinsSemiBold,
+  guidelineLead: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
   },
-  // Action Edit
-
-  actionRow: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
-    paddingHorizontal: 20,
-  },
-
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
+  personalizedPill: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 20,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: Colors.primaryColor,
+    borderColor: '#FED7AA',
   },
-
-  actionText: {
-    marginLeft: 5,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
+  personalizedText: {
+    color: '#C2410C',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   guidelineCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    marginBottom: 18,
-    borderRadius: 24,
-    padding: 20,
-    borderLeftWidth: 4,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    marginBottom: 12,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EEF3F1',
   },
-
   guidelineTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
-  },
-
-  guidelineIconWrap: {
-    width: 35,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-
-  guidelineIcon: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  guidelineCardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-
-  bulletRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 14,
   },
-
-  bulletDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    // borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-    marginRight: 12,
-  },
-
-  bulletTick: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-
-  bulletText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#6B7280',
-    lineHeight: 24,
-    fontWeight: '500',
-  },
-  homeBtn: {
-    backgroundColor: Colors.primaryColor,
-    paddingVertical: 14,
+  guidelineIconWrap: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 20,
-    marginTop: 12,
+    marginRight: 12,
   },
-  homeBtnText: {
-    color: '#FFF',
+  guidelineTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  guidelineCardTitle: {
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
-  editBtn: {
+  guidelineSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  bulletRowLast: {
+    marginBottom: 0,
+  },
+  bulletDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    marginRight: 10,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 22,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  secondaryBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8EBE4',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  secondaryBtnText: {
+    color: Colors.primaryColor,
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
+
+  stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    backgroundColor: 'rgba(253,253,251,0.96)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E8EEF0',
+  },
+  homeBtn: {
+    minHeight: 52,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginHorizontal: 20,
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.primaryColor,
-    backgroundColor: '#FFFFFF',
   },
-  editBtnText: {
-    color: Colors.primaryColor,
+  homeBtnText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
   },
