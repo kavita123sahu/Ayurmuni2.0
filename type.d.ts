@@ -77,6 +77,14 @@ export type RootStackParamList = {
           policyType?: string;
         }
       | undefined;
+    PolicyAccept:
+      | {
+          nextRoute?: {
+            name?: string;
+            params?: any;
+          };
+        }
+      | undefined;
     PolicyDetail:
       | {
           policyType?: string;

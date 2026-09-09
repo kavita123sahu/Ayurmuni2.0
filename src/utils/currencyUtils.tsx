@@ -82,7 +82,11 @@ export const RupeeAmount = ({
 }: RupeeAmountProps) => {
   const amount = formatAmountOnly(value, { decimals });
   if (amount == null) {
-    return <Text style={style}>{fallback}</Text>;
+    return (
+      <Text style={style} allowFontScaling={false}>
+        {fallback}
+      </Text>
+    );
   }
 
   const baseFontSize = iconSize ?? readFontSize(style) ?? 14;
@@ -100,7 +104,7 @@ export const RupeeAmount = ({
 
   if (!showIcon) {
     return (
-      <Text style={[styles.inline, style]}>
+      <Text style={[styles.inline, style]} allowFontScaling={false}>
         {prefix}
         {amount}
       </Text>
@@ -108,10 +112,14 @@ export const RupeeAmount = ({
   }
 
   return (
-    <Text style={[styles.inline, style]}>
-      {prefix ? <Text>{prefix}</Text> : null}
-      <Text style={[symbolTextStyle, symbolStyle]}>{RUPEE_SYMBOL}</Text>
-      <Text style={style}>{amount}</Text>
+    <Text style={[styles.inline, style]} allowFontScaling={false}>
+      {prefix ? <Text allowFontScaling={false}>{prefix}</Text> : null}
+      <Text style={[symbolTextStyle, symbolStyle]} allowFontScaling={false}>
+        {RUPEE_SYMBOL}
+      </Text>
+      <Text style={style} allowFontScaling={false}>
+        {amount}
+      </Text>
     </Text>
   );
 };

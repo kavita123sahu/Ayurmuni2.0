@@ -5,13 +5,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import PromoCard from '../../components/PromoCard';
 import ProductCard from '../../components/ProductCard';
 import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
@@ -19,9 +17,18 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
-import { ProductGridSkeleton, ProductsScreenSkeleton, CategoryRowSkeleton } from '../../simmerScreen/ShimmerHook';
+import {
+  ProductGridSkeleton,
+  ProductsScreenSkeleton,
+  CategoryRowSkeleton,
+} from '../../simmerScreen/ShimmerHook';
 import { useScrollHide } from '../../context/ScrollHideContext';
 import { getScreenBottomPadding } from '../../constants/layout';
+import {
+  TYPO,
+  RADIUS,
+  getScreenPaddingH,
+} from '../../constants/responsive';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { showSuccessToast } from '../../config/Key';
@@ -44,21 +51,28 @@ import {
   canAddProductQty,
   isProductOutOfStock,
 } from '../../utils/productStockUtils';
-import { canAddProductWithoutPrescription, isPrescriptionRequired } from '../../utils/prescriptionUtils';
+import {
+  canAddProductWithoutPrescription,
+  isPrescriptionRequired,
+} from '../../utils/prescriptionUtils';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import { useBanners } from '../../hooks/useBanners';
 
-const H_PAD = 20;
 const GRID_GAP = 10;
-const GRID_CARD_WIDTH =
-  (Dimensions.get('window').width - H_PAD * 2 - GRID_GAP) / 2;
 
 const ProductsScreen = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const hPad = getScreenPaddingH(windowWidth);
+  const gridCardWidth = useMemo(
+    () => (windowWidth - hPad * 2 - GRID_GAP) / 2,
+    [windowWidth, hPad],
+  );
   const bottomPadding = getScreenBottomPadding(insets);
-  const { categories: dashboardCategories, loading: homeLoading } = useHomeData();
+  const { categories: dashboardCategories, loading: homeLoading } =
+    useHomeData();
   const productsCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'products'),
     [dashboardCategories],
@@ -82,11 +96,9 @@ const ProductsScreen = () => {
     refresh,
     loadMore,
   } = useCategoryProducts(productFilter, [], {
-    // Full catalog when service id missing; otherwise filter by products service
     enabled: Boolean(productsCategoryId) || !homeLoading,
   });
 
-  console.log('ProductsScreen products', products);
   const { categories: productCategories, loading: categoriesLoading } =
     useProductCategories(null);
   const { onScroll } = useScrollHide();
@@ -150,11 +162,11 @@ const ProductsScreen = () => {
       const variantId = String(item?.variant_id);
       const cartQty = variantQuantities[variantId] ?? 0;
       return (
-        <View style={styles.cardWrap}>
+        <View style={[styles.cardWrap, { width: gridCardWidth }]}>
           <ProductCard
             item={item}
             variant="grid"
-            gridWidth={GRID_CARD_WIDTH}
+            gridWidth={gridCardWidth}
             cartQty={cartQty}
             isAdding={addingVariantId === variantId}
             onPress={() =>
@@ -162,7 +174,9 @@ const ProductsScreen = () => {
             }
             onAdd={() => handleCartUpdate(item, cartQty + 1)}
             onIncrement={() => handleCartUpdate(item, cartQty + 1)}
-            onDecrement={() => handleCartUpdate(item, Math.max(0, cartQty - 1))}
+            onDecrement={() =>
+              handleCartUpdate(item, Math.max(0, cartQty - 1))
+            }
             onWishlist={() => handleWishlist(item)}
           />
         </View>
@@ -174,6 +188,7 @@ const ProductsScreen = () => {
       navigation,
       handleCartUpdate,
       handleWishlist,
+      gridCardWidth,
     ],
   );
 
@@ -191,18 +206,7 @@ const ProductsScreen = () => {
               enablePreview={false}
             />
           </View>
-        ) : null
-        //  (
-        //   <PromoCard
-        //     title="Up to 40% OFF on Supplements"
-        //     desc="Keep your immunity strong this season."
-        //     tag="SUMMER SALE"
-        //     buttontext="Shop Now"
-        //     showButton
-        //     onPress={() => { }}
-        //   />
-        // )
-        }
+        ) : null}
 
         {categoriesLoading && productCategories.length === 0 ? (
           <CategoryRowSkeleton />
@@ -230,13 +234,22 @@ const ProductsScreen = () => {
         <SectionHeader title="All Products" actionText="" />
       </View>
     ),
-    [productCategories, categoriesLoading, navigation, bannerImages, productsCategoryId],
+    [
+      productCategories,
+      categoriesLoading,
+      navigation,
+      bannerImages,
+      productsCategoryId,
+    ],
   );
 
   const showInitialSkeleton = loading && products.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView
+      style={[styles.safe, { paddingHorizontal: hPad }]}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <StatusBar
         barStyle={SCREEN_THEME.statusBarStyle}
         backgroundColor={SCREEN_THEME.statusBarBackground}
@@ -287,15 +300,17 @@ const ProductsScreen = () => {
             loadingMore ? (
               <View style={styles.footerLoader}>
                 <ProductGridSkeleton
-                  cardWidth={GRID_CARD_WIDTH}
-                  gap={10}
+                  cardWidth={gridCardWidth}
+                  gap={GRID_GAP}
                   count={2}
                 />
               </View>
             ) : null
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No products available</Text>
+            <Text style={styles.emptyText} allowFontScaling={false}>
+              No products available
+            </Text>
           }
         />
       )}
@@ -309,8 +324,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: Colors.background,
-    // backgroundColor: SCREEN_THEME.screenBackground,
-    paddingHorizontal: H_PAD,
   },
   headerContent: {},
   bannerWrap: {
@@ -318,7 +331,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     width: '100%',
     overflow: 'hidden',
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
   },
   listContent: {},
   columnWrap: {
@@ -326,7 +339,6 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
   },
   cardWrap: {
-    width: GRID_CARD_WIDTH,
     marginBottom: GRID_GAP,
   },
   skeletonWrap: {
@@ -335,7 +347,7 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     marginTop: 40,
-    fontSize: 14,
+    fontSize: TYPO.md,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsMedium,
   },
