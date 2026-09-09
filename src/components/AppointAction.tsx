@@ -13,6 +13,7 @@ type Props = {
   call_status?: string;
 };
 
+
 const AppointmentActions = ({
   status,
   onReschedule,
@@ -22,7 +23,16 @@ const AppointmentActions = ({
   call_status,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
+  const appointmentStatus = status?.toLowerCase();
 
+  const showReschedule = [
+    'pending',
+    'confirmed',
+    'reschedule',
+    'rescheduled',
+    'upcoming',
+    'booked',
+  ].includes(appointmentStatus);
   const showReschedule = [
     'pending',
     'confirmed',
@@ -40,6 +50,14 @@ const AppointmentActions = ({
     'upcoming',
     'booked',
   ].includes(appointmentStatus);
+  const showCancel = [
+    'pending',
+    'confirmed',
+    'reschedule',
+    'rescheduled',
+    'upcoming',
+    'booked',
+  ].includes(appointmentStatus);
 
   const showViewDetails = [
     'completed',
@@ -49,7 +67,16 @@ const AppointmentActions = ({
     'no_show',
     'noshow',
   ].includes(appointmentStatus);
+  const showViewDetails = [
+    'completed',
+    'cancelled',
+    'missed',
+    'expired',
+    'no_show',
+    'noshow',
+  ].includes(appointmentStatus);
 
+  const showJoinCall = call_status === 'in_progress';
   const showJoinCall = call_status === 'in_progress';
 
   if (showReschedule || showCancel) {
@@ -119,7 +146,9 @@ const AppointmentActions = ({
   }
 
   return null;
+  return null;
 };
+
 
 export default React.memo(AppointmentActions);
 

@@ -2,6 +2,7 @@ import {
   Platform,
   PermissionsAndroid,
   NativeModules,
+  Alert,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { Buffer } from 'buffer';
@@ -207,8 +208,8 @@ export type DownloadPdfInput = {
 
 /**
  * Save a PDF to device storage (Downloads on Android).
- * Converts HTML/plain-text payloads to PDF. Shows native Android download notification.
- * Does not auto-open the file (standard download behaviour).
+ * Converts HTML/plain-text payloads to PDF. Shows native Android download notification
+ * plus an in-app acknowledge popup so the user knows download finished.
  */
 export async function downloadPdfToDevice(
   input: DownloadPdfInput,
@@ -217,11 +218,13 @@ export async function downloadPdfToDevice(
   const existing = await getAppSavedFilePath(safeName);
   if (existing) {
     await notifyDownloadComplete(safeName, existing);
-    return {
+    const result = {
       filePath: existing,
       savedLabel: Platform.OS === 'android' ? 'Downloads' : 'Files',
       alreadyExisted: true,
-    };
+    } as SavedFileResult;
+    acknowledgeDownload(safeName, result.savedLabel, true);
+    return result;
   }
 
   let pdfBytes: Uint8Array;
@@ -241,7 +244,23 @@ export async function downloadPdfToDevice(
     throw new Error('No download data found');
   }
 
-  return persistPdfBytes(safeName, pdfBytes);
+  const result = await persistPdfBytes(safeName, pdfBytes);
+  acknowledgeDownload(safeName, result.savedLabel, result.alreadyExisted);
+  return result;
+}
+
+function acknowledgeDownload(
+  fileName: string,
+  savedLabel: string,
+  alreadyExisted: boolean,
+) {
+  Alert.alert(
+    alreadyExisted ? 'Already downloaded' : 'Download complete',
+    alreadyExisted
+      ? `"${fileName}" is already saved in ${savedLabel}.`
+      : `"${fileName}" has been saved to ${savedLabel}.`,
+    [{ text: 'OK' }],
+  );
 }
 
 /** @deprecated Use downloadPdfToDevice for user-facing downloads */

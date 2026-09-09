@@ -13,7 +13,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader';
 import Detailimages from '../../components/Detailimages';
 import ReviewSection from '../../components/ReviewSecton';
-import BlinkitAddButton from '../../components/BlinkitAddButton';
 import { useProductData } from '../../hooks/useProductData';
 import { Fonts } from '../../common/Fonts';
 import { useCartActions } from '../../hooks/Cart';
@@ -56,6 +55,63 @@ const SectionHeader = ({ title }: { title: string }) => (
     <Text style={styles.sectionHeader}>{title}</Text>
 );
 
+/** Local qty stepper — does not call cart API. */
+const CompactQtyStepper = ({
+    quantity,
+    onIncrease,
+    onDecrease,
+    disabled,
+    maxQuantity,
+}: {
+    quantity: number;
+    onIncrease: () => void;
+    onDecrease: () => void;
+    disabled?: boolean;
+    maxQuantity?: number | null;
+}) => {
+    const atMax =
+        maxQuantity != null &&
+        Number.isFinite(maxQuantity) &&
+        quantity >= maxQuantity;
+    return (
+        <View style={[styles.qtyStepper, disabled && styles.qtyStepperDisabled]}>
+            <TouchableOpacity
+                onPress={onDecrease}
+                disabled={disabled || quantity <= 1}
+                style={styles.qtyBtn}
+                hitSlop={8}
+            >
+                <TablerIcon
+                    name="minus"
+                    size={14}
+                    color={
+                        disabled || quantity <= 1
+                            ? 'rgba(255,255,255,0.4)'
+                            : '#FFFFFF'
+                    }
+                    strokeWidth={2.6}
+                />
+            </TouchableOpacity>
+            <Text style={styles.qtyValue}>{quantity}</Text>
+            <TouchableOpacity
+                onPress={onIncrease}
+                disabled={disabled || atMax}
+                style={styles.qtyBtn}
+                hitSlop={8}
+            >
+                <TablerIcon
+                    name="plus"
+                    size={14}
+                    color={
+                        disabled || atMax ? 'rgba(255,255,255,0.4)' : '#FFFFFF'
+                    }
+                    strokeWidth={2.6}
+                />
+            </TouchableOpacity>
+        </View>
+    );
+};
+
 type DetailSheetKey =
     | 'description'
     | 'info'
@@ -82,9 +138,11 @@ const ProductDetails = (props: any) => {
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
 
     const variants = ProductData?.variants || [];
+    console.log('ProductData', ProductData);
     const defaultVariant =
         variants.find((v: any) => v?.is_default) || variants[0] || null;
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
+    const [quantity, setQuantity] = useState(1);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
 
     // Prefer selected; fall back to default so stock/CTA never use empty initial state
@@ -93,6 +151,7 @@ const ProductDetails = (props: any) => {
     const cartVariantId = String(
         activeVariant?.variant_id ?? varientID ?? activeVariant?.id ?? '',
     );
+    console.log('cartVariantId', cartVariantId);
     const { updateCartQuantity } = useCartActions();
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
     const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
@@ -116,6 +175,12 @@ const ProductDetails = (props: any) => {
         cartVariantId,
         variantQuantities,
     ]);
+        const cartQuantity =
+       ProductData?.variants?.find((variant: any) => variant?.id === activeVariant?.id)
+        ?.cart_quantity ?? 0;
+
+    console.log('activeVariantactiveVariant', activeVariant, "cartQuantity", cartQuantity);
+
     const insets = useSafeAreaInsets();
     const [descExpanded, setDescExpanded] = useState(false);
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
@@ -125,6 +190,10 @@ const ProductDetails = (props: any) => {
     useEffect(() => {
         if (defaultVariant) setSelectedVariant(defaultVariant);
     }, [ProductData]);
+
+    useEffect(() => {
+        setQuantity(1);
+    }, [activeVariant?.id, activeVariant?.variant_id]);
 
     useEffect(() => {
         const wishlisted = Boolean(
@@ -173,7 +242,9 @@ const ProductDetails = (props: any) => {
 
     const stockQty = getProductStockQty(activeVariant);
     const maxQty =
-        stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
+        stockQty == null || !Number.isFinite(stockQty) || stockQty <= 0
+            ? null
+            : stockQty;
 
     const productForRx = useMemo(
         () => ({
@@ -186,24 +257,33 @@ const ProductDetails = (props: any) => {
         [ProductData, activeVariant],
     );
 
-    /** Same cart sync as ProductCard — count stays correct across list & details. */
-    const handleCartUpdate = useCallback(
-        async (newQty: number, goToCart = false) => {
+    /** Local qty only — cart API runs from Add / Buy now. */
+    const increaseQty = () => {
+        setQuantity(q => {
+            if (maxQty == null) return q + 1;
+            return Math.min(q + 1, maxQty);
+        });
+    };
+    const decreaseQty = () => setQuantity(q => (q > 1 ? q - 1 : 1));
+
+    const handleAddToCart = useCallback(
+        async (goToCart = false) => {
             if (!(await requireAuth('Please login to add items to cart'))) return;
             if (!cartVariantId) return;
 
-            if (newQty > 0 && isProductOutOfStock(activeVariant)) {
+            if (isProductOutOfStock(activeVariant)) {
                 showSuccessToast('This product is out of stock', 'error');
                 return;
             }
-            if (!canAddProductQty(activeVariant, newQty)) {
+
+            const addQty = Math.max(1, Number(quantity) || 1);
+            // const nextQty = existingCartQty + addQty;
+
+            if (!canAddProductQty(activeVariant, addQty)) {
                 showSuccessToast('Only limited stock left', 'error');
                 return;
             }
-            if (
-                newQty > existingCartQty &&
-                !canAddProductWithoutPrescription(productForRx)
-            ) {
+            if (!canAddProductWithoutPrescription(productForRx)) {
                 return;
             }
 
@@ -212,16 +292,17 @@ const ProductDetails = (props: any) => {
             }
 
             setPendingCta(goToCart ? 'buy' : 'add');
-            const success = await updateCartQuantity(cartVariantId, newQty, {
-                currentQuantity: existingCartQty,
+            const success = await updateCartQuantity(cartVariantId, addQty, {
+                // currentQuantity: existingCartQty,
                 prescriptionRequired: isPrescriptionRequired(productForRx),
             });
             setPendingCta(null);
 
             if (!success) {
-                showSuccessToast('Try again to update cart', 'error');
+                showSuccessToast('Try again to add into cart', 'error');
                 return;
             }
+            setQuantity(1);
             if (goToCart) {
                 props.navigation.navigate('MyCart');
             }
@@ -230,16 +311,13 @@ const ProductDetails = (props: any) => {
             activeVariant,
             cartVariantId,
             coverImageUri,
-            existingCartQty,
+            // existingCartQty,
             productForRx,
             props.navigation,
+            quantity,
             updateCartQuantity,
         ],
     );
-
-    const handleAddToCart = async (goToCart = false) => {
-        await handleCartUpdate(existingCartQty + 1, goToCart);
-    };
 
     const handleToggleWishlist = async () => {
         if (wishlistBusy) return;
@@ -291,10 +369,8 @@ const ProductDetails = (props: any) => {
         ...activeVariant,
     });
 
-    const cartDisplayQty = Math.max(existingCartQty, 1);
-    const totalPrice =
-        (activeVariant?.selling_price || 0) *
-        (existingCartQty > 0 ? existingCartQty : 1);
+    const cartDisplayQty = Math.max(quantity, 1);
+    const totalPrice = (activeVariant?.selling_price || 0) * quantity;
     const saveAmount = Math.max(
         0,
         (Number(activeVariant?.mrp) || 0) -
@@ -612,20 +688,20 @@ const ProductDetails = (props: any) => {
                             )}
                             {/* <Text style={styles.taxNote}>Inclusive of all taxes</Text> */}
                         </View>
-                        <BlinkitAddButton
-                            quantity={isOutOfStock ? 0 : existingCartQty}
-                            isAdding={isAdding}
-                            outOfStock={isOutOfStock}
-                            maxQuantity={maxQty}
-                            onAdd={() => handleCartUpdate(existingCartQty + 1)}
-                            onIncrement={() =>
-                                handleCartUpdate(existingCartQty + 1)
-                            }
-                            onDecrement={() =>
-                                handleCartUpdate(Math.max(0, existingCartQty - 1))
-                            }
-                        />
-                        {/* Add stock display here */}
+                        <View style={styles.qtyBlock}>
+                            {existingCartQty > 0 ? (
+                                <Text style={styles.inCartBadge}>
+                                    {existingCartQty} in cart
+                                </Text>
+                            ) : null}
+                            <CompactQtyStepper
+                                quantity={quantity}
+                                onIncrease={increaseQty}
+                                onDecrease={decreaseQty}
+                                disabled={isOutOfStock}
+                                maxQuantity={maxQty}
+                            />
+                        </View>
                     </View>
 
                     {saveAmount > 0 ? (
@@ -1129,6 +1205,20 @@ const styles = StyleSheet.create({
         color: Colors.primaryColor,
         marginBottom: 8,
     },
+    qtyBlock: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    inCartBadge: {
+        fontSize: 11,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+        backgroundColor: '#E8F3EF',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 999,
+        overflow: 'hidden',
+    },
 
     detailsHead: {
         marginBottom: 10,
@@ -1479,6 +1569,33 @@ const styles = StyleSheet.create({
     stockLabel: {
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
+        includeFontPadding: false,
+    },
+
+    qtyStepper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 8,
+        backgroundColor: Colors.primaryColor,
+        overflow: 'hidden',
+        height: 34,
+        minWidth: 86,
+    },
+    qtyStepperDisabled: {
+        backgroundColor: '#94A3B8',
+    },
+    qtyBtn: {
+        width: 28,
+        height: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qtyValue: {
+        minWidth: 22,
+        textAlign: 'center',
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
         includeFontPadding: false,
     },
 

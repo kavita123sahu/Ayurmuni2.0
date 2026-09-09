@@ -359,8 +359,16 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     };
   }, [detail]);
 
-  const prscriptionData = detail?.prescription || detail?.appointment?.prescription;
+  const hasPrescription = consultationHasPrescription(detail);
   const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
+  const showPrescriptionCta = [
+    'completed',
+    'cancelled',
+    'missed',
+    'expired',
+    'no_show',
+    'noshow',
+  ].includes(String(appointmentStatus || ''));
 
   const showButtons = !['cancelled', 'completed', 'rescheduled'].includes(appointmentStatus);
   const isRescheduleRequest = appointmentStatus === 'reschedule';
@@ -646,12 +654,23 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 prescription:
                   detail?.prescription || detail?.appointment?.prescription,
               }) || */}
-            {detail?.prescription ? (
+            {showPrescriptionCta ? (
               <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
                 <TouchableOpacity
-                  activeOpacity={0.88}
-                  style={styles.prescriptionBtn}
+                  activeOpacity={hasPrescription ? 0.88 : 1}
+                  disabled={!hasPrescription}
+                  style={[
+                    styles.prescriptionBtn,
+                    !hasPrescription && styles.prescriptionBtnDisabled,
+                  ]}
                   onPress={() => {
+                    if (!hasPrescription) {
+                      showSuccessToast(
+                        'No prescription available for this appointment',
+                        'error',
+                      );
+                      return;
+                    }
                     navigation.navigate('PrescriptionDetail', {
                       appointment_id:
                         appointment?.appointment_id ||
@@ -662,9 +681,22 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                     });
                   }}
                 >
-                  <TablerIcon name="prescription" size={18} color="#FFFFFF" />
-                  <Text style={styles.prescriptionBtnText}>View Prescription</Text>
-                  <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
+                  <TablerIcon
+                    name="prescription"
+                    size={18}
+                    color={hasPrescription ? '#FFFFFF' : '#64748B'}
+                  />
+                  <Text
+                    style={[
+                      styles.prescriptionBtnText,
+                      !hasPrescription && styles.prescriptionBtnTextDisabled,
+                    ]}
+                  >
+                    {hasPrescription ? 'View Prescription' : 'No prescription'}
+                  </Text>
+                  {hasPrescription ? (
+                    <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
+                  ) : null}
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -1282,6 +1314,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
+  prescriptionBtnDisabled: {
+    backgroundColor: '#E2E8F0',
+  },
+
   prescriptionBtnText: {
     flex: 1,
     fontSize: 14,
@@ -1289,6 +1325,9 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
+  prescriptionBtnTextDisabled: {
+    color: '#64748B',
+  },
   cancelBtn: {
     flex: 1,
     marginTop: 0,

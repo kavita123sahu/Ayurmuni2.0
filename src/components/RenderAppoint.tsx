@@ -219,6 +219,7 @@ const RenderAppoint = ({
         call_status={item.call_status}
         onReschedule={onReschedule}
         onCancel={onCancel}
+        hasPrescription={hasPrescription}
         onJoinCall={() => {
           if (item.call_status !== 'in_progress') {
             showSuccessToast(
@@ -241,7 +242,11 @@ const RenderAppoint = ({
             ),
           );
         }}
-        onViewDetails={() =>
+        onViewDetails={() => {
+          if (!hasPrescription) {
+            showSuccessToast('No prescription available for this appointment', 'error');
+            return;
+          }
           navigation.navigate('PrescriptionDetail', {
             appointment_id:
               item?.appointment_id ||
@@ -251,8 +256,8 @@ const RenderAppoint = ({
             consultation_id:
               item?.consultation_id ||
               item?.rawData?.appointment?.consultation_id,
-          })
-        }
+          });
+        }}
       />
     </TouchableOpacity>
   );

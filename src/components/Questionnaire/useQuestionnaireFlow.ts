@@ -282,14 +282,11 @@ export const useQuestionnaireFlow = (
   const handleBack = useCallback(() => {
     pendingAdvanceRef.current = false;
     if (step === 0) {
-      if (!allowBack) {
-        return;
-      }
       safeGoBack(navigation);
       return;
     }
     setStep(prev => prev - 1);
-  }, [allowBack, navigation, step]);
+  }, [navigation, step]);
 
   const handleSkip = useCallback(() => {
     if (step === 0 || step >= steps.length - 1) {

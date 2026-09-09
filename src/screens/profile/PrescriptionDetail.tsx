@@ -1934,6 +1934,71 @@ const AdviceRow = ({
     );
 };
 
+const ADVICE_PREVIEW = 4;
+
+const CollapsibleAdviceList = ({
+    title,
+    items,
+    tone,
+    expanded,
+    onToggle,
+}: {
+    title: string;
+    items: string[];
+    tone: 'do' | 'dont';
+    expanded: boolean;
+    onToggle: () => void;
+}) => {
+    if (!items.length) return null;
+    const visible = expanded ? items : items.slice(0, ADVICE_PREVIEW);
+    const hasMore = items.length > ADVICE_PREVIEW;
+    return (
+        <View
+            style={[
+                styles.softCard,
+                tone === 'do' ? styles.doCard : styles.dontCard,
+            ]}
+        >
+            <View style={styles.adviceSectionHeader}>
+                <Text
+                    style={
+                        tone === 'do' ? styles.doCardTitle : styles.dontCardTitle
+                    }
+                >
+                    {title}
+                </Text>
+                <Text style={styles.adviceCount}>{items.length}</Text>
+            </View>
+            {visible.map((item, index) => (
+                <AdviceRow
+                    key={`${tone}-${index}`}
+                    icon={tone === 'do' ? 'plus' : 'x'}
+                    text={item}
+                    tone={tone}
+                />
+            ))}
+            {hasMore ? (
+                <TouchableOpacity
+                    onPress={onToggle}
+                    style={styles.showMoreBtn}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.showMoreText}>
+                        {expanded
+                            ? 'Show less'
+                            : `Show all (${items.length})`}
+                    </Text>
+                    <TablerIcon
+                        name={expanded ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color={COLORS.primary}
+                    />
+                </TouchableOpacity>
+            ) : null}
+        </View>
+    );
+};
+
 const HistoryBlock = ({
     icon,
     title,
@@ -1998,6 +2063,8 @@ const PrescriptionDetail = (props: any) => {
 
     const [loading, setLoading] = useState(true);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [dosExpanded, setDosExpanded] = useState(false);
+    const [dontsExpanded, setDontsExpanded] = useState(false);
     const [payload, setPayload] = useState<any>(
         params.PrisData
             ? { ...params.PrisData, doctor: params.doctorData || params.PrisData?.doctor }
@@ -2343,7 +2410,22 @@ const PrescriptionDetail = (props: any) => {
                             </View>
                         ) : null}
 
-                        {/* Patient */}
+                        {/* 1. Status — most important, top */}
+                        <View style={styles.statusCardTop}>
+                            <View style={styles.activeBadge}>
+                                <View style={styles.activeDot} />
+                                <Text style={styles.activeText}>
+                                    {normalized.status
+                                        ? String(normalized.status).replace(/_/g, ' ')
+                                        : 'Issued'}
+                                </Text>
+                            </View>
+                            <Text style={styles.dateInfo}>
+                                Issued on {formatIssuedLabel(normalized.issuedOn)}
+                            </Text>
+                        </View>
+
+                        {/* 2. Patient */}
                         <View style={styles.patientRow}>
                             {patient?.patient_image ? (
                                 <Image
@@ -2370,9 +2452,11 @@ const PrescriptionDetail = (props: any) => {
                                         .filter(Boolean)
                                         .join(' · ') || '—'}
                                 </Text>
-                                <Text style={styles.patientSubText}>
-                                    Issued {formatIssuedLabel(normalized.issuedOn)}
-                                </Text>
+                                {!!prescriptionCode && (
+                                    <Text style={styles.patientSubText} numberOfLines={1}>
+                                        Rx · {prescriptionCode}
+                                    </Text>
+                                )}
                             </View>
                             {paymentAmount != null && (
                                 <View style={styles.patientFeeWrap}>
@@ -2386,68 +2470,22 @@ const PrescriptionDetail = (props: any) => {
                             )}
                         </View>
 
-                        {/* Status — top */}
-                        <View style={styles.statusCardTop}>
-                            <View style={styles.activeBadge}>
-                                <View style={styles.activeDot} />
-                                <Text style={styles.activeText}>
-                                    {normalized.status
-                                        ? String(normalized.status).replace(/_/g, ' ')
-                                        : 'Issued'}
-                                </Text>
-                            </View>
-                            <Text style={styles.dateInfo}>
-                                Issued on {formatIssuedLabel(normalized.issuedOn)}
-                            </Text>
-                        </View>
-
+                        {/* 3. Key clinical summary */}
                         {(!!concernText ||
-                            (!!diagnosisText &&
-                                diagnosisText.toLowerCase() !==
-                                concernText.toLowerCase() &&
-                                diagnosisText.toLowerCase() !==
-                                symptomText.toLowerCase()) ||
+                            !!diagnosisText ||
                             !!appointmentNotes ||
-                            !!prescriptionCode ||
-                            paymentAmount != null ||
                             !!paymentMethod ||
                             !!paymentStatus) && (
                                 <View style={styles.metaCard}>
-                                    {(!!prescriptionCode || !!concernText) && (
-                                        <View style={styles.metaInlineRow}>
-                                            {!!prescriptionCode && (
-                                                <View style={styles.metaInlineItem}>
-                                                    <Text style={styles.metaLabelInline}>
-                                                        Prescription Code
-                                                    </Text>
-                                                    <Text
-                                                        style={styles.metaValueInline}
-                                                        numberOfLines={2}
-                                                    >
-                                                        {prescriptionCode}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                            {!!concernText && (
-                                                <View style={styles.metaInlineItem}>
-                                                    <Text style={styles.metaLabelInline}>
-                                                        Chief Complaint
-                                                    </Text>
-                                                    <Text
-                                                        style={styles.metaValueInline}
-                                                        numberOfLines={2}
-                                                    >
-                                                        {concernText}
-                                                    </Text>
-                                                </View>
-                                            )}
+                                    {!!concernText && (
+                                        <View style={styles.metaRow}>
+                                            <Text style={styles.metaLabel}>Chief complaint</Text>
+                                            <Text style={styles.metaValue}>{concernText}</Text>
                                         </View>
                                     )}
                                     {!!diagnosisText &&
                                         diagnosisText.toLowerCase() !==
-                                        concernText.toLowerCase() &&
-                                        diagnosisText.toLowerCase() !==
-                                        symptomText.toLowerCase() && (
+                                        concernText.toLowerCase() && (
                                             <View style={styles.metaRow}>
                                                 <Text style={styles.metaLabel}>Diagnosis</Text>
                                                 <Text style={styles.metaValue}>{diagnosisText}</Text>
@@ -2459,33 +2497,20 @@ const PrescriptionDetail = (props: any) => {
                                             <Text style={styles.metaValue}>{appointmentNotes}</Text>
                                         </View>
                                     )}
-                                    {(paymentAmount != null ||
-                                        !!paymentMethod ||
-                                        !!paymentStatus) && (
-                                            <View style={[styles.metaRow, styles.metaRowLast]}>
-                                                <Text style={styles.metaLabel}>Payment</Text>
-                                                <View style={styles.metaPaymentCol}>
-                                                    {paymentAmount != null ? (
-                                                        <RupeeAmount
-                                                            value={paymentAmount}
-                                                            style={styles.metaValue}
-                                                            iconSize={13}
-                                                            iconColor={COLORS.primary}
-                                                        />
-                                                    ) : null}
-                                                    {!!(paymentMethod || paymentStatus) && (
-                                                        <Text style={styles.metaSubValue}>
-                                                            {[paymentMethod, paymentStatus]
-                                                                .filter(Boolean)
-                                                                .join(' · ')}
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                            </View>
-                                        )}
+                                    {(!!paymentMethod || !!paymentStatus) && (
+                                        <View style={[styles.metaRow, styles.metaRowLast]}>
+                                            <Text style={styles.metaLabel}>Payment</Text>
+                                            <Text style={styles.metaValue}>
+                                                {[paymentMethod, paymentStatus]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
                             )}
 
+                        {/* 4. Follow-up */}
                         {followUp.hasContent && (
                             <>
                                 <SectionTitle title="Follow-up" compact />
@@ -2536,110 +2561,8 @@ const PrescriptionDetail = (props: any) => {
                             </>
                         )}
 
-                        {(hasClinicalHistory || medicines.length > 0) && (
-                            <View style={styles.dualHistoryRow}>
-                                {hasClinicalHistory ? (
-                                    <View style={styles.dualHistoryCol}>
-                                        <Text style={styles.dualHistoryTitle}>
-                                            Clinical History
-                                        </Text>
-                                        <View style={styles.historyList}>
-                                            {!!symptomText && (
-                                                <HistoryBlock
-                                                    icon="stethoscope"
-                                                    title="Symptoms"
-                                                    compact
-                                                >
-                                                    <Text
-                                                        style={styles.historyBodyCompact}
-                                                        numberOfLines={4}
-                                                    >
-                                                        {symptomText}
-                                                    </Text>
-                                                </HistoryBlock>
-                                            )}
-                                            {allergies.length > 0 && (
-                                                <HistoryBlock
-                                                    icon="alert-circle"
-                                                    title="Allergies"
-                                                    tone="alert"
-                                                    compact
-                                                >
-                                                    <Text
-                                                        style={styles.historyBodyCompact}
-                                                        numberOfLines={3}
-                                                    >
-                                                        {allergies.join(', ')}
-                                                    </Text>
-                                                </HistoryBlock>
-                                            )}
-                                            {!!pastIllnessText && (
-                                                <HistoryBlock
-                                                    icon="clipboard-list"
-                                                    title="Past illness"
-                                                    compact
-                                                >
-                                                    <Text
-                                                        style={styles.historyBodyCompact}
-                                                        numberOfLines={3}
-                                                    >
-                                                        {pastIllnessText}
-                                                    </Text>
-                                                </HistoryBlock>
-                                            )}
-                                            {!!familyHistoryText && (
-                                                <HistoryBlock
-                                                    icon="users"
-                                                    title="Family history"
-                                                    tone="family"
-                                                    compact
-                                                >
-                                                    <Text
-                                                        style={styles.historyBodyCompact}
-                                                        numberOfLines={3}
-                                                    >
-                                                        {familyHistoryText}
-                                                    </Text>
-                                                </HistoryBlock>
-                                            )}
-                                        </View>
-                                    </View>
-                                ) : null}
-
-                                {medicines.length > 0 ? (
-                                    <View style={styles.dualHistoryCol}>
-                                        <Text style={styles.dualHistoryTitle}>
-                                            Prescription History
-                                        </Text>
-                                        <View style={styles.rxHistoryCard}>
-                                            {medicines.slice(0, 5).map((medicine: any, index: number) => (
-                                                <Text
-                                                    key={
-                                                        medicine?.id ||
-                                                        `${medicine?.medicine_name}-rx-${index}`
-                                                    }
-                                                    style={styles.rxHistoryItem}
-                                                    numberOfLines={2}
-                                                >
-                                                    •{' '}
-                                                    {medicine?.medicine_name ||
-                                                        medicine?.product_name ||
-                                                        'Medicine'}
-                                                </Text>
-                                            ))}
-                                            {medicines.length > 5 ? (
-                                                <Text style={styles.rxHistoryMore}>
-                                                    +{medicines.length - 5} more
-                                                </Text>
-                                            ) : null}
-                                        </View>
-                                    </View>
-                                ) : null}
-                            </View>
-                        )}
-
-                        {/* Medicines */}
-                        <SectionTitle title="Primary Medications" />
+                        {/* 5. Medicines — primary content */}
+                        <SectionTitle title="Medicines" />
                         {medicines.length === 0 ? (
                             <Text style={styles.emptySection}>No medicines prescribed</Text>
                         ) : (
@@ -2738,10 +2661,56 @@ const PrescriptionDetail = (props: any) => {
                             </View>
                         )}
 
-                        {/* Recommended diet plans */}
+                        {/* 6. Clinical history — full width, readable */}
+                        {hasClinicalHistory ? (
+                            <>
+                                <SectionTitle title="Clinical history" />
+                                <View style={styles.historyList}>
+                                    {!!symptomText && (
+                                        <HistoryBlock icon="stethoscope" title="Symptoms">
+                                            <Text style={styles.historyBody}>{symptomText}</Text>
+                                        </HistoryBlock>
+                                    )}
+                                    {allergies.length > 0 && (
+                                        <HistoryBlock
+                                            icon="alert-circle"
+                                            title="Allergies"
+                                            tone="alert"
+                                        >
+                                            <Text style={styles.historyBody}>
+                                                {allergies.join(', ')}
+                                            </Text>
+                                        </HistoryBlock>
+                                    )}
+                                    {!!pastIllnessText && (
+                                        <HistoryBlock
+                                            icon="clipboard-list"
+                                            title="Past illness"
+                                        >
+                                            <Text style={styles.historyBody}>
+                                                {pastIllnessText}
+                                            </Text>
+                                        </HistoryBlock>
+                                    )}
+                                    {!!familyHistoryText && (
+                                        <HistoryBlock
+                                            icon="users"
+                                            title="Family history"
+                                            tone="family"
+                                        >
+                                            <Text style={styles.historyBody}>
+                                                {familyHistoryText}
+                                            </Text>
+                                        </HistoryBlock>
+                                    )}
+                                </View>
+                            </>
+                        ) : null}
+
+                        {/* 7. Diet */}
                         {dietPlans.length > 0 && (
                             <>
-                                <SectionTitle title="Recommended Diet Plans" />
+                                <SectionTitle title="Recommended diet plans" />
                                 <View style={styles.dietPlanList}>
                                     {dietPlans.map((diet: any, index: number) => {
                                         const planId =
@@ -2804,10 +2773,9 @@ const PrescriptionDetail = (props: any) => {
                             </>
                         )}
 
-                        {/* Diet advice text (if any free-form advice) */}
                         {dietItems.length > 0 && (
                             <>
-                                <SectionTitle title="Diet Advice" />
+                                <SectionTitle title="Diet advice" />
                                 <View style={styles.softCard}>
                                     {dietItems.map((item, index) => (
                                         <AdviceRow
@@ -2820,10 +2788,9 @@ const PrescriptionDetail = (props: any) => {
                             </>
                         )}
 
-                        {/* Patient instructions / suggestions */}
                         {suggestions.length > 0 && (
                             <>
-                                <SectionTitle title="Diagnosis" />
+                                <SectionTitle title="Doctor suggestions" />
                                 <View style={styles.softCard}>
                                     {suggestions.map((item, index) => (
                                         <AdviceRow
@@ -2836,40 +2803,27 @@ const PrescriptionDetail = (props: any) => {
                             </>
                         )}
 
-                        {/* Do / Don't */}
+                        {/* 8. Do / Don't — top 4 + show all */}
                         {(doItems.length > 0 || dontItems.length > 0) && (
                             <>
                                 <SectionTitle title="Do’s & Don’ts" />
-                                {doItems.length > 0 && (
-                                    <View style={[styles.softCard, styles.doCard]}>
-                                        <Text style={styles.doCardTitle}>Do</Text>
-                                        {doItems.map((item, index) => (
-                                            <AdviceRow
-                                                key={`do-${index}`}
-                                                icon="plus"
-                                                text={item}
-                                                tone="do"
-                                            />
-                                        ))}
-                                    </View>
-                                )}
-                                {dontItems.length > 0 && (
-                                    <View style={[styles.softCard, styles.dontCard]}>
-                                        <Text style={styles.dontCardTitle}>Don’t</Text>
-                                        {dontItems.map((item, index) => (
-                                            <AdviceRow
-                                                key={`dont-${index}`}
-                                                icon="x"
-                                                text={item}
-                                                tone="dont"
-                                            />
-                                        ))}
-                                    </View>
-                                )}
+                                <CollapsibleAdviceList
+                                    title="Do"
+                                    items={doItems}
+                                    tone="do"
+                                    expanded={dosExpanded}
+                                    onToggle={() => setDosExpanded(v => !v)}
+                                />
+                                <CollapsibleAdviceList
+                                    title="Don’t"
+                                    items={dontItems}
+                                    tone="dont"
+                                    expanded={dontsExpanded}
+                                    onToggle={() => setDontsExpanded(v => !v)}
+                                />
                             </>
                         )}
 
-                        {/* Clinical advisory */}
                         {!!clinicalAdvisory && (
                             <View style={styles.successCard}>
                                 <View style={styles.successTop}>
@@ -3634,6 +3588,35 @@ const styles = StyleSheet.create({
         color: '#B91C1C',
         fontFamily: Fonts.PoppinsSemiBold,
         marginBottom: 2,
+    },
+    adviceSectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    adviceCount: {
+        fontSize: 11,
+        color: COLORS.secondary,
+        fontFamily: Fonts.PoppinsMedium,
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 999,
+        overflow: 'hidden',
+    },
+    showMoreBtn: {
+        marginTop: 8,
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+    },
+    showMoreText: {
+        fontSize: 13,
+        color: COLORS.primary,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
     adviceRow: {
         flexDirection: 'row',
