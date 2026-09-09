@@ -108,13 +108,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const hasContent = !!text.trim() || !!pickedAsset;
 
+  // Cap safe-area padding — avoid a large empty gap under the composer
+  const bottomPad =
+    Platform.OS === 'ios'
+      ? Math.min(Math.max(insets.bottom, 4), 5)
+      : Math.min(Math.max(insets.bottom, 4), 3);
+
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingBottom: Math.max(insets.bottom, 8) },
-      ]}
-    >
+    <View style={[styles.container, ]}>
       {pickedAsset ? (
         <View style={styles.previewRow}>
           <Image source={{ uri: pickedAsset.uri }} style={styles.previewImage} />
@@ -180,9 +181,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E7EB',
+    paddingTop: 6,
   },
   previewRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,15 @@ import {
   Alert,
   StatusBar,
   ScrollView,
+  Modal,
+  Image,
+  Pressable,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../common/Colors';
 import * as _ASSESS_SERVICE from '../services/AssesmentService';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showSuccessToast } from '../config/Key';
 import TablerIcon, { TablerIconName } from '../components/TablerIcon';
@@ -22,6 +26,13 @@ import { markAsGuest } from '../services/guestAuth';
 import { resetRootToHomeStack } from '../navigation/navigationUtils';
 
 const { width } = Dimensions.get('window');
+
+const PRAKRITI_NOTES = [
+  'Answer honestly based on your natural tendencies, not temporary habits.',
+  'There are no right or wrong answers — this maps your Vata, Pitta, Kapha balance.',
+  'Takes about 5 minutes and unlocks personalised doctor and product guidance.',
+  'You can retake or refine results later from Profile.',
+];
 
 const scale = (size: number) => {
   const next = (width / 375) * size;
@@ -72,6 +83,7 @@ const AssessmentType = (props: any) => {
   const { form = 'all' } = props?.route?.params || {};
   const showMedical = form === 'medical' || form === 'all';
   const showPrakriti = form === 'prakriti' || form === 'all';
+  const [prakritiNoteVisible, setPrakritiNoteVisible] = useState(false);
 
   const handleBackPress = () => {
     Alert.alert(
@@ -156,9 +168,7 @@ const AssessmentType = (props: any) => {
               meta="~5 min"
               icon="chart-pie"
               gradient={['#0D614E', '#1A8F6E']}
-              onPress={() =>
-                props.navigation.navigate('PatientFAQ', { allowBack: false })
-              }
+              onPress={() => setPrakritiNoteVisible(true)}
             />
           )}
 
@@ -192,6 +202,57 @@ const AssessmentType = (props: any) => {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
+
+      <Modal
+        visible={prakritiNoteVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPrakritiNoteVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setPrakritiNoteVisible(false)}
+        >
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Image
+              source={Images.ayurvedic}
+              style={styles.modalHero}
+              resizeMode="cover"
+            />
+            <View style={styles.modalLeafWrap}>
+              <Image source={Images.leaf1} style={styles.modalLeaf} />
+            </View>
+            <Text style={styles.modalTitle}>Before you begin</Text>
+            <Text style={styles.modalSub}>
+              A few quick notes for an accurate Prakriti reading.
+            </Text>
+            {PRAKRITI_NOTES.map(note => (
+              <View key={note} style={styles.modalNoteRow}>
+                <View style={styles.modalBullet}>
+                  <TablerIcon name="leaf" size={12} color={Colors.primaryColor} />
+                </View>
+                <Text style={styles.modalNoteText}>{note}</Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.modalPrimary}
+              activeOpacity={0.9}
+              onPress={() => {
+                setPrakritiNoteVisible(false);
+                props.navigation.navigate('PatientFAQ', { allowBack: false });
+              }}
+            >
+              <Text style={styles.modalPrimaryText}>Continue to Prakriti</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalSecondary}
+              onPress={() => setPrakritiNoteVisible(false)}
+            >
+              <Text style={styles.modalSecondaryText}>Not now</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -367,5 +428,100 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
     fontSize: scale(14),
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 51, 40, 0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    overflow: 'hidden',
+  },
+  modalHero: {
+    width: '100%',
+    height: 120,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  modalLeafWrap: {
+    position: 'absolute',
+    top: 108,
+    right: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2EBE6',
+  },
+  modalLeaf: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+  },
+  modalTitle: {
+    fontSize: 18,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  modalSub: {
+    marginTop: 4,
+    marginBottom: 12,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  modalNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 8,
+  },
+  modalBullet: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E8F3EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  modalNoteText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  modalPrimary: {
+    marginTop: 10,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  modalSecondary: {
+    marginTop: 8,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSecondaryText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsMedium,
   },
 });

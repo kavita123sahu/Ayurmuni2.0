@@ -2,7 +2,7 @@ import {
   fetchUnreadNotificationCount,
   publishUnreadCount,
 } from '../../hooks/useNotification';
-import { buildAppointmentDetailsParams } from '../../utils/appointmentUtils';
+import { buildAppointmentDetailsParams, buildVideoCallNavParams } from '../../utils/appointmentUtils';
 import { navigationRef } from '../../navigation/navigationRef';
 
 type NavPayload = Record<string, any>;
@@ -102,6 +102,58 @@ export const handleNotificationNavigation = (
     data?.prescription?.id,
   );
 
+  const callStatus = normalizeKey(
+    data?.call_status ??
+      data?.callStatus ??
+      data?.data?.call_status ??
+      data?.appointment?.call_status,
+  );
+
+  // Join-call: require explicit call signals (don't steal prescription taps)
+  const isJoinCallNotification = () => {
+    if (
+      callStatus === 'inprogress' ||
+      callStatus === 'started' ||
+      callStatus === 'ongoing' ||
+      callStatus === 'active'
+    ) {
+      return true;
+    }
+    if (
+      type === 'videocall' ||
+      type === 'joincall' ||
+      type === 'callstarted' ||
+      type === 'call'
+    ) {
+      return true;
+    }
+    if (
+      routeKey.includes('videocall') ||
+      routeKey.includes('joincall') ||
+      routeKey === 'patientvideocallscreen'
+    ) {
+      return true;
+    }
+    if (
+      blob.includes('joincall') ||
+      blob.includes('jointhecall') ||
+      blob.includes('callnow') ||
+      blob.includes('doctorstarted') ||
+      blob.includes('callstarted') ||
+      blob.includes('startedthecall') ||
+      blob.includes('videocall')
+    ) {
+      return true;
+    }
+    if (
+      event.includes('call') &&
+      (event.includes('start') || event.includes('join'))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
   const goHome = () => {
     goHomeStack(nav, 'TabStack', { screen: 'Home' });
   };
@@ -178,17 +230,24 @@ export const handleNotificationNavigation = (
   };
 
   const goPrescription = () => {
-    if (prescriptionId || appointmentId) {
-      goHomeStack(nav, 'PrescriptionDetail', {
-        appointment_id: appointmentId,
-        consultation_id: data?.consultation_id ?? appointmentId,
+    // Always open Prescription History detail for the related appointment
+    const lookup =
+      appointmentId ||
+      prescriptionId ||
+      pickId(data?.consultation_id, data?.consultationId);
+    goHomeStack(nav, 'PrescriptionDetail', {
+      appointment_id: lookup,
+      consultation_id:
+        pickId(data?.consultation_id, data?.consultationId) || lookup,
+      prescription_id: prescriptionId,
+      PrisData: {
+        appointment_id: lookup,
+        consultation_id:
+          pickId(data?.consultation_id, data?.consultationId) || lookup,
         prescription_id: prescriptionId,
-        PrisData: data,
         ...(data || {}),
-      });
-      return;
-    }
-    goHomeStack(nav, 'Prescription');
+      },
+    });
   };
 
   const goMedicalReceipt = () => {
@@ -214,7 +273,6 @@ export const handleNotificationNavigation = (
   };
 
   const goFollowUp = () => {
-    // Follow-up reminders → appointment details when possible
     if (appointmentId) {
       goAppointment();
       return;
@@ -223,14 +281,40 @@ export const handleNotificationNavigation = (
   };
 
   const goVideoCall = () => {
-    goHomeStack(nav, 'PatientVideoCallScreen', {
-      appointment_id: appointmentId,
-      consultation_id: data?.consultation_id ?? appointmentId,
-      ...(data || {}),
-    });
+    const callParams = buildVideoCallNavParams(
+      {
+        appointment_id: appointmentId,
+        consultation_id:
+          data?.consultation_id ?? data?.consultationId ?? appointmentId,
+        id: appointmentId,
+        rawData: data,
+        ...(data || {}),
+      },
+      {
+        role: 'patient',
+        otherPartyName:
+          data?.doctor_name ??
+          data?.doctorName ??
+          data?.caller_name ??
+          data?.callerName ??
+          'Doctor',
+        otherPartyImage:
+          data?.doctor_image ??
+          data?.doctorImage ??
+          data?.caller_image ??
+          data?.callerImage,
+      },
+    );
+    goHomeStack(nav, 'PatientVideoCallScreen', callParams);
   };
 
-  // 1) Explicit route / screen from push template (highest priority)
+  // 0) Join-call / doctor-started call — highest priority over appointment/prescription
+  if (isJoinCallNotification()) {
+    goVideoCall();
+    return;
+  }
+
+  // 1) Explicit route / screen from push template
   if (routeKey) {
     if (
       routeKey === 'home' ||
@@ -330,7 +414,9 @@ export const handleNotificationNavigation = (
     if (
       routeKey === 'prescriptiondetail' ||
       routeKey === 'prescriptiondetails' ||
-      routeKey === 'prescription'
+      routeKey === 'prescription' ||
+      routeKey === 'prescriptionhistory' ||
+      routeKey === 'prescriptions'
     ) {
       goPrescription();
       return;
@@ -430,22 +516,24 @@ export const handleNotificationNavigation = (
       goHome();
       return;
     }
+    // Prescription history / issued Rx — before follow-up & appointment
+    if (
+      type === 'prescription' ||
+      type === 'prescriptionhistory' ||
+      type === 'rx' ||
+      blob.includes('prescriptionhistory') ||
+      blob.includes('prescription')
+    ) {
+      goPrescription();
+      return;
+    }
     if (
       blob.includes('followup') ||
-      blob.includes('follow') ||
       type === 'follow' ||
       type === 'followup' ||
       type === 'reminder'
     ) {
       goFollowUp();
-      return;
-    }
-    if (
-      blob.includes('prescription') ||
-      type === 'prescription' ||
-      type === 'rx'
-    ) {
-      goPrescription();
       return;
     }
     if (blob.includes('receipt') || type === 'receipt') {
@@ -537,7 +625,8 @@ export const handleNotificationNavigation = (
       goHomeStack(nav, 'PaymentsScreen');
       return;
     }
-    if (blob.includes('call') || type === 'videocall' || type === 'call') {
+    // Avoid treating generic appointment msgs as calls; join-call already handled above
+    if (type === 'videocall' || type === 'call' || type === 'joincall') {
       goVideoCall();
       return;
     }

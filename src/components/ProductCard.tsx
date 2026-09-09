@@ -195,7 +195,12 @@ const ProductCard: React.FC<Props> = ({
               style={styles.price}
             />
             {Number(item?.mrp) > Number(item?.selling_price || 0) && (
-              <RupeeAmount value={item.mrp} style={styles.oldPrice} />
+              <>
+                <Text style={styles.mrpPrefix} allowFontScaling={false}>
+                  MRP
+                </Text>
+                <RupeeAmount value={item.mrp} style={styles.oldPrice} />
+              </>
             )}
           </View>
 
@@ -330,7 +335,14 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 4,
+  },
+  mrpPrefix: {
+    fontSize: TYPO.xs,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
   price: {
     flexShrink: 1,

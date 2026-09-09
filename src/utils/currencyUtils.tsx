@@ -95,7 +95,7 @@ export const RupeeAmount = ({
     iconColor ?? (flatStyle?.color as string | undefined) ?? '#111827';
 
   const symbolTextStyle: TextStyle = {
-    fontFamily: Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsMedium,
     fontSize: Math.round(baseFontSize * 0.94),
     color: symbolColor,
     includeFontPadding: false,
@@ -114,8 +114,8 @@ export const RupeeAmount = ({
   return (
     <Text style={[styles.inline, style]} allowFontScaling={false}>
       {prefix ? <Text allowFontScaling={false}>{prefix}</Text> : null}
-      <Text style={[symbolTextStyle, symbolStyle]} allowFontScaling={false}>
-        {RUPEE_SYMBOL}
+      <Text  allowFontScaling={false}>
+        {/* {RUPEE_SYMBOL}  */} ₹
       </Text>
       <Text style={style} allowFontScaling={false}>
         {amount}

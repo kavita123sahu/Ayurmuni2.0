@@ -799,8 +799,12 @@ const CategoryProductsScreen = (props: any) => {
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
   const [sortBy, setSortBy] = useState<ProductSortKey>('relevance');
-  const [brandId, setBrandId] = useState<string | null>(initialBrandId);
-  const [brandLabel, setBrandLabel] = useState<string | null>(initialBrandName);
+  const [brandIds, setBrandIds] = useState<string[]>(
+    initialBrandId ? [initialBrandId] : [],
+  );
+  const [brandNames, setBrandNames] = useState<string[]>(
+    initialBrandName ? [initialBrandName] : [],
+  );
   const [priceRange, setPriceRange] = useState<PriceRangeKey>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(
@@ -838,6 +842,13 @@ const CategoryProductsScreen = (props: any) => {
 
   const { brands: brandRecords } = useBrands();
 
+  const apiBrandNameId =
+    brandIds.length === 0
+      ? null
+      : brandIds.length === 1
+        ? brandIds[0]
+        : brandIds.join(',');
+
   const productFilter = useMemo(() => {
     if (categoryMode === 'health') {
       return {
@@ -846,7 +857,7 @@ const CategoryProductsScreen = (props: any) => {
           activeCategoryId ?? routeParams.healthCategoryId ?? null,
         health_disease_id:
           selectedSubcategoryId ?? routeParams.healthDiseaseId ?? null,
-        brand_name_id: brandId,
+        brand_name_id: apiBrandNameId,
         service_category_id: serviceCategoryId,
       };
     }
@@ -856,7 +867,7 @@ const CategoryProductsScreen = (props: any) => {
       product_subcategory_id: selectedSubcategoryId,
       health_category_id: routeParams.healthCategoryId ?? null,
       health_disease_id: routeParams.healthDiseaseId ?? null,
-      brand_name_id: brandId,
+      brand_name_id: apiBrandNameId,
       service_category_id: serviceCategoryId,
     };
   }, [
@@ -865,7 +876,7 @@ const CategoryProductsScreen = (props: any) => {
     selectedSubcategoryId,
     routeParams.healthCategoryId,
     routeParams.healthDiseaseId,
-    brandId,
+    apiBrandNameId,
     serviceCategoryId,
   ]);
 
@@ -936,24 +947,25 @@ const CategoryProductsScreen = (props: any) => {
       applyProductFilters({
         products,
         sortBy,
-        brandName: brandId ? null : brandLabel,
+        brandIds: brandIds.length > 0 ? brandIds : null,
+        brandNames: brandNames.length > 0 ? brandNames : null,
         priceRange,
       }),
-    [products, sortBy, brandId, brandLabel, priceRange],
+    [products, sortBy, brandIds, brandNames, priceRange],
   );
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (sortBy !== 'relevance') count += 1;
-    if (brandId) count += 1;
+    if (brandIds.length > 0 || brandNames.length > 0) count += 1;
     if (priceRange !== 'all') count += 1;
     return count;
-  }, [sortBy, brandId, priceRange]);
+  }, [sortBy, brandIds, brandNames, priceRange]);
 
   const clearFilters = useCallback(() => {
     setSortBy('relevance');
-    setBrandId(null);
-    setBrandLabel(null);
+    setBrandIds([]);
+    setBrandNames([]);
     setPriceRange('all');
   }, []);
 
@@ -1134,11 +1146,11 @@ const CategoryProductsScreen = (props: any) => {
           <ProductSearchFilterBar
             sortBy={sortBy}
             onSortChange={setSortBy}
-            brandId={brandId}
-            brandLabel={brandLabel}
-            onBrandChange={brand => {
-              setBrandId(brand?.id ?? null);
-              setBrandLabel(brand?.name ?? null);
+            brandIds={brandIds}
+            brandNames={brandNames}
+            onBrandChange={brands => {
+              setBrandIds(brands.map(brand => brand.id));
+              setBrandNames(brands.map(brand => brand.name));
             }}
             priceRange={priceRange}
             onPriceRangeChange={setPriceRange}

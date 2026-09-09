@@ -22,6 +22,7 @@ import {
   getPoliciesList,
   getRequiredPolicies,
 } from '../../services/PolicyServices';
+import { isPolicyVersionUpdated } from '../../utils/policyUtils';
 
 type RouteParams = {
   policyType?: string;
@@ -35,8 +36,6 @@ const PolicyDetailScreen = (props: any) => {
   const params = (props?.route?.params || {}) as RouteParams;
   const policyType = params.policyType;
 
-  console.log('[PolicyDetail] params', params, 'policyType', policyType);
-
   const requireAccept =
     params.requireAccept === true || params.agreed === false;
 
@@ -45,6 +44,7 @@ const PolicyDetailScreen = (props: any) => {
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [policy, setPolicy] = useState<any>(null);
+  const [policyEntry, setPolicyEntry] = useState<any>(null);
 
   const headerTitle =
     params.title ||
@@ -63,18 +63,18 @@ const PolicyDetailScreen = (props: any) => {
       // setError(null);
 
       try {
-        // with policyType → filtered URL; without → all, take first
         const res = await getRequiredPolicies(policyType);
-        console.log('[PolicyDetail] policies response', res);
         const list = getPoliciesList(res);
         const entry = list[0];
         const doc = entry?.policy ?? entry ?? null;
         if (!doc) {
           setError('Unable to load this policy right now.');
           setPolicy(null);
+          setPolicyEntry(null);
           return;
         }
         setPolicy(doc);
+        setPolicyEntry(entry);
       } catch (e: any) {
         setError(e?.message || 'Failed to load policy. Please try again.');
         setPolicy(null);
@@ -166,6 +166,19 @@ const PolicyDetailScreen = (props: any) => {
                 {!!policy?.subtitle && (
                   <Text style={styles.bannerSub}>{policy.subtitle}</Text>
                 )}
+                {isPolicyVersionUpdated(policyEntry) ? (
+                  <View style={styles.updateNote}>
+                    <TablerIcon
+                      name="alert-circle"
+                      size={13}
+                      color="#B45309"
+                    />
+                    <Text style={styles.updateNoteText}>
+                      This policy has been updated (v{policy?.version}). Please
+                      review the latest version.
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
@@ -269,6 +282,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  updateNote: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  updateNoteText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#B45309',
     fontFamily: Fonts.PoppinsMedium,
   },
   card: {

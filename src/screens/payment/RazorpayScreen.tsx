@@ -35,10 +35,16 @@ import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import TablerIcon from '../../components/TablerIcon';
 import AppHeader from '../../components/AppHeader';
 import { getDoctorDisplayName } from '../../utils/doctorUtils';
+import { usePatientData } from '../../hooks/usePatientData';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 /** Persists first book-slot payment so a return visit can call retry. */
 const PENDING_PAYMENT_KEY = 'CONSULT_PENDING_PAYMENT';
+
+const getPatientDisplayName = (patient: any) =>
+    `${patient?.first_name || ''} ${patient?.last_name || ''}`.trim() ||
+    patient?.full_name ||
+    'Patient';
 
 type FeeQuote = {
     slot_id?: string;
@@ -158,6 +164,28 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const paymentStartedRef = useRef(false);
     const [feeQuote, setFeeQuote] = useState<FeeQuote | null>(null);
     const [feeQuoteLoading, setFeeQuoteLoading] = useState(true);
+    const [activePatient, setActivePatient] = useState<any>(patientsList || null);
+    const [patientPickerVisible, setPatientPickerVisible] = useState(false);
+    const [switchingPatient, setSwitchingPatient] = useState(false);
+
+    const {
+        patients,
+        selectedPatient,
+        fetchPatients,
+        switchPatient,
+    } = usePatientData();
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchPatients();
+        }, [fetchPatients]),
+    );
+
+    useEffect(() => {
+        if (selectedPatient?.id) {
+            setActivePatient(selectedPatient);
+        }
+    }, [selectedPatient]);
 
     const doctorName = useMemo(
         () => getDoctorDisplayName(doctorInfo),
@@ -177,17 +205,36 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         [doctorInfo],
     );
     const patientName = useMemo(
-        () =>
-            `${patientsList?.first_name || ''} ${patientsList?.last_name || ''}`.trim() ||
-            patientsList?.full_name ||
-            'Patient',
-        [patientsList],
+        () => getPatientDisplayName(activePatient),
+        [activePatient],
     );
     const timeLabel = useMemo(
         () => formatTo12Hour(selectedTime) || selectedTime || '—',
         [selectedTime],
     );
     const dateLabel = useMemo(() => formatDisplayDate(date) || date || '—', [date]);
+
+    const handleSelectPatient = useCallback(
+        async (patient: any) => {
+            if (!patient?.id || String(patient.id) === String(activePatient?.id)) {
+                setPatientPickerVisible(false);
+                return;
+            }
+            try {
+                setSwitchingPatient(true);
+                setPatientPickerVisible(false);
+                await switchPatient(String(patient.id));
+                setActivePatient(patient);
+                showSuccessToast('Patient switched successfully', 'success');
+            } catch (error) {
+                console.log('SWITCH PATIENT ERROR =>', error);
+                showSuccessToast('Failed to switch patient', 'error');
+            } finally {
+                setSwitchingPatient(false);
+            }
+        },
+        [activePatient?.id, switchPatient],
+    );
 
     const loadFeeQuote = useCallback(async () => {
         const id = slotId?.id;
@@ -234,6 +281,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
     const {
         coupons,
+        eligibleCoupons,
         loading: couponsLoading,
         applied: appliedCoupon,
         error: couponError,
@@ -327,6 +375,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         concern: concern,
                         medical_record_ids: medical_record_ids,
                         coupon_code: appliedCoupon?.code,
+                        patient_id: activePatient?.id,
                     });
             }
 
@@ -613,13 +662,37 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                         numberOfLines={1}
                                     >
                                         {[
-                                            patientsList?.phone_number,
-                                            patientsList?.relation,
+                                            activePatient?.phone_number,
+                                            activePatient?.relation,
                                         ]
                                             .filter(Boolean)
                                             .join(' · ') || '—'}
                                     </Text>
                                 </View>
+                                <TouchableOpacity
+                                    activeOpacity={0.75}
+                                    disabled={switchingPatient || loading}
+                                    onPress={() => setPatientPickerVisible(true)}
+                                    style={styles.changePatientBtn}
+                                >
+                                    {switchingPatient ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color={Colors.primaryColor}
+                                        />
+                                    ) : (
+                                        <>
+                                            <Text style={styles.changePatientText}>
+                                                Change
+                                            </Text>
+                                            <TablerIcon
+                                                name="chevron-down"
+                                                size={14}
+                                                color={Colors.primaryColor}
+                                            />
+                                        </>
+                                    )}
+                                </TouchableOpacity>
                             </View>
 
                             {!!concern ? (
@@ -674,6 +747,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         <View style={styles.card}>
                             <CouponApplyCard
                                 coupons={coupons}
+                                eligibleCoupons={eligibleCoupons}
+                                cartAmount={consultationFee}
                                 loading={couponsLoading}
                                 applied={appliedCoupon}
                                 discount={couponDiscount}
@@ -927,6 +1002,107 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             )}
 
             <Modal
+                visible={patientPickerVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setPatientPickerVisible(false)}
+            >
+                <View style={styles.pickerOverlay}>
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        style={StyleSheet.absoluteFillObject}
+                        onPress={() => setPatientPickerVisible(false)}
+                    />
+                    <View style={styles.pickerSheet}>
+                        <View style={styles.pickerHeader}>
+                            <Text style={styles.pickerTitle}>Select patient</Text>
+                            <TouchableOpacity
+                                onPress={() => setPatientPickerVisible(false)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <TablerIcon
+                                    name="x"
+                                    size={18}
+                                    color="#64748B"
+                                />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView
+                            style={styles.pickerList}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {(patients?.length ? patients : activePatient ? [activePatient] : []).map(
+                                (patient: any) => {
+                                    const name = getPatientDisplayName(patient);
+                                    const selected =
+                                        String(patient?.id) ===
+                                        String(activePatient?.id);
+                                    return (
+                                        <TouchableOpacity
+                                            key={String(patient?.id)}
+                                            activeOpacity={0.75}
+                                            style={[
+                                                styles.pickerRow,
+                                                selected && styles.pickerRowSelected,
+                                            ]}
+                                            onPress={() => handleSelectPatient(patient)}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.pickerAvatar,
+                                                    selected &&
+                                                        styles.pickerAvatarSelected,
+                                                ]}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        styles.pickerInitial,
+                                                        selected &&
+                                                            styles.pickerInitialSelected,
+                                                    ]}
+                                                >
+                                                    {name
+                                                        ?.charAt(0)
+                                                        ?.toUpperCase() || 'P'}
+                                                </Text>
+                                            </View>
+                                            <View style={{ flex: 1, minWidth: 0 }}>
+                                                <Text
+                                                    style={styles.pickerName}
+                                                    numberOfLines={1}
+                                                >
+                                                    {name}
+                                                </Text>
+                                                <Text
+                                                    style={styles.pickerMeta}
+                                                    numberOfLines={1}
+                                                >
+                                                    {[
+                                                        patient?.phone_number,
+                                                        patient?.relation,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ') || '—'}
+                                                </Text>
+                                            </View>
+                                            {selected ? (
+                                                <TablerIcon
+                                                    name="check"
+                                                    size={16}
+                                                    color={Colors.primaryColor}
+                                                />
+                                            ) : null}
+                                        </TouchableOpacity>
+                                    );
+                                },
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
                 visible={isVerifyingPayment}
                 transparent={false}
                 animationType="fade"
@@ -1141,6 +1317,102 @@ const styles = StyleSheet.create({
         color: '#0F172A',
     },
     patientMeta: {
+        marginTop: 1,
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+    },
+    changePatientBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: Colors.bgborderColor,
+        backgroundColor: Colors.onfillColor,
+        minWidth: 72,
+        justifyContent: 'center',
+    },
+    changePatientText: {
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: Colors.primaryColor,
+        includeFontPadding: false,
+    },
+
+    pickerOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        justifyContent: 'flex-end',
+    },
+    pickerSheet: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        paddingHorizontal: 14,
+        paddingTop: 12,
+        paddingBottom: 20,
+        maxHeight: '62%',
+        zIndex: 1,
+    },
+    pickerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+        paddingHorizontal: 2,
+    },
+    pickerTitle: {
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+    },
+    pickerList: {
+        maxHeight: 360,
+    },
+    pickerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E8EEF2',
+        marginBottom: 8,
+        backgroundColor: '#FFFFFF',
+    },
+    pickerRowSelected: {
+        borderColor: Colors.bgborderColor,
+        backgroundColor: Colors.onfillColor,
+    },
+    pickerAvatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pickerAvatarSelected: {
+        backgroundColor: Colors.primaryColor,
+    },
+    pickerInitial: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#475569',
+    },
+    pickerInitialSelected: {
+        color: '#FFFFFF',
+    },
+    pickerName: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+    },
+    pickerMeta: {
         marginTop: 1,
         fontSize: 11,
         fontFamily: Fonts.PoppinsMedium,

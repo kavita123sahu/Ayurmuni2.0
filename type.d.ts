@@ -29,6 +29,7 @@ export type RootStackParamList = {
     ConfirmScreen: undefined;
     Consult: undefined;
     History: undefined;
+    PolicyAccept : undefined;
     LocationPickerScreen: undefined;
     MultipleDoctorSlip: undefined;
     PrescriptionDetail: undefined;

@@ -441,7 +441,21 @@ export const formatAppointmentWeekday = (
 /** Calendar date: 31 Jul 2026 */
 export const formatAppointmentDateFull = (dateStr?: string): string => {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
+  const trimmed = String(dateStr).trim();
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+  if (ymd) {
+    const date = new Date(
+      Number(ymd[1]),
+      Number(ymd[2]) - 1,
+      Number(ymd[3]),
+    );
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+  const date = new Date(trimmed);
   if (Number.isNaN(date.getTime())) return String(dateStr);
   return date.toLocaleDateString('en-IN', {
     day: '2-digit',

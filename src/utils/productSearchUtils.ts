@@ -35,20 +35,48 @@ export type ApplyProductFiltersInput = {
   products: any[];
   search?: string;
   sortBy?: ProductSortKey;
+  /** @deprecated Prefer brandNames / brandIds for multi-select */
   brandName?: string | null;
+  brandNames?: string[] | null;
+  brandIds?: string[] | null;
   priceRange?: PriceRangeKey;
 };
+
+const getItemBrandName = (item: any) =>
+  String(item?.brand_name ?? item?.brand?.name ?? '').trim();
+
+const getItemBrandId = (item: any) =>
+  String(
+    item?.brand_name_id ??
+      item?.brand_id ??
+      item?.brand?.id ??
+      item?.brand?.brand_name_id ??
+      '',
+  ).trim();
 
 export const applyProductFilters = ({
   products,
   search = '',
   sortBy = 'relevance',
   brandName = null,
+  brandNames = null,
+  brandIds = null,
   priceRange = 'all',
 }: ApplyProductFiltersInput): any[] => {
   const list = Array.isArray(products) ? products : [];
   const q = search.trim().toLowerCase();
   const priceOption = PRICE_RANGE_OPTIONS.find(option => option.key === priceRange);
+
+  const selectedBrandNames = [
+    ...(Array.isArray(brandNames) ? brandNames : []),
+    ...(brandName ? [brandName] : []),
+  ]
+    .map(name => String(name).trim())
+    .filter(Boolean);
+  const selectedBrandIds = (Array.isArray(brandIds) ? brandIds : [])
+    .map(id => String(id).trim())
+    .filter(Boolean);
+  const hasBrandFilter = selectedBrandNames.length > 0 || selectedBrandIds.length > 0;
 
   let result = list.filter(item => {
     if (q) {
@@ -65,9 +93,17 @@ export const applyProductFilters = ({
       if (!matchesQuery) return false;
     }
 
-    if (brandName) {
-      const itemBrand = String(item?.brand_name ?? item?.brand?.name ?? '').trim();
-      if (itemBrand !== brandName) return false;
+    if (hasBrandFilter) {
+      const itemBrandName = getItemBrandName(item);
+      const itemBrandId = getItemBrandId(item);
+      const matchesName =
+        selectedBrandNames.length > 0 &&
+        selectedBrandNames.some(name => name === itemBrandName);
+      const matchesId =
+        selectedBrandIds.length > 0 &&
+        itemBrandId !== '' &&
+        selectedBrandIds.includes(itemBrandId);
+      if (!matchesName && !matchesId) return false;
     }
 
     if (priceOption && priceOption.key !== 'all') {

@@ -59,16 +59,22 @@ export const fetchCoupons = async (
   extra: CouponListParams = {},
 ): Promise<Coupon[]> => {
   try {
+    // Prefer admin-only from API when listing for checkout scopes
     const response = await getCoupons({
       page: 1,
       page_size: 50,
+      ...(scope && scope !== 'all' ? { source: 'admin' } : {}),
       ...extra,
     });
-    console.log('fetchCouponsresponse', response);
     if (response?.success === false) return [];
     const list = parseCouponList(response);
+    // Client guard: admin + applies_to for checkout scopes
     if (!scope || scope === 'all') return list;
-    return list.filter(item => couponMatchesScope(item, scope));
+    return list.filter(
+      item =>
+        String(item.source || '').toLowerCase() === 'admin' &&
+        couponMatchesScope(item, scope),
+    );
   } catch {
     return [];
   }
@@ -186,6 +192,19 @@ export const validateCoupon = async (data: {
         };
       }
       discount = local.discount;
+    } else if (coupon && amount > 0 && discount > 0) {
+      // Always enforce max_discount_amount / min_amount locally
+      const local = calcCouponDiscount(coupon, amount);
+      if (!local.ok) {
+        return {
+          ok: false,
+          coupon: null,
+          discount: 0,
+          error: local.error || 'Coupon cannot be applied',
+          response,
+        };
+      }
+      discount = Math.min(discount, local.discount);
     }
 
     if (!coupon && discount <= 0) {

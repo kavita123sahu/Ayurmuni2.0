@@ -134,7 +134,8 @@ const HomeJoinAppointmentsSection = ({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: HOME_SECTION_GAP,
+    marginBottom: 0,
+    // marginBottom: HOME_SECTION_GAP,
   },
   horizontalList: {
     paddingRight: 8,

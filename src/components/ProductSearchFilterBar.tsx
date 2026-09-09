@@ -27,9 +27,9 @@ export type BrandFilterOption = {
 type Props = {
   sortBy: ProductSortKey;
   onSortChange: (key: ProductSortKey) => void;
-  brandId: string | null;
-  brandLabel?: string | null;
-  onBrandChange: (brand: BrandFilterOption | null) => void;
+  brandIds: string[];
+  brandNames?: string[] | null;
+  onBrandChange: (brands: BrandFilterOption[]) => void;
   priceRange: PriceRangeKey;
   onPriceRangeChange: (key: PriceRangeKey) => void;
   brands: BrandFilterOption[];
@@ -40,8 +40,8 @@ type Props = {
 const ProductSearchFilterBar: React.FC<Props> = ({
   sortBy,
   onSortChange,
-  brandId,
-  brandLabel,
+  brandIds,
+  brandNames,
   onBrandChange,
   priceRange,
   onPriceRangeChange,
@@ -50,18 +50,55 @@ const ProductSearchFilterBar: React.FC<Props> = ({
   onClearFilters,
 }) => {
   const [sheet, setSheet] = useState<'sort' | 'brand' | 'price' | null>(null);
+  const [draftBrandIds, setDraftBrandIds] = useState<string[]>([]);
 
   const closeSheet = () => setSheet(null);
+
+  const openBrandSheet = () => {
+    if (brandIds.length > 0) {
+      setDraftBrandIds(brandIds);
+    } else if (brandNames && brandNames.length > 0) {
+      const nameSet = new Set(brandNames);
+      setDraftBrandIds(brands.filter(brand => nameSet.has(brand.name)).map(brand => brand.id));
+    } else {
+      setDraftBrandIds([]);
+    }
+    setSheet('brand');
+  };
 
   const priceLabel =
     PRICE_RANGE_OPTIONS.find(option => option.key === priceRange)?.label ?? 'Price';
 
   const sortActive = sortBy !== 'relevance';
-  const brandActive = !!brandId;
-  const selectedBrandName =
-    brandLabel ?? brands.find(brand => brand.id === brandId)?.name ?? null;
+  const selectedBrandCount =
+    brandIds.length > 0 ? brandIds.length : brandNames?.length ?? 0;
+  const brandActive = selectedBrandCount > 0;
+  const brandChipText =
+    selectedBrandCount === 0
+      ? undefined
+      : selectedBrandCount === 1
+        ? brandNames?.[0] ??
+          brands.find(brand => brand.id === brandIds[0])?.name ??
+          '1 brand'
+        : `${selectedBrandCount} brands`;
   const priceActive = priceRange !== 'all';
   const filtersActive = activeFilterCount > 0;
+
+  const toggleDraftBrand = (id: string) => {
+    setDraftBrandIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id],
+    );
+  };
+
+  const applyBrandDraft = () => {
+    const selected = brands.filter(brand => draftBrandIds.includes(brand.id));
+    onBrandChange(selected);
+    closeSheet();
+  };
+
+  const clearBrandDraft = () => {
+    setDraftBrandIds([]);
+  };
 
   return (
     <>
@@ -82,10 +119,10 @@ const ProductSearchFilterBar: React.FC<Props> = ({
         />
         <FilterChip
           label="Brand"
-          selectedText={brandActive ? selectedBrandName ?? undefined : undefined}
+          selectedText={brandActive ? brandChipText : undefined}
           icon="package"
           active={brandActive}
-          onPress={() => setSheet('brand')}
+          onPress={openBrandSheet}
         />
         <FilterChip
           label="Price"
@@ -131,25 +168,39 @@ const ProductSearchFilterBar: React.FC<Props> = ({
             {sheet === 'brand' && (
               <>
                 <Text style={styles.sheetTitle}>Brand</Text>
-                <OptionRow
-                  label="All brands"
-                  selected={!brandId}
-                  onPress={() => {
-                    onBrandChange(null);
-                    closeSheet();
-                  }}
-                />
-                {brands.map(brand => (
-                  <OptionRow
-                    key={brand.id}
-                    label={brand.name}
-                    selected={brandId === brand.id}
-                    onPress={() => {
-                      onBrandChange(brand);
-                      closeSheet();
-                    }}
-                  />
-                ))}
+                <ScrollView
+                  style={styles.brandList}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                >
+                  {brands.map(brand => {
+                    const selected = draftBrandIds.includes(brand.id);
+                    return (
+                      <CheckboxRow
+                        key={brand.id}
+                        label={brand.name}
+                        selected={selected}
+                        onPress={() => toggleDraftBrand(brand.id)}
+                      />
+                    );
+                  })}
+                </ScrollView>
+                <View style={styles.sheetActions}>
+                  <TouchableOpacity
+                    style={styles.clearButton}
+                    onPress={clearBrandDraft}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.clearButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.applyButton}
+                    onPress={applyBrandDraft}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.applyButtonText}>Apply</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
 
@@ -229,6 +280,27 @@ const OptionRow = ({
   </TouchableOpacity>
 );
 
+const CheckboxRow = ({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity
+    style={[styles.optionRow, selected && styles.optionRowActive]}
+    onPress={onPress}
+    activeOpacity={0.85}
+  >
+    <Text style={[styles.optionText, selected && styles.optionTextActive]}>{label}</Text>
+    <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+      {selected ? <TablerIcon name="check" size={14} color="#FFFFFF" /> : null}
+    </View>
+  </TouchableOpacity>
+);
+
 export default React.memo(ProductSearchFilterBar);
 
 const FILTER_BAR_HEIGHT = 36;
@@ -247,19 +319,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingRight: 4,
   },
-  // chip: {
-  //   width: CHIP_WIDTH,
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   gap: 4,
-  //   backgroundColor: '#FFFFFF',
-  //   borderWidth: 1,
-  //   borderColor: '#E2E8F0',
-  //   borderRadius: 12,
-  //   paddingHorizontal: 8,
-  //   paddingVertical: 8,
-  // },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -305,6 +364,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     marginBottom: 12,
   },
+  brandList: {
+    maxHeight: 320,
+    marginBottom: 8,
+  },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -321,9 +384,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
+    flex: 1,
+    paddingRight: 12,
   },
   optionTextActive: {
     color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxSelected: {
+    borderColor: Colors.primaryColor,
+    backgroundColor: Colors.primaryColor,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  clearButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  applyButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryColor,
+  },
+  applyButtonText: {
+    fontSize: 14,
+    color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
   },
 });

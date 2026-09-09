@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -13,9 +13,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader';
 import Detailimages from '../../components/Detailimages';
 import ReviewSection from '../../components/ReviewSecton';
+import BlinkitAddButton from '../../components/BlinkitAddButton';
 import { useProductData } from '../../hooks/useProductData';
 import { Fonts } from '../../common/Fonts';
-import { useCartActions, useVariantCartQuantity } from '../../hooks/Cart';
+import { useCartActions } from '../../hooks/Cart';
 import { useAppSelector } from '../../store/hooks';
 import { selectIsAddingVariant } from '../../store/slices/cartSlice';
 import { requireAuth } from '../../services/guestAuth';
@@ -55,48 +56,6 @@ const SectionHeader = ({ title }: { title: string }) => (
     <Text style={styles.sectionHeader}>{title}</Text>
 );
 
-const CompactQtyStepper = ({
-    quantity,
-    onIncrease,
-    onDecrease,
-    disabled,
-}: {
-    quantity: number;
-    onIncrease: () => void;
-    onDecrease: () => void;
-    disabled?: boolean;
-}) => (
-    <View style={[styles.qtyStepper, disabled && styles.qtyStepperDisabled]}>
-        <TouchableOpacity
-            onPress={onDecrease}
-            disabled={disabled || quantity <= 1}
-            style={styles.qtyBtn}
-            hitSlop={8}
-        >
-            <TablerIcon
-                name="minus"
-                size={14}
-                color={disabled || quantity <= 1 ? 'rgba(255,255,255,0.4)' : '#FFFFFF'}
-                strokeWidth={2.6}
-            />
-        </TouchableOpacity>
-        <Text style={styles.qtyValue}>{quantity}</Text>
-        <TouchableOpacity
-            onPress={onIncrease}
-            disabled={disabled}
-            style={styles.qtyBtn}
-            hitSlop={8}
-        >
-            <TablerIcon
-                name="plus"
-                size={14}
-                color={disabled ? 'rgba(255,255,255,0.4)' : '#FFFFFF'}
-                strokeWidth={2.6}
-            />
-        </TouchableOpacity>
-    </View>
-);
-
 type DetailSheetKey =
     | 'description'
     | 'info'
@@ -124,16 +83,39 @@ const ProductDetails = (props: any) => {
 
     const variants = ProductData?.variants || [];
     const defaultVariant =
-        variants.find((v: any) => v?.is_default) || variants[0];
-    const [selectedVariant, setSelectedVariant] = useState<any>(defaultVariant);
-    const [quantity, setQuantity] = useState(1);
+        variants.find((v: any) => v?.is_default) || variants[0] || null;
+    const [selectedVariant, setSelectedVariant] = useState<any>(null);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
+
+    // Prefer selected; fall back to default so stock/CTA never use empty initial state
+    const activeVariant = selectedVariant || defaultVariant;
+    // Prefer route/list variant_id so count matches ProductCard cart qty
     const cartVariantId = String(
-        selectedVariant?.variant_id ?? selectedVariant?.id ?? varientID ?? '',
+        activeVariant?.variant_id ?? varientID ?? activeVariant?.id ?? '',
     );
-    const { addToCart } = useCartActions();
+    const { updateCartQuantity } = useCartActions();
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
-    const existingCartQty = useVariantCartQuantity(cartVariantId);
+    const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
+    const existingCartQty = useMemo(() => {
+        const ids = [
+            activeVariant?.variant_id,
+            varientID,
+            activeVariant?.id,
+        ]
+            .map(v => String(v ?? '').trim())
+            .filter(Boolean);
+        for (const id of ids) {
+            const q = Number(variantQuantities[id] ?? 0);
+            if (q > 0) return q;
+        }
+        return Number(variantQuantities[cartVariantId] ?? 0);
+    }, [
+        activeVariant?.variant_id,
+        activeVariant?.id,
+        varientID,
+        cartVariantId,
+        variantQuantities,
+    ]);
     const insets = useSafeAreaInsets();
     const [descExpanded, setDescExpanded] = useState(false);
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
@@ -145,25 +127,21 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        setQuantity(1);
-    }, [selectedVariant?.id]);
-
-    useEffect(() => {
         const wishlisted = Boolean(
-            selectedVariant?.is_wishlist_item ??
+            activeVariant?.is_wishlist_item ??
             ProductData?.is_wishlist_item ??
             false,
         );
         setIsWishlisted(wishlisted);
     }, [
-        selectedVariant?.id,
-        selectedVariant?.is_wishlist_item,
+        activeVariant?.id,
+        activeVariant?.is_wishlist_item,
         ProductData?.is_wishlist_item,
     ]);
 
     const galleryImages = useMemo(
-        () => buildProductGallery(selectedVariant, ProductData),
-        [selectedVariant, ProductData],
+        () => buildProductGallery(activeVariant, ProductData),
+        [activeVariant, ProductData],
     );
 
     const aPlusBlocks = useMemo(
@@ -172,73 +150,95 @@ const ProductDetails = (props: any) => {
     );
 
     const coverImageUri = useMemo(
-        () => resolveProductImageUri(selectedVariant) || resolveProductImageUri(ProductData),
-        [selectedVariant, ProductData],
+        () =>
+            resolveProductImageUri(activeVariant) ||
+            resolveProductImageUri(ProductData),
+        [activeVariant, ProductData],
     );
 
     const discoveryProductId = useMemo(() => {
         const id =
             ProductData?.product_id ??
             ProductData?.id ??
-            selectedVariant?.product_id ??
+            activeVariant?.product_id ??
             null;
         return id ? String(id) : null;
-    }, [ProductData?.product_id, ProductData?.id, selectedVariant?.product_id]);
+    }, [ProductData?.product_id, ProductData?.id, activeVariant?.product_id]);
 
     useEffect(() => {
-        if (selectedVariant?.id && coverImageUri) {
-            cacheVariantImage(selectedVariant.id, coverImageUri);
+        if (activeVariant?.id && coverImageUri) {
+            cacheVariantImage(activeVariant.id, coverImageUri);
         }
-    }, [selectedVariant?.id, coverImageUri]);
+    }, [activeVariant?.id, coverImageUri]);
 
-    const stockQty = getProductStockQty(selectedVariant);
-    const maxQty = stockQty != null && stockQty > 0 ? stockQty : 1;
+    const stockQty = getProductStockQty(activeVariant);
+    const maxQty =
+        stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
 
-    const increaseQty = () =>
-        setQuantity((q: number) => Math.min(q + 1, maxQty));
-    const decreaseQty = () => setQuantity((q: number) => (q > 1 ? q - 1 : 1));
+    const productForRx = useMemo(
+        () => ({
+            ...ProductData,
+            ...activeVariant,
+            prescription_required:
+                activeVariant?.prescription_required ??
+                ProductData?.prescription_required,
+        }),
+        [ProductData, activeVariant],
+    );
+
+    /** Same cart sync as ProductCard — count stays correct across list & details. */
+    const handleCartUpdate = useCallback(
+        async (newQty: number, goToCart = false) => {
+            if (!(await requireAuth('Please login to add items to cart'))) return;
+            if (!cartVariantId) return;
+
+            if (newQty > 0 && isProductOutOfStock(activeVariant)) {
+                showSuccessToast('This product is out of stock', 'error');
+                return;
+            }
+            if (!canAddProductQty(activeVariant, newQty)) {
+                showSuccessToast('Only limited stock left', 'error');
+                return;
+            }
+            if (
+                newQty > existingCartQty &&
+                !canAddProductWithoutPrescription(productForRx)
+            ) {
+                return;
+            }
+
+            if (activeVariant?.id && coverImageUri) {
+                cacheVariantImage(activeVariant.id, coverImageUri);
+            }
+
+            setPendingCta(goToCart ? 'buy' : 'add');
+            const success = await updateCartQuantity(cartVariantId, newQty, {
+                currentQuantity: existingCartQty,
+                prescriptionRequired: isPrescriptionRequired(productForRx),
+            });
+            setPendingCta(null);
+
+            if (!success) {
+                showSuccessToast('Try again to update cart', 'error');
+                return;
+            }
+            if (goToCart) {
+                props.navigation.navigate('MyCart');
+            }
+        },
+        [
+            activeVariant,
+            cartVariantId,
+            coverImageUri,
+            existingCartQty,
+            productForRx,
+            props.navigation,
+            updateCartQuantity,
+        ],
+    );
 
     const handleAddToCart = async (goToCart = false) => {
-        if (!(await requireAuth('Please login to add items to cart'))) return;
-
-        const productForRx = {
-            ...ProductData,
-            ...selectedVariant,
-            prescription_required:
-                selectedVariant?.prescription_required ??
-                ProductData?.prescription_required,
-        };
-        if (!canAddProductWithoutPrescription(productForRx)) {
-            return;
-        }
-
-        if (selectedVariant?.id && coverImageUri) {
-            cacheVariantImage(selectedVariant.id, coverImageUri);
-        } else {
-            resolveProductImageUri(selectedVariant);
-        }
-
-        const addQty = Math.max(1, Number(quantity) || 1);
-        const nextQty = existingCartQty + addQty;
-        if (!canAddProductQty(selectedVariant, nextQty)) {
-            showSuccessToast('Only limited stock left', 'error');
-            return;
-        }
-
-        setPendingCta(goToCart ? 'buy' : 'add');
-        const success = await addToCart(cartVariantId, nextQty, {
-            currentQuantity: existingCartQty,
-            prescriptionRequired: isPrescriptionRequired(productForRx),
-        });
-        setPendingCta(null);
-
-        if (!success) {
-            showSuccessToast('Try again to add into cart', 'error');
-            return;
-        }
-        if (goToCart) {
-            props.navigation.navigate('MyCart');
-        }
+        await handleCartUpdate(existingCartQty + 1, goToCart);
     };
 
     const handleToggleWishlist = async () => {
@@ -248,6 +248,8 @@ const ProductDetails = (props: any) => {
         const variantId = String(
             selectedVariant?.variant_id ??
             selectedVariant?.id ??
+            activeVariant?.variant_id ??
+            activeVariant?.id ??
             varientID ??
             '',
         );
@@ -281,23 +283,26 @@ const ProductDetails = (props: any) => {
         }
     };
 
-    const stockDisplay = getProductStockDisplay(selectedVariant);
-    const isOutOfStock = isProductOutOfStock(selectedVariant);
-    const isLowStock = isProductLowStock(selectedVariant);
+    const stockDisplay = getProductStockDisplay(activeVariant);
+    const isOutOfStock = isProductOutOfStock(activeVariant);
+    const isLowStock = isProductLowStock(activeVariant);
     const rxRequired = isPrescriptionRequired({
         ...ProductData,
-        ...selectedVariant,
+        ...activeVariant,
     });
 
-    const totalPrice = (selectedVariant?.selling_price || 0) * quantity;
+    const cartDisplayQty = Math.max(existingCartQty, 1);
+    const totalPrice =
+        (activeVariant?.selling_price || 0) *
+        (existingCartQty > 0 ? existingCartQty : 1);
     const saveAmount = Math.max(
         0,
-        (Number(selectedVariant?.mrp) || 0) -
-        (Number(selectedVariant?.selling_price) || 0),
+        (Number(activeVariant?.mrp) || 0) -
+        (Number(activeVariant?.selling_price) || 0),
     );
 
     const ratingValue = Number(
-        selectedVariant?.avg_rating || ProductData?.avg_rating || 0,
+        activeVariant?.avg_rating || ProductData?.avg_rating || 0,
     );
     const reviewCount = ReviewAll?.length || 0;
 
@@ -316,14 +321,11 @@ const ProductDetails = (props: any) => {
     }, [variants]);
 
     const deliveryBy = useMemo(() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 2);
-        return d.toLocaleDateString('en-IN', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-        });
+        return '24 hours';
     }, []);
+
+    const deliveryMessage =
+        'Your order will be delivered in 24 hours between appropriate delivery slots.';
 
     const fullDescription = String(
         ProductData?.full_description || ProductData?.description || '',
@@ -362,14 +364,14 @@ const ProductDetails = (props: any) => {
                 { label: 'Brand', value: ProductData?.brand_name },
                 {
                     label: 'Pack size',
-                    value: (selectedVariant?.size || selectedVariant?.title) + " " + selectedVariant?.weightage,
+                    value: (activeVariant?.size || activeVariant?.title) + " " + activeVariant?.weightage,
                 },
                 { label: 'Manufacturer', value: ProductData?.manufacturer },
                 { label: 'Origin', value: ProductData?.origin },
                 { label: 'Treatment', value: ProductData?.treatment_type },
                 { label: 'Dosage', value: ProductData?.dosages },
             ].filter(item => Boolean(item.value)),
-        [ProductData, selectedVariant],
+        [ProductData, activeVariant],
     );
 
     const detailLinks = useMemo(() => {
@@ -430,7 +432,7 @@ const ProductDetails = (props: any) => {
         return links.filter(l => l.show);
     }, [ProductData, fullDescription]);
 
-    if (loading) {
+    if (loading || !ProductData || !activeVariant) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <AppHeader
@@ -460,9 +462,9 @@ const ProductDetails = (props: any) => {
                         type: 'native',
                         message: getProductShareMessage({
                             name: ProductData?.name,
-                            size: selectedVariant?.size,
+                            size: activeVariant?.size,
                             price:
-                                selectedVariant?.selling_price ??
+                                activeVariant?.selling_price ??
                                 ProductData?.selling_price,
                             url:
                                 coverImageUri ||
@@ -560,20 +562,30 @@ const ProductDetails = (props: any) => {
                     <View style={styles.priceRow}>
                         <View style={styles.priceLeft}>
                             {saveAmount > 0 ? (
-                                <Text style={styles.specialLabel}>Special price</Text>
+                                <></>
+                                // <View style={styles.specialRow}>
+                                //     <TablerIcon name="receipt" size={12} color="#FF3F6C" />
+                                //     <Text style={styles.specialLabel}>Special Price</Text>
+                                // </View>
                             ) : null}
                             <View style={styles.priceLine}>
                                 <RupeeAmount
                                     value={selectedVariant?.selling_price}
                                     style={styles.sellingPrice}
                                 />
-                                <RupeeAmount
-                                    value={selectedVariant?.mrp}
-                                    style={styles.mrpPrice}
-                                />
+                                {Number(selectedVariant?.mrp) >
+                                    Number(selectedVariant?.selling_price || 0) ? (
+                                    <>
+                                        <Text style={styles.mrpPrefix}>MRP</Text>
+                                        <RupeeAmount
+                                            value={selectedVariant?.mrp}
+                                            style={styles.mrpPrice}
+                                        />
+                                    </>
+                                ) : null}
                                 {!!selectedVariant?.discount && (
                                     <Text style={styles.discountInline}>
-                                        {selectedVariant.discount}% off
+                                        ({selectedVariant.discount}% OFF)
                                     </Text>
                                 )}
                             </View>
@@ -600,11 +612,18 @@ const ProductDetails = (props: any) => {
                             )}
                             {/* <Text style={styles.taxNote}>Inclusive of all taxes</Text> */}
                         </View>
-                        <CompactQtyStepper
-                            quantity={quantity}
-                            onIncrease={increaseQty}
-                            onDecrease={decreaseQty}
-                            disabled={isOutOfStock}
+                        <BlinkitAddButton
+                            quantity={isOutOfStock ? 0 : existingCartQty}
+                            isAdding={isAdding}
+                            outOfStock={isOutOfStock}
+                            maxQuantity={maxQty}
+                            onAdd={() => handleCartUpdate(existingCartQty + 1)}
+                            onIncrement={() =>
+                                handleCartUpdate(existingCartQty + 1)
+                            }
+                            onDecrement={() =>
+                                handleCartUpdate(Math.max(0, existingCartQty - 1))
+                            }
                         />
                         {/* Add stock display here */}
                     </View>
@@ -627,19 +646,23 @@ const ProductDetails = (props: any) => {
 
 
 
-                    {/* <View style={styles.deliveryRow}>
+                    <View style={styles.deliveryRow}>
                         <View style={styles.deliveryIcon}>
                             <TablerIcon name="truck" size={14} color={Colors.primaryColor} />
                         </View>
                         <Text style={styles.deliveryText}>
-                            Get it by <Text style={styles.deliveryStrong}>{deliveryBy}</Text>
+                            {deliveryMessage}{' '}
+                            <Text style={styles.deliveryStrong}>
+                                Delivery in {deliveryBy}
+                            </Text>
                         </Text>
                         {selectedVariant?.is_free_shipping ? (
                             <View style={styles.freeTag}>
                                 <Text style={styles.freeTagText}>FREE</Text>
                             </View>
                         ) : null}
-                    </View> */}
+                    </View>
+
                 </View>
                 {variants.length > 0 && (
                     <View style={styles.card}>
@@ -955,7 +978,7 @@ const ProductDetails = (props: any) => {
                             <Text style={styles.stickyHint}>{existingCartQty} in cart</Text>
                         ) : saveAmount > 0 ? (
                             <Text style={styles.stickySave}>
-                                Save {formatRupee(saveAmount * quantity)}
+                                Save {formatRupee(saveAmount * cartDisplayQty)}
                             </Text>
                         ) : (
                             <Text style={styles.stickyHint}>Total</Text>
@@ -1023,7 +1046,11 @@ const ProductDetails = (props: any) => {
 export default ProductDetails;
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F4F7F6' },
+    safeArea: {
+        flex: 1,
+        backgroundColor: Colors.background
+        // backgroundColor: '#F4F7F6' 
+    },
     scrollContent: { paddingBottom: 8 },
     discoveryWrap: {
         marginTop: 6,
@@ -1312,9 +1339,27 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sellingPrice: {
-        fontSize: 24,
-        fontFamily: Fonts.PoppinsSemiBold,
+        fontSize: 18,
+        fontFamily: Fonts.PoppinsMedium,
         color: '#0F172A',
+        includeFontPadding: false,
+    },
+    specialLabel: {
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FF3F6C',
+        includeFontPadding: false,
+    },
+    specialRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 2,
+    },
+    mrpPrefix: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
         includeFontPadding: false,
     },
     mrpPrice: {
@@ -1327,14 +1372,7 @@ const styles = StyleSheet.create({
     discountInline: {
         fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
-        color: '#16A34A',
-    },
-    specialLabel: {
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#16A34A',
-        marginBottom: 1,
-        includeFontPadding: false,
+        color: '#FF3F6C',
     },
     taxNote: {
         marginTop: 2,
@@ -1441,33 +1479,6 @@ const styles = StyleSheet.create({
     stockLabel: {
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
-        includeFontPadding: false,
-    },
-
-    qtyStepper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 8,
-        backgroundColor: Colors.primaryColor,
-        overflow: 'hidden',
-        height: 34,
-        minWidth: 86,
-    },
-    qtyStepperDisabled: {
-        backgroundColor: '#94A3B8',
-    },
-    qtyBtn: {
-        width: 28,
-        height: 34,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    qtyValue: {
-        minWidth: 22,
-        textAlign: 'center',
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#FFFFFF',
         includeFontPadding: false,
     },
 

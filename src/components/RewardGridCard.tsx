@@ -13,6 +13,7 @@ import TablerIcon from './TablerIcon';
 import {
   couponAppliesLabel,
   couponExpiryLabel,
+  couponMaxNote,
   couponOfferTitle,
   couponSavingsLabel,
   couponSourceLabel,
@@ -113,6 +114,7 @@ const RewardGridCard = ({
 
       <Text style={styles.meta} numberOfLines={1}>
         {[
+          couponMaxNote(coupon),
           couponExpiryLabel(coupon),
           couponAppliesLabel(coupon),
           coupon.remaining_uses != null ? `${coupon.remaining_uses} left` : null,

@@ -347,18 +347,21 @@ export const findCouponByCode = (coupons: Coupon[], code: string) => {
 
 export const couponOfferTitle = (coupon: Coupon) => {
   if (coupon.discount_type === 'percent') {
-    return `Tap To Apply: ${Math.round(coupon.discount_value)}% Off`;
+    const pct = Math.round(coupon.discount_value);
+    if (coupon.max_discount != null && coupon.max_discount > 0) {
+      return `Tap To Apply: ${pct}% Off up to ${formatRupee(coupon.max_discount)}`;
+    }
+    return `Tap To Apply: ${pct}% Off`;
   }
   return `Tap To Apply: Flat ${formatRupee(coupon.discount_value)} Off`;
 };
 
 export const couponSavingsLabel = (coupon: Coupon) => {
   if (coupon.discount_type === 'percent') {
-    const cap =
-      coupon.max_discount != null
-        ? ` (max ${formatRupee(coupon.max_discount)})`
-        : '';
-    return `${coupon.discount_value}% off${cap}`;
+    if (coupon.max_discount != null && coupon.max_discount > 0) {
+      return `${coupon.discount_value}% off up to ${formatRupee(coupon.max_discount)}`;
+    }
+    return `${coupon.discount_value}% off`;
   }
   return `Flat ${formatRupee(coupon.discount_value)} off`;
 };
@@ -366,7 +369,7 @@ export const couponSavingsLabel = (coupon: Coupon) => {
 export const couponMinNote = (coupon: Coupon) => {
   const min = Number(coupon.min_amount || coupon.min_order_amount || 0);
   if (min <= 0) return '';
-  return `Valid only on orders of ${formatRupee(min)} & above`;
+  return `Min bill ${formatRupee(min)}`;
 };
 
 export const couponMaxNote = (coupon: Coupon) => {
@@ -375,7 +378,7 @@ export const couponMaxNote = (coupon: Coupon) => {
     coupon.max_discount != null &&
     coupon.max_discount > 0
   ) {
-    return `Maximum discount ${formatRupee(coupon.max_discount)}`;
+    return `Up to ${formatRupee(coupon.max_discount)}`;
   }
   return '';
 };
@@ -407,9 +410,15 @@ export const couponSourceLabel = (source: string) => {
   return key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Offer';
 };
 
-/** Checkout (order + consultation): only admin-sourced coupons */
+/** Checkout (order + consultation): source=admin only */
+export const isCheckoutSourceCoupon = (coupon: Coupon | null | undefined) => {
+  const key = String(coupon?.source || '').toLowerCase();
+  return key === 'admin';
+};
+
+/** @deprecated use isCheckoutSourceCoupon */
 export const isAdminSourceCoupon = (coupon: Coupon | null | undefined) =>
-  String(coupon?.source || '').toLowerCase() === 'admin';
+  isCheckoutSourceCoupon(coupon);
 
 /** Rewards screen: referral + reward sources */
 export const isRewardsScreenSource = (source: string | null | undefined) => {

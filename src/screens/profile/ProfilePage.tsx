@@ -1168,7 +1168,7 @@ const ProfilePage = ({ navigation }: any) => {
         { id: 6, title: 'Payments', icon: 'credit-card' },
         { id: 7, title: 'Settings', icon: 'settings' },
         { id: 12, title: 'Privacy Center', icon: 'shield' },
-        { id: 13, title: 'Feedback & Information', icon: 'help' },
+        // { id: 13, title: 'Feedback & Information', icon: 'help' },
         { id: 8, title: 'FAQ', icon: 'help' },
     ];
 

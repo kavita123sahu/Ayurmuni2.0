@@ -40,6 +40,7 @@ import {
   requestNotificationPermission,
   ensureDeviceNotificationsEnabled,
 } from '../../services/pushNotificationService';
+import { parsePolicyAcceptedCustomer } from '../../utils/policyUtils';
 
 const C = {
   collageBg: '#1A2E28',
@@ -140,6 +141,17 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const phoneNumber = props.route?.params?.phone;
   const NEW_CUSTOMER = props.route?.params?.customer;
+  const policyAcceptedCustomer =
+    props.route?.params?.policyAcceptedCustomer === true;
+
+  const openPolicyAccept = (nextRoute: {
+    name: string;
+    params?: any;
+  }) => {
+    resetRootToHomeStack(props.navigation, 'PolicyAccept', {
+      nextRoute,
+    });
+  };
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -790,12 +802,11 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
 
         if (!hasCustomer) {
           await markAsGuest();
-
+          // New / incomplete customer → AccessMode (guest skips policy)
           resetRootToHomeStack(
             props.navigation,
             'AccessMode',
           );
-
           return;
         }
 
@@ -813,22 +824,36 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
             );
           }
 
+          // Prefer send_otp policy_accepted.customer; also check login payload / storage
+          const storedPolicy = await Utils.getData('_POLICY_ACCEPTED_CUSTOMER');
+          const loginPolicyOk =
+            policyAcceptedCustomer ||
+            storedPolicy === true ||
+            parsePolicyAcceptedCustomer(response);
+          if (loginPolicyOk) {
+            await Utils.storeData('_POLICY_ACCEPTED_CUSTOMER', true);
+          }
+
           const level =
             await syncAccessFromProfile(
               profileRes?.data,
             );
 
           if (level === 'full') {
-            resetRootToHomeStack(
-              props.navigation,
-              'TabStack',
-              {
-                screen: 'Home',
-              },
-            );
+            if (!loginPolicyOk) {
+              openPolicyAccept({ name: 'Home' });
+            } else {
+              resetRootToHomeStack(
+                props.navigation,
+                'TabStack',
+                {
+                  screen: 'Home',
+                },
+              );
+            }
           } else {
             await markAsGuest();
-
+            // Incomplete profile → AccessMode; policy after onboarding creates customer
             resetRootToHomeStack(
               props.navigation,
               'AccessMode',
@@ -842,13 +867,23 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
 
           await markAsGuest();
 
-          resetRootToHomeStack(
-            props.navigation,
-            'TabStack',
-            {
-              screen: 'Home',
-            },
-          );
+          const storedPolicy = await Utils.getData('_POLICY_ACCEPTED_CUSTOMER');
+          const loginPolicyOk =
+            policyAcceptedCustomer ||
+            storedPolicy === true ||
+            parsePolicyAcceptedCustomer(response);
+
+          if (!loginPolicyOk && hasCustomer) {
+            openPolicyAccept({ name: 'Home' });
+          } else {
+            resetRootToHomeStack(
+              props.navigation,
+              'TabStack',
+              {
+                screen: 'Home',
+              },
+            );
+          }
         }
       } else {
         showSuccessToast(
@@ -933,6 +968,8 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
 
       const response: any = await _AUTH_SERVICE.send_otp(send_data);
       Utils.storeData('_OTP', response?.data?.otp);
+      const policyOk = parsePolicyAcceptedCustomer(response);
+      await Utils.storeData('_POLICY_ACCEPTED_CUSTOMER', policyOk);
       await loadStoredOtp();
 
       if (response?.success) {

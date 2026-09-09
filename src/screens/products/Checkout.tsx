@@ -135,6 +135,7 @@ const Checkout: React.FC = (props: any) => {
 
     const {
         coupons,
+        eligibleCoupons,
         loading: couponsLoading,
         applied: appliedCoupon,
         error: couponError,
@@ -581,6 +582,8 @@ const Checkout: React.FC = (props: any) => {
                 <View style={styles.card}>
                     <CouponApplyCard
                         coupons={coupons}
+                        eligibleCoupons={eligibleCoupons}
+                        cartAmount={subtotal}
                         loading={couponsLoading}
                         applied={appliedCoupon}
                         discount={couponDiscount}
@@ -683,7 +686,10 @@ const Checkout: React.FC = (props: any) => {
                     <View style={styles.trustDivider} />
                     <View style={styles.trustItem}>
                         <TablerIcon name="truck" size={14} color="#0369A1" />
-                        <Text style={styles.trustText}>Fast delivery</Text>
+                        <Text style={styles.trustText}>
+                            Your order will be delivered in 24 hours between
+                            appropriate delivery slots
+                        </Text>
                     </View>
                     <View style={styles.trustDivider} />
                     <View style={styles.trustItem}>
