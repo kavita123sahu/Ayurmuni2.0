@@ -40,7 +40,17 @@ const ProductImagePreviewModal = ({
     setImageIndex(safeIndex);
   }, [visible, initialIndex, count]);
 
-  const viewerImages = images.map(entry => entry.source);
+  const viewerImages = images.map(entry => {
+    const src = entry.source as any;
+    if (typeof src === 'number') {
+      return src;
+    }
+    const uri =
+      (typeof src === 'object' && src && typeof src.uri === 'string' && src.uri) ||
+      entry.uri ||
+      '';
+    return { uri: String(uri) };
+  }) as { uri: string }[];
 
   const renderHeader = useCallback(
     ({ imageIndex: currentIndex }: { imageIndex: number }) => (

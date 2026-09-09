@@ -86,11 +86,15 @@ const InteractiveMapPicker: React.FC<Props> = ({
         source={{ html: mapHtml, baseUrl: 'https://localhost' }}
         style={styles.webview}
         onMessage={handleMessage}
-        onError={event => {
-          console.log('[MapPicker] WebView error', event.nativeEvent);
+        onError={(event: any) => {
+          console.log('[MapPicker] WebView error', event?.nativeEvent);
         }}
-        onHttpError={event => {
-          console.log('[MapPicker] HTTP error', event.nativeEvent.statusCode, event.nativeEvent.url);
+        onHttpError={(event: any) => {
+          console.log(
+            '[MapPicker] HTTP error',
+            event?.nativeEvent?.statusCode,
+            event?.nativeEvent?.url,
+          );
         }}
         javaScriptEnabled
         domStorageEnabled
