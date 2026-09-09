@@ -68,6 +68,9 @@ export interface DoctorItem {
 
   experience_years?: string | number;
 
+  /** Alias used by some list APIs */
+  experience?: string | number;
+
   average_rating?: string | number;
 
   rating?: number;

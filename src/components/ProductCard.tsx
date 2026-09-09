@@ -5,10 +5,12 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
   Pressable,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { CARD_SURFACE } from '../constants/cardStyles';
+import { TYPO, RADIUS } from '../constants/responsive';
 import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import WishlistButton from './WishlistButton';
@@ -17,14 +19,9 @@ import {
   isProductOutOfStock,
 } from '../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
-import { resolveProductImageUri } from '../utils/imageUtils';
 import { RupeeAmount } from '../utils/currencyUtils';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-
-/** Default 2-col grid width for full-width screens (20px pad + 10 gap) */
-export const GRID_CARD_WIDTH = (SCREEN_W - 50) / 2;
-export const HORIZONTAL_CARD_WIDTH = 158;
+const GRID_GAP = 10;
 const IMAGE_HEIGHT_GRID = 136;
 const IMAGE_HEIGHT_HORIZONTAL = 124;
 const TITLE_H = 18;
@@ -32,9 +29,22 @@ const SUBTITLE_H = 14;
 const PRICE_H = 20;
 const INFO_PAD_TOP = 8;
 const INFO_PAD_BOTTOM = 10;
-const INFO_HEIGHT = INFO_PAD_TOP + TITLE_H + 4 + SUBTITLE_H + 4 + PRICE_H + INFO_PAD_BOTTOM;
+const INFO_HEIGHT =
+  INFO_PAD_TOP + TITLE_H + 4 + SUBTITLE_H + 4 + PRICE_H + INFO_PAD_BOTTOM;
 export const GRID_CARD_HEIGHT = IMAGE_HEIGHT_GRID + INFO_HEIGHT;
 export const HORIZONTAL_CARD_HEIGHT = IMAGE_HEIGHT_HORIZONTAL + INFO_HEIGHT;
+export const HORIZONTAL_CARD_WIDTH = 158;
+
+/** Default 2-col grid width for full-width screens */
+export const getGridCardWidth = (screenWidth: number) => {
+  const pad = screenWidth < 360 ? 16 : 20;
+  return (screenWidth - pad * 2 - GRID_GAP) / 2;
+};
+
+/** @deprecated prefer getGridCardWidth(useWindowDimensions().width) */
+export const GRID_CARD_WIDTH = getGridCardWidth(
+  Dimensions.get('window').width,
+);
 
 type Props = {
   item: any;
@@ -66,9 +76,10 @@ const ProductCard: React.FC<Props> = ({
   onDecrement,
   onWishlist,
 }) => {
+  const { width: screenW } = useWindowDimensions();
   const isGrid = variant === 'grid';
   const cardWidth = isGrid
-    ? gridWidth ?? GRID_CARD_WIDTH
+    ? gridWidth ?? getGridCardWidth(screenW)
     : HORIZONTAL_CARD_WIDTH;
   const cardHeight = isGrid ? GRID_CARD_HEIGHT : HORIZONTAL_CARD_HEIGHT;
   const imageHeight = isGrid ? IMAGE_HEIGHT_GRID : IMAGE_HEIGHT_HORIZONTAL;
@@ -82,12 +93,7 @@ const ProductCard: React.FC<Props> = ({
   const isOutOfStock = isProductOutOfStock(item);
   const maxQuantity =
     stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
-  // const productImageUri = resolveProductImageUri(item);
-
-    const productImageUri = item?.image_url || '';
-
-console.log('ProductCarditem', item);
-  console.log('ProductCardproductImageUri', productImageUri);
+  const productImageUri = item?.image_url || '';
 
   const handleAdd = () => {
     if (isOutOfStock || actionsLocked) return;
@@ -132,14 +138,18 @@ console.log('ProductCarditem', item);
             <TablerIcon name="package" size={36} color="#CBD5E1" />
           </View>
         )}
-+
+
         {isOutOfStock ? (
           <View style={styles.outOfStockBadge}>
-            <Text style={styles.outOfStockText}>Out of Stock</Text>
+            <Text style={styles.outOfStockText} allowFontScaling={false}>
+              Out of Stock
+            </Text>
           </View>
         ) : discount > 0 ? (
           <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{discount}% OFF</Text>
+            <Text style={styles.discountText} allowFontScaling={false}>
+              {discount}% OFF
+            </Text>
           </View>
         ) : null}
 
@@ -166,11 +176,15 @@ console.log('ProductCarditem', item);
       </View>
 
       <View style={styles.infoZone}>
-        <Text numberOfLines={1} style={styles.title}>
+        <Text numberOfLines={1} style={styles.title} allowFontScaling={false}>
           {item.product_name || item.name || 'Product'}
         </Text>
 
-        <Text numberOfLines={1} style={styles.subtitle}>
+        <Text
+          numberOfLines={1}
+          style={styles.subtitle}
+          allowFontScaling={false}
+        >
           {item.brand_name || item.variant_title || ' '}
         </Text>
 
@@ -181,13 +195,22 @@ console.log('ProductCarditem', item);
               style={styles.price}
             />
             {Number(item?.mrp) > Number(item?.selling_price || 0) && (
-              <RupeeAmount value={item.mrp} style={styles.oldPrice} />
+              <>
+                <Text style={styles.mrpPrefix} allowFontScaling={false}>
+                  MRP
+                </Text>
+                <RupeeAmount value={item.mrp} style={styles.oldPrice} />
+              </>
             )}
           </View>
 
           <View style={styles.ratingRow}>
             <TablerIcon name="star" size={11} color="#FBBF24" strokeWidth={2} />
-            <Text style={styles.ratingText} numberOfLines={1}>
+            <Text
+              style={styles.ratingText}
+              numberOfLines={1}
+              allowFontScaling={false}
+            >
               {item?.avg_rating || '0'}
             </Text>
           </View>
@@ -202,7 +225,7 @@ export default memo(ProductCard);
 const styles = StyleSheet.create({
   card: {
     ...CARD_SURFACE,
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     overflow: 'hidden',
   },
   /** Spacing handled by parent FlatList / cardWrap */
@@ -223,8 +246,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFB',
     position: 'relative',
     overflow: 'hidden',
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    borderTopLeftRadius: RADIUS.md,
+    borderTopRightRadius: RADIUS.md,
   },
   productImage: {
     width: '100%',
@@ -251,7 +274,7 @@ const styles = StyleSheet.create({
   },
   discountText: {
     color: '#FFF',
-    fontSize: 9,
+    fontSize: TYPO.xs,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   outOfStockBadge: {
@@ -266,7 +289,7 @@ const styles = StyleSheet.create({
   },
   outOfStockText: {
     color: '#FFF',
-    fontSize: 9,
+    fontSize: TYPO.xs,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   addOverlay: {
@@ -284,7 +307,7 @@ const styles = StyleSheet.create({
   },
   title: {
     height: TITLE_H,
-    fontSize: 12,
+    fontSize: TYPO.sm,
     lineHeight: TITLE_H,
     color: '#1E293B',
     fontFamily: Fonts.PoppinsSemiBold,
@@ -293,7 +316,7 @@ const styles = StyleSheet.create({
   subtitle: {
     height: SUBTITLE_H,
     marginTop: 4,
-    fontSize: 10,
+    fontSize: TYPO.xs,
     lineHeight: SUBTITLE_H,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
@@ -312,11 +335,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 4,
+  },
+  mrpPrefix: {
+    fontSize: TYPO.xs,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
   price: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: TYPO.md,
     lineHeight: PRICE_H,
     color: '#111827',
     fontFamily: Fonts.PoppinsSemiBold,
@@ -324,7 +354,7 @@ const styles = StyleSheet.create({
   },
   oldPrice: {
     flexShrink: 1,
-    fontSize: 10,
+    fontSize: TYPO.xs,
     lineHeight: 14,
     color: '#94A3B8',
     textDecorationLine: 'line-through',
@@ -338,7 +368,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingText: {
-    fontSize: 10,
+    fontSize: TYPO.xs,
     lineHeight: 14,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,

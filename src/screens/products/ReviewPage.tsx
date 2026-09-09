@@ -1,17 +1,71 @@
-import { View, Text, ScrollView, StyleSheet, FlatList, TouchableOpacity, Dimensions, StatusBar, Image } from 'react-native'
-import React, { useEffect, useMemo, useState } from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import AppHeader from '../../components/AppHeader'
-import { Fonts } from '../../common/Fonts'
-import { Colors } from '../../common/Colors'
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    TouchableOpacity,
+    StatusBar,
+    Image,
+    ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '../../components/AppHeader';
+import { Fonts } from '../../common/Fonts';
+import { Colors } from '../../common/Colors';
 import {
     collectReviewImageUrls,
     extractReviewsList,
+    getAverageRating,
     isReviewVideoUrl,
     normalizeReviewsForDisplay,
-} from '../../utils/reviewUtils'
-import TablerIcon from '../../components/TablerIcon'
-import { getReviewsAll } from '../../services/ProductServices'
+} from '../../utils/reviewUtils';
+import TablerIcon from '../../components/TablerIcon';
+import { getReviewsAll } from '../../services/ProductServices';
+
+type FilterKey = 'all' | 'photos' | '5' | '4' | '3' | 'recent';
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'photos', label: 'Photos' },
+    { key: '5', label: '5★' },
+    { key: '4', label: '4★' },
+    { key: '3', label: '3★' },
+    { key: 'recent', label: 'Recent' },
+];
+
+const ratingTone = (rating: number) => {
+    if (rating >= 4) return { bg: '#15803D' };
+    if (rating >= 3) return { bg: '#D97706' };
+    return { bg: '#DC2626' };
+};
+
+const formatReviewDate = (value?: string) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+};
+
+const StarRow = ({ rating, size = 12 }: { rating: number; size?: number }) => {
+    const value = Math.round(Number(rating) || 0);
+    return (
+        <View style={styles.starRow}>
+            {[1, 2, 3, 4, 5].map(i => (
+                <TablerIcon
+                    key={i}
+                    name={i <= value ? 'star-filled' : 'star'}
+                    size={size}
+                    color={i <= value ? '#F59E0B' : '#E2E8F0'}
+                />
+            ))}
+        </View>
+    );
+};
 
 const ReviewPage = (props: any) => {
     const routeParams = props.route?.params ?? {};
@@ -19,13 +73,17 @@ const ReviewPage = (props: any) => {
     const entityType = routeParams.entityType;
     const doctorId = routeParams.doctorId;
     const variantId = routeParams.variantId;
+    const isProduct = entityType === 'product';
+
     const [fetchedReviews, setFetchedReviews] = useState<any[] | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
     useEffect(() => {
         const loadReviews = async () => {
             try {
                 if (entityType === 'doctor' && doctorId) {
-                    // GET review/?entity_type=doctor&doctor_id=
+                    setLoading(true);
                     const res = await getReviewsAll({
                         entity_type: 'doctor',
                         doctor_id: String(doctorId),
@@ -35,7 +93,7 @@ const ReviewPage = (props: any) => {
                 }
 
                 if (entityType === 'product' && variantId) {
-                    // GET review/?entity_type=product&variant_id=
+                    setLoading(true);
                     const res = await getReviewsAll({
                         entity_type: 'product',
                         variant_id: String(variantId),
@@ -44,6 +102,8 @@ const ReviewPage = (props: any) => {
                 }
             } catch (error) {
                 console.log('ReviewPage fetch error', error);
+            } finally {
+                setLoading(false);
             }
         };
         loadReviews();
@@ -57,32 +117,32 @@ const ReviewPage = (props: any) => {
         [fetchedReviews, rawReviews],
     );
 
-    const [activeFilter, setActiveFilter] = useState('All Reviews');
-
     const filteredReviews = useMemo(() => {
         switch (activeFilter) {
-            case 'With Photos':
-                return reviews.filter((item: any) => item.image_urls?.length > 0);
-
-            case '5 Star':
-                return reviews.filter((item: any) => Number(item.rating) === 5);
-
-            case 'Recent':
+            case 'photos':
+                return reviews.filter(
+                    (item: any) => item.image_urls?.length > 0,
+                );
+            case '5':
+            case '4':
+            case '3':
+                return reviews.filter(
+                    (item: any) =>
+                        Math.round(Number(item.rating)) === Number(activeFilter),
+                );
+            case 'recent':
                 return [...reviews].sort(
                     (a: any, b: any) =>
                         new Date(b.created_at || 0).getTime() -
-                        new Date(a.created_at || 0).getTime()
+                        new Date(a.created_at || 0).getTime(),
                 );
-
             default:
                 return reviews;
         }
     }, [reviews, activeFilter]);
 
-
     const ratingData = useMemo(() => {
         const total = reviews.length;
-
         const counts: Record<number, number> = {
             5: 0,
             4: 0,
@@ -92,26 +152,18 @@ const ReviewPage = (props: any) => {
         };
 
         reviews.forEach((r: any) => {
-            const rating = Number(r.rating);
-            counts[rating] = (counts[rating] || 0) + 1;
+            const rating = Math.round(Number(r.rating));
+            if (rating >= 1 && rating <= 5) counts[rating] += 1;
         });
 
-        const breakdown = [5, 4, 3, 2, 1].map((star) => ({
+        const breakdown = [5, 4, 3, 2, 1].map(star => ({
             star,
+            count: counts[star],
             percent: total ? Math.round((counts[star] / total) * 100) : 0,
         }));
 
-        const average =
-            total > 0
-                ? Number(
-                    (
-                        reviews.reduce((sum: any, r: any) => sum + Number(r.rating), 0) / total
-                    ).toFixed(1)
-                )
-                : 0;
-
         return {
-            average,
+            average: getAverageRating(reviews),
             totalReviews: total,
             breakdown,
         };
@@ -122,18 +174,12 @@ const ReviewPage = (props: any) => {
         [reviews],
     );
 
-    const MAX_VISIBLE_IMAGES = 4;
+    const MAX_VISIBLE_IMAGES = 5;
+    const visibleImages = allImages.slice(0, MAX_VISIBLE_IMAGES);
+    const remainingCount = allImages.length - MAX_VISIBLE_IMAGES;
 
-    const visibleImages =
-        allImages.slice(0, MAX_VISIBLE_IMAGES);
-
-    const remainingCount =
-        allImages.length - MAX_VISIBLE_IMAGES;
-
-
-    const getInitials = (name = '') => {
-        if (!name?.trim()) return '';
-
+    const getInitials = useCallback((name = '') => {
+        if (!name?.trim()) return 'U';
         return name
             .trim()
             .split(' ')
@@ -141,470 +187,664 @@ const ReviewPage = (props: any) => {
             .join('')
             .substring(0, 2)
             .toUpperCase();
-    };
+    }, []);
 
-    return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFDFB' }}>
-            <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+    const openGallery = useCallback(
+        (images: string[], selectedIndex = 0) => {
+            if (!images?.length) return;
+            props.navigation.navigate('ReviewGalleryScreen', {
+                images,
+                selectedIndex,
+            });
+        },
+        [props.navigation],
+    );
 
+    const renderReview = useCallback(
+        ({ item, index }: { item: any; index: number }) => {
+            const rating = Number(item?.rating) || 0;
+            const dateLabel = formatReviewDate(item?.created_at);
+            const name =
+                item?.reviewer_name || item?.patient_name || 'Customer';
 
-            <AppHeader
-                // title="Foxtail millet (Kangni)"
-                title={"Reviews"}
-                onLeftPress={() => props.navigation.goBack()}
-            />
+            return (
+                <View
+                    style={[
+                        styles.reviewCard,
+                        index === 0 && styles.reviewCardFirst,
+                    ]}
+                >
+                    <View style={styles.reviewTop}>
+                        <View style={styles.avatar}>
+                            {item?.reviewer_profile_image ? (
+                                <Image
+                                    source={{
+                                        uri: item.reviewer_profile_image,
+                                    }}
+                                    style={styles.avatarImage}
+                                />
+                            ) : (
+                                <Text style={styles.avatarText}>
+                                    {getInitials(name)}
+                                </Text>
+                            )}
+                        </View>
 
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 15 }}
-            >
+                        <View style={styles.reviewMeta}>
+                            <View style={styles.nameRow}>
+                                <Text style={styles.name} numberOfLines={1}>
+                                    {name}
+                                </Text>
+                                <View
+                                    style={[
+                                        styles.miniRating,
+                                        {
+                                            backgroundColor:
+                                                ratingTone(rating).bg,
+                                        },
+                                    ]}
+                                >
+                                    <Text style={styles.miniRatingText}>
+                                        {rating}
+                                    </Text>
+                                    <TablerIcon
+                                        name="star-filled"
+                                        size={8}
+                                        color="#FFFFFF"
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.metaLine}>
+                                <Text style={styles.verified}>
+                                    {isProduct
+                                        ? 'Certified buyer'
+                                        : 'Verified patient'}
+                                </Text>
+                                {!!dateLabel && (
+                                    <Text style={styles.reviewDate}>
+                                        {' '}
+                                        · {dateLabel}
+                                    </Text>
+                                )}
+                            </View>
+                        </View>
+                    </View>
 
-                <View style={styles.ratingContainer}>
+                    {!!item?.review?.trim?.() ? (
+                        <Text style={styles.reviewText}>{item.review}</Text>
+                    ) : null}
 
-                    <View>
-                        <Text style={styles.avgRating}>{ratingData.average}</Text>
-                        <Text style={styles.stars}>⭐⭐⭐⭐⭐</Text>
+                    {!!item?.image_urls?.length && (
+                        <View style={styles.cardImageRow}>
+                            {item.image_urls
+                                .slice(0, 4)
+                                .map((uri: string, idx: number) => (
+                                    <TouchableOpacity
+                                        key={`${item.id}-${idx}`}
+                                        activeOpacity={0.85}
+                                        onPress={() =>
+                                            openGallery(item.image_urls, idx)
+                                        }
+                                    >
+                                        <Image
+                                            source={{ uri }}
+                                            style={styles.cardImage}
+                                        />
+                                        {isReviewVideoUrl(uri) ? (
+                                            <View style={styles.cardVideoBadge}>
+                                                <TablerIcon
+                                                    name="video"
+                                                    size={10}
+                                                    color="#FFFFFF"
+                                                />
+                                            </View>
+                                        ) : null}
+                                    </TouchableOpacity>
+                                ))}
+                        </View>
+                    )}
+
+                    {!!item?.doctor_reply?.trim?.() && (
+                        <View style={styles.doctorReplyBox}>
+                            <Text style={styles.doctorReplyLabel}>
+                                Doctor replied
+                            </Text>
+                            <Text style={styles.doctorReplyText}>
+                                {item.doctor_reply}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            );
+        },
+        [getInitials, isProduct, openGallery],
+    );
+
+    const ListHeader = (
+        <View>
+            {ratingData.totalReviews > 0 ? (
+                <View style={styles.summaryCard}>
+                    <View style={styles.summaryLeft}>
+                        <View
+                            style={[
+                                styles.scorePill,
+                                {
+                                    backgroundColor: ratingTone(
+                                        ratingData.average,
+                                    ).bg,
+                                },
+                            ]}
+                        >
+                            <Text style={styles.scoreText}>
+                                {ratingData.average.toFixed(1)}
+                            </Text>
+                            <TablerIcon
+                                name="star-filled"
+                                size={12}
+                                color="#FFFFFF"
+                            />
+                        </View>
+                        <StarRow rating={ratingData.average} size={13} />
                         <Text style={styles.totalReviews}>
-                            {ratingData.totalReviews.toLocaleString()} reviews
+                            {ratingData.totalReviews.toLocaleString()} verified{' '}
+                            {isProduct ? 'buyers' : 'patients'}
                         </Text>
                     </View>
 
-                    <View style={{ flex: 1, marginLeft: 20 }}>
-                        {ratingData.breakdown.map((item) => (
-                            <View key={item.star} style={styles.progressRow}>
-
-                                <Text style={styles.starLabel}>{item.star}</Text>
-
-                                <View style={styles.progressBar}>
+                    <View style={styles.bars}>
+                        {ratingData.breakdown.map(row => (
+                            <View key={row.star} style={styles.barRow}>
+                                <Text style={styles.barLabel}>{row.star}</Text>
+                                <TablerIcon
+                                    name="star-filled"
+                                    size={8}
+                                    color="#F59E0B"
+                                />
+                                <View style={styles.barTrack}>
                                     <View
                                         style={[
-                                            styles.progressFill,
-                                            { width: `${item.percent}%` },
+                                            styles.barFill,
+                                            {
+                                                width: `${row.percent}%`,
+                                                backgroundColor:
+                                                    row.star >= 4
+                                                        ? '#16A34A'
+                                                        : row.star === 3
+                                                          ? '#F59E0B'
+                                                          : '#F97316',
+                                            },
                                         ]}
                                     />
                                 </View>
-
-                                <Text style={styles.percentText}>{item.percent}%</Text>
-
+                                <Text style={styles.barCount}>{row.count}</Text>
                             </View>
                         ))}
                     </View>
-
                 </View>
+            ) : !loading ? (
+                <View style={styles.emptyBox}>
+                    <View style={styles.emptyIcon}>
+                        <TablerIcon
+                            name="star"
+                            size={18}
+                            color={Colors.primaryColor}
+                        />
+                    </View>
+                    <Text style={styles.emptyTitle}>
+                        {isProduct
+                            ? 'No reviews yet for this product'
+                            : 'No reviews yet'}
+                    </Text>
+                    <Text style={styles.emptySub}>
+                        {isProduct
+                            ? 'Ratings from buyers will show here'
+                            : 'Ratings from patients will show here'}
+                    </Text>
+                </View>
+            ) : null}
 
-
-                {allImages.length > 0 && (
-                    <>
-                        <Text style={styles.sectionTitle}>
-                            User Photos
-                        </Text>
-
-                        <View style={styles.imageRow}>
-                            {visibleImages.map(
-                                (item, index) => {
-
-                                    const isLastVisible =
-                                        index ===
-                                        MAX_VISIBLE_IMAGES - 1 &&
-                                        allImages.length >
-                                        MAX_VISIBLE_IMAGES;
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={index}
-                                            activeOpacity={0.8}
-                                            onPress={() =>
-                                                props?.navigation.navigate(
-                                                    'ReviewGalleryScreen',
-                                                    {
-                                                        images: allImages,
-                                                        selectedIndex:
-                                                            index,
-                                                    },
-                                                )
-                                            }
-                                        >
-                                            <Image
-                                                source={{ uri: item }}
-                                                style={
-                                                    styles.reviewImage
-                                                }
+            {allImages.length > 0 ? (
+                <View style={styles.photosBlock}>
+                    <Text style={styles.photosLabel}>
+                        {isProduct ? 'Customer photos' : 'Patient photos'}
+                    </Text>
+                    <View style={styles.imageRow}>
+                        {visibleImages.map((item, index) => {
+                            const isLastVisible =
+                                index === MAX_VISIBLE_IMAGES - 1 &&
+                                remainingCount > 0;
+                            return (
+                                <TouchableOpacity
+                                    key={`${item}-${index}`}
+                                    activeOpacity={0.8}
+                                    onPress={() => openGallery(allImages, index)}
+                                    style={styles.imageWrapper}
+                                >
+                                    <Image
+                                        source={{ uri: item }}
+                                        style={styles.reviewImage}
+                                    />
+                                    {isReviewVideoUrl(item) ? (
+                                        <View style={styles.videoBadge}>
+                                            <TablerIcon
+                                                name="video"
+                                                size={11}
+                                                color="#FFFFFF"
                                             />
-
-                                            {isReviewVideoUrl(item) ? (
-                                                <View style={styles.videoBadge}>
-                                                    <TablerIcon name="video" size={12} color="#FFFFFF" />
-                                                </View>
-                                            ) : null}
-
-                                            {isLastVisible && (
-                                                <View
-                                                    style={
-                                                        styles.overlay
-                                                    }
-                                                >
-                                                    <Text
-                                                        style={
-                                                            styles.overlayText
-                                                        }
-                                                    >
-                                                        +{remainingCount}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                },
-                            )}
-                        </View>
-                    </>
-                )}
-
-                <View style={styles.filterRow}>
-                    {['All Reviews', 'With Photos', '5 Star', 'Recent'].map((item) => (
-                        <TouchableOpacity
-                            key={item}
-                            style={[
-                                styles.filterBtn,
-                                activeFilter === item && styles.activeFilterBtn
-                            ]}
-                            onPress={() => setActiveFilter(item)}
-                            activeOpacity={0.7}
-                        >
-                            <Text
-                                style={[
-                                    styles.filterText,
-                                    activeFilter === item && styles.activeFilterText
-                                ]}
-                            >
-                                {item}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                                        </View>
+                                    ) : null}
+                                    {isLastVisible ? (
+                                        <View style={styles.overlay}>
+                                            <Text style={styles.overlayText}>
+                                                +{remainingCount}
+                                            </Text>
+                                        </View>
+                                    ) : null}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
                 </View>
+            ) : null}
 
-
-                <FlatList
-                    data={filteredReviews}
-                    keyExtractor={(item) => item.id}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-
-                        <View style={styles.reviewCard}>
-                            <View style={styles.reviewHeaderRow}>
-                                <View style={styles.avatar}>
-                                    {item?.reviewer_profile_image ? (
-                                        <Image
-                                            source={{ uri: item.reviewer_profile_image }}
-                                            style={styles.userImage}
-                                        />
-                                    ) : (
-                                        <Text style={styles.avatarText}>
-                                            {getInitials(
-                                                item?.patient_name || item?.reviewer_name,
-                                            )}
-                                        </Text>
-                                    )}
-                                </View>
-
-                                <View style={styles.reviewMeta}>
-                                    <View style={styles.reviewNameRow}>
-                                        <Text style={styles.name} numberOfLines={1}>
-                                            {item?.patient_name || item?.reviewer_name}
-                                        </Text>
-                                        <Text style={styles.reviewCardStars}>
-                                            {'⭐'.repeat(Number(item?.rating || 0))}
-                                        </Text>
-                                    </View>
-                                    <Text style={styles.verified}>
-                                        {entityType === 'doctor'
-                                            ? 'VERIFIED PATIENT'
-                                            : 'VERIFIED PURCHASE'}
+            {ratingData.totalReviews > 0 ? (
+                <View style={styles.filterBlock}>
+                    <Text style={styles.filterTitle}>
+                        {filteredReviews.length}{' '}
+                        {filteredReviews.length === 1 ? 'review' : 'reviews'}
+                    </Text>
+                    <FlatList
+                        horizontal
+                        data={FILTERS}
+                        keyExtractor={item => item.key}
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.filterRow}
+                        renderItem={({ item }) => {
+                            const active = activeFilter === item.key;
+                            return (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.filterBtn,
+                                        active && styles.activeFilterBtn,
+                                    ]}
+                                    onPress={() => setActiveFilter(item.key)}
+                                    activeOpacity={0.75}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.filterText,
+                                            active && styles.activeFilterText,
+                                        ]}
+                                    >
+                                        {item.label}
                                     </Text>
-                                </View>
+                                </TouchableOpacity>
+                            );
+                        }}
+                    />
+                </View>
+            ) : null}
 
-                                <Text style={styles.time}>
-                                    {item?.created_at
-                                        ? new Date(item.created_at).toLocaleDateString()
-                                        : ''}
-                                </Text>
-                            </View>
-
-                            {!!item?.review?.trim?.() ? (
-                                <Text style={styles.reviewText}>{item.review}</Text>
-                            ) : null}
-
-                            {!!item?.image_urls?.length && (
-                                <View style={styles.cardImageRow}>
-                                    {item.image_urls.map((uri: string, idx: number) => (
-                                        <TouchableOpacity
-                                            key={`${item.id}-${idx}`}
-                                            activeOpacity={0.85}
-                                            onPress={() =>
-                                                props?.navigation.navigate(
-                                                    'ReviewGalleryScreen',
-                                                    {
-                                                        images: item.image_urls,
-                                                        selectedIndex: idx,
-                                                    },
-                                                )
-                                            }
-                                        >
-                                            <Image source={{ uri }} style={styles.cardImage} />
-                                            {isReviewVideoUrl(uri) ? (
-                                                <View style={styles.cardVideoBadge}>
-                                                    <TablerIcon name="video" size={10} color="#FFFFFF" />
-                                                </View>
-                                            ) : null}
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            )}
-
-                            {!!item?.doctor_reply?.trim?.() && (
-                                <View style={styles.doctorReplyBox}>
-                                    <Text style={styles.doctorReplyLabel}>Doctor replied</Text>
-                                    <Text style={styles.doctorReplyText}>{item.doctor_reply}</Text>
-                                </View>
-                            )}
-                        </View>
-                    )}
+            {loading ? (
+                <ActivityIndicator
+                    size="small"
+                    color={Colors.primaryColor}
+                    style={{ marginVertical: 20 }}
                 />
+            ) : null}
+        </View>
+    );
 
-            </ScrollView>
+    return (
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+            <AppHeader
+                title="Ratings & reviews"
+                onLeftPress={() => props.navigation.goBack()}
+            />
+
+            <FlatList
+                data={loading ? [] : filteredReviews}
+                keyExtractor={(item, index) =>
+                    String(item?.id ?? `review-${index}`)
+                }
+                renderItem={renderReview}
+                ListHeaderComponent={ListHeader}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                    !loading && ratingData.totalReviews > 0 ? (
+                        <View style={styles.filterEmpty}>
+                            <Text style={styles.filterEmptyText}>
+                                No reviews for this filter
+                            </Text>
+                        </View>
+                    ) : null
+                }
+            />
         </SafeAreaView>
-    )
-}
+    );
+};
 
-export default ReviewPage
-
-const { width } = Dimensions.get("window");
-const scale = width / 375; // base width for scaling (iPhone 11 Pro)
+export default ReviewPage;
 
 const styles = StyleSheet.create({
-
-    ratingContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 24,
-        marginTop: 20,
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#F4F7F6',
+    },
+    listContent: {
+        paddingHorizontal: 12,
+        paddingTop: 8,
+        paddingBottom: 28,
     },
 
-    avgRating: {
-        fontSize: 48,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0D614E',
-        lineHeight: 60
-    },
-
-    stars: {
-        color: '#FACC15',
-        marginTop: 4,
-
-    },
-
-    totalReviews: {
-        marginTop: 4,
-        color: '#64748B',
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 20
-    },
-
-    progressRow: {
+    summaryCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 6,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        gap: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: '#E8EEF2',
     },
-
-    starLabel: {
-        width: 10,
-        fontSize: 14,
+    summaryLeft: {
+        width: 96,
+        alignItems: 'flex-start',
+        gap: 4,
     },
-
-    progressBar: {
-        flex: 1,
-        height: 10,
-        backgroundColor: '#0D614E1A',
-        borderRadius: 4,
-        marginHorizontal: 6,
+    scorePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
     },
-
-    progressFill: {
-        height: 10,
-        backgroundColor: '#0D614E',
-        borderRadius: 4,
+    scoreText: {
+        fontSize: 18,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
+        includeFontPadding: false,
     },
-
-    percentText: {
-        fontSize: 12,
+    starRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 1,
+    },
+    totalReviews: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
-        width: 30,
-        fontFamily: Fonts.PoppinsMedium
+        lineHeight: 14,
+    },
+    bars: {
+        flex: 1,
+        gap: 4,
+    },
+    barRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    barLabel: {
+        width: 8,
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#475569',
+        textAlign: 'right',
+    },
+    barTrack: {
+        flex: 1,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#E2E8F0',
+        overflow: 'hidden',
+    },
+    barFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    barCount: {
+        width: 18,
+        fontSize: 9,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
+        textAlign: 'right',
     },
 
-    sectionTitle: {
-        marginTop: 20,
-        // paddingHorizontal: ,
-        fontSize: 16,
+    emptyBox: {
+        alignItems: 'center',
+        paddingVertical: 28,
+        paddingHorizontal: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: '#E8EEF2',
+    },
+    emptyIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#EAF8F4',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    emptyTitle: {
+        fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
-        marginBottom: 12,
-        left: 6
+    },
+    emptySub: {
+        marginTop: 3,
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+        textAlign: 'center',
     },
 
-    filterRow: {
-        flexDirection: 'row',
-        // flexWrap: 'wrap', // 🔥 small screen fix
-        justifyContent: 'center', // 🔥 center align
-        alignItems: 'center',
-
-        paddingHorizontal: 30 * scale,
+    photosBlock: {
         marginTop: 10,
-        // gap: 8, // clean spacing
-    },
-
-    filterBtn: {
-        paddingVertical: 8 * scale,
-        paddingHorizontal: 10 * scale,
-
-        borderRadius: 10,
-
-        backgroundColor: '#0D614E1A',
-
-        margin: 4, // fallback spacing (gap support issue fix)
-    },
-
-    activeFilterBtn: {
-        backgroundColor: Colors.primaryColor,
-    },
-
-    filterText: {
-        fontSize: 12 * scale,
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    activeFilterText: {
-        color: Colors.white,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    reviewCard: {
-        backgroundColor: '#f8f6f6',
-        borderRadius: 12,
-        paddingVertical: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
         paddingHorizontal: 12,
-        marginHorizontal: 10,
-        marginTop: 8,
+        paddingTop: 10,
+        paddingBottom: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: '#E8EEF2',
     },
-
-    reviewHeaderRow: {
+    photosLabel: {
+        marginBottom: 8,
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+    },
+    imageRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        gap: 8,
     },
-
-    avatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#0D614E1A',
+    imageWrapper: {
+        position: 'relative',
+    },
+    reviewImage: {
+        width: 56,
+        height: 56,
+        backgroundColor: '#EAF8F4',
+        borderRadius: 10,
+    },
+    videoBadge: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2,
+    },
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 10,
+        backgroundColor: 'rgba(15,23,42,0.55)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-
-    userImage: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-    },
-    avatarText: {
-        color: '#0D614E',
-        fontSize: 12,
+    overlayText: {
+        color: '#FFF',
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
+    filterBlock: {
+        marginTop: 10,
+        marginBottom: 4,
+    },
+    filterTitle: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#64748B',
+        marginBottom: 8,
+        marginLeft: 2,
+    },
+    filterRow: {
+        gap: 6,
+        paddingRight: 8,
+    },
+    filterBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    activeFilterBtn: {
+        backgroundColor: Colors.primaryColor,
+        borderColor: Colors.primaryColor,
+    },
+    filterText: {
+        fontSize: 12,
+        color: '#475569',
+        fontFamily: Fonts.PoppinsSemiBold,
+        includeFontPadding: false,
+    },
+    activeFilterText: {
+        color: '#FFFFFF',
+    },
+    filterEmpty: {
+        paddingVertical: 24,
+        alignItems: 'center',
+    },
+    filterEmptyText: {
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
+    },
+
+    reviewCard: {
+        marginTop: 8,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: '#E8EEF2',
+    },
+    reviewCardFirst: {
+        marginTop: 6,
+    },
+    reviewTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#EAF8F4',
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+    },
+    avatarText: {
+        color: Colors.primaryColor,
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
     reviewMeta: {
         flex: 1,
         minWidth: 0,
         marginLeft: 8,
     },
-
-    reviewNameRow: {
+    nameRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
     },
-
     name: {
         flexShrink: 1,
         fontFamily: Fonts.PoppinsSemiBold,
         fontSize: 13,
-        lineHeight: 18,
         color: '#0F172A',
+        includeFontPadding: false,
     },
-
+    miniRating: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    miniRatingText: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
+        includeFontPadding: false,
+    },
+    metaLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
+    },
     verified: {
-        fontSize: 9,
+        fontSize: 10,
         color: '#64748B',
-        lineHeight: 13,
         fontFamily: Fonts.PoppinsMedium,
-        marginTop: 1,
     },
-
-    time: {
+    reviewDate: {
         fontSize: 10,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsMedium,
-        marginLeft: 6,
-        flexShrink: 0,
     },
-
-    reviewCardStars: {
-        fontSize: 10,
-        flexShrink: 0,
-    },
-
     reviewText: {
-        marginTop: 6,
-        color: '#475569',
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsMedium,
-        lineHeight: 18,
-    },
-
-    imageRow: {
-        flexDirection: 'row',
         marginTop: 8,
-    },
-
-    reviewImage: {
-        width: 90,
-        height: 90,
-        borderRadius: 12,
-        marginRight: 10,
-        backgroundColor: '#E2E8F0',
-    },
-    videoBadge: {
-        position: 'absolute',
-        top: 8,
-        left: 8,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: 'rgba(0,0,0,0.55)',
-        alignItems: 'center',
-        justifyContent: 'center',
+        color: '#475569',
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsRegular,
+        lineHeight: 18,
     },
     cardImageRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 6,
-        marginTop: 6,
+        marginTop: 8,
     },
     cardImage: {
-        width: 56,
-        height: 56,
-        borderRadius: 10,
+        width: 52,
+        height: 52,
+        borderRadius: 8,
         backgroundColor: '#E2E8F0',
     },
     cardVideoBadge: {
@@ -619,37 +859,23 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     doctorReplyBox: {
-        marginTop: 6,
+        marginTop: 8,
         padding: 8,
-        borderRadius: 10,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
+        borderRadius: 8,
+        backgroundColor: '#F8FAF9',
+        borderWidth: StyleSheet.hairlineWidth,
         borderColor: '#E8F2EE',
     },
     doctorReplyLabel: {
-        fontSize: 11,
+        fontSize: 10,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 4,
+        marginBottom: 2,
     },
     doctorReplyText: {
-        fontSize: 13,
-        lineHeight: 20,
+        fontSize: 12,
+        lineHeight: 17,
         color: '#475569',
         fontFamily: Fonts.PoppinsMedium,
-    },
-    overlay: {
-        position: 'absolute',
-        width: 90,
-        height: 90,
-        borderRadius: 12,
-        backgroundColor: 'rgba(0,0,0,0.55)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    overlayText: {
-        color: '#FFF',
-        fontSize: 18,
-        fontWeight: '700',
     },
 });

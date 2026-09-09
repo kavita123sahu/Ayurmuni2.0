@@ -60,7 +60,14 @@ export const buildMedicalInitialAnswers = (questions: any[]) => {
   return answers;
 };
 
-export const findBasicQuestions = (questions: any[]) => {
+export const findBasicQuestions = (
+  questions: any[],
+): {
+  age?: any;
+  gender?: any;
+  height?: any;
+  weight?: any;
+} => {
   const find = (keyword: string) =>
     questions.find(q => q?.question?.toLowerCase().includes(keyword));
 

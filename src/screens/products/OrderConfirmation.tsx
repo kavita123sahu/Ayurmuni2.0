@@ -333,8 +333,8 @@ const OrderConfirmation: React.FC = (props: any) => {
 
                     <View style={styles.rowBetween}>
                         <Text style={styles.label}>Estimated Delivery</Text>
-                        <Text style={styles.value}>
-                            {formatDate(orderResult?.created_at, 4)}
+                        <Text style={[styles.value, { flex: 1, textAlign: 'right' }]}>
+                            Your order will be delivered in 24 hours between appropriate delivery slots
                         </Text>
                     </View>
 

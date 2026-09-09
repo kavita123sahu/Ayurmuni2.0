@@ -56,11 +56,13 @@ export const SCREEN = {
 };
 
 /** Horizontal padding — 16 on narrow phones, 20 otherwise. */
-export const getScreenPaddingH = () => (SCREEN_W < 360 ? 16 : 20);
+export const getScreenPaddingH = (width = SCREEN_W) => (width < 360 ? 16 : 20);
 
 /** Content width inside standard horizontal padding. */
-export const getContentWidth = (paddingH = getScreenPaddingH()) =>
-  SCREEN_W - paddingH * 2;
+export const getContentWidth = (
+  paddingH = getScreenPaddingH(),
+  width = SCREEN_W,
+) => width - paddingH * 2;
 
 /** Sticky footer offset above safe area. */
 export const getStickyBottom = (insets: EdgeInsets, offset = 16) =>

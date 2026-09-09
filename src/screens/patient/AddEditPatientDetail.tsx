@@ -5,7 +5,6 @@ import AppInputField from '../../components/AppInputField'
 import TablerIcon from '../../components/TablerIcon'
 import { Images } from '../../common/Images'
 import AppHeader from '../../components/AppHeader'
-import SectionHeader from '../../components/SectionHeader'
 import { Styles } from '../../common/Styles'
 import { Colors } from '../../common/Colors'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -375,6 +374,12 @@ export default function AddEditPatientDetail(props: any) {
         }
     };
 
+    const fieldGap = { marginBottom: 8 };
+    const fieldBox = {
+        borderColor: Colors.bgborderColor,
+        borderRadius: 12,
+    };
+
     const BottomButton = ({ onPress, title, backgroundColor, borderColor, textColor }: any) => {
         return (
             <TouchableOpacity
@@ -398,7 +403,9 @@ export default function AddEditPatientDetail(props: any) {
         )
     }
 
-
+    const FormSectionTitle = ({ title }: { title: string }) => (
+        <Text style={styles.sectionTitle}>{title}</Text>
+    );
 
     return (
 
@@ -421,12 +428,18 @@ export default function AddEditPatientDetail(props: any) {
 
             <KeyboardAvoidingView style={{ backgroundColor: '#FDFDFB' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-                <ScrollView style={{ paddingHorizontal: 22, backgroundColor: '#FDFDFB', marginBottom: 50 }} showsVerticalScrollIndicator={false}>
+                <ScrollView style={{ paddingHorizontal: 16, backgroundColor: '#FDFDFB', marginBottom: 50 }} showsVerticalScrollIndicator={false}>
 
-                    <SectionHeader title="Personal Information" />
+                    <FormSectionTitle title="Personal Information" />
 
-
-                    <AppInputField label="Full Name *" placeholder="John Doe" value={formData.fullname} onChangeText={(text: any) => setFormData(prev => ({ ...prev, fullname: text }))} />
+                    <AppInputField
+                        label="Full Name *"
+                        placeholder="John Doe"
+                        value={formData.fullname}
+                        onChangeText={(text: any) => setFormData(prev => ({ ...prev, fullname: text }))}
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
+                    />
 
                     <AppInputField
                         label="Date of Birth *"
@@ -439,6 +452,8 @@ export default function AddEditPatientDetail(props: any) {
                             }))
                         }
                         rightIconName="calendar"
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
                     />
 
                     <AppInputField
@@ -453,43 +468,11 @@ export default function AddEditPatientDetail(props: any) {
                         onChangeText={(label: string) =>
                             setFormData(prev => ({ ...prev, genderLabel: label }))
                         }
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
                     />
 
-
-                    {/* <AppInputField
-                        label="Gender *"
-                        value={formData.gender}
-                        placeholder="Select Gender"
-                        rightIconName="chevron-down"
-                        options={GENDER_OPTIONS}
-                        onSelect={(item: any) =>
-                            setFormData(prev => ({
-                                ...prev,
-                                gender: item.value,
-                            }))
-                        }
-                    /> */}
-
-
                     <View style={styles.row}>
-
-                        {/* <AppInputField
-                            label="Blood Group *"
-                            value={formData.bloodG}
-                            placeholder="Blood Group"
-                            rightIconName="chevron-down"
-                            containerStyle={{
-                                flex: 1,
-                                marginRight: 8,
-                            }}
-                            options={BLOOD_GROUP_OPTIONS}
-                            onSelect={(item: any) =>
-                                setFormData(prev => ({
-                                    ...prev,
-                                    bloodG: item.value,
-                                }))
-                            }
-                        /> */}
                         <AppInputField
                             label="Blood Group *"
                             value={formData.bloodG}
@@ -502,6 +485,8 @@ export default function AddEditPatientDetail(props: any) {
                                     bloodG: value,
                                 }))
                             }
+                            containerStyle={[fieldGap, { flex: 1, marginRight: 6 }]}
+                            inputContainerStyle={fieldBox}
                         />
 
                         <AppInputField
@@ -509,10 +494,8 @@ export default function AddEditPatientDetail(props: any) {
                             value={formData.relation}
                             placeholder="Select Relation"
                             rightIconName={isSelf ? undefined : 'chevron-down'}
-                            containerStyle={{
-                                flex: 1,
-                                marginLeft: 8,
-                            }}
+                            containerStyle={[fieldGap, { flex: 1, marginLeft: 6 }]}
+                            inputContainerStyle={fieldBox}
                             options={EDITABLE_RELATION_OPTIONS}
                             disabled={isSelf}
                             onSelect={(value: string) => {
@@ -523,41 +506,39 @@ export default function AddEditPatientDetail(props: any) {
                                 }));
                             }}
                         />
-
                     </View>
-                    {/* Row Inputs */}
+
                     <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                            <AppInputField
-                                label="Height (cm)"
-                                placeholder="180 cm"
-                                value={formData.height}
-                                onChangeText={(text: any) =>
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        height: text,
-                                    }))
-                                }
-                            />
-                        </View>
+                        <AppInputField
+                            label="Height (cm)"
+                            placeholder="180 cm"
+                            value={formData.height}
+                            onChangeText={(text: any) =>
+                                setFormData(prev => ({
+                                    ...prev,
+                                    height: text,
+                                }))
+                            }
+                            containerStyle={[fieldGap, { flex: 1, marginRight: 6 }]}
+                            inputContainerStyle={fieldBox}
+                        />
 
-                        <View style={{ flex: 1, marginLeft: 8 }}>
-                            <AppInputField
-                                label="Weight (kg)"
-                                placeholder="75 kg"
-                                value={formData.weight}
-                                onChangeText={(text: any) =>
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        weight: text,
-                                    }))
-                                }
-                            />
-                        </View>
+                        <AppInputField
+                            label="Weight (kg)"
+                            placeholder="75 kg"
+                            value={formData.weight}
+                            onChangeText={(text: any) =>
+                                setFormData(prev => ({
+                                    ...prev,
+                                    weight: text,
+                                }))
+                            }
+                            containerStyle={[fieldGap, { flex: 1, marginLeft: 6 }]}
+                            inputContainerStyle={fieldBox}
+                        />
                     </View>
 
-
-                    <SectionHeader title="Contact Information" />
+                    <FormSectionTitle title="Contact Information" />
 
                     <AppInputField
                         label="Phone Number *"
@@ -575,34 +556,39 @@ export default function AddEditPatientDetail(props: any) {
                             }))
                         }
                         rightIconName="phone"
-
-
-
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
                     />
 
                     <AppInputField
                         label="Email Address"
                         placeholder="john.doe@example.com"
                         value={formData.email}
-
                         onChangeText={(text: any) => setFormData(prev => ({ ...prev, email: text }))}
                         rightIconName="mail"
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
                     />
 
                     <View style={styles.EmergencyView}>
-
                         <View style={styles.container}>
-                            <TablerIcon name="logout" size={20} color="#F43F5E" />
+                            <TablerIcon name="logout" size={18} color="#F43F5E" />
                             <Text style={styles.title}>Emergency Contact</Text>
                         </View>
 
-
-                        <AppInputField label="Contact Name" placeholder="Jane Doe" value={formData.contactName} onChangeText={(text: any) =>
-                            setFormData(prev => ({
-                                ...prev,
-                                contactName: text,
-                            }))
-                        } />
+                        <AppInputField
+                            label="Contact Name"
+                            placeholder="Jane Doe"
+                            value={formData.contactName}
+                            onChangeText={(text: any) =>
+                                setFormData(prev => ({
+                                    ...prev,
+                                    contactName: text,
+                                }))
+                            }
+                            containerStyle={fieldGap}
+                            inputContainerStyle={fieldBox}
+                        />
 
                         <AppInputField
                             label="Emergency Relation"
@@ -616,6 +602,8 @@ export default function AddEditPatientDetail(props: any) {
                                     emergencyRelation: value,
                                 }))
                             }
+                            containerStyle={fieldGap}
+                            inputContainerStyle={fieldBox}
                         />
 
                         <AppInputField
@@ -634,25 +622,35 @@ export default function AddEditPatientDetail(props: any) {
                                     ),
                                 }))
                             }
+                            containerStyle={{ marginBottom: 4 }}
+                            inputContainerStyle={fieldBox}
                         />
-
                     </View>
 
+                    <FormSectionTitle title="Insurance Details" />
 
+                    <AppInputField
+                        value={formData.insurance}
+                        onChangeText={(text: any) => setFormData(prev => ({ ...prev, insurance: text }))}
+                        label="Insurance Provider"
+                        placeholder="Blue Cross Shield"
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
+                    />
 
-                    <SectionHeader title="Insurance Details" />
-
-                    <AppInputField value={formData.insurance} onChangeText={(text: any) => setFormData(prev => ({ ...prev, insurance: text }))} label="Insurance Provider" placeholder="Blue Cross Shield" />
-
-
-                    <AppInputField label="Policy Number" placeholder="POL-987654321" value={formData.policyNO} onChangeText={(text: any) =>
-                        setFormData(prev => ({
-                            ...prev,
-                            policyNO: text,
-                        }))
-                    } />
-
-
+                    <AppInputField
+                        label="Policy Number"
+                        placeholder="POL-987654321"
+                        value={formData.policyNO}
+                        onChangeText={(text: any) =>
+                            setFormData(prev => ({
+                                ...prev,
+                                policyNO: text,
+                            }))
+                        }
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
+                    />
 
                     <AppInputField
                         label="Valid Thru"
@@ -665,8 +663,9 @@ export default function AddEditPatientDetail(props: any) {
                             }))
                         }
                         rightIconName="calendar"
+                        containerStyle={fieldGap}
+                        inputContainerStyle={fieldBox}
                     />
-
 
                     <View style={[
                         styles.buttonrow,
@@ -684,7 +683,6 @@ export default function AddEditPatientDetail(props: any) {
                             borderColor={Colors.borderColor}
                             textColor={Colors.subTextColor}
                         />
-
 
                         <BottomButton
                             title={
@@ -712,10 +710,11 @@ export default function AddEditPatientDetail(props: any) {
 
 const styles = StyleSheet.create({
     sectionTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#111827',
-        marginBottom: 12,
+        marginTop: 10,
+        marginBottom: 6,
     },
 
     row: {
@@ -724,34 +723,36 @@ const styles = StyleSheet.create({
     },
 
     EmergencyView: {
-        marginHorizontal: 5,
-        paddingHorizontal: 20,
+        marginTop: 2,
+        marginBottom: 4,
+        paddingHorizontal: 12,
+        paddingTop: 4,
+        paddingBottom: 8,
         backgroundColor: '#F43F5E0D',
         borderWidth: 1,
-        borderRadius: 16,
-        borderColor: '#F43F5E33'
+        borderRadius: 12,
+        borderColor: '#F43F5E33',
     },
     container: {
-        //14
-        marginTop: 20,
-        marginBottom: 8,
+        marginTop: 10,
+        marginBottom: 6,
         flexDirection: 'row',
-        gap: 10
+        alignItems: 'center',
+        gap: 8,
     },
     title: {
         fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 18,
+        fontSize: 15,
         color: "#F43F5E"
     },
     buttonrow: {
         flexDirection: 'row',
         flex: 1,
         width: '100%',
-        marginTop: 20,
-        // paddingHorizontal: 20,
+        marginTop: 16,
         marginBottom: 20,
         justifyContent: 'space-between',
-        gap: 10, // spacing between buttons
+        gap: 10,
     },
 
     primaryBtn: {

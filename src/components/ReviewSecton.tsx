@@ -194,13 +194,19 @@ const ReviewSection = ({
             <TablerIcon name="star" size={18} color={Colors.primaryColor} />
           </View>
           <Text style={styles.emptyTitle}>{emptyCopy}</Text>
-          <Text style={styles.emptySub}>Ratings from buyers will show here</Text>
+          <Text style={styles.emptySub}>
+            {isProduct
+              ? 'Ratings from buyers will show here'
+              : 'Ratings from patients will show here'}
+          </Text>
         </View>
       )}
 
       {allImages.length > 0 ? (
         <View>
-          <Text style={styles.photosLabel}>Customer photos</Text>
+          <Text style={styles.photosLabel}>
+            {isProduct ? 'Customer photos' : 'Patient photos'}
+          </Text>
           <View style={styles.imageRow}>
             {allImages.slice(0, MAX_VISIBLE_IMAGES).map((item, index) => {
               const remaining = allImages.length - MAX_VISIBLE_IMAGES;

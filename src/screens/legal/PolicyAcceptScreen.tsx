@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  BackHandler,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import TablerIcon from '../../components/TablerIcon';
@@ -33,16 +35,22 @@ type NextRoute =
   | { name: 'AccessMode' }
   | { name: 'Onboarding' };
 
+const MANDATORY_MSG =
+  'Accepting Terms & Conditions is mandatory to continue.';
+
 /**
  * Mandatory Terms & Policies accept gate.
  * Used after customer profile is created, or when login says policy_accepted.customer=false.
  * Guest users never land here.
+ * Back is disabled until the user accepts — no previous screen, no Home exit.
  */
 const PolicyAcceptScreen = (props: any) => {
   const insets = useSafeAreaInsets();
   const nextRoute: NextRoute = props?.route?.params?.nextRoute || {
     name: 'Home',
   };
+  /** Only accept & continue may leave this screen. */
+  const allowLeaveRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,6 +79,40 @@ const PolicyAcceptScreen = (props: any) => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    props.navigation?.setOptions?.({
+      gestureEnabled: false,
+      headerBackVisible: false,
+    });
+  }, [props.navigation]);
+
+  const blockBack = useCallback(() => {
+    showSuccessToast(MANDATORY_MSG, 'error');
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onHardwareBack = () => {
+        blockBack();
+        return true; // consume — do not leave screen
+      };
+      const sub = BackHandler.addEventListener(
+        'hardwareBackPress',
+        onHardwareBack,
+      );
+      return () => sub.remove();
+    }, [blockBack]),
+  );
+
+  useEffect(() => {
+    const unsub = props.navigation?.addListener?.('beforeRemove', (e: any) => {
+      if (allowLeaveRef.current) return;
+      e.preventDefault();
+      blockBack();
+    });
+    return unsub;
+  }, [props.navigation, blockBack]);
+
   const openPolicy = (item: any) => {
     const policy = getPolicyDoc(item);
     props.navigation.navigate('PolicyDetail', {
@@ -80,6 +122,7 @@ const PolicyAcceptScreen = (props: any) => {
   };
 
   const continueNext = () => {
+    allowLeaveRef.current = true;
     if (nextRoute.name === 'Home') {
       resetRootToHomeStack(props.navigation, 'TabStack', {
         screen: 'Home',
@@ -105,7 +148,7 @@ const PolicyAcceptScreen = (props: any) => {
 
   const handleAccept = async () => {
     if (!agreed) {
-      showSuccessToast('Please accept Terms & Policies to continue', 'error');
+      showSuccessToast(MANDATORY_MSG, 'error');
       return;
     }
     if (accepting) return;
@@ -128,6 +171,7 @@ const PolicyAcceptScreen = (props: any) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {/* No back button — acceptance is mandatory */}
       <AppHeader title="Terms & Policies" />
 
       {loading ? (
@@ -148,7 +192,8 @@ const PolicyAcceptScreen = (props: any) => {
             }
           >
             <Text style={styles.intro}>
-              Please review and accept Ayurmuni’s legal policies to continue.
+              Accepting Terms & Conditions is mandatory. Please review and accept
+              Ayurmuni’s legal policies to continue.
             </Text>
 
             {error ? (

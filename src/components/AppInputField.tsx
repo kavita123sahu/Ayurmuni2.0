@@ -22,8 +22,9 @@ const AppInputField = ({
   options = [],
   onSelect,
   onChangeText,
-   disabled = false,
+  disabled = false,
   containerStyle,
+  inputContainerStyle,
 }: any) => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const isDropdownField = options.length > 0;
@@ -75,7 +76,13 @@ const AppInputField = ({
         onPress={handlePress}
         disabled={disabled}
       >
-        <View style={[styles.inputContainer, disabled && styles.inputDisabled]}>
+        <View
+          style={[
+            styles.inputContainer,
+            inputContainerStyle,
+            disabled && styles.inputDisabled,
+          ]}
+        >
           {leftIconName && (
             <TablerIcon
               name={leftIconName as TablerIconName}

@@ -157,7 +157,11 @@ const HomeStackNavigator = () => (
       options={{ headerShown: false, animation: 'slide_from_bottom' }}
     />
     <Stack.Screen name="TermsCondition" component={TermsCondition} />
-    <Stack.Screen name="PolicyAccept" component={PolicyAcceptScreen} />
+    <Stack.Screen
+      name="PolicyAccept"
+      component={PolicyAcceptScreen}
+      options={{ gestureEnabled: false, headerBackVisible: false }}
+    />
     <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
     <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
     <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />

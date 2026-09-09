@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -13,9 +13,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader';
 import Detailimages from '../../components/Detailimages';
 import ReviewSection from '../../components/ReviewSecton';
+import BlinkitAddButton from '../../components/BlinkitAddButton';
 import { useProductData } from '../../hooks/useProductData';
 import { Fonts } from '../../common/Fonts';
-import { useCartActions, useVariantCartQuantity } from '../../hooks/Cart';
+import { useCartActions } from '../../hooks/Cart';
 import { useAppSelector } from '../../store/hooks';
 import { selectIsAddingVariant } from '../../store/slices/cartSlice';
 import { requireAuth } from '../../services/guestAuth';
@@ -55,48 +56,6 @@ const SectionHeader = ({ title }: { title: string }) => (
     <Text style={styles.sectionHeader}>{title}</Text>
 );
 
-const CompactQtyStepper = ({
-    quantity,
-    onIncrease,
-    onDecrease,
-    disabled,
-}: {
-    quantity: number;
-    onIncrease: () => void;
-    onDecrease: () => void;
-    disabled?: boolean;
-}) => (
-    <View style={[styles.qtyStepper, disabled && styles.qtyStepperDisabled]}>
-        <TouchableOpacity
-            onPress={onDecrease}
-            disabled={disabled || quantity <= 1}
-            style={styles.qtyBtn}
-            hitSlop={8}
-        >
-            <TablerIcon
-                name="minus"
-                size={14}
-                color={disabled || quantity <= 1 ? 'rgba(255,255,255,0.4)' : '#FFFFFF'}
-                strokeWidth={2.6}
-            />
-        </TouchableOpacity>
-        <Text style={styles.qtyValue}>{quantity}</Text>
-        <TouchableOpacity
-            onPress={onIncrease}
-            disabled={disabled}
-            style={styles.qtyBtn}
-            hitSlop={8}
-        >
-            <TablerIcon
-                name="plus"
-                size={14}
-                color={disabled ? 'rgba(255,255,255,0.4)' : '#FFFFFF'}
-                strokeWidth={2.6}
-            />
-        </TouchableOpacity>
-    </View>
-);
-
 type DetailSheetKey =
     | 'description'
     | 'info'
@@ -126,17 +85,37 @@ const ProductDetails = (props: any) => {
     const defaultVariant =
         variants.find((v: any) => v?.is_default) || variants[0] || null;
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
-    const [quantity, setQuantity] = useState(1);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
 
     // Prefer selected; fall back to default so stock/CTA never use empty initial state
     const activeVariant = selectedVariant || defaultVariant;
+    // Prefer route/list variant_id so count matches ProductCard cart qty
     const cartVariantId = String(
-        activeVariant?.variant_id ?? activeVariant?.id ?? varientID ?? '',
+        activeVariant?.variant_id ?? varientID ?? activeVariant?.id ?? '',
     );
-    const { addToCart } = useCartActions();
+    const { updateCartQuantity } = useCartActions();
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
-    const existingCartQty = useVariantCartQuantity(cartVariantId);
+    const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
+    const existingCartQty = useMemo(() => {
+        const ids = [
+            activeVariant?.variant_id,
+            varientID,
+            activeVariant?.id,
+        ]
+            .map(v => String(v ?? '').trim())
+            .filter(Boolean);
+        for (const id of ids) {
+            const q = Number(variantQuantities[id] ?? 0);
+            if (q > 0) return q;
+        }
+        return Number(variantQuantities[cartVariantId] ?? 0);
+    }, [
+        activeVariant?.variant_id,
+        activeVariant?.id,
+        varientID,
+        cartVariantId,
+        variantQuantities,
+    ]);
     const insets = useSafeAreaInsets();
     const [descExpanded, setDescExpanded] = useState(false);
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
@@ -146,10 +125,6 @@ const ProductDetails = (props: any) => {
     useEffect(() => {
         if (defaultVariant) setSelectedVariant(defaultVariant);
     }, [ProductData]);
-
-    useEffect(() => {
-        setQuantity(1);
-    }, [activeVariant?.id]);
 
     useEffect(() => {
         const wishlisted = Boolean(
@@ -197,53 +172,73 @@ const ProductDetails = (props: any) => {
     }, [activeVariant?.id, coverImageUri]);
 
     const stockQty = getProductStockQty(activeVariant);
-    const maxQty = stockQty != null && stockQty > 0 ? stockQty : 1;
+    const maxQty =
+        stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
 
-    const increaseQty = () =>
-        setQuantity((q: number) => Math.min(q + 1, maxQty));
-    const decreaseQty = () => setQuantity((q: number) => (q > 1 ? q - 1 : 1));
-
-    const handleAddToCart = async (goToCart = false) => {
-        if (!(await requireAuth('Please login to add items to cart'))) return;
-
-        const productForRx = {
+    const productForRx = useMemo(
+        () => ({
             ...ProductData,
             ...activeVariant,
             prescription_required:
                 activeVariant?.prescription_required ??
                 ProductData?.prescription_required,
-        };
-        if (!canAddProductWithoutPrescription(productForRx)) {
-            return;
-        }
+        }),
+        [ProductData, activeVariant],
+    );
 
-        if (activeVariant?.id && coverImageUri) {
-            cacheVariantImage(activeVariant.id, coverImageUri);
-        } else {
-            resolveProductImageUri(activeVariant);
-        }
+    /** Same cart sync as ProductCard — count stays correct across list & details. */
+    const handleCartUpdate = useCallback(
+        async (newQty: number, goToCart = false) => {
+            if (!(await requireAuth('Please login to add items to cart'))) return;
+            if (!cartVariantId) return;
 
-        const addQty = Math.max(1, Number(quantity) || 1);
-        const nextQty = existingCartQty + addQty;
-        if (!canAddProductQty(activeVariant, nextQty)) {
-            showSuccessToast('Only limited stock left', 'error');
-            return;
-        }
+            if (newQty > 0 && isProductOutOfStock(activeVariant)) {
+                showSuccessToast('This product is out of stock', 'error');
+                return;
+            }
+            if (!canAddProductQty(activeVariant, newQty)) {
+                showSuccessToast('Only limited stock left', 'error');
+                return;
+            }
+            if (
+                newQty > existingCartQty &&
+                !canAddProductWithoutPrescription(productForRx)
+            ) {
+                return;
+            }
 
-        setPendingCta(goToCart ? 'buy' : 'add');
-        const success = await addToCart(cartVariantId, nextQty, {
-            currentQuantity: existingCartQty,
-            prescriptionRequired: isPrescriptionRequired(productForRx),
-        });
-        setPendingCta(null);
+            if (activeVariant?.id && coverImageUri) {
+                cacheVariantImage(activeVariant.id, coverImageUri);
+            }
 
-        if (!success) {
-            showSuccessToast('Try again to add into cart', 'error');
-            return;
-        }
-        if (goToCart) {
-            props.navigation.navigate('MyCart');
-        }
+            setPendingCta(goToCart ? 'buy' : 'add');
+            const success = await updateCartQuantity(cartVariantId, newQty, {
+                currentQuantity: existingCartQty,
+                prescriptionRequired: isPrescriptionRequired(productForRx),
+            });
+            setPendingCta(null);
+
+            if (!success) {
+                showSuccessToast('Try again to update cart', 'error');
+                return;
+            }
+            if (goToCart) {
+                props.navigation.navigate('MyCart');
+            }
+        },
+        [
+            activeVariant,
+            cartVariantId,
+            coverImageUri,
+            existingCartQty,
+            productForRx,
+            props.navigation,
+            updateCartQuantity,
+        ],
+    );
+
+    const handleAddToCart = async (goToCart = false) => {
+        await handleCartUpdate(existingCartQty + 1, goToCart);
     };
 
     const handleToggleWishlist = async () => {
@@ -296,7 +291,10 @@ const ProductDetails = (props: any) => {
         ...activeVariant,
     });
 
-    const totalPrice = (activeVariant?.selling_price || 0) * quantity;
+    const cartDisplayQty = Math.max(existingCartQty, 1);
+    const totalPrice =
+        (activeVariant?.selling_price || 0) *
+        (existingCartQty > 0 ? existingCartQty : 1);
     const saveAmount = Math.max(
         0,
         (Number(activeVariant?.mrp) || 0) -
@@ -323,14 +321,11 @@ const ProductDetails = (props: any) => {
     }, [variants]);
 
     const deliveryBy = useMemo(() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 2);
-        return d.toLocaleDateString('en-IN', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-        });
+        return '24 hours';
     }, []);
+
+    const deliveryMessage =
+        'Your order will be delivered in 24 hours between appropriate delivery slots.';
 
     const fullDescription = String(
         ProductData?.full_description || ProductData?.description || '',
@@ -567,20 +562,30 @@ const ProductDetails = (props: any) => {
                     <View style={styles.priceRow}>
                         <View style={styles.priceLeft}>
                             {saveAmount > 0 ? (
-                                <Text style={styles.specialLabel}>Special price</Text>
+                                <></>
+                                // <View style={styles.specialRow}>
+                                //     <TablerIcon name="receipt" size={12} color="#FF3F6C" />
+                                //     <Text style={styles.specialLabel}>Special Price</Text>
+                                // </View>
                             ) : null}
                             <View style={styles.priceLine}>
                                 <RupeeAmount
                                     value={selectedVariant?.selling_price}
                                     style={styles.sellingPrice}
                                 />
-                                <RupeeAmount
-                                    value={selectedVariant?.mrp}
-                                    style={styles.mrpPrice}
-                                />
+                                {Number(selectedVariant?.mrp) >
+                                    Number(selectedVariant?.selling_price || 0) ? (
+                                    <>
+                                        <Text style={styles.mrpPrefix}>MRP</Text>
+                                        <RupeeAmount
+                                            value={selectedVariant?.mrp}
+                                            style={styles.mrpPrice}
+                                        />
+                                    </>
+                                ) : null}
                                 {!!selectedVariant?.discount && (
                                     <Text style={styles.discountInline}>
-                                        {selectedVariant.discount}% off
+                                        ({selectedVariant.discount}% OFF)
                                     </Text>
                                 )}
                             </View>
@@ -607,11 +612,18 @@ const ProductDetails = (props: any) => {
                             )}
                             {/* <Text style={styles.taxNote}>Inclusive of all taxes</Text> */}
                         </View>
-                        <CompactQtyStepper
-                            quantity={quantity}
-                            onIncrease={increaseQty}
-                            onDecrease={decreaseQty}
-                            disabled={isOutOfStock}
+                        <BlinkitAddButton
+                            quantity={isOutOfStock ? 0 : existingCartQty}
+                            isAdding={isAdding}
+                            outOfStock={isOutOfStock}
+                            maxQuantity={maxQty}
+                            onAdd={() => handleCartUpdate(existingCartQty + 1)}
+                            onIncrement={() =>
+                                handleCartUpdate(existingCartQty + 1)
+                            }
+                            onDecrement={() =>
+                                handleCartUpdate(Math.max(0, existingCartQty - 1))
+                            }
                         />
                         {/* Add stock display here */}
                     </View>
@@ -634,58 +646,24 @@ const ProductDetails = (props: any) => {
 
 
 
-                    {/* <View style={styles.deliveryRow}>
+                    <View style={styles.deliveryRow}>
                         <View style={styles.deliveryIcon}>
                             <TablerIcon name="truck" size={14} color={Colors.primaryColor} />
                         </View>
                         <Text style={styles.deliveryText}>
-                            Get it by <Text style={styles.deliveryStrong}>{deliveryBy}</Text>
+                            {deliveryMessage}{' '}
+                            <Text style={styles.deliveryStrong}>
+                                Delivery in {deliveryBy}
+                            </Text>
                         </Text>
                         {selectedVariant?.is_free_shipping ? (
                             <View style={styles.freeTag}>
                                 <Text style={styles.freeTagText}>FREE</Text>
                             </View>
                         ) : null}
-                    </View> */}
-                </View>
+                    </View>
 
-                <View style={styles.trustStrip}>
-                    <View style={styles.trustItem}>
-                        <View style={[styles.trustIcon, { backgroundColor: '#E0F2FE' }]}>
-                            <TablerIcon name="truck" size={15} color="#0369A1" />
-                        </View>
-                        <Text style={styles.trustText}>
-                            {selectedVariant?.is_free_shipping ? 'Free delivery' : 'Fast delivery'}
-                        </Text>
-                    </View>
-                    <View style={styles.trustDivider} />
-                    <View style={styles.trustItem}>
-                        <View style={[styles.trustIcon, { backgroundColor: '#FEF3C7' }]}>
-                            <TablerIcon name="cash" size={15} color="#B45309" />
-                        </View>
-                        <Text style={styles.trustText}>
-                            {selectedVariant?.pay_on_delivery ? 'COD available' : 'Online pay'}
-                        </Text>
-                    </View>
-                    <View style={styles.trustDivider} />
-                    <View style={styles.trustItem}>
-                        <View style={[styles.trustIcon, { backgroundColor: '#EAF8F4' }]}>
-                            {
-                                selectedVariant?.is_returnable ? (
-                                    <TablerIcon name="refresh" size={15} color={Colors.primaryColor} />
-                                ) : (
-                                    <TablerIcon name="circle-x" size={15} color={Colors.primaryColor} style={{ backgroundColor: '#EAF8F4' }} />
-                            )
-                            }
-                        </View>
-                        <Text style={styles.trustText}>
-                            {selectedVariant?.returnable_days
-                                ? `${selectedVariant.returnable_days}D return`
-                                : selectedVariant?.is_returnable ? 'Easy returns' : 'Non-returnable'}
-                        </Text>
-                    </View>
                 </View>
-
                 {variants.length > 0 && (
                     <View style={styles.card}>
                         <View style={styles.sectionTitleRow}>
@@ -768,6 +746,44 @@ const ProductDetails = (props: any) => {
                         </ScrollView>
                     </View>
                 )}
+                <View style={styles.trustStrip}>
+                    <View style={styles.trustItem}>
+                        <View style={[styles.trustIcon, { backgroundColor: '#E0F2FE' }]}>
+                            <TablerIcon name="truck" size={15} color="#0369A1" />
+                        </View>
+                        <Text style={styles.trustText}>
+                            {selectedVariant?.is_free_shipping ? 'Free delivery' : 'Fast delivery'}
+                        </Text>
+                    </View>
+                    <View style={styles.trustDivider} />
+                    <View style={styles.trustItem}>
+                        <View style={[styles.trustIcon, { backgroundColor: '#FEF3C7' }]}>
+                            <TablerIcon name="cash" size={15} color="#B45309" />
+                        </View>
+                        <Text style={styles.trustText}>
+                            {selectedVariant?.pay_on_delivery ? 'COD available' : 'Online pay'}
+                        </Text>
+                    </View>
+                    <View style={styles.trustDivider} />
+                    <View style={styles.trustItem}>
+                        <View style={[styles.trustIcon, { backgroundColor: '#EAF8F4' }]}>
+                            {
+                                selectedVariant?.is_returnable ? (
+                                    <TablerIcon name="refresh" size={15} color={Colors.primaryColor} />
+                                ) : (
+                                    <TablerIcon name="circle-x" size={15} color={Colors.primaryColor} style={{ backgroundColor: '#EAF8F4' }} />
+                                )
+                            }
+                        </View>
+                        <Text style={styles.trustText}>
+                            {selectedVariant?.returnable_days
+                                ? `${selectedVariant.returnable_days}D return`
+                                : selectedVariant?.is_returnable ? 'Easy returns' : 'Non-returnable'}
+                        </Text>
+                    </View>
+                </View>
+
+
 
                 {(highlightLines.length > 0 || !!fullDescription) && (
                     <View style={styles.card}>
@@ -962,7 +978,7 @@ const ProductDetails = (props: any) => {
                             <Text style={styles.stickyHint}>{existingCartQty} in cart</Text>
                         ) : saveAmount > 0 ? (
                             <Text style={styles.stickySave}>
-                                Save {formatRupee(saveAmount * quantity)}
+                                Save {formatRupee(saveAmount * cartDisplayQty)}
                             </Text>
                         ) : (
                             <Text style={styles.stickyHint}>Total</Text>
@@ -1030,8 +1046,9 @@ const ProductDetails = (props: any) => {
 export default ProductDetails;
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, 
-        backgroundColor:Colors.background
+    safeArea: {
+        flex: 1,
+        backgroundColor: Colors.background
         // backgroundColor: '#F4F7F6' 
     },
     scrollContent: { paddingBottom: 8 },
@@ -1322,9 +1339,27 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sellingPrice: {
-        fontSize: 24,
-        fontFamily: Fonts.PoppinsSemiBold,
+        fontSize: 18,
+        fontFamily: Fonts.PoppinsMedium,
         color: '#0F172A',
+        includeFontPadding: false,
+    },
+    specialLabel: {
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FF3F6C',
+        includeFontPadding: false,
+    },
+    specialRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 2,
+    },
+    mrpPrefix: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#94A3B8',
         includeFontPadding: false,
     },
     mrpPrice: {
@@ -1337,14 +1372,7 @@ const styles = StyleSheet.create({
     discountInline: {
         fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
-        color: '#16A34A',
-    },
-    specialLabel: {
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#16A34A',
-        marginBottom: 1,
-        includeFontPadding: false,
+        color: '#FF3F6C',
     },
     taxNote: {
         marginTop: 2,
@@ -1451,33 +1479,6 @@ const styles = StyleSheet.create({
     stockLabel: {
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
-        includeFontPadding: false,
-    },
-
-    qtyStepper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 8,
-        backgroundColor: Colors.primaryColor,
-        overflow: 'hidden',
-        height: 34,
-        minWidth: 86,
-    },
-    qtyStepperDisabled: {
-        backgroundColor: '#94A3B8',
-    },
-    qtyBtn: {
-        width: 28,
-        height: 34,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    qtyValue: {
-        minWidth: 22,
-        textAlign: 'center',
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#FFFFFF',
         includeFontPadding: false,
     },
 

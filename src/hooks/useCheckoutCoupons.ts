@@ -29,8 +29,12 @@ export const filterEligibleCoupons = (
   );
 
 /**
- * Order + consultation share the same rule:
- * show admin/campaign coupons that match applies_to for the scope.
+ * Checkout list rules (order + consultation):
+ * - source=admin only (hide campaign / referral / reward)
+ * - order: applies_to order | both
+ * - consultation: applies_to consultation | both
+ * View all = full list above (no min_amount filter).
+ * Top-2 preview = min_amount / discount eligible for current total.
  */
 const filterCheckoutCoupons = (list: Coupon[], scope: CouponScope) =>
   list.filter(

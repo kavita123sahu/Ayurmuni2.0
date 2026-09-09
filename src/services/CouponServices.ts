@@ -59,16 +59,22 @@ export const fetchCoupons = async (
   extra: CouponListParams = {},
 ): Promise<Coupon[]> => {
   try {
+    // Prefer admin-only from API when listing for checkout scopes
     const response = await getCoupons({
       page: 1,
       page_size: 50,
+      ...(scope && scope !== 'all' ? { source: 'admin' } : {}),
       ...extra,
     });
-    console.log('fetchCouponsresponse', response);
     if (response?.success === false) return [];
     const list = parseCouponList(response);
+    // Client guard: admin + applies_to for checkout scopes
     if (!scope || scope === 'all') return list;
-    return list.filter(item => couponMatchesScope(item, scope));
+    return list.filter(
+      item =>
+        String(item.source || '').toLowerCase() === 'admin' &&
+        couponMatchesScope(item, scope),
+    );
   } catch {
     return [];
   }

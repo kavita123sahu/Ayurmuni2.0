@@ -206,9 +206,9 @@ const styles = StyleSheet.create({
         ...CARD_SURFACE,
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 14,
-        padding: 10,
-        marginBottom: 10,
+        borderRadius: 12,
+        padding: 8,
+        marginBottom: 8,
         gap: 10,
     },
     cardMain: {
@@ -236,8 +236,8 @@ const styles = StyleSheet.create({
         borderColor: '#0D614E',
     },
     imageWrap: {
-        width: 72,
-        height: 72,
+        width: 64,
+        height: 64,
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: '#F8FAFC',
@@ -257,10 +257,10 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     name: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#0F172A',
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 18,
+        lineHeight: 17,
     },
     metaRow: {
         flexDirection: 'row',

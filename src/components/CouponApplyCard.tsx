@@ -66,19 +66,24 @@ const CouponApplyCard = ({
     title?: string;
   } | null>(null);
 
-  /** View all — every coupon matching source + applies_to for this checkout. */
+  /** View all — every admin coupon matching applies_to for this checkout. */
   const scopedCoupons = useMemo(() => {
     if (!checkoutScope) return coupons;
     return coupons.filter(item => couponMatchesScope(item, checkoutScope));
   }, [coupons, checkoutScope]);
 
-  /** Top 2 — only coupons that pass min_amount for current cart. */
+  /** Top 2 — only coupons that pass min_amount for current cart / fee. */
   const preview = useMemo(() => {
     const eligible =
-      eligibleCoupons ??
-      scopedCoupons.filter(item => calcCouponDiscount(item, cartAmount).ok);
+      eligibleCoupons != null
+        ? eligibleCoupons.filter(item =>
+          checkoutScope ? couponMatchesScope(item, checkoutScope) : true,
+        )
+        : scopedCoupons.filter(
+          item => calcCouponDiscount(item, cartAmount).ok,
+        );
     return eligible.slice(0, 2);
-  }, [eligibleCoupons, scopedCoupons, cartAmount]);
+  }, [eligibleCoupons, scopedCoupons, cartAmount, checkoutScope]);
 
   const submit = async (raw?: string) => {
     Keyboard.dismiss();
@@ -104,8 +109,8 @@ const CouponApplyCard = ({
             ? couponOfferTitle(result.coupon)
             : scopedCoupons.find(c => c.code === next)
               ? couponOfferTitle(
-                  scopedCoupons.find(c => c.code === next) as Coupon,
-                )
+                scopedCoupons.find(c => c.code === next) as Coupon,
+              )
               : next;
         setCode('');
         setSheetOpen(false);
@@ -252,9 +257,9 @@ const CouponApplyCard = ({
                 </Text>
                 <Text style={styles.sheetSub}>
                   {checkoutScope === 'consultation'
-                    ? 'Admin offers valid for consultations'
+                    ? 'Admin offers for consultations (and both)'
                     : checkoutScope === 'product'
-                      ? 'Admin offers valid for this order'
+                      ? 'Admin offers for orders (and both)'
                       : 'Available offers'}
                 </Text>
               </View>
