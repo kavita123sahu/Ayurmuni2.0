@@ -9,7 +9,7 @@ export const SCREEN_PADDING_H = 20;
 export const SECTION_GAP = 18;
 export const HOME_SECTION_GAP = 16;
 /** Equal vertical spacing around every SectionHeader (top + bottom) */
-export const HOME_SECTION_HEADER_MT = 10;
+export const HOME_SECTION_HEADER_MT = 0;
 export const HOME_SECTION_HEADER_MB = 10;
 export const FILTER_CHIP_RADIUS = 10;
 export const FILTER_CHIP_PADDING_H = 15;

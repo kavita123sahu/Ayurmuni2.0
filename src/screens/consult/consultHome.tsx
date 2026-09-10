@@ -393,7 +393,7 @@ const ConsultHome = () => {
             />
 
             {bannerImages.length > 0 ? (
-              <View style={{ marginBottom: 8 }}>
+              <View >
                 <Detailimages
                   images={bannerImages}
                   itemWidth={Dimensions.get('window').width - SCREEN_PADDING_H * 2}

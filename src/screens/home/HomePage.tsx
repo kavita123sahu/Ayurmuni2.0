@@ -36,6 +36,7 @@ import {
   getHomeHeaderTotalHeight,
   getScreenBottomPadding,
   HOME_CATEGORY_GAP,
+  HOME_HEADER_SEARCH_GAP,
   HOME_SECTION_GAP,
   SCREEN_PADDING_H,
   getHorizontalScrollBleedStyle,
@@ -774,7 +775,8 @@ const styles = StyleSheet.create({
   },
   sections: {
     gap: HOME_SECTION_GAP,
-    paddingBottom: 4,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   homeSection: {
     width: '100%',
@@ -783,9 +785,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
     overflow: 'hidden',
-    borderRadius: 14,
-    paddingTop: 4,
-    marginBottom: -26,
+    borderRadius: 12,
+    marginBottom: -27,
   },
   horizontalList: HORIZONTAL_SCROLL_CONTENT,
   comingSoonGroup: {
@@ -793,16 +794,14 @@ const styles = StyleSheet.create({
   },
   comingSoonStrip: {
     backgroundColor: '#F3F7F5',
-    borderRadius: 14,
+    borderRadius: 12,
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#D7E8E1',
-    paddingHorizontal: -0,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     alignItems: 'center',
   },
-
-
 
   comingSoonStripTitle: {
     fontSize: 12,
@@ -811,6 +810,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
     width: '100%',
+    includeFontPadding: false,
   },
   comingSoonChips: {
     flexDirection: 'row',
@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E2E8F0',
     borderRadius: 999,
     paddingVertical: 6,
@@ -842,6 +842,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
     maxWidth: 110,
+    includeFontPadding: false,
   },
   comingSoonChipBadge: {
     backgroundColor: '#ECFDF5',
@@ -853,6 +854,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
   appointmentLoadMore: {
     justifyContent: 'center',
@@ -871,25 +873,21 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
     overflow: 'visible',
     justifyContent: 'flex-start',
-    marginBottom: 4,
   },
   categoryDock: {
     ...getHorizontalScrollBleedStyle(),
+    marginTop: HOME_HEADER_SEARCH_GAP,
   },
   searchDock: {
     width: '100%',
+    marginTop: HOME_CATEGORY_GAP,
   },
   homeSearchBar: {
     height: 44,
     backgroundColor: '#FFFFFF',
-    borderColor: '#CBD5E1',
-    borderWidth: 1.5,
+    borderColor: '#E2E8E6',
+    borderWidth: 1,
     borderRadius: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
   },
   containerprakriti: {
     flexDirection: 'row',

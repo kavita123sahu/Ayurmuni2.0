@@ -5,7 +5,7 @@ import {
   HOME_SECTION_HEADER_MB,
   HOME_SECTION_HEADER_MT,
 } from '../constants/layout';
-import { TYPO } from '../constants/responsive';
+import { Colors } from '../common/Colors';
 
 interface Props {
   title: string;
@@ -18,7 +18,7 @@ interface Props {
 const SectionHeader: React.FC<Props> = ({ title, actionText, onPress, home }) => {
   return (
     <View style={[styles.container, home && styles.containerHome]}>
-      <Text style={styles.title} numberOfLines={1}>
+      <Text style={[styles.title, home && styles.titleHome]} numberOfLines={1}>
         {title}
       </Text>
 
@@ -45,24 +45,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 28,
+    minHeight: 24,
   },
   containerHome: {
     paddingHorizontal: 0,
+    marginTop: 0,
+    marginBottom: HOME_SECTION_HEADER_MB,
   },
   title: {
     fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: TYPO.lg + 1,
+    fontSize: 15,
+    lineHeight: 20,
     color: '#0F172A',
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
+    includeFontPadding: false,
+  },
+  titleHome: {
+    fontSize: 14,
+    lineHeight: 18,
   },
   actionBtn: {
     flexShrink: 0,
   },
   action: {
-    color: '#0D614E',
-    fontSize: TYPO.subtitle,
+    color: Colors.primaryColor,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
 });

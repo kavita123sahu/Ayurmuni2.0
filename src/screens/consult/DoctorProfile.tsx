@@ -302,7 +302,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
         const city = String(doctor?.city || '').trim();
         const state = String(doctor?.state || '').trim();
         if (city && state) return `${city}, ${state}`;
-        return city || state || '';
+        return state || '';
     }, [doctor]);
 
     const isVerified = Boolean(doctor?.is_verified);
@@ -682,7 +682,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                             key="consultation"
                                             style={[
                                                 styles.modeChip,
-                                                { backgroundColor: "#f8fafc",borderRadius: 8 },
+                                                { backgroundColor: "#f8fafc", borderRadius: 8 },
                                             ]}
                                         >
                                             <TablerIcon
@@ -696,7 +696,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                                     { color: "#475569" },
                                                 ]}
                                             >
-                                               Video Consult
+                                                Video Consult
                                             </Text>
                                         </View>
                                         {/* {consultationModes.map(mode => {
@@ -1004,9 +1004,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         entityType="doctor"
                         doctorId={String(
                             getDoctorId(doctor) ||
-                                doctorData?.id ||
-                                doctorData?.doctor_id ||
-                                '',
+                            doctorData?.id ||
+                            doctorData?.doctor_id ||
+                            '',
                         )}
                         title="Ratings & reviews"
                     />
