@@ -11,6 +11,8 @@ type Props = {
   onJoinCall?: () => void;
   onViewDetails?: () => void;
   call_status?: string;
+  /** When false, hide/disable reschedule and cancel buttons (e.g., outside allowed window) */
+  allowActions?: boolean;
 };
 
 
@@ -25,7 +27,9 @@ const AppointmentActions = ({
   const appointmentStatus = status?.toLowerCase();
   // const appointmentStatus = status?.toLowerCase();
 
-  const showReschedule = [
+  const allow = typeof allowActions === 'boolean' ? allowActions : true;
+
+  const showReschedule = allow && [
     'pending',
     'confirmed',
     'reschedule',
@@ -34,7 +38,7 @@ const AppointmentActions = ({
     'booked',
   ].includes(appointmentStatus);
 
-  const showCancel = [
+  const showCancel = allow && [
     'pending',
     'confirmed',
     'reschedule',

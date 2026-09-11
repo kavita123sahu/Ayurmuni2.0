@@ -16,6 +16,7 @@ import TablerIcon from './TablerIcon';
 import {
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
+  getMinutesUntilAppointment,
 } from '../utils/appointmentUtils';
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
@@ -214,11 +215,16 @@ const RenderAppoint = ({
 
       <View style={styles.actionDivider} />
 
+      {/* enable reschedule/cancel only within 3 hours before appointment */}
       <AppointAction
         status={item.status}
         call_status={item.call_status}
         onReschedule={onReschedule}
         onCancel={onCancel}
+        allowActions={(() => {
+          const mins = getMinutesUntilAppointment(item?.date, item?.time);
+          return mins !== null && mins <= 180;
+        })()}
         // hasPrescription={hasPrescription}
         onJoinCall={() => {
           if (item.call_status !== 'in_progress') {

@@ -69,12 +69,7 @@ const PlanStatusPill = memo(({ item }: { item: any }) => {
 });
 
 const DietPlanCard = ({ item, onPress }: Props) => {
-  const diseases = useMemo(
-    () =>
-      item.health_diseases?.map((d: any) => d.name).filter(Boolean).join(', ') ||
-      '',
-    [item.health_diseases],
-  );
+  const subtitleText = useMemo(() => item.short_description || '', [item.short_description]);
   const isFree = item.is_paid === false || Number(item.price) === 0;
   const prakriti = String(item?.prakriti || '').trim();
   const ratingText = formatDietPlanRatingBadgeText(item);
@@ -134,9 +129,9 @@ const DietPlanCard = ({ item, onPress }: Props) => {
           {item.name}
         </Text>
 
-        {!!diseases && (
+        {!!subtitleText && (
           <Text style={styles.planSubtitle} numberOfLines={1}>
-            {diseases}
+            {subtitleText}
           </Text>
         )}
 

@@ -66,6 +66,10 @@ const ConsultHistory = (props: any) => {
     const [history, setHistory] = useState([]);
     const historyLenRef = React.useRef(0);
 
+    // Pagination: show 5 items per page with load-more on scroll
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 5;
+
     useEffect(() => {
         historyLenRef.current = history.length;
     }, [history.length]);
@@ -109,6 +113,21 @@ const ConsultHistory = (props: any) => {
     useEffect(() => {
         fetchConsultHistory(activeTab);
     }, [activeTab, fetchConsultHistory]);
+
+    // Reset page when the filtered set changes (search / tab changes / history refresh)
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, activeTab, history.length]);
+
+    const displayedHistory = React.useMemo(() => {
+        return (filteredHistory || []).slice(0, page * PAGE_SIZE);
+    }, [filteredHistory, page]);
+
+    const handleLoadMore = () => {
+        if ((filteredHistory || []).length > page * PAGE_SIZE) {
+            setPage(p => p + 1);
+        }
+    };
 
     const handleAction = (actionKey: ActionKey, item: Appointment) => {
         switch (actionKey) {
@@ -201,8 +220,10 @@ const ConsultHistory = (props: any) => {
                 />
             ) : (
                 <FlatList
-                    data={filteredHistory}
+                    data={displayedHistory}
                     renderItem={renderItem}
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.5}
                     keyExtractor={(item, index) =>
                         String(
                             item?.consultation_id ??
@@ -219,6 +240,11 @@ const ConsultHistory = (props: any) => {
                             colors={[Colors.primaryColor]}
                             tintColor={Colors.primaryColor}
                         />
+                    }
+                    ListFooterComponent={
+                        (filteredHistory || []).length > displayedHistory.length ? (
+                            <View style={{ paddingVertical: 12 }} />
+                        ) : null
                     }
                 />
             )}

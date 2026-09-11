@@ -17,6 +17,7 @@ import {
   buildAppointmentDetailsParams,
   canRescheduleAppointment,
   getConsultationScheduleLabels,
+  getMinutesUntilAppointment,
 } from '../utils/appointmentUtils';
 
 export type AppointmentStatus =
@@ -90,7 +91,8 @@ const AppointmentCard = ({
   const statusStyle = useMemo(() => getStatusStyle(status.toLowerCase()), [status]);
   const statusLabel = formatStatusLabel(status);
 
-  const showReschedule = canRescheduleAppointment(status);
+  const minutesLeft = getMinutesUntilAppointment(schedule.dateRaw, schedule.timeRaw);
+  const showReschedule = canRescheduleAppointment(status) && minutesLeft !== null && minutesLeft <= 180;
   const showReceipt = Boolean(item?.consultation_id);
   const showBookAgain = !showReschedule;
 
