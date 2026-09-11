@@ -105,6 +105,7 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
+  console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts)
   const { promptLocationOnHome } = useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
@@ -117,18 +118,20 @@ const HomePage: React.FC = (props: any) => {
     refresh: refreshHealthConcerns,
   } = useHealthConcernCategories(medicineCategoryId);
   const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
-  const homeHealthConcerns = useMemo(() => {
-    if (!safeHealthConcerns.length) return [];
-    const targetCount = 10;
-    const looped = Array.from({ length: targetCount }, (_, index) => {
-      const item = safeHealthConcerns[index % safeHealthConcerns.length];
-      return {
-        ...item,
-        _homeLoopKey: `${item?.id ?? 'concern'}-${index}`,
-      };
-    });
-    return looped;
-  }, [safeHealthConcerns]);
+
+  // const homeHealthConcerns = useMemo(() => {
+  //   if (!safeHealthConcerns.length) return [];
+  //   const targetCount = 10;
+  //   const looped = Array.from({ length: targetCount }, (_, index) => {
+  //     const item = safeHealthConcerns[index % safeHealthConcerns.length];
+  //     return {
+  //       ...item,
+  //       _homeLoopKey: `${item?.id ?? 'concern'}-${index}`,
+  //     };
+  //   });
+  //   return looped;
+  // }, [safeHealthConcerns]);
+
   const {
     preview: activeDietPreview,
     loading: loadingActiveDiet,
@@ -453,7 +456,7 @@ const HomePage: React.FC = (props: any) => {
               navigation={props.navigation}
             />
 
-            {homeHealthConcerns.length > 0 && (
+            {safeHealthConcerns.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
                   home
@@ -468,7 +471,7 @@ const HomePage: React.FC = (props: any) => {
                   }}
                 />
                 <CategoryList
-                  data={homeHealthConcerns}
+                  data={safeHealthConcerns}
                   navigation={
                     props.navigation.getParent?.() || props.navigation
                   }

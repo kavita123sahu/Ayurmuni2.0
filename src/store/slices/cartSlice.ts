@@ -84,9 +84,9 @@ type QueueCartLineSyncResult =
 const getVariantIdFromItem = (item: any): string =>
   String(
     item?.variant_id ??
-      item?.variant?.variant_id ??
-      item?.variant?.id ??
-      '',
+    item?.variant?.variant_id ??
+    item?.variant?.id ??
+    '',
   );
 
 const computeMetrics = (data: CartData) => {
@@ -286,17 +286,17 @@ const patchMyCartItemQuantity = (
             variant: seed?.variant
               ? { ...seed.variant }
               : {
-                  variant_id: variantId,
-                  selling_price:
-                    seed?.selling_price ?? seed?.variant?.selling_price,
-                  mrp: seed?.mrp ?? seed?.variant?.mrp,
-                  variant_title:
-                    seed?.variant?.variant_title ??
-                    seed?.variant?.title ??
-                    seed?.product_name,
-                  brand_name: seed?.variant?.brand_name,
-                  size: seed?.variant?.size,
-                },
+                variant_id: variantId,
+                selling_price:
+                  seed?.selling_price ?? seed?.variant?.selling_price,
+                mrp: seed?.mrp ?? seed?.variant?.mrp,
+                variant_title:
+                  seed?.variant?.variant_title ??
+                  seed?.variant?.title ??
+                  seed?.product_name,
+                brand_name: seed?.variant?.brand_name,
+                size: seed?.variant?.size,
+              },
             selling_price:
               seed?.selling_price ?? seed?.variant?.selling_price,
             mrp: seed?.mrp ?? seed?.variant?.mrp,

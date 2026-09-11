@@ -423,7 +423,7 @@ const PrakritiProfile = (props: any) => {
               {fromAssessment ? 'Assessment complete' : 'Prakriti analysis'}
             </Text>
           </View>
-
+          
           <View style={styles.heroMain}>
             <View style={styles.heroCopy}>
               <Text style={styles.heroKicker}>Your dominant type</Text>
@@ -538,7 +538,7 @@ const PrakritiProfile = (props: any) => {
             }
           >
             <TablerIcon name="clipboard-list" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryBtnText}>Body type</Text>
+            <Text style={styles.secondaryBtnText}>Your Health Profile</Text>
           </TouchableOpacity>
         </View>
 
@@ -627,7 +627,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 24,
-    backgroundColor: Colors.white,
   },
 
   header: {
@@ -766,127 +765,141 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
   },
-  // ===== TOP SECTION =====
-  topSection: {
-    backgroundColor: Colors.primaryColor,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 48,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
 
+  hero: {
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 72,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  heroBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 16,
+  },
   completedText: {
     fontSize: 11,
-    color: '#A7E4CF',
+    color: '#A7F3D0',
+    fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.3,
+    includeFontPadding: false,
+  },
+  heroMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroKicker: {
+    fontSize: 12,
+    color: '#B5E6D8',
     fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 6,
-    letterSpacing: 0.4,
+    marginBottom: 4,
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: 34,
+    lineHeight: 40,
     color: '#FFFFFF',
-    marginBottom: 4,
     fontFamily: Fonts.PoppinsSemiBold,
     includeFontPadding: false,
   },
   subtitle: {
+    marginTop: 6,
     fontSize: 13,
     color: 'rgba(255,255,255,0.78)',
     fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 18,
+    lineHeight: 20,
+  },
+  heroImageWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  heroImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
 
-  reassessCard: {
-    marginHorizontal: 14,
-    marginTop: 10,
-    marginBottom: 6,
+  doshaCard: {
+    marginHorizontal: 16,
+    marginTop: -48,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
     borderWidth: 1,
-    borderColor: '#D7EBE3',
+    borderColor: '#EEF3F1',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0D614E',
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+      },
+      android: { elevation: 4 },
+    }),
   },
-  reassessCopy: {
-    marginBottom: 10,
+  doshaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  reassessTitle: {
-    fontSize: 14,
+  doshaCardTitle: {
+    fontSize: 15,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 2,
   },
-  reassessSub: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
+  doshaCardHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
   },
-  reassessBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primaryColor,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  reassessBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  // ===== DOSHA CARD =====
-  doshaCard: {
-    width: width - 28,
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginTop: -36,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+  meterRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderWidth: 1,
-    borderColor: '#E5EEEA',
-    shadowColor: '#0D614E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  doshaItem: {
     alignItems: 'center',
     marginBottom: 14,
     gap: 12,
   },
-
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
+  meterIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
-
-  doshaIcon: {
-    fontSize: 18,
-    fontWeight: '700',
+  meterBody: {
+    flex: 1,
+    minWidth: 0,
   },
-
-  doshaName: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 2,
-    letterSpacing: 0.4,
+  meterTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
   },
-
-  doshaPercent: {
-    fontSize: 16,
-    color: '#061E0E',
+  meterName: {
+    fontSize: 13,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
     letterSpacing: 0.4,
     includeFontPadding: false,
@@ -914,94 +927,78 @@ const styles = StyleSheet.create({
   },
 
   essenceCard: {
-    marginHorizontal: 14,
-    marginTop: 12,
-    borderRadius: 16,
-    padding: 16,
-    backgroundColor: Colors.primaryColor,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  essenceGradient: {
+    padding: 20,
   },
   smallHeading: {
     color: '#B5E6D8',
     fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
     letterSpacing: 0.8,
+    textTransform: 'uppercase',
     marginBottom: 8,
   },
   essenceTitle: {
-    color: '#FFC52D',
-    fontSize: 20,
-    fontFamily: Fonts.PoppinsBold,
-    marginBottom: 6,
+    color: '#FBBF24',
+    fontSize: 24,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 8,
+    includeFontPadding: false,
   },
   essenceDescription: {
-    color: '#FFFFFFB2',
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: Fonts.PoppinsMedium,
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: Fonts.PoppinsRegular,
   },
 
   guidelineHeader: {
-    marginTop: 14,
-    marginBottom: 10,
-    marginHorizontal: 14,
+    marginTop: 24,
+    marginBottom: 12,
+    marginHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
   guidelineTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#1F2937',
+    color: '#0F172A',
+    includeFontPadding: false,
   },
-
-  personalizedText: {
-    color: '#F5A623',
+  guidelineLead: {
+    marginTop: 2,
     fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
   },
-  // Action Edit
-
-  actionRow: {
-    flexDirection: 'row',
-    marginTop: 8,
-    gap: 8,
-    paddingHorizontal: 14,
-  },
-
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
+  personalizedPill: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 20,
     paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingVertical: 5,
     borderWidth: 1,
     borderColor: '#FED7AA',
   },
-
-  actionText: {
-    marginLeft: 5,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsMedium,
-    fontSize: 12,
+  personalizedText: {
+    color: '#C2410C',
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   guidelineCard: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 14,
-    marginBottom: 10,
-    borderRadius: 14,
-    padding: 14,
-    borderLeftWidth: 3,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EEF3F1',
   },
   guidelineTop: {
     flexDirection: 'row',
@@ -1056,9 +1053,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: Fonts.PoppinsRegular,
   },
-  homeBtn: {
-    backgroundColor: Colors.primaryColor,
-    paddingVertical: 12,
+
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  secondaryBtn: {
+    flex: 1,
+    minHeight: 44,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#D8EBE4',
@@ -1066,13 +1070,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 14,
-    marginTop: 10,
-    marginBottom: 8,
+    gap: 6,
+    paddingHorizontal: 8,
   },
-  homeBtnText: {
-    color: '#FFF',
-    fontSize: 15,
+  secondaryBtnText: {
+    color: Colors.primaryColor,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
     includeFontPadding: false,
   },

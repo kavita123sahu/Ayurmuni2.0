@@ -31,6 +31,7 @@ export const getSuggestedProducts = async () => {
     const response = await apiClient('customers/suggested/products/', {
       method: 'GET',
     });
+    console.log('sugesstedresposneeee', response);
     return response;
   } catch (error) {
     throw error;

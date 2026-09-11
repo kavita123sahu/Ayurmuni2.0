@@ -447,7 +447,7 @@ const CategoryDoctor = (props: any) => {
                 >
                   <View style={styles.diseaseChipIconWrap}>
                     <TablerIcon
-                      name="layout-grid"
+                      name="plus"
                       size={16}
                       color={!selectedDiseaseId ? Colors.primaryColor : '#64748B'}
                     />
@@ -709,7 +709,7 @@ const CategoryDoctor = (props: any) => {
         subtitle="Doctors, products, diet & yoga"
         onBack={() => navigation.goBack()}
         onSearchPress={() => setSearchExpanded(true)}
-        onRefreshPress={onRefresh}
+        // onRefreshPress={onRefresh}
         showCart
       />
 

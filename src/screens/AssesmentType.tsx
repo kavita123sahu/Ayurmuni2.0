@@ -172,7 +172,7 @@ const AssessmentType = (props: any) => {
 
           {showMedical && (
             <AssessmentCard
-              title="Current Body Type"
+              title="Your Health Profile"
               subtitle="Share conditions, allergies, and reports so consultations start with the full picture."
               meta="Secure"
               icon="file-medical"

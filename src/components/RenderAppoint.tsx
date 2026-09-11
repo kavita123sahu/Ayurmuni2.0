@@ -70,9 +70,9 @@ const RenderAppoint = ({
 
   const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
     ? item.rawData.doctor.health_diseases
-        .map((disease: any) => disease.name)
-        .filter(Boolean)
-        .join(', ')
+      .map((disease: any) => disease.name)
+      .filter(Boolean)
+      .join(', ')
     : '';
 
   const therapyPreview = therapies
@@ -219,7 +219,7 @@ const RenderAppoint = ({
         call_status={item.call_status}
         onReschedule={onReschedule}
         onCancel={onCancel}
-        hasPrescription={hasPrescription}
+        // hasPrescription={hasPrescription}
         onJoinCall={() => {
           if (item.call_status !== 'in_progress') {
             showSuccessToast(
@@ -243,10 +243,10 @@ const RenderAppoint = ({
           );
         }}
         onViewDetails={() => {
-          if (!hasPrescription) {
-            showSuccessToast('No prescription available for this appointment', 'error');
-            return;
-          }
+          // if (!hasPrescription) {
+          //   showSuccessToast('No prescription available for this appointment', 'error');
+          //   return;
+          // }
           navigation.navigate('PrescriptionDetail', {
             appointment_id:
               item?.appointment_id ||

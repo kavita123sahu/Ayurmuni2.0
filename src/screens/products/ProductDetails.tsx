@@ -142,7 +142,7 @@ const ProductDetails = (props: any) => {
     const defaultVariant =
         variants.find((v: any) => v?.is_default) || variants[0] || null;
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState<number>(1);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
 
     // Prefer selected; fall back to default so stock/CTA never use empty initial state
@@ -175,9 +175,9 @@ const ProductDetails = (props: any) => {
         cartVariantId,
         variantQuantities,
     ]);
-        const cartQuantity =
-       ProductData?.variants?.find((variant: any) => variant?.id === activeVariant?.id)
-        ?.cart_quantity ?? 0;
+    const cartQuantity =
+        ProductData?.variants?.find((variant: any) => variant?.id === activeVariant?.id)
+            ?.cart_quantity ?? 0;
 
     console.log('activeVariantactiveVariant', activeVariant, "cartQuantity", cartQuantity);
 
@@ -192,7 +192,7 @@ const ProductDetails = (props: any) => {
     }, [ProductData]);
 
     useEffect(() => {
-        setQuantity(1);
+        setQuantity(cartQuantity > 0 ? cartQuantity : 1);
     }, [activeVariant?.id, activeVariant?.variant_id]);
 
     useEffect(() => {
@@ -302,7 +302,7 @@ const ProductDetails = (props: any) => {
                 showSuccessToast('Try again to add into cart', 'error');
                 return;
             }
-            setQuantity(1);
+            setQuantity(addQty);
             if (goToCart) {
                 props.navigation.navigate('MyCart');
             }

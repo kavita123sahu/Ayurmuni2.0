@@ -349,7 +349,7 @@ const ConsultHome = () => {
         onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
         // onSearchPress={() => setSearchExpanded(true)}
-        onRefreshPress={onRefresh}
+        // onRefreshPress={onRefresh}
       />
 
 

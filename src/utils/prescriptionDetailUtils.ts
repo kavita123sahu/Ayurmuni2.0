@@ -299,11 +299,11 @@ export const getConcernText = (payload: any): string => {
 export const getDiagnosisText = (prescription: any): string => {
   if (!prescription) return '';
   return String(
-    prescription.diagnosis ||
+    prescription.diagnosis_advice ||
+      prescription.diagnosis ||
       prescription.provisional_diagnosis ||
       prescription.clinical_diagnosis ||
       prescription.condition ||
-      prescription.symptom_description ||
       '',
   ).trim();
 };
@@ -352,18 +352,14 @@ export const getDontList = (prescription: any): string[] => {
 
 export const getSuggestionList = (prescription: any): string[] => {
   if (!prescription) return [];
-  const fromFields = asAdviceList(
+  // Keep diagnosis_advice in getDiagnosisText — do not duplicate here
+  return asAdviceList(
     prescription.suggestions ||
       prescription.suggestion ||
       prescription.general_instructions ||
       prescription.patient_instructions ||
       prescription.instructions,
   );
-  const advice = String(prescription.diagnosis_advice || '').trim();
-  if (advice && !fromFields.includes(advice)) {
-    fromFields.unshift(advice);
-  }
-  return fromFields;
 };
 
 export const getClinicalAdvisory = (prescription: any): string => {

@@ -1349,6 +1349,7 @@ const styles = StyleSheet.create({
   categoryItemActive: {
     backgroundColor: '#FFFFFF',
     borderRightColor: Colors.primaryColor,
+    borderRadius: 5,
   },
   categoryIconWrap: {
     width: 36,

@@ -408,6 +408,7 @@ export const getProductByVariant = async (variantID: string) => {
       buildProductQuery({ variant_id: variantID }),
       { method: 'GET' },
     );
+    console.log('getProductByVariantresponse', response);
     return response;
   } catch (error) {
     throw error;
