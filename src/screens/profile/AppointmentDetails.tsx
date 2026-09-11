@@ -34,6 +34,7 @@ import {
   formatAppointmentDateFull,
   getAppointmentIds,
   resolveAppointmentLookupId,
+  getMinutesUntilAppointment,
 } from '../../utils/appointmentUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
@@ -370,7 +371,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     'noshow',
   ].includes(String(appointmentStatus || ''));
 
-  const showButtons = !['cancelled', 'completed', 'rescheduled'].includes(appointmentStatus);
+  const minutesLeft = getMinutesUntilAppointment(normalizedAppointment?.date, normalizedAppointment?.time);
+  const within3Hours = minutesLeft !== null && minutesLeft <= 180;
+  const showButtons = !['cancelled', 'completed', 'rescheduled'].includes(appointmentStatus) && within3Hours;
   const isRescheduleRequest = appointmentStatus === 'reschedule';
 
   // status pill color mapping — luxury muted tones instead of loud flat colors

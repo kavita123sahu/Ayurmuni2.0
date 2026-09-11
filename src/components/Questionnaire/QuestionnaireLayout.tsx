@@ -205,12 +205,22 @@ const QuestionnaireLayout = ({
           {showInfo && <InfoCard text={config.infoText} />}
         </ScrollView>
 
-        <BottomButton
-          loading={submitting}
-          disabled={isDisabled || submitting}
-          onPress={handleNext}
-          title={isLastStep ? 'Finish' : 'Next'}
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+          {showSkip ? (
+            <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} activeOpacity={0.85}>
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 72 }} />
+          )}
+
+          <BottomButton
+            loading={submitting}
+            disabled={isDisabled || submitting}
+            onPress={handleNext}
+            title={isLastStep ? 'Finish' : 'Next'}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
