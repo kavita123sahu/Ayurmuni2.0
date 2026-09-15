@@ -29,6 +29,65 @@ export const canRescheduleAppointment = (status?: string | null): boolean => {
   return RESCHEDULABLE_STATUSES.includes(value);
 };
 
+/**
+ * Allow reschedule/cancel when status is reschedulable and the appointment
+ * start is MORE than `windowMinutes` away (default 3 hours).
+ * Hidden once inside the last 3 hours before start, or after it has started.
+ * Example: a 14 Sep booking shows Cancel/Reschedule until 3h before that slot.
+ */
+export const canModifyAppointment = (
+  status?: string | null,
+  dateStr?: string,
+  timeStr?: string,
+  windowMinutes = 180,
+): boolean => {
+  if (!canRescheduleAppointment(status)) return false;
+
+  const date = String(dateStr || '').trim();
+  const time = String(timeStr || '').trim();
+  // Must have a real schedule — never enable from status alone
+  if (!date) return false;
+
+  const mins = getMinutesUntilAppointment(date, time || undefined);
+  if (mins == null || !Number.isFinite(mins)) return false;
+  // Already started / past — no cancel/reschedule
+  if (mins <= 0) return false;
+
+  const lockWindow = Math.max(1, Math.floor(Number(windowMinutes) || 180));
+  // Inside last 3 hours before start → hide buttons
+  if (mins <= lockWindow) return false;
+
+  // More than 3 hours away → show Cancel + Reschedule
+  return true;
+};
+
+/** Resolve date/time from list or detail appointment payloads. */
+export const resolveAppointmentDateTime = (
+  item: any,
+): { date?: string; time?: string } => {
+  if (!item) return {};
+  const root = item?.rawData ?? item;
+  const appt = root?.appointment ?? item?.appointment ?? root;
+  const date = String(
+    item?.date ||
+      appt?.appointment_date ||
+      appt?.date ||
+      root?.appointment_date ||
+      '',
+  ).trim();
+  const time = String(
+    item?.time ||
+      appt?.start_time ||
+      appt?.time ||
+      root?.start_time ||
+      '',
+  ).trim();
+  return {
+    date: date || undefined,
+    time: time || undefined,
+  };
+};
+
 /** Receipt is available for any consultation that has an id (including past). */
 export const canShowConsultationReceipt = (
   status?: string | null,
@@ -186,6 +245,25 @@ export function normalizeAppointmentListItem(item: any) {
   const endTime = appointment?.end_time || item?.end_time || null;
   const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
 
+  const patient =
+    appointment?.patient ?? root?.patient ?? item?.patient ?? null;
+  const patientId = String(
+    patient?.id ??
+      patient?.patient_id ??
+      patient?.user_id ??
+      appointment?.patient_id ??
+      root?.patient_id ??
+      item?.patient_id ??
+      '',
+  ).trim();
+  const patientName = String(
+    patient?.patient_name ??
+      patient?.full_name ??
+      patient?.name ??
+      item?.patientName ??
+      '',
+  ).trim();
+
   return {
     consultation_id: ids.consultationId || ids.appointmentId,
     appointment_id: ids.appointmentId || ids.consultationId,
@@ -204,8 +282,19 @@ export function normalizeAppointmentListItem(item: any) {
       item?.call_status ??
       item?.rawData?.call_status,
     image,
+    patientId,
+    patientName,
+    patient,
     rawData: root,
   };
+}
+
+/** Appointment patient id for active-profile / switch checks. */
+export function getAppointmentPatientId(item: any): string {
+  if (!item) return '';
+  if (item?.patientId) return String(item.patientId).trim();
+  const normalized = normalizeAppointmentListItem(item);
+  return String(normalized?.patientId || '').trim();
 }
 
 /** Local calendar date parts — avoids UTC midnight shift on `YYYY-MM-DD`. */
@@ -600,7 +689,8 @@ export const getMinutesUntilAppointment = (
     return null;
   }
 
-  return Math.max(0, Math.ceil((start.getTime() - Date.now()) / 60000));
+  // Signed minutes: negative = already started/past
+  return Math.ceil((start.getTime() - Date.now()) / 60000);
 };
 
 export type JoinableAppointment = {

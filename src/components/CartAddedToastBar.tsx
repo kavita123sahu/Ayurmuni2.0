@@ -48,6 +48,18 @@ const CartAddedToastBar = () => {
 
   const show = useCallback(
     (payload: CartItemAddedPayload) => {
+      // Already on MyCart — qty bumps / adds should not show "View cart" sheet
+      try {
+        if (navigationRef.isReady()) {
+          const routeName = navigationRef.getCurrentRoute()?.name;
+          if (routeName === 'MyCart') {
+            return;
+          }
+        }
+      } catch {
+        // ignore route probe errors
+      }
+
       setProductName(payload.productName?.trim() || 'Item');
       setProductImage(payload.image);
       setVisible(true);

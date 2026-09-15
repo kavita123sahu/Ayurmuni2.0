@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Colors } from '../common/Colors';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Fonts } from '../common/Fonts';
+import DoctorAvatar from './DoctorAvatar';
 
 type Props = {
   name: string;
   subtitle: string;
   description: string;
-  image: any;
+  imageUri?: string | null;
   buttonText?: string;
   onPress?: () => void;
 };
@@ -16,18 +16,23 @@ const MentorCard = ({
   name,
   subtitle,
   description,
-  image,
+  imageUri,
   buttonText = 'Consult Mentor',
   onPress,
 }: Props) => {
   return (
     <View style={styles.card}>
-
-      <Image source={image} style={styles.image} />
+      <DoctorAvatar
+        uri={imageUri}
+        name={name}
+        size={90}
+        shape="circle"
+        emptyMode="icon"
+        style={styles.avatar}
+      />
 
       <Text style={styles.name}>{name}</Text>
 
-     
       <Text style={styles.subtitle}>{subtitle}</Text>
 
       <Text style={styles.description}>{description}</Text>
@@ -35,7 +40,6 @@ const MentorCard = ({
       <TouchableOpacity style={styles.button} onPress={onPress}>
         <Text style={styles.buttonText}>{buttonText}</Text>
       </TouchableOpacity>
-
     </View>
   );
 };
@@ -44,23 +48,20 @@ export default MentorCard;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#166A57',   // dark green
+    backgroundColor: '#166A57',
     borderRadius: 28,
     paddingVertical: 28,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
 
-  image: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  avatar: {
     marginBottom: 16,
   },
 
   name: {
     fontSize: 20,
-    fontFamily : Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 6,
@@ -68,10 +69,10 @@ const styles = StyleSheet.create({
 
   subtitle: {
     fontSize: 14,
-    color: '#6EE7B7',  // light green text
+    color: '#6EE7B7',
     textAlign: 'center',
     marginBottom: 14,
-    fontFamily : Fonts.PoppinsMedium
+    fontFamily: Fonts.PoppinsMedium,
   },
 
   description: {
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     color: '#D1FAE5',
     textAlign: 'center',
     lineHeight: 20,
-    fontFamily : Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsMedium,
     marginBottom: 24,
     paddingHorizontal: 10,
   },
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
 
   buttonText: {
     fontSize: 14,
-    fontFamily :Fonts.PoppinsSemiBold,
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#1C1F23',
   },
 });

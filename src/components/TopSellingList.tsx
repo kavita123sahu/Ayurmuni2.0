@@ -25,8 +25,7 @@ import {
   useWishlistSync,
 } from '../hooks/useWishlistSync';
 import {
-  canAddProductQty,
-  isProductOutOfStock,
+  getAddQtyBlockMessage,
 } from '../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { resolveProductImageUri } from '../utils/imageUtils';
@@ -106,12 +105,9 @@ const TopSellingList: React.FC<Props> = ({
       const variantId = String(resolveVariantId(item) ?? '');
       if (!variantId || variantId === 'undefined' || variantId === 'null') return;
 
-      if (newQty > 0 && isProductOutOfStock(item)) {
-        showSuccessToast('This product is out of stock', 'error');
-        return;
-      }
-      if (!canAddProductQty(item, newQty)) {
-        showSuccessToast('Not enough stock available', 'error');
+      const stockMsg = getAddQtyBlockMessage(item, newQty);
+      if (stockMsg) {
+        showSuccessToast(stockMsg, 'error');
         return;
       }
 

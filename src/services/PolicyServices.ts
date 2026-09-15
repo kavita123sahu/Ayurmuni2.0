@@ -34,7 +34,7 @@ export const acceptPolicies = async (body: {
   policy_type?: string;
 }) => {
   return apiClient(
-    'policies/customer/accept/',
+    'policies/legal/accept/',
     {
       method: 'POST',
       body: JSON.stringify(body),

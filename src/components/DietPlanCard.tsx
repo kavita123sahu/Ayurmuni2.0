@@ -69,11 +69,11 @@ const PlanStatusPill = memo(({ item }: { item: any }) => {
 });
 
 const DietPlanCard = ({ item, onPress }: Props) => {
-  const diseases = useMemo(
+  const subtitle = useMemo(
     () =>
-      item.health_diseases?.map((d: any) => d.name).filter(Boolean).join(', ') ||
-      '',
-    [item.health_diseases],
+      String(item?.subtitle || item?.season || item?.short_description || '')
+        .trim(),
+    [item?.subtitle, item?.season, item?.short_description],
   );
   const isFree = item.is_paid === false || Number(item.price) === 0;
   const prakriti = String(item?.prakriti || '').trim();
@@ -134,9 +134,9 @@ const DietPlanCard = ({ item, onPress }: Props) => {
           {item.name}
         </Text>
 
-        {!!diseases && (
+        {!!subtitle && (
           <Text style={styles.planSubtitle} numberOfLines={1}>
-            {diseases}
+            {subtitle}
           </Text>
         )}
 
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   // Cover image — fills top edge-to-edge, no white gap
   coverWrap: {
     width: '100%',
-    height: 160,
+    height: 96,
     position: 'relative',
   },
   coverImage: {
@@ -229,42 +229,42 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 64,
+    height: 48,
   },
 
   // Badges overlaid on the cover image
   popularOverlay: {
     position: 'absolute',
-    top: SPACING.sm,
-    left: SPACING.sm,
+    top: 6,
+    left: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: 'rgba(255,247,237,0.92)',
     borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   popularOverlayText: {
-    fontSize: TYPO.caption,
+    fontSize: 10,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#EA580C',
   },
   statusOverlay: {
     position: 'absolute',
-    top: SPACING.sm,
-    right: SPACING.sm,
+    top: 6,
+    right: 6,
   },
   proBadge: {
     position: 'absolute',
-    bottom: SPACING.sm,
-    right: SPACING.sm,
+    bottom: 6,
+    right: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 7,
   },
   proBadgeText: {
     fontSize: 9,
@@ -275,32 +275,33 @@ const styles = StyleSheet.create({
 
   // Content below the image
   cardBody: {
-    padding: SPACING.md,
-    paddingTop: SPACING.sm + 2,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   planTitle: {
-    fontSize: TYPO.md,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 18,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
   },
   planSubtitle: {
-    fontSize: TYPO.sm,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 15,
     fontFamily: Fonts.PoppinsRegular,
     color: '#64748B',
-    marginTop: 3,
+    marginTop: 2,
   },
   prakritiBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#ECFDF5',
-    borderRadius: RADIUS.sm - 2,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
-    marginTop: SPACING.xs + 2,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
   },
   prakritiBadgeText: {
-    fontSize: TYPO.caption,
+    fontSize: 10,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#047857',
     textTransform: 'capitalize',
@@ -311,8 +312,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: SPACING.sm + 2,
-    paddingTop: SPACING.sm,
+    marginTop: 6,
+    paddingTop: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#EEF2F6',
   },
@@ -321,32 +322,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: SPACING.md,
+    gap: 8,
     minWidth: 0,
   },
   footerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   footerText: {
-    fontSize: TYPO.caption,
+    fontSize: 11,
     fontFamily: Fonts.PoppinsMedium,
     color: '#64748B',
   },
   footerRatingText: {
-    fontSize: TYPO.caption,
+    fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#B45309',
   },
   chevronBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: SPACING.sm,
+    marginLeft: 6,
   },
 
   // Status pills

@@ -67,11 +67,22 @@ const isWithinDefaultChatWindow = (
   return startOfDay(new Date()) <= cutoff;
 };
 
-/** True while follow-up date is today or in the future (inclusive). */
-export const isFollowUpChatWindowOpen = (followUp?: {
-  schedule?: boolean;
-  date?: string | null;
-} | null): boolean => {
+/** True while follow-up date is today or in the future (inclusive).
+ *
+ * When a follow-up is scheduled but no concrete date is provided, the
+ * follow-up window is considered open for DEFAULT_CHAT_DAYS after the
+ * appointment date (when an appointment date is available). If no
+ * appointment date is available, the function falls back to marking the
+ * scheduled follow-up as open to avoid prematurely closing chat.
+ */
+export const isFollowUpChatWindowOpen = (
+  followUp?: {
+    schedule?: boolean;
+    date?: string | null;
+  } | null,
+  appointmentDate?: string | null,
+  fallback?: AppointmentChatLike | null,
+): boolean => {
   if (!followUp) {
     return false;
   }
@@ -82,8 +93,18 @@ export const isFollowUpChatWindowOpen = (followUp?: {
     }
     return followUpDay >= startOfDay(new Date());
   }
-  // Scheduled without a concrete date — keep open until API/date says otherwise
-  return followUp.schedule === true;
+  // No concrete follow-up date.
+  // If scheduled without a date and an appointment day is available,
+  // consider the follow-up window open for DEFAULT_CHAT_DAYS after appointment.
+  if (followUp.schedule === true) {
+    const apptDay = appointmentDate ?? fallback?.appointment_date ?? null;
+    if (apptDay) {
+      return isWithinDefaultChatWindow(apptDay, fallback);
+    }
+    // Fallback: if no appointment date available, keep open for now.
+    return true;
+  }
+  return false;
 };
 
 const isFollowUpWindowEnded = (followUp?: {
@@ -145,9 +166,16 @@ export function isChatSendEnabled(
 
   // Follow-up still within date window — do NOT let API can_send:false or
   // follow_up_active:false close chat early (e.g. follow-up on 12 Sep 2026).
+  if (merged.follow_up_active === true) {
+    return true;
+  }
+
   if (
-    merged.follow_up_active === true ||
-    isFollowUpChatWindowOpen(followUp)
+    isFollowUpChatWindowOpen(
+      followUp,
+      appointmentDate ?? fallback?.appointment_date ?? undefined,
+      fallback,
+    )
   ) {
     return true;
   }
@@ -203,7 +231,11 @@ export function getChatDisabledReason(
 
   if (
     access?.follow_up_active === false &&
-    !isFollowUpChatWindowOpen(followUp)
+    !isFollowUpChatWindowOpen(
+      followUp,
+      appointmentDate ?? fallback?.appointment_date ?? undefined,
+      fallback,
+    )
   ) {
     return 'Follow-up chat is inactive — you can read previous messages but cannot send new ones';
   }

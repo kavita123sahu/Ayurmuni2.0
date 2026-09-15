@@ -20,7 +20,9 @@ import {
 } from '../../services/PolicyServices';
 import {
   getPolicyDoc,
+  isPolicyAccepted,
   isPolicyVersionUpdated,
+  policyIconName,
 } from '../../utils/policyUtils';
 
 const LegalPoliciesHubScreen = (props: any) => {
@@ -99,7 +101,7 @@ const LegalPoliciesHubScreen = (props: any) => {
           <View style={styles.card}>
             {policies.map((item, index) => {
               const policy = getPolicyDoc(item);
-              const updated = isPolicyVersionUpdated(item);
+              const updated = isPolicyAccepted(item);
               return (
                 <React.Fragment key={policy?.id || String(index)}>
                   <TouchableOpacity
@@ -109,7 +111,7 @@ const LegalPoliciesHubScreen = (props: any) => {
                   >
                     <View style={styles.iconBox}>
                       <TablerIcon
-                        name="file-medical"
+                        name={policyIconName(item, index)}
                         size={20}
                         color={Colors.primaryColor}
                       />

@@ -33,8 +33,7 @@ import {
 import { useDebounce } from '../../hooks/useDebaunce';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import {
-  canAddProductQty,
-  isProductOutOfStock,
+  getAddQtyBlockMessage,
 } from '../../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import {
@@ -268,12 +267,9 @@ const ProductSearchScreen = (props: any) => {
       const variantId = String(item?.variant_id);
       if (!variantId) return;
 
-      if (newQty > 0 && isProductOutOfStock(item)) {
-        showSuccessToast('This product is out of stock', 'error');
-        return;
-      }
-      if (!canAddProductQty(item, newQty)) {
-        showSuccessToast('Not enough stock available', 'error');
+      const stockMsg = getAddQtyBlockMessage(item, newQty);
+      if (stockMsg) {
+        showSuccessToast(stockMsg, 'error');
         return;
       }
 

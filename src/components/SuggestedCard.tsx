@@ -155,19 +155,24 @@ const SuggestedCard: React.FC<Props> = ({
         const isDiet = item?.type === 'diet';
         const isYoga = item?.type === 'yoga' || !isDiet;
         const title = item?.title || item?.name || '';
-        const subtitle =
-          item?.short_description ||
-          item?.health_diseases
-            ?.map((d: any) => d?.name)
-            .filter(Boolean)
-            .join(', ') ||
-          '';
-          const dieseases = item?.health_diseases
-            ?.map((d: any) => d?.name)
-            .filter(Boolean)
+        const subtitle = isDiet
+          ? String(
+              item?.subtitle ||
+                item?.season ||
+                item?.short_description ||
+                '',
+            ).trim()
+          : item?.short_description ||
+            item?.health_diseases
+              ?.map((d: any) => d?.name)
+              .filter(Boolean)
+              .join(', ') ||
+            '';
         const prakriti = String(item?.prakriti || '').trim();
         const season = String(item?.season || '').trim();
-        const badgeText = item?.difficulty || season || '';
+        const badgeText = isDiet
+          ? ''
+          : item?.difficulty || season || '';
         const doctorName = String(
           item?.suggested_doctor_name ||
           item?.doctor_name ||
@@ -176,6 +181,11 @@ const SuggestedCard: React.FC<Props> = ({
         ).trim();
         const doctorLabel = doctorName.replace(/^dr\.?\s*/i, '');
         const dietRatingText = isDiet ? formatDietPlanRatingBadgeText(item) : null;
+        const dietStatus = isDiet
+          ? String(item?.patient_assignment_status || item?.status || '')
+              .replace(/_/g, ' ')
+              .trim()
+          : '';
         const imageUri = isYoga
           ? resolveYogaThumbnailUri(item)
           : (
@@ -234,7 +244,15 @@ const SuggestedCard: React.FC<Props> = ({
                   {title}
                 </Text>
 
-                {isDiet && !!doctorName ? (
+                {isDiet && !!subtitle ? (
+                  <Text
+                    style={styles.subtitle}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {subtitle}
+                  </Text>
+                ) : isDiet && !!doctorName ? (
                   <View style={styles.doctorSuggestChip}>
                     <TablerIcon name="stethoscope" size={11} color="#0D614E" />
                     <View style={styles.doctorSuggestChipCopy}>
@@ -249,13 +267,13 @@ const SuggestedCard: React.FC<Props> = ({
                       </Text>
                     </View>
                   </View>
-                ) : !!dieseases ? (
+                ) : !isDiet && !!subtitle ? (
                   <Text
                     style={styles.subtitle}
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {dieseases.join(', ')}
+                    {subtitle}
                   </Text>
                 ) : null}
 
@@ -265,6 +283,13 @@ const SuggestedCard: React.FC<Props> = ({
                       <TablerIcon name="star" size={10} color="#F59E0B" strokeWidth={2} />
                       <Text style={styles.ratingBadgeText} numberOfLines={1}>
                         {dietRatingText}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {isDiet && !!dietStatus ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText} numberOfLines={1}>
+                        {dietStatus.charAt(0).toUpperCase() + dietStatus.slice(1)}
                       </Text>
                     </View>
                   ) : null}

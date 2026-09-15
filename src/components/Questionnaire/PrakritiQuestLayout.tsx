@@ -211,7 +211,7 @@ const QuestOption = memo(
               {title}
             </Text>
             {!!subtitle && (
-              <Text numberOfLines={1} style={styles.optionSubtitle}>
+              <Text numberOfLines={2} style={styles.optionSubtitle}>
                 {subtitle}
               </Text>
             )}
@@ -323,9 +323,11 @@ const QuestLayoutInner = ({
   answers,
   isDisabled,
   isLastStep,
+  showSkip,
   handleSelect,
   handleNext,
   handleBack,
+  handleSkip,
   retryLoad,
   isSelected,
   streak = 0,
@@ -674,12 +676,28 @@ const QuestLayoutInner = ({
               {step === 0 ? 'Back' : 'Previous'}
             </Text>
           </Pressable>
-          <Pressable
-            onPress={onExitQuest}
-            style={[styles.exitBtn, { backgroundColor: Colors.primaryColor }]}
-          >
-            <Text style={styles.exitText}>Exit Quest</Text>
-          </Pressable>
+
+          <View style={styles.footerRight}>
+            {showSkip ? (
+              <Pressable
+                onPress={() => {
+                  play('select');
+                  handleSkip();
+                }}
+                style={styles.skipBtn}
+                hitSlop={8}
+              >
+                <Text style={[styles.skipText, { color: accent }]}>Skip</Text>
+                <TablerIcon name="chevron-right" size={14} color={accent} />
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={onExitQuest}
+              style={[styles.exitBtn, { backgroundColor: Colors.primaryColor }]}
+            >
+              <Text style={styles.exitText}>Exit Quest</Text>
+            </Pressable>
+          </View>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -1004,6 +1022,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 2,
   },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   prevBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1014,6 +1037,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
     fontSize: 13,
     color: QUEST.ink,
+  },
+  skipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+  skipText: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 13,
   },
   exitBtn: {
     paddingHorizontal: 14,

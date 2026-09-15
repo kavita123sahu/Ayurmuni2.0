@@ -5,14 +5,13 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    Image,
     Dimensions,
     StatusBar,
     ActivityIndicator,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
+import DoctorAvatar from '../../components/DoctorAvatar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import * as _CONSULT_SERVICE from '../../services/ConsultServce';
@@ -210,13 +209,18 @@ const MedicalReceipt = (props: any) => {
                                     <View style={styles.dashed} />
 
                                     <View style={styles.doctorRow}>
-                                        <Image
-                                            source={
-                                                receipt?.info?.doctor_image
-                                                    ? { uri: receipt.info.doctor_image }
-                                                    : Images.doctorImage
+                                        <DoctorAvatar
+                                            uri={receipt?.info?.doctor_image}
+                                            doctor={receipt?.info}
+                                            name={
+                                                receipt?.info?.doctor_name ||
+                                                receipt?.doctor_name ||
+                                                'Doctor'
                                             }
-                                            style={styles.docImg}
+                                            size={56}
+                                            shape="rounded"
+                                            borderRadius={14}
+                                            emptyMode="icon"
                                         />
                                         <View style={styles.docMeta}>
                                             <Text style={styles.docLabel}>Consulting Doctor</Text>
@@ -406,13 +410,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E8EEF2',
         gap: 12,
-    },
-
-    docImg: {
-        width: 56,
-        height: 56,
-        borderRadius: 14,
-        backgroundColor: '#E2E8F0',
     },
 
     docMeta: {

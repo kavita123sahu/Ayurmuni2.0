@@ -172,8 +172,8 @@ const AssessmentType = (props: any) => {
 
           {showMedical && (
             <AssessmentCard
-              title="Your Health Profile"
-              subtitle="Share conditions, allergies, and reports so consultations start with the full picture."
+              title="Vikriti assessment "
+              subtitle="Gut and metabolic evaluation/constitution."
               meta="Secure"
               icon="file-medical"
               gradient={['#0F4A38', '#157A58']}

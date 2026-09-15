@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Dimensions, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import Header from "../../components/Header";
-import { Images } from "../../common/Images";
+import DoctorAvatar from "../../components/DoctorAvatar";
 import { Fonts } from "../../common/Fonts";
 import { Colors } from "../../common/Colors";
 import ReviewSection from "../../components/ReviewSecton";
@@ -168,10 +168,13 @@ const MentorProfile = (props: any) => {
             />
 
                 <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor: Colors.background}}> 
-                    <View style={styles.imageWrapper}>
-                        <Image
-                            source={Images.doctorImage}
-                            style={styles.image}
+                    <View style={[styles.imageWrapper, styles.image]}>
+                        <DoctorAvatar
+                            name="Elena Vance"
+                            fill
+                            shape="rounded"
+                            borderRadius={24}
+                            emptyMode="icon"
                         />
 
                         <View style={styles.badge}>
@@ -208,13 +211,16 @@ const styles = StyleSheet.create({
 
     imageWrapper: {
         position: "relative",
-        marginTop: 20
+        marginTop: 20,
+        overflow: "hidden",
+        borderRadius: 24,
     },
 
     image: {
         width: "100%",
-        height: width * 1.1, // 🔥 same tall image look
-        borderRadius: 24
+        height: width * 1.1,
+        borderRadius: 24,
+        backgroundColor: "#DFE5E7",
     },
 
     badge: {

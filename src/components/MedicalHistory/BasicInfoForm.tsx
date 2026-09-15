@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 
 import {
   View,
@@ -6,11 +6,14 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  StyleSheet,
 } from 'react-native';
+import { Fonts } from '../../common/Fonts';
 
 import {
   styles,
 } from '../../components/MedicalHistory/styles/MedicalHistor';
+import BmiGaugeCard from './BmiGaugeCard';
 
 /* =====================================================
    INPUT CARD
@@ -86,6 +89,7 @@ const BasicInfoSection = ({
   selectedAnswers,
   onChange,
 }: any) => {
+  const [bmiReady, setBmiReady] = useState(false);
 
   /* =====================================================
      FIND QUESTIONS — show whichever basic fields API returns
@@ -127,6 +131,17 @@ const BasicInfoSection = ({
   const heightContainsWeight =
     !!heightQuestion?.question?.toLowerCase?.().includes('weight') ||
     !!heightQuestion?.question?.toLowerCase?.().includes('height');
+  const heightValue = selectedAnswers?.[`${heightId}_height`] || '';
+  const weightValue =
+    selectedAnswers?.[`${heightId}_weight`] ||
+    (weightQuestion && !heightContainsWeight
+      ? selectedAnswers?.[String(weightQuestion.id)]
+      : '') ||
+    '';
+  const canCalculate = Boolean(
+    String(heightValue).replace(/[^\d.]/g, '') &&
+      String(weightValue).replace(/[^\d.]/g, ''),
+  );
 
   return (
     <View style={styles.basicInfoWrapper}>
@@ -147,10 +162,11 @@ const BasicInfoSection = ({
           <InputCard
             label="Height *"
             placeholder="Enter height"
-            value={selectedAnswers?.[`${heightId}_height`] || ''}
-            onChangeText={(text: string) =>
-              onChange(`${heightId}_height`, text)
-            }
+            value={heightValue}
+            onChangeText={(text: string) => {
+              setBmiReady(false);
+              onChange(`${heightId}_height`, text);
+            }}
             unit="cm"
             icon={require('../../assets/images/SVG2.png')}
           />
@@ -158,19 +174,30 @@ const BasicInfoSection = ({
           <InputCard
             label="Weight *"
             placeholder="Enter weight"
-            value={
-              selectedAnswers?.[`${heightId}_weight`] ||
-              (weightQuestion && !heightContainsWeight
-                ? selectedAnswers?.[String(weightQuestion.id)]
-                : '') ||
-              ''
-            }
-            onChangeText={(text: string) =>
-              onChange(`${heightId}_weight`, text)
-            }
+            value={weightValue}
+            onChangeText={(text: string) => {
+              setBmiReady(false);
+              onChange(`${heightId}_weight`, text);
+            }}
             unit="kg"
             icon={require('../../assets/images/SVG3.png')}
           />
+          {canCalculate && !bmiReady ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={calcStyles.btn}
+              onPress={() => setBmiReady(true)}
+            >
+              <Text style={calcStyles.text}>Calculate BMI</Text>
+            </TouchableOpacity>
+          ) : null}
+          {bmiReady ? (
+            <BmiGaugeCard
+              revealed
+              heightCm={heightValue}
+              weightKg={weightValue}
+            />
+          ) : null}
         </>
       ) : null}
     </View>
@@ -178,4 +205,19 @@ const BasicInfoSection = ({
 };
 
 export default React.memo(BasicInfoSection);
+
+const calcStyles = StyleSheet.create({
+  btn: {
+    marginTop: 12,
+    backgroundColor: '#0D614E',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  text: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+});
 

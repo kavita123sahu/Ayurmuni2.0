@@ -243,10 +243,10 @@
 
 
 import { useCallback, useRef, useState } from 'react';
-import RazorpayCheckout from 'react-native-razorpay';
 import { showSuccessToast } from '../config/Key';
 import { Colors } from '../common/Colors';
 import {
+  isRazorpayUserCancelled,
   openRazorpayPayment,
   toRazorpayPaise,
 } from '../services/RazorpayService';
@@ -257,6 +257,7 @@ import {
   isPrepaidVerifyAcceptable,
   OrderCartLine,
 } from '../utils/orderPayload';
+import { formatOrderStockError } from '../utils/productStockUtils';
 
 type CartLine = OrderCartLine & {
   variant_id: string | number;
@@ -406,7 +407,12 @@ export const useProductOnlinePayment = () => {
         console.log('ONLINE_ORDER_RESPONSE =>', orderResponse);
 
         if (!orderResponse?.success) {
-          const failMsg = orderResponse?.message ?? 'Order failed';
+          const failMsg =
+            formatOrderStockError(orderResponse?.message) ||
+            formatOrderStockError(orderResponse?.data?.message) ||
+            orderResponse?.message ||
+            orderResponse?.data?.message ||
+            'Order failed';
           const lower = failMsg.toLowerCase();
           if (
             coupon_code &&
@@ -495,18 +501,15 @@ export const useProductOnlinePayment = () => {
           });
         } catch (error: any) {
           console.log('ONLINE_RAZORPAY_CATCH =>', error);
-          const desc = String(error?.description ?? error?.message ?? '');
-          if (
-            error?.code === RazorpayCheckout.PAYMENT_CANCELLED ||
-            desc.toLowerCase().includes('cancel') ||
-            desc.toLowerCase().includes('dismiss') ||
-            desc.toLowerCase().includes('exit')
-          ) {
-            showSuccessToast('Payment cancelled', 'error');
+          if (isRazorpayUserCancelled(error)) {
+            showSuccessToast(
+              'Payment cancelled. You can try again anytime.',
+              'error',
+            );
             return;
           }
           showSuccessToast(
-            desc || 'Unable to open payment. Please try again.',
+            'Unable to complete payment. Please try again.',
             'error',
           );
           return;
@@ -560,14 +563,23 @@ export const useProductOnlinePayment = () => {
         }
 
         showSuccessToast(
-          verifyResponse?.message ?? 'Payment verification failed',
+          formatOrderStockError(verifyResponse?.message) ||
+            verifyResponse?.message ||
+            'Payment verification failed. Some items may be out of stock.',
           'error',
         );
       } catch (error: any) {
         console.log('ONLINE_PAYMENT_FATAL =>', error);
         setIsVerifyingPayment(false);
+        if (isRazorpayUserCancelled(error)) {
+          showSuccessToast(
+            'Payment cancelled. You can try again anytime.',
+            'error',
+          );
+          return;
+        }
         showSuccessToast(
-          error?.message || error?.description || 'Something went wrong',
+          'Something went wrong. Please try again.',
           'error',
         );
       } finally {

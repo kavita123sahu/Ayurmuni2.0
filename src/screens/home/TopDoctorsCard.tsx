@@ -7,6 +7,7 @@ import {
   getDoctorGridCardWidth,
   getHomeDoctorCardWidth,
 } from '../../constants/doctorGridLayout';
+import { formatConsultationFeeLabel } from '../../utils/doctorUtils';
 
 const toLabelList = (value: any): string[] => {
   if (value == null || value === '') return [];
@@ -117,15 +118,12 @@ const TopDoctorsCard = ({
     return null;
   }
 
+  console.log("datadatadatadatadatadata,", data);
   return (
     <View style={styles.grid}>
       {list.map((item, index) => {
         const labels = getDoctorSpecializationLabels(item);
-        const feeRaw = item?.consultation_fee;
-        const hasFee =
-          feeRaw != null &&
-          String(feeRaw).trim() !== '' &&
-          Number(feeRaw) >= 0;
+        const feeLabel = formatConsultationFeeLabel(item);
         const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
 
         const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
@@ -139,7 +137,7 @@ const TopDoctorsCard = ({
             item?.total_patients ??
             item?.total_reviews,
           experience: item?.experience_years || item?.experience || '0',
-          feeLabel: hasFee ? String(feeRaw).replace(/\.0+$/, '') : null,
+          feeLabel,
           imageUri: resolveImageUri(item),
           available: item?.has_availability === true,
           onPress: () => openDoctorProfile(item),

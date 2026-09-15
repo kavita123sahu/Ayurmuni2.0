@@ -28,7 +28,6 @@ import { Fonts } from '../../common/Fonts';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import AllDoctorCard from '../../components/AllDoctorCard';
-import { Images } from '../../common/Images';
 import { doctorListKey } from '../../utils/listKeys';
 import {
     DOCTOR_GRID,
@@ -424,7 +423,6 @@ const AllDoctors = (props: any) => {
                             updateCellsBatchingPeriod={50}
                             ListEmptyComponent={() => (
                                 <EmptyState
-                                    image={Images.doctorImage}
                                     title="No doctor found"
                                     subtitle="Try adjusting your filters or search."
                                     imageSize={48}

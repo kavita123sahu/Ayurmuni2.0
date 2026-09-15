@@ -90,5 +90,6 @@ export const itemMatchesHealthConcern = (
     Array.isArray(item?.health_diseases) ||
     Array.isArray(item?.health_categories);
 
-  return !opts.strict && !hasHealthMeta;
+  // Prefer showing API-scoped rows even when metadata tags are missing
+  return !hasHealthMeta;
 };

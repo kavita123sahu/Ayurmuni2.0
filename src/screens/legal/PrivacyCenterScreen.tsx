@@ -20,7 +20,9 @@ import {
 } from '../../services/PolicyServices';
 import {
   getPolicyDoc,
+  isPolicyAccepted,
   isPolicyVersionUpdated,
+  policyIconName,
 } from '../../utils/policyUtils';
 
 const PrivacyCenterScreen = (props: any) => {
@@ -61,7 +63,7 @@ const PrivacyCenterScreen = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right','bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <AppHeader
         title="Privacy Center"
@@ -101,7 +103,7 @@ const PrivacyCenterScreen = (props: any) => {
           <View style={styles.card}>
             {policies.map((item, index) => {
               const policy = getPolicyDoc(item);
-              const updated = isPolicyVersionUpdated(item);
+              const updated = isPolicyAccepted(item);
               return (
                 <React.Fragment key={policy?.id || String(index)}>
                   <TouchableOpacity
@@ -111,7 +113,7 @@ const PrivacyCenterScreen = (props: any) => {
                   >
                     <View style={styles.iconBox}>
                       <TablerIcon
-                        name="shield"
+                        name={policyIconName(item, index)}
                         size={20}
                         color={Colors.primaryColor}
                       />

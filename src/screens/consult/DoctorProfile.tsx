@@ -31,6 +31,8 @@ import {
     getDoctorDisplayName,
     getDoctorRating,
     formatDoctorExperience,
+    resolveDoctorProfileImageUri,
+    resolveConsultationFee,
 } from '../../utils/doctorUtils';
 
 /* -------------------------------------------------------------------------- */
@@ -130,13 +132,6 @@ const resolveDoctorSpecializations = (doctor: any): string[] => {
 
 const resolveDoctorHealthDiseases = (doctor: any): string[] =>
     toLabelList(doctor?.health_diseases);
-
-const resolveProfileImageUri = (doctor: any): string => {
-    const img = doctor?.profile_image;
-    if (!img) return '';
-    if (typeof img === 'string') return img;
-    return String(img?.url || img?.uri || img?.media_url || '').trim();
-};
 
 const resolveConsultationModes = (doctor: any): string[] => {
     const raw =
@@ -271,7 +266,10 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
     const doctorName = useMemo(() => getDoctorDisplayName(doctor), [doctor]);
     const ratingValue = useMemo(() => getDoctorRating(doctor), [doctor]);
-    const profileImageUri = useMemo(() => resolveProfileImageUri(doctor), [doctor]);
+    const profileImageUri = useMemo(
+        () => resolveDoctorProfileImageUri(doctor),
+        [doctor],
+    );
 
     const experienceLabel = useMemo(() => {
         const raw =
@@ -329,7 +327,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
         : healthDiseases.slice(0, 6);
     const hiddenConditions = Math.max(0, healthDiseases.length - 6);
 
-    const consultFee = doctor?.consultation_fee;
+    const consultFee = resolveConsultationFee(doctor);
     const followupFee = doctor?.followup_fee;
 
     const aboutText = useMemo(
@@ -579,9 +577,11 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                     />
                                 ) : (
                                     <View style={styles.avatarFallback}>
-                                        <Text style={styles.avatarLetter}>
-                                            {doctorName?.charAt(0)?.toUpperCase() || 'D'}
-                                        </Text>
+                                        <TablerIcon
+                                            name="user-filled"
+                                            size={36}
+                                            color="#FFFFFF"
+                                        />
                                     </View>
                                 )}
                             </View>
@@ -943,7 +943,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     </View>
                 ) : null}
 
-                {(locationLabel || qualification || socialAccounts.length > 0) && (
+                {/* {(locationLabel || qualification || socialAccounts.length > 0) && (
                     <View style={styles.card}>
                         <View style={styles.sectionTitleRow}>
                             <View style={[styles.sectionIcon, { backgroundColor: '#F1F5F9' }]}>
@@ -994,7 +994,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                             </View>
                         ) : null}
                     </View>
-                )}
+                )} */}
 
                 {/* Reviews — same UI as Product Details */}
                 <View style={styles.card}>
@@ -1100,7 +1100,7 @@ const styles = StyleSheet.create({
     avatarFallback: {
         flex: 1,
         borderRadius: 18,
-        backgroundColor: Colors.primaryColor,
+        backgroundColor: '#DFE5E7',
         alignItems: 'center',
         justifyContent: 'center',
     },

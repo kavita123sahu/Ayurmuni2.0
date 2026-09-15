@@ -43,7 +43,7 @@ const PrakritiNoteModal = ({ visible, onClose, onBegin }: Props) => (
           <Text style={styles.note}>
             <Text style={styles.noteBold}>Please note: </Text>
             Answer each question based on your natural body, mind, and habits{' '}
-            <Text style={styles.noteEm}>before the age of 21</Text>
+            <Text style={styles.noteEm}>between the age of 18-21</Text>
             {' '}(or before any major illness, long-term stress, or significant
             lifestyle changes).
           </Text>

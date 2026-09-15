@@ -24,8 +24,10 @@ import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TablerIcon from '../components/TablerIcon';
 import { useLocation } from '../context/LocationContext';
-import { savedAddressToParsed } from '../services/locationService';
 import { popToScreen } from '../navigation/navigationUtils';
+import { invalidateCache } from '../services/apiCache';
+import { useAppDispatch } from '../store/hooks';
+import { fetchCustomerData } from '../store/slices/homeSlice';
 
 interface AddressItem {
     id: string;
@@ -43,13 +45,13 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
 
 
 
-    const { currentAddress, deliveryLocation, loadingLocation, setDeliveryLocation } = useLocation();
+    const { currentAddress, loadingLocation } = useLocation();
     const returnTo = route?.params?.returnTo as string | undefined;
+    const dispatch = useAppDispatch();
 
-    const [selectedId, setSelectedId] = useState('current');
+    const [selectedId, setSelectedId] = useState<string | null>(null);
     const [loading, setloading] = useState(false);
     const [addressData, setAddressData] = useState<AddressItem[]>([]);
-    // const { currentAddress } = useLocation();
 
     const fetchAddresses = async () => {
 
@@ -124,10 +126,26 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
 
     const UpdateDefaultAddress = useCallback(
         async (item: AddressItem) => {
-            if (item?.is_default) {
-                if (returnTo === 'Checkout') {
-                    popToScreen(navigation, 'Checkout');
+            const finishForCheckout = async () => {
+                invalidateCache('home_customer');
+                try {
+                    await dispatch(fetchCustomerData(true));
+                } catch {
+                    // ignore — checkout also force-refreshes on focus
                 }
+                AddressEvents.emit(ADDRESS_UPDATED, item);
+                if (returnTo === 'Checkout') {
+                    popToScreen(navigation, 'Checkout', {
+                        selectedAddress: item,
+                    });
+                } else {
+                    navigation.goBack();
+                }
+            };
+
+            if (item?.is_default) {
+                setSelectedId(item.id);
+                await finishForCheckout();
                 return;
             }
 
@@ -159,17 +177,8 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
                 console.log('DEFAULT_ADDRESS_RESPONSE', res);
 
                 if (res?.success || res?.status === 200) {
-                    await setDeliveryLocation(savedAddressToParsed(item));
-                    AddressEvents.emit(ADDRESS_UPDATED, res?.data ?? res);
-                    if (returnTo === 'Checkout') {
-                        popToScreen(navigation, 'Checkout');
-                    } else {
-                        navigation.goBack();
-                    }
-
-                    // showSuccessToast('Default address updated', 'success');
-
-                    // fetchAddresses();
+                    // Checkout uses API / selectedAddress — do not rely on local GPS cache
+                    await finishForCheckout();
                 } else {
                     throw new Error('Failed to update default address');
                 }
@@ -179,7 +188,7 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
                 console.log('DEFAULT_ADDRESS_ERROR', error);
             }
         },
-        [addressData, selectedId, setDeliveryLocation, navigation, returnTo],
+        [addressData, selectedId, navigation, returnTo, dispatch],
     );
 
 
@@ -488,20 +497,20 @@ const styles = StyleSheet.create({
     },
 
     scroll: {
-        padding: 16,
-        paddingBottom: 100,
+        padding: 12,
+        paddingBottom: 88,
     },
 
     currentCard: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 12,
-        marginBottom: 16,
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 10,
         borderWidth: 1,
-        borderColor: '#EEF2F6',
-        gap: 10,
+        borderColor: '#E8EEF0',
+        gap: 8,
     },
 
     selectedCard: {
@@ -510,9 +519,9 @@ const styles = StyleSheet.create({
     },
 
     locationBox: {
-        height: 36,
-        width: 36,
-        borderRadius: 10,
+        height: 32,
+        width: 32,
+        borderRadius: 9,
         backgroundColor: '#ECFDF3',
         justifyContent: 'center',
         alignItems: 'center',
@@ -525,8 +534,9 @@ const styles = StyleSheet.create({
     },
 
     heading: {
-        fontSize: 16,
-        marginBottom: 10,
+        fontSize: 14,
+        marginBottom: 8,
+        marginTop: 2,
         color: '#111827',
         fontFamily: Fonts.PoppinsSemiBold,
     },
@@ -535,19 +545,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 12,
-        marginBottom: 10,
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#EEF2F6',
-        gap: 10,
+        borderColor: '#E8EEF0',
+        gap: 8,
     },
 
     iconContainer: {
-        height: 36,
-        width: 36,
-        borderRadius: 10,
-        backgroundColor: '#F5F7FA',
+        height: 32,
+        width: 32,
+        borderRadius: 9,
+        backgroundColor: '#F0F8F5',
         justifyContent: 'center',
         alignItems: 'center',
     },

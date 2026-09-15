@@ -21,6 +21,8 @@ export type DietMeal = {
   /** Structured items when API sends { name, notes, quantity } */
   dietItemDetails: DietFoodItem[];
   preparationSteps: string[];
+  /** Clickable prep video URLs (YouTube / mp4 / etc.) */
+  preparationVideos: string[];
   image?: any;
   status: 'log' | 'done';
   raw?: any;
@@ -416,6 +418,88 @@ export const resolveMealImage = (mealRaw?: any) => {
   const uri = getMealGalleryUrl(mealRaw);
   if (uri) return { uri };
   return FALLBACK_MEAL_IMAGE;
+};
+
+const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const normalizeVideoUrl = (value: string): string | null => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (isHttpUrl(raw)) return raw;
+  if (/^\/\//.test(raw)) return `https:${raw}`;
+  if (/^(www\.)?(youtube\.com|youtu\.be)\//i.test(raw)) {
+    return `https://${raw.replace(/^https?:\/\//i, '')}`;
+  }
+  // bare youtu.be id / watch query sometimes arrives without host
+  if (/^[\w-]{11}$/.test(raw)) {
+    return `https://youtu.be/${raw}`;
+  }
+  return null;
+};
+
+const extractUrlsFromText = (text: string): string[] => {
+  const matches = String(text || '').match(
+    /https?:\/\/[^\s<>"']+|www\.(?:youtube\.com|youtu\.be)\/[^\s<>"']+/gi,
+  );
+  if (!matches) return [];
+  return matches
+    .map(normalizeVideoUrl)
+    .filter((url): url is string => Boolean(url));
+};
+
+/** Collect preparation video URLs from common API field shapes. */
+export const resolveMealPreparationVideos = (mealRaw?: any): string[] => {
+  if (!mealRaw || typeof mealRaw !== 'object') return [];
+
+  const collected: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value === 'string') {
+      const direct = normalizeVideoUrl(value);
+      if (direct && !collected.includes(direct)) {
+        collected.push(direct);
+      }
+      extractUrlsFromText(value).forEach(url => {
+        if (!collected.includes(url)) collected.push(url);
+      });
+      return;
+    }
+    if (value && typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      push(
+        obj.url ||
+          obj.video_url ||
+          obj.link ||
+          obj.youtube_url ||
+          obj.preparation_video ||
+          obj.preparation_video_url,
+      );
+    }
+  };
+
+  const candidates = [
+    mealRaw.preparation_video,
+    mealRaw.preparation_video_url,
+    mealRaw.preparation_videos,
+    mealRaw.video_url,
+    mealRaw.video_link,
+    mealRaw.youtube_url,
+    mealRaw.youtube_link,
+    mealRaw.prep_video,
+    mealRaw.prep_videos,
+    mealRaw.videos,
+    mealRaw.preparation_steps,
+    mealRaw.diet,
+  ];
+
+  candidates.forEach(candidate => {
+    if (Array.isArray(candidate)) {
+      candidate.forEach(push);
+    } else {
+      push(candidate);
+    }
+  });
+
+  return collected;
 };
 
 /**
@@ -1137,6 +1221,7 @@ export const mapPlanJsonMeals = (
     const steps: string[] = Array.isArray(raw.preparation_steps)
       ? raw.preparation_steps.map(toSafeText).filter(Boolean)
       : [];
+    const preparationVideos = resolveMealPreparationVideos(raw);
     const nutrition = raw.nutrition || {};
     const kcal = nutritionValue(nutrition, 'total_calories');
     const carbs = nutritionValue(nutrition, 'carbs');
@@ -1172,6 +1257,7 @@ export const mapPlanJsonMeals = (
       dietItems,
       dietItemDetails,
       preparationSteps: steps,
+      preparationVideos,
       image: mealImage,
       status: done ? 'done' : 'log',
       raw,

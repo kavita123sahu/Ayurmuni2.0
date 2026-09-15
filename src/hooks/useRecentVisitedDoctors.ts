@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import * as ConsultServices from '../services/ConsultServce';
 import { isAuthenticated } from '../services/guestAuth';
+import { resolveConsultationFee } from '../utils/doctorUtils';
 
 export type RecentVisitedDoctor = {
   id: string;
@@ -53,7 +54,7 @@ export const mapRecentDoctorToNavPayload = (item: RecentVisitedDoctor) => ({
   designation: item.doctor_designation || item.qualification,
   qualification: item.qualification || item.doctor_designation,
   experience_years: item.experience_years,
-  consultation_fee: item.consultation_fee,
+    consultation_fee: resolveConsultationFee(item) ?? item.consultation_fee,
   is_favorite: item.is_favorite,
   total_patients: item.total_patients,
   average_rating: item.average_rating,

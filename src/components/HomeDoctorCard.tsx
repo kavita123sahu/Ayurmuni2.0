@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Ionicons } from '../common/Vector';
-import { Images } from '../common/Images';
 import { Colors } from '../common/Colors';
 import {
   HOME_DOCTOR,
@@ -10,6 +9,7 @@ import {
 } from '../constants/doctorGridLayout';
 import { formatDoctorExperience } from '../utils/doctorUtils';
 import { RupeeAmount } from '../utils/currencyUtils';
+import DoctorAvatar from './DoctorAvatar';
 
 type Props = {
   name: string;
@@ -41,14 +41,13 @@ const HomeDoctorCard = ({
   onPress,
   cardWidth,
 }: Props) => {
-  const photo = imageUri ? { uri: imageUri } : Images.doctorImage;
   const subtitle = qualification || speciality || 'Ayurveda Specialist';
   const expLabel = formatDoctorExperience(experience);
   const reviewText =
     reviews != null && String(reviews).trim() !== '' ? ` (${reviews})` : '';
   const statusLabel =
     availabilityLabel || (available ? 'Available' : null);
-console.log('availabilityLabel', availabilityLabel, available, statusLabel);
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -72,7 +71,14 @@ console.log('availabilityLabel', availabilityLabel, available, statusLabel);
       <View style={styles.avatarRing}>
         <View style={styles.avatarRingInner}>
           <View style={styles.avatarWrap}>
-            <Image source={photo} style={styles.avatar} resizeMode="cover" />
+            <DoctorAvatar
+              uri={imageUri}
+              name={name}
+              size={HOME_DOCTOR.avatarSize}
+              shape="circle"
+              emptyMode="icon"
+              style={styles.avatarCentered}
+            />
           </View>
         </View>
       </View>
@@ -226,6 +232,11 @@ const styles = StyleSheet.create({
     height: HOME_DOCTOR.avatarSize,
     borderRadius: HOME_DOCTOR.avatarSize / 2,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarCentered: {
+    alignSelf: 'center',
   },
   avatar: {
     width: HOME_DOCTOR.avatarSize,

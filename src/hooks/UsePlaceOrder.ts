@@ -6,6 +6,7 @@ import {
   buildPrepaidOrderPayload,
   OrderCartLine,
 } from '../utils/orderPayload';
+import { formatOrderStockError } from '../utils/productStockUtils';
 
 type CartItem = OrderCartLine & {
   variant_id: string | number;
@@ -71,11 +72,19 @@ export const usePlaceOrder = () => {
         const response = await _ORDER_SERVICES.place_order_API(payload);
         console.log('ORDER_RESPONSE =>', response);
         if (!response?.success) {
-          setOrderError(response?.message ?? 'Order placement failed');
+          setOrderError(
+            formatOrderStockError(response?.message) ||
+              response?.message ||
+              'Order placement failed',
+          );
         }
         return response;
       } catch (err: any) {
-        setOrderError(err?.message ?? 'Order placement failed');
+        setOrderError(
+          formatOrderStockError(err?.message) ||
+            err?.message ||
+            'Order placement failed',
+        );
         return null;
       } finally {
         setIsPlacing(false);

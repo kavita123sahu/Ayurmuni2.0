@@ -67,7 +67,7 @@ const readFontSize = (style: StyleProp<TextStyle>): number | undefined =>
   StyleSheet.flatten(style)?.fontSize;
 
 /**
- * Flipkart-style inline rupee: semibold ₹ symbol flush against the amount (zero gap).
+ * Myntra/Flipkart-style inline rupee: ₹ flush against the amount.
  */
 export const RupeeAmount = ({
   value,
@@ -95,8 +95,8 @@ export const RupeeAmount = ({
     iconColor ?? (flatStyle?.color as string | undefined) ?? '#111827';
 
   const symbolTextStyle: TextStyle = {
-    fontFamily: Fonts.PoppinsMedium,
-    fontSize: Math.round(baseFontSize * 0.94),
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: Math.round(baseFontSize * 0.92),
     color: symbolColor,
     includeFontPadding: false,
     letterSpacing: 0,
@@ -114,8 +114,8 @@ export const RupeeAmount = ({
   return (
     <Text style={[styles.inline, style]} allowFontScaling={false}>
       {prefix ? <Text allowFontScaling={false}>{prefix}</Text> : null}
-      <Text  allowFontScaling={false}>
-        {/* {RUPEE_SYMBOL}  */} ₹
+      <Text style={[symbolTextStyle, symbolStyle]} allowFontScaling={false}>
+        {RUPEE_SYMBOL}
       </Text>
       <Text style={style} allowFontScaling={false}>
         {amount}

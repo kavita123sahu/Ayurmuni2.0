@@ -63,11 +63,12 @@ import {
   mapRecentDoctorToNavPayload,
   useRecentVisitedDoctors,
 } from '../../hooks/useRecentVisitedDoctors';
-import ScreenShell from '../../components/ScreenShell';
-
+import * as Sentry from '@sentry/react-native';
+import DiseaseSelectionModal from '../../components/DiseaseSelectionModal';
 
 const { width } = Dimensions.get('window');
 let prakritiModalShownThisSession = false;
+let diseaseModalShownThisSession = false;
 
 const HomePage: React.FC = (props: any) => {
 
@@ -98,6 +99,7 @@ const HomePage: React.FC = (props: any) => {
     dietProducts,
     loadingDiet,
     fetchDietPlans,
+    fetchCustomerData,
 
     loadingCategories,
     loadingProducts,
@@ -105,19 +107,29 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
-  console.log("storeProductsstoreProductsstoreProductsstoreProducts",storeProducts)
-  const { promptLocationOnHome } = useLocation();
+  console.log("storeProductsstoreProductsstoreProductsstoreProducts", storeProducts)
+  const { promptLocationOnHome, isLocationPromptVisible, locationPromptSettled } =
+    useLocation();
   const { appointments: upcomingAppointments, refreshPreview, loading: loadingAppointments } =
     useUpcomingAppointmentsPreview();
+
   const medicineCategoryId = useMemo(
     () => getServiceCategoryId(categories, 'medicine'),
     [categories],
   );
+
   const {
     categories: healthConcerns,
     refresh: refreshHealthConcerns,
   } = useHealthConcernCategories(medicineCategoryId);
   const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
+
+  const [showDiseaseModal, setShowDiseaseModal] = useState(false);
+  const [showPrakritiModal, setShowPrakritiModal] = useState(false);
+  /** Exclusive home modal queue: only one of disease | prakriti at a time. */
+  const [activeHomeModal, setActiveHomeModal] = useState<
+    'none' | 'disease' | 'prakriti'
+  >('none');
 
   // const homeHealthConcerns = useMemo(() => {
   //   if (!safeHealthConcerns.length) return [];
@@ -160,8 +172,6 @@ const HomePage: React.FC = (props: any) => {
   useEffect(() => {
     setHasHomeCategories?.(hasHomeCategories);
   }, [hasHomeCategories, setHasHomeCategories]);
-
-  const [showPrakritiModal, setShowPrakritiModal] = useState(false);
 
   const handleSearchPress = useCallback(() => {
     const stackNav = props.navigation.getParent?.() || props.navigation;
@@ -254,19 +264,69 @@ const HomePage: React.FC = (props: any) => {
 
 
   useEffect(() => {
-    if (
-      loadingCustomer ||
-      prakritiModalShownThisSession ||
-      !customerData ||
-      customerData?.prakriti_progress == null ||
-      customerData.prakriti_progress >= 100
-    ) {
+    // Wait for location prompt (1st modal) so we never stack overlays
+    if (!locationPromptSettled || isLocationPromptVisible) {
+      return;
+    }
+    if (loadingCustomer || !customerData) {
+      return;
+    }
+    if (activeHomeModal !== 'none') {
       return;
     }
 
-    prakritiModalShownThisSession = true;
-    setShowPrakritiModal(true);
-  }, [loadingCustomer, customerData]);
+    const hasDiseases =
+      customerData?.has_health_diseases === true ||
+      (Array.isArray(customerData?.health_diseases) &&
+        customerData.health_diseases.length > 0) ||
+      (Array.isArray(customerData?.health_disease_ids) &&
+        customerData.health_disease_ids.length > 0);
+
+    // 2nd modal: health diseases
+    if (!hasDiseases && !diseaseModalShownThisSession) {
+      diseaseModalShownThisSession = true;
+      setActiveHomeModal('disease');
+      setShowDiseaseModal(true);
+      return;
+    }
+
+    // 3rd modal: prakriti assessment
+    const prakritiIncomplete =
+      customerData?.prakriti_progress != null &&
+      Number(customerData.prakriti_progress) < 100;
+
+    if (prakritiIncomplete && !prakritiModalShownThisSession) {
+      prakritiModalShownThisSession = true;
+      setActiveHomeModal('prakriti');
+      setShowPrakritiModal(true);
+    }
+  }, [
+    locationPromptSettled,
+    isLocationPromptVisible,
+    loadingCustomer,
+    customerData,
+    activeHomeModal,
+  ]);
+
+  const onDiseaseModalDone = useCallback(
+    async (saved: boolean) => {
+      setShowDiseaseModal(false);
+      setActiveHomeModal('none');
+      if (saved) {
+        try {
+          await fetchCustomerData?.(true);
+        } catch {
+          // ignore
+        }
+      }
+    },
+    [fetchCustomerData],
+  );
+
+  const closePrakritiModal = useCallback(() => {
+    setShowPrakritiModal(false);
+    setActiveHomeModal('none');
+  }, []);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -276,25 +336,7 @@ const HomePage: React.FC = (props: any) => {
     refreshHomeData();
   }, []);
 
-  const ComingSoonCard = ({ title, icon }: { title: string; icon: string }) => (
-    <View style={styles.comingSoonCard}>
-      <View style={styles.iconContainer}>
-        <Text style={styles.icon}>{icon}</Text>
-      </View>
 
-      <View style={styles.comingSoonTextWrap}>
-        <Text style={styles.comingSoonTitle}>{title}</Text>
-
-        <Text style={styles.comingSoonSubtitle} numberOfLines={2}>
-          We’re preparing personalized recommendations for you.
-        </Text>
-
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Coming Soon</Text>
-        </View>
-      </View>
-    </View>
-  );
 
   const ComingSoonStrip = ({
     items,
@@ -315,6 +357,15 @@ const HomePage: React.FC = (props: any) => {
               <View style={styles.comingSoonChipBadge}>
                 <Text style={styles.comingSoonChipBadgeText}>Soon</Text>
               </View>
+
+              {/* <TouchableOpacity style={styles.comingSoonChipBadge} onPress={() => {
+                Sentry.captureException(
+                  new Error('Sentry Test Error'),
+                );
+              }}>
+                <Text style={styles.comingSoonChipBadgeText}>Sentry</Text>
+              </TouchableOpacity> */}
+
             </View>
           ))}
         </View>
@@ -368,8 +419,16 @@ const HomePage: React.FC = (props: any) => {
 
         <Animated.View style={headerContentAnimatedStyle}>
           <HomeHeader
-            progress1={Math.round(customerData?.prakriti_progress || 0)}
-            progress2={Math.round(customerData?.medical_history_progress || 0)}
+            progress1={
+              customerData != null
+                ? Math.round(Number(customerData?.prakriti_progress) || 0)
+                : undefined
+            }
+            progress2={
+              customerData != null
+                ? Math.round(Number(customerData?.medical_history_progress) || 0)
+                : undefined
+            }
           />
         </Animated.View>
 
@@ -589,26 +648,26 @@ const HomePage: React.FC = (props: any) => {
               navigation={props.navigation}
               home
             />
-            <ProductDiscoverySection
+            {/* <ProductDiscoverySection
               section="personalized"
               navigation={props.navigation}
               home
-            />
+            /> */}
             <ProductDiscoverySection
               section="trending"
               navigation={props.navigation}
               home
             />
-            <ProductDiscoverySection
+            {/* <ProductDiscoverySection
               section="best_sellers"
               navigation={props.navigation}
               home
-            />
-            <ProductDiscoverySection
+            /> */}
+            {/* <ProductDiscoverySection
               section="new_arrivals"
               navigation={props.navigation}
               home
-            />
+            /> */}
             <ProductDiscoverySection
               section="recently_viewed"
               navigation={props.navigation}
@@ -694,15 +753,30 @@ const HomePage: React.FC = (props: any) => {
           </View>
         )}
       />
+
+      <DiseaseSelectionModal
+        visible={
+          showDiseaseModal &&
+          activeHomeModal === 'disease' &&
+          !isLocationPromptVisible
+        }
+        serviceCategoryId={medicineCategoryId}
+        onClose={() => { }}
+        onDone={onDiseaseModalDone}
+      />
+
       <Modal
-        // visible={showPrakritiModal}
         transparent
         visible={
           !!customerData &&
           !loadingCustomer &&
-          showPrakritiModal
+          showPrakritiModal &&
+          activeHomeModal === 'prakriti' &&
+          !isLocationPromptVisible &&
+          !showDiseaseModal
         }
         animationType="fade"
+        onRequestClose={closePrakritiModal}
       >
         <View style={styles.overlay}>
           <View style={styles.modalContainer}>
@@ -727,9 +801,7 @@ const HomePage: React.FC = (props: any) => {
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={styles.noButton}
-                onPress={() =>
-                  setShowPrakritiModal(false)
-                }
+                onPress={closePrakritiModal}
               >
                 <Text style={styles.noText}>
                   Later
@@ -739,7 +811,7 @@ const HomePage: React.FC = (props: any) => {
               <TouchableOpacity
                 style={styles.yesButton}
                 onPress={() => {
-                  setShowPrakritiModal(false);
+                  closePrakritiModal();
                   props.navigation.navigate('PatientFAQ', { allowBack: false });
                 }}
               >

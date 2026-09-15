@@ -18,6 +18,7 @@ type Props = {
   visible: boolean;
   code?: string;
   discount?: number;
+  payable?: number;
   title?: string;
   subtitle?: string;
   onClose: () => void;
@@ -30,6 +31,7 @@ const CouponAppliedModal = ({
   visible,
   code,
   discount = 0,
+  payable = 0,
   title,
   subtitle,
   onClose,
@@ -105,7 +107,9 @@ const CouponAppliedModal = ({
 
   const saveLine =
     discount > 0
-      ? `You saved ${formatRupee(discount)}`
+      ? `You saved ${formatRupee(discount)}${
+          payable > 0 ? ` · Now ${formatRupee(payable, { decimals: 2 })}` : ''
+        }`
       : subtitle || 'Coupon ready to use at checkout';
 
   return (

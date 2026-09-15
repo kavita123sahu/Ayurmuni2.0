@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, CommonActions } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useAppDispatch } from '../../store/hooks';
 import { fetchCart } from '../../store/slices/cartSlice';
 import AppHeader from '../../components/AppHeader';
@@ -683,7 +684,12 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Hero ── */}
-        <View style={styles.heroCard}>
+        <LinearGradient
+          colors={['#E8F8F2', '#FFFFFF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.heroCard}
+        >
           <View style={styles.heroTop}>
             <View style={styles.heroLeft}>
               <Text style={styles.heroLabel}>ORDER ID</Text>
@@ -740,7 +746,7 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </LinearGradient>
 
         {/* ── Tracking ── */}
         <View style={styles.sectionRow}>
@@ -1118,7 +1124,7 @@ export default OrderDetailsScreen;
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
 
-  scroll: { padding: 16 },
+  scroll: { paddingHorizontal: 12, paddingTop: 8 },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: '#64748B', fontFamily: Fonts.PoppinsMedium },
@@ -1126,18 +1132,18 @@ const styles = StyleSheet.create({
   // ── Section title ─────────────────────────────────────────────────────────
 
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 10,
-    marginTop: 6,
+    marginBottom: 6,
+    marginTop: 0,
   },
 
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 6,
   },
 
   // ── Refresh ───────────────────────────────────────────────────────────────
@@ -1159,12 +1165,12 @@ const styles = StyleSheet.create({
   // ── Hero card ─────────────────────────────────────────────────────────────
 
   heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 12,
+    padding: 10,
     borderWidth: 1,
-    borderColor: '#E4ECE8',
-    marginBottom: 16,
+    borderColor: '#D8EBE4',
+    marginBottom: 8,
+    overflow: 'hidden',
   },
 
   heroTop: {
@@ -1210,8 +1216,8 @@ const styles = StyleSheet.create({
 
   heroActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
+    gap: 6,
+    marginTop: 10,
   },
 
   heroAction: {
@@ -1219,9 +1225,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 12,
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#D7E5E0',
     backgroundColor: '#F8FBFA',
@@ -1242,11 +1248,11 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E4ECE8',
+    borderColor: '#E8EEF0',
   },
 
   // ── Tracking ──────────────────────────────────────────────────────────────
@@ -1364,11 +1370,11 @@ const styles = StyleSheet.create({
 
   etaCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E4ECE8',
+    borderColor: '#E8EEF0',
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -1431,9 +1437,9 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
+    gap: 8,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#F1F5F9',
   },
 
@@ -1456,11 +1462,11 @@ const styles = StyleSheet.create({
 
   itemCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E4ECE8',
+    borderColor: '#E8EEF0',
   },
 
   itemRow: { flexDirection: 'row', alignItems: 'center' },

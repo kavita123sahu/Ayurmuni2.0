@@ -11,7 +11,7 @@ import TablerIcon from './TablerIcon';
 import CartBadge from './CartBadge';
 import { useCartCount } from '../hooks/Cart';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { ADDRESS_UPDATED, AddressEvents } from '../common/Utils';
+import { ADDRESS_UPDATED, AddressEvents, Utils } from '../common/Utils';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import * as _PROFILE_SERVICES from '../services/ProfileServices';
@@ -152,8 +152,41 @@ const HomeHeader = ({
     const [localAddresses, setLocalAddresses] = useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
     const [prakritiResultName, setPrakritiResultName] = useState('');
+    const [stablePrakritiProgress, setStablePrakritiProgress] = useState(
+        Math.max(0, Math.min(100, Math.round(Number(progress1) || 0))),
+    );
 
     const { customerData, fetchCustomerData } = useHomeData();
+
+    const PRAKRITI_RESULT_KEY = 'PRAKRITI_RESULT_NAME';
+
+    // Load persisted prakriti result name once to reduce flicker when customerData reloads
+    useEffect(() => {
+        let cancelled = false;
+        const loadStored = async () => {
+            try {
+                const stored = await Utils.getData(PRAKRITI_RESULT_KEY);
+                if (!cancelled && stored) {
+                    setPrakritiResultName(String(stored));
+                }
+            } catch {
+                // ignore
+            }
+        };
+        loadStored();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // Hold last known progress so soft profile reloads don't flash "Deliver to"
+    useEffect(() => {
+        const next = Math.max(0, Math.min(100, Math.round(Number(progress1) || 0)));
+        if (customerData != null || next > 0) {
+            setStablePrakritiProgress(next);
+        }
+    }, [progress1, customerData]);
+
     const {
         currentAddress,
         loadingLocation,
@@ -207,15 +240,13 @@ const HomeHeader = ({
         return `${area}${suffix}`.slice(0, 44);
     }, [activeLocation, defaultAddress, loadingLocation]);
 
-    const prakritiProgress = Math.max(
-        0,
-        Math.min(100, Math.round(Number(progress1) || 0)),
-    );
+    const prakritiProgress = stablePrakritiProgress;
     const isPrakritiComplete = prakritiProgress >= 100;
 
     const prakritiName = useMemo(() => {
         const fromCustomer = resolvePrakritiName(customerData, prakritiResultName);
-        return fromCustomer ? normalizePrakritiKey(fromCustomer) : '';
+        const resolved = fromCustomer || prakritiResultName;
+        return resolved ? normalizePrakritiKey(resolved) : '';
     }, [customerData, prakritiResultName]);
 
     const theme = useMemo(
@@ -223,11 +254,10 @@ const HomeHeader = ({
         [prakritiName],
     );
 
-    const locationSubtext = isPrakritiComplete && prakritiName
-        ? prakritiName
-        : isPrakritiComplete
-            ? 'Your Prakriti'
-            : 'Deliver to';
+    // When assessment is done, always show prakriti (name or "Prakriti done")
+    const locationSubtext = isPrakritiComplete
+        ? prakritiName || 'Prakriti done'
+        : 'Deliver to';
 
     const profileImage = customerData?.profile_picture || '';
 
@@ -270,12 +300,44 @@ const HomeHeader = ({
         let cancelled = false;
         const loadPrakritiName = async () => {
             if (!isPrakritiComplete) return;
-            if (resolvePrakritiName(customerData)) return;
+
+            const fromCustomer = resolvePrakritiName(customerData);
+            if (fromCustomer) {
+                if (!cancelled) {
+                    setPrakritiResultName(prev =>
+                        prev === fromCustomer ? prev : fromCustomer,
+                    );
+                }
+                try {
+                    await Utils.storeData(PRAKRITI_RESULT_KEY, String(fromCustomer));
+                } catch {
+                    // ignore
+                }
+                return;
+            }
+
+            try {
+                const stored = await Utils.getData(PRAKRITI_RESULT_KEY);
+                if (!cancelled && stored) {
+                    setPrakritiResultName(prev =>
+                        prev === String(stored) ? prev : String(stored),
+                    );
+                    return;
+                }
+            } catch {
+                // continue to API
+            }
+
             try {
                 const res: any = await _PROFILE_SERVICES.get_prakriti_info();
                 const name = resolvePrakritiName(res?.data, res?.data?.result);
                 if (!cancelled && name) {
                     setPrakritiResultName(name);
+                    try {
+                        await Utils.storeData(PRAKRITI_RESULT_KEY, String(name));
+                    } catch {
+                        // ignore storage errors
+                    }
                 }
             } catch {
                 // ignore — header still works with fallback label

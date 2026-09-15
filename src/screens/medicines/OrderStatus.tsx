@@ -1,424 +1,393 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    ScrollView,
-    StyleSheet,
-    FlatList,
-    Image,
-    TouchableOpacity,
-    ListRenderItem,
-    StatusBar,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon from '../../components/TablerIcon';
 import { RupeeAmount } from '../../utils/currencyUtils';
+import {
+  getPrescribedItems,
+  isPrescriptionApproved,
+  mapPrescribedItem,
+} from '../../services/PrescriptionRequestService';
+import { navigateToMyCart } from '../../navigation/productNavigation';
 
-interface OrderItem {
-    id: string;
-    name: string;
-    sub: string;
-    price: string;
-    image: any;
-}
+const OrderStatus: React.FC = (props: any) => {
+  const insets = useSafeAreaInsets();
+  const {
+    request,
+    prescribedItems: routeItems,
+    notes,
+  } = props.route?.params || {};
 
-const orderData: OrderItem[] = [
-    {
-        id: '1',
-        name: 'Amoxicillin 500mg',
-        sub: '10 Capsules',
-        price: '149.00',
-        image: null,
-    },
-    {
-        id: '2',
-        name: 'Paracetamol',
-        sub: '20 Tablets',
-        price: '149.00',
-        image: null,
-    },
+  const [secondsLeft, setSecondsLeft] = useState(5);
+  const approved = isPrescriptionApproved(request) || Boolean(routeItems?.length);
 
-];
+  const orderData = useMemo(() => {
+    if (Array.isArray(routeItems) && routeItems.length > 0) return routeItems;
+    return getPrescribedItems(request).map(mapPrescribedItem);
+  }, [routeItems, request]);
 
-const OrderStatus: React.FC = (props : any) => {
+  const total = useMemo(
+    () =>
+      orderData.reduce(
+        (sum: number, item: any) => sum + (Number(item?.price) || 0),
+        0,
+      ),
+    [orderData],
+  );
 
-    const renderItem: ListRenderItem<OrderItem> = ({ item }) => {
-        return (
-            <View style={styles.itemRow}>
-                <View style={styles.itemLeft}>
-                    <View style={styles.imageBox}>
-                        {item.image ? (
-                            <Image source={item.image} style={styles.itemImage} />
-                        ) : (
-                            <TablerIcon name="package" size={24} color={Colors.primaryColor} />
-                        )}
-                    </View>
-
-                    <View>
-                        <Text style={styles.itemName}>{item.name}</Text>
-                        <Text style={styles.itemSub}>{item.sub}</Text>
-                    </View>
-                </View>
-
-                <RupeeAmount value={item.price} style={styles.price} />
-            </View>
-        );
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setSecondsLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+    const redirect = setTimeout(() => {
+      navigateToMyCart(props.navigation);
+    }, 5000);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(redirect);
     };
+  }, [props.navigation]);
 
-    return (
-        <SafeAreaView style={styles.container}>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <AppHeader
+        title="Order Status"
+        onLeftPress={() => navigateToMyCart(props.navigation)}
+      />
 
-               <StatusBar barStyle='dark-content' backgroundColor={'#FFFFFFCC'} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
+      >
+        <LinearGradient
+          colors={['#ECFDF5', '#F0FDFA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.successCircle}>
+            <TablerIcon name="approved" size={26} color={Colors.primaryColor} />
+          </View>
+          <Text style={styles.title}>
+            {approved ? 'Prescription approved' : 'Request received'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {approved
+              ? 'Your prescription is approved. Taking you to cart shortly.'
+              : 'We received your request. Redirecting to cart shortly.'}
+          </Text>
+          <View style={styles.redirectChip}>
+            <TablerIcon name="clock" size={12} color={Colors.primaryColor} />
+            <Text style={styles.redirectText}>
+              Opening cart in {secondsLeft}s
+            </Text>
+          </View>
+        </LinearGradient>
 
+        {(notes || request?.notes) ? (
+          <View style={styles.notesCard}>
+            <Text style={styles.notesLabel}>Notes</Text>
+            <Text style={styles.notesBody} numberOfLines={3}>
+              {notes || request?.notes}
+            </Text>
+          </View>
+        ) : null}
 
-            <AppHeader title="Order Status"
- onLeftPress={()=>props.navigation.goBack()} />
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <View>
+              <Text style={styles.label}>Request ID</Text>
+              <Text style={styles.orderId}>
+                #{String(request?.id || 'RX').slice(0, 10)}
+              </Text>
+            </View>
+            <View style={styles.statusPill}>
+              <TablerIcon name="approved" size={12} color={Colors.primaryColor} />
+              <Text style={styles.statusPillText}>
+                {approved ? 'Approved' : 'Submitted'}
+              </Text>
+            </View>
+          </View>
 
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scroll}
-            >
-                <View style={styles.successWrapper}>
-                    <View style={styles.successCircle}>
-                        <TablerIcon name="tick-icon" size={20} color={Colors.primaryColor} />
-                    </View>
+          <Text style={styles.summaryTitle}>Prescribed items</Text>
+          {orderData.length === 0 ? (
+            <Text style={styles.emptyText}>
+              Items from your outsourced prescription will appear in cart after matching.
+            </Text>
+          ) : (
+            <FlatList
+              data={orderData}
+              keyExtractor={(item: any) => String(item.id)}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              renderItem={({ item }: any) => (
+                <View style={styles.itemRow}>
+                  <View style={styles.imageBox}>
+                    {item.image ? (
+                      <Image source={{ uri: item.image }} style={styles.itemImage} />
+                    ) : (
+                      <TablerIcon
+                        name="package"
+                        size={18}
+                        color={Colors.primaryColor}
+                      />
+                    )}
+                  </View>
+                  <View style={styles.itemCopy}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.itemSub} numberOfLines={1}>
+                      {item.desc || 'From outsourced prescription'}
+                    </Text>
+                  </View>
+                  {item.price != null ? (
+                    <RupeeAmount value={item.price} style={styles.price} />
+                  ) : null}
                 </View>
+              )}
+            />
+          )}
 
-                <Text style={styles.title}>Order Confirmed!</Text>
+          {total > 0 ? (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalText}>Estimated total</Text>
+              <RupeeAmount value={total} style={styles.totalAmount} />
+            </View>
+          ) : null}
+        </View>
 
-                <Text style={styles.subtitle}>
-                    Your order has been placed successfully. We'll notify you when it's on the way
-                </Text>
-
-                <View style={styles.card}>
-                    <View style={styles.rowBetween}>
-                        <View>
-                            <Text style={styles.label}>ORDER ID</Text>
-                            <Text style={styles.orderId}>#ORD-123456</Text>
-                        </View>
-
-                        <View style={styles.alignEnd}>
-                            <Text style={styles.label}>DELIVERY EST.</Text>
-                            <Text style={styles.delivery}>Today, 4:30 PM</Text>
-                        </View>
-                    </View>
-
-                    <Text style={styles.summaryTitle}>Order Summary</Text>
-
-                    <FlatList
-                        data={orderData}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderItem}
-                        scrollEnabled={false}
-                    />
-
-                    <View style={styles.totalRow}>
-                        <Text style={styles.totalText}>Total Paid</Text>
-                        <RupeeAmount value={498} style={styles.totalAmount} decimals={2} />
-                    </View>
-                </View>
-
-                <View style={styles.verifyBox}>
-                    <View style={styles.verifyLeft}>
-                        <View style={styles.clockBox}>
-                            <TablerIcon name="clock" size={20} color={Colors.primaryColor} />
-                        </View>
-
-                        <View>
-                            <Text style={styles.verifyTitle}>
-                                Verifying your Prescription
-                            </Text>
-                            <Text style={styles.verifySub}>
-                                Pharmacist is verifying your prescription
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                <TouchableOpacity style={styles.primaryBtn}>
-
-                    <Text style={styles.primaryText}>Continue Shopping</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.support}>
-                    Need help? <Text style={styles.contact}>Contact Support</Text>
-                </Text>
-
-            </ScrollView>
-        </SafeAreaView>
-    );
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigateToMyCart(props.navigation)}
+        >
+          <LinearGradient
+            colors={['#0D614E', '#14937A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryBtn}
+          >
+            <Text style={styles.primaryText}>Go to cart now</Text>
+            <TablerIcon name="arrow-right" size={16} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  );
 };
 
 export default OrderStatus;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FDFDFB',
-    },
-
-    scroll: {
-        paddingHorizontal: 20,
-        paddingBottom: 30,
-    },
-
-    successWrapper: {
-        alignItems: 'center',
-        elevation: 4,
-    },
-
-    successCircle: {
-        height: 128,
-        width: 128,
-        borderRadius: 48,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: "#0D614E0D",
-        backgroundColor: '#ffff',
-        elevation: 2,
-    },
-
-    successIcon: {
-        height: 80,
-        width: 80,
-        resizeMode: 'contain',
-    },
-
-    title: {
-        fontSize: 24,
-        fontFamily: Fonts.PoppinsSemiBold,
-        textAlign: 'center',
-        marginTop: 12,
-        color: '#0F172A',
-        lineHeight: 32
-    },
-
-    subtitle: {
-        textAlign: 'center',
-        fontSize: 16,
-        color: '#64748B',
-        marginTop: 6,
-        lineHeight: 24,
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 16,
-        marginTop: 18,
-        elevation: 1,
-        marginBottom: 10
-    },
-
-    rowBetween: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-
-    alignEnd: {
-        alignItems: 'flex-end',
-
-    },
-
-    label: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-    orderId: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0D614E',
-        marginTop: 2,
-    },
-
-    delivery: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        marginTop: 2,
-    },
-
-    summaryTitle: {
-        marginTop: 16,
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#64748B',
-        borderTopColor: '#EFEFEF',
-        borderTopWidth: 1,
-        paddingTop: 14,
-    },
-
-    itemRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 14,
-        alignItems: 'center',
-    },
-
-    itemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    imageBox: {
-        height: 40,
-        width: 40,
-        borderRadius: 8,
-        backgroundColor: '#E6F2EF',
-        marginRight: 10,
-        overflow: 'hidden',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    itemImage: {
-        height: '100%',
-        width: '100%',
-        borderRadius: 8,
-        resizeMode: 'cover',
-    },
-
-    itemName: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-    },
-
-    itemSub: {
-        fontSize: 12,
-        color: '#94A3B8',
-        marginTop: 2,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    price: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsBold,
-        color: '#0D614E',
-    },
-
-    totalRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#EFEFEF',
-        paddingTop: 12,
-    },
-
-    totalText: {
-        fontSize: 13,
-        color: '#7A7A7A',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    totalAmount: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsBold,
-        color: '#0D614E',
-    },
-
-    verifyBox: {
-        backgroundColor: '#FFC1070D',
-        borderRadius: 12,
-        padding: 12,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: '#FFC10733'
-    },
-
-    verifyLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8
-    },
-
-    clockBox: {
-        height: 40,
-        width: 40,
-        borderRadius: 12,
-        backgroundColor: '#FFC107',
-        marginRight: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    clockIcon: {
-        height: 20,
-        width: 20,
-        resizeMode: 'contain',
-    },
-
-    primaryBtn: {
-        backgroundColor: '#0D614E',
-        borderRadius: 12,
-        paddingVertical: 18,
-        alignItems: 'center',
-        marginTop: 18,
-        flexDirection: 'row',
-        justifyContent: 'center',
-    },
-
-    trackIcon: {
-        height: 16,
-        width: 16,
-        marginRight: 6,
-        resizeMode: 'contain',
-        tintColor: '#fff',
-    },
-
-    primaryText: {
-        color: '#ffff',
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    secondaryBtn: {
-        borderWidth: 1,
-        borderColor: '##0D614E33',
-        borderRadius: 12,
-        paddingVertical: 14,
-        alignItems: 'center',
-        marginTop: 10,
-        fontWeight: '600',
-    },
-
-    secondaryText: {
-        color: '#0D614E',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-
-    support: {
-        textAlign: 'center',
-        marginTop: 14,
-        fontSize: 14,
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-    contact: {
-        color: '#0D614E',
-    },
-
-    verifyTitle: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#FFC107',
-    },
-
-    verifySub: {
-        fontSize: 12,
-        color: '#FFC107',
-        fontFamily: Fonts.PoppinsMedium,
-        marginTop: 1,
-    },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { paddingHorizontal: 14, paddingTop: 6 },
+  hero: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#CDEADF',
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  successCircle: {
+    height: 56,
+    width: 56,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#CDEADF',
+  },
+  title: {
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#64748B',
+    textAlign: 'center',
+    fontFamily: Fonts.PoppinsRegular,
+    paddingHorizontal: 8,
+  },
+  redirectChip: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#CDEADF',
+  },
+  redirectText: {
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  notesCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E6EFEA',
+    padding: 10,
+    marginBottom: 10,
+  },
+  notesLabel: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsSemiBold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  notesBody: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsRegular,
+    lineHeight: 17,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E6EFEA',
+    padding: 12,
+    marginBottom: 12,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsSemiBold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  orderId: {
+    marginTop: 2,
+    fontSize: 14,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#CDEADF',
+  },
+  statusPillText: {
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  summaryTitle: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+    lineHeight: 17,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  imageBox: {
+    height: 40,
+    width: 40,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  itemImage: { width: '100%', height: '100%' },
+  itemCopy: { flex: 1, marginHorizontal: 8, minWidth: 0 },
+  itemName: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+  },
+  itemSub: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+    marginTop: 1,
+  },
+  price: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+  },
+  totalRow: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E6EFEA',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalText: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+  },
+  totalAmount: {
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.primaryColor,
+  },
+  primaryBtn: {
+    minHeight: 46,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  primaryText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
 });

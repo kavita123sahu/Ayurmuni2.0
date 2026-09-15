@@ -36,6 +36,8 @@ type Props = {
   loading?: boolean;
   applied: Coupon | null;
   discount: number;
+  /** Payable amount after the coupon is applied. */
+  payable?: number;
   error?: string | null;
   /** product = order checkout, consultation = booking */
   checkoutScope?: 'product' | 'consultation';
@@ -52,6 +54,7 @@ const CouponApplyCard = ({
   loading,
   applied,
   discount,
+  payable,
   error,
   checkoutScope,
   onApply,
@@ -180,6 +183,9 @@ const CouponApplyCard = ({
             <Text style={styles.appliedCode}>{applied.code}</Text>
             <Text style={styles.appliedSave}>
               You save {formatRupee(discount)}
+              {Number(payable) > 0
+                ? ` · Payable ${formatRupee(payable, { decimals: 2 })}`
+                : ''}
             </Text>
           </View>
           <TouchableOpacity onPress={onRemove}>
@@ -287,6 +293,7 @@ const CouponApplyCard = ({
         visible={!!success}
         code={success?.code}
         discount={success?.discount}
+        payable={payable}
         title={success?.title}
         onClose={() => setSuccess(null)}
       />

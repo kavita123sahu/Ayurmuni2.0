@@ -5,13 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  Image,
   StatusBar,
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../../components/TablerIcon';
@@ -76,10 +74,7 @@ const ExchangeScreen = (props: any) => {
       >
 
         <View style={styles.productCard}>
-          <Image
-            source={require('../../assets/images/doctorImage.png')}
-            style={styles.productImg}
-          />
+          <View style={[styles.productImg, styles.productImgPlaceholder]} />
           <View>
 
             <Text style={styles.orderTitle}>ORDER ID #ORD-98231</Text>
@@ -103,7 +98,7 @@ const ExchangeScreen = (props: any) => {
         <Section number={2} title="Select replacement item">
           <View style={styles.replaceCard}>
             <View style={{ flexDirection: 'row', }}>
-              <Image source={Images.doctorImage} style={{ height: 80, width: 80, borderRadius: 16 }} />
+              <View style={styles.replaceImgPlaceholder} />
 
               <View style={{ marginLeft: 20 }}>
                 <Text style={styles.replaceTitle}>Medicines Order</Text>
@@ -183,6 +178,18 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     marginRight: 10,
+  },
+
+  productImgPlaceholder: {
+    borderRadius: 12,
+    backgroundColor: '#E8EEF2',
+  },
+
+  replaceImgPlaceholder: {
+    height: 80,
+    width: 80,
+    borderRadius: 16,
+    backgroundColor: '#E8EEF2',
   },
 
 

@@ -5,19 +5,17 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Linking,
   ActivityIndicator,
   Share,
   StatusBar,
   Platform,
   LayoutAnimation,
-  UIManager,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
+import DoctorAvatar from '../../components/DoctorAvatar';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
@@ -51,12 +49,12 @@ import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
 import { createPrescriptionPdfBytes } from '../../utils/buildConsultationDocumentPdf';
 import { createPlainTextPdfBytes } from '../../utils/pdfPlainTextFallback';
 
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// if (
+//   Platform.OS === 'android' &&
+//   UIManager.setLayoutAnimationEnabledExperimental
+// ) {
+//   UIManager.setLayoutAnimationEnabledExperimental(true);
+// }
 
 const C = {
   primary: Colors.primaryColor,
@@ -578,13 +576,14 @@ const PrescriptionDetail = (props: any) => {
             <View style={styles.paper}>
               {/* Doctor letterhead */}
               <View style={styles.letterhead}>
-                <Image
-                  source={
-                    doctor?.doctor_image
-                      ? { uri: doctor.doctor_image }
-                      : Images.doctorImage
-                  }
+                <DoctorAvatar
+                  uri={doctor?.doctor_image}
+                  doctor={doctor}
+                  name={doctor?.doctor_name || 'Doctor'}
+                  size={52}
+                  shape="circle"
                   style={styles.doctorAvatar}
+                  emptyMode="icon"
                 />
                 <View style={styles.letterheadMain}>
                   <Text style={styles.doctorName} numberOfLines={2}>
@@ -1062,10 +1061,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   doctorAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: C.mint,
     marginRight: 12,
   },
   letterheadMain: {

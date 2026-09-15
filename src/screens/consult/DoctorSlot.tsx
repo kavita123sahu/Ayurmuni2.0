@@ -38,6 +38,8 @@ import { requireAuth } from '../../services/guestAuth';
 import UploadRecordModal from '../../components/UploadRecordModal';
 import AppHeader from '../../components/AppHeader';
 import { showSuccessToast } from '../../config/Key';
+import { readGlobalConsultationFee, resolveConsultationFee } from '../../utils/doctorUtils';
+import { resolveDoctorProfileImageUri } from '../../utils/doctorUtils';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import {
     getDoctorDisplayName,
@@ -68,12 +70,8 @@ const SECTION_META: Record<
     Evening: { icon: 'clock', color: '#7E22CE', bg: '#F3E8FF' },
 };
 
-const resolveProfileImageUri = (doctor: any): string => {
-    const img = doctor?.profile_image;
-    if (!img) return '';
-    if (typeof img === 'string') return img;
-    return String(img?.url || img?.uri || img?.media_url || '').trim();
-};
+const resolveProfileImageUri = (doctor: any): string =>
+    resolveDoctorProfileImageUri(doctor);
 
 const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
@@ -365,10 +363,14 @@ const DoctorSlot = (props: any) => {
     };
 
     const consultFee =
+        readGlobalConsultationFee(slotsData) ??
+        readGlobalConsultationFee(doctorDetailData) ??
+        readGlobalConsultationFee(doctor) ??
+        readGlobalConsultationFee(doctorDetails) ??
+        resolveConsultationFee(slotsData) ??
+        resolveConsultationFee(doctor) ??
+        resolveConsultationFee(doctorDetails) ??
         selectedSlot?.amount ??
-        doctor?.consultation_fee ??
-        doctor?.consult_fee?.amount ??
-        doctorDetails?.consultation_fee ??
         0;
 
     const canContinue =
@@ -423,10 +425,11 @@ const DoctorSlot = (props: any) => {
                                     />
                                 ) : (
                                     <View style={styles.avatarFallback}>
-                                        <Text style={styles.avatarLetter}>
-                                            {doctorName?.charAt(0)?.toUpperCase() ||
-                                                'D'}
-                                        </Text>
+                                        <TablerIcon
+                                            name="user-filled"
+                                            size={28}
+                                            color="#FFFFFF"
+                                        />
                                     </View>
                                 )}
                                 {isVerified ? (
@@ -540,12 +543,7 @@ const DoctorSlot = (props: any) => {
                                 <View style={styles.feeMini}>
                                     <Text style={styles.feeMiniLabel}>Fee</Text>
                                     <RupeeAmount
-                                        value={
-                                            consultFee ??
-                                            doctor?.consultation_fee ??
-                                            doctor?.consult_fee?.amount ??
-                                            0
-                                        }
+                                        value={consultFee ?? 0}
                                         style={styles.feeMiniValue}
                                         iconSize={13}
                                         iconColor={Colors.primaryColor}
@@ -1006,7 +1004,7 @@ const styles = StyleSheet.create({
     },
     avatarFallback: {
         flex: 1,
-        backgroundColor: Colors.primaryColor,
+        backgroundColor: '#DFE5E7',
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -725,6 +725,7 @@ import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
+import { getAddQtyBlockMessage } from '../../utils/productStockUtils';
 import {
   toggleWishlistItem,
   useWishlistSync,
@@ -983,6 +984,13 @@ const CategoryProductsScreen = (props: any) => {
       const variantId = String(item?.variant_id);
       if (!variantId) return;
       const currentQty = Number(variantQuantities[variantId] ?? 0);
+      if (newQty > currentQty) {
+        const stockMsg = getAddQtyBlockMessage(item, newQty);
+        if (stockMsg) {
+          showSuccessToast(stockMsg, 'error');
+          return;
+        }
+      }
       if (newQty > currentQty && !canAddProductWithoutPrescription(item)) {
         return;
       }

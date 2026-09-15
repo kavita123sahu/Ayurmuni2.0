@@ -21,11 +21,15 @@ import RenderAppoint from '../../components/RenderAppoint';
 import { AppointmentSkeletonList } from '../../simmerScreen/ShimmerHook';
 import RescheduleModal from '../../components/RescheduleModal';
 import CancelAppointmentModal from '../../components/CancelAppointModal';
+import CommonModal from '../../components/LogoutModal';
 import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
-import { normalizeAppointmentListItem } from '../../utils/appointmentUtils';
+import {
+  getAppointmentPatientId,
+  normalizeAppointmentListItem,
+} from '../../utils/appointmentUtils';
 import SegmentTabs from '../../components/SegmentTabs';
-import { getListBottomPadding } from '../../constants/responsive';
+import { usePatientData } from '../../hooks/usePatientData';
 
 const APPOINTMENT_TABS = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -102,7 +106,11 @@ const AppointmentScreen = (props: any) => {
   const [followUpFilter, setFollowUpFilter] = useState('all');
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showActivatePatientModal, setShowActivatePatientModal] =
+    useState(false);
+  const [activatingPatient, setActivatingPatient] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const { fetchPatients, switchPatient } = usePatientData();
 
   const listScope = upcomingOnly ? 'upcoming' : activeTab;
 
@@ -155,8 +163,8 @@ const AppointmentScreen = (props: any) => {
         const inScope =
           listScope === 'upcoming'
             ? UPCOMING_STATUS.includes(status) ||
-              status === 'upcoming' ||
-              !PAST_STATUS.includes(status)
+            status === 'upcoming' ||
+            !PAST_STATUS.includes(status)
             : PAST_STATUS.includes(status) || status === 'past';
         if (!inScope && listScope === 'past') return false;
         if (
@@ -203,10 +211,59 @@ const AppointmentScreen = (props: any) => {
     setShowRescheduleModal(true);
   }, []);
 
-  const openCancel = useCallback((item: any) => {
-    setSelectedAppointment(item);
-    setShowCancelModal(true);
-  }, []);
+  const openCancel = useCallback(
+    async (item: any) => {
+      const normalized = normalizeAppointmentListItem(item);
+      setSelectedAppointment({ ...item, ...normalized });
+      const patientId = getAppointmentPatientId(normalized);
+      if (!patientId) {
+        setShowCancelModal(true);
+        return;
+      }
+
+      const list = (await fetchPatients()) || [];
+      const active = list.find((p: any) => p?.is_active_profile);
+      const appointmentPatient = list.find(
+        (p: any) => String(p?.id) === String(patientId),
+      );
+      const isActiveProfile =
+        String(active?.id || '') === String(patientId) ||
+        appointmentPatient?.is_active_profile === true;
+
+      if (!isActiveProfile) {
+        setShowActivatePatientModal(true);
+        return;
+      }
+
+      setShowCancelModal(true);
+    },
+    [fetchPatients],
+  );
+
+  const confirmActivatePatientThenCancel = useCallback(async () => {
+    const patientId = getAppointmentPatientId(selectedAppointment);
+    if (!patientId) {
+      setShowActivatePatientModal(false);
+      setShowCancelModal(true);
+      return;
+    }
+
+    setActivatingPatient(true);
+    try {
+      const ok = await switchPatient(patientId);
+      if (!ok) {
+        showSuccessToast(
+          'Unable to activate this patient. Please try again.',
+          'error',
+        );
+        return;
+      }
+      setShowActivatePatientModal(false);
+      setShowCancelModal(true);
+    } finally {
+      setActivatingPatient(false);
+    }
+  }, [selectedAppointment, switchPatient]);
 
   const handleReschedule = useCallback(
     async (
@@ -266,7 +323,7 @@ const AppointmentScreen = (props: any) => {
           cancellation_reason: payload.cancellation_reason,
         },
       });
-
+      console.log('CancelResponse =>', res);
       if (res?.success) {
         refreshUpcoming?.();
         setShowCancelModal(false);
@@ -274,6 +331,8 @@ const AppointmentScreen = (props: any) => {
         showSuccessToast(res?.message, 'success');
         return;
       }
+
+      setShowCancelModal(false);
       showSuccessToast(res?.message || 'Something went wrong', 'error');
     },
     [refreshUpcoming],
@@ -326,12 +385,11 @@ const AppointmentScreen = (props: any) => {
 
   const resultLabel = loading
     ? 'Loading…'
-    : `${appointmentData.length} ${
-        appointmentData.length === 1 ? 'appointment' : 'appointments'
-      }`;
+    : `${appointmentData.length} ${appointmentData.length === 1 ? 'appointment' : 'appointments'
+    }`;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right','bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.topChrome}>
@@ -378,7 +436,7 @@ const AppointmentScreen = (props: any) => {
         data={listData}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        removeClippedSubviews
+        removeClippedSubviews={false}
         initialNumToRender={6}
         maxToRenderPerBatch={6}
         windowSize={5}
@@ -386,7 +444,10 @@ const AppointmentScreen = (props: any) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: getListBottomPadding(insets) },
+          {
+            // Keep last appointment card fully visible above home indicator
+            paddingBottom: Math.max(insets.bottom, 12) + 28,
+          },
         ]}
         ListEmptyComponent={ListEmpty}
         onEndReached={handleEndReached}
@@ -435,6 +496,27 @@ const AppointmentScreen = (props: any) => {
         onSubmit={(payload: any) => {
           handleCancel(selectedAppointment?.consultation_id, payload);
         }}
+      />
+
+      <CommonModal
+        visible={showActivatePatientModal}
+        title="Activate patient"
+        subtitle={
+          selectedAppointment?.patientName
+            ? `${selectedAppointment.patientName} is not the active profile. Activate this patient to cancel the appointment.`
+            : 'This appointment belongs to an inactive patient profile. Activate that patient to cancel the appointment.'
+        }
+        icon="👤"
+        cancelText="Not now"
+        confirmText="Activate & continue"
+        loading={activatingPatient}
+        stackButtons
+        onClose={() => {
+          if (activatingPatient) return;
+          setShowActivatePatientModal(false);
+          setSelectedAppointment(null);
+        }}
+        onConfirm={confirmActivatePatientThenCancel}
       />
     </SafeAreaView>
   );

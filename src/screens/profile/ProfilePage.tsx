@@ -1540,7 +1540,28 @@ const ProfilePage = ({ navigation }: any) => {
                     keyboardShouldPersistTaps="handled"
                 >
 
-                    <ProfileHeader user={user} navigation={navigation} />
+                    <ProfileHeader
+                        user={user}
+                        navigation={navigation}
+                        onUserUpdated={async () => {
+                            try {
+                                const res: any =
+                                    await ProfileServices.user_profile();
+                                if (res?.status === 200 || res?.success) {
+                                    const next = res?.data ?? res;
+                                    if (next) {
+                                        setUser(next);
+                                        await Utils.storeData('_USER_INFO', next);
+                                    }
+                                    return;
+                                }
+                            } catch {
+                                // fall through to cache
+                            }
+                            const info = await Utils.getData('_USER_INFO');
+                            if (info) setUser(info);
+                        }}
+                    />
 
                     <Section title="Account">
                         {accountMenu.map((item) => (

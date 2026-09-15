@@ -3,6 +3,7 @@ package com.ayurmuniapp
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -100,5 +101,35 @@ class HeadsUpNotificationModule(
 
   companion object {
     const val CHANNEL_ID = "ayurmuni_heads_up"
+
+    fun ensureChannels(context: Context) {
+      ensureChannelWithId(context, CHANNEL_ID, "Messages & alerts")
+      ensureChannelWithId(context, "fcm_fallback_notification_channel", "Ayurmuni alerts")
+      ensureChannelWithId(context, "onesignal_default_channel_id", "Ayurmuni notifications")
+    }
+
+    private fun ensureChannelWithId(context: Context, channelId: String, name: String) {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+      val manager = context.getSystemService(NotificationManager::class.java) ?: return
+      val existing = manager.getNotificationChannel(channelId)
+      if (existing != null && existing.importance >= NotificationManager.IMPORTANCE_HIGH) {
+        return
+      }
+      if (existing != null) {
+        manager.deleteNotificationChannel(channelId)
+      }
+      val channel = NotificationChannel(
+        channelId,
+        name,
+        NotificationManager.IMPORTANCE_HIGH,
+      ).apply {
+        description = "WhatsApp-style pop-up for new messages"
+        enableVibration(true)
+        enableLights(true)
+        setShowBadge(true)
+        lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+      }
+      manager.createNotificationChannel(channel)
+    }
   }
 }

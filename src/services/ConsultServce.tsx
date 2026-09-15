@@ -3,6 +3,7 @@ import { BaseUrl, Method } from "../config/Key";
 import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";
 import { formatExperienceParam } from "../utils/searchUtils";
+import { applyDoctorFeesToResponse } from "../utils/doctorUtils";
 import { Buffer } from 'buffer';
 
 export const filteredParams = (
@@ -66,7 +67,7 @@ export const getAllDoctor = async (payload: object) => {
             query ? `customers/doctors/?${query}` : 'customers/doctors/',
             { method: 'GET' },
         );
-        return response;
+        return applyDoctorFeesToResponse(response);
     } catch (error) {
         throw error;
     }
@@ -79,7 +80,7 @@ export const getTopDoctor = async () => {
             method: 'GET'
         });
 
-        return response;
+        return applyDoctorFeesToResponse(response);
     } catch (error) {
         throw error;
     }
@@ -105,7 +106,7 @@ export const AllDoctorData = async () => {
         const response = await apiClient('customers/doctors/', {
             method: 'GET'
         });
-        return response;
+        return applyDoctorFeesToResponse(response);
     } catch (error) {
         throw error;
     }
@@ -366,7 +367,7 @@ export const getRecentVisitedDoctors = async () => {
         const response = await apiClient('customers/doctors/recent/', {
             method: 'GET',
         });
-        return response;
+        return applyDoctorFeesToResponse(response);
     } catch (error) {
         throw error;
     }
@@ -454,7 +455,7 @@ export const getDoctorSlots = async (
 
         console.log("docotorResposne", response);
 
-        return response;
+        return applyDoctorFeesToResponse(response);
 
     } catch (error) {
 
@@ -506,7 +507,7 @@ export const getFilterTopDoctor = async (
                 },
             );
 
-        return response;
+            return applyDoctorFeesToResponse(response);
 
     } catch (error) {
 
@@ -581,11 +582,18 @@ export const retryConsultationPayment = async (appointmentId: string | number) =
     }
 };
 
-/** GET /payments/customer/consultation/fee-quote/?slot_id= */
-export const getConsultationFeeQuote = async (slotId: string | number) => {
+/** GET /payments/customer/consultation/fee-quote/?slot_id=&coupon_code= */
+export const getConsultationFeeQuote = async (
+    slotId: string | number,
+    couponCode?: string,
+) => {
     try {
+        const params = new URLSearchParams();
+        params.set('slot_id', String(slotId));
+        const code = String(couponCode || '').trim();
+        if (code) params.set('coupon_code', code);
         const response = await apiClient(
-            `payments/customer/consultation/fee-quote/?slot_id=${encodeURIComponent(String(slotId))}`,
+            `payments/customer/consultation/fee-quote/?${params.toString()}`,
             { method: 'GET' },
         );
         return response;

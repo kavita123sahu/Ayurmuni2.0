@@ -39,11 +39,13 @@ import {
     isPrescriptionRequired,
 } from '../../utils/prescriptionUtils';
 import {
-    canAddProductQty,
+    getAddQtyBlockMessage,
+    trackListingStock,
     getProductStockDisplay,
     getProductStockQty,
     isProductLowStock,
     isProductOutOfStock,
+    LOW_STOCK_THRESHOLD,
 } from '../../utils/productStockUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 import { SCREEN } from '../../constants/responsive';
@@ -95,8 +97,7 @@ const CompactQtyStepper = ({
             <Text style={styles.qtyValue}>{quantity}</Text>
             <TouchableOpacity
                 onPress={onIncrease}
-                disabled={disabled || atMax}
-                style={styles.qtyBtn}
+                style={[styles.qtyBtn, (disabled || atMax) && styles.qtyBtnMuted]}
                 hitSlop={8}
             >
                 <TablerIcon
@@ -147,31 +148,35 @@ const ProductDetails = (props: any) => {
 
     // Prefer selected; fall back to default so stock/CTA never use empty initial state
     const activeVariant = selectedVariant || defaultVariant;
-    // Prefer route/list variant_id so count matches ProductCard cart qty
+    // Prefer selected pack identity so multi-variant products don't all send route id
     const cartVariantId = String(
-        activeVariant?.variant_id ?? varientID ?? activeVariant?.id ?? '',
-    );
+        activeVariant?.id ??
+            activeVariant?.variant_id ??
+            varientID ??
+            '',
+    ).trim();
     console.log('cartVariantId', cartVariantId);
     const { updateCartQuantity } = useCartActions();
+    console.log('updateCartQuantityupdateCartQuantity', updateCartQuantity,);
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
     const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
     const existingCartQty = useMemo(() => {
         const ids = [
-            activeVariant?.variant_id,
-            varientID,
             activeVariant?.id,
+            activeVariant?.variant_id,
+            cartVariantId,
         ]
             .map(v => String(v ?? '').trim())
             .filter(Boolean);
-        for (const id of ids) {
+        const unique = [...new Set(ids)];
+        for (const id of unique) {
             const q = Number(variantQuantities[id] ?? 0);
             if (q > 0) return q;
         }
-        return Number(variantQuantities[cartVariantId] ?? 0);
+        return 0;
     }, [
         activeVariant?.variant_id,
         activeVariant?.id,
-        varientID,
         cartVariantId,
         variantQuantities,
     ]);
@@ -188,8 +193,17 @@ const ProductDetails = (props: any) => {
     const [wishlistBusy, setWishlistBusy] = useState(false);
 
     useEffect(() => {
-        if (defaultVariant) setSelectedVariant(defaultVariant);
-    }, [ProductData]);
+        if (!variants?.length) {
+            setSelectedVariant(null);
+            return;
+        }
+        const routeMatch = variants.find(
+            (v: any) =>
+                String(v?.id) === String(varientID) ||
+                String(v?.variant_id) === String(varientID),
+        );
+        setSelectedVariant(routeMatch || defaultVariant);
+    }, [ProductData, varientID]);
 
     useEffect(() => {
         setQuantity(cartQuantity > 0 ? cartQuantity : 1);
@@ -240,6 +254,7 @@ const ProductDetails = (props: any) => {
         }
     }, [activeVariant?.id, coverImageUri]);
 
+    trackListingStock(activeVariant);
     const stockQty = getProductStockQty(activeVariant);
     const maxQty =
         stockQty == null || !Number.isFinite(stockQty) || stockQty <= 0
@@ -260,8 +275,14 @@ const ProductDetails = (props: any) => {
     /** Local qty only — cart API runs from Add / Buy now. */
     const increaseQty = () => {
         setQuantity(q => {
-            if (maxQty == null) return q + 1;
-            return Math.min(q + 1, maxQty);
+            const next = q + 1;
+            const block = getAddQtyBlockMessage(activeVariant, next);
+            if (block) {
+                showSuccessToast(block, 'error');
+                return q;
+            }
+            if (maxQty == null) return next;
+            return Math.min(next, maxQty);
         });
     };
     const decreaseQty = () => setQuantity(q => (q > 1 ? q - 1 : 1));
@@ -271,16 +292,10 @@ const ProductDetails = (props: any) => {
             if (!(await requireAuth('Please login to add items to cart'))) return;
             if (!cartVariantId) return;
 
-            if (isProductOutOfStock(activeVariant)) {
-                showSuccessToast('This product is out of stock', 'error');
-                return;
-            }
-
             const addQty = Math.max(1, Number(quantity) || 1);
-            // const nextQty = existingCartQty + addQty;
-
-            if (!canAddProductQty(activeVariant, addQty)) {
-                showSuccessToast('Only limited stock left', 'error');
+            const stockMsg = getAddQtyBlockMessage(activeVariant, addQty);
+            if (stockMsg) {
+                showSuccessToast(stockMsg, 'error');
                 return;
             }
             if (!canAddProductWithoutPrescription(productForRx)) {
@@ -293,9 +308,10 @@ const ProductDetails = (props: any) => {
 
             setPendingCta(goToCart ? 'buy' : 'add');
             const success = await updateCartQuantity(cartVariantId, addQty, {
-                // currentQuantity: existingCartQty,
+                currentQuantity: existingCartQty,
                 prescriptionRequired: isPrescriptionRequired(productForRx),
             });
+            console.log('handleAddToCartsuccess', success);
             setPendingCta(null);
 
             if (!success) {
@@ -324,13 +340,13 @@ const ProductDetails = (props: any) => {
         if (!(await requireAuth('Please login to save wishlist items'))) return;
 
         const variantId = String(
-            selectedVariant?.variant_id ??
             selectedVariant?.id ??
-            activeVariant?.variant_id ??
-            activeVariant?.id ??
-            varientID ??
-            '',
-        );
+                selectedVariant?.variant_id ??
+                activeVariant?.id ??
+                activeVariant?.variant_id ??
+                varientID ??
+                '',
+        ).trim();
         if (!variantId) {
             showSuccessToast('Product variant unavailable', 'error');
             return;
@@ -637,35 +653,44 @@ const ProductDetails = (props: any) => {
 
                     <View style={styles.priceRow}>
                         <View style={styles.priceLeft}>
-                            {saveAmount > 0 ? (
-                                <></>
-                                // <View style={styles.specialRow}>
-                                //     <TablerIcon name="receipt" size={12} color="#FF3F6C" />
-                                //     <Text style={styles.specialLabel}>Special Price</Text>
-                                // </View>
-                            ) : null}
+                            {/* {saveAmount > 0 ? (
+                                <Text style={styles.specialLabel}>Special Price</Text>
+                            ) : null} */}
                             <View style={styles.priceLine}>
                                 <RupeeAmount
                                     value={selectedVariant?.selling_price}
                                     style={styles.sellingPrice}
+                                    iconColor="#282C3F"
                                 />
                                 {Number(selectedVariant?.mrp) >
                                     Number(selectedVariant?.selling_price || 0) ? (
-                                    <>
-                                        <Text style={styles.mrpPrefix}>MRP</Text>
+                                    <View style={styles.mrpWrap}>
+                                        <Text style={styles.mrpPrefix}>MRP </Text>
                                         <RupeeAmount
                                             value={selectedVariant?.mrp}
                                             style={styles.mrpPrice}
+                                            iconColor="#94969F"
                                         />
-                                    </>
+                                    </View>
                                 ) : null}
-                                {!!selectedVariant?.discount && (
+                                {!!selectedVariant?.discount || saveAmount > 0 ? (
                                     <Text style={styles.discountInline}>
-                                        ({selectedVariant.discount}% OFF)
+                                        (
+                                        {selectedVariant?.discount
+                                            ? `${selectedVariant.discount}% OFF`
+                                            : `${Math.round(
+                                                (saveAmount /
+                                                    Math.max(
+                                                        Number(selectedVariant?.mrp) || 1,
+                                                        1,
+                                                    )) *
+                                                100,
+                                            )}% OFF`}
+                                        )
                                     </Text>
-                                )}
+                                ) : null}
                             </View>
-                            {/* Add stock display here */}
+                            <Text style={styles.taxNote}>inclusive of all taxes</Text>
                             {isLowStock ? (
                                 <View style={styles.hurryStrip}>
                                     <TablerIcon name="flame" size={14} color="#C2410C" />
@@ -686,7 +711,6 @@ const ProductDetails = (props: any) => {
                                     </Text>
                                 </View>
                             )}
-                            {/* <Text style={styles.taxNote}>Inclusive of all taxes</Text> */}
                         </View>
                         <View style={styles.qtyBlock}>
                             {existingCartQty > 0 ? (
@@ -701,6 +725,16 @@ const ProductDetails = (props: any) => {
                                 disabled={isOutOfStock}
                                 maxQuantity={maxQty}
                             />
+                            {maxQty != null &&
+                            maxQty > 0 &&
+                            maxQty <= LOW_STOCK_THRESHOLD &&
+                            quantity >= maxQty ? (
+                                <Text style={styles.qtyLimitNote}>
+                                    {maxQty === 1
+                                        ? 'Only 1 item available.'
+                                        : `Only ${maxQty} items available.`}
+                                </Text>
+                            ) : null}
                         </View>
                     </View>
 
@@ -729,14 +763,14 @@ const ProductDetails = (props: any) => {
                         <Text style={styles.deliveryText}>
                             {deliveryMessage}{' '}
                             <Text style={styles.deliveryStrong}>
-                                Delivery in {deliveryBy}
+                                Delivery in {deliveryBy} in NCR & nearby cities. 
                             </Text>
                         </Text>
-                        {selectedVariant?.is_free_shipping ? (
+                        {/* {selectedVariant?.is_free_shipping ? (
                             <View style={styles.freeTag}>
                                 <Text style={styles.freeTagText}>FREE</Text>
                             </View>
-                        ) : null}
+                        ) : null} */}
                     </View>
 
                 </View>
@@ -1429,16 +1463,17 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sellingPrice: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#0F172A',
+        fontSize: 24,
+        fontFamily: Fonts.PoppinsBold,
+        color: '#282C3F',
         includeFontPadding: false,
     },
     specialLabel: {
-        fontSize: 11,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#FF3F6C',
         includeFontPadding: false,
+        marginBottom: 2,
     },
     specialRow: {
         flexDirection: 'row',
@@ -1446,29 +1481,35 @@ const styles = StyleSheet.create({
         gap: 4,
         marginBottom: 2,
     },
+    mrpWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 6,
+    },
     mrpPrefix: {
         fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#94969F',
         includeFontPadding: false,
     },
     mrpPrice: {
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#94969F',
         textDecorationLine: 'line-through',
         includeFontPadding: false,
     },
     discountInline: {
-        fontSize: 13,
+        fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#FF3F6C',
+        marginLeft: 4,
     },
     taxNote: {
-        marginTop: 2,
+        marginTop: 4,
         fontSize: 11,
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium,
+        color: '#94969F',
+        fontFamily: Fonts.PoppinsRegular,
     },
     offerStrip: {
         marginTop: 10,
@@ -1589,6 +1630,17 @@ const styles = StyleSheet.create({
         height: 34,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    qtyBtnMuted: {
+        opacity: 0.45,
+    },
+    qtyLimitNote: {
+        marginTop: 6,
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
+        textAlign: 'right',
     },
     qtyValue: {
         minWidth: 22,

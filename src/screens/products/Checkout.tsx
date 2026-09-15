@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -12,25 +12,35 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 
 import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import { useCustomerProfile } from '../../hooks/useCustomerProfile';
 import { usePlaceOrder } from '../../hooks/UsePlaceOrder';
+import { getOrderFeeQuote } from '../../services/OrderService';
 import { useProductOnlinePayment } from '../../hooks/useProductOnlinePayment';
 import TablerIcon from '../../components/TablerIcon';
 import { showSuccessToast } from '../../config/Key';
 import { resolveImageUri, resolveProductImageUri } from '../../utils/imageUtils';
 import { resolveCartItemImage } from '../../common/DataInterface';
 import { isOrderVerifySuccessful } from '../../utils/orderPayload';
+import { formatOrderStockError } from '../../utils/productStockUtils';
 import {
     isCodAvailableForItems,
     resolvePayOnDelivery,
 } from '../../utils/payOnDeliveryUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 import CouponApplyCard from '../../components/CouponApplyCard';
+import {
+    feeRateLabel,
+    calculateOrderFees,
+    parseFeeQuoteConfig,
+    type FeeQuoteConfig,
+} from '../../utils/feeQuote';
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
+import { ADDRESS_UPDATED, AddressEvents } from '../../common/Utils';
 
 type PaymentMethod = 'cod' | 'online';
 
@@ -90,12 +100,54 @@ const Checkout: React.FC = (props: any) => {
         }
     }, [codAvailable, selectedMethod]);
 
-    const { customerData } = useCustomerProfile({ refreshOnFocus: true });
+    const { customerData, refreshCustomer } = useCustomerProfile({
+        refreshOnFocus: true,
+    });
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
 
-    const defaultAddress =
+    // Address chosen by user tap on Manage Address (not AsyncStorage / GPS local)
+    const routeSelectedAddress = props.route?.params?.selectedAddress ?? null;
+    const [selectedAddress, setSelectedAddress] = useState<any>(
+        routeSelectedAddress,
+    );
+
+    useEffect(() => {
+        if (routeSelectedAddress?.id) {
+            setSelectedAddress(routeSelectedAddress);
+        }
+    }, [routeSelectedAddress]);
+
+    useFocusEffect(
+        useCallback(() => {
+            // Always pull fresh profile addresses after Manage Address
+            refreshCustomer(true);
+        }, [refreshCustomer]),
+    );
+
+    useEffect(() => {
+        const sub = AddressEvents.addListener(ADDRESS_UPDATED, (payload: any) => {
+            if (payload?.id) {
+                setSelectedAddress(payload);
+            }
+            refreshCustomer(true);
+        });
+        return () => sub.remove();
+    }, [refreshCustomer]);
+
+    const defaultFromProfile =
         customerData?.addresses?.find((item: any) => item?.is_default) || null;
+
+    // Prefer the address the user just tapped; fall back to API default
+    const defaultAddress = selectedAddress?.id
+        ? selectedAddress
+        : defaultFromProfile;
+
+    useEffect(() => {
+        if (!selectedAddress?.id && defaultFromProfile?.id) {
+            setSelectedAddress(defaultFromProfile);
+        }
+    }, [defaultFromProfile, selectedAddress?.id]);
 
     const cartItems = useMemo(
         () =>
@@ -118,8 +170,9 @@ const Checkout: React.FC = (props: any) => {
         [selectedProducts],
     );
 
-    const shippingFee = 0;
-    const codChargeDefault = 0;
+    const [feeConfig, setFeeConfig] = useState<FeeQuoteConfig | null>(null);
+    const [feeQuoteLoading, setFeeQuoteLoading] = useState(false);
+    const [feeQuoteError, setFeeQuoteError] = useState<string | null>(null);
 
     const subtotal = useMemo(
         () =>
@@ -131,7 +184,13 @@ const Checkout: React.FC = (props: any) => {
         [cartItems],
     );
 
-    const codFee = selectedMethod === 'cod' ? codChargeDefault : 0;
+    const cartItemIds = useMemo(
+        () =>
+            cartItems
+                .map((item: any) => String(item.cart_item_id || item.id || '').trim())
+                .filter(Boolean),
+        [cartItems],
+    );
 
     const {
         coupons,
@@ -144,7 +203,72 @@ const Checkout: React.FC = (props: any) => {
         remove: removeCoupon,
     } = useCheckoutCoupons('product', subtotal);
 
-    const total = Math.max(0, subtotal + shippingFee + codFee - couponDiscount);
+    useEffect(() => {
+        if (!cartItemIds.length) {
+            setFeeConfig(null);
+            return;
+        }
+        let active = true;
+        setFeeQuoteLoading(true);
+        (async () => {
+            try {
+                const response = await getOrderFeeQuote({
+                    cart_item_ids: cartItemIds,
+                    coupon_code: appliedCoupon?.code,
+                });
+                if (!active) return;
+                console.log('Orderfeequoteresponse =>', response);
+                const quoteData = response?.data ?? response;
+                const hasRates = Boolean(
+                    quoteData?.configurations?.gst ||
+                        quoteData?.configurations?.platform_fee ||
+                        quoteData?.configurations?.delivery ||
+                        (Array.isArray(quoteData?.items) && quoteData.items.length),
+                );
+                const parsed = hasRates
+                    ? parseFeeQuoteConfig(quoteData, subtotal, {
+                          ignoreConsultationFee: true,
+                      })
+                    : null;
+                if (parsed) {
+                    parsed.quotedCouponCode = String(appliedCoupon?.code || '').trim();
+                }
+                setFeeConfig(parsed);
+                setFeeQuoteError(
+                    parsed
+                        ? null
+                        : 'Unable to load order fees. Please try again.',
+                );
+            } catch (error) {
+                console.log('ORDER_FEE_QUOTE_ERROR', error);
+                if (active) {
+                    setFeeConfig(null);
+                    setFeeQuoteError('Unable to load order fees. Please try again.');
+                }
+            } finally {
+                if (active) setFeeQuoteLoading(false);
+            }
+        })();
+        return () => {
+            active = false;
+        };
+    }, [cartItemIds, appliedCoupon?.code, subtotal]);
+
+    const feeBreakdown = useMemo(
+        () =>
+            calculateOrderFees({
+                quote: feeConfig,
+                fallbackSubtotal: subtotal,
+                localDiscount: couponDiscount,
+                includeCod: selectedMethod === 'cod',
+                couponCode: appliedCoupon?.code,
+            }),
+        [feeConfig, subtotal, couponDiscount, selectedMethod, appliedCoupon?.code],
+    );
+
+    const shippingFee = feeBreakdown.shipping;
+    const codFee = feeBreakdown.cod;
+    const total = feeBreakdown.total;
     const isFreeShip = shippingFee === 0;
     const isLoading = isPlacing || isPaying;
 
@@ -192,11 +316,11 @@ const Checkout: React.FC = (props: any) => {
         const result = await placeOrder(cartItems, {
             delivery_address_id: defaultAddress.id,
             shipping_charges: shippingFee,
-            cod_charges: codChargeDefault,
+            cod_charges: codFee,
             payment_type: 'cod',
             payment_method: 'cash',
             shipping_method: deliveryMethod === 'express' ? 'EXPRESS' : 'STD',
-            prepaid_amount: Math.round(total),
+            prepaid_amount: total,
             coupon_code: appliedCoupon?.code,
         });
 
@@ -217,7 +341,13 @@ const Checkout: React.FC = (props: any) => {
             return;
         }
 
-        const failMsg = result?.message ?? orderError ?? 'Order failed';
+        const failMsg =
+            formatOrderStockError(result?.message) ||
+            formatOrderStockError(result?.data?.message) ||
+            result?.message ||
+            result?.data?.message ||
+            orderError ||
+            'Order failed';
         if (isCouponOrderError(failMsg) && appliedCoupon) {
             removeCoupon();
             showSuccessToast(
@@ -239,7 +369,7 @@ const Checkout: React.FC = (props: any) => {
             codCharges: 0,
             shippingMethod: deliveryMethod === 'express' ? 'EXPRESS' : 'STD',
             coupon_code: appliedCoupon?.code,
-            prepaidAmount: Math.round(total),
+            prepaidAmount: total,
             onCouponRejected: () => {
                 removeCoupon();
             },
@@ -586,7 +716,8 @@ const Checkout: React.FC = (props: any) => {
                         cartAmount={subtotal}
                         loading={couponsLoading}
                         applied={appliedCoupon}
-                        discount={couponDiscount}
+                        discount={feeBreakdown.discount || couponDiscount}
+                        payable={total}
                         error={couponError}
                         checkoutScope="product"
                         onApply={applyCode}
@@ -623,32 +754,82 @@ const Checkout: React.FC = (props: any) => {
                         />
                     </TouchableOpacity>
 
+                    {feeQuoteLoading ? (
+                        <View style={styles.feeLoadingRow}>
+                            <ActivityIndicator
+                                size="small"
+                                color={Colors.primaryColor}
+                            />
+                            <Text style={styles.feeLoadingText}>
+                                Calculating fees
+                            </Text>
+                        </View>
+                    ) : feeQuoteError ? (
+                        <Text style={styles.feeQuoteError}>{feeQuoteError}</Text>
+                    ) : null}
+
                     {billExpanded ? (
                         <>
                             <SummaryRow
                                 label="Item total"
-                                value={formatRupee(Math.round(subtotal))}
+                                value={formatRupee(feeBreakdown.baseAmount, {
+                                    decimals: 2,
+                                })}
                             />
                             <SummaryRow
-                                label="Delivery"
+                                label={
+                                    feeBreakdown.freeDelivery
+                                        ? `Delivery · free above ${formatRupee(
+                                              feeBreakdown.freeDeliveryMinimum,
+                                          )}`
+                                        : 'Delivery'
+                                }
                                 value={
                                     isFreeShip
                                         ? 'FREE'
-                                        : formatRupee(shippingFee)
+                                        : formatRupee(shippingFee, { decimals: 2 })
                                 }
                                 success={isFreeShip}
                             />
                             {selectedMethod === 'cod' ? (
                                 <SummaryRow
                                     label="COD charges"
-                                    value={formatRupee(codFee)}
+                                    value={formatRupee(codFee, { decimals: 2 })}
                                 />
                             ) : null}
-                            {couponDiscount > 0 ? (
+                            {feeBreakdown.discount > 0 ? (
                                 <SummaryRow
                                     label={`Coupon (${appliedCoupon?.code || ''})`}
-                                    value={`− ${formatRupee(couponDiscount)}`}
+                                    value={`− ${formatRupee(feeBreakdown.discount, { decimals: 2 })}`}
                                     success
+                                />
+                            ) : null}
+                            {feeBreakdown.discount > 0 ? (
+                                <SummaryRow
+                                    label="After coupon"
+                                    value={formatRupee(total, { decimals: 2 })}
+                                />
+                            ) : null}
+                            {feeBreakdown.freeDeliveryNote ? (
+                                <Text style={styles.freeDeliveryNote}>
+                                    {feeBreakdown.freeDeliveryNote}
+                                </Text>
+                            ) : null}
+                            {feeBreakdown.platformFee > 0 ? (
+                                <SummaryRow
+                                    label={feeRateLabel(
+                                        'Platform fee',
+                                        feeBreakdown.platformRate,
+                                    )}
+                                    value={formatRupee(feeBreakdown.platformFee, {
+                                        decimals: 2,
+                                    })}
+                                />
+                            ) : null}
+                            {feeBreakdown.gst > 0 ? (
+                                <SummaryRow
+                                    label={feeRateLabel('GST', feeBreakdown.gstRate)}
+                                    value={formatRupee(feeBreakdown.gst, { decimals: 2 })}
                                 />
                             ) : null}
                             <View style={styles.billDivider} />
@@ -665,7 +846,8 @@ const Checkout: React.FC = (props: any) => {
                             Grand total
                         </Text>
                         <RupeeAmount
-                            value={Math.round(total)}
+                            value={total}
+                            decimals={2}
                             style={styles.totalStripValue}
                             iconSize={15}
                             iconColor={Colors.primaryColor}
@@ -719,7 +901,8 @@ const Checkout: React.FC = (props: any) => {
                 <View style={styles.stickyRow}>
                     <View style={styles.stickyPriceBox}>
                         <RupeeAmount
-                            value={Math.round(total)}
+                            value={total}
+                            decimals={2}
                             style={styles.stickyPrice}
                             iconSize={16}
                             iconColor={Colors.primaryColor}
@@ -735,7 +918,7 @@ const Checkout: React.FC = (props: any) => {
 
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        disabled={isLoading}
+                        disabled={isLoading || feeQuoteLoading || Boolean(feeQuoteError)}
                         onPress={handlePlaceOrder}
                         style={styles.primaryBtnWrap}
                     >
@@ -1081,6 +1264,33 @@ const styles = StyleSheet.create({
     },
     summarySuccess: {
         color: '#15803D',
+    },
+    feeLoadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingTop: 4,
+        paddingBottom: 8,
+    },
+    feeLoadingText: {
+        fontSize: 12,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    freeDeliveryNote: {
+        marginTop: -4,
+        marginBottom: 8,
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#15803D',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    feeQuoteError: {
+        fontSize: 12,
+        lineHeight: 16,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
+        paddingBottom: 8,
     },
     billDivider: {
         height: StyleSheet.hairlineWidth,

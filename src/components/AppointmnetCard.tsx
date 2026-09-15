@@ -2,12 +2,10 @@ import React, { memo, useMemo } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { Images } from '../common/Images';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { getStatusStyle } from '../common/DataInterface';
@@ -15,9 +13,10 @@ import TablerIcon from './TablerIcon';
 import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
 import {
   buildAppointmentDetailsParams,
-  canRescheduleAppointment,
   getConsultationScheduleLabels,
+  canModifyAppointment,
 } from '../utils/appointmentUtils';
+import DoctorAvatar from './DoctorAvatar';
 
 export type AppointmentStatus =
   | 'confirmed'
@@ -90,9 +89,18 @@ const AppointmentCard = ({
   const statusStyle = useMemo(() => getStatusStyle(status.toLowerCase()), [status]);
   const statusLabel = formatStatusLabel(status);
 
-  const showReschedule = canRescheduleAppointment(status);
+  const showReschedule = canModifyAppointment(
+    status,
+    schedule.dateRaw || item?.date || item?.appointment_date,
+    schedule.timeRaw || item?.time || item?.start_time,
+  );
   const showReceipt = Boolean(item?.consultation_id);
-  const showBookAgain = !showReschedule;
+  // Book again only for past visits — not for upcoming bookings outside the 3h window
+  const showBookAgain =
+    !showReschedule &&
+    ['completed', 'cancelled', 'missed', 'expired', 'no_show', 'noshow'].includes(
+      String(status || '').toLowerCase(),
+    );
 
   const handleAction = (action: ActionKey) => {
     onAction?.(action, item);
@@ -110,9 +118,13 @@ const AppointmentCard = ({
       }
     >
       <View style={styles.topRow}>
-        <Image
-          source={avatarUrl ? { uri: avatarUrl } : Images.doctorImage}
-          style={styles.avatar}
+        <DoctorAvatar
+          uri={avatarUrl}
+          name={doctorName}
+          doctor={doctor}
+          size={56}
+          shape="circle"
+          emptyMode="icon"
         />
 
         <View style={styles.info}>
@@ -169,6 +181,7 @@ const AppointmentCard = ({
         </View>
       </View>
 
+      {(showReceipt || showReschedule || showBookAgain) ? (
       <View style={styles.actions}>
         {showReceipt ? (
           <TouchableOpacity
@@ -208,6 +221,7 @@ const AppointmentCard = ({
           </TouchableOpacity>
         ) : null}
       </View>
+      ) : null}
     </TouchableOpacity>
   );
 };

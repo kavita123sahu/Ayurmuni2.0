@@ -160,22 +160,38 @@ export const goBackToHomeTab = (navigation: any) => {
 };
 
 /** Pop stack routes after a named screen so back lands on that screen. */
-export const popToScreen = (navigation: any, screenName: string) => {
+export const popToScreen = (
+  navigation: any,
+  screenName: string,
+  mergeParams?: Record<string, any>,
+) => {
   const stackNav = getStackNavigation(navigation) ?? navigation;
   const state = stackNav?.getState?.();
-  const routes: Array<{ name: string }> = state?.routes ?? [];
+  const routes: Array<{ name: string; params?: any; key?: string }> =
+    state?.routes ?? [];
   const index = routes.findIndex(route => route.name === screenName);
 
   if (index < 0) {
-    stackNav?.navigate?.(screenName);
+    stackNav?.navigate?.(screenName, mergeParams);
     return;
   }
+
+  const nextRoutes = routes.slice(0, index + 1).map((route, i) => {
+    if (i !== index || !mergeParams) return route;
+    return {
+      ...route,
+      params: {
+        ...(route.params || {}),
+        ...mergeParams,
+      },
+    };
+  });
 
   stackNav.dispatch(
     CommonActions.reset({
       ...state,
       index,
-      routes: routes.slice(0, index + 1),
+      routes: nextRoutes,
     }),
   );
 };

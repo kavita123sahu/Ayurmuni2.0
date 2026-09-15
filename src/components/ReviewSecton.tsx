@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -64,6 +64,8 @@ const ReviewSection = ({
   variantId?: string;
   title?: string;
 }) => {
+  const [reviewsOpen, setReviewsOpen] = useState(true);
+  const [collapsedCards, setCollapsedCards] = useState<Record<string, boolean>>({});
   const normalizedReviews = useMemo(
     () => normalizeReviewsForDisplay(reviews),
     [reviews],
@@ -134,9 +136,23 @@ const ReviewSection = ({
           ) : null}
         </View>
         {ratingData.totalReviews > 0 ? (
-          <View style={styles.viewAllWrap}>
-            <Text style={styles.viewAll}>View all</Text>
-            <TablerIcon name="chevron-right" size={14} color={Colors.primaryColor} />
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => setReviewsOpen(open => !open)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.collapseBtn}
+            >
+              <Text style={styles.viewAll}>{reviewsOpen ? 'Collapse' : 'Show'}</Text>
+              <TablerIcon
+                name={reviewsOpen ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={Colors.primaryColor}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={openAll} style={styles.viewAllWrap}>
+              <Text style={styles.viewAll}>View all</Text>
+              <TablerIcon name="chevron-right" size={14} color={Colors.primaryColor} />
+            </TouchableOpacity>
           </View>
         ) : null}
       </TouchableOpacity>
@@ -243,91 +259,111 @@ const ReviewSection = ({
         </View>
       ) : null}
 
-      {visibleReviews?.map((item, index) => {
-        const rating = Number(item?.rating) || 0;
-        const dateLabel = formatReviewDate(item?.created_at);
-        return (
-          <View
-            key={item.id || `rev-${index}`}
-            style={[
-              styles.reviewCard,
-              index === visibleReviews.length - 1 && styles.reviewCardLast,
-            ]}
-          >
-            <View style={styles.reviewTop}>
-              <View style={styles.avatar}>
-                {item?.reviewer_profile_image ? (
-                  <Image
-                    source={{ uri: item.reviewer_profile_image }}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <Text style={styles.avatarText}>
-                    {getInitials(item?.reviewer_name || item?.patient_name || '')}
-                  </Text>
-                )}
-              </View>
-
-              <View style={styles.reviewMeta}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item?.reviewer_name || item?.patient_name || 'Customer'}
-                  </Text>
-                  <View
-                    style={[
-                      styles.miniRating,
-                      { backgroundColor: ratingTone(rating).bg },
-                    ]}
-                  >
-                    <Text style={styles.miniRatingText}>{rating}</Text>
-                    <TablerIcon name="star-filled" size={8} color="#FFFFFF" />
-                  </View>
-                </View>
-                <View style={styles.metaLine}>
-                  <Text style={styles.verified}>
-                    {isProduct ? 'Certified buyer' : 'Verified'}
-                  </Text>
-                  {!!dateLabel && (
-                    <Text style={styles.reviewDate}> · {dateLabel}</Text>
+      {reviewsOpen
+        ? visibleReviews?.map((item, index) => {
+          const rating = Number(item?.rating) || 0;
+          const dateLabel = formatReviewDate(item?.created_at);
+          const cardKey = String(item.id || `rev-${index}`);
+          const cardCollapsed = Boolean(collapsedCards[cardKey]);
+          return (
+            <View
+              key={cardKey}
+              style={[
+                styles.reviewCard,
+                index === visibleReviews.length - 1 && styles.reviewCardLast,
+              ]}
+            >
+              <View style={styles.reviewTop}>
+                <View style={styles.avatar}>
+                  {item?.reviewer_profile_image ? (
+                    <Image
+                      source={{ uri: item.reviewer_profile_image }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.avatarText}>
+                      {getInitials(item?.reviewer_name || item?.patient_name || '')}
+                    </Text>
                   )}
                 </View>
+
+                <View style={styles.reviewMeta}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item?.reviewer_name || item?.patient_name || 'Customer'}
+                    </Text>
+                    <View
+                      style={[
+                        styles.miniRating,
+                        { backgroundColor: ratingTone(rating).bg },
+                      ]}
+                    >
+                      <Text style={styles.miniRatingText}>{rating}</Text>
+                      <TablerIcon name="star-filled" size={8} color="#FFFFFF" />
+                    </View>
+                  </View>
+                  <View style={styles.metaLine}>
+                    <Text style={styles.verified}>
+                      {isProduct ? 'Certified buyer' : 'Verified'}
+                    </Text>
+                    {!!dateLabel && (
+                      <Text style={styles.reviewDate}> · {dateLabel}</Text>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() =>
+                    setCollapsedCards(prev => ({
+                      ...prev,
+                      [cardKey]: !prev[cardKey],
+                    }))
+                  }
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.cardCollapse}
+                >
+                  <TablerIcon
+                    name={cardCollapsed ? 'chevron-down' : 'chevron-up'}
+                    size={16}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
               </View>
+
+              {!cardCollapsed && !!item?.review?.trim?.() ? (
+                <Text style={styles.reviewText} numberOfLines={3}>
+                  {item.review}
+                </Text>
+              ) : null}
+
+              {!cardCollapsed && !!item.image_urls?.length && (
+                <View style={styles.cardImageRow}>
+                  {item.image_urls.slice(0, 4).map((uri: string, idx: number) => (
+                    <TouchableOpacity
+                      key={`${item.id}-${idx}`}
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        navigation.navigate('ReviewGalleryScreen', {
+                          images: item.image_urls,
+                          selectedIndex: idx,
+                        })
+                      }
+                    >
+                      <Image source={{ uri }} style={styles.cardImage} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {!cardCollapsed && !!item?.doctor_reply?.trim?.() && (
+                <View style={styles.doctorReplyBox}>
+                  <Text style={styles.doctorReplyLabel}>Doctor replied</Text>
+                  <Text style={styles.doctorReplyText}>{item.doctor_reply}</Text>
+                </View>
+              )}
             </View>
-
-            {!!item?.review?.trim?.() ? (
-              <Text style={styles.reviewText} numberOfLines={3}>
-                {item.review}
-              </Text>
-            ) : null}
-
-            {!!item?.image_urls?.length && (
-              <View style={styles.cardImageRow}>
-                {item.image_urls.slice(0, 4).map((uri: string, idx: number) => (
-                  <TouchableOpacity
-                    key={`${item.id}-${idx}`}
-                    activeOpacity={0.85}
-                    onPress={() =>
-                      navigation.navigate('ReviewGalleryScreen', {
-                        images: item.image_urls,
-                        selectedIndex: idx,
-                      })
-                    }
-                  >
-                    <Image source={{ uri }} style={styles.cardImage} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {!!item?.doctor_reply?.trim?.() && (
-              <View style={styles.doctorReplyBox}>
-                <Text style={styles.doctorReplyLabel}>Doctor replied</Text>
-                <Text style={styles.doctorReplyText}>{item.doctor_reply}</Text>
-              </View>
-            )}
-          </View>
-        );
-      })}
+          );
+        })
+        : null}
     </View>
   );
 };
@@ -356,6 +392,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: Fonts.PoppinsMedium,
     color: '#64748B',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  collapseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   viewAllWrap: {
     flexDirection: 'row',
@@ -524,6 +570,12 @@ const styles = StyleSheet.create({
   },
   reviewCardLast: {
     paddingBottom: 0,
+  },
+  cardCollapse: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reviewTop: {
     flexDirection: 'row',

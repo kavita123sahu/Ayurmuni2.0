@@ -9,6 +9,31 @@ export type GetOrdersParams = {
   page_size?: number;
 };
 
+/**
+ * POST /order/fee-quote/
+ * Returns GST / platform / shipping configuration. Amounts are calculated in the app.
+ */
+export const getOrderFeeQuote = async (payload: {
+  cart_item_ids: string[];
+  coupon_code?: string;
+  cod_charges?: number;
+}) => {
+  const body: Record<string, unknown> = {
+    cart_item_ids: payload.cart_item_ids,
+  };
+  const coupon = String(payload.coupon_code || '').trim();
+  if (coupon) body.coupon_code = coupon;
+  if (payload.cod_charges != null && Number.isFinite(Number(payload.cod_charges))) {
+    body.cod_charges = Number(payload.cod_charges);
+  }
+
+  const response = await apiClient('order/fee-quote/', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  return response;
+};
+
 export const place_order_API = async (data: Object) => {
   try {
     const response = await apiClient('order/', {

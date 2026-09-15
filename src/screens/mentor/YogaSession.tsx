@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Image,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import SessionCard from '../../components/SessionCard';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
@@ -151,11 +149,7 @@ export default function YogaSession(props: any) {
                   instructor.description ||
                   'Guided alignment and breathwork for a complete session.'
                 }
-                image={
-                  instructor.imageUri
-                    ? { uri: instructor.imageUri }
-                    : Images.doctorImage
-                }
+                imageUri={instructor.imageUri || undefined}
                 onPress={() => props.navigation.navigate('ConsultMentor')}
               />
             </View>

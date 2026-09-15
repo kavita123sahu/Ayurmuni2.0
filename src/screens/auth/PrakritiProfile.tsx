@@ -423,7 +423,7 @@ const PrakritiProfile = (props: any) => {
               {fromAssessment ? 'Assessment complete' : 'Prakriti analysis'}
             </Text>
           </View>
-          
+
           <View style={styles.heroMain}>
             <View style={styles.heroCopy}>
               <Text style={styles.heroKicker}>Your dominant type</Text>
@@ -538,7 +538,7 @@ const PrakritiProfile = (props: any) => {
             }
           >
             <TablerIcon name="clipboard-list" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryBtnText}>Your Health Profile</Text>
+            <Text style={styles.secondaryBtnText}>Vikriti assessment </Text>
           </TouchableOpacity>
         </View>
 

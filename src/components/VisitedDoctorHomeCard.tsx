@@ -2,20 +2,20 @@ import React from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   Pressable,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { Images } from '../common/Images';
 import TablerIcon from './TablerIcon';
+import DoctorAvatar from './DoctorAvatar';
 import { RupeeAmount } from '../utils/currencyUtils';
 import {
   formatAppointmentDateFull,
   formatAppointmentTimeLabel,
 } from '../utils/appointmentUtils';
 import type { RecentVisitedDoctor } from '../hooks/useRecentVisitedDoctors';
+import { resolveConsultationFee } from '../utils/doctorUtils';
 
 type Props = {
   item: RecentVisitedDoctor;
@@ -26,10 +26,6 @@ const VisitedDoctorHomeCard = ({
   item,
   onPress,
 }: Props) => {
-  const photo = item.doctor_image
-    ? { uri: String(item.doctor_image) }
-    : Images.doctorImage;
-
   const available = item.has_availability === true;
 
   const rating = Number(item.average_rating);
@@ -65,7 +61,7 @@ const VisitedDoctorHomeCard = ({
     .filter(Boolean)
     .join(' · ');
 
-  const feeValue = item.consultation_fee;
+  const feeValue = resolveConsultationFee(item);
 
   return (
     <Pressable
@@ -77,17 +73,17 @@ const VisitedDoctorHomeCard = ({
     >
       {/* TOP: IMAGE + DOCTOR INFO */}
       <View style={styles.topSection}>
-        {/* Doctor Image */}
         <View style={styles.avatarRing}>
-          <Image
-            source={photo}
-            style={styles.avatar}
-            resizeMode="cover"
+          <DoctorAvatar
+            uri={item.doctor_image}
+            name={item.doctor_name}
+            doctor={item}
+            size={48}
+            shape="circle"
+            emptyMode="icon"
           />
-
-          {available && <View style={styles.availableDot} />}
+          {available ? <View style={styles.availableDot} /> : null}
         </View>
-        {/* Doctor Details */}
         <View style={styles.doctorInfo}>
           {/* NAME + AVAILABLE */}
           <View style={styles.nameRow}>
@@ -242,41 +238,36 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
 
-  /* TOP */
   topSection: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
 
-  /* IMAGE */
   avatarRing: {
-  width: 52,
-  height: 52,
-  borderRadius: 26,
-  borderWidth: 2,
-  borderColor: '#D8EBE3',
-  padding: 2,
-  flexShrink: 0,
-  position: 'relative',
-},
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#D8EBE3',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    position: 'relative',
+    overflow: 'hidden',
+  },
 
-availableDot: {
-  position: 'absolute',
-  right: 5,
-  bottom: -1,
-  width: 10,
-  height: 10,
-  borderRadius: 5,
-  backgroundColor: '#10B981',
-  borderWidth: 2,
-  borderColor: '#FFFFFF',
-},
-
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 24,
-    backgroundColor: Colors.bgcolor,
+  availableDot: {
+    position: 'absolute',
+    right: 1,
+    bottom: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    zIndex: 2,
   },
 
   /* DOCTOR INFO */

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
@@ -20,6 +21,7 @@ import {
   nowIso,
   normalizeDietFoodItem,
   resolveMealImage,
+  resolveMealPreparationVideos,
 } from '../../utils/dietPlanUtils';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
@@ -94,6 +96,34 @@ const MealDetails = (props: any) => {
           )
           .filter(Boolean)
       : [];
+
+  const preparationVideos =
+    Array.isArray(item?.preparationVideos) && item.preparationVideos.length
+      ? item.preparationVideos.filter(Boolean)
+      : resolveMealPreparationVideos(item?.raw || item);
+
+  const openPrepVideo = async (url: string) => {
+    const safeUrl = String(url || '').trim();
+    if (!safeUrl) {
+      showSuccessToast('Video link unavailable', 'error');
+      return;
+    }
+    try {
+      // Android canOpenURL can be unreliable for https — try open directly
+      await Linking.openURL(safeUrl);
+    } catch {
+      try {
+        const canOpen = await Linking.canOpenURL(safeUrl);
+        if (canOpen) {
+          await Linking.openURL(safeUrl);
+          return;
+        }
+      } catch {
+        // fall through
+      }
+      showSuccessToast('Unable to open video link', 'error');
+    }
+  };
 
   const onLogMeal = async () => {
     if (!item?.dayKey || !item?.mealKey) {
@@ -236,6 +266,41 @@ const MealDetails = (props: any) => {
               ))
             )}
           </View>
+
+          {preparationVideos.length > 0 ? (
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <TablerIcon
+                  name="play"
+                  size={14}
+                  color={Colors.primaryColor}
+                />
+                <Text style={styles.sectionTitle}>Preparation Videos</Text>
+              </View>
+              {preparationVideos.map((url: string, index: number) => (
+                <TouchableOpacity
+                  key={`${index}-${url}`}
+                  style={styles.videoLinkRow}
+                  activeOpacity={0.85}
+                  onPress={() => openPrepVideo(url)}
+                >
+                  <View style={styles.videoLinkIcon}>
+                    <TablerIcon name="youtube" size={16} color="#DC2626" />
+                  </View>
+                  <View style={styles.videoLinkCopy}>
+                    <Text style={styles.videoLinkTitle} numberOfLines={1}>
+                      Watch preparation video
+                      {preparationVideos.length > 1 ? ` ${index + 1}` : ''}
+                    </Text>
+                    <Text style={styles.videoLinkUrl} numberOfLines={1}>
+                      {url}
+                    </Text>
+                  </View>
+                  <TablerIcon name="chevron-right" size={16} color="#64748B" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -512,12 +577,46 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     fontSize: TYPO.body,
-    color: Colors.subTextColor,
-    fontFamily: Fonts.PoppinsMedium,
+    color: '#374151',
+    fontFamily: Fonts.PoppinsRegular,
     lineHeight: 20,
-    paddingTop: 2,
   },
 
+  videoLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    marginBottom: 8,
+  },
+  videoLinkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoLinkCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  videoLinkTitle: {
+    fontSize: TYPO.subtitle,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#111827',
+  },
+  videoLinkUrl: {
+    marginTop: 2,
+    fontSize: TYPO.xs,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+  },
 
   footer: {
     flexDirection: 'row',

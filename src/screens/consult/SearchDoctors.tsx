@@ -27,7 +27,6 @@ import { Fonts } from '../../common/Fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import AllDoctorCard from '../../components/AllDoctorCard';
-import { Images } from '../../common/Images';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
@@ -793,7 +792,7 @@ const AllDoctors = (props: any) => {
 
                         ListEmptyComponent={() => (
 
-                            <EmptyState image={Images.doctorImage} title='No doctor found' />
+                            <EmptyState title='No doctor found' />
                         )}
                     />)}
         </SafeAreaView>

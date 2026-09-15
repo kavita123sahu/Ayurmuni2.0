@@ -18,7 +18,6 @@ import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { Foundation, Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
-import { Images } from '../../common/Images';
 import * as _CONSULT_SERVICE from '../../services/ConsultServce';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppointmentDetailSkeleton } from '../../simmerScreen/ShimmerHook';
@@ -31,9 +30,12 @@ import FeedbackModal from '../../components/FeedbackModal';
 import TablerIcon from '../../components/TablerIcon';
 import {
   buildVideoCallNavParams,
+  canModifyAppointment,
   formatAppointmentDateFull,
   getAppointmentIds,
+  getAppointmentPatientId,
   resolveAppointmentLookupId,
+  resolveAppointmentDateTime,
 } from '../../utils/appointmentUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
@@ -41,6 +43,10 @@ import { consultationHasPrescription } from '../../utils/prescriptionDetailUtils
 import { hasPrescribedData } from '../../utils/doctorSlipUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 import { SCREEN_THEME } from '../../constants/screenTheme';
+import CommonModal from '../../components/LogoutModal';
+import { usePatientData } from '../../hooks/usePatientData';
+import DoctorAvatar from '../../components/DoctorAvatar';
+import LinearGradient from 'react-native-linear-gradient';
 
 const PrimaryButton = ({
   title,
@@ -91,15 +97,20 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
   const canOpenChat = !!appointmentData.consultationId;
 
   return (
-    <View style={styles.heroCard}>
+    <LinearGradient
+      colors={['#E8F8F2', '#FFFFFF']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.heroCard}
+    >
       <View style={styles.heroTopRow}>
-        <Image
-          source={
-            data?.doctor?.doctor_image
-              ? { uri: data?.doctor?.doctor_image }
-              : Images.doctorImage
-          }
-          style={styles.heroAvatar}
+        <DoctorAvatar
+          uri={data?.doctor?.doctor_image}
+          name={data?.doctor?.doctor_name}
+          doctor={data?.doctor}
+          size={56}
+          shape="circle"
+          emptyMode="icon"
         />
         <View style={styles.heroInfo}>
           <View style={styles.heroNameRow}>
@@ -210,7 +221,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
 
       </View>
 
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -229,7 +240,11 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [token, setToken] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showActivatePatientModal, setShowActivatePatientModal] =
+    useState(false);
+  const [activatingPatient, setActivatingPatient] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { fetchPatients, switchPatient } = usePatientData();
 
   const [showModal, setShowModal] = useState(false);
 
@@ -370,7 +385,16 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     'noshow',
   ].includes(String(appointmentStatus || ''));
 
-  const showButtons = !['cancelled', 'completed', 'rescheduled'].includes(appointmentStatus);
+  const scheduleFields = resolveAppointmentDateTime({
+    ...normalizedAppointment,
+    appointment: detail?.appointment,
+    rawData: detail,
+  });
+  const showButtons = canModifyAppointment(
+    appointmentStatus,
+    scheduleFields.date || normalizedAppointment?.date,
+    scheduleFields.time || normalizedAppointment?.time,
+  );
   const isRescheduleRequest = appointmentStatus === 'reschedule';
 
   // status pill color mapping — luxury muted tones instead of loud flat colors
@@ -427,6 +451,64 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
     showSuccessToast(res?.message || 'You cannot reschedule multiple times', 'error');
   };
+
+  const openCancelFlow = useCallback(async () => {
+    const patientId = getAppointmentPatientId(
+      detail?.appointment
+        ? { appointment: detail.appointment, patient: detail.appointment?.patient }
+        : detail,
+    );
+
+    if (!patientId) {
+      setShowCancelModal(true);
+      return;
+    }
+
+    const list = (await fetchPatients()) || [];
+    const active = list.find((p: any) => p?.is_active_profile);
+    const appointmentPatient = list.find(
+      (p: any) => String(p?.id) === String(patientId),
+    );
+    const isActiveProfile =
+      String(active?.id || '') === String(patientId) ||
+      appointmentPatient?.is_active_profile === true;
+
+    if (!isActiveProfile) {
+      setShowActivatePatientModal(true);
+      return;
+    }
+
+    setShowCancelModal(true);
+  }, [detail, fetchPatients]);
+
+  const confirmActivatePatientThenCancel = useCallback(async () => {
+    const patientId = getAppointmentPatientId(
+      detail?.appointment
+        ? { appointment: detail.appointment, patient: detail.appointment?.patient }
+        : detail,
+    );
+    if (!patientId) {
+      setShowActivatePatientModal(false);
+      setShowCancelModal(true);
+      return;
+    }
+
+    setActivatingPatient(true);
+    try {
+      const ok = await switchPatient(patientId);
+      if (!ok) {
+        showSuccessToast(
+          'Unable to activate this patient. Please try again.',
+          'error',
+        );
+        return;
+      }
+      setShowActivatePatientModal(false);
+      setShowCancelModal(true);
+    } finally {
+      setActivatingPatient(false);
+    }
+  }, [detail, switchPatient]);
 
   const handleCancel = async (
     appointmentId: string,
@@ -571,7 +653,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     ));
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right','bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar
         barStyle={SCREEN_THEME.statusBarStyle}
         backgroundColor={SCREEN_THEME.statusBarBackground}
@@ -586,13 +668,13 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: SCREEN_THEME.screenBackground }}
         refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={['#0D614E']}
-          tintColor="#0D614E"
-        />
-      }>
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0D614E']}
+            tintColor="#0D614E"
+          />
+        }>
         {loading1 ? (
           <AppointmentDetailSkeleton />
         ) : (
@@ -812,7 +894,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 <TouchableOpacity
                   activeOpacity={0.85}
                   style={styles.cancelBtn}
-                  onPress={() => setShowCancelModal(true)}
+                  onPress={openCancelFlow}
                 >
                   <Text style={styles.cancelBtnText} numberOfLines={1}>
                     Cancel
@@ -866,6 +948,26 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
             handleCancel(appointmentId, payload);
             setShowCancelModal(false);
           }}
+        />
+
+        <CommonModal
+          visible={showActivatePatientModal}
+          title="Activate patient"
+          subtitle={
+            detail?.appointment?.patient?.patient_name
+              ? `${detail.appointment.patient.patient_name} is not the active profile. Activate this patient to cancel the appointment.`
+              : 'This appointment belongs to an inactive patient profile. Activate that patient to cancel the appointment.'
+          }
+          icon="👤"
+          cancelText="Not now"
+          confirmText="Activate & continue"
+          loading={activatingPatient}
+          stackButtons
+          onClose={() => {
+            if (activatingPatient) return;
+            setShowActivatePatientModal(false);
+          }}
+          onConfirm={confirmActivatePatientThenCancel}
         />
       </ScrollView>
     </SafeAreaView>
@@ -941,14 +1043,13 @@ const styles = StyleSheet.create({
 
   // ---------- Hero (Doctor) card ----------
   heroCard: {
-    backgroundColor: Theme.cardBg,
     marginHorizontal: 16,
     marginTop: 10,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Theme.cardBorder,
+    borderColor: '#D8EBE4',
     padding: 12,
-    ...shadow('md'),
+    overflow: 'hidden',
   },
 
   heroTopRow: {
@@ -1248,32 +1349,32 @@ const styles = StyleSheet.create({
   calendarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8E6',
+    borderColor: '#D8EBE4',
+    paddingHorizontal: 12,
     paddingVertical: 12,
-    paddingHorizontal: 14,
   },
   calendarIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#E8F3F1',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F0F8F5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   calendarTitle: {
     fontSize: 14,
-    fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   calendarSub: {
-    marginTop: 2,
+    marginTop: 1,
     fontSize: 12,
-    fontFamily: Fonts.PoppinsRegular,
     color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
   },
 
   actionRow: {

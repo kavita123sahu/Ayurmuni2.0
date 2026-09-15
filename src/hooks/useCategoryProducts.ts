@@ -174,16 +174,21 @@ export const useCategoryProducts = (
           const fallback = Array.isArray(fallbackRef.current)
             ? fallbackRef.current
             : [];
+          const healthScoped =
+            Boolean(parsedFilter.health_category_id) ||
+            Boolean(parsedFilter.health_disease_id);
           const serviceOnly =
             Boolean(parsedFilter.service_category_id) &&
             !searchOnly &&
             !parsedFilter.id &&
             !parsedFilter.product_subcategory_id &&
-            !parsedFilter.health_category_id &&
-            !parsedFilter.health_disease_id &&
+            !healthScoped &&
             !parsedFilter.brand_name_id;
 
           if (!hasFilter || (serviceOnly && fallback.length > 0)) {
+            setProducts(fallback);
+          } else if (healthScoped && fallback.length > 0) {
+            // Concern query empty → show general catalog fallback
             setProducts(fallback);
           } else {
             setProducts([]);

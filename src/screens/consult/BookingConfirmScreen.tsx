@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
+import DoctorAvatar from '../../components/DoctorAvatar';
 import { getAppointmentShareMessage } from '../../helper/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
@@ -431,13 +431,12 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
         {/* Doctor + schedule */}
         <View style={styles.card}>
           <View style={styles.doctorRow}>
-            <Image
-              source={
-                booking.doctorImage
-                  ? { uri: booking.doctorImage }
-                  : Images.doctorImage
-              }
-              style={styles.avatar}
+            <DoctorAvatar
+              uri={booking.doctorImage}
+              name={booking.doctorName}
+              size={64}
+              shape="circle"
+              emptyMode="icon"
             />
             <View style={styles.doctorInfo}>
               <Text style={styles.doctorName} numberOfLines={2}>
@@ -567,13 +566,12 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
             </Text>
 
             <View style={styles.shareCard}>
-              <Image
-                source={
-                  booking.doctorImage
-                    ? { uri: booking.doctorImage }
-                    : Images.doctorImage
-                }
-                style={styles.shareAvatar}
+              <DoctorAvatar
+                uri={booking.doctorImage}
+                name={booking.doctorName}
+                size={48}
+                shape="circle"
+                emptyMode="icon"
               />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.shareDoctor} numberOfLines={1}>
