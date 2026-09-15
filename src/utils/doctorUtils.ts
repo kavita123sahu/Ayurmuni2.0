@@ -42,10 +42,10 @@ export const getDoctorDisplayName = (item: any): string => {
   if (!item) return 'Doctor';
   const name = String(
     item?.doctor_name ??
-      item?.full_name ??
-      item?.name ??
-      [item?.first_name, item?.last_name].filter(Boolean).join(' ') ??
-      '',
+    item?.full_name ??
+    item?.name ??
+    [item?.first_name, item?.last_name].filter(Boolean).join(' ') ??
+    '',
   ).trim();
   return name || 'Doctor';
 };
@@ -141,9 +141,9 @@ export const resolveConsultationFee = (
 
   const fee = toFeeNumber(
     source?.consultation_fee ??
-      source?.consult_fee?.amount ??
-      source?.consult_fee ??
-      fallback,
+    source?.consult_fee?.amount ??
+    source?.consult_fee ??
+    fallback,
   );
   return fee;
 };
