@@ -32,6 +32,8 @@ type LocationContextType = {
   requestPermission: () => Promise<boolean>;
   setDeliveryLocation: (address: ParsedAddress | null) => Promise<void>;
   promptLocationOnHome: () => void;
+  /** Clear GPS + cached delivery address (call on logout). */
+  clearLocationSession: () => Promise<void>;
 };
 
 const LocationContext = createContext<LocationContextType | null>(null);
@@ -67,6 +69,24 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [],
   );
+
+  const clearLocationSession = useCallback(async () => {
+    homePromptChecked.current = false;
+    setCurrentAddress(null);
+    setDeliveryLocationState(null);
+    setLoadingLocation(false);
+    setLocationEnabled(false);
+    setShowPermissionModal(false);
+    setLocationPromptSettled(false);
+    try {
+      await AsyncStorage.multiRemove([
+        DELIVERY_LOCATION_KEY,
+        LOCATION_PROMPT_KEY,
+      ]);
+    } catch (error) {
+      console.log('LOCATION_SESSION_CLEAR_ERROR', error);
+    }
+  }, []);
 
   const fetchLocationFromGps = useCallback(async () => {
     setLoadingLocation(true);
@@ -182,6 +202,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
         requestPermission,
         setDeliveryLocation,
         promptLocationOnHome,
+        clearLocationSession,
       }}
     >
       {children}
@@ -208,6 +229,7 @@ export const useLocation = () => {
       requestPermission: async () => false,
       setDeliveryLocation: async () => {},
       promptLocationOnHome: () => {},
+      clearLocationSession: async () => {},
     };
   }
   return ctx;

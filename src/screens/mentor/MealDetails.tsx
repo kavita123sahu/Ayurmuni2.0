@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,116 +13,281 @@ import {
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import TablerIcon from '../../components/TablerIcon';
 import * as _PATIENT from '../../services/PatientServices';
 import {
   nowIso,
   normalizeDietFoodItem,
-  resolveMealImage,
-  resolveMealPreparationVideos,
+  normalizeDietFoodItems,
+  getDietPlanGallery,
+  type DietFoodItem,
 } from '../../utils/dietPlanUtils';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
-import { resolveImageSource } from '../../utils/imageUtils';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProductImagePreviewModal from '../../components/ProductImagePreviewModal';
-import {
-  BUTTON,
-  DIET_UI,
-  RADIUS,
-  SPACING,
-  TYPO,
-} from '../../constants/responsive';
+import { BUTTON, RADIUS, SPACING, TYPO } from '../../constants/responsive';
+
 const FALLBACK_IMAGE = require('../../assets/images/login/7.jpg');
+const IMG = 76;
+
+const formatMacro = (value: number, unit = 'g') => {
+  if (!Number.isFinite(value) || value <= 0) return `0${unit}`;
+  return `${value}${unit}`;
+};
+
+const openUrl = async (url: string) => {
+  let safeUrl = String(url || '').trim();
+  if (!safeUrl) {
+    showSuccessToast('Link unavailable', 'error');
+    return;
+  }
+  if (!/^https?:\/\//i.test(safeUrl)) {
+    safeUrl = `https://${safeUrl.replace(/^\/\//, '')}`;
+  }
+  try {
+    await Linking.openURL(safeUrl);
+  } catch {
+    showSuccessToast('Unable to open link', 'error');
+  }
+};
+
+const NutriGrid = ({
+  kcal,
+  carbs,
+  protein,
+  fat,
+}: {
+  kcal: number;
+  carbs: number;
+  protein: number;
+  fat: number;
+}) => (
+  <View style={styles.nutriGrid}>
+    <View style={[styles.nutriCell, styles.nutriKcal]}>
+      <Text style={[styles.nutriValue, styles.nutriValueOnDark]}>
+        {kcal || 0}
+      </Text>
+      <Text style={[styles.nutriLabel, styles.nutriLabelOnDark]}>kcal</Text>
+    </View>
+    <View style={styles.nutriCell}>
+      <Text style={styles.nutriValue}>{formatMacro(carbs)}</Text>
+      <Text style={styles.nutriLabel}>carbs</Text>
+    </View>
+    <View style={styles.nutriCell}>
+      <Text style={styles.nutriValue}>{formatMacro(protein)}</Text>
+      <Text style={styles.nutriLabel}>protein</Text>
+    </View>
+    <View style={styles.nutriCell}>
+      <Text style={styles.nutriValue}>{formatMacro(fat)}</Text>
+      <Text style={styles.nutriLabel}>fat</Text>
+    </View>
+  </View>
+);
+
+const DishCard = ({
+  dish,
+  index,
+  total,
+  onPreview,
+}: {
+  dish: DietFoodItem;
+  index: number;
+  total: number;
+  onPreview: (images: Array<{ source: any }>, startIndex?: number) => void;
+}) => {
+  const gallery = Array.isArray(dish.gallery) ? dish.gallery : [];
+  const cover = gallery[0]?.image_url || gallery[0]?.media_url || '';
+  const recipes = Array.isArray(dish.recipe) ? dish.recipe.filter(Boolean) : [];
+  const steps = Array.isArray(dish.preparationSteps)
+    ? dish.preparationSteps.filter(Boolean)
+    : [];
+  const n = dish.nutrition || { kcal: 0, carbs: 0, protein: 0, fat: 0 };
+  const hasNutrition =
+    n.kcal > 0 || n.carbs > 0 || n.protein > 0 || n.fat > 0;
+
+  const previewImages = (gallery.length
+    ? gallery
+    : cover
+      ? [{ image_url: cover }]
+      : []
+  ).map((g: any) => ({
+    source: { uri: String(g.image_url || g.media_url || '') },
+  }));
+
+  return (
+    <View style={styles.dishCard}>
+      <View style={styles.dishAccent} />
+
+      <View style={styles.dishInner}>
+        <View style={styles.dishTop}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              if (previewImages.length) onPreview(previewImages, 0);
+            }}
+            style={styles.dishImgWrap}
+          >
+            <Image
+              source={cover ? { uri: cover } : FALLBACK_IMAGE}
+              style={styles.dishImg}
+            />
+            {total > 1 ? (
+              <View style={styles.dishBadge}>
+                <Text style={styles.dishBadgeText}>
+                  {index + 1}/{total}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+
+          <View style={styles.dishMeta}>
+            <Text style={styles.dishName}>{dish.name}</Text>
+
+            {!!dish.quantity && (
+              <View style={styles.qtyChip}>
+                <TablerIcon
+                  name="package"
+                  size={12}
+                  color={Colors.primaryColor}
+                />
+                <Text style={styles.qtyChipText}>{dish.quantity}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {!!dish.notes && (
+          <View style={styles.notesRow}>
+            <TablerIcon
+              name="leaf"
+              size={14}
+              color={Colors.secondaryColor}
+            />
+            <Text style={styles.notesText}>{dish.notes}</Text>
+          </View>
+        )}
+
+        {hasNutrition ? (
+          <NutriGrid
+            kcal={n.kcal}
+            carbs={n.carbs}
+            protein={n.protein}
+            fat={n.fat}
+          />
+        ) : null}
+
+        {steps.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View style={styles.sectionDot} />
+              <Text style={styles.sectionTitle}>How to prepare</Text>
+            </View>
+            {steps.map((step, si) => (
+              <View style={styles.stepRow} key={`s-${index}-${si}`}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>{si + 1}</Text>
+                </View>
+                <Text style={styles.stepText}>{step}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {recipes.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View
+                style={[
+                  styles.sectionDot,
+                  { backgroundColor: Colors.errorColor },
+                ]}
+              />
+              <Text style={styles.sectionTitle}>Recipe video</Text>
+            </View>
+            {recipes.map((url, ri) => (
+              <TouchableOpacity
+                key={`r-${index}-${ri}`}
+                style={styles.recipeBtn}
+                activeOpacity={0.85}
+                onPress={() => openUrl(url)}
+              >
+                <TablerIcon name="youtube" size={16} color={Colors.errorColor} />
+                <Text style={styles.recipeBtnText}>
+                  Watch recipe{recipes.length > 1 ? ` ${ri + 1}` : ''}
+                </Text>
+                <TablerIcon
+                  name="chevron-right"
+                  size={14}
+                  color={Colors.headercolor}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+};
 
 const MealDetails = (props: any) => {
-
-
   const insets = useSafeAreaInsets();
   const item = props?.route?.params?.item;
+  const plan = props?.route?.params?.plan;
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState(item?.status === 'done');
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [previewImages, setPreviewImages] = useState<Array<{ source: any }>>(
+    [],
+  );
 
-  const mealTitle =
-    typeof item?.title === 'string'
-      ? item.title
-      : normalizeDietFoodItem(item?.title)?.label || 'Meal';
   const mealType = String(item?.type || 'Meal');
-  const imageSource =
-    resolveImageSource(item?.image) ||
-    resolveMealImage(item?.raw) ||
-    FALLBACK_IMAGE;
+  const mealTime = String(item?.time || '').trim();
+  const mealGuidance = String(
+    item?.guidance || item?.raw?.guidance || item?.raw?.guide || '',
+  ).trim();
 
-  const stats = [
-    { label: 'Calories', value: String(item?.kcal ?? '—') },
-    { label: 'Carbs', value: item ? `${item.carbs ?? 0}g` : '—' },
-    { label: 'Protein', value: item ? `${item.protein ?? 0}g` : '—' },
-    { label: 'Fat', value: item ? `${item.fat ?? 0}g` : '—' },
-  ];
-
-  const ingredients =
-    Array.isArray(item?.dietItemDetails) && item.dietItemDetails.length
-      ? item.dietItemDetails.map((food: any, index: number) => ({
-          id: String(index),
-          title: String(food?.name || food?.label || ''),
-          quantity: String(food?.quantity || '').trim(),
-          notes: String(food?.notes || '').trim(),
-        }))
-      : Array.isArray(item?.dietItems) && item.dietItems.length
-        ? item.dietItems
-            .map((entry: any, index: number) => {
-              const normalized = normalizeDietFoodItem(entry);
-              if (!normalized) return null;
-              return {
-                id: String(index),
-                title: normalized.name || normalized.label,
-                quantity: normalized.quantity,
-                notes: normalized.notes,
-              };
-            })
-            .filter(Boolean)
-        : [];
-
-  const steps =
-    Array.isArray(item?.preparationSteps) && item.preparationSteps.length
-      ? item.preparationSteps
-          .map((step: any) =>
-            typeof step === 'string'
-              ? step
-              : normalizeDietFoodItem(step)?.label || String(step?.name ?? ''),
-          )
-          .filter(Boolean)
-      : [];
-
-  const preparationVideos =
-    Array.isArray(item?.preparationVideos) && item.preparationVideos.length
-      ? item.preparationVideos.filter(Boolean)
-      : resolveMealPreparationVideos(item?.raw || item);
-
-  const openPrepVideo = async (url: string) => {
-    const safeUrl = String(url || '').trim();
-    if (!safeUrl) {
-      showSuccessToast('Video link unavailable', 'error');
-      return;
+  const dishes: DietFoodItem[] = useMemo(() => {
+    if (Array.isArray(item?.dietItemDetails) && item.dietItemDetails.length) {
+      return item.dietItemDetails.map((d: any) =>
+        d?.nutrition ? d : normalizeDietFoodItem(d?.raw || d) || d,
+      );
     }
-    try {
-      // Android canOpenURL can be unreliable for https — try open directly
-      await Linking.openURL(safeUrl);
-    } catch {
-      try {
-        const canOpen = await Linking.canOpenURL(safeUrl);
-        if (canOpen) {
-          await Linking.openURL(safeUrl);
-          return;
-        }
-      } catch {
-        // fall through
-      }
-      showSuccessToast('Unable to open video link', 'error');
+    return normalizeDietFoodItems(item?.raw?.diet);
+  }, [item]);
+
+  const totals = useMemo(() => {
+    const mealKcal = Number(item?.kcal) || 0;
+    const mealCarbs = Number(item?.carbs) || 0;
+    const mealProtein = Number(item?.protein) || 0;
+    const mealFat = Number(item?.fat) || 0;
+    if (mealKcal || mealCarbs || mealProtein || mealFat) {
+      return {
+        kcal: mealKcal,
+        carbs: mealCarbs,
+        protein: mealProtein,
+        fat: mealFat,
+      };
     }
+    return dishes.reduce(
+      (acc, d) => ({
+        kcal: acc.kcal + (d.nutrition?.kcal || 0),
+        carbs: acc.carbs + (d.nutrition?.carbs || 0),
+        protein: acc.protein + (d.nutrition?.protein || 0),
+        fat: acc.fat + (d.nutrition?.fat || 0),
+      }),
+      { kcal: 0, carbs: 0, protein: 0, fat: 0 },
+    );
+  }, [item, dishes]);
+
+  const planGallery = useMemo(() => getDietPlanGallery(plan), [plan]);
+
+  const openPreview = (images: Array<{ source: any }>, startIndex = 0) => {
+    if (!images.length) return;
+    setPreviewImages(images);
+    setPreviewIndex(startIndex);
+    setPreviewVisible(true);
   };
 
   const onLogMeal = async () => {
@@ -151,7 +316,6 @@ const MealDetails = (props: any) => {
         markingDone ? 'Meal logged' : 'Meal unmarked',
         'success',
       );
-      // Go back so Diet list reloads progress and shows the check
       props.navigation.goBack();
     } catch (e: any) {
       showSuccessToast(e?.message || 'Unable to update meal', 'error');
@@ -162,7 +326,10 @@ const MealDetails = (props: any) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={Colors.headerBackground}
+      />
 
       <AppHeader
         title="Meal Details"
@@ -172,139 +339,68 @@ const MealDetails = (props: any) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroWrap}>
-          <Image source={imageSource} style={styles.image} />
-          <TouchableOpacity
-            style={styles.previewBtn}
-            onPress={() => setPreviewVisible(true)}
-            activeOpacity={0.85}
-          >
-            <TablerIcon name="eye" size={14} color="#FFFFFF" />
-            <Text style={styles.previewBtnText}>Preview</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{mealType}</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTop}>
+            <View style={styles.typePill}>
+              <Text style={styles.typePillText}>{mealType}</Text>
             </View>
-            {!!item?.time && (
+            {!!mealTime && (
               <View style={styles.timeRow}>
-                <TablerIcon name="clock" size={14} color="#6B7280" />
-                <Text style={styles.timeText}>{item.time}</Text>
+                <TablerIcon name="clock" size={13} color={Colors.headercolor} />
+                <Text style={styles.timeText}>{mealTime}</Text>
               </View>
             )}
           </View>
 
-          <Text style={styles.title}>{mealTitle}</Text>
+          <Text style={styles.summaryTitle}>
+            {dishes.length > 1
+              ? `${dishes.length} foods in this meal`
+              : dishes[0]?.name ||
+              (typeof item?.title === 'string' ? item.title : 'Meal')}
+          </Text>
 
-          <View style={styles.statsRow}>
-            {stats.map(stat => (
-              <View style={styles.statBox} key={stat.label}>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-                <Text style={styles.statValue}>{stat.value}</Text>
-              </View>
-            ))}
-          </View>
+          {!!mealGuidance && (
+            <Text style={styles.guidance} numberOfLines={3}>
+              {mealGuidance}
+            </Text>
+          )}
 
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Image
-                source={Images.Ingredient}
-                style={styles.sectionIcon}
-              />
-              <Text style={styles.sectionTitle}>Ingredients</Text>
-            </View>
-
-            {ingredients.length === 0 ? (
-              <Text style={styles.emptySection}>No ingredients listed</Text>
-            ) : (
-              ingredients.map((ing: any) => (
-                <View style={styles.itemRow} key={ing.id}>
-                  <View style={styles.itemLeftWrap}>
-                    <Text style={styles.itemLeft} numberOfLines={2}>
-                      {ing.title}
-                    </Text>
-                    {!!ing.notes && (
-                      <Text style={styles.itemNotes} numberOfLines={1}>
-                        {ing.notes}
-                      </Text>
-                    )}
-                  </View>
-                  {!!ing.quantity && (
-                    <View style={styles.qtyPill}>
-                      <Text style={styles.qtyPillText}>{ing.quantity}</Text>
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-          </View>
-
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <TablerIcon
-                name="prescription"
-                size={14}
-                color={Colors.primaryColor}
-              />
-              <Text style={styles.sectionTitle}>Preparation Steps</Text>
-            </View>
-
-            {steps.length === 0 ? (
-              <Text style={styles.emptySection}>No preparation steps</Text>
-            ) : (
-              steps.map((text: string, index: number) => (
-                <View style={styles.stepRow} key={`${index}-${text}`}>
-                  <View style={styles.stepCircle}>
-                    <Text style={styles.stepNumber}>{index + 1}</Text>
-                  </View>
-                  <Text style={styles.stepText}>{text}</Text>
-                </View>
-              ))
-            )}
-          </View>
-
-          {preparationVideos.length > 0 ? (
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <TablerIcon
-                  name="play"
-                  size={14}
-                  color={Colors.primaryColor}
-                />
-                <Text style={styles.sectionTitle}>Preparation Videos</Text>
-              </View>
-              {preparationVideos.map((url: string, index: number) => (
-                <TouchableOpacity
-                  key={`${index}-${url}`}
-                  style={styles.videoLinkRow}
-                  activeOpacity={0.85}
-                  onPress={() => openPrepVideo(url)}
-                >
-                  <View style={styles.videoLinkIcon}>
-                    <TablerIcon name="youtube" size={16} color="#DC2626" />
-                  </View>
-                  <View style={styles.videoLinkCopy}>
-                    <Text style={styles.videoLinkTitle} numberOfLines={1}>
-                      Watch preparation video
-                      {preparationVideos.length > 1 ? ` ${index + 1}` : ''}
-                    </Text>
-                    <Text style={styles.videoLinkUrl} numberOfLines={1}>
-                      {url}
-                    </Text>
-                  </View>
-                  <TablerIcon name="chevron-right" size={16} color="#64748B" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
+          <NutriGrid
+            kcal={totals.kcal}
+            carbs={totals.carbs}
+            protein={totals.protein}
+            fat={totals.fat}
+          />
         </View>
+
+        {dishes.length > 1 ? (
+          <Text style={styles.listLabel}>Foods to eat</Text>
+        ) : null}
+
+        {dishes.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No food items for this meal</Text>
+          </View>
+        ) : (
+          dishes.map((dish, index) => (
+            <DishCard
+              key={`dish-${index}-${dish.name}`}
+              dish={dish}
+              index={index}
+              total={dishes.length}
+              onPreview={openPreview}
+            />
+          ))
+        )}
+
+
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View
+        style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 10) }]}
+      >
         <TouchableOpacity
           style={[styles.btn, styles.primaryBtn]}
           onPress={onLogMeal}
@@ -324,13 +420,16 @@ const MealDetails = (props: any) => {
           style={[styles.btn, styles.secondaryBtn]}
           onPress={() => props.navigation.goBack()}
         >
-          <Text style={[styles.btnText, { color: Colors.primaryColor }]}>Back</Text>
+          <Text style={[styles.btnText, { color: Colors.primaryColor }]}>
+            Back
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ProductImagePreviewModal
-        images={[{ source: imageSource }]}
+        images={previewImages}
         visible={previewVisible}
+        initialIndex={previewIndex}
         onClose={() => setPreviewVisible(false)}
       />
     </SafeAreaView>
@@ -342,314 +441,327 @@ export default MealDetails;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
-
   scroll: {
-    paddingBottom: 24,
-    backgroundColor: '#FDFDFB',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
   },
 
-  heroWrap: {
+  summaryCard: {
+    backgroundColor: Colors.white,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: Colors.bgborderColor,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  summaryTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  typePill: {
+    backgroundColor: Colors.onfillColor,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  typePillText: {
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    textTransform: 'uppercase',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timeText: {
+    fontSize: 12,
+    color: Colors.headercolor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  summaryTitle: {
+    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 22,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  guidance: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.headercolor,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  nutriGrid: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  nutriCell: {
+    flex: 1,
+    backgroundColor: Colors.onfillColor,
+    borderRadius: 10,
+    paddingVertical: 7,
+    alignItems: 'center',
+  },
+  nutriKcal: {
+    backgroundColor: Colors.primaryColor,
+  },
+  nutriValue: {
+    fontSize: 12,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  nutriValueOnDark: {
+    color: '#FFFFFF',
+  },
+  nutriLabel: {
+    marginTop: 1,
+    fontSize: 9,
+    color: Colors.headercolor,
+    fontFamily: Fonts.PoppinsMedium,
+    textTransform: 'uppercase',
+  },
+  nutriLabelOnDark: {
+    color: 'rgba(255,255,255,0.85)',
+  },
+
+  listLabel: {
+    marginBottom: 8,
+    fontSize: 12,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  dishCard: {
+    flexDirection: 'row',
+    backgroundColor: Colors.white,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    marginBottom: SPACING.sm,
+    overflow: 'hidden',
+  },
+  dishAccent: {
+    width: 3,
+    backgroundColor: Colors.primaryColor,
+  },
+  dishInner: {
+    flex: 1,
+    padding: SPACING.md,
+  },
+  dishTop: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dishImgWrap: {
+    width: IMG,
+    height: IMG,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.onfillColor,
+  },
+  dishImg: {
     width: '100%',
-    height: DIET_UI.mealDetailHeroHeight,
-    backgroundColor: '#E5E7EB',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  dishBadge: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    backgroundColor: 'rgba(13,97,78,0.88)',
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  dishBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  dishMeta: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  dishName: {
+    fontSize: 14,
+    lineHeight: 19,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  qtyChip: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.onfillColor,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  qtyChipText: {
+    fontSize: 12,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
-  image: {
+  notesRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: '#F7FAF5',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  notesText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+
+  section: {
+    marginTop: 10,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  sectionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primaryColor,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    color: Colors.textColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 6,
+  },
+  stepBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.onfillColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  stepBadgeText: {
+    fontSize: 10,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.subTextColor,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  recipeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.onfillColor,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginBottom: 4,
+  },
+  recipeBtnText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  emptyCard: {
+    backgroundColor: Colors.white,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: Colors.headercolor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+  planCard: {
+    backgroundColor: Colors.white,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    padding: SPACING.md,
+    marginTop: 4,
+  },
+  planRow: {
+    marginTop: 8,
+    gap: 8,
+  },
+  planThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: Colors.onfillColor,
+  },
+  planThumbImg: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
 
-  previewBtn: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    zIndex: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(15, 23, 42, 0.62)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-
-  previewBtnText: {
-    color: '#FFFFFF',
-    fontSize: TYPO.caption,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: SPACING.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderColor,
-    marginTop: -DIET_UI.detailCardOverlap,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    zIndex: 2,
-    elevation: 3,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-  },
-
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-
-  tag: {
-    backgroundColor: '#E6F2F2',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
-    borderRadius: RADIUS.md,
-  },
-
-  tagText: {
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: TYPO.sm,
-    textTransform: 'capitalize',
-  },
-
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flexShrink: 0,
-  },
-
-  timeText: {
-    fontSize: TYPO.sm,
-    color: '#6B7280',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-
-  title: {
-    fontSize: TYPO.xl + 2,
-    fontFamily: Fonts.PoppinsBold,
-    color: '#1F2937',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.md,
-    lineHeight: 26,
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
-  },
-
-  statBox: {
-    backgroundColor: '#EDEFF1',
-    paddingVertical: SPACING.sm + 2,
-    paddingHorizontal: SPACING.xs + 2,
-    borderRadius: RADIUS.md,
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-  },
-
-  statLabel: {
-    fontSize: TYPO.xs,
-    color: '#6B7280',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  statValue: {
-    fontSize: TYPO.md + 1,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsBold,
-    marginTop: 2,
-  },
-
-  sectionContainer: {
-    marginTop: SPACING.xl,
-  },
-
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-
-  sectionIcon: {
-    height: 14,
-    width: 14,
-  },
-
-  sectionTitle: {
-    fontSize: TYPO.lg,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#1F2937',
-  },
-
-  emptySection: {
-    fontSize: TYPO.subtitle,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EBEEED80',
-    gap: SPACING.sm,
-  },
-
-  itemLeftWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  itemLeft: {
-    fontSize: TYPO.body,
-    color: '#1F2937',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  itemNotes: {
-    marginTop: 2,
-    fontSize: TYPO.sm,
-    color: '#6B7280',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-
-  qtyPill: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 999,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 5,
-    maxWidth: 100,
-    flexShrink: 0,
-  },
-
-  qtyPillText: {
-    fontSize: TYPO.sm,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  itemRight: {
-    fontSize: TYPO.body,
-    color: '#6B7280',
-    fontFamily: Fonts.PoppinsRegular,
-    marginLeft: SPACING.sm,
-  },
-
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.lg - 2,
-  },
-
-  stepCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F4D9A4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-    flexShrink: 0,
-  },
-
-  stepNumber: {
-    fontSize: TYPO.sm,
-    color: '#1A1D1F',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  stepText: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: TYPO.body,
-    color: '#374151',
-    fontFamily: Fonts.PoppinsRegular,
-    lineHeight: 20,
-  },
-
-  videoLinkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFF5F5',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    marginBottom: 8,
-  },
-  videoLinkIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoLinkCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  videoLinkTitle: {
-    fontSize: TYPO.subtitle,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#111827',
-  },
-  videoLinkUrl: {
-    marginTop: 2,
-    fontSize: TYPO.xs,
-    fontFamily: Fonts.PoppinsRegular,
-    color: '#64748B',
-  },
-
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.sm + 2,
-    gap: SPACING.md,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    gap: SPACING.sm,
+    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    zIndex: 8,
-    elevation: 8,
+    borderTopColor: Colors.borderColor,
   },
-
   btn: {
     height: BUTTON.height,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   primaryBtn: {
     flex: 4,
     backgroundColor: Colors.primaryColor,
   },
-
   secondaryBtn: {
     flex: 1,
     borderWidth: 1,
     borderColor: Colors.borderColor,
-    backgroundColor: Colors.bgcolor,
+    backgroundColor: Colors.onfillColor,
   },
-
   btnText: {
     color: '#fff',
     fontSize: TYPO.button,

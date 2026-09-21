@@ -122,6 +122,7 @@ const FILTERS: { key: 'all' | 'unread' | 'read'; label: string }[] = [
 
 const TYPE_FILTERS: { key: string; label: string }[] = [
     { key: 'all', label: 'All types' },
+    { key: 'order', label: 'Orders' },
     { key: 'appointment', label: 'Appointments' },
     { key: 'prescription', label: 'Follow-ups' },
 ];
@@ -496,6 +497,12 @@ const NotificationsScreen = (props: any) => {
     const [modalVisible, setModalVisible] = useState(false);
 
     const openDetail = (item: NotificationItem) => {
+        // Mark read on tap, then show Read tab so it lands in the read section
+        if (!item.isRead) {
+            markAsRead?.(item.id);
+            setFilter?.('read');
+        }
+
         const raw = item.rawData ?? item;
         const nested =
             typeof raw?.data === 'object' && raw.data ? raw.data : {};

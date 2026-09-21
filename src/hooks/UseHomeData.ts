@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   fetchHomeData,
@@ -13,23 +13,41 @@ import {
 export const useHomeData = () => {
   const dispatch = useAppDispatch();
   const home = useAppSelector(selectHomeData);
+  const emptyReloadTriedRef = useRef(false);
 
   useEffect(() => {
     if (!home.initialized) {
-      dispatch(fetchHomeData(false));
+      emptyReloadTriedRef.current = false;
+      // Always network — home slice no longer caches
+      dispatch(fetchHomeData());
+      return;
     }
-  }, [dispatch, home.initialized]);
+
+    // One retry if catalogs came back empty (guest token ready after first paint)
+    const noCatalog =
+      !(home.medicineProducts?.length > 0) &&
+      !(home.storeProducts?.length > 0);
+    if (noCatalog && !emptyReloadTriedRef.current) {
+      emptyReloadTriedRef.current = true;
+      dispatch(fetchHomeData());
+    }
+  }, [
+    dispatch,
+    home.initialized,
+    home.medicineProducts?.length,
+    home.storeProducts?.length,
+  ]);
 
   const refreshHomeData = useCallback(async () => {
-    await dispatch(fetchHomeData(true));
+    await dispatch(fetchHomeData());
   }, [dispatch]);
 
-  const fetchCustomerDataFn = useCallback(async (force = false) => {
-    await dispatch(fetchCustomerData(force));
+  const fetchCustomerDataFn = useCallback(async (_force = false) => {
+    await dispatch(fetchCustomerData());
   }, [dispatch]);
 
-  const fetchDietPlansFn = useCallback(async (force = true) => {
-    await dispatch(fetchDietPlans(force));
+  const fetchDietPlansFn = useCallback(async (_force = true) => {
+    await dispatch(fetchDietPlans());
   }, [dispatch]);
 
   const setMedicineProducts = useCallback(

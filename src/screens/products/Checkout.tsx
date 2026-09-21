@@ -221,14 +221,14 @@ const Checkout: React.FC = (props: any) => {
                 const quoteData = response?.data ?? response;
                 const hasRates = Boolean(
                     quoteData?.configurations?.gst ||
-                        quoteData?.configurations?.platform_fee ||
-                        quoteData?.configurations?.delivery ||
-                        (Array.isArray(quoteData?.items) && quoteData.items.length),
+                    quoteData?.configurations?.platform_fee ||
+                    quoteData?.configurations?.delivery ||
+                    (Array.isArray(quoteData?.items) && quoteData.items.length),
                 );
                 const parsed = hasRates
                     ? parseFeeQuoteConfig(quoteData, subtotal, {
-                          ignoreConsultationFee: true,
-                      })
+                        ignoreConsultationFee: true,
+                    })
                     : null;
                 if (parsed) {
                     parsed.quotedCouponCode = String(appliedCoupon?.code || '').trim();
@@ -262,9 +262,13 @@ const Checkout: React.FC = (props: any) => {
                 localDiscount: couponDiscount,
                 includeCod: selectedMethod === 'cod',
                 couponCode: appliedCoupon?.code,
+
+
             }),
         [feeConfig, subtotal, couponDiscount, selectedMethod, appliedCoupon?.code],
     );
+
+    console.log('feeBreakdown =>', feeBreakdown);
 
     const shippingFee = feeBreakdown.shipping;
     const codFee = feeBreakdown.cod;
@@ -602,7 +606,7 @@ const Checkout: React.FC = (props: any) => {
                             style={[
                                 styles.payChip,
                                 selectedMethod === 'online' &&
-                                    styles.payChipActive,
+                                styles.payChipActive,
                             ]}
                             onPress={() => setSelectedMethod('online')}
                             activeOpacity={0.85}
@@ -621,7 +625,7 @@ const Checkout: React.FC = (props: any) => {
                                     style={[
                                         styles.payChipTitle,
                                         selectedMethod === 'online' &&
-                                            styles.payChipTitleActive,
+                                        styles.payChipTitleActive,
                                     ]}
                                 >
                                     Pay online
@@ -661,8 +665,8 @@ const Checkout: React.FC = (props: any) => {
                                     !codAvailable
                                         ? '#94A3B8'
                                         : selectedMethod === 'cod'
-                                          ? Colors.primaryColor
-                                          : '#64748B'
+                                            ? Colors.primaryColor
+                                            : '#64748B'
                                 }
                             />
                             <View style={{ flex: 1 }}>
@@ -670,7 +674,7 @@ const Checkout: React.FC = (props: any) => {
                                     style={[
                                         styles.payChipTitle,
                                         selectedMethod === 'cod' &&
-                                            styles.payChipTitleActive,
+                                        styles.payChipTitleActive,
                                         !codAvailable && styles.payChipMuted,
                                     ]}
                                 >
@@ -776,12 +780,37 @@ const Checkout: React.FC = (props: any) => {
                                     decimals: 2,
                                 })}
                             />
+                            {feeBreakdown.discount > 0 ? (
+                                <SummaryRow
+                                    label={'Discount'}
+                                    // label={`Coupon (${appliedCoupon?.code || ''})`}
+                                    value={`− ${formatRupee(feeBreakdown.discount, { decimals: 2 })}`}
+                                    success
+                                />
+                            ) : null}
+                            {feeBreakdown.discount > 0 ||
+                            feeBreakdown.itemsAfterDiscount !==
+                                feeBreakdown.baseAmount ? (
+                                <SummaryRow
+                                    label="Sub total"
+                                    value={formatRupee(
+                                        feeBreakdown.itemsAfterDiscount,
+                                        { decimals: 2 },
+                                    )}
+                                />
+                            ) : null}
+                            {/* {feeBreakdown.freeDeliveryNote ? (
+                                <Text style={styles.freeDeliveryNote}>
+                                    {feeBreakdown.freeDeliveryNote}
+                                </Text>
+                            ) : null} */}
+
                             <SummaryRow
                                 label={
                                     feeBreakdown.freeDelivery
                                         ? `Delivery · free above ${formatRupee(
-                                              feeBreakdown.freeDeliveryMinimum,
-                                          )}`
+                                            feeBreakdown.freeDeliveryMinimum,
+                                        )}`
                                         : 'Delivery'
                                 }
                                 value={
@@ -797,24 +826,8 @@ const Checkout: React.FC = (props: any) => {
                                     value={formatRupee(codFee, { decimals: 2 })}
                                 />
                             ) : null}
-                            {feeBreakdown.discount > 0 ? (
-                                <SummaryRow
-                                    label={`Coupon (${appliedCoupon?.code || ''})`}
-                                    value={`− ${formatRupee(feeBreakdown.discount, { decimals: 2 })}`}
-                                    success
-                                />
-                            ) : null}
-                            {feeBreakdown.discount > 0 ? (
-                                <SummaryRow
-                                    label="After coupon"
-                                    value={formatRupee(total, { decimals: 2 })}
-                                />
-                            ) : null}
-                            {feeBreakdown.freeDeliveryNote ? (
-                                <Text style={styles.freeDeliveryNote}>
-                                    {feeBreakdown.freeDeliveryNote}
-                                </Text>
-                            ) : null}
+
+
                             {feeBreakdown.platformFee > 0 ? (
                                 <SummaryRow
                                     label={feeRateLabel(
@@ -960,7 +973,7 @@ const Checkout: React.FC = (props: any) => {
                 visible={isVerifyingPayment}
                 transparent={false}
                 animationType="fade"
-                onRequestClose={() => {}}
+                onRequestClose={() => { }}
             >
                 <SafeAreaView style={styles.verificationScreen}>
                     <View style={styles.verificationContent}>

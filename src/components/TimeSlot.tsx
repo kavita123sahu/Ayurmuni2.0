@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 
@@ -17,16 +23,17 @@ type Props = {
   onSelect: (time: string) => void;
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SLOT_GAP = 10;
+const SLOT_WIDTH = (SCREEN_WIDTH - SLOT_GAP * 2) / 3;
+
 const TimeSlots = ({ data, selected, onSelect }: Props) => {
   return (
     <View style={{ marginTop: 20 }}>
       {data.map((section, i) => (
         <View key={i} style={{ marginBottom: 20 }}>
-
-          {/* Section Title */}
           <Text style={styles.sectionTitle}>{section.title}</Text>
 
-          {/* Slots Grid */}
           <View style={styles.row}>
             {section.slots.map((item, index) => {
               const isActive = selected === item.time;
@@ -48,6 +55,7 @@ const TimeSlots = ({ data, selected, onSelect }: Props) => {
                       isActive && styles.activeText,
                       !item.available && styles.disabledText,
                     ]}
+                    numberOfLines={1}
                   >
                     {item.time}
                   </Text>
@@ -55,7 +63,6 @@ const TimeSlots = ({ data, selected, onSelect }: Props) => {
               );
             })}
           </View>
-
         </View>
       ))}
     </View>
@@ -76,17 +83,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: SLOT_GAP,
   },
 
   slot: {
+    width: SLOT_WIDTH,
     paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingHorizontal: 4,
     borderRadius: 16,
-    padding:12,
     backgroundColor: '#ffffff',
     borderWidth: 2,
     borderColor: Colors.borderColor,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   activeSlot: {
@@ -103,17 +112,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
     color: '#111827',
+    textAlign: 'center',
   },
 
   activeText: {
     color: '#fff',
-    fontSize:12,
-    fontFamily: Fonts.PoppinsSemiBold
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   disabledText: {
     color: '#9CA3AF',
-    fontSize:12,
-    fontFamily: Fonts.PoppinsMedium
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsMedium,
   },
 });

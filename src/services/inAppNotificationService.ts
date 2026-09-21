@@ -1,4 +1,3 @@
-import { NativeModules, Platform } from 'react-native';
 import { OneSignal, NotificationWillDisplayEvent } from 'react-native-onesignal';
 import type { CustomNotificationRef, NotificationData } from '../components/CustomNotification';
 import { handleNotificationNavigation } from '../screens/notifications/notificationRouter';
@@ -13,20 +12,10 @@ export const registerInAppNotificationRef = (
   notificationRef = ref;
 };
 
-const showDeviceHeadsUp = (title?: string, message?: string) => {
-  if (Platform.OS !== 'android') {
-    return;
-  }
-  NativeModules.HeadsUpNotification?.show({
-    title: title || 'Ayurmuni',
-    message: message || 'You have a new notification',
-  });
-};
-
 export const showInAppNotification = (data: NotificationData) => {
   const payload = normalizeNotificationPayload(data);
+  // In-app banner only — never also post a native HeadsUp (that doubles OS banners).
   notificationRef?.show(payload);
-  showDeviceHeadsUp(payload.title, payload.message);
 };
 
 export const normalizeNotificationPayload = (
@@ -87,13 +76,11 @@ export const setupOneSignalInAppListeners = () => {
     'foregroundWillDisplay',
     (event: NotificationWillDisplayEvent) => {
       const notification = event.getNotification();
-      const payload = mapOneSignalPayload(notification);
 
-      // System heads-up (killed/background use the native channel; foreground
-      // must call display() or OneSignal swallows the popup).
+      // OneSignal already posts the system tray / heads-up once.
+      // Do NOT also call HeadsUpNotification.show or CustomNotification —
+      // that was causing 2 banners for 1 delivered push.
       notification.display();
-      notificationRef?.show(payload);
-      showDeviceHeadsUp(payload.title, payload.message);
     },
   );
 

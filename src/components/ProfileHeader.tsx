@@ -8,8 +8,13 @@ import {
   ImageBackground,
   ActivityIndicator,
   TouchableOpacity,
+  Modal,
+  Pressable,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';
@@ -21,6 +26,8 @@ import TablerIcon from './TablerIcon';
 import DiseaseSelectionModal from './DiseaseSelectionModal';
 import { getServiceCategoryId } from '../utils/serviceCategoryUtils';
 import { useHomeData } from '../hooks/UseHomeData';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 const resolveDiseaseList = (user: any): { id: string; name: string }[] => {
   const list = Array.isArray(user?.health_diseases) ? user.health_diseases : [];
@@ -38,9 +45,11 @@ const resolveDiseaseList = (user: any): { id: string; name: string }[] => {
 };
 
 const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
+  const insets = useSafeAreaInsets();
   const [loading] = useState(false);
   const [profileImage, setProfileImage] = useState('');
   const [showDiseaseModal, setShowDiseaseModal] = useState(false);
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
 
   const { stats: dashboardStats, refresh: refreshDashboardStats } =
     useProfileDashboardStats();
@@ -91,10 +100,13 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
   useEffect(() => {
     if (user?.profile_picture) {
       setProfileImage(user.profile_picture);
+    } else {
+      setProfileImage('');
     }
   }, [user]);
 
   const firstLetter = user?.first_name?.charAt(0)?.toUpperCase() || 'U';
+  const displayName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
 
   const onDiseaseSaved = async (saved: boolean) => {
     setShowDiseaseModal(false);
@@ -106,6 +118,10 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
     }
     onUserUpdated?.();
   };
+
+  const openPhotoViewer = useCallback(() => {
+    setShowPhotoViewer(true);
+  }, []);
 
   return (
     <View style={styles.wrapper}>
@@ -119,7 +135,13 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
             style={styles.avatarBg}
             imageStyle={{ borderRadius: 100 }}
           >
-            <View style={styles.avatarWrapper}>
+            <TouchableOpacity
+              style={styles.avatarWrapper}
+              onPress={openPhotoViewer}
+              activeOpacity={0.9}
+              accessibilityRole="imagebutton"
+              accessibilityLabel="View profile photo"
+            >
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatar} />
               ) : (
@@ -133,16 +155,17 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
                   <ActivityIndicator size="small" color="#fff" />
                 </View>
               ) : null}
-            </View>
+            </TouchableOpacity>
           </ImageBackground>
         </View>
 
         <Text style={styles.name} numberOfLines={1}>
-          {`${user?.first_name || ''} ${user?.last_name || ''}`}
+          {displayName ? `Hi, ${displayName.split(' ')[0]}!` : 'Hi there!'}
         </Text>
 
         <Text style={styles.info}>
-          +91 {user?.phone_number?.slice(-10)} • {user?.email}
+          +91 {user?.phone_number?.slice(-10)}
+          {user?.email ? ` · ${user.email}` : ''}
         </Text>
 
         <View style={styles.personalCard}>
@@ -209,6 +232,47 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
         onClose={() => {}}
         onDone={onDiseaseSaved}
       />
+
+      <Modal
+        visible={showPhotoViewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoViewer(false)}
+        statusBarTranslucent
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <Pressable
+          style={styles.viewerBackdrop}
+          onPress={() => setShowPhotoViewer(false)}
+        >
+          <View style={[styles.viewerTopBar, { paddingTop: insets.top + 8 }]}>
+            <Text style={styles.viewerName} numberOfLines={1}>
+              {displayName || 'Profile photo'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowPhotoViewer(false)}
+              hitSlop={12}
+              style={styles.viewerClose}
+            >
+              <TablerIcon name="x" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          <Pressable style={styles.viewerBody} onPress={() => {}}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.viewerImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.viewerFallback}>
+                <Text style={styles.viewerFallbackText}>{firstLetter}</Text>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -220,78 +284,78 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    borderRadius: 28,
-    paddingTop: 28,
-    paddingBottom: 22,
+    borderRadius: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
     alignItems: 'center',
     overflow: 'hidden',
   },
   leafLeft: {
     position: 'absolute',
-    top: 20,
+    top: 8,
     left: 10,
-    width: 60,
-    height: 60,
+    width: 44,
+    height: 44,
     tintColor: Colors.secondaryColor,
     resizeMode: 'contain',
-    opacity: 0.5,
+    opacity: 0.4,
   },
   leafRight: {
     position: 'absolute',
-    top: 100,
+    top: 48,
     right: 5,
-    width: 60,
-    height: 60,
+    width: 44,
+    height: 44,
     tintColor: Colors.secondaryColor,
     resizeMode: 'contain',
-    opacity: 0.5,
+    opacity: 0.4,
   },
   avatarBgWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: -10,
+    marginBottom: -6,
   },
   avatarBg: {
-    padding: 30,
-    height: 150,
-    width: 200,
-    borderRadius: 100,
+    padding: 16,
+    height: 96,
+    width: 140,
+    borderRadius: 80,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarWrapper: {
-    width: 105,
-    height: 105,
-    borderRadius: 24,
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#DDEBE8',
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+    elevation: 3,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 14,
   },
   initialWrapper: {
-    width: 90,
-    height: 90,
-    borderRadius: 18,
+    width: 64,
+    height: 64,
+    borderRadius: 14,
     backgroundColor: Colors.primaryColor,
     justifyContent: 'center',
     alignItems: 'center',
   },
   initialText: {
-    fontSize: 34,
+    fontSize: 26,
     color: '#fff',
     fontFamily: Fonts.PoppinsBold,
   },
@@ -313,17 +377,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.subTextColor,
     fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   personalCard: {
     width: '100%',
     backgroundColor: '#F4FAF7',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#D8EBE4',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
   },
   personalHeader: {
     marginBottom: 10,
@@ -394,5 +458,54 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  viewerTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  viewerName: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginRight: 12,
+  },
+  viewerClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  viewerBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  viewerImage: {
+    width: SCREEN_W,
+    height: SCREEN_H * 0.7,
+  },
+  viewerFallback: {
+    width: Math.min(SCREEN_W * 0.72, 280),
+    height: Math.min(SCREEN_W * 0.72, 280),
+    borderRadius: Math.min(SCREEN_W * 0.36, 140),
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerFallbackText: {
+    fontSize: 96,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsBold,
   },
 });

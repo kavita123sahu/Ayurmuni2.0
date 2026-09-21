@@ -1,0 +1,22 @@
+/** Shared auth / onboarding visual tokens — aligned with Doctor Profile. */
+export const AuthTheme = {
+  page: '#F4F7F6',
+  sheet: '#FFFFFF',
+  heroTop: '#E8F8F2',
+  heroBottom: '#FFFFFF',
+  collage: '#0F3D34',
+  headline: '#0F172A',
+  body: '#64748B',
+  muted: '#94A3B8',
+  border: '#E2EBE6',
+  borderSoft: '#DCE8E3',
+  inputBg: '#FFFFFF',
+  inputSoft: '#F0FDFA',
+  focus: '#0D614E',
+  primary: '#0D614E',
+  primaryMid: '#14937A',
+  ctaGradient: ['#0D614E', '#14937A'] as [string, string],
+  accentSoft: '#ECFDF5',
+  chipBg: '#EAF8F4',
+  handle: '#D1DED8',
+};

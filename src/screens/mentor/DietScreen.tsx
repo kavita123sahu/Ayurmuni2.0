@@ -1965,10 +1965,10 @@ const DietScreen = (props: any) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [prakritiFilter, setPrakritiFilter] = useState(ALL_VALUE);
   const [diseaseFilter, setDiseaseFilter] = useState<DiseaseOption | null>(
-  () =>
-    routeHealthDiseaseId
-      ? { id: routeHealthDiseaseId, name: routeCategoryName || 'Concern' }
-      : null,
+    () =>
+      routeHealthDiseaseId
+        ? { id: routeHealthDiseaseId, name: routeCategoryName || 'Concern' }
+        : null,
   );
   const [paidFilter, setPaidFilter] = useState(ALL_VALUE);
   const [durationFilter, setDurationFilter] = useState(ALL_VALUE);
@@ -2123,6 +2123,7 @@ const DietScreen = (props: any) => {
     if (!plans?.length) return;
     setFilterCatalog(prev => mergeFilterCatalog(prev, plans));
   }, [plans]);
+
 
   // Quiet seed: fill dropdown options from catalog without blocking list UI
   useEffect(() => {
@@ -2325,6 +2326,7 @@ const DietScreen = (props: any) => {
         ...filterCatalog.prakriti.map(v => ({ label: v, value: v })),
       ];
     }
+
     if (openFilter === 'disease') {
       return [
         { label: 'All Diseases', value: ALL_VALUE },
@@ -2334,6 +2336,7 @@ const DietScreen = (props: any) => {
         })),
       ];
     }
+
     if (openFilter === 'paid') {
       return [
         { label: 'All', value: ALL_VALUE },
@@ -3845,6 +3848,7 @@ const DietScreen = (props: any) => {
                     <MealCard
                       key={item.id}
                       data={item}
+                      plan={planDetail || selectedSummary}
                       navigation={props.navigation}
                       onLog={() => logMeal(item)}
                     />
@@ -3864,6 +3868,7 @@ const DietScreen = (props: any) => {
               <MealCard
                 key={item.id}
                 data={item}
+                plan={planDetail || selectedSummary}
                 navigation={props.navigation}
                 onLog={() => logMeal(item)}
               />

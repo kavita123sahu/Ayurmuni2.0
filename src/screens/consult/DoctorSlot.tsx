@@ -49,6 +49,11 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(64, Math.max(54, Math.floor(SCREEN_WIDTH * 0.135)));
+/** Book slot grid: card margin 10+10, padding 12+12, two gaps of 8 → 3 equal columns */
+const SLOT_GRID_GAP = 8;
+const SLOT_GRID_H_INSET = 10 + 10 + 12 + 12;
+const SLOT_BTN_WIDTH =
+    (SCREEN_WIDTH - SLOT_GRID_H_INSET - SLOT_GRID_GAP * 2) / 3.5;
 const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.22);
 
 const MODE_META: Record<
@@ -1299,12 +1304,12 @@ const styles = StyleSheet.create({
     slotGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: SLOT_GRID_GAP,
     },
     slotBtn: {
-        minWidth: (SCREEN_WIDTH - 20 - 24 - 16) / 3,
+        width: SLOT_BTN_WIDTH,
         paddingVertical: 10,
-        paddingHorizontal: 8,
+        paddingHorizontal: 4,
         borderRadius: 10,
         backgroundColor: '#F8FAFC',
         borderWidth: 1,
@@ -1334,6 +1339,7 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
         includeFontPadding: false,
+        textAlign: 'center',
     },
     activeSlotText: {
         color: '#FFFFFF',

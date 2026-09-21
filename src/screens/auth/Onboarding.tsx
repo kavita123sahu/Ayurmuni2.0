@@ -16,6 +16,8 @@ import {
     Animated,
     findNodeHandle,
     UIManager,
+    Modal,
+    Pressable,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
@@ -35,6 +37,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as _PROFILE_SERVICE from '../../services/ProfileServices';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import TablerIcon from '../../components/TablerIcon';
+import PolicyContentRenderer from '../../components/PolicyContentRenderer';
+import {
+    getPoliciesList,
+    getRequiredPolicies,
+} from '../../services/PolicyServices';
 
 
 interface FormData {
@@ -145,15 +152,47 @@ const Onboarding = (props: any) => {
         dob: '',
         terms: '',
     });
+    const [termsAgreed, setTermsAgreed] = useState(false);
+    const [policySheet, setPolicySheet] = useState<{
+        type: 'terms_of_service' | 'privacy_policy';
+        title: string;
+    } | null>(null);
+    const [policyLoading, setPolicyLoading] = useState(false);
+    const [policyError, setPolicyError] = useState<string | null>(null);
+    const [policyDoc, setPolicyDoc] = useState<any>(null);
 
-    const openPolicy = (policyType: 'terms_of_service' | 'privacy_policy') => {
-        props.navigation.navigate('PolicyDetail', {
-            policyType,
-            title:
-                policyType === 'terms_of_service'
-                    ? 'Terms of Use'
-                    : 'Privacy Policy',
-        });
+    const openPolicy = async (
+        policyType: 'terms_of_service' | 'privacy_policy',
+    ) => {
+        const title =
+            policyType === 'terms_of_service'
+                ? 'Terms of Use'
+                : 'Privacy Policy';
+        setPolicySheet({ type: policyType, title });
+        setPolicyLoading(true);
+        setPolicyError(null);
+        setPolicyDoc(null);
+        try {
+            const res = await getRequiredPolicies(policyType);
+            const list = getPoliciesList(res);
+            const entry = list[0];
+            const doc = entry?.policy ?? entry ?? null;
+            if (!doc) {
+                setPolicyError('Unable to load this policy right now.');
+                return;
+            }
+            setPolicyDoc(doc);
+        } catch (e: any) {
+            setPolicyError(e?.message || 'Failed to load policy.');
+        } finally {
+            setPolicyLoading(false);
+        }
+    };
+
+    const closePolicySheet = () => {
+        setPolicySheet(null);
+        setPolicyDoc(null);
+        setPolicyError(null);
     };
 
     const isFocused = useIsFocused();
@@ -416,6 +455,11 @@ const Onboarding = (props: any) => {
             }
         }
 
+        if (!termsAgreed) {
+            newErrors.terms = 'Please agree to the Terms of Use and Privacy Policy';
+            isValid = false;
+        }
+
         setErrors(newErrors);
 
         return isValid;
@@ -476,7 +520,7 @@ const Onboarding = (props: any) => {
     };
 
     const canProceed = useMemo(() => {
-        return isFormValid();
+        return isFormValid() && termsAgreed;
     }, [
         formData.firstName,
         formData.lastName,
@@ -485,6 +529,7 @@ const Onboarding = (props: any) => {
         dob.day,
         dob.month,
         dob.year,
+        termsAgreed,
     ]);
 
     const handleProcees = async () => {
@@ -927,23 +972,63 @@ const Onboarding = (props: any) => {
                             ) : null}
 
                             <View style={styles.termsBlock}>
-                                <Text style={styles.termsText}>
-                                    After creating your profile you will review and accept our{' '}
-                                    <Text
-                                        style={styles.termsLink}
-                                        onPress={() => openPolicy('terms_of_service')}
+                                <View style={styles.termsRow}>
+                                    <TouchableOpacity
+                                        activeOpacity={0.85}
+                                        onPress={() => {
+                                            setTermsAgreed(prev => !prev);
+                                            setErrors(prev => ({
+                                                ...prev,
+                                                terms: '',
+                                            }));
+                                        }}
+                                        hitSlop={8}
                                     >
-                                        Terms of Use
+                                        <View
+                                            style={[
+                                                styles.termsCheck,
+                                                termsAgreed &&
+                                                    styles.termsCheckActive,
+                                                !!errors.terms &&
+                                                    styles.termsCheckError,
+                                            ]}
+                                        >
+                                            {termsAgreed ? (
+                                                <TablerIcon
+                                                    name="check"
+                                                    size={14}
+                                                    color="#FFFFFF"
+                                                />
+                                            ) : null}
+                                        </View>
+                                    </TouchableOpacity>
+                                    <Text style={styles.termsText}>
+                                        I agree to the{' '}
+                                        <Text
+                                            style={styles.termsLink}
+                                            onPress={() =>
+                                                openPolicy('terms_of_service')
+                                            }
+                                        >
+                                            Terms of Use
+                                        </Text>
+                                        {' '}and{' '}
+                                        <Text
+                                            style={styles.termsLink}
+                                            onPress={() =>
+                                                openPolicy('privacy_policy')
+                                            }
+                                        >
+                                            Privacy Policy
+                                        </Text>
+                                        . Tap to read here.
                                     </Text>
-                                    {' '}and{' '}
-                                    <Text
-                                        style={styles.termsLink}
-                                        onPress={() => openPolicy('privacy_policy')}
-                                    >
-                                        Privacy Policy
+                                </View>
+                                {errors.terms ? (
+                                    <Text style={styles.errorText}>
+                                        {errors.terms}
                                     </Text>
-                                    .
-                                </Text>
+                                ) : null}
                             </View>
                         </View>
                     </View>
@@ -967,6 +1052,74 @@ const Onboarding = (props: any) => {
                 </View>
 
             </KeyboardAvoidingView>
+
+            <Modal
+                visible={!!policySheet}
+                transparent
+                animationType="slide"
+                onRequestClose={closePolicySheet}
+            >
+                <Pressable style={styles.policyOverlay} onPress={closePolicySheet}>
+                    <Pressable style={styles.policySheet} onPress={() => {}}>
+                        <View style={styles.policyHeader}>
+                            <Text style={styles.policyTitle}>
+                                {policySheet?.title || 'Policy'}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={closePolicySheet}
+                                hitSlop={10}
+                                style={styles.policyClose}
+                            >
+                                <TablerIcon name="x" size={18} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {policyLoading ? (
+                            <View style={styles.policyCenter}>
+                                <ActivityIndicator
+                                    size="large"
+                                    color={Colors.primaryColor}
+                                />
+                            </View>
+                        ) : policyError ? (
+                            <View style={styles.policyCenter}>
+                                <Text style={styles.policyError}>{policyError}</Text>
+                                <TouchableOpacity
+                                    style={styles.policyRetry}
+                                    onPress={() =>
+                                        policySheet && openPolicy(policySheet.type)
+                                    }
+                                >
+                                    <Text style={styles.policyRetryText}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <ScrollView
+                                style={styles.policyScroll}
+                                contentContainerStyle={styles.policyScrollContent}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                <PolicyContentRenderer
+                                    content={policyDoc?.content}
+                                />
+                            </ScrollView>
+                        )}
+
+                        <TouchableOpacity
+                            style={styles.policyDone}
+                            activeOpacity={0.9}
+                            onPress={() => {
+                                setTermsAgreed(true);
+                                closePolicySheet();
+                            }}
+                        >
+                            <Text style={styles.policyDoneText}>
+                                Got it · Agree & continue
+                            </Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -1340,7 +1493,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 10,
     },
-    checkbox: {
+    termsCheck: {
         width: 22,
         height: 22,
         borderRadius: 7,
@@ -1351,11 +1504,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginTop: 1,
     },
-    checkboxOn: {
+    termsCheckActive: {
         backgroundColor: Colors.primaryColor,
         borderColor: Colors.primaryColor,
     },
-    checkboxError: {
+    termsCheckError: {
         borderColor: '#EF4444',
     },
     termsText: {
@@ -1369,6 +1522,92 @@ const styles = StyleSheet.create({
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
         textDecorationLine: 'underline',
+    },
+
+    policyOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'flex-end',
+    },
+    policySheet: {
+        maxHeight: '82%',
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 22,
+        borderTopRightRadius: 22,
+        paddingBottom: 16,
+        overflow: 'hidden',
+    },
+    policyHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 18,
+        paddingTop: 16,
+        paddingBottom: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#E2E8F0',
+    },
+    policyTitle: {
+        flex: 1,
+        fontSize: 17,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#0F172A',
+        paddingRight: 12,
+    },
+    policyClose: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    policyCenter: {
+        minHeight: 220,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+    },
+    policyError: {
+        textAlign: 'center',
+        fontSize: 14,
+        lineHeight: 20,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#64748B',
+        marginBottom: 14,
+    },
+    policyRetry: {
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: Colors.primaryColor,
+    },
+    policyRetryText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    policyScroll: {
+        maxHeight: 420,
+    },
+    policyScrollContent: {
+        paddingHorizontal: 18,
+        paddingVertical: 16,
+        paddingBottom: 24,
+    },
+    policyDone: {
+        marginHorizontal: 18,
+        marginTop: 8,
+        height: 50,
+        borderRadius: 14,
+        backgroundColor: Colors.primaryColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    policyDoneText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     /* ---------------- ERROR ---------------- */

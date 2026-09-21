@@ -272,25 +272,71 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const trackingSteps = useMemo(() => buildOrderTrackingSteps(order), [order]);
   const address = formatDeliveryAddress(order?.delivery_address);
 
-  const paymentRows = useMemo(() => [
-    { label: 'Items total', value: formatCurrency(resolveOrderItemsTotal(order)) },
-    {
-      label: 'Shipping',
-      value: Number(order?.shipping_charges ?? 0) > 0
-        ? formatCurrency(order?.shipping_charges)
-        : 'Free',
-    },
-    {
-      label: 'Discount',
-      value: Number(order?.total_discount ?? 0) > 0
-        ? `- ${formatCurrency(order?.total_discount)}`
-        : undefined,
-    },
-    {
-      label: 'COD charges',
-      value: Number(order?.cod_charges ?? 0) > 0 ? formatCurrency(order?.cod_charges) : undefined,
-    },
-  ].filter(r => r.value != null), [order]);
+  const paymentRows = useMemo(() => {
+    const num = (...keys: string[]) => {
+      for (const key of keys) {
+        const n = Number(order?.[key]);
+        if (Number.isFinite(n) && n !== 0) return n;
+      }
+      return 0;
+    };
+
+    const itemsTotal = resolveOrderItemsTotal(order);
+    const discount = Math.abs(
+      num(
+        'total_discount',
+        'discount',
+        'coupon_discount',
+        'promo_discount',
+        'discount_amount',
+      ),
+    );
+    const giftWrap = num(
+      'gift_wrap_charges',
+      'gift_wrap_amount',
+      'gift_wrap_fee',
+      'gift_wrap',
+    );
+    const platformFee = num(
+      'platform_fee',
+      'platform_charges',
+      'convenience_fee',
+      'service_fee',
+    );
+    const gstDirect = num(
+      'gst',
+      'gst_amount',
+      'tax',
+      'tax_amount',
+      'igst',
+    );
+    const gstSplit =
+      (Number(order?.cgst) || 0) +
+      (Number(order?.sgst) || 0) +
+      (Number(order?.ugst) || 0);
+    const gst = gstDirect > 0 ? gstDirect : gstSplit > 0 ? gstSplit : 0;
+    const shipping = num('shipping_charges', 'shipping', 'delivery_charges');
+    const cod = num('cod_charges', 'cod_fee', 'cod_amount');
+
+    return [
+      { label: 'Items total', value: formatCurrency(itemsTotal) },
+      discount > 0
+        ? { label: 'Discount', value: `- ${formatCurrency(discount)}` }
+        : null,
+      giftWrap > 0
+        ? { label: 'Gift wrap', value: formatCurrency(giftWrap) }
+        : null,
+      platformFee > 0
+        ? { label: 'Platform fee', value: formatCurrency(platformFee) }
+        : null,
+      gst > 0 ? { label: 'GST / Tax', value: formatCurrency(gst) } : null,
+      {
+        label: 'Shipping',
+        value: shipping > 0 ? formatCurrency(shipping) : 'Free',
+      },
+      cod > 0 ? { label: 'COD charges', value: formatCurrency(cod) } : null,
+    ].filter(Boolean) as { label: string; value: string }[];
+  }, [order]);
 
   const deliveryAgent =
     order?.delivery_partner ?? order?.delivery_agent ?? order?.delivery_person ?? null;

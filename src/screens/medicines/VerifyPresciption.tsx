@@ -51,6 +51,8 @@ const VerifyPresciption = (props: any) => {
     previewItems: routePreviewItems,
   } = props.route?.params || {};
 
+
+  console.log("variantIdsvariantIdsvariantIds", routeVariantIds, routePreviewItems, existingRequest, routeRequestId);
   const [notes, setNotes] = useState(
     String(existingRequest?.notes || '').trim(),
   );
@@ -459,12 +461,7 @@ const VerifyPresciption = (props: any) => {
               />
             </View>
 
-            {variantIds.length > 0 ? (
-              <Text style={styles.variantHint}>
-                Linking {variantIds.length} cart item
-                {variantIds.length === 1 ? '' : 's'} with this request.
-              </Text>
-            ) : null}
+            
           </>
         ) : notes || request?.notes ? (
           <View style={styles.notesCard}>

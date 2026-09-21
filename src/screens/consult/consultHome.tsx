@@ -37,14 +37,13 @@ import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { Fonts } from '../../common/Fonts';
 import { useConsultData } from '../../hooks/useConsultData';
-import PromoCard from '../../components/PromoCard';
 import Detailimages from '../../components/Detailimages';
 import { useBanners } from '../../hooks/useBanners';
-import { SCREEN_PADDING_H, getScreenBottomPadding } from '../../constants/layout';
+import { SCREEN_PADDING_H, getScreenBottomPadding, HORIZONTAL_SCROLL_CONTENT } from '../../constants/layout';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
-import { getConsultationScheduleLabels } from '../../utils/appointmentUtils';
+import { buildAppointmentDetailsParams, getConsultationScheduleLabels } from '../../utils/appointmentUtils';
 import { getScreenPaddingH, SPACING } from '../../constants/responsive';
 import {
   navigateToCategoryProducts,
@@ -185,7 +184,7 @@ const ConsultHome = () => {
     },
     [dispatch, variantQuantities],
   );
-     const handleSearchPress = useCallback(() => {
+  const handleSearchPress = useCallback(() => {
     navigateToSearchScreen(navigation);
   }, [navigation]);
 
@@ -294,9 +293,15 @@ const ConsultHome = () => {
         const consultationId =
           item?.consultation_id || item?.appointment_id || item?.id;
         const schedule = getConsultationScheduleLabels(item);
+        const cardWidth = Math.min(
+          210,
+          Math.round(Dimensions.get('window').width * 0.58),
+        );
 
         return (
           <RecentDoctors
+            variant="compact"
+            cardWidth={cardWidth}
             image={{
               uri: item?.doctor?.doctor_image,
             }}
@@ -314,10 +319,16 @@ const ConsultHome = () => {
             onPressReceipt={
               consultationId
                 ? () =>
-                    navigation.navigate('MedicalReceipt', {
-                      consultationId,
-                    })
+                  navigation.navigate('MedicalReceipt', {
+                    consultationId,
+                  })
                 : undefined
+            }
+            onPress={() =>
+              navigation.navigate(
+                'AppointmentDetails',
+                buildAppointmentDetailsParams(item),
+              )
             }
             onPressReschedule={() => openDoctorSlot(item)}
             onPressBookAgain={() => openDoctorSlot(item)}
@@ -344,24 +355,16 @@ const ConsultHome = () => {
         subtitle="Find best doctor"
         onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
-        // onSearchPress={() => setSearchExpanded(true)}
-        // onRefreshPress={onRefresh}
+      // onSearchPress={() => setSearchExpanded(true)}
+      // onRefreshPress={onRefresh}
       />
 
 
       <FlatList
-        data={filteredHistory}
-        keyExtractor={(item, index) =>
-          String(
-            item?.consultation_id ??
-              item?.appointment_id ??
-              item?.id ??
-              `consult-${index}`,
-          )
-        }
-        renderItem={renderRecentDoctor}
+        data={[]}
+        keyExtractor={() => 'consult-home'}
+        renderItem={() => null}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         onEndReached={loadMoreProducts}
         onEndReachedThreshold={0.35}
         refreshControl={
@@ -400,26 +403,7 @@ const ConsultHome = () => {
                   enablePreview={false}
                 />
               </View>
-            ) : (
-              <PromoCard
-                title="Consult with Specialists"
-                desc="Over 50+ Medical Experts"
-                imageLeftIconName="consult"
-                image={require('../../assets/images/doctorbanner.png')}
-                buttontext="Book an appointment online"
-                approved
-                showButton
-                onPress={() => navigation.navigate('AllDoctors')}
-              />
-            )}
-
-            {/* <SectionHeader
-              title="Recent Consultation"
-              actionText="View History"
-              onPress={() => navigation.navigate('ConsultHistory')}
-            />
-
-            {loading && <DoctorCardSkeleton />} */}
+            ) : null}
 
             {(filteredHistory?.length ?? 0) > 0 && (
               <>
@@ -428,22 +412,30 @@ const ConsultHome = () => {
                   actionText="View History"
                   onPress={() => navigation.navigate('ConsultHistory')}
                 />
+                <FlatList
+                  data={filteredHistory}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  nestedScrollEnabled
+                  keyExtractor={(item, index) =>
+                    String(
+                      item?.consultation_id ??
+                      item?.appointment_id ??
+                      item?.id ??
+                      `consult-${index}`,
+                    )
+                  }
+                  renderItem={renderRecentDoctor}
+                  contentContainerStyle={HORIZONTAL_SCROLL_CONTENT}
+                  ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
+                />
               </>
             )}
 
 
           </>
         }
-        ListEmptyComponent={() => (
-          null
-
-          // <EmptyState
-          //   image={Images.doctorImage}
-          //   title="No consulation  found"
-          //   subtitle="Try adjusting your filters or search."
-          //   imageSize={48}
-          // />
-        )}
+        ListEmptyComponent={() => null}
 
         ListFooterComponent={
           loading ? (
@@ -496,10 +488,10 @@ const ConsultHome = () => {
                     onPress={
                       productList.length > 0
                         ? () =>
-                            navigateToCategoryProducts(navigation, {
-                              categoryMode: 'product',
-                              categoryName: 'All Products',
-                            })
+                          navigateToCategoryProducts(navigation, {
+                            categoryMode: 'product',
+                            categoryName: 'All Products',
+                          })
                         : undefined
                     }
                   />

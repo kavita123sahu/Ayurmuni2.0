@@ -1,6 +1,5 @@
 /**
- * Shown once after OTP verify.
- * User already has API tokens; this only chooses browse-as-guest vs start onboarding.
+ * Post-OTP entry — marketing welcome into profile setup (or Skip to home).
  */
 import React, { useState } from 'react';
 import {
@@ -11,24 +10,64 @@ import {
   StatusBar,
   ActivityIndicator,
   Image,
-  ScrollView,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
+import { AuthTheme } from '../../common/AuthTheme';
 import { markAsGuest } from '../../services/guestAuth';
 import { resetRootToHomeStack } from '../../navigation/navigationUtils';
-import TablerIcon from '../../components/TablerIcon';
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import { store } from '../../store/store';
+import { fetchHomeData } from '../../store/slices/homeSlice';
+
+const GREEN = Colors.primaryColor;
+const GREEN_DEEP = '#0A4F40';
+const GREEN_MID = '#117A63';
+
+const SHOWCASE: Array<{
+  icon: TablerIconName;
+  title: string;
+  subtitle: string;
+}> = [
+  {
+    icon: 'chart-pie',
+    title: 'Prakriti',
+    subtitle: 'Know your body type',
+  },
+  {
+    icon: 'stethoscope',
+    title: 'Doctors',
+    subtitle: 'Matched to you',
+  },
+  {
+    icon: 'package',
+    title: 'Products',
+    subtitle: 'Curated for you',
+  },
+  {
+    icon: 'leaf',
+    title: 'Daily care',
+    subtitle: 'Diet & yoga tips',
+  },
+];
 
 const AccessModeScreen = ({ navigation }: any) => {
-  const [loading, setLoading] = useState<'guest' | 'onboard' | null>(null);
+  const { height: SH, width: SW } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const compact = SH < 720;
+  const [loading, setLoading] = useState<'skip' | 'onboard' | null>(null);
+  const cardW = (SW - 40 - 10) / 2;
 
-  const continueAsGuest = async () => {
+  const skipToHome = async () => {
     try {
-      setLoading('guest');
+      setLoading('skip');
       await markAsGuest();
+      await store.dispatch(fetchHomeData(true));
       resetRootToHomeStack(navigation, 'TabStack', { screen: 'Home' });
     } finally {
       setLoading(null);
@@ -47,105 +86,138 @@ const AccessModeScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A3328" />
+      <StatusBar barStyle="light-content" backgroundColor={GREEN_DEEP} />
+
+      {/* Hero — brand + marketing headline */}
       <LinearGradient
-        colors={['#0A3328', '#0F4A38', '#145A43']}
-        style={styles.hero}
+        colors={[GREEN_DEEP, GREEN, GREEN_MID]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, compact && styles.heroCompact]}
       >
-        <SafeAreaView edges={['top']}>
-          <View style={styles.heroInner}>
-            <View style={styles.logoWrap}>
+        <Image
+          source={Images.leaf1}
+          style={styles.heroLeaf}
+          resizeMode="contain"
+        />
+        <SafeAreaView edges={['top']} style={styles.heroSafe}>
+          <View style={styles.topBar}>
+            <View style={styles.verifiedChip}>
+              <TablerIcon name="circle-check" size={12} color="#FFFFFF" />
+              <Text style={styles.verifiedText}>Phone verified</Text>
+            </View>
+            <TouchableOpacity
+              onPress={skipToHome}
+              disabled={!!loading}
+              hitSlop={10}
+              style={styles.skipBtn}
+            >
+              {loading === 'skip' ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.skipLink}>Skip</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.brandRow, compact && styles.brandRowCompact]}>
+            <View style={[styles.logoRing, compact && styles.logoRingCompact]}>
               <Image
                 source={Images.FinalLogo}
-                style={styles.logo}
+                style={[styles.logo, compact && styles.logoCompact]}
                 resizeMode="contain"
               />
             </View>
-            <View style={styles.verifiedRow}>
-              <TablerIcon name="circle-check" size={16} color="#D4AF37" />
-              <Text style={styles.verifiedText}>Your phone number is verified</Text>
+            <View style={styles.brandCopy}>
+              <Text style={styles.brandName}>Ayurmuni</Text>
+              <Text style={styles.brandTag}>Ayurveda care, made personal</Text>
             </View>
-            <Text style={styles.heroTitle}>Welcome to Ayurmuni</Text>
-            <Text style={styles.heroSub}>
-              Choose how you want to begin your wellness journey.
-            </Text>
           </View>
+
+          <Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>
+            Your wellness,{'\n'}tuned to you
+          </Text>
+          <Text style={styles.heroSub}>
+            Set up once — get doctors, products & routines shaped by your
+            Prakriti.
+          </Text>
         </SafeAreaView>
       </LinearGradient>
 
-      <SafeAreaView style={styles.sheet} edges={['bottom']}>
-        <ScrollView
-          contentContainerStyle={styles.sheetContent}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          <Text style={styles.sectionLabel}>GET STARTED</Text>
+      {/* Sheet — showcase + CTA fills remaining space */}
+      <View
+        style={[
+          styles.sheet,
+          { paddingBottom: Math.max(insets.bottom, 14) },
+        ]}
+      >
+        <View style={styles.sheetHandle} />
 
-          <TouchableOpacity
-            activeOpacity={0.92}
-            disabled={!!loading}
-            onPress={startOnboarding}
-            style={styles.primaryBtn}
-          >
-            <LinearGradient
-              colors={['#0D614E', '#14876A']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.primaryBtnGrad}
-            >
-              <View style={styles.btnIcon}>
-                <TablerIcon name="star" size={20} color="#FFFFFF" />
-              </View>
-              <View style={styles.btnCopy}>
-                <Text style={styles.primaryTitle}>Set up my profile</Text>
-                <Text style={styles.primarySub}>
-                  Details + Prakriti for personalized care
-                </Text>
-              </View>
-              {loading === 'onboard' ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <TablerIcon name="chevron-right" size={18} color="#FFFFFF" />
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+        <Text style={styles.sectionLabel}>WHAT YOU UNLOCK</Text>
 
-          <TouchableOpacity
-            activeOpacity={0.92}
-            disabled={!!loading}
-            onPress={continueAsGuest}
-            style={styles.secondaryBtn}
-          >
-            <View style={styles.btnIconSoft}>
-              <TablerIcon name="map-pin" size={20} color={Colors.primaryColor} />
+        <View style={styles.grid}>
+          {SHOWCASE.map(item => (
+            <View key={item.title} style={[styles.featureCard, { width: cardW }]}>
+              <LinearGradient
+                colors={['#EAF8F4', '#F7FBFA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.featureInner}
+              >
+                <View style={styles.featureIcon}>
+                  <TablerIcon name={item.icon} size={18} color={GREEN} />
+                </View>
+                <Text style={styles.featureTitle}>{item.title}</Text>
+                <Text style={styles.featureSub}>{item.subtitle}</Text>
+              </LinearGradient>
             </View>
-            <View style={styles.btnCopy}>
-              <Text style={styles.secondaryTitle}>Explore as guest</Text>
-              <Text style={styles.secondarySub}>
-                Browse freely — unlock bookings when you finish profile
+          ))}
+        </View>
+
+        <View style={styles.trustRow}>
+          {['Secure', 'Personalized', 'Ayurveda-first'].map(label => (
+            <View key={label} style={styles.trustPill}>
+              <View style={styles.trustDot} />
+              <Text style={styles.trustText}>{label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.92}
+          disabled={!!loading}
+          onPress={startOnboarding}
+          style={styles.ctaWrap}
+        >
+          <LinearGradient
+            colors={AuthTheme.ctaGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cta}
+          >
+            <View style={styles.ctaIcon}>
+              <TablerIcon name="user" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.ctaCopy}>
+              <Text style={styles.ctaTitle}>Set up my profile</Text>
+              <Text style={styles.ctaSub}>
+                Details & Prakriti · takes a few minutes
               </Text>
             </View>
-            {loading === 'guest' ? (
-              <ActivityIndicator color={Colors.primaryColor} />
+            {loading === 'onboard' ? (
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <TablerIcon name="chevron-right" size={18} color="#94A3B8" />
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.perks}>
-            {[
-              'Secure session stays active',
-              'Switch to full access anytime',
-              'Your data stays private',
-            ].map(line => (
-              <View key={line} style={styles.perkRow}>
-                <TablerIcon name="check" size={14} color={Colors.primaryColor} />
-                <Text style={styles.perkText}>{line}</Text>
+              <View style={styles.ctaArrow}>
+                <TablerIcon name="arrow-right" size={16} color="#FFFFFF" />
               </View>
-            ))}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <Text style={styles.footerNote}>
+          Skip anytime — you can finish setup later from Profile
+        </Text>
+      </View>
     </View>
   );
 };
@@ -155,150 +227,277 @@ export default AccessModeScreen;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F5F8F6',
+    backgroundColor: '#FFFFFF',
   },
   hero: {
     paddingBottom: 36,
   },
-  heroInner: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
+  heroCompact: {
+    paddingBottom: 28,
   },
-  logoWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+  heroLeaf: {
+    position: 'absolute',
+    right: -20,
+    top: 40,
+    width: 160,
+    height: 160,
+    opacity: 0.12,
+  },
+  heroSafe: {
+    paddingHorizontal: 20,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+    marginBottom: 16,
+  },
+  verifiedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  verifiedText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  skipBtn: {
+    minWidth: 44,
+    alignItems: 'flex-end',
+  },
+  skipLink: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 18,
+  },
+  brandRowCompact: {
+    marginBottom: 12,
+  },
+  logoRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
-    alignSelf: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  logoRingCompact: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
   },
   logo: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
   },
-  verifiedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
+  logoCompact: {
+    width: 42,
+    height: 42,
   },
-  verifiedText: {
-    fontSize: 12,
-    color: '#D4AF37',
+  brandCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  brandName: {
+    fontSize: 24,
+    lineHeight: 30,
+    color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.4,
+  },
+  brandTag: {
+    marginTop: 2,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.82)',
+    fontFamily: Fonts.PoppinsMedium,
   },
   heroTitle: {
     fontSize: 28,
     lineHeight: 34,
-    color: '#F7F3EA',
+    color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  heroTitleCompact: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   heroSub: {
     marginTop: 8,
-    fontSize: 14,
-    lineHeight: 21,
-    color: 'rgba(247,243,234,0.78)',
+    fontSize: 13,
+    lineHeight: 19,
+    color: 'rgba(255,255,255,0.86)',
     fontFamily: Fonts.PoppinsRegular,
     maxWidth: 320,
   },
+
   sheet: {
     flex: 1,
-    marginTop: -18,
-    backgroundColor: '#F5F8F6',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  sheetContent: {
+    marginTop: -22,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 24,
+    paddingTop: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0A4F40',
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: -4 },
+      },
+      android: { elevation: 8 },
+    }),
   },
-  sectionLabel: {
-    fontSize: 11,
-    letterSpacing: 1.4,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsSemiBold,
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1DED8',
     marginBottom: 14,
   },
-  primaryBtn: {
+  sectionLabel: {
+    fontSize: 10,
+    letterSpacing: 1.2,
+    color: GREEN,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 10,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  featureCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D7E5E0',
+  },
+  featureInner: {
+    padding: 12,
+    minHeight: 96,
+  },
+  featureIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D7E5E0',
+  },
+  featureTitle: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  featureSub: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  trustPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F3F8F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  trustDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GREEN,
+  },
+  trustText: {
+    fontSize: 11,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  ctaWrap: {
     borderRadius: 18,
     overflow: 'hidden',
-    marginBottom: 12,
   },
-  primaryBtnGrad: {
+  cta: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     gap: 12,
   },
-  secondaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2EBE6',
-  },
-  btnIcon: {
+  ctaIcon: {
     width: 42,
     height: 42,
-    borderRadius: 12,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  ctaTitle: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  ctaSub: {
+    marginTop: 2,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.88)',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  ctaArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnIconSoft: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#E8F3EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnCopy: {
-    flex: 1,
-  },
-  primaryTitle: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  primarySub: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 17,
-    color: 'rgba(255,255,255,0.82)',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  secondaryTitle: {
-    fontSize: 16,
-    color: '#0F172A',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  secondarySub: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 17,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  perks: {
-    marginTop: 28,
-    gap: 10,
-  },
-  perkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  perkText: {
-    fontSize: 13,
-    color: '#475569',
+  footerNote: {
+    marginTop: 12,
+    textAlign: 'center',
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#94A3B8',
     fontFamily: Fonts.PoppinsMedium,
   },
 });

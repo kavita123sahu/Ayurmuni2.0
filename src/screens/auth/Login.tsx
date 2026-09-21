@@ -24,24 +24,10 @@ import { showSuccessToast } from '../../config/Key';
 import * as _AUTH_SERVICE from '../../services/AuthService';
 import { Utils } from '../../common/Utils';
 import { Colors } from '../../common/Colors';
+import { AuthTheme as C } from '../../common/AuthTheme';
 import { parseDeletedAccountInfo } from '../../services/ProfileServices';
 import { parsePolicyAcceptedCustomer } from '../../utils/policyUtils';
-
-const C = {
-  collageBg: '#1A2E28',
-  sheet: '#F7F3EA',
-  headline: '#1A2E28',
-  body: '#5A6B66',
-  cta: '#0E4B3A',
-  ctaText: '#FFFFFF',
-  inputBg: '#FFFFFF',
-  inputBorder: '#DDD6C8',
-  inputFocus: '#0E4B3A',
-  accent: '#D4A84B',
-  checkboxBg: '#0E4B3A',
-  link: '#0E4B3A',
-  soft: '#EFE8DA',
-};
+import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = height < 700;
@@ -68,13 +54,27 @@ const COLUMN_LEFT = [IMAGE_POOL[0], IMAGE_POOL[1], IMAGE_POOL[2], IMAGE_POOL[3],
 const COLUMN_CENTER = [IMAGE_POOL[5], IMAGE_POOL[6], IMAGE_POOL[7], IMAGE_POOL[8], IMAGE_POOL[9]];
 const COLUMN_RIGHT = [IMAGE_POOL[10], IMAGE_POOL[11], IMAGE_POOL[0], IMAGE_POOL[3], IMAGE_POOL[5]];
 
-const HEADLINES = [
-  'Rooted in tradition, guided by science.',
-  'Your wellness, our commitment.',
-  'Natural care for modern living.',
-  'Empowering health through Ayurveda.',
-  'Discover holistic healing.',
-  'Timeless wellness, made simple.',
+const HEADLINES: Array<{ text: string; icon: TablerIconName }> = [
+  {
+    text: 'Bringing Ayurveda into your everyday life',
+    icon: 'leaf',
+  },
+  {
+    text: 'Discover personalised Ayurveda for your lifestyle.',
+    icon: 'heart-handshake',
+  },
+  {
+    text: 'A wellness journey created around you.',
+    icon: 'chart-pie',
+  },
+  {
+    text: 'Expert guidance for your everyday wellness.',
+    icon: 'stethoscope',
+  },
+  {
+    text: 'A healthier rhythm for your life',
+    icon: 'mood-smile',
+  },
 ];
 
 type Direction = 'up' | 'down';
@@ -123,10 +123,10 @@ const MarqueeColumn = ({
 };
 
 const TextCarousel = ({
-  texts,
+  items,
   duration = 3200,
 }: {
-  texts: string[];
+  items: Array<{ text: string; icon: TablerIconName }>;
   duration?: number;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -139,7 +139,7 @@ const TextCarousel = ({
         duration: 220,
         useNativeDriver: true,
       }).start(() => {
-        setCurrentIndex(prev => (prev + 1) % texts.length);
+        setCurrentIndex(prev => (prev + 1) % items.length);
         Animated.timing(fade, {
           toValue: 1,
           duration: 280,
@@ -148,15 +148,25 @@ const TextCarousel = ({
       });
     }, duration);
     return () => clearInterval(timer);
-  }, [duration, fade, texts.length]);
+  }, [duration, fade, items.length]);
+
+  const active = items[currentIndex] ?? items[0];
 
   return (
     <View style={styles.carouselBlock}>
-      <Animated.Text style={[styles.carouselText, { opacity: fade }]} numberOfLines={2}>
-        {texts[currentIndex]}
-      </Animated.Text>
+      <Animated.View style={[styles.carouselRow, { opacity: fade }]}>
+        <View style={styles.carouselIcon}>
+          <TablerIcon name={active.icon} size={16} color={C.primary} />
+        </View>
+        <Animated.Text
+          style={styles.carouselText}
+          numberOfLines={2}
+        >
+          {active.text}
+        </Animated.Text>
+      </Animated.View>
       <View style={styles.dotsContainer}>
-        {texts.map((_, i) => (
+        {items.map((_, i) => (
           <View
             key={i}
             style={[styles.dot, i === currentIndex ? styles.dotActive : styles.dotInactive]}
@@ -316,11 +326,11 @@ const PhoneAuthScreen = (props: any) => {
 
             <LinearGradient
               colors={[
-                'rgba(10, 28, 24, 0.5)',
-                'rgba(10, 28, 24, 0.12)',
-                'rgba(247, 243, 234, 0.98)',
+                'rgba(15, 61, 52, 0.45)',
+                'rgba(232, 248, 242, 0.55)',
+                C.page,
               ]}
-              locations={[0, 0.55, 1]}
+              locations={[0, 0.58, 1]}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
@@ -341,7 +351,7 @@ const PhoneAuthScreen = (props: any) => {
           >
             <View style={styles.sheetHandle} />
 
-            <TextCarousel texts={HEADLINES} />
+            <TextCarousel items={HEADLINES} />
 
             <Text style={styles.label}>Enter your mobile</Text>
 
@@ -358,7 +368,7 @@ const PhoneAuthScreen = (props: any) => {
                 ref={inputRef}
                 style={styles.input}
                 placeholder="Enter mobile number"
-                placeholderTextColor="#9AA8A3"
+                placeholderTextColor={C.muted}
                 keyboardType="number-pad"
                 maxLength={10}
                 value={phone}
@@ -371,29 +381,35 @@ const PhoneAuthScreen = (props: any) => {
                 autoComplete="tel"
               />
               {phone.length === 10 ? (
-                <MaterialCommunityIcons name="check-circle" size={20} color={C.cta} />
+                <MaterialCommunityIcons name="check-circle" size={20} color={C.primary} />
               ) : null}
             </TouchableOpacity>
 
             <View style={styles.termsBlock}>
-
               <Text style={styles.termsNote}>
                 Agreeing to Terms and Privacy Policy is mandatory when you complete customer onboarding.
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.cta, isLoading && styles.ctaDisabled]}
+              style={[styles.ctaWrap, isLoading && styles.ctaDisabled]}
               activeOpacity={0.88}
               onPress={onLogin}
               disabled={isLoading}
             >
-              <Text style={styles.ctaText}>
-                {isLoading ? 'Sending...' : 'GET OTP'}
-              </Text>
-              {!isLoading ? (
-                <MaterialCommunityIcons name="arrow-right" size={18} color={C.ctaText} />
-              ) : null}
+              <LinearGradient
+                colors={C.ctaGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.cta}
+              >
+                <Text style={styles.ctaText}>
+                  {isLoading ? 'Sending...' : 'GET OTP'}
+                </Text>
+                {!isLoading ? (
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
+                ) : null}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -406,14 +422,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: C.sheet,
+    backgroundColor: C.page,
   },
   scrollContent: {
     flexGrow: 1,
   },
 
   collageWrap: {
-    backgroundColor: C.collageBg,
+    backgroundColor: C.collage,
     overflow: 'hidden',
   },
   collageRow: {
@@ -434,7 +450,7 @@ const styles = StyleSheet.create({
     height: TILE_HEIGHT,
     borderRadius: 16,
     marginBottom: TILE_GAP,
-    backgroundColor: '#22301D',
+    backgroundColor: '#1A4A40',
   },
 
   logoBadge: {
@@ -446,22 +462,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   logoPill: {
-    backgroundColor: 'rgba(247, 243, 234, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: C.border,
   },
   logoImg: { width: 150, tintColor: Colors.primaryColor, height: 30 },
   brandHint: {
     fontSize: 9,
     letterSpacing: 1.3,
-    color: 'rgba(247, 243, 234, 0.9)',
+    color: 'rgba(255, 255, 255, 0.92)',
     fontFamily: Fonts.PoppinsMedium,
   },
 
   sheet: {
     flexGrow: 1,
-    backgroundColor: C.sheet,
+    backgroundColor: C.page,
     marginTop: -22,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -473,7 +491,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D8D0C0',
+    backgroundColor: C.handle,
     marginBottom: 12,
   },
 
@@ -482,13 +500,29 @@ const styles = StyleSheet.create({
     minHeight: isSmallDevice ? 62 : 70,
     justifyContent: 'center',
   },
+  carouselRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 2,
+  },
+  carouselIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: C.chipBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.border,
+  },
   carouselText: {
-    fontSize: isSmallDevice ? 19 : 21,
-    lineHeight: isSmallDevice ? 26 : 29,
+    flex: 1,
+    fontSize: isSmallDevice ? 16 : 18,
+    lineHeight: isSmallDevice ? 22 : 25,
     color: C.headline,
-    textAlign: 'center',
+    textAlign: 'left',
     fontFamily: Fonts.PoppinsSemiBold,
-    paddingHorizontal: 4,
   },
   dotsContainer: {
     flexDirection: 'row',
@@ -503,11 +537,11 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 18,
-    backgroundColor: C.accent,
+    backgroundColor: C.primary,
   },
   dotInactive: {
     width: 6,
-    backgroundColor: '#D4CBB8',
+    backgroundColor: C.borderSoft,
   },
 
   label: {
@@ -522,20 +556,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: C.inputBg,
     borderWidth: 1.5,
-    borderColor: C.inputBorder,
+    borderColor: C.border,
     borderRadius: 16,
     paddingHorizontal: 10,
     height: 56,
     gap: 8,
   },
   inputPillFocused: {
-    borderColor: C.inputFocus,
-    backgroundColor: '#FFFEFA',
+    borderColor: C.focus,
+    backgroundColor: C.inputSoft,
   },
   codeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.soft,
+    backgroundColor: C.chipBg,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -557,9 +591,10 @@ const styles = StyleSheet.create({
   },
 
   termsBlock: {
-    marginTop: 5, alignItems: 'center',
+    marginTop: 8,
+    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   termsRow: {
     flexDirection: 'row',
@@ -571,15 +606,15 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 7,
     borderWidth: 1.5,
-    borderColor: C.inputBorder,
+    borderColor: C.border,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
   },
   checkboxOn: {
-    backgroundColor: C.checkboxBg,
-    borderColor: C.checkboxBg,
+    backgroundColor: C.primary,
+    borderColor: C.primary,
   },
   termsText: {
     flex: 1,
@@ -589,25 +624,27 @@ const styles = StyleSheet.create({
     color: C.body,
   },
   termsLink: {
-    color: C.link,
+    color: C.primary,
     fontFamily: Fonts.PoppinsSemiBold,
     textDecorationLine: 'underline',
   },
   termsNote: {
-    // marginTop: 8,
-    // marginLeft: 32,
-
     fontSize: 11,
     lineHeight: 16,
     color: C.body,
     fontFamily: Fonts.PoppinsRegular,
+    textAlign: 'center',
   },
 
+  ctaWrap: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   cta: {
     width: '100%',
     minHeight: 54,
-    borderRadius: 28,
-    backgroundColor: C.cta,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -620,7 +657,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: C.ctaText,
+    color: '#FFFFFF',
     letterSpacing: 0.8,
   },
 });

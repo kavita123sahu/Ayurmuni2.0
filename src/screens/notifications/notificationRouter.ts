@@ -32,10 +32,7 @@ const goHomeStack = (navigation: any, screen: string, params?: object) => {
   });
 };
 
-/**
- * Navigate from OneSignal / in-app notification payloads.
- * Uses `route` (or `screen`) + entity ids so taps land on the right screen.
- */
+
 export const handleNotificationNavigation = (
   navigation: any,
   data: NavPayload,

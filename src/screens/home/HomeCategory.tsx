@@ -108,7 +108,7 @@ const CategoryTile = ({
       </Animated.View>
 
       <Text
-        numberOfLines={1}
+        numberOfLines={2}
         style={[styles.label, active && styles.labelActive]}
       >
         {item.name}

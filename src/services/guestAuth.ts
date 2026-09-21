@@ -60,8 +60,8 @@ const profileCreatedFlag = (profile?: ProfileLike) =>
 const hasCustomerIdentity = (profile?: ProfileLike) =>
   Boolean(
     profile &&
-      String(profile.first_name ?? '').trim() &&
-      (profile.customer_id || profile.id),
+    String(profile.first_name ?? '').trim() &&
+    (profile.customer_id || profile.id),
   );
 
 export async function isAuthenticated(): Promise<boolean> {

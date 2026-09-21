@@ -750,6 +750,7 @@ import {
 } from '../../utils/productSearchUtils';
 import { renderCategoryName } from '../../common/DataInterface';
 import TablerIcon from '../../components/TablerIcon';
+import PromoCard from '../../components/PromoCard';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CATEGORY_PANEL_WIDTH = 78;
@@ -765,14 +766,23 @@ const ALL_CATEGORY: CategoryItem = {
   name: 'All',
   parent_id: '',
   image_url: '',
+  description: '',
+  subscription: '',
   isAll: true,
 };
 
 const CategoryProductsScreen = (props: any) => {
   const routeParams = props?.route?.params ?? {};
+  const rawMode = String(routeParams.categoryMode || '').toLowerCase();
+  // medicine → product catalog filtered by medicine service_category_id
   const categoryMode: 'health' | 'product' =
-    routeParams.categoryMode ??
-    (routeParams.healthCategoryId && !routeParams.categoryId ? 'health' : 'product');
+    rawMode === 'health'
+      ? 'health'
+      : rawMode === 'medicine' || rawMode === 'product'
+        ? 'product'
+        : routeParams.healthCategoryId && !routeParams.categoryId
+          ? 'health'
+          : 'product';
 
   const initialCategoryId = routeParams.categoryId
     ? String(routeParams.categoryId)
@@ -781,7 +791,9 @@ const CategoryProductsScreen = (props: any) => {
       : 'all';
   const initialSubcategoryId = routeParams.productSubcategoryId
     ? String(routeParams.productSubcategoryId)
-    : null;
+    : routeParams.healthDiseaseId
+      ? String(routeParams.healthDiseaseId)
+      : null;
   const initialBrandId = routeParams.brand_name_id
     ? String(routeParams.brand_name_id)
     : null;
@@ -794,7 +806,7 @@ const CategoryProductsScreen = (props: any) => {
 
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
-  const { productData } = useHomeData();
+  const { medicineProducts, storeProducts, productData } = useHomeData();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
@@ -815,31 +827,45 @@ const CategoryProductsScreen = (props: any) => {
   const activeCategoryId =
     selectedCategoryId === 'all' ? null : selectedCategoryId;
 
+  // Medicine Shop by Concern → health concerns + disease subcategories
+  // Medicine product browse → product categories under medicine service
+  const useHealthRail = categoryMode === 'health';
+
   const { categories: productTopCategories, loading: productTopLoading, refresh: refreshProductTop } =
-    useProductCategories(null);
+    useProductCategories(null, useHealthRail ? null : serviceCategoryId);
 
   const { categories: healthTopCategories, loading: healthTopLoading, refresh: refreshHealthTop } =
-    useHealthCategories(null);
+    useHealthCategories(null, useHealthRail ? serviceCategoryId : null);
 
-  const topCategories =
-    categoryMode === 'health' ? healthTopCategories : productTopCategories;
-  const topCategoriesLoading =
-    categoryMode === 'health' ? healthTopLoading : productTopLoading;
-  const refreshTopCategories =
-    categoryMode === 'health' ? refreshHealthTop : refreshProductTop;
+  const topCategories = useHealthRail ? healthTopCategories : productTopCategories;
+  const topCategoriesLoading = useHealthRail
+    ? healthTopLoading
+    : productTopLoading;
+  const refreshTopCategories = useHealthRail
+    ? refreshHealthTop
+    : refreshProductTop;
 
   const { categories: productSubcategories, loading: productSubLoading, refresh: refreshProductSub } =
-    useProductCategories(categoryMode === 'product' ? activeCategoryId : null);
+    useProductCategories(
+      !useHealthRail ? activeCategoryId : null,
+      !useHealthRail ? serviceCategoryId : null,
+    );
 
   const { categories: healthSubcategories, loading: healthSubLoading, refresh: refreshHealthSub } =
-    useHealthCategories(categoryMode === 'health' ? activeCategoryId : null);
+    useHealthCategories(
+      useHealthRail ? activeCategoryId : null,
+      useHealthRail ? serviceCategoryId : null,
+    );
 
-  const subcategories =
-    categoryMode === 'health' ? healthSubcategories : productSubcategories;
-  const subcategoriesLoading =
-    categoryMode === 'health' ? healthSubLoading : productSubLoading;
-  const refreshSubcategories =
-    categoryMode === 'health' ? refreshHealthSub : refreshProductSub;
+  const subcategories = useHealthRail
+    ? healthSubcategories
+    : productSubcategories;
+  const subcategoriesLoading = useHealthRail
+    ? healthSubLoading
+    : productSubLoading;
+  const refreshSubcategories = useHealthRail
+    ? refreshHealthSub
+    : refreshProductSub;
 
   const { brands: brandRecords } = useBrands();
 
@@ -851,35 +877,42 @@ const CategoryProductsScreen = (props: any) => {
         : brandIds.join(',');
 
   const productFilter = useMemo(() => {
-    if (categoryMode === 'health') {
+    if (useHealthRail) {
       return {
-        // Parent concern stays as health_category_id; child disease is health_disease_id
-        health_category_id:
-          activeCategoryId ?? routeParams.healthCategoryId ?? null,
-        health_disease_id:
-          selectedSubcategoryId ?? routeParams.healthDiseaseId ?? null,
+        health_category_id: activeCategoryId,
+        health_disease_id: selectedSubcategoryId,
         brand_name_id: apiBrandNameId,
         service_category_id: serviceCategoryId,
       };
     }
 
+    // Shop by Category: parent category + optional subcategory + products service
     return {
       id: activeCategoryId,
       product_subcategory_id: selectedSubcategoryId,
-      health_category_id: routeParams.healthCategoryId ?? null,
-      health_disease_id: routeParams.healthDiseaseId ?? null,
       brand_name_id: apiBrandNameId,
       service_category_id: serviceCategoryId,
     };
   }, [
-    categoryMode,
+    useHealthRail,
     activeCategoryId,
     selectedSubcategoryId,
-    routeParams.healthCategoryId,
-    routeParams.healthDiseaseId,
     apiBrandNameId,
     serviceCategoryId,
   ]);
+
+  const fallbackCatalog = useMemo(() => {
+    const store = Array.isArray(storeProducts) ? storeProducts : [];
+    const medicine = Array.isArray(medicineProducts) ? medicineProducts : [];
+    const home = Array.isArray(productData) ? productData : [];
+
+    if (useHealthRail) {
+      return medicine.length ? medicine : store.length ? store : home;
+    }
+
+    // Shop by Category (products) → store catalog
+    return store.length ? store : home.length ? home : medicine;
+  }, [useHealthRail, medicineProducts, storeProducts, productData]);
 
   const {
     products: fetchedProducts,
@@ -888,7 +921,7 @@ const CategoryProductsScreen = (props: any) => {
     refreshing,
     refresh,
     loadMore,
-  } = useCategoryProducts(productFilter, productData);
+  } = useCategoryProducts(productFilter, fallbackCatalog);
   const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
@@ -905,8 +938,58 @@ const CategoryProductsScreen = (props: any) => {
   }, [selectedCategoryId]);
 
   const categoryList = useMemo(() => {
-    return [ALL_CATEGORY, ...topCategories].filter(item => item.id);
-  }, [topCategories]);
+    const base = [ALL_CATEGORY, ...topCategories].filter(item => item.id);
+
+    // Keep the tapped concern visible on the left even before top list loads
+    const routeHealthId = routeParams.healthCategoryId
+      ? String(routeParams.healthCategoryId)
+      : '';
+    if (
+      useHealthRail &&
+      routeHealthId &&
+      routeHealthId !== 'all' &&
+      !base.some(item => item.id === routeHealthId)
+    ) {
+      base.splice(1, 0, {
+        id: routeHealthId,
+        name: String(routeParams.categoryName || 'Concern'),
+        parent_id: '',
+        image_url: '',
+        description: String(routeParams.categoryDesc || ''),
+        subscription: String(routeParams.categorySubscription || ''),
+      });
+    }
+
+    // Same for product Shop by Category
+    const routeProductId = routeParams.categoryId
+      ? String(routeParams.categoryId)
+      : '';
+    if (
+      !useHealthRail &&
+      routeProductId &&
+      routeProductId !== 'all' &&
+      !base.some(item => item.id === routeProductId)
+    ) {
+      base.splice(1, 0, {
+        id: routeProductId,
+        name: String(routeParams.categoryName || 'Category'),
+        parent_id: '',
+        image_url: '',
+        description: String(routeParams.categoryDesc || ''),
+        subscription: String(routeParams.categorySubscription || ''),
+      });
+    }
+
+    return base;
+  }, [
+    topCategories,
+    useHealthRail,
+    routeParams.healthCategoryId,
+    routeParams.categoryId,
+    routeParams.categoryName,
+    routeParams.categoryDesc,
+    routeParams.categorySubscription,
+  ]);
 
   const brandOptions = useMemo<BrandFilterOption[]>(() => {
     const fromApi = (Array.isArray(brandRecords) ? brandRecords : [])
@@ -1105,7 +1188,29 @@ const CategoryProductsScreen = (props: any) => {
 
   const subtitle = selectedSubcategoryName || selectedCategoryName;
 
-  const showSubcategories = activeCategoryId && subcategories.length > 0 && !subcategoriesLoading;
+  const promoTitle =
+    selectedCategoryId !== 'all'
+      ? selectedCategoryName
+      : String(routeParams.categoryName || '').trim();
+  const promoDesc = String(
+    (selectedCategoryId !== 'all'
+      ? categoryList.find(item => item.id === selectedCategoryId)?.description
+      : null) ||
+    routeParams.categoryDesc ||
+    '',
+  ).trim();
+  const promoSubscription = String(
+    (selectedCategoryId !== 'all'
+      ? categoryList.find(item => item.id === selectedCategoryId)?.subscription
+      : null) ||
+    routeParams.categorySubscription ||
+    '',
+  ).trim();
+  const showPromoCard = Boolean(
+    promoTitle && (promoDesc || promoSubscription || selectedCategoryId !== 'all'),
+  );
+
+  const showSubcategories = Boolean(activeCategoryId);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'bottom']}>
@@ -1117,7 +1222,7 @@ const CategoryProductsScreen = (props: any) => {
             routeParams.brandName
               ? String(routeParams.brandName)
               : routeParams.categoryName ??
-              (categoryMode === 'health' ? 'Health Concerns' : 'Categories')
+              (useHealthRail ? 'Shop by Concern' : 'Shop by Category')
           }
           backIcon={Images.backIcon}
           onBack={() => safeGoBack(props.navigation)}
@@ -1151,6 +1256,19 @@ const CategoryProductsScreen = (props: any) => {
         </View>
 
         <View style={styles.productPanel}>
+          {/* {showPromoCard ? (
+            <View style={styles.promoWrap}>
+              <PromoCard
+                variant="compact"
+                title={promoTitle}
+                desc={promoDesc}
+                subscription={promoSubscription}
+                imageLeftIconName={useHealthRail ? 'plus-bag' : 'package'}
+                showButton={false}
+              />
+            </View>
+          ) : null} */}
+
           <ProductSearchFilterBar
             sortBy={sortBy}
             onSortChange={setSortBy}
@@ -1169,82 +1287,90 @@ const CategoryProductsScreen = (props: any) => {
 
           {showSubcategories && (
             <View style={styles.subcategorySection}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.subcategoryRow}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.subcategoryChip,
-                    !selectedSubcategoryId && styles.subcategoryChipActive,
-                  ]}
-                  onPress={() => setSelectedSubcategoryId(null)}
+              {subcategoriesLoading && subcategories.length === 0 ? (
+                <ActivityIndicator
+                  size="small"
+                  color={Colors.primaryColor}
+                  style={{ marginVertical: 8 }}
+                />
+              ) : subcategories.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.subcategoryRow}
                 >
-                  <View style={styles.subcategoryChipIconWrap}>
-                    <TablerIcon
-                      name="list"
-                      size={14}
-                      color={
-                        !selectedSubcategoryId
-                          ? Colors.primaryColor
-                          : '#64748B'
-                      }
-                    />
-                  </View>
-                  <Text
+                  <TouchableOpacity
                     style={[
-                      styles.subcategoryChipText,
-                      !selectedSubcategoryId && styles.subcategoryChipTextActive,
+                      styles.subcategoryChip,
+                      !selectedSubcategoryId && styles.subcategoryChipActive,
                     ]}
+                    onPress={() => setSelectedSubcategoryId(null)}
                   >
-                    All
-                  </Text>
-                </TouchableOpacity>
-
-                {subcategories.map(item => {
-                  const active = selectedSubcategoryId === item.id;
-                  const imageUri =
-                    item?.image_url && typeof item.image_url === 'string'
-                      ? item.image_url
-                      : '';
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
+                    <View style={styles.subcategoryChipIconWrap}>
+                      <TablerIcon
+                        name="list"
+                        size={14}
+                        color={
+                          !selectedSubcategoryId
+                            ? Colors.primaryColor
+                            : '#64748B'
+                        }
+                      />
+                    </View>
+                    <Text
                       style={[
-                        styles.subcategoryChip,
-                        active && styles.subcategoryChipActive,
+                        styles.subcategoryChipText,
+                        !selectedSubcategoryId && styles.subcategoryChipTextActive,
                       ]}
-                      onPress={() => setSelectedSubcategoryId(item.id)}
                     >
-                      <View style={styles.subcategoryChipIconWrap}>
-                        {imageUri ? (
-                          <Image
-                            source={{ uri: imageUri }}
-                            style={styles.subcategoryChipImage}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Image
-                            source={Images.cardiology}
-                            style={styles.subcategoryChipImage}
-                            resizeMode="cover"
-                          />
-                        )}
-                      </View>
-                      <Text
+                      All
+                    </Text>
+                  </TouchableOpacity>
+
+                  {subcategories.map(item => {
+                    const active = selectedSubcategoryId === item.id;
+                    const imageUri =
+                      item?.image_url && typeof item.image_url === 'string'
+                        ? item.image_url
+                        : '';
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
                         style={[
-                          styles.subcategoryChipText,
-                          active && styles.subcategoryChipTextActive,
+                          styles.subcategoryChip,
+                          active && styles.subcategoryChipActive,
                         ]}
-                        numberOfLines={1}
+                        onPress={() => setSelectedSubcategoryId(item.id)}
                       >
-                        {item.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                        <View style={styles.subcategoryChipIconWrap}>
+                          {imageUri ? (
+                            <Image
+                              source={{ uri: imageUri }}
+                              style={styles.subcategoryChipImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <Image
+                              source={Images.cardiology}
+                              style={styles.subcategoryChipImage}
+                              resizeMode="cover"
+                            />
+                          )}
+                        </View>
+                        <Text
+                          style={[
+                            styles.subcategoryChipText,
+                            active && styles.subcategoryChipTextActive,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
             </View>
           )}
 
@@ -1318,7 +1444,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDFDFB',
   },
   headerWrap: {
-    
+
     paddingHorizontal: CONTENT_PADDING,
   },
   body: {
@@ -1330,6 +1456,9 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     marginTop: 5,
     paddingRight: CONTENT_PADDING,
+  },
+  promoWrap: {
+    marginBottom: 4,
   },
   productList: {
     flex: 1,

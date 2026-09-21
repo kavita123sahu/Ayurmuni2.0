@@ -10,13 +10,12 @@ import {
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import TablerIcon, { TablerIconName } from './TablerIcon';
-import { CARD_SURFACE, CARD_RADIUS_LG } from '../constants/cardStyles';
+import { CARD_RADIUS_LG } from '../constants/cardStyles';
 
 type BrandType = {
   id: string;
   name: string;
-  logo?:
-  TablerIconName;
+  logo?: TablerIconName;
   image?: ImageSourcePropType;
   iconName?: TablerIconName;
   onPress?: () => void;
@@ -44,21 +43,34 @@ const BrandList: React.FC<Props> = ({ data = [] }) => {
       renderItem={({ item }) => (
         <TouchableOpacity
           style={styles.card}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           onPress={item.onPress}
         >
-          <View style={styles.imageContainer}>
-            {item.iconName ? (
-              <TablerIcon name={item.iconName} size={26} color="#0D614E" />
-            ) : item.image ? (
-              <Image source={item.image} style={styles.image} />
-            ) : (
-              <TablerIcon name="pill" size={26} color="#0D614E" />
-            )}
+          {/* Background Image / Icon */}
+          {item.image ? (
+            <Image
+              source={item.image}
+              style={styles.backgroundImage}
+            />
+          ) : (
+            <View style={styles.iconBackground}>
+              <TablerIcon
+                name={item.iconName || 'pill'}
+                size={42}
+                color="#0D614E"
+              />
+            </View>
+          )}
+
+          {/* Bottom Overlay */}
+          <View style={styles.bottomOverlay}>
+            <Text
+              style={styles.name}
+              numberOfLines={2}
+            >
+              {item.name}
+            </Text>
           </View>
-          <Text style={styles.name} numberOfLines={2}>
-            {item.name}
-          </Text>
         </TouchableOpacity>
       )}
     />
@@ -71,38 +83,53 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 10,
   },
+
   separator: {
-    width: 12,
+    width: 5,
   },
+
   card: {
-    width: 120,
-    height: 120,
-    borderRadius: CARD_RADIUS_LG,
-    // paddingVertical: 14,
-    alignItems: 'center',
-    // backgroundColo r: 'rgba(13, 97, 78, 0.08)',
-    // borderWidth: 1,
-    // borderColor: 'rgba(13, 97, 78, 0.12)',
-  },
-  imageContainer: {
     width: 100,
     height: 100,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
+    borderRadius: CARD_RADIUS_LG,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#E8F3F0',
+  },
+
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+
+  iconBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: 'rgba(13, 97, 78, 0.08)',
   },
-  image: {
-    width: 100,
-    height: 100,
-    resizeMode: 'cover',
-    borderRadius: 28
+
+  bottomOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+
   name: {
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0D614E',
+    color: '#FFFFFF',
   },
 });

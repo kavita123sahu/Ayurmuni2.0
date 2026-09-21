@@ -73,6 +73,7 @@ import IconBolt from '@tabler/icons-react-native/IconBolt';
 import IconCamera from '@tabler/icons-react-native/IconCamera';
 import IconFile from '@tabler/icons-react-native/IconFile';
 import IconCircleCheck from '@tabler/icons-react-native/IconCircleCheck';
+import IconListSearch from '@tabler/icons-react-native/IconListSearch';
 import IconReport from '@tabler/icons-react-native/IconReport';
 import IconNotes from '@tabler/icons-react-native/IconNotes';
 import IconListDetails from '@tabler/icons-react-native/IconListDetails';
@@ -104,6 +105,7 @@ import IconMinimize from '@tabler/icons-react-native/IconMinimize';
 import IconLeaf from '@tabler/icons-react-native/IconLeaf';
 import IconHeartHandshake from '@tabler/icons-react-native/IconHeartHandshake';
 import { Colors } from '../common/Colors';
+import { IconList } from '@tabler/icons-react-native';
 
 const IconFileMedical = IconStethoscope;
 

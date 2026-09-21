@@ -116,7 +116,7 @@ const DoctorListCard = ({
           <Ionicons name="star" size={compact ? 12 : 13} color="#F5B301" />
           <Text
             style={[styles.ratingText, compact && styles.gridRatingText]}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {ratingLabel}
             {reviewText}
@@ -180,7 +180,7 @@ const DoctorListCard = ({
           </Text>
 
           <Text style={styles.gridSpeciality} numberOfLines={1}>
-            {speciality || 'Ayurveda Specialist'}
+            {speciality || ''}
           </Text>
 
           {renderStatsFeeRow(true)}

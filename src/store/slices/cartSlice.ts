@@ -3476,6 +3476,18 @@ export const fetchCart = createAsyncThunk<CartData, FetchCartArg>(
       if (!(await isAuthenticated())) {
         return {};
       }
+
+      // Force path always hits the network — never serve/read cache.
+      if (force) {
+        invalidateCache(CART_CACHE_KEY);
+        const res = await _CART_SERVICES.getAllCart();
+        console.log('CartServiceResponse', res);
+        const data = (res?.data ?? {}) as CartData;
+        return typeof structuredClone === 'function'
+          ? structuredClone(data)
+          : (JSON.parse(JSON.stringify(data)) as CartData);
+      }
+
       const response = await fetchWithCache(
         CART_CACHE_KEY,
         async () => {
@@ -3483,7 +3495,7 @@ export const fetchCart = createAsyncThunk<CartData, FetchCartArg>(
           console.log('CartServiceResponse', res);
           return res?.data ?? {};
         },
-        { ttl: 30_000, force },
+        { ttl: 30_000, force: false },
       );
       return response as CartData;
     } catch (error: any) {

@@ -21,10 +21,10 @@ export const Method = {
     PUT: 'PUT'
 }
 
-export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';
+export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';       //Google Map
 
 /** Google Places / Geocoding API key */
-export const GOOGLE_PLACES_API_KEY = 'AIzaSyClCQ_htPKkUayS7yWuY9kNj54gIQSnXiE';
+export const GOOGLE_PLACES_API_KEY = 'AIzaSyClCQ_htPKkUayS7yWuY9kNj54gIQSnXiE';            //Google Places autocomplete
 
 export interface ApiResponse {
     status_code: number;

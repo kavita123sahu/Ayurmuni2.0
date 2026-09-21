@@ -23,6 +23,8 @@ const CIRCLE_RATIO = 0.78;
 interface Category {
   id: string;
   name: string;
+  description?: string;
+  subscription?: string;
   image_url: any;
   _homeLoopKey?: string;
 }
@@ -92,10 +94,16 @@ const CategoryList = ({
 
   const handlePress = useCallback(
     (item: Category) => {
+      const categoryDesc = String(item?.description || '').trim() || undefined;
+      const categorySubscription =
+        String(item?.subscription || '').trim() || undefined;
+
       if (doctor) {
         navigation.navigate('CategoryDoctor', {
           categoryName: item.name,
           categoryId: item.id,
+          categoryDesc,
+          categorySubscription,
         });
         return;
       }
@@ -106,15 +114,20 @@ const CategoryList = ({
           healthCategoryId: item.id,
           categoryMode: 'health',
           serviceCategoryId: serviceCategoryId || undefined,
+          categoryDesc,
+          categorySubscription,
         });
         return;
       }
 
+      // Product / medicine store categories → left rail + subcategories + products
       navigateToCategoryProducts(navigation, {
         categoryId: item.id,
         categoryName: item.name,
         categoryMode: 'product',
         serviceCategoryId: serviceCategoryId || undefined,
+        categoryDesc,
+        categorySubscription,
       });
     },
     [navigation, doctor, mode, serviceCategoryId],

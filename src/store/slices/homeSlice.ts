@@ -2,8 +2,6 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import * as _HOME_SERVICES from '../../services/HomeServices';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import * as _YOGA_SERVICES from '../../services/YogaServices';
-import { fetchWithCache } from '../../services/apiCache';
-import { isAuthenticated, isGuestUser } from '../../services/guestAuth';
 import {
   getServiceCategoryIds,
   normalizeServiceCategories,
@@ -13,16 +11,6 @@ import {
   normalizeApiList,
 } from '../../services/ProductServices';
 import { normalizeYogaSessionList } from '../../utils/yogaUtils';
-
-const CACHE_KEYS = {
-  categories: 'home_categories',
-  doctors: 'home_doctors',
-  medicineProducts: 'home_medicine_products',
-  storeProducts: 'home_store_products',
-  yoga: 'home_yoga',
-  diet: 'home_diet',
-  customer: 'home_customer',
-};
 
 type HomeState = {
   categories: any[];
@@ -62,7 +50,7 @@ const initialState: HomeState = {
 
 /** Parse patients/diet-plans/ response into a plain array */
 export const normalizeDietPlans = (response: any): any[] => {
-  if (!response) {
+  if (!response || response?.success === false) {
     return [];
   }
 
@@ -84,7 +72,8 @@ export const normalizeDietPlans = (response: any): any[] => {
     if (Array.isArray(data.diet_plans)) return data.diet_plans;
     if (Array.isArray(data.plans)) return data.plans;
     if (Array.isArray(data.items)) return data.items;
-    if (data.id || data.name) return [data];
+    // Single plan object only when it looks like a real plan row
+    if (data.id && (data.name || data.title)) return [data];
   }
 
   // apiClient spreads JSON arrays as { 0: {...}, 1: {...} }
@@ -102,16 +91,23 @@ export const normalizeDietPlans = (response: any): any[] => {
 };
 
 export const mapDietPlanForHome = (item: any) => {
+  const guidance = String(item?.guidance || item?.guide || '').trim();
   const subtitle =
-    String(item?.season || item?.subtitle || item?.short_description || '')
-      .trim() || '';
+    String(
+      guidance ||
+      item?.season ||
+      item?.subtitle ||
+      item?.short_description ||
+      '',
+    ).trim() || '';
 
   return {
     ...item,
     id: String(item?.id ?? ''),
     title: String(item?.name ?? 'Diet Plan'),
     name: String(item?.name ?? 'Diet Plan'),
-    // Home card: never use disease names as subtitle
+    guidance: guidance || null,
+    // Prefer guidance; never use disease names as subtitle
     short_description: subtitle,
     subtitle,
     prakriti: item?.prakriti || '',
@@ -123,45 +119,216 @@ export const mapDietPlanForHome = (item: any) => {
   };
 };
 
-const loadDietPlansForHome = async (): Promise<any[]> => {
+const loadDietPlansForHome = async (
+  healthDiseaseId?: string | null,
+): Promise<any[]> => {
   try {
-    // Homepage personalized: GET /customers/suggested/diet-plans/
-    const res = await _HOME_SERVICES.getSuggestedDietPlans();
+    // Disease selected → suggested (personalized) diet for that disease
+    // No disease → full browse list with no filter params
+    const res = healthDiseaseId
+      ? await _HOME_SERVICES.getSuggestedDietPlans({
+          health_disease_id: healthDiseaseId,
+        })
+      : await _HOME_SERVICES.getDietPlansBrowse();
     console.log('HOME_DIET_PLANS_RESPONSE =>', res);
+
     if (res?.success === false) {
       console.log('HOME_DIET_PLANS_FAILED =>', res?.message);
+      // Suggested empty with disease → try browse filtered by disease
+      if (healthDiseaseId) {
+        const browse = await _HOME_SERVICES.getDietPlansBrowse({
+          health_disease_id: healthDiseaseId,
+        });
+        return normalizeDietPlans(browse)
+          .map(mapDietPlanForHome)
+          .filter(item => item.id);
+      }
       return [];
     }
-    return normalizeDietPlans(res)
+
+    const list = normalizeDietPlans(res)
       .map(mapDietPlanForHome)
       .filter(item => item.id);
+
+    console.log('HOME_DIET_PLANS_PARSED_COUNT =>', list.length);
+    return list;
   } catch (error) {
     console.log('HOME_DIET_PLANS_ERROR =>', error);
     return [];
   }
 };
 
-/** Homepage personalized products / medicines via suggested endpoints */
+/** Keep product rows even when variant mapping is incomplete (guest payloads vary). */
+const mapHomeProductItem = (item: any) => {
+  const mapped = mapCatalogProductItem(item);
+  if (mapped) return mapped;
+  if (!item || typeof item !== 'object') return null;
+
+  const id =
+    item.id ??
+    item.product_id ??
+    item.variant_id ??
+    item.uuid ??
+    item.product?.id ??
+    item.variant?.id;
+  if (id == null || String(id).trim() === '') return null;
+
+  return {
+    ...item,
+    id: String(id),
+    variant_id: String(item.variant_id ?? item.variant?.id ?? id),
+    name: String(
+      item.name ||
+      item.product_name ||
+      item.title ||
+      item.product?.name ||
+      'Product',
+    ).trim(),
+    selling_price:
+      item.selling_price ?? item.price ?? item.variant?.selling_price ?? 0,
+  };
+};
+
+const parseHomeProductResponse = (res: any): any[] => {
+  if (!res || res?.success === false) return [];
+  return normalizeApiList(res).map(mapHomeProductItem).filter(Boolean);
+};
+
+/** Homepage products / medicines via HomeServices only (works for guest token). */
+const loadCatalogFallback = async (
+  kind: 'products' | 'medicines',
+  categories: any[] = [],
+  healthDiseaseId?: string | null,
+): Promise<any[]> => {
+  const serviceIds = getServiceCategoryIds(categories);
+  const serviceCategoryId =
+    kind === 'medicines' ? serviceIds.medicine : serviceIds.products;
+
+  // With disease: keep service + disease. Without: no disease filter.
+  const attempts: Array<{
+    service_category_id?: string | null;
+    health_disease_id?: string | null;
+  }> = healthDiseaseId
+    ? [
+        {
+          service_category_id: serviceCategoryId,
+          health_disease_id: healthDiseaseId,
+        },
+        { health_disease_id: healthDiseaseId },
+      ]
+    : [{ service_category_id: serviceCategoryId }, {}];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await _HOME_SERVICES.getHomeProducts({
+        service_category_id: attempt.service_category_id,
+        health_disease_id: attempt.health_disease_id,
+        page: 1,
+        page_size: 12,
+      });
+      const list = parseHomeProductResponse(res);
+      if (list.length > 0) {
+        console.log(
+          `HOME_${kind.toUpperCase()}_HOMESERVICES_FALLBACK =>`,
+          list.length,
+        );
+        return list;
+      }
+    } catch (error) {
+      console.log(`HOME_${kind.toUpperCase()}_HOMESERVICES_ERROR =>`, error);
+    }
+  }
+
+  return [];
+};
+
+/**
+ * Disease selected → suggested APIs (+ disease id).
+ * No disease → unfiltered browse catalog (no filter params).
+ */
 const loadSuggestedCatalog = async (
   kind: 'products' | 'medicines',
+  categories: any[] = [],
+  healthDiseaseId?: string | null,
 ): Promise<any[]> => {
   try {
-    const res =
-      kind === 'medicines'
-        ? await _HOME_SERVICES.getSuggestedMedicines()
-        : await _HOME_SERVICES.getSuggestedProducts();
-
-    if (!res || res?.success === false) {
-      return [];
+    if (!healthDiseaseId) {
+      return await loadCatalogFallback(kind, categories, null);
     }
 
-    return normalizeApiList(res)
-      .map(mapCatalogProductItem)
-      .filter(Boolean);
+    const res =
+      kind === 'medicines'
+        ? await _HOME_SERVICES.getSuggestedMedicines({
+            health_disease_id: healthDiseaseId,
+          })
+        : await _HOME_SERVICES.getSuggestedProducts({
+            health_disease_id: healthDiseaseId,
+          });
+
+    console.log(`HOME_${kind.toUpperCase()}_SUGGESTED_RAW =>`, res);
+
+    const suggested = parseHomeProductResponse(res);
+    if (suggested.length > 0) {
+      return suggested;
+    }
+
+    return await loadCatalogFallback(kind, categories, healthDiseaseId);
   } catch (error) {
     console.log(`HOME_${kind.toUpperCase()}_ERROR:`, error);
-    return [];
+    try {
+      return await loadCatalogFallback(kind, categories, healthDiseaseId);
+    } catch (fallbackError) {
+      console.log(`HOME_${kind.toUpperCase()}_FALLBACK_ERROR:`, fallbackError);
+      return [];
+    }
   }
+};
+
+/** Resolve selected health disease ids from profile payload */
+export const resolveHealthDiseaseIds = (customer: any): string[] => {
+  if (!customer || typeof customer !== 'object') return [];
+
+  const fromIds = Array.isArray(customer.health_disease_ids)
+    ? customer.health_disease_ids
+    : [];
+  const fromObjects = Array.isArray(customer.health_diseases)
+    ? customer.health_diseases
+    : [];
+
+  const ids = [
+    ...fromIds.map((id: any) => String(id ?? '').trim()),
+    ...fromObjects.map((item: any) =>
+      String(item?.id ?? item?.health_disease_id ?? '').trim(),
+    ),
+  ].filter(Boolean);
+
+  return Array.from(new Set(ids));
+};
+
+const parseDoctorList = (res: any): any[] =>
+  normalizeApiList(res).filter(
+    (item: any) =>
+      item &&
+      (item.id || item.doctor_id) &&
+      String(item.full_name || item.name || '').trim(),
+  );
+
+const loadHomeDoctors = async (healthDiseaseId?: string | null) => {
+  if (healthDiseaseId) {
+    const suggested = parseDoctorList(
+      await _HOME_SERVICES.getSuggestedDoctor({
+        health_disease_id: healthDiseaseId,
+      }),
+    );
+    if (suggested.length > 0) return suggested;
+    return parseDoctorList(
+      await _HOME_SERVICES.getDoctorsBrowse({
+        health_disease_id: healthDiseaseId,
+      }),
+    );
+  }
+  // No disease → all doctors, no filter params
+  return parseDoctorList(await _HOME_SERVICES.getDoctorsBrowse());
 };
 
 export const fetchHomeData = createAsyncThunk<
@@ -177,7 +344,7 @@ export const fetchHomeData = createAsyncThunk<
   boolean | undefined
 >(
   'home/fetchAll',
-  async (force = false, { rejectWithValue }) => {
+  async (_force = false, { rejectWithValue }) => {
     try {
       const safe = async <T,>(
         label: string,
@@ -185,105 +352,120 @@ export const fetchHomeData = createAsyncThunk<
         fallback: T,
       ): Promise<T> => {
         try {
-          return await fn();
+          const result = await fn();
+          console.log(`HOME_${label}_LOADED =>`, result);
+          return result;
         } catch (error) {
           console.log(`HOME_${label}_SAFE_SKIP =>`, error);
           return fallback;
         }
       };
 
-      const categories = await safe(
-        'CATEGORIES',
-        () =>
-          fetchWithCache(
-            CACHE_KEYS.categories,
-            async () => {
-              const res = await _HOME_SERVICES.getHomeCategory();
-              const list = normalizeServiceCategories(res?.data ?? res);
-              console.log('HOME_CATEGORIES =>', list);
-              return list;
-            },
-            { ttl: 120_000, force },
-          ),
-        [],
+      // Categories + customer first so disease selection can drive rail filters
+      const [categories, customer] = await Promise.all([
+        safe(
+          'CATEGORIES',
+          async () => {
+            console.log('HOME_CATEGORIES_API_CALL');
+            const res = await _HOME_SERVICES.getHomeCategory();
+            const list = normalizeServiceCategories(res?.data ?? res);
+            console.log('HOME_CATEGORIES_API_RESPONSE =>', list);
+            return list;
+          },
+          [],
+        ),
+        safe(
+          'CUSTOMER',
+          async () => {
+            console.log('HOME_CUSTOMER_API_CALL');
+            const res = await _PROFILE_SERVICES.user_profile();
+            const data =
+              res?.status === 200 ? res?.data ?? null : null;
+            console.log('HOME_CUSTOMER_API_RESPONSE =>', data);
+            return data;
+          },
+          null,
+        ),
+      ]);
+
+      const diseaseIds = resolveHealthDiseaseIds(customer);
+      // APIs take singular health_disease_id — use first selected (or comma-join)
+      const healthDiseaseId =
+        diseaseIds.length > 0 ? diseaseIds.join(',') : null;
+      const hasDiseaseFilter = Boolean(healthDiseaseId);
+
+      console.log('HOME_SERVICE_CATEGORY_IDS =>', getServiceCategoryIds(categories));
+      console.log('HOME_HEALTH_DISEASE_IDS =>', diseaseIds);
+      console.log(
+        'HOME_RAILS_MODE =>',
+        hasDiseaseFilter ? 'suggested+disease' : 'browse-all-no-filter',
       );
 
-      const serviceIds = getServiceCategoryIds(categories);
-      console.log('HOME_SERVICE_CATEGORY_IDS =>', serviceIds);
+      const [
+        doctors,
+        medicineProducts,
+        storeProducts,
+        yoga,
+        diet,
+      ] = await Promise.all([
+        safe(
+          'DOCTORS',
+          async () => {
+            console.log('HOME_DOCTORS_API_CALL');
+            const list = await loadHomeDoctors(healthDiseaseId);
+            console.log('HOME_DOCTORS_API_RESPONSE =>', list);
+            return list;
+          },
+          [],
+        ),
 
-      const [doctors, medicineProducts, storeProducts, yoga, diet, customer] =
-        await Promise.all([
-          safe(
-            'DOCTORS',
-            () =>
-              fetchWithCache(
-                `${CACHE_KEYS.doctors}_suggested`,
-                async () => {
-                  const res = await _HOME_SERVICES.getSuggestedDoctor();
-                  return normalizeApiList(res).filter(
-                    (item: any) =>
-                      item &&
-                      (item.id || item.doctor_id) &&
-                      String(item.full_name || item.name || '').trim(),
-                  );
-                },
-                { ttl: 120_000, force },
-              ),
-            [],
-          ),
-          safe(
-            'MEDICINE',
-            () =>
-              fetchWithCache(
-                `${CACHE_KEYS.medicineProducts}_suggested`,
-                () => loadSuggestedCatalog('medicines'),
-                { ttl: 120_000, force },
-              ),
-            [],
-          ),
-          safe(
-            'PRODUCTS',
-            () =>
-              fetchWithCache(
-                `${CACHE_KEYS.storeProducts}_suggested`,
-                () => loadSuggestedCatalog('products'),
-                { ttl: 120_000, force },
-              ),
-            [],
-          ),
-          safe(
-            'YOGA',
-            () =>
-              fetchWithCache(
-                CACHE_KEYS.yoga,
-                async () => {
-                  const res = await _YOGA_SERVICES.getYogaSession();
-                  return normalizeYogaSessionList(res);
-                },
-                { ttl: 120_000, force },
-              ),
-            [],
-          ),
-          safe('DIET', () => loadDietPlansForHome(), []),
-          safe(
-            'CUSTOMER',
-            async () => {
-              // Guest / incomplete profile must not break product/home APIs
-              if (!(await isAuthenticated()) || (await isGuestUser())) {
-                return null;
-              }
-              return fetchWithCache(
-                CACHE_KEYS.customer,
-                async () => {
-                  const res = await _PROFILE_SERVICES.user_profile();
-                  return res?.status === 200 ? res?.data ?? null : null;
-                },
-                { ttl: 60_000, force },
-              );
-            },
-            null,
-          ),
-        ]);
+        safe(
+          'MEDICINE',
+          async () => {
+            console.log('HOME_MEDICINE_API_CALL');
+            return loadSuggestedCatalog('medicines', categories, healthDiseaseId);
+          },
+          [],
+        ),
+
+        safe(
+          'PRODUCTS',
+          async () => {
+            console.log('HOME_PRODUCTS_API_CALL');
+            return loadSuggestedCatalog('products', categories, healthDiseaseId);
+          },
+          [],
+        ),
+
+        safe(
+          'YOGA',
+          async () => {
+            console.log('HOME_YOGA_API_CALL');
+            const res = await _YOGA_SERVICES.getYogaSession(
+              healthDiseaseId
+                ? { health_disease_id: healthDiseaseId }
+                : undefined,
+            );
+            const list = normalizeYogaSessionList(res);
+            console.log('HOME_YOGA_API_RESPONSE =>', list);
+            return list;
+          },
+          [],
+        ),
+
+        safe(
+          'DIET',
+          async () => {
+            console.log('HOME_DIET_API_CALL');
+            const list = await loadDietPlansForHome(healthDiseaseId);
+            console.log('HOME_DIET_API_RESPONSE =>', list);
+            return list;
+          },
+          [],
+        ),
+      ]);
+
+      console.log('HOME_FETCH_ALL_COMPLETED');
 
       return {
         categories,
@@ -295,21 +477,24 @@ export const fetchHomeData = createAsyncThunk<
         customer,
       };
     } catch (error: any) {
-      return rejectWithValue(error?.message ?? 'Failed to load home data');
+      console.log('HOME_FETCH_ALL_ERROR =>', error);
+      return rejectWithValue(
+        error?.message ?? 'Failed to load home data',
+      );
     }
   },
 );
 
-/** Dedicated diet fetch for HomePage diet section */
+/** Dedicated diet fetch for HomePage diet section — always network */
 export const fetchDietPlans = createAsyncThunk<any[], boolean | undefined>(
   'home/fetchDietPlans',
-  async (force = true, { rejectWithValue }) => {
+  async (_force = true, { getState, rejectWithValue }) => {
     try {
-      return await fetchWithCache(
-        `${CACHE_KEYS.diet}_suggested`,
-        () => loadDietPlansForHome(),
-        { ttl: 60_000, force },
-      );
+      const state = getState() as { home?: { customerData?: any } };
+      const diseaseIds = resolveHealthDiseaseIds(state?.home?.customerData);
+      const healthDiseaseId =
+        diseaseIds.length > 0 ? diseaseIds.join(',') : null;
+      return await loadDietPlansForHome(healthDiseaseId);
     } catch (error: any) {
       return rejectWithValue(error?.message ?? 'Failed to load diet plans');
     }
@@ -318,20 +503,10 @@ export const fetchDietPlans = createAsyncThunk<any[], boolean | undefined>(
 
 export const fetchCustomerData = createAsyncThunk<any | null, boolean | undefined>(
   'home/fetchCustomer',
-  async (force = true, { rejectWithValue }) => {
+  async (_force = true, { rejectWithValue }) => {
     try {
-      if (!(await isAuthenticated()) || (await isGuestUser())) {
-        return null;
-      }
-      const customer = await fetchWithCache(
-        CACHE_KEYS.customer,
-        async () => {
-          const res = await _PROFILE_SERVICES.user_profile();
-          return res?.status === 200 ? res?.data ?? null : null;
-        },
-        { ttl: 60_000, force },
-      );
-      return customer;
+      const res = await _PROFILE_SERVICES.user_profile();
+      return res?.status === 200 ? res?.data ?? null : null;
     } catch (error: any) {
       return rejectWithValue(error?.message ?? 'Failed to load profile');
     }
@@ -342,6 +517,7 @@ const homeSlice = createSlice({
   name: 'home',
   initialState,
   reducers: {
+    resetHomeState: () => initialState,
     updateMedicineProducts: (
       state,
       action: PayloadAction<any[] | ((prev: any[]) => any[])>,
@@ -389,12 +565,14 @@ const homeSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchHomeData.fulfilled, (state, action) => {
-        state.categories = action.payload.categories;
-        state.SuggestDoctor = action.payload.doctors;
-        state.medicineProducts = action.payload.medicineProducts;
-        state.storeProducts = action.payload.storeProducts;
-        state.YogaSession = action.payload.yoga;
-        state.dietProducts = action.payload.diet;
+        state.categories = action.payload.categories ?? [];
+        state.SuggestDoctor = action.payload.doctors ?? [];
+        state.medicineProducts = action.payload.medicineProducts ?? [];
+        state.storeProducts = action.payload.storeProducts ?? [];
+        state.YogaSession = action.payload.yoga ?? [];
+        state.dietProducts = Array.isArray(action.payload.diet)
+          ? action.payload.diet
+          : [];
         state.customerData = action.payload.customer;
         state.loadingCategories = false;
         state.loadingDoctors = false;
@@ -418,10 +596,12 @@ const homeSlice = createSlice({
       })
       .addCase(fetchDietPlans.fulfilled, (state, action) => {
         state.loadingDiet = false;
-        state.dietProducts = action.payload ?? [];
+        // Always replace — empty API must clear previous diet cards
+        state.dietProducts = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchDietPlans.rejected, state => {
         state.loadingDiet = false;
+        state.dietProducts = [];
       })
       .addCase(fetchCustomerData.pending, state => {
         state.loadingCustomer = true;
@@ -441,6 +621,7 @@ const homeSlice = createSlice({
 });
 
 export const {
+  resetHomeState,
   updateMedicineProducts,
   updateStoreProducts,
   updateProductItem,

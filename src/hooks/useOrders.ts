@@ -144,7 +144,7 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
   );
 
   const recentProducts = useMemo(
-    () => mapOrdersToRecentProducts(orders, 3),
+    () => mapOrdersToRecentProducts(orders, 8),
     [orders],
   );
 

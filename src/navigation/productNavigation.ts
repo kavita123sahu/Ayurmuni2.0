@@ -20,7 +20,10 @@ export const navigateToCategoryProducts = (
   params?: {
     categoryId?: string;
     categoryName?: string;
-    categoryMode?: 'health' | 'product';
+    categoryDesc?: string;
+    categorySubscription?: string;
+    /** medicine = product catalog scoped to medicine service_category_id */
+    categoryMode?: 'health' | 'product' | 'medicine';
     productSubcategoryId?: string;
     healthCategoryId?: string;
     healthDiseaseId?: string;

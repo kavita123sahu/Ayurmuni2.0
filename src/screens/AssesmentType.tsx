@@ -10,11 +10,12 @@ import {
   Alert,
   StatusBar,
   ScrollView,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Colors } from '../common/Colors';
 import * as _ASSESS_SERVICE from '../services/AssesmentService';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showSuccessToast } from '../config/Key';
 import TablerIcon, { TablerIconName } from '../components/TablerIcon';
@@ -29,30 +30,47 @@ const scale = (size: number) => {
   return Math.min(Math.max(next, size * 0.92), size * 1.12);
 };
 
+/** Same green theme as AccessMode / onboarding hero */
+const GREEN = '#0D614E';
+const GREEN_DEEP = '#0A4F40';
+const GREEN_MID = '#0F6B58';
+const CARD_GRADIENT: [string, string, string] = [GREEN_DEEP, GREEN, GREEN_MID];
+const HERO_GRADIENT: [string, string, string] = [GREEN_DEEP, GREEN, GREEN_MID];
+
 type CardProps = {
   title: string;
   subtitle: string;
+  cta: string;
   meta: string;
+  metaIcon?: TablerIconName;
   icon: TablerIconName;
-  gradient: string[];
   onPress: () => void;
 };
 
 const AssessmentCard = ({
   title,
   subtitle,
+  cta,
   meta,
+  metaIcon,
   icon,
-  gradient,
   onPress,
 }: CardProps) => (
   <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.cardWrap}>
-    <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
+    <LinearGradient
+      colors={CARD_GRADIENT}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.card}
+    >
       <View style={styles.cardTop}>
         <View style={styles.iconBox}>
-          <TablerIcon name={icon} size={24} color="#FFFFFF" />
+          <TablerIcon name={icon} size={20} color="#FFFFFF" />
         </View>
         <View style={styles.metaPill}>
+          {metaIcon ? (
+            <TablerIcon name={metaIcon} size={12} color="#FFFFFF" />
+          ) : null}
           <Text style={styles.metaPillText}>{meta}</Text>
         </View>
       </View>
@@ -60,8 +78,8 @@ const AssessmentCard = ({
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardSubtitle}>{subtitle}</Text>
 
-      <View style={styles.cardCta}>
-        <Text style={styles.cardCtaText}>Begin</Text>
+      <View style={styles.cardCtaRow}>
+        <Text style={styles.cardCtaText}>{cta}</Text>
         <TablerIcon name="arrow-right" size={16} color="#FFFFFF" />
       </View>
     </LinearGradient>
@@ -122,72 +140,89 @@ const AssessmentType = (props: any) => {
     props.navigation.navigate('PatientFAQ', {
       allowBack: true,
       noteSeen: true,
+      allowIncompleteProfile: true,
     });
   };
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A3328" />
+      <StatusBar barStyle="light-content" backgroundColor={GREEN_DEEP} />
       <LinearGradient
-        colors={['#0A3328', '#0F4A38', '#F5F8F6']}
-        locations={[0, 0.42, 0.42]}
-        style={StyleSheet.absoluteFill}
-      />
+        colors={HERO_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroBg}
+      >
+        {/* Decorative leaf — same motif as design mock */}
+        <Image
+          source={Images.leaf1}
+          style={styles.heroLeaf}
+          resizeMode="contain"
+        />
+        <Image
+          source={Images.leaf2}
+          style={styles.heroLeafAlt}
+          resizeMode="contain"
+        />
 
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <View style={styles.hero}>
-          <View style={styles.stepRow}>
-            <View style={styles.stepPill}>
-              <Text style={styles.stepPillText}>Step 2 of 2</Text>
+        <SafeAreaView edges={['top']} style={styles.heroSafe}>
+          <View style={styles.hero}>
+            <View style={styles.stepRow}>
+              <View style={styles.stepPill}>
+                <Text style={styles.stepPillText}>Step 2 of 2</Text>
+              </View>
+              <TouchableOpacity onPress={handleSkip} hitSlop={10}>
+                <Text style={styles.skipLink}>Skip</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={handleSkip} hitSlop={10}>
-              <Text style={styles.skipLink}>Skip</Text>
-            </TouchableOpacity>
+
+            <Text style={styles.heroTitle}>Discover what your{'\n'}body needs</Text>
+            <Text style={styles.heroSubtitle}>
+              Two quick assessments for care that's truly yours.
+            </Text>
           </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-          <Text style={styles.heroTitle}>Personalize your care</Text>
-          <Text style={styles.heroSubtitle}>
-            Pick an assessment to tailor doctors, products, and daily guidance.
-          </Text>
-        </View>
-
+      <View style={styles.sheet}>
         <ScrollView
-          style={styles.sheet}
           contentContainerStyle={[
             styles.sheetContent,
-            { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+            { paddingBottom: Math.max(insets.bottom, 16) + 12 },
           ]}
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
           {showPrakriti && (
             <AssessmentCard
-              title="Prakriti Assessment"
-              subtitle="Discover your Ayurvedic constitution — Vata, Pitta, Kapha — and get guidance that fits you."
+              title="What's your natural body type?"
+              subtitle="Discover the patterns you were born with."
+              cta="Find my Prakriti"
               meta="~5 min"
               icon="chart-pie"
-              gradient={['#0D614E', '#1A8F6E']}
               onPress={() => setPrakritiNoteVisible(true)}
             />
           )}
 
           {showMedical && (
             <AssessmentCard
-              title="Vikriti assessment "
-              subtitle="Gut and metabolic evaluation/constitution."
+              title="What has changed in your body?"
+              subtitle="See how your health and lifestyle affect you today."
+              cta="Check my current state"
               meta="Secure"
-              icon="file-medical"
-              gradient={['#0F4A38', '#157A58']}
+              metaIcon="lock"
+              icon="stethoscope"
               onPress={() => props.navigation.navigate('MedicalHistory')}
             />
           )}
 
-          <View style={styles.tipBox}>
-            <View style={styles.tipIcon}>
-              <TablerIcon name="alert-circle" size={18} color={Colors.primaryColor} />
+          <View style={styles.whyBox}>
+            <View style={styles.whyIcon}>
+              <TablerIcon name="alert-circle" size={18} color={GREEN} />
             </View>
-            <Text style={styles.tipText}>
-              Completing both unlocks sharper product and doctor recommendations.
-              You can finish either path later from Profile.
+            <Text style={styles.whyText}>
+              <Text style={styles.whyBold}>Why complete both? </Text>
+              Your natural type + current state help us personalize your care.
             </Text>
           </View>
 
@@ -199,7 +234,7 @@ const AssessmentType = (props: any) => {
             <Text style={styles.skipBtnText}>Skip for now · Browse home</Text>
           </TouchableOpacity>
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       <PrakritiNoteModal
         visible={prakritiNoteVisible}
@@ -215,60 +250,94 @@ export default AssessmentType;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F5F8F6',
+    backgroundColor: '#F4F7F6',
   },
-  safe: {
-    flex: 1,
+  heroBg: {
+    paddingBottom: 28,
+    overflow: 'hidden',
+  },
+  heroLeaf: {
+    position: 'absolute',
+    right: -28,
+    top: 36,
+    width: 190,
+    height: 190,
+    opacity: 0.22,
+    tintColor: '#FFFFFF',
+  },
+  heroLeafAlt: {
+    position: 'absolute',
+    right: 8,
+    top: 88,
+    width: 120,
+    height: 120,
+    opacity: 0.14,
+    tintColor: '#FFFFFF',
+  },
+  heroSafe: {
+    backgroundColor: 'transparent',
   },
   hero: {
     paddingHorizontal: 22,
     paddingTop: 8,
-    paddingBottom: 28,
+    paddingBottom: 8,
+    zIndex: 1,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 22,
   },
   stepPill: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.35)',
+    paddingVertical: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   stepPillText: {
-    color: '#E8FFF8',
+    color: '#FFFFFF',
     fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   skipLink: {
-    color: 'rgba(247,243,234,0.75)',
-    fontSize: 13,
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
     fontFamily: Fonts.PoppinsMedium,
   },
   heroTitle: {
-    fontSize: scale(30),
-    lineHeight: scale(36),
-    color: '#F7F3EA',
+    fontSize: scale(28),
+    lineHeight: scale(34),
+    color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
+    maxWidth: '78%',
   },
   heroSubtitle: {
-    marginTop: 10,
+    marginTop: 8,
     fontSize: scale(14),
     lineHeight: scale(21),
-    color: 'rgba(247,243,234,0.78)',
+    color: 'rgba(255,255,255,0.86)',
     fontFamily: Fonts.PoppinsRegular,
-    maxWidth: 340,
+    maxWidth: '72%',
   },
   sheet: {
     flex: 1,
-    backgroundColor: '#F5F8F6',
+    marginTop: -18,
+    backgroundColor: '#F4F7F6',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0A4F40',
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: -4 },
+      },
+      android: { elevation: 6 },
+    }),
   },
   sheetContent: {
     paddingHorizontal: 18,
@@ -276,41 +345,39 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   cardWrap: {
-    borderRadius: 22,
+    borderRadius: 20,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0A3328',
-        shadowOpacity: 0.14,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-      },
-      android: { elevation: 4 },
-    }),
   },
   card: {
-    padding: 20,
-    minHeight: 168,
+    padding: 18,
+    minHeight: 158,
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   metaPillText: {
     color: '#FFFFFF',
@@ -318,67 +385,70 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
   cardTitle: {
-    fontSize: scale(20),
-    lineHeight: scale(26),
+    fontSize: scale(18),
+    lineHeight: scale(24),
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   cardSubtitle: {
-    marginTop: 8,
+    marginTop: 6,
     fontSize: scale(13),
     lineHeight: scale(19),
     color: 'rgba(255,255,255,0.86)',
     fontFamily: Fonts.PoppinsRegular,
   },
-  cardCta: {
-    marginTop: 18,
+  cardCtaRow: {
+    marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   cardCtaText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.4,
   },
-  tipBox: {
+  whyBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2EBE6',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D7E5E0',
   },
-  tipIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#E8F3EF',
+  whyIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#E8F5F1',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tipText: {
+  whyText: {
     flex: 1,
     color: '#475569',
     fontSize: scale(12),
     lineHeight: scale(18),
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  whyBold: {
+    color: GREEN,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   skipBtn: {
-    marginTop: 4,
+    marginTop: 2,
     minHeight: 50,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D7E5DF',
+    borderWidth: 1.5,
+    borderColor: GREEN,
   },
   skipBtnText: {
-    color: Colors.primaryColor,
+    color: GREEN,
     fontSize: scale(14),
     fontFamily: Fonts.PoppinsSemiBold,
   },

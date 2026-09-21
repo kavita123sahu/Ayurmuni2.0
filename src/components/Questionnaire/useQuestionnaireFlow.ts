@@ -80,6 +80,7 @@ export const useQuestionnaireFlow = (
       setLoadError('');
 
       const result = await loadQuestionnaire(mode);
+      console.log("resultresultresultresultresult", result)
       applyLoadResult(result);
 
       if (resetStep) {
@@ -193,7 +194,11 @@ export const useQuestionnaireFlow = (
     if (isDisabled || submitting) {
       if (!pendingAdvanceRef.current) {
         showSuccessToast(
-          isPrakriti ? 'Please select option' : 'Please complete this step',
+          isPrakriti
+            ? 'Please select option'
+            : basicInfoStep
+              ? 'Enter a valid height (50–250 cm) and weight (10–300 kg)'
+              : 'Please complete this step',
           'error',
         );
       }
@@ -230,6 +235,7 @@ export const useQuestionnaireFlow = (
       setSubmitting(false);
     }
   }, [
+    basicInfoStep,
     currentStep?.key,
     isDisabled,
     isLastStep,

@@ -69,12 +69,18 @@ const PlanStatusPill = memo(({ item }: { item: any }) => {
 });
 
 const DietPlanCard = ({ item, onPress }: Props) => {
-  const subtitle = useMemo(
-    () =>
-      String(item?.subtitle || item?.season || item?.short_description || '')
-        .trim(),
-    [item?.subtitle, item?.season, item?.short_description],
-  );
+  const subtitle = useMemo(() => {
+    const guidance = String(item?.guidance || '').trim();
+    if (guidance) return guidance;
+    return String(
+      item?.subtitle || item?.season || item?.short_description || '',
+    ).trim();
+  }, [
+    item?.guidance,
+    item?.subtitle,
+    item?.season,
+    item?.short_description,
+  ]);
   const isFree = item.is_paid === false || Number(item.price) === 0;
   const prakriti = String(item?.prakriti || '').trim();
   const ratingText = formatDietPlanRatingBadgeText(item);
@@ -191,6 +197,8 @@ export default memo(DietPlanCard, (prev, next) => {
     prev.onPress === next.onPress &&
     a?.id === b?.id &&
     a?.name === b?.name &&
+    a?.guidance === b?.guidance &&
+    a?.short_description === b?.short_description &&
     a?.patient_assignment_status === b?.patient_assignment_status &&
     a?.patient_diet_plan_id === b?.patient_diet_plan_id &&
     a?.repeat_count === b?.repeat_count &&

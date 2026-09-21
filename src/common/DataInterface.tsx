@@ -1,5 +1,4 @@
 import { Platform, Text } from "react-native";
-import { Images } from "./Images";
 import { Colors } from "./Colors";
 import React from "react";
 import { resolveProductImageUri } from '../utils/imageUtils';
@@ -203,13 +202,9 @@ export const genderOptions: GenderOption[] = [
 ];
 
 export const product = {
-  images: [
-    Images.HomeBanner,
-    Images.HomeBanner,
-    Images.HomeBanner,
-    Images.HomeBanner,
-  ],
+  images: [] as any[],
 };
+
 export const getStatusColor = (status: string) => {
   switch (status?.toLowerCase()) {
     case 'deliverd':

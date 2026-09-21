@@ -17,6 +17,8 @@ interface MealProps {
     data: any;
     navigation?: any;
     onLog?: () => void;
+    /** Parent diet plan (for diet_plan_gallery in MealDetails). */
+    plan?: any;
 }
 
 const toDisplayText = (value: any, fallback = '') => {
@@ -27,7 +29,7 @@ const toDisplayText = (value: any, fallback = '') => {
     return normalizeDietFoodItem(value)?.label || fallback;
 };
 
-const MealCard = ({ data, navigation, onLog }: MealProps) => {
+const MealCard = ({ data, navigation, onLog, plan }: MealProps) => {
     const imageSource =
         resolveImageSource(data?.image) ||
         resolveMealImage(data?.raw) ||
@@ -39,7 +41,7 @@ const MealCard = ({ data, navigation, onLog }: MealProps) => {
     const canLog = data?.status === 'log';
 
     const openDetails = () =>
-        navigation?.navigate?.('MealDetails', { item: data });
+        navigation?.navigate?.('MealDetails', { item: data, plan });
 
     return (
         <View style={styles.card}>

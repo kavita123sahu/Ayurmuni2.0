@@ -127,6 +127,7 @@ const TabStack = () => {
           component={MyCart}
           options={{ tabBarLabel: 'Cart' }}
         />
+        <Tab.Screen name="Medicines" component={MedicineScreen} />
         <Tab.Screen name="Consult" component={ConsultHome} />
         <Tab.Screen name="Profile" component={ProfilePage} />
       </Tab.Navigator>
@@ -162,6 +163,8 @@ const HomeStackNavigator = () => (
       component={PolicyAcceptScreen}
       options={{ gestureEnabled: false, headerBackVisible: false }}
     />
+    
+
     <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
     <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
     <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />

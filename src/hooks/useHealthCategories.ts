@@ -7,7 +7,10 @@ import {
 
 export type HealthCategoryItem = ReturnType<typeof mapProductCategory>;
 
-export const useHealthCategories = (parentId?: string | null) => {
+export const useHealthCategories = (
+  parentId?: string | null,
+  serviceCategoryId?: string | null,
+) => {
   const [categories, setCategories] = useState<HealthCategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,7 +26,16 @@ export const useHealthCategories = (parentId?: string | null) => {
         }
 
         const response = await getHealthCategories(
-          parentId ? { id: parentId } : undefined,
+          parentId
+            ? {
+                id: parentId,
+                ...(serviceCategoryId
+                  ? { service_category_id: String(serviceCategoryId) }
+                  : {}),
+              }
+            : serviceCategoryId
+              ? { service_category_id: String(serviceCategoryId) }
+              : undefined,
         );
         if (reqId !== requestIdRef.current) {
           return;
@@ -74,7 +86,7 @@ export const useHealthCategories = (parentId?: string | null) => {
         }
       }
     },
-    [parentId],
+    [parentId, serviceCategoryId],
   );
 
   useEffect(() => {

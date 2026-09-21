@@ -327,7 +327,7 @@ const ProductDetails = (props: any) => {
             activeVariant,
             cartVariantId,
             coverImageUri,
-            // existingCartQty,
+            existingCartQty,
             productForRx,
             props.navigation,
             quantity,
@@ -1049,6 +1049,7 @@ const ProductDetails = (props: any) => {
                     </View>
                 )}
 
+                {Array.isArray(ReviewAll) && ReviewAll.length > 0 ? (
                 <View style={styles.card}>
                     <ReviewSection
                         navigation={props.navigation}
@@ -1058,6 +1059,7 @@ const ProductDetails = (props: any) => {
                         title="Ratings & reviews"
                     />
                 </View>
+                ) : null}
 
                 {!!discoveryProductId && (
                     <View style={styles.discoveryWrap}>
@@ -1119,11 +1121,7 @@ const ProductDetails = (props: any) => {
                         )}
                     </TouchableOpacity>
                     <TouchableOpacity
-                        onPress={() =>
-                            existingCartQty > 0
-                                ? props.navigation.navigate('MyCart')
-                                : handleAddToCart(true)
-                        }
+                        onPress={() => handleAddToCart(true)}
                         activeOpacity={0.85}
                         disabled={(existingCartQty <= 0 && isOutOfStock) || ctaBusy}
                         style={styles.primaryBtnWrap}

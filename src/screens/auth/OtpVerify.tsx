@@ -41,19 +41,7 @@ import {
   ensureDeviceNotificationsEnabled,
 } from '../../services/pushNotificationService';
 import { parsePolicyAcceptedCustomer } from '../../utils/policyUtils';
-
-const C = {
-  collageBg: '#1A2E28',
-  sheet: '#F7F3EA',
-  headline: '#1A2E28',
-  body: '#5A6B66',
-  cta: '#0E4B3A',
-  ctaText: '#FFFFFF',
-  inputBg: '#FFFFFF',
-  inputBorder: '#DDD6C8',
-  accent: '#D4A84B',
-  soft: '#EFE8DA',
-};
+import { AuthTheme as C } from '../../common/AuthTheme';
 
 const { height, width } = Dimensions.get('window');
 const isSmallDevice = height < 700;
@@ -444,16 +432,8 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         );
 
         // ==========================================
-        // STEP 11–12: OneSignal ready → Welcome Push
-        // Customer already created; auth tokens stored.
-        // Flow:
-        //   permission → wait subscription+token →
-        //   OneSignal.login(userId) → verify association →
-        //   welcome notification API
-        // ==========================================
-
-        // ==========================================
-        // STEP 11–12: OneSignal ready → Welcome Push
+        // STEP 11–12: Welcome push only if subscribed
+        // + OneSignal.login(user_id) External ID linked.
         // ==========================================
 
         if (!isNotificationEnabled) {
@@ -462,27 +442,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
           );
         } else {
           try {
-            console.log(
-              '🔵 [STEP 11] Starting completeWelcomePushFlow for user:',
-              userId,
-            );
-
-            // Wait 4 seconds before calling welcome push flow
-            console.log(
-              '⏳ [STEP 11] Waiting 4 seconds before completeWelcomePushFlow...',
-            );
-
-            await new Promise<void>(resolve => {
-              setTimeout(() => {
-                resolve();
-              }, 4000);
-            });
-
-            console.log(
-              '✅ [STEP 11] 4 seconds completed',
-            );
-
-            // Now call welcome push API
             console.log(
               '🚀 [STEP 12] Calling completeWelcomePushFlow for user:',
               userId,
@@ -495,11 +454,17 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
               '🟢 [STEP 12] Welcome push flow result:',
               welcomeResult,
             );
+            console.log(
+              '🔎 [STEP 12] Status BEFORE API:',
+              welcomeResult?.statusBefore,
+            );
+            console.log(
+              '🔎 [STEP 12] Status AFTER API:',
+              welcomeResult?.statusAfter,
+            );
 
             if (welcomeResult?.success) {
-              console.log(
-                '🎉 [STEP 12] WELCOME PUSH SUCCESS',
-              );
+              console.log('🎉 [STEP 12] WELCOME PUSH SUCCESS');
             } else {
               console.log(
                 '⚠️ [STEP 12] WELCOME PUSH NOT DELIVERED:',
@@ -509,8 +474,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
           } catch (oneSignalError: any) {
             console.error(
               '❌ [STEP 11] OneSignal / welcome flow ERROR:',
-              oneSignalError?.message ??
-              oneSignalError,
+              oneSignalError?.message ?? oneSignalError,
             );
 
             // Do not break registration
@@ -736,15 +700,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
           response?.data?.refresh,
         );
 
-        /**
-         * 4️⃣ CONNECT USER WITH ONESIGNAL
-         *
-         * user_id
-         *      ↓
-         * OneSignal.login()
-         *      ↓
-         * External ID
-         */
         if (userId) {
           try {
             console.log(
@@ -1018,11 +973,11 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
 
             <LinearGradient
               colors={[
-                'rgba(10, 28, 24, 0.5)',
-                'rgba(10, 28, 24, 0.12)',
-                'rgba(247, 243, 234, 0.98)',
+                'rgba(15, 61, 52, 0.45)',
+                'rgba(232, 248, 242, 0.55)',
+                C.page,
               ]}
-              locations={[0, 0.55, 1]}
+              locations={[0, 0.58, 1]}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
@@ -1066,7 +1021,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
                     onPress={changeMobileNumber}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <AntDesign name="edit" size={14} color={C.cta} />
+                    <AntDesign name="edit" size={14} color={C.primary} />
                     <Text style={styles.editText}>Edit</Text>
                   </TouchableOpacity>
                 </View>
@@ -1098,7 +1053,7 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
                     maxLength={index === 0 ? OTP_LEN : 1}
                     textAlign="center"
                     autoFocus={index === 0}
-                    selectionColor={C.cta}
+                    selectionColor={C.primary}
                     placeholder=""
                     textContentType={index === 0 ? 'oneTimeCode' : 'none'}
                     autoComplete={index === 0 ? 'sms-otp' : 'off'}
@@ -1108,8 +1063,6 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
               </Animated.View>
 
               <View style={styles.metaRow}>
-
-
                 <TouchableOpacity onPress={onResendPress} disabled={resendTimer > 0}>
                   <Text
                     style={[
@@ -1124,18 +1077,25 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
 
               <TouchableOpacity
                 onPress={onVerify}
-                style={[styles.cta, (!otpComplete || isLoading) && styles.ctaDisabled]}
+                style={[styles.ctaWrap, (!otpComplete || isLoading) && styles.ctaDisabled]}
                 activeOpacity={0.88}
                 disabled={!otpComplete || isLoading}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Text style={styles.ctaText}>Verify & continue</Text>
-                    <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-                  </>
-                )}
+                <LinearGradient
+                  colors={C.ctaGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cta}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.ctaText}>Verify & continue</Text>
+                      <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
             </View>
 
@@ -1168,14 +1128,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: C.sheet,
+    backgroundColor: C.page,
   },
   scrollContent: {
     flexGrow: 1,
   },
 
   collageWrap: {
-    backgroundColor: C.collageBg,
+    backgroundColor: C.collage,
     overflow: 'hidden',
   },
   collageRow: {
@@ -1196,7 +1156,7 @@ const styles = StyleSheet.create({
     height: TILE_HEIGHT,
     borderRadius: 16,
     marginBottom: TILE_GAP,
-    backgroundColor: '#22301D',
+    backgroundColor: '#1A4A40',
   },
 
   logoBadge: {
@@ -1208,10 +1168,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   logoPill: {
-    backgroundColor: 'rgba(247, 243, 234, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: C.border,
   },
   logoImg: {
     width: 150,
@@ -1221,13 +1183,13 @@ const styles = StyleSheet.create({
   brandHint: {
     fontSize: 9,
     letterSpacing: 1.3,
-    color: 'rgba(247, 243, 234, 0.9)',
+    color: 'rgba(255, 255, 255, 0.92)',
     fontFamily: Fonts.PoppinsMedium,
   },
 
   sheet: {
     flexGrow: 1,
-    backgroundColor: C.sheet,
+    backgroundColor: C.page,
     marginTop: -26,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -1239,21 +1201,21 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D8D0C0',
+    backgroundColor: C.handle,
     marginBottom: 10,
   },
 
   formCard: {
-    backgroundColor: '#FFFEFA',
+    backgroundColor: C.sheet,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#E8E0D2',
+    borderColor: C.border,
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   headerBlock: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   title: {
     fontSize: isSmallDevice ? 20 : 22,
@@ -1283,14 +1245,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: C.soft,
+    backgroundColor: C.chipBg,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 10,
   },
   editText: {
     fontSize: 11,
-    color: C.cta,
+    color: C.primary,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
@@ -1312,7 +1274,7 @@ const styles = StyleSheet.create({
     height: BOX_SIZE,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: C.inputBorder,
+    borderColor: C.border,
     backgroundColor: C.inputBg,
     fontSize: 20,
     fontFamily: Fonts.PoppinsSemiBold,
@@ -1322,13 +1284,13 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   otpFilled: {
-    borderColor: C.cta,
-    backgroundColor: '#F3FAF7',
-    color: C.cta,
+    borderColor: C.primary,
+    backgroundColor: C.inputSoft,
+    color: C.primary,
   },
   otpFocused: {
-    borderColor: C.cta,
-    shadowColor: C.cta,
+    borderColor: C.primary,
+    shadowColor: C.primary,
     shadowOpacity: 0.1,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
@@ -1336,8 +1298,7 @@ const styles = StyleSheet.create({
   },
 
   metaRow: {
-    // flexDirection: 'row',
-    alignItems: "flex-end",
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
@@ -1345,31 +1306,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: C.soft,
+    backgroundColor: C.chipBg,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 10,
   },
   timer: {
-    color: C.cta,
+    color: C.primary,
     fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   resendLink: {
     fontSize: 12,
-    color: C.cta,
+    color: C.primary,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   resendDisabled: {
-    color: '#9AA8A3',
+    color: C.muted,
     fontFamily: Fonts.PoppinsMedium,
   },
 
+  ctaWrap: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   cta: {
     width: '100%',
     minHeight: 50,
-    borderRadius: 26,
-    backgroundColor: C.cta,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1382,7 +1347,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: C.ctaText,
+    color: '#FFFFFF',
     letterSpacing: 0.3,
   },
   secureNote: {
@@ -1390,7 +1355,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     lineHeight: 16,
-    color: '#8A968F',
+    color: C.muted,
     fontFamily: Fonts.PoppinsRegular,
   },
 });
