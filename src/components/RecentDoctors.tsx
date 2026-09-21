@@ -29,6 +29,9 @@ interface Props {
   onPressReschedule?: (item?: any) => void;
   onPressBookAgain?: () => void;
   onPress?: () => void;
+  /** Compact card for horizontal recent-consultation rails */
+  variant?: 'default' | 'compact';
+  cardWidth?: number;
 }
 
 const AVATAR = 56;
@@ -50,6 +53,8 @@ const RecentDoctors: React.FC<Props> = ({
   onPressReschedule,
   onPressBookAgain,
   onPress,
+  variant = 'default',
+  cardWidth,
 }) => {
   const hasImage =
     image &&
@@ -75,6 +80,69 @@ const RecentDoctors: React.FC<Props> = ({
     );
 
   const hasSchedule = Boolean(day || date || time);
+  const isCompact = variant === 'compact';
+  const avatarSize = isCompact ? 44 : AVATAR;
+
+  if (isCompact) {
+    return (
+      <TouchableOpacity
+        style={[styles.compactCard, cardWidth ? { width: cardWidth } : null]}
+        activeOpacity={onPress ? 0.88 : 1}
+        onPress={onPress}
+        disabled={!onPress}
+      >
+        <View style={styles.compactTop}>
+          <DoctorAvatar
+            uri={imageUri}
+            name={name}
+            size={avatarSize}
+            shape="circle"
+            emptyMode="icon"
+          />
+          <View style={styles.compactInfo}>
+            <Text style={styles.compactName} numberOfLines={1}>
+              {name || 'Doctor'}
+            </Text>
+            {speciality ? (
+              <Text style={styles.compactSpeciality} numberOfLines={1}>
+                {speciality}
+              </Text>
+            ) : null}
+            {statusLabel ? (
+              <View
+                style={[
+                  styles.statusChip,
+                  styles.compactStatus,
+                  { backgroundColor: statusStyle.backgroundColor },
+                ]}
+              >
+                <Text
+                  style={[styles.statusText, { color: statusStyle.color }]}
+                  numberOfLines={1}
+                >
+                  {statusLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        {hasSchedule ? (
+          <View style={styles.compactMeta}>
+            {day || date ? (
+              <Text style={styles.compactMetaText} numberOfLines={1}>
+                {[day, date].filter(Boolean).join(' · ')}
+              </Text>
+            ) : null}
+            {time ? (
+              <Text style={styles.compactMetaText} numberOfLines={1}>
+                {time}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -201,6 +269,47 @@ const styles = StyleSheet.create({
     borderRadius: CARD_RADIUS_MD,
     padding: 12,
     gap: 10,
+  },
+  compactCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E8EEF2',
+    padding: 10,
+    width: 200,
+  },
+  compactTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  compactInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  compactName: {
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#1E293B',
+  },
+  compactSpeciality: {
+    marginTop: 1,
+    fontSize: 11,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#64748B',
+  },
+  compactStatus: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  compactMeta: {
+    marginTop: 8,
+    gap: 2,
+  },
+  compactMetaText: {
+    fontSize: 10,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#94A3B8',
   },
   topRow: {
     flexDirection: 'row',

@@ -50,6 +50,7 @@ export default function DoctorCard({
           uri={data.image}
           name={data.name}
           size={60}
+          // imageStyle={{ justifyContent: 'center', position: 'absolute', }}
           shape="rounded"
           borderRadius={12}
           emptyMode="icon"

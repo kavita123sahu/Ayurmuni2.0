@@ -9,8 +9,9 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
-  ScrollView,
+  TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
@@ -45,6 +46,16 @@ type Props = {
   subtitle?: string;
 };
 
+const THEME = {
+  ink: Colors.textColor,
+  muted: Colors.subTextColor,
+  faint: Colors.headercolor,
+  line: '#E6EEEA',
+  tint: Colors.onfillColor,
+  softFill: '#F3F7F5',
+  danger: Colors.errorColor,
+};
+
 const DiseaseSelectionModal = ({
   visible,
   onClose,
@@ -53,16 +64,17 @@ const DiseaseSelectionModal = ({
   serviceCategoryId,
   requireSelection = false,
   title = 'Personalize your Ayurmuni',
-  subtitle = 'Tell us your health concerns',
+  subtitle = 'Select health concerns to tailor care',
 }: Props) => {
+  const insets = useSafeAreaInsets();
   const [options, setOptions] = useState<HealthDiseaseOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const wasVisibleRef = useRef(false);
+  const baselineIdsRef = useRef<string[]>([]);
 
-  // Stable key — Home often omits initialSelectedIds (default [] would be new every render)
   const initialIdsKey = useMemo(
     () =>
       (initialSelectedIds || [])
@@ -73,17 +85,20 @@ const DiseaseSelectionModal = ({
     [initialSelectedIds],
   );
 
-  // Prefill only when modal opens; never reset checks on parent re-renders
+  const isEditMode = initialIdsKey.length > 0;
+
   useEffect(() => {
     if (!visible) {
       wasVisibleRef.current = false;
-      setDropdownOpen(false);
+      setSearch('');
       return;
     }
     if (wasVisibleRef.current) return;
     wasVisibleRef.current = true;
-    setSelectedIds(initialIdsKey ? initialIdsKey.split(',') : []);
-    setDropdownOpen(true);
+    const ids = initialIdsKey ? initialIdsKey.split(',') : [];
+    baselineIdsRef.current = ids;
+    setSelectedIds(ids);
+    setSearch('');
   }, [visible, initialIdsKey]);
 
   const loadOptions = useCallback(async () => {
@@ -127,10 +142,24 @@ const DiseaseSelectionModal = ({
   }, [serviceCategoryId]);
 
   useEffect(() => {
-    if (visible) {
-      loadOptions();
-    }
+    if (visible) loadOptions();
   }, [visible, loadOptions]);
+
+  const filteredOptions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(item => item.name.toLowerCase().includes(q));
+  }, [options, search]);
+
+  const allFilteredSelected =
+    filteredOptions.length > 0 &&
+    filteredOptions.every(item => selectedIds.includes(item.id));
+
+  const hasChanges = useMemo(() => {
+    const baseline = [...baselineIdsRef.current].sort().join(',');
+    const current = [...selectedIds].sort().join(',');
+    return baseline !== current;
+  }, [selectedIds]);
 
   const toggleDisease = useCallback((id: string) => {
     const key = String(id);
@@ -139,60 +168,139 @@ const DiseaseSelectionModal = ({
     );
   }, []);
 
-  const selectedOptions = useMemo(
-    () => options.filter(o => selectedIds.includes(o.id)),
-    [options, selectedIds],
+  const selectAllFiltered = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      filteredOptions.forEach(item => next.add(item.id));
+      return Array.from(next);
+    });
+  }, [filteredOptions]);
+
+  const clearLocalSelection = useCallback(() => {
+    if (search.trim()) {
+      const filteredIds = new Set(filteredOptions.map(item => item.id));
+      setSelectedIds(prev => prev.filter(id => !filteredIds.has(id)));
+      return;
+    }
+    setSelectedIds([]);
+  }, [filteredOptions, search]);
+
+  const persistDiseases = useCallback(
+    async (ids: string[], successMessage: string) => {
+      if (submitting) return false;
+      setSubmitting(true);
+      try {
+        const response: any = await _PROFILE_SERVICES.update_Profile({
+          health_disease_ids: ids,
+        });
+        if (response?.success === false) {
+          showSuccessToast(
+            response?.message || 'Unable to save health concerns',
+            'error',
+          );
+          return false;
+        }
+
+        invalidateCache('home_customer');
+
+        try {
+          const cached = (await Utils.getData('_USER_INFO')) || {};
+          const nameById = new Map(options.map(o => [o.id, o.name]));
+          const diseases = ids.map(id => ({
+            id,
+            name: nameById.get(id) || id,
+          }));
+          await Utils.storeData('_USER_INFO', {
+            ...cached,
+            has_health_diseases: ids.length > 0,
+            health_diseases: diseases,
+            health_disease_ids: ids,
+          });
+        } catch {
+          // ignore cache write
+        }
+
+        showSuccessToast(successMessage, 'success');
+        baselineIdsRef.current = ids;
+        setSelectedIds(ids);
+        onDone?.(true);
+        return true;
+      } catch (error: any) {
+        showSuccessToast(
+          error?.message || 'Unable to save health concerns',
+          'error',
+        );
+        return false;
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [onDone, options, submitting],
   );
 
   const handleClose = () => {
     onDone?.(false);
   };
 
-  const handleSubmit = async () => {
-    if (selectedIds.length === 0 || submitting) return;
-    setSubmitting(true);
-    try {
-      const response: any = await _PROFILE_SERVICES.update_Profile({
-        health_disease_ids: selectedIds,
-      });
-      if (response?.success === false) {
-        showSuccessToast(
-          response?.message || 'Unable to save health concerns',
-          'error',
-        );
-        return;
-      }
-
-      invalidateCache('home_customer');
-
-      try {
-        const cached = (await Utils.getData('_USER_INFO')) || {};
-        const nameById = new Map(options.map(o => [o.id, o.name]));
-        const diseases = selectedIds.map(id => ({
-          id,
-          name: nameById.get(id) || id,
-        }));
-        await Utils.storeData('_USER_INFO', {
-          ...cached,
-          has_health_diseases: true,
-          health_diseases: diseases,
-          health_disease_ids: selectedIds,
-        });
-      } catch {
-        // ignore cache write
-      }
-
-      showSuccessToast('Health preferences saved', 'success');
-      onDone?.(true);
-    } catch (error: any) {
-      showSuccessToast(
-        error?.message || 'Unable to save health concerns',
-        'error',
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  const handleSave = async () => {
+    if (isEditMode && !hasChanges) return;
+    if (!isEditMode && selectedIds.length === 0) return;
+    await persistDiseases(
+      selectedIds,
+      isEditMode ? 'Health concerns updated' : 'Health preferences saved',
+    );
   };
+
+  const handleClearAndSave = async () => {
+    if (!isEditMode) {
+      clearLocalSelection();
+      return;
+    }
+    await persistDiseases([], 'Health concerns cleared');
+  };
+
+  const saveLabel = isEditMode ? 'Save changes' : 'Save & personalize';
+  const saveDisabled =
+    submitting || (isEditMode ? !hasChanges : selectedIds.length === 0);
+
+  const clearDisabled =
+    submitting ||
+    (isEditMode
+      ? baselineIdsRef.current.length === 0 && selectedIds.length === 0
+      : selectedIds.length === 0);
+
+  const renderItem = useCallback(
+    ({ item }: { item: HealthDiseaseOption }) => {
+      const isSelected = selectedIds.includes(String(item.id));
+      return (
+        <Pressable
+          style={[styles.row, isSelected && styles.rowSelected]}
+          onPress={() => toggleDisease(item.id)}
+          android_ripple={{ color: '#DCEEE8' }}
+        >
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+          ) : (
+            <View style={styles.itemImageFallback}>
+              <TablerIcon name="heart" size={14} color={Colors.primaryColor} />
+            </View>
+          )}
+          <Text
+            style={[styles.itemText, isSelected && styles.itemTextSelected]}
+            numberOfLines={2}
+          >
+            {item.name}
+          </Text>
+          <View style={[styles.checkbox, isSelected && styles.checkboxOn]}>
+            {isSelected ? (
+              <TablerIcon name="check" size={11} color="#FFF" />
+            ) : null}
+          </View>
+        </Pressable>
+      );
+    },
+    [selectedIds, toggleDisease],
+  );
 
   return (
     <Modal
@@ -205,202 +313,123 @@ const DiseaseSelectionModal = ({
         <Pressable style={styles.overlayPress} onPress={handleClose} />
 
         <View
-          style={styles.modalContainer}
+          style={[
+            styles.sheet,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
           onStartShouldSetResponder={() => true}
         >
           <View style={styles.handle} />
 
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <View style={styles.badge}>
-                <TablerIcon
-                  name="heart-handshake"
-                  size={14}
-                  color={Colors.primaryColor}
-                />
-                <Text style={styles.badgeText}>Health profile</Text>
-              </View>
+              <Text style={styles.kicker}>Health profile</Text>
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
-
             <TouchableOpacity
               style={styles.closeButton}
               onPress={handleClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={10}
             >
-              <TablerIcon name="x" size={18} color="#475569" />
+              <TablerIcon name="x" size={16} color={THEME.muted} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.noteContainer}>
-            <TablerIcon name="leaf" size={16} color={Colors.primaryColor} />
-            <Text style={styles.noteText}>
-              If you want to personalize the complete app according to your
-              health problems, select your concerns below. We use this to
-              recommend doctors, diet, and products.
+          <View style={styles.searchRow}>
+            <TablerIcon name="search" size={16} color={THEME.faint} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search concerns"
+              placeholderTextColor={THEME.faint}
+              style={styles.searchInput}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {search.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+                <TablerIcon name="x" size={14} color={THEME.faint} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={styles.toolbar}>
+            <Text style={styles.countText}>
+              {selectedIds.length} selected
+              {options.length ? ` · ${options.length}` : ''}
             </Text>
+            <View style={styles.toolbarActions}>
+              <TouchableOpacity
+                style={styles.toolChip}
+                onPress={
+                  allFilteredSelected ? clearLocalSelection : selectAllFiltered
+                }
+                disabled={filteredOptions.length === 0 || loading}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.toolChipText}>
+                  {allFilteredSelected ? 'Unselect all' : 'Select all'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toolChip, styles.toolChipClear]}
+                onPress={handleClearAndSave}
+                disabled={clearDisabled}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.toolChipText, styles.toolChipClearText]}>
+                  Clear
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {loading ? (
             <View style={styles.loaderWrap}>
               <ActivityIndicator color={Colors.primaryColor} />
-              <Text style={styles.loaderText}>Loading health concerns…</Text>
+              <Text style={styles.loaderText}>Loading…</Text>
             </View>
           ) : (
-            <View style={styles.dropdownSection}>
-              <Text style={styles.fieldLabel}>Health concerns</Text>
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[
-                  styles.dropdownTrigger,
-                  dropdownOpen && styles.dropdownTriggerOpen,
-                ]}
-                onPress={() => setDropdownOpen(prev => !prev)}
-              >
-                <View style={styles.dropdownTriggerLeft}>
-                  {selectedOptions.length > 0 ? (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.selectedChipRow}
-                    >
-                      {selectedOptions.map(item => (
-                        <View key={item.id} style={styles.selectedChip}>
-                          {item.image_url ? (
-                            <Image
-                              source={{ uri: item.image_url }}
-                              style={styles.selectedChipImage}
-                            />
-                          ) : (
-                            <View style={styles.selectedChipImageFallback}>
-                              <TablerIcon
-                                name="heart"
-                                size={10}
-                                color={Colors.primaryColor}
-                              />
-                            </View>
-                          )}
-                          <Text
-                            style={styles.selectedChipText}
-                            numberOfLines={1}
-                          >
-                            {item.name}
-                          </Text>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  ) : (
-                    <Text style={styles.placeholderText}>
-                      Select health concerns
-                    </Text>
-                  )}
-                </View>
-                <TablerIcon
-                  name={dropdownOpen ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color="#64748B"
-                />
-              </TouchableOpacity>
-
-              {dropdownOpen ? (
-                <View style={styles.dropdownPanel}>
-                  <FlatList
-                    data={options}
-                    keyExtractor={item => item.id}
-                    nestedScrollEnabled
-                    showsVerticalScrollIndicator={false}
-                    style={styles.dropdownList}
-                    keyboardShouldPersistTaps="handled"
-                    ListEmptyComponent={
-                      <Text style={styles.emptyText}>
-                        No health concerns available right now.
-                      </Text>
-                    }
-                    renderItem={({ item }) => {
-                      const isSelected = selectedIds.includes(String(item.id));
-                      return (
-                        <Pressable
-                          style={[
-                            styles.dropdownItem,
-                            isSelected && styles.dropdownItemSelected,
-                          ]}
-                          onPress={() => toggleDisease(item.id)}
-                          android_ripple={{ color: '#E8F3F1' }}
-                        >
-                          {item.image_url ? (
-                            <Image
-                              source={{ uri: item.image_url }}
-                              style={styles.itemImage}
-                            />
-                          ) : (
-                            <View style={styles.itemImageFallback}>
-                              <TablerIcon
-                                name="heart-handshake"
-                                size={16}
-                                color={Colors.primaryColor}
-                              />
-                            </View>
-                          )}
-                          <Text
-                            style={[
-                              styles.itemText,
-                              isSelected && styles.itemTextSelected,
-                            ]}
-                            numberOfLines={2}
-                          >
-                            {item.name}
-                          </Text>
-                          <View
-                            style={[
-                              styles.checkbox,
-                              isSelected && styles.selectedCheckbox,
-                            ]}
-                          >
-                            {isSelected ? (
-                              <TablerIcon name="check" size={12} color="#FFF" />
-                            ) : null}
-                          </View>
-                        </Pressable>
-                      );
-                    }}
-                  />
-                </View>
-              ) : null}
-            </View>
+            <FlatList
+              data={filteredOptions}
+              keyExtractor={item => item.id}
+              renderItem={renderItem}
+              style={styles.list}
+              contentContainerStyle={
+                filteredOptions.length === 0 ? styles.listEmptyPad : undefined
+              }
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>
+                  {search.trim()
+                    ? 'No matching concerns'
+                    : 'No health concerns available'}
+                </Text>
+              }
+            />
           )}
 
-          {selectedIds.length > 0 ? (
-            <Text style={styles.selectedCount}>
-              {selectedIds.length} health concern
-              {selectedIds.length > 1 ? 's' : ''} selected
-            </Text>
-          ) : null}
-
           <TouchableOpacity
-            activeOpacity={0.85}
-            style={[
-              styles.continueButton,
-              (selectedIds.length === 0 || submitting) && styles.disabledButton,
-            ]}
-            disabled={selectedIds.length === 0 || submitting}
-            onPress={handleSubmit}
+            activeOpacity={0.88}
+            style={[styles.saveButton, saveDisabled && styles.saveButtonOff]}
+            disabled={saveDisabled}
+            onPress={handleSave}
           >
             {submitting ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.continueText}>Save & personalize</Text>
+              <Text style={styles.saveText}>{saveLabel}</Text>
             )}
           </TouchableOpacity>
 
-          {!requireSelection ? (
+          {!requireSelection && !isEditMode ? (
             <TouchableOpacity style={styles.skipButton} onPress={handleClose}>
               <Text style={styles.skipText}>Skip for now</Text>
             </TouchableOpacity>
-          ) : (
-            <View style={{ height: 8 }} />
-          )}
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -413,217 +442,170 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
   },
   overlayPress: {
     ...StyleSheet.absoluteFillObject,
   },
-  modalContainer: {
+  sheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 18,
-    maxHeight: '88%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    maxHeight: '86%',
   },
   handle: {
     alignSelf: 'center',
-    width: 42,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E2E8F0',
-    marginBottom: 12,
+    backgroundColor: '#D8E2DD',
+    marginBottom: 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   headerCopy: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginBottom: 8,
-  },
-  badgeText: {
+  kicker: {
     fontSize: 11,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
+    lineHeight: 24,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
+    color: THEME.ink,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    color: THEME.muted,
+    marginTop: 2,
     fontFamily: Fonts.PoppinsRegular,
   },
   closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F1F5F3',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: THEME.softFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  noteContainer: {
+  searchRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: '#F0F8F5',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#D8EBE4',
-  },
-  noteText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#475569',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  loaderWrap: {
-    paddingVertical: 36,
     alignItems: 'center',
-    gap: 10,
-  },
-  loaderText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  dropdownSection: {
-    marginBottom: 8,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-    marginBottom: 8,
-  },
-  dropdownTrigger: {
-    minHeight: 52,
+    gap: 8,
+    height: 42,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
+    borderColor: THEME.line,
+    backgroundColor: THEME.softFill,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 8,
   },
-  dropdownTriggerOpen: {
-    borderColor: Colors.primaryColor,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  dropdownTriggerLeft: {
+  searchInput: {
     flex: 1,
-    minWidth: 0,
-  },
-  placeholderText: {
+    padding: 0,
     fontSize: 14,
-    color: '#94A3B8',
+    color: THEME.ink,
     fontFamily: Fonts.PoppinsRegular,
   },
-  selectedChipRow: {
+  toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingRight: 4,
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    gap: 8,
   },
-  selectedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F0F8F5',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#D8EBE4',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    maxWidth: 160,
-  },
-  selectedChipImage: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#E2E8F0',
-  },
-  selectedChipImageFallback: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedChipText: {
+  countText: {
     flexShrink: 1,
     fontSize: 12,
-    color: '#0F172A',
+    color: THEME.muted,
     fontFamily: Fonts.PoppinsMedium,
   },
-  dropdownPanel: {
-    borderWidth: 1,
-    borderTopWidth: 0,
-    borderColor: Colors.primaryColor,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    maxHeight: 280,
-  },
-  dropdownList: {
-    maxHeight: 280,
-  },
-  dropdownItem: {
+  toolbarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
-    gap: 10,
+    gap: 6,
   },
-  dropdownItemSelected: {
-    backgroundColor: '#F0F8F5',
+  toolChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: THEME.tint,
+    borderWidth: 1,
+    borderColor: '#CDE3DB',
+  },
+  toolChipClear: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  toolChipText: {
+    fontSize: 12,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  toolChipClearText: {
+    color: THEME.danger,
+  },
+  loaderWrap: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loaderText: {
+    fontSize: 12,
+    color: THEME.faint,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  list: {
+    maxHeight: 320,
+    marginBottom: 10,
+  },
+  listEmptyPad: {
+    paddingVertical: 28,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    marginBottom: 2,
+  },
+  rowSelected: {
+    backgroundColor: THEME.tint,
   },
   itemImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#E2E8F0',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: THEME.line,
   },
   itemImageFallback: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#ECFDF5',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: THEME.softFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   itemText: {
     flex: 1,
     fontSize: 14,
-    color: '#334155',
+    lineHeight: 19,
+    color: THEME.ink,
     fontFamily: Fonts.PoppinsMedium,
   },
   itemTextSelected: {
@@ -631,54 +613,47 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+    borderColor: '#C5D4CE',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectedCheckbox: {
+  checkboxOn: {
     backgroundColor: Colors.primaryColor,
     borderColor: Colors.primaryColor,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#94A3B8',
+    color: THEME.faint,
     fontFamily: Fonts.PoppinsMedium,
-    paddingVertical: 24,
+    fontSize: 13,
   },
-  selectedCount: {
-    fontSize: 12,
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  continueButton: {
-    height: 50,
+  saveButton: {
+    height: 48,
     borderRadius: 12,
     backgroundColor: Colors.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
-  disabledButton: {
-    backgroundColor: '#CBD5E1',
+  saveButtonOff: {
+    backgroundColor: '#A8C4BB',
   },
-  continueText: {
+  saveText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   skipButton: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 2,
   },
   skipText: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: 13,
+    color: THEME.muted,
     fontFamily: Fonts.PoppinsMedium,
   },
 });

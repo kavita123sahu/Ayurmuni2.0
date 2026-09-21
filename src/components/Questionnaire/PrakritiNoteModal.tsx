@@ -6,10 +6,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
-import TablerIcon from '../TablerIcon';
+import TablerIcon, { TablerIconName } from '../TablerIcon';
 
 type Props = {
   visible: boolean;
@@ -17,8 +18,32 @@ type Props = {
   onBegin: () => void;
 };
 
+const GREEN = Colors.primaryColor;
+
+const NOTES: Array<{
+  icon: TablerIconName;
+  title: string;
+  subtitle: string;
+}> = [
+  {
+    icon: 'calendar',
+    title: 'Answer as you were before 21',
+    subtitle: 'Think about your natural body, mind and habits.',
+  },
+  {
+    icon: 'leaf',
+    title: 'This reveals your true Prakriti',
+    subtitle: 'Your natural constitution, not a temporary state.',
+  },
+  {
+    icon: 'clock',
+    title: 'It only takes 3–5 minutes',
+    subtitle: 'Simple, easy questions.',
+  },
+];
+
 /**
- * Pre-Prakriti note — matches ayurmuni.com/prakriti/assessment modal copy.
+ * Pre-Prakriti note modal — quick note before answers.
  */
 const PrakritiNoteModal = ({ visible, onClose, onBegin }: Props) => (
   <Modal
@@ -30,37 +55,37 @@ const PrakritiNoteModal = ({ visible, onClose, onBegin }: Props) => (
     <Pressable style={styles.overlay} onPress={onClose}>
       <Pressable style={styles.card} onPress={() => {}}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>BEFORE YOU BEGIN</Text>
-          <View style={styles.titleRow}>
-            <View style={styles.infoIcon}>
-              <TablerIcon name="alert-circle" size={20} color="#FFFFFF" />
-            </View>
-            <Text style={styles.title}>A note on your answers</Text>
+          <View style={styles.infoIcon}>
+            <Text style={styles.infoLetter}>i</Text>
           </View>
+          <Text style={styles.eyebrow}>BEFORE YOU BEGIN</Text>
+          <Text style={styles.title}>A quick note on your answers</Text>
         </View>
 
-        <View style={styles.body}>
-          <Text style={styles.note}>
-            <Text style={styles.noteBold}>Please note: </Text>
-            Answer each question based on your natural body, mind, and habits{' '}
-            <Text style={styles.noteEm}>between the age of 18-21</Text>
-            {' '}(or before any major illness, long-term stress, or significant
-            lifestyle changes).
-          </Text>
+        <ScrollView
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.body}
+        >
+          {NOTES.map(item => (
+            <View key={item.title} style={styles.noteRow}>
+              <View style={styles.noteIcon}>
+                <TablerIcon name={item.icon} size={18} color={GREEN} />
+              </View>
+              <View style={styles.noteCopy}>
+                <Text style={styles.noteTitle}>{item.title}</Text>
+                <Text style={styles.noteSubtitle}>{item.subtitle}</Text>
+              </View>
+            </View>
+          ))}
 
           <View style={styles.tipBox}>
+            <TablerIcon name="alert-circle" size={18} color="#9A7B4F" />
+            <View style={styles.tipDivider} />
             <Text style={styles.tipText}>
-              A gentle tip — if you're older than 21, think back to how you
-              naturally were in your younger years. This reveals your true{' '}
-              <Text style={styles.tipEm}>Prakriti (natural constitution)</Text>{' '}
-              rather than a temporary imbalance, for a more accurate reading.
-            </Text>
-          </View>
-
-          <View style={styles.timePill}>
-            <View style={styles.timeDot} />
-            <Text style={styles.timeText}>
-              This journey takes about 3–5 minutes
+              <Text style={styles.tipBold}>Tip: </Text>
+              If you're over 21, recall how you naturally were in your younger
+              years for a more accurate result.
             </Text>
           </View>
 
@@ -70,9 +95,9 @@ const PrakritiNoteModal = ({ visible, onClose, onBegin }: Props) => (
             onPress={onBegin}
           >
             <Text style={styles.beginText}>Begin the journey</Text>
-            <TablerIcon name="star" size={16} color="#FFFFFF" />
+            <TablerIcon name="arrow-right" size={16} color="#FFFFFF" />
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </Pressable>
     </Pressable>
   </Modal>
@@ -85,41 +110,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(10, 51, 40, 0.55)',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
   },
   card: {
-    borderRadius: 20,
+    borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F3EC',
+    maxHeight: '88%',
   },
   header: {
-    backgroundColor: Colors.primaryColor,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 18,
-  },
-  eyebrow: {
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.85)',
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    backgroundColor: GREEN,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 20,
   },
   infoIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
+  },
+  infoLetter: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    lineHeight: 18,
+  },
+  eyebrow: {
+    fontSize: 10,
+    letterSpacing: 1.4,
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 6,
   },
   title: {
-    flex: 1,
     fontSize: 22,
     lineHeight: 28,
     color: '#FFFFFF',
@@ -127,67 +155,71 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingTop: 18,
     paddingBottom: 18,
+    gap: 14,
+  },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 12,
   },
-  note: {
+  noteIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E4F0EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noteCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 2,
+  },
+  noteTitle: {
     fontSize: 14,
-    lineHeight: 21,
-    color: '#334155',
+    lineHeight: 20,
+    color: GREEN,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  noteSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#5C5A54',
     fontFamily: Fonts.PoppinsRegular,
-  },
-  noteBold: {
-    color: Colors.primaryColor,
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  noteEm: {
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
   },
   tipBox: {
-    backgroundColor: '#FFF8EB',
-    borderWidth: 1,
-    borderColor: '#F3D9A8',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#F8EBD6',
+    borderRadius: 14,
     padding: 12,
   },
+  tipDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    backgroundColor: '#D4B88A',
+    marginRight: 2,
+  },
   tipText: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#5B4A2E',
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#6B5638',
     fontFamily: Fonts.PoppinsRegular,
   },
-  tipEm: {
+  tipBold: {
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#3F2F18',
-  },
-  timePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    gap: 8,
-    backgroundColor: '#F1F5F4',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  timeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: Colors.primaryColor,
-  },
-  timeText: {
-    fontSize: 12,
-    color: '#475569',
-    fontFamily: Fonts.PoppinsMedium,
+    color: '#8A6A3D',
   },
   beginBtn: {
     marginTop: 4,
-    minHeight: 48,
+    minHeight: 50,
     borderRadius: 999,
-    backgroundColor: Colors.primaryColor,
+    backgroundColor: GREEN,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

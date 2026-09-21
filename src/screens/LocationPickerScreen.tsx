@@ -265,7 +265,7 @@ const LocationPickerScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <AppHeader title="Pin Your Location" onLeftPress={() => safeGoBack(navigation)} />
 
       <ScrollView
@@ -344,7 +344,7 @@ const LocationPickerScreen = () => {
 
         <Text style={styles.hint}>Move the map — pin stays at center</Text>
 
-        {!!locationError && <Text style={styles.errorText}>{locationError}</Text>}
+        {/* {!!locationError && <Text style={styles.errorText}>{locationError}</Text>} */}
 
         <View style={styles.addressCard}>
           {geocoding ? (

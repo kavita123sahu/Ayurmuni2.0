@@ -28,13 +28,13 @@ const CONSULT_SIZE = TAB_CONSULT_FAB_SIZE * scale;
 const TAB_ICONS: Record<string, TablerIconName> = {
   Home: 'home',
   Products: 'package',
-  // Medicine: 'pill',
+  Medicines: 'pill',
   Consult: 'file-medical',
   Profile: 'user',
 };
 
 const LEFT_TABS = ['Home', 'Products'] as const;
-const RIGHT_TABS = ['Consult', 'Profile'] as const;
+const RIGHT_TABS = ['Medicines' , 'Consult' ] as const;
 
 type SideTab = (typeof LEFT_TABS)[number] | (typeof RIGHT_TABS)[number];
 

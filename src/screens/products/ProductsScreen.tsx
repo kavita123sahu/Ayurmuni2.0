@@ -47,6 +47,8 @@ import {
 } from '../../navigation/productNavigation';
 import { useProductCategories } from '../../hooks/useProductCategories';
 import CategoryList from '../../components/CategoryList';
+import RecentProductsList from '../../components/RecentProductsList';
+import { useOrders } from '../../hooks/useOrders';
 import {
   getAddQtyBlockMessage,
 } from '../../utils/productStockUtils';
@@ -70,8 +72,11 @@ const ProductsScreen = () => {
     [windowWidth, hPad],
   );
   const bottomPadding = getScreenBottomPadding(insets);
-  const { categories: dashboardCategories, loading: homeLoading } =
-    useHomeData();
+  const {
+    categories: dashboardCategories,
+    storeProducts,
+    loading: homeLoading,
+  } = useHomeData();
   const productsCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'products'),
     [dashboardCategories],
@@ -94,23 +99,29 @@ const ProductsScreen = () => {
     refreshing,
     refresh,
     loadMore,
-  } = useCategoryProducts(productFilter, [], {
-    enabled: Boolean(productsCategoryId) || !homeLoading,
+  } = useCategoryProducts(productFilter, storeProducts, {
+    enabled: !homeLoading,
   });
 
   const { categories: productCategories, loading: categoriesLoading } =
-    useProductCategories(null);
+    useProductCategories(null, productsCategoryId);
+
+  const { recentProducts, loading: ordersLoading, refresh: refreshOrders } =
+    useOrders({ pageSize: 5 });
+
   const { onScroll } = useScrollHide();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
 
   const handleSearchPress = useCallback(() => {
-    navigateToSearchScreen(navigation, {
-      categoryMode: 'product',
-      serviceCategoryId: productsCategoryId || undefined,
-    });
-  }, [navigation, productsCategoryId]);
+    // Global search — all products + medicines, not store-scoped
+    navigateToSearchScreen(navigation);
+  }, [navigation]);
+
+  const handleViewOrderHistory = useCallback(() => {
+    navigation.navigate('OrderHistory');
+  }, [navigation]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -205,29 +216,64 @@ const ProductsScreen = () => {
         ) : null}
 
         {categoriesLoading && productCategories.length === 0 ? (
-          <CategoryRowSkeleton />
-        ) : productCategories.length > 0 ? (
+          <>
+            <SectionHeader title="Shop by Category" />
+            <CategoryRowSkeleton />
+          </>
+        ) : (
           <>
             <SectionHeader
               title="Shop by Category"
-              actionText={productCategories.length > 1 ? 'View all' : ''}
+              actionText="View all"
               onPress={() =>
                 navigateToCategoryProducts(navigation, {
                   categoryMode: 'product',
+                  categoryName: 'Shop by Category',
                   serviceCategoryId: productsCategoryId || undefined,
                 })
               }
             />
-            <CategoryList
-              data={productCategories}
-              navigation={navigation}
-              mode="product"
-              serviceCategoryId={productsCategoryId}
-            />
+            {productCategories.length > 0 ? (
+              <CategoryList
+                data={productCategories}
+                navigation={navigation}
+                mode="product"
+                serviceCategoryId={productsCategoryId || undefined}
+              />
+            ) : !categoriesLoading ? (
+              <Text style={styles.emptyCategoryHint}>
+                Tap View all to browse categories
+              </Text>
+            ) : null}
           </>
-        ) : null}
+        )}
 
-        <SectionHeader title="All Products" actionText="" />
+        {(ordersLoading || recentProducts.length > 0) && (
+          <>
+            <SectionHeader
+              title="Recent Orders"
+              actionText="View History"
+              onPress={handleViewOrderHistory}
+            />
+            {ordersLoading && recentProducts.length === 0 ? (
+              <CategoryRowSkeleton />
+            ) : (
+              <RecentProductsList
+                data={recentProducts}
+                navigation={navigation}
+              />
+            )}
+          </>
+        )}
+
+        <SectionHeader title="All Products"
+          actionText={"View All"} onPress={() =>
+            navigateToCategoryProducts(navigation, {
+              categoryMode: 'product',
+              categoryName: 'Shop by Category',
+              serviceCategoryId: productsCategoryId || undefined,
+            })
+          } />
       </View>
     ),
     [
@@ -236,6 +282,9 @@ const ProductsScreen = () => {
       navigation,
       bannerImages,
       productsCategoryId,
+      ordersLoading,
+      recentProducts,
+      handleViewOrderHistory,
     ],
   );
 
@@ -252,7 +301,7 @@ const ProductsScreen = () => {
       />
 
       <Header
-        title="Products"
+        title="Products Store"
         backIcon={Images.backIcon}
         onBack={() => goBackToHomeTab(navigation)}
         subtitle="Choose best product"
@@ -282,7 +331,10 @@ const ProductsScreen = () => {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={refresh}
+              onRefresh={() => {
+                refresh();
+                refreshOrders();
+              }}
               colors={[Colors.primaryColor]}
               tintColor={Colors.primaryColor}
             />
@@ -346,6 +398,13 @@ const styles = StyleSheet.create({
     fontSize: TYPO.md,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  emptyCategoryHint: {
+    marginTop: 4,
+    marginBottom: 8,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
   },
   footerLoader: {
     paddingVertical: 8,

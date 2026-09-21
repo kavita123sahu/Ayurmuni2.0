@@ -1045,6 +1045,8 @@ import { logoutOneSignalUser } from '../../services/pushNotificationService';
 import LinearGradient from 'react-native-linear-gradient';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
 import { shouldRunThrottled } from '../../utils/fetchThrottle';
+import { clearAppSession } from '../../services/sessionCleanup';
+import { useLocation } from '../../context/LocationContext';
 
 
 
@@ -1068,13 +1070,10 @@ const ProfilePage = ({ navigation }: any) => {
     const stackNav = navigation.getParent?.() || navigation;
     const insets = useSafeAreaInsets();
     const tabClearance = getScreenBottomPadding(insets);
+    const { clearLocationSession } = useLocation();
 
     const [logoutVisible, setLogoutVisible] = useState(false);
-    const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
-    const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
-    const [deleteAccountDoneVisible, setDeleteAccountDoneVisible] = useState(false);
-    const [deleteRetentionDays, setDeleteRetentionDays] = useState(30);
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState<any>(null);
     /** null = resolving access; avoids flashing wrong UI */
     const [isGuest, setIsGuest] = useState<boolean | null>(null);
 
@@ -1150,26 +1149,22 @@ const ProfilePage = ({ navigation }: any) => {
     const logout = () => setLogoutVisible(true);
 
     const accountMenu: MenuEntry[] = [
-        { id: 1, title: 'Patient Details', icon: 'users' },
-        { id: 2, title: 'Saved Address', icon: 'map-pin' },
-        { id: 3, title: 'My Appointments', icon: 'calendar' },
-        { id: 4, title: 'Order History', icon: 'receipt' },
-        { id: 5, title: 'Medical Records', icon: 'file-medical' },
+        { id: 1, title: 'My Orders', icon: 'receipt' },
+        { id: 2, title: 'My Consultations', icon: 'calendar' },
+        { id: 3, title: 'Medical Records', icon: 'file-medical' },
+        { id: 4, title: 'Patient Details', icon: 'users' },
+        { id: 5, title: 'Saved Address', icon: 'map-pin' },
         { id: 6, title: 'Favourite Doctor', icon: 'heart' },
         { id: 7, title: 'Wishlist', icon: 'heart-filled' },
-        { id: 14, title: 'My Rewards', icon: 'trophy' },
-        // { id: 8, title: 'Mentor', icon: 'school' },
+        { id: 8, title: 'My Rewards', icon: 'trophy' },
         { id: 9, title: 'Cart', icon: 'shopping-cart' },
-        { id: 10, title: 'Analysis', icon: 'chart-pie' },
-        { id: 11, title: 'Delete Account', icon: 'trash' },
     ];
 
     const preferenceMenu: MenuEntry[] = [
-        { id: 6, title: 'Payments', icon: 'credit-card' },
-        { id: 7, title: 'Settings', icon: 'settings' },
+        { id: 10, title: 'Payments', icon: 'credit-card' },
+        { id: 11, title: 'Settings', icon: 'settings' },
         { id: 12, title: 'Privacy Center', icon: 'shield' },
-        // { id: 13, title: 'Feedback & Information', icon: 'help' },
-        { id: 8, title: 'FAQ', icon: 'help' },
+        { id: 13, title: 'Need help?', icon: 'help' },
     ];
 
     const exploreItems: ExploreItem[] = [
@@ -1234,9 +1229,11 @@ const ProfilePage = ({ navigation }: any) => {
             case 'Patient Details':
                 stackNav.navigate('PatientDetails');
                 break;
+            case 'My Consultations':
             case 'My Appointments':
                 stackNav.navigate('Appointments');
                 break;
+            case 'My Orders':
             case 'Order History':
                 stackNav.navigate('OrderHistory');
                 break;
@@ -1273,14 +1270,9 @@ const ProfilePage = ({ navigation }: any) => {
             case 'Feedback & Information':
                 stackNav.navigate('FeedbackInformation');
                 break;
+            case 'Need help?':
             case 'FAQ':
                 stackNav.navigate('HelpCenterScreen');
-                break;
-            case 'Analysis':
-                stackNav.navigate('PrakritiProfile');
-                break;
-            case 'Delete Account':
-                setDeleteAccountVisible(true);
                 break;
             default:
                 break;
@@ -1290,51 +1282,28 @@ const ProfilePage = ({ navigation }: any) => {
     const handleLogout = async () => {
         setLogoutVisible(false);
         logoutOneSignalUser();
-        await Utils.clearAllData();
+        await clearAppSession({ clearLocationSession });
         navigation.replace('Welcome');
     };
 
-    const handleDeleteAccount = async () => {
-        if (deleteAccountLoading) return;
-        setDeleteAccountLoading(true);
-        try {
-            const res: any = await ProfileServices.deleteAccount();
-            const daysRaw =
-                res?.data?.retention_days ??
-                res?.retention_days ??
-                res?.data?.backup_days ??
-                res?.backup_days ??
-                30;
-            const days = Number(daysRaw);
-            setDeleteRetentionDays(Number.isFinite(days) && days > 0 ? days : 30);
-            setDeleteAccountVisible(false);
-            setDeleteAccountDoneVisible(true);
-        } catch (e) {
-            // Keep user on screen; modal can be closed and retried.
-            setDeleteAccountLoading(false);
-        } finally {
-            setDeleteAccountLoading(false);
-        }
-    };
-
-    const MenuItem = ({ item }: { item: MenuEntry }) => (
+    const MenuItem = ({ item, isLast }: { item: MenuEntry; isLast?: boolean }) => (
         <TouchableOpacity
-            style={styles.card}
+            style={[styles.card, isLast && styles.cardLast]}
             activeOpacity={0.7}
             onPress={() => handleNavigation(item)}
         >
             <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
-                <TablerIcon name={item.icon} size={22} color="#1B5E54" />
+                <TablerIcon name={item.icon} size={18} color="#1B5E54" />
             </View>
             <Text style={styles.menuTitle}>{item.title}</Text>
-            <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
+            <TablerIcon name="chevron-right" size={18} color="#CBD5E1" />
         </TouchableOpacity>
     );
 
     const Section = ({ title, children }: any) => (
         <View style={styles.wrapper}>
             <Text style={styles.sectionTitle}>{title}</Text>
-            <View>{children}</View>
+            <View style={styles.menuGroup}>{children}</View>
         </View>
     );
 
@@ -1525,10 +1494,17 @@ const ProfilePage = ({ navigation }: any) => {
         );
     }
 
+    const firstName = String(user?.first_name || '').trim();
+    const profileGreeting = firstName ? `Hi, ${firstName}!` : 'Hi there!';
+
     return (
         <>
             <ScreenShell contentStyle={styles.shellContent}>
-                <Header title="Profile" subtitle="Manage your account" onBack={() => goBackToHomeTab(navigation)} />
+                <Header
+                    title={profileGreeting}
+                    subtitle="Your healthcare journey, personalized"
+                    onBack={() => goBackToHomeTab(navigation)}
+                />
 
                 <ScrollView
                     style={styles.scrollArea}
@@ -1563,15 +1539,23 @@ const ProfilePage = ({ navigation }: any) => {
                         }}
                     />
 
-                    <Section title="Account">
-                        {accountMenu.map((item) => (
-                            <MenuItem key={item.id} item={item} />
+                    <Section title="My care">
+                        {accountMenu.map((item, index) => (
+                            <MenuItem
+                                key={item.id}
+                                item={item}
+                                isLast={index === accountMenu.length - 1}
+                            />
                         ))}
                     </Section>
 
-                    <Section title="Preference">
-                        {preferenceMenu.map((item) => (
-                            <MenuItem key={item.id} item={item} />
+                    <Section title="Preferences">
+                        {preferenceMenu.map((item, index) => (
+                            <MenuItem
+                                key={item.id}
+                                item={item}
+                                isLast={index === preferenceMenu.length - 1}
+                            />
                         ))}
                     </Section>
 
@@ -1580,7 +1564,7 @@ const ProfilePage = ({ navigation }: any) => {
                         onPress={logout}
                         activeOpacity={0.8}
                     >
-                        <TablerIcon name="logout" size={20} color={Colors.errorColor} />
+                        <TablerIcon name="logout" size={18} color={Colors.errorColor} />
                         <Text style={styles.logoutText}>Logout</Text>
                     </TouchableOpacity>
 
@@ -1598,65 +1582,6 @@ const ProfilePage = ({ navigation }: any) => {
                     confirmText="Yes, Logout"
                     onClose={() => setLogoutVisible(false)}
                     onConfirm={handleLogout}
-                />
-            )}
-
-            {deleteAccountVisible && (
-                <CommonModal
-                    visible={deleteAccountVisible}
-                    icon="🗑️"
-                    title="Delete account"
-                    subtitle={`This will permanently delete your account. Your appointments, orders, and patient records will remain retrievable for ${deleteRetentionDays} days.`}
-                    cancelText="Cancel"
-                    confirmText={deleteAccountLoading ? 'Deleting...' : 'Delete'}
-                    loading={deleteAccountLoading}
-                    onClose={() => setDeleteAccountVisible(false)}
-                    onConfirm={handleDeleteAccount}
-                />
-            )}
-
-            {deleteAccountDoneVisible && (
-                <CommonModal
-                    visible={deleteAccountDoneVisible}
-                    icon="✅"
-                    title="Account scheduled for deletion"
-                    subtitle={`Your appointments, orders, and patient records stay recoverable for ${deleteRetentionDays} days. After that they cannot be restored. Until you recover (or the period ends), this phone number cannot enter the app — use Recover with OTP, or a new number.`}
-                    cancelText="Close"
-                    confirmText="OK"
-                    stackButtons
-                    loading={false}
-                    onClose={async () => {
-                        setDeleteAccountDoneVisible(false);
-                        const info = await Utils.getData('_USER_INFO');
-                        const phone =
-                            info?.phone_number ||
-                            info?.phone ||
-                            info?.mobile ||
-                            null;
-                        await Utils.clearAllData();
-                        await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
-                            phone,
-                            retention_days: deleteRetentionDays,
-                            held_at: Date.now(),
-                        });
-                        navigation.replace('Welcome');
-                    }}
-                    onConfirm={async () => {
-                        setDeleteAccountDoneVisible(false);
-                        const info = await Utils.getData('_USER_INFO');
-                        const phone =
-                            info?.phone_number ||
-                            info?.phone ||
-                            info?.mobile ||
-                            null;
-                        await Utils.clearAllData();
-                        await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
-                            phone,
-                            retention_days: deleteRetentionDays,
-                            held_at: Date.now(),
-                        });
-                        navigation.replace('Welcome');
-                    }}
                 />
             )}
         </>
@@ -1935,39 +1860,49 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
     },
     wrapper: {
-        marginTop: SECTION_GAP,
+        marginTop: 12,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 8,
-        color: '#111',
+        marginBottom: 6,
+        color: '#64748B',
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+    },
+    menuGroup: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        overflow: 'hidden',
     },
     card: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        paddingVertical: 14,
-        paddingHorizontal: 14,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-        marginBottom: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#F1F5F9',
+    },
+    cardLast: {
+        borderBottomWidth: 0,
     },
     cardLocked: {
         backgroundColor: '#FAFAFA',
     },
     iconContainer: {
-        width: 46,
-        height: 46,
-        borderRadius: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 10,
     },
     menuTitle: {
         flex: 1,
-        fontSize: 15,
+        fontSize: 14,
         color: Colors.textColor,
         fontFamily: Fonts.PoppinsMedium,
     },
@@ -1993,24 +1928,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginTop: SECTION_GAP,
-        paddingVertical: 14,
-        borderRadius: 14,
+        marginTop: 12,
+        paddingVertical: 12,
+        borderRadius: 12,
         backgroundColor: '#FEF2F2',
         borderWidth: 1,
         borderColor: '#FFCECE',
     },
     logoutText: {
-        fontSize: 15,
+        fontSize: 14,
         color: Colors.errorColor,
         fontFamily: Fonts.PoppinsMedium,
     },
     version: {
         textAlign: 'center',
         fontFamily: Fonts.PoppinsMedium,
-        fontSize: 13,
-        marginTop: 12,
-        paddingVertical: 8,
+        fontSize: 12,
+        marginTop: 8,
+        paddingVertical: 4,
         color: '#A1A1AA',
     },
     guestHero: {

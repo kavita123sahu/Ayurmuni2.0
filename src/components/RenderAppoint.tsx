@@ -22,6 +22,7 @@ import {
 } from '../utils/appointmentUtils';
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
+import { consultationHasPrescription } from '../utils/prescriptionDetailUtils';
 
 const formatStatusLabel = (status?: string) => {
   if (status === 'cancellation_requested') return 'Confirmed';
@@ -89,14 +90,29 @@ const RenderAppoint = ({
     schedule.date,
     schedule.time,
   );
-  const showViewDetails = [
-    'completed',
-    'cancelled',
-    'missed',
-    'expired',
-    'no_show',
-    'noshow',
-  ].includes(String(item.status || '').toLowerCase());
+  const hasPrescription = useMemo(() => {
+    const raw = item?.rawData ?? item;
+    if (consultationHasPrescription(raw)) return true;
+    if (consultationHasPrescription(raw?.appointment)) return true;
+    if (raw?.has_prescription === true || raw?.is_prescribed === true) {
+      return true;
+    }
+    if (raw?.prescription_id || raw?.appointment?.prescription_id) {
+      return true;
+    }
+    return false;
+  }, [item]);
+
+  const showViewDetails =
+    hasPrescription &&
+    [
+      'completed',
+      'cancelled',
+      'missed',
+      'expired',
+      'no_show',
+      'noshow',
+    ].includes(String(item.status || '').toLowerCase());
   const showJoinCall = item.call_status === 'in_progress';
   const showActionRow =
     withinModifyWindow || showViewDetails || showJoinCall;
@@ -239,6 +255,7 @@ const RenderAppoint = ({
         date={schedule.date}
         time={schedule.time}
         call_status={item.call_status}
+        hasPrescription={hasPrescription}
         onReschedule={onReschedule}
         onCancel={onCancel}
         onJoinCall={() => {
@@ -264,10 +281,6 @@ const RenderAppoint = ({
           );
         }}
         onViewDetails={() => {
-          // if (!hasPrescription) {
-          //   showSuccessToast('No prescription available for this appointment', 'error');
-          //   return;
-          // }
           navigation.navigate('PrescriptionDetail', {
             appointment_id:
               item?.appointment_id ||

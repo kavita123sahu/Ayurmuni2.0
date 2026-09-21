@@ -142,11 +142,9 @@ const MedicineScreen = (props: any) => {
   );
 
   const handleSearchPress = useCallback(() => {
-    navigateToSearchScreen(navigation, {
-      categoryMode: 'health',
-      serviceCategoryId: medicineCategoryId || undefined,
-    });
-  }, [navigation, medicineCategoryId]);
+    // Global search — all products + medicines, not medicine-scoped
+    navigateToSearchScreen(navigation);
+  }, [navigation]);
 
   const handleViewOrderHistory = useCallback(() => {
     navigation.navigate('OrderHistory');
@@ -314,12 +312,23 @@ const MedicineScreen = (props: any) => {
           </>
         ) : safeHealthConcerns.length > 0 ? (
           <>
-            <SectionHeader title="Shop by Concern" />
+            <SectionHeader title="Shop by Concern"
+              actionText={safeHealthConcerns.length > 1 ? 'View all' : ''}
+              onPress={() =>
+                navigateToCategoryProducts(navigation, {
+                  categoryMode: 'health',
+                  categoryName: 'Shop by Concern',
+                  serviceCategoryId: medicineCategoryId || undefined,
+                })
+              } />
+
+
             <CategoryList
               data={safeHealthConcerns}
               navigation={navigation}
-              doctor
+              mode="health"
               variant="concern"
+              serviceCategoryId={medicineCategoryId || undefined}
             />
           </>
         ) : null}
@@ -331,7 +340,13 @@ const MedicineScreen = (props: any) => {
           </>
         ) : null}
 
-        <SectionHeader title="All Medicines" actionText="" />
+        <SectionHeader title="All Medicines" actionText="View All" onPress={() =>
+          navigateToCategoryProducts(navigation, {
+            categoryMode: 'health',
+            categoryName: 'Shop by Concern',
+            serviceCategoryId: medicineCategoryId || undefined,
+          })
+        } />
       </View>
     ),
     [
@@ -345,6 +360,7 @@ const MedicineScreen = (props: any) => {
       safeHealthConcerns,
       brandListData,
       bannerImages,
+      medicineCategoryId,
     ],
   );
 

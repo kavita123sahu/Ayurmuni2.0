@@ -28,7 +28,6 @@ import TablerIcon, { TablerIconName } from './TablerIcon';
 import { geocodePincode, savedAddressToParsed } from '../services/locationService';
 import { useLocation } from '../context/LocationContext';
 import {
-    popToHomeAfterAddressSave,
     popToScreen,
 } from '../navigation/navigationUtils';
 
@@ -55,7 +54,6 @@ const AddEditAddress = ({ navigation, route }: any) => {
     const editData = route?.params?.data;
     const type = route?.params?.type;
     const selectedLocation = route?.params?.selectedLocation;
-    const returnToHome = route?.params?.returnToHome === true;
     const returnTo = route?.params?.returnTo as string | undefined;
 
     const isEdit = type === 'EDIT';
@@ -189,17 +187,13 @@ const AddEditAddress = ({ navigation, route }: any) => {
 
         AddressEvents.emit(ADDRESS_UPDATED, savedItem);
 
-        if (returnToHome) {
-            popToHomeAfterAddressSave(navigation);
-            return;
-        }
-
         if (returnTo === 'Checkout') {
             popToScreen(navigation, 'Checkout');
             return;
         }
 
-        navigation.goBack();
+        // Always land on Manage Address after a successful save
+        popToScreen(navigation, 'ManageAdrees');
     };
 
     const handleSubmit = async () => {
@@ -355,7 +349,6 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                     returnParams: {
                                         type,
                                         data: editData,
-                                        returnToHome,
                                         returnTo,
                                     },
                                     returnTo,
@@ -375,7 +368,6 @@ const AddEditAddress = ({ navigation, route }: any) => {
                                     returnParams: {
                                         type,
                                         data: editData,
-                                        returnToHome,
                                         returnTo,
                                     },
                                     returnTo,

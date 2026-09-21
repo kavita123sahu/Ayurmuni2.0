@@ -99,7 +99,6 @@ const ProductSearchScreen = (props: any) => {
   const gridCardWidth = (screenW - hPad * 2 - gridGap) / 2;
   const isCompact = screenW < 360;
 
-  const routeParams = props.route?.params ?? {};
   const [searchText, setSearchText] = useState('');
   /** 'live' = typed query API; 'recent' = /search/recent/?id= */
   const [searchSource, setSearchSource] = useState<'idle' | 'live' | 'recent'>(
@@ -159,23 +158,12 @@ const ProductSearchScreen = (props: any) => {
     setSearchSource(text.trim() ? 'live' : 'idle');
   }, []);
 
+  // Idle browse is always global (no medicine/product service bias).
+  // Typed search uses useGlobalSearch (products + medicines + more).
   const productFilter = useMemo(() => {
     if (isSearching) return { search: undefined };
-    return {
-      service_category_id: routeParams.serviceCategoryId
-        ? String(routeParams.serviceCategoryId)
-        : undefined,
-      id: routeParams.categoryId ? String(routeParams.categoryId) : undefined,
-      health_category_id: routeParams.healthCategoryId
-        ? String(routeParams.healthCategoryId)
-        : undefined,
-    };
-  }, [
-    isSearching,
-    routeParams.serviceCategoryId,
-    routeParams.categoryId,
-    routeParams.healthCategoryId,
-  ]);
+    return {};
+  }, [isSearching]);
 
   const {
     products,

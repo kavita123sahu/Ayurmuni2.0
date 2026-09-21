@@ -59,7 +59,9 @@ const ProductSearchFilterBar: React.FC<Props> = ({
       setDraftBrandIds(brandIds);
     } else if (brandNames && brandNames.length > 0) {
       const nameSet = new Set(brandNames);
-      setDraftBrandIds(brands.filter(brand => nameSet.has(brand.name)).map(brand => brand.id));
+      setDraftBrandIds(
+        brands.filter(brand => nameSet.has(brand.name)).map(brand => brand.id),
+      );
     } else {
       setDraftBrandIds([]);
     }
@@ -67,7 +69,8 @@ const ProductSearchFilterBar: React.FC<Props> = ({
   };
 
   const priceLabel =
-    PRICE_RANGE_OPTIONS.find(option => option.key === priceRange)?.label ?? 'Price';
+    PRICE_RANGE_OPTIONS.find(option => option.key === priceRange)?.label ??
+    'Price';
 
   const sortActive = sortBy !== 'relevance';
   const selectedBrandCount =
@@ -100,6 +103,9 @@ const ProductSearchFilterBar: React.FC<Props> = ({
     setDraftBrandIds([]);
   };
 
+  const sheetTitle =
+    sheet === 'sort' ? 'Sort by' : sheet === 'brand' ? 'Brand' : 'Price range';
+
   return (
     <>
       <View style={styles.bar}>
@@ -110,64 +116,76 @@ const ProductSearchFilterBar: React.FC<Props> = ({
           style={styles.scroll}
           nestedScrollEnabled
         >
-        <FilterChip
-          label="Sort"
-          selectedText={sortActive ? getSortLabel(sortBy) : undefined}
-          icon="list"
-          active={sortActive}
-          onPress={() => setSheet('sort')}
-        />
-        <FilterChip
-          label="Brand"
-          selectedText={brandActive ? brandChipText : undefined}
-          icon="package"
-          active={brandActive}
-          onPress={openBrandSheet}
-        />
-        <FilterChip
-          label="Price"
-          selectedText={priceActive ? priceLabel : undefined}
-          icon="cash"
-          active={priceActive}
-          onPress={() => setSheet('price')}
-        />
-        <FilterChip
-          label="Filters"
-          selectedText={filtersActive ? String(activeFilterCount) : undefined}
-          icon="filter"
-          active={filtersActive}
-          onPress={() => {
-            if (filtersActive) {
-              onClearFilters();
-            }
-          }}
-        />
+          <FilterChip
+            label="Sort"
+            selectedText={sortActive ? getSortLabel(sortBy) : undefined}
+            icon="list"
+            active={sortActive}
+            onPress={() => setSheet('sort')}
+          />
+          <FilterChip
+            label="Brand"
+            selectedText={brandActive ? brandChipText : undefined}
+            icon="package"
+            active={brandActive}
+            onPress={openBrandSheet}
+          />
+          <FilterChip
+            label="Price"
+            selectedText={priceActive ? priceLabel : undefined}
+            icon="cash"
+            active={priceActive}
+            onPress={() => setSheet('price')}
+          />
+          <FilterChip
+            label="Filters"
+            selectedText={filtersActive ? String(activeFilterCount) : undefined}
+            icon="filter"
+            active={filtersActive}
+            onPress={() => {
+              if (filtersActive) {
+                onClearFilters();
+              }
+            }}
+          />
         </ScrollView>
       </View>
 
-      <Modal visible={sheet !== null} transparent animationType="fade" onRequestClose={closeSheet}>
+      <Modal
+        visible={sheet !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeSheet}
+      >
         <Pressable style={styles.overlay} onPress={closeSheet}>
-          <Pressable style={styles.sheet} onPress={() => { }}>
-            {sheet === 'sort' && (
-              <>
-                <Text style={styles.sheetTitle}>Sort by</Text>
-                {PRODUCT_SORT_OPTIONS.map(option => (
-                  <OptionRow
-                    key={option.key}
-                    label={option.label}
-                    selected={sortBy === option.key}
-                    onPress={() => {
-                      onSortChange(option.key);
-                      closeSheet();
-                    }}
-                  />
-                ))}
-              </>
-            )}
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{sheetTitle}</Text>
+              <TouchableOpacity
+                onPress={closeSheet}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.closeBtn}
+                accessibilityLabel="Close filter"
+              >
+                <TablerIcon name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {sheet === 'sort' &&
+              PRODUCT_SORT_OPTIONS.map(option => (
+                <OptionRow
+                  key={option.key}
+                  label={option.label}
+                  selected={sortBy === option.key}
+                  onPress={() => {
+                    onSortChange(option.key);
+                    closeSheet();
+                  }}
+                />
+              ))}
 
             {sheet === 'brand' && (
               <>
-                <Text style={styles.sheetTitle}>Brand</Text>
                 <ScrollView
                   style={styles.brandList}
                   showsVerticalScrollIndicator={false}
@@ -204,22 +222,18 @@ const ProductSearchFilterBar: React.FC<Props> = ({
               </>
             )}
 
-            {sheet === 'price' && (
-              <>
-                <Text style={styles.sheetTitle}>Price range</Text>
-                {PRICE_RANGE_OPTIONS.map(option => (
-                  <OptionRow
-                    key={option.key}
-                    label={option.label}
-                    selected={priceRange === option.key}
-                    onPress={() => {
-                      onPriceRangeChange(option.key);
-                      closeSheet();
-                    }}
-                  />
-                ))}
-              </>
-            )}
+            {sheet === 'price' &&
+              PRICE_RANGE_OPTIONS.map(option => (
+                <OptionRow
+                  key={option.key}
+                  label={option.label}
+                  selected={priceRange === option.key}
+                  onPress={() => {
+                    onPriceRangeChange(option.key);
+                    closeSheet();
+                  }}
+                />
+              ))}
           </Pressable>
         </Pressable>
       </Modal>
@@ -247,7 +261,7 @@ const FilterChip = ({
   >
     <TablerIcon
       name={icon}
-      size={14}
+      size={13}
       color={active ? Colors.primaryColor : '#64748B'}
     />
     <Text
@@ -257,7 +271,11 @@ const FilterChip = ({
     >
       {active && selectedText ? selectedText : label}
     </Text>
-    <TablerIcon name="chevron-down" size={14} color={active ? Colors.primaryColor : '#94A3B8'} />
+    <TablerIcon
+      name="chevron-down"
+      size={13}
+      color={active ? Colors.primaryColor : '#94A3B8'}
+    />
   </TouchableOpacity>
 );
 
@@ -275,8 +293,12 @@ const OptionRow = ({
     onPress={onPress}
     activeOpacity={0.85}
   >
-    <Text style={[styles.optionText, selected && styles.optionTextActive]}>{label}</Text>
-    {selected ? <TablerIcon name="check" size={18} color={Colors.primaryColor} /> : null}
+    <Text style={[styles.optionText, selected && styles.optionTextActive]}>
+      {label}
+    </Text>
+    {selected ? (
+      <TablerIcon name="check" size={16} color={Colors.primaryColor} />
+    ) : null}
   </TouchableOpacity>
 );
 
@@ -294,21 +316,23 @@ const CheckboxRow = ({
     onPress={onPress}
     activeOpacity={0.85}
   >
-    <Text style={[styles.optionText, selected && styles.optionTextActive]}>{label}</Text>
+    <Text style={[styles.optionText, selected && styles.optionTextActive]}>
+      {label}
+    </Text>
     <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-      {selected ? <TablerIcon name="check" size={14} color="#FFFFFF" /> : null}
+      {selected ? <TablerIcon name="check" size={12} color="#FFFFFF" /> : null}
     </View>
   </TouchableOpacity>
 );
 
 export default React.memo(ProductSearchFilterBar);
 
-const FILTER_BAR_HEIGHT = 36;
+const FILTER_BAR_HEIGHT = 34;
 
 const styles = StyleSheet.create({
   bar: {
     height: FILTER_BAR_HEIGHT,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   scroll: {
     flexGrow: 0,
@@ -316,27 +340,26 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingRight: 4,
+    gap: 4,
+    paddingRight: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 32,
+    height: 30,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    marginRight: 8,
+    borderRadius: 14,
+    paddingHorizontal: 8,
   },
   chipActive: {
     borderColor: Colors.primaryColor,
     backgroundColor: '#F0FAF7',
   },
   chipText: {
-    marginHorizontal: 6,
-    fontSize: 12,
+    marginHorizontal: 4,
+    fontSize: 11,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
@@ -353,16 +376,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 28,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
     maxHeight: '70%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   sheetTitle: {
     fontSize: 16,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 12,
+    flex: 1,
+    paddingRight: 8,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   brandList: {
     maxHeight: 320,
@@ -372,29 +410,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    marginBottom: 0,
   },
   optionRowActive: {
     backgroundColor: '#E8F5F1',
   },
   optionText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 8,
   },
   optionTextActive: {
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 5,
     borderWidth: 1.5,
     borderColor: '#CBD5E1',
     alignItems: 'center',
@@ -408,12 +446,12 @@ const styles = StyleSheet.create({
   sheetActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     marginTop: 8,
   },
   clearButton: {
     flex: 1,
-    height: 44,
+    height: 42,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -422,20 +460,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   clearButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   applyButton: {
     flex: 1,
-    height: 44,
+    height: 42,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primaryColor,
   },
   applyButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
   },

@@ -36,6 +36,7 @@ import {
   getAppointmentPatientId,
   resolveAppointmentLookupId,
   resolveAppointmentDateTime,
+  isAppointmentInPast,
 } from '../../utils/appointmentUtils';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
@@ -376,14 +377,16 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
   const hasPrescription = consultationHasPrescription(detail);
   const appointmentStatus = normalizedAppointment?.status?.toLowerCase();
-  const showPrescriptionCta = [
-    'completed',
-    'cancelled',
-    'missed',
-    'expired',
-    'no_show',
-    'noshow',
-  ].includes(String(appointmentStatus || ''));
+  const showPrescriptionCta =
+    hasPrescription &&
+    [
+      'completed',
+      'cancelled',
+      'missed',
+      'expired',
+      'no_show',
+      'noshow',
+    ].includes(String(appointmentStatus || ''));
 
   const scheduleFields = resolveAppointmentDateTime({
     ...normalizedAppointment,
@@ -396,6 +399,20 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     scheduleFields.time || normalizedAppointment?.time,
   );
   const isRescheduleRequest = appointmentStatus === 'reschedule';
+
+  // Show Add to Calendar for upcoming visits (including completed if still future).
+  // Hide once the appointment datetime is in the past.
+  const showAddToCalendar = useMemo(() => {
+    if (!detail?.appointment) return false;
+    return !isAppointmentInPast({
+      ...detail.appointment,
+      appointment: detail.appointment,
+      date: scheduleFields.date || detail.appointment.appointment_date,
+      time: scheduleFields.time || detail.appointment.start_time,
+      end_time: detail.appointment.end_time,
+      endTime: detail.appointment.end_time,
+    });
+  }, [detail, scheduleFields.date, scheduleFields.time]);
 
   // status pill color mapping — luxury muted tones instead of loud flat colors
   const statusStyleMap: Record<string, { bg: string; text: string }> = {
@@ -739,20 +756,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
             {showPrescriptionCta ? (
               <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
                 <TouchableOpacity
-                  activeOpacity={hasPrescription ? 0.88 : 1}
-                  disabled={!hasPrescription}
-                  style={[
-                    styles.prescriptionBtn,
-                    !hasPrescription && styles.prescriptionBtnDisabled,
-                  ]}
+                  activeOpacity={0.88}
+                  style={styles.prescriptionBtn}
                   onPress={() => {
-                    if (!hasPrescription) {
-                      showSuccessToast(
-                        'No prescription available for this appointment',
-                        'error',
-                      );
-                      return;
-                    }
                     navigation.navigate('PrescriptionDetail', {
                       appointment_id:
                         appointment?.appointment_id ||
@@ -763,22 +769,11 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                     });
                   }}
                 >
-                  <TablerIcon
-                    name="prescription"
-                    size={18}
-                    color={hasPrescription ? '#FFFFFF' : '#64748B'}
-                  />
-                  <Text
-                    style={[
-                      styles.prescriptionBtnText,
-                      !hasPrescription && styles.prescriptionBtnTextDisabled,
-                    ]}
-                  >
-                    {hasPrescription ? 'View Prescription' : 'No prescription'}
+                  <TablerIcon name="prescription" size={18} color="#FFFFFF" />
+                  <Text style={styles.prescriptionBtnText}>
+                    View Prescription
                   </Text>
-                  {hasPrescription ? (
-                    <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
-                  ) : null}
+                  <TablerIcon name="chevron-right" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -832,51 +827,53 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               </>
             ) : null}
 
-            <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 4 : 10 }}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.calendarBtn}
-                onPress={() => {
-                  const appt = detail?.appointment ?? {};
-                  const doctor = detail?.doctor ?? {};
-                  const specialization = Array.isArray(
-                    doctor?.doctor_specialization,
-                  )
-                    ? doctor.doctor_specialization.join(', ')
-                    : doctor?.doctor_specialization ||
-                    doctor?.specialization ||
-                    doctor?.speciality ||
-                    '';
-                  navigation.navigate('AddCalendar', {
-                    appointment: {
-                      doctorName: doctor?.doctor_name,
-                      doctorImage: doctor?.doctor_image,
-                      specialization,
-                      date: appt?.appointment_date || appt?.date,
-                      startTime: appt?.start_time || appt?.time,
-                      endTime: appt?.end_time,
-                      concern: appt?.concern,
-                      hospitalName:
-                        doctor?.hospital_name || appt?.hospital_name,
-                      bookingId:
-                        appt?.consultation_id ||
-                        appt?.appointment_id ||
-                        appt?.id,
-                      status: appt?.appointment_status || appt?.status,
-                    },
-                  });
-                }}
-              >
-                <View style={styles.calendarIconWrap}>
-                  <Ionicons name="calendar-outline" size={18} color={Theme.emerald} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.calendarTitle}>Add to Calendar</Text>
-                  <Text style={styles.calendarSub}>Save this visit on your device</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
+            {showAddToCalendar ? (
+              <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 4 : 10 }}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.calendarBtn}
+                  onPress={() => {
+                    const appt = detail?.appointment ?? {};
+                    const doctor = detail?.doctor ?? {};
+                    const specialization = Array.isArray(
+                      doctor?.doctor_specialization,
+                    )
+                      ? doctor.doctor_specialization.join(', ')
+                      : doctor?.doctor_specialization ||
+                      doctor?.specialization ||
+                      doctor?.speciality ||
+                      '';
+                    navigation.navigate('AddCalendar', {
+                      appointment: {
+                        doctorName: doctor?.doctor_name,
+                        doctorImage: doctor?.doctor_image,
+                        specialization,
+                        date: appt?.appointment_date || appt?.date,
+                        startTime: appt?.start_time || appt?.time,
+                        endTime: appt?.end_time,
+                        concern: appt?.concern,
+                        hospitalName:
+                          doctor?.hospital_name || appt?.hospital_name,
+                        bookingId:
+                          appt?.consultation_id ||
+                          appt?.appointment_id ||
+                          appt?.id,
+                        status: appt?.appointment_status || appt?.status,
+                      },
+                    });
+                  }}
+                >
+                  <View style={styles.calendarIconWrap}>
+                    <Ionicons name="calendar-outline" size={18} color={Theme.emerald} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.calendarTitle}>Add to Calendar</Text>
+                    <Text style={styles.calendarSub}>Save this visit on your device</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
             {showButtons ? (
               <View style={styles.actionRow}>

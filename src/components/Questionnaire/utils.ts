@@ -1,4 +1,8 @@
 import { QuestionStep } from './types';
+import {
+  isValidHeightInput,
+  isValidWeightInput,
+} from '../MedicalHistory/BmiGaugeCard';
 
 export const getStepKey = (step?: QuestionStep) =>
   step?.key ?? String(step?.id ?? '');
@@ -186,8 +190,10 @@ export const isAnswerEmpty = (
     // Medical basic-info flow currently uses only the measurement fields
     // returned by the API (height / weight or combined body-type question).
     if (heightId) {
-      if (!answers[`${heightId}_height`]) return true;
-      if (!answers[`${heightId}_weight`]) return true;
+      const height = answers[`${heightId}_height`];
+      const weight = answers[`${heightId}_weight`];
+      if (!isValidHeightInput(height)) return true;
+      if (!isValidWeightInput(weight)) return true;
     }
     return false;
   }

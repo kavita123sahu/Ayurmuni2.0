@@ -3,7 +3,7 @@ import { resolveImageUri } from '../utils/imageUtils';
 import { formatRupee } from '../utils/currencyUtils';
 
 export const DEFAULT_SEARCH_TYPES =
-  'products,brands,doctors,yoga_sessions,diet_plans';
+  'products,medicines,brands,doctors,yoga_sessions,diet_plans';
 
 export type GlobalSearchEntityType =
   | 'product'
@@ -431,7 +431,7 @@ export const anySearchSectionHasMore = (response: any): boolean => {
 };
 
 /**
- * GET /customers/search/?search=...&types=products,brands,doctors,yoga_sessions,diet_plans
+ * GET /customers/search/?search=...&types=products,medicines,brands,doctors,yoga_sessions,diet_plans
  * &include_top=true&exact_count=false&save_recent=true&page=1&page_size=10
  */
 export const globalSearch = async (params: GlobalSearchParams | string) => {

@@ -8,6 +8,7 @@ export const GetQuestionOptions = async (data: any) => {
             method: 'POST',
             body: JSON.stringify(data),
         });
+        console.log('GetQuestionOptions =>', response);
         return response;
     } catch (error) {
         throw error;

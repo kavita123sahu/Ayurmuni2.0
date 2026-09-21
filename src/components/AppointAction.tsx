@@ -14,6 +14,8 @@ type Props = {
   onJoinCall?: () => void;
   onViewDetails?: () => void;
   call_status?: string;
+  /** Show "View details" only when a prescription exists for this appointment. */
+  hasPrescription?: boolean;
 };
 
 
@@ -26,6 +28,7 @@ const AppointmentActions = ({
   onJoinCall,
   onViewDetails,
   call_status,
+  hasPrescription = false,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
   const schedule = resolveAppointmentDateTime({ date, time, status });
@@ -38,14 +41,16 @@ const AppointmentActions = ({
   const showReschedule = withinModifyWindow;
   const showCancel = withinModifyWindow;
 
-  const showViewDetails = [
-    'completed',
-    'cancelled',
-    'missed',
-    'expired',
-    'no_show',
-    'noshow',
-  ].includes(appointmentStatus);
+  const showViewDetails =
+    hasPrescription &&
+    [
+      'completed',
+      'cancelled',
+      'missed',
+      'expired',
+      'no_show',
+      'noshow',
+    ].includes(appointmentStatus);
 
   const showJoinCall = call_status === 'in_progress';
 

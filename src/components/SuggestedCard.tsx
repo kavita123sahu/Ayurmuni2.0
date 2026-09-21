@@ -157,7 +157,8 @@ const SuggestedCard: React.FC<Props> = ({
         const title = item?.title || item?.name || '';
         const subtitle = isDiet
           ? String(
-              item?.subtitle ||
+              item?.guidance ||
+                item?.subtitle ||
                 item?.season ||
                 item?.short_description ||
                 '',

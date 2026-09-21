@@ -67,8 +67,8 @@ export const mapOrderToListItem = (order: any): OrderListItem => {
   };
 };
 
-/** Latest purchased items for Medicine screen "Recent Orders" preview. */
-export const mapOrdersToRecentProducts = (orders: any[] = [], limit = 3) => {
+/** Latest purchased items for Medicine/Products "Recent Orders" preview. */
+export const mapOrdersToRecentProducts = (orders: any[] = [], limit = 8) => {
   const sorted = [...orders].sort(
     (a, b) =>
       new Date(b?.created_at ?? 0).getTime() -

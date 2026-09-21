@@ -371,21 +371,26 @@ const DoctorProfile = ({ navigation, route }: any) => {
             doctor?.social ||
             doctor?.socials ||
             {};
+
+
         const entries: {
             label: string;
             url: string;
-            icon: 'website' | 'facebook' | 'instagram' | 'x' | 'linkedin' | 'youtube';
+            bg: string
+            icon: 'facebook' | 'instagram' | 'twitter' | 'linkedin';
         }[] = [
-                {
-                    label: 'Website',
-                    icon: 'website',
-                    url:
-                        pickDoctorField('website', 'website_url', 'web_url') ||
-                        String(social?.website || social?.web || ''),
-                },
+                // {
+                //     label: 'Website',
+                //     icon: 'website',
+                //     bg: '#1877F2',
+                //     url:
+                //         pickDoctorField('website', 'website_url', 'web_url') ||
+                //         String(social?.website || social?.web || ''),
+                // },
                 {
                     label: 'Facebook',
                     icon: 'facebook',
+                    bg: '#1877F2',
                     url:
                         pickDoctorField('facebook', 'facebook_url') ||
                         String(social?.facebook || social?.fb || ''),
@@ -393,13 +398,16 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 {
                     label: 'Instagram',
                     icon: 'instagram',
+
+                    bg: '#E4405F',
                     url:
                         pickDoctorField('instagram', 'instagram_url') ||
                         String(social?.instagram || social?.ig || ''),
                 },
                 {
                     label: 'X',
-                    icon: 'x',
+                    icon: 'twitter',
+                    bg: '#1DA1F2',
                     url:
                         pickDoctorField('twitter', 'twitter_url', 'x_url') ||
                         String(social?.twitter || social?.x || ''),
@@ -407,17 +415,18 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 {
                     label: 'LinkedIn',
                     icon: 'linkedin',
+                    bg: '#0A66C2',
                     url:
                         pickDoctorField('linkedin', 'linkedin_url') ||
                         String(social?.linkedin || ''),
                 },
-                {
-                    label: 'YouTube',
-                    icon: 'youtube',
-                    url:
-                        pickDoctorField('youtube', 'youtube_url') ||
-                        String(social?.youtube || ''),
-                },
+                // {
+                //     label: 'YouTube',
+                //     icon: 'youtube',
+                //     url:
+                //         pickDoctorField('youtube', 'youtube_url') ||
+                //         String(social?.youtube || ''),
+                // },
             ];
         return entries.filter(item => String(item.url || '').trim());
     }, [doctor, pickDoctorField]);
@@ -682,7 +691,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                             key="consultation"
                                             style={[
                                                 styles.modeChip,
-                                                { backgroundColor: "#f8fafc",borderRadius: 8 },
+                                                { backgroundColor: "#f8fafc", borderRadius: 8 },
                                             ]}
                                         >
                                             <TablerIcon
@@ -696,7 +705,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                                     { color: "#475569" },
                                                 ]}
                                             >
-                                               Video Consult
+                                                Video Consult
                                             </Text>
                                         </View>
                                         {/* {consultationModes.map(mode => {
@@ -874,7 +883,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     </View>
                 </View>
 
-                {/* About */}
+                {aboutText ? (
                 <View style={styles.card}>
                     <View style={styles.sectionTitleRow}>
                         <View style={[styles.sectionIcon, { backgroundColor: '#EAF8F4' }]}>
@@ -882,7 +891,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         </View>
                         <Text style={styles.sectionHeaderInline}>About doctor</Text>
                     </View>
-                    {aboutText ? (
                         <Text style={styles.aboutText}>
                             {truncatedAbout}
                             {shouldTruncate ? (
@@ -894,10 +902,8 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                 </Text>
                             ) : null}
                         </Text>
-                    ) : (
-                        <Text style={styles.emptyText}>No bio available yet.</Text>
-                    )}
                 </View>
+                ) : null}
 
                 {specializations.length > 0 ? (
                     <View style={styles.card}>
@@ -975,28 +981,34 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                 </View>
                             )}
                         </View>
-                        {socialAccounts.length > 0 ? (
-                            <View style={styles.socialRow}>
-                                {socialAccounts.map(item => (
-                                    <TouchableOpacity
-                                        key={item.label}
-                                        style={styles.socialBtn}
-                                        activeOpacity={0.8}
-                                        onPress={() => openSocial(item.url)}
-                                    >
-                                        <TablerIcon
-                                            name={item.icon}
-                                            size={16}
-                                            color={Colors.primaryColor}
-                                        />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        ) : null}
+
+                       
                     </View>
                 )} */}
+                {socialAccounts.length > 0 ? (
+                <View style={styles.card}>
+                    <Text style={styles.sectionHeaderInline}>Social Account</Text>
+                        <View style={styles.socialRow}>
+                            {socialAccounts.map(item => (
+                                <TouchableOpacity
+                                    key={item.label}
+                                    style={styles.socialBtn}
+                                    activeOpacity={0.8}
+                                    onPress={() => openSocial(item.url)}
+                                >
+                                    <TablerIcon
+                                        name={item.icon}
+                                        size={22}
+                                        color={item?.bg}
+                                    />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                </View>
+                ) : null}
 
-                {/* Reviews — same UI as Product Details */}
+                {/* Reviews — hide whole section when empty */}
+                {Array.isArray(reviews) && reviews.length > 0 ? (
                 <View style={styles.card}>
                     <ReviewSection
                         navigation={navigation}
@@ -1004,13 +1016,14 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         entityType="doctor"
                         doctorId={String(
                             getDoctorId(doctor) ||
-                                doctorData?.id ||
-                                doctorData?.doctor_id ||
-                                '',
+                            doctorData?.id ||
+                            doctorData?.doctor_id ||
+                            '',
                         )}
                         title="Ratings & reviews"
                     />
                 </View>
+                ) : null}
 
                 <View style={{ height: 108 }} />
             </ScrollView>

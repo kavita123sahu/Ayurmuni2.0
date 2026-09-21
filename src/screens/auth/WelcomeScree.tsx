@@ -25,6 +25,7 @@ type StorySlide =
   | {
     key: string;
     kind: 'video';
+    eyebrow: string;
     title: string;
     body: string;
   }
@@ -32,29 +33,33 @@ type StorySlide =
     key: string;
     kind: 'image';
     source: any;
+    eyebrow: string;
     title: string;
     body: string;
   };
 
-/** Journey: consult → medicine → delivery → lab → diet → yoga */
+/** Final app content — auto carousel (6 slides) */
 const STORIES: StorySlide[] = [
   {
-    key: 'video',
+    key: 'journey',
     kind: 'video',
-    title: 'Your Ayurmuni journey',
-    body: 'Consult, medicine, delivery, labs, diet, and yoga — one calm path from care to daily practice.',
+    eyebrow: 'YOUR PERSONALISED WELLNESS JOURNEY',
+    title: 'Your Ayurmuni Journey',
+    body: 'Personalised Ayurveda care designed around your unique body type — including Consultation, Medicines, Diet&Lifestyle, Same Day Delivery',
   },
   {
     key: 'consult',
     kind: 'image',
     source: Images.journeyConsult,
-    title: 'Consult with a doctor',
-    body: 'Meet Ayurvedic doctors for concerns that matter — guided by your Prakriti, not generic advice.',
+    eyebrow: 'EXPERT CONSULTATION',
+    title: 'Meet Your Doctor',
+    body: 'Connect with MD Ayurvedic experts who understand your Prakriti and create a wellness plan tailored to your unique needs.',
   },
   {
     key: 'medicine',
     kind: 'image',
     source: Images.journeyMedicine,
+    eyebrow: 'MEDICINE',
     title: 'Medicines that fit you',
     body: 'Discover authentic Ayurvedic medicines matched to your constitution and care plan.',
   },
@@ -62,29 +67,25 @@ const STORIES: StorySlide[] = [
     key: 'delivery',
     kind: 'image',
     source: Images.journeyDelivery,
-    title: 'Delivery to your door',
-    body: 'Remedies arrive with care — so healing reaches you without the rush.',
+    eyebrow: 'DOOR STEP DELIVERY',
+    title: 'CARE DELIVERED TO YOUR DOOR',
+    body: 'Get your prescribed Ayurvedic medicines and Authentic Ayurvedic products delivered safely to your doorstep with same-day delivery support.',
   },
   {
-    key: 'lab',
-    kind: 'image',
-    source: Images.lab,
-    title: 'Lab tests & clarity',
-    body: 'Book diagnostics and follow results that keep your wellness journey informed.',
-  },
-  {
-    key: 'diet',
+    key: 'lifestyle',
     kind: 'image',
     source: Images.journeyDiet,
-    title: 'Follow your diet',
-    body: 'Personalized meal guidance to balance doshas and support everyday vitality.',
+    eyebrow: 'DAILY HABITS THAT SUPPORT YOU',
+    title: 'Build A Lifestyle That Fits You',
+    body: 'Personalised diet guidance and yoga practices designed to support your body’s natural balance.',
   },
   {
-    key: 'yoga',
+    key: 'transform',
     kind: 'image',
     source: Images.journeyYoga,
-    title: 'Practice yoga',
-    body: 'Guided yoga and mindful movement to restore mind, body, and spirit.',
+    eyebrow: 'IT’S TIME TO LISTEN TO YOUR BODY',
+    title: 'Start Your Wellness Transformation',
+    body: 'Take the first step towards better balance with personalised Ayurveda, mindful habits, and sustainable lifestyle changes.',
   },
 ];
 
@@ -342,9 +343,7 @@ const WelcomeScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.storyPanel}>
-          <Text style={styles.storyKicker}>
-            {String(index + 1).padStart(2, '0')} / {String(STORIES.length).padStart(2, '0')}
-          </Text>
+          <Text style={styles.storyKicker}>{active.eyebrow}</Text>
           <Text style={[styles.storyTitle, { maxWidth: SW * 0.9 }]}>{active.title}</Text>
           <Text style={[styles.storyBody, { maxWidth: SW * 0.92 }]}>{active.body}</Text>
 
@@ -427,10 +426,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   storyKicker: {
-    fontSize: 11,
-    letterSpacing: 2,
+    fontSize: 10,
+    letterSpacing: 1.6,
     color: 'rgba(212, 168, 75, 0.95)',
     fontFamily: Fonts.PoppinsSemiBold,
+    textTransform: 'uppercase',
   },
   storyTitle: {
     fontSize: 28,

@@ -462,16 +462,34 @@ export function isAppointmentFinished(raw: any): boolean {
     return true;
   }
 
+  return isAppointmentInPast(raw);
+}
+
+/**
+ * True when appointment end (or start + 60m grace) is already over.
+ * Ignores status — use for Add to Calendar (show even if completed, hide if past).
+ */
+export function isAppointmentInPast(raw: any): boolean {
+  const item = normalizeAppointmentListItem(raw);
   const now = Date.now();
+
   const end = parseAppointmentStart(item.date, item.endTime || undefined);
   if (end && now >= end.getTime()) {
     return true;
   }
 
-  // No end_time: drop ~60 min after start so cards don't linger
   const start = parseAppointmentStart(item.date, item.time);
-  if (start && !item.endTime && now >= start.getTime() + 60 * 60 * 1000) {
+  // No usable end_time: treat as past ~60 min after start
+  if (start && (!item.endTime || !end) && now >= start.getTime() + 60 * 60 * 1000) {
     return true;
+  }
+
+  if (!start && item.date) {
+    const day = new Date(item.date);
+    if (!Number.isNaN(day.getTime())) {
+      day.setHours(23, 59, 59, 999);
+      return now > day.getTime();
+    }
   }
 
   return false;

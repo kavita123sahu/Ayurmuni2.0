@@ -14,9 +14,9 @@ const wait = (ms: number) =>
 
 const HeadsUpNative = NativeModules.HeadsUpNotification as
   | {
-    show?: (payload: { title?: string; message?: string }) => void;
-    ensureChannels?: () => void;
-  }
+      show?: (payload: { title?: string; message?: string }) => void;
+      ensureChannels?: () => void;
+    }
   | undefined;
 
 /** WhatsApp-style system tray / heads-up banner (Android). */
@@ -181,6 +181,47 @@ const isPushReady = (data: {
   optedIn: boolean;
 }): data is OneSignalPushReady =>
   Boolean(data.optedIn && data.subscriptionId && data.fcmToken);
+
+/** Full local status: subscription + External ID (what backend needs). */
+export const getPushAssociationStatus = async (userId?: string | number) => {
+  const push = await getOneSignalPushData();
+  let externalId: string | null = null;
+  try {
+    externalId = (await OneSignal.User.getExternalId()) || null;
+  } catch {
+    externalId = null;
+  }
+
+  const expected = userId != null && userId !== '' ? String(userId) : null;
+  const associated = Boolean(
+    expected && externalId && String(externalId) === expected,
+  );
+  const subscribedLocally = isPushReady(push);
+
+  return {
+    ...push,
+    externalId,
+    expectedUserId: expected,
+    associated,
+    subscribedLocally,
+    /** Local SDK ready AND External ID linked to this user */
+    readyForWelcome: subscribedLocally && associated,
+  };
+};
+
+const welcomeNeedsRetry = (res: any) => {
+  const msg = String(
+    res?.message ?? res?.data?.message ?? res?.error ?? '',
+  ).toLowerCase();
+  return (
+    msg.includes('unsubscrib') ||
+    msg.includes('not subscrib') ||
+    msg.includes('no subscription') ||
+    msg.includes('onesignal.login') ||
+    msg.includes('ensure the device is subscribed') ||
+    msg.includes('not delivered')
+  );
+};
 
 /**
  * Wait until OneSignal has a real device subscription + FCM/APNS token.
@@ -351,13 +392,12 @@ export const welcome_notification = async () => {
 };
 
 /**
- * Full welcome-push pipeline for newly created customers.
+ * Full welcome-push pipeline.
  *
- * Timing (critical):
- * 1) permission + OneSignal.login + local subscription ready
- * 2) HARD setTimeout ≥4s after that (OneSignal cloud still "Unsubscribed" before this)
- * 3) only then POST notifications/push/welcome/
- * 4) if backend still says unsubscribed → wait another 4s and retry once
+ * Backend error said: subscribe via OneSignal.login(user_id).
+ * Local subscriptionId alone is NOT enough — we require:
+ *   optedIn + subscriptionId + token + External ID === userId
+ * Status is logged BEFORE and AFTER the welcome API.
  */
 export const completeWelcomePushFlow = async (
   userId: string | number,
@@ -365,8 +405,26 @@ export const completeWelcomePushFlow = async (
   success: boolean;
   reason?: string;
   response?: any;
+  statusBefore?: any;
+  statusAfter?: any;
 }> => {
-  const WELCOME_SETTLE_MS = 4_000;
+  // Cloud lag after login() — REST often still misses the user at 4s.
+  const WELCOME_SETTLE_MS = 8_000;
+
+  const logStatus = async (label: string) => {
+    const status = await getPushAssociationStatus(userId);
+    console.log(`🔎 [WelcomePush] STATUS ${label}`, {
+      optedIn: status.optedIn,
+      subscriptionId: status.subscriptionId,
+      hasToken: Boolean(status.fcmToken),
+      externalId: status.externalId,
+      expectedUserId: status.expectedUserId,
+      associated: status.associated,
+      subscribedLocally: status.subscribedLocally,
+      readyForWelcome: status.readyForWelcome,
+    });
+    return status;
+  };
 
   try {
     await initializeOneSignal();
@@ -378,102 +436,163 @@ export const completeWelcomePushFlow = async (
 
     const loginResult = await loginOneSignalUser(userId);
     if (!loginResult) {
+      await logStatus('login failed');
       return { success: false, reason: 'onesignal_login_failed' };
     }
-
     if (!loginResult.associated) {
+      await logStatus('external id not associated');
       return { success: false, reason: 'external_id_not_associated' };
     }
 
-    // Force opt-in again — login can briefly leave push as Unsubscribed.
     try {
       OneSignal.User.pushSubscription.optIn();
     } catch {
       // ignore
     }
 
-    // Confirm local SDK has subscription + token BEFORE the settle clock.
     const readyBeforeSettle = await waitForPushSubscriptionReady({
       timeoutMs: 45_000,
       intervalMs: 500,
     });
-
-    if (
-      !readyBeforeSettle?.optedIn ||
-      !readyBeforeSettle.subscriptionId ||
-      !readyBeforeSettle.fcmToken
-    ) {
-      const latest = await getOneSignalPushData();
-      console.log('⚠️ [WelcomePush] Not ready before settle:', latest);
-      return {
-        success: false,
-        reason: latest.optedIn
-          ? 'subscription_missing_before_settle'
-          : 'still_unsubscribed_before_settle',
-      };
+    if (!readyBeforeSettle) {
+      await logStatus('not subscribed before settle');
+      return { success: false, reason: 'still_unsubscribed_before_settle' };
     }
 
-    // HARD wait — do not call welcome API until this finishes.
-    // Backend OneSignal lookup stays "Unsubscribed" if we hit too early.
-    const settleStartedAt = Date.now();
     console.log(
-      `⏳ [WelcomePush] Subscription ready locally. Hard wait ${WELCOME_SETTLE_MS}ms before welcome API...`,
+      `⏳ [WelcomePush] Local OK (sub + External ID). Settle ${WELCOME_SETTLE_MS}ms for cloud...`,
       {
         subscriptionId: readyBeforeSettle.subscriptionId,
-        startedAt: settleStartedAt,
+        externalId: loginResult.externalId,
       },
     );
     await wait(WELCOME_SETTLE_MS);
-    console.log('⏳ [WelcomePush] Settle finished', {
-      waitedMs: Date.now() - settleStartedAt,
-      minRequiredMs: WELCOME_SETTLE_MS,
-    });
 
-    const settled = await getOneSignalPushData();
-    if (!settled.optedIn || !settled.subscriptionId || !settled.fcmToken) {
-      console.log('⚠️ [WelcomePush] Lost subscription after settle:', settled);
+    // Re-assert login after settle — association can drop briefly
+    OneSignal.login(String(userId));
+    const stillAssociated = await waitForExternalIdAssociation(userId, {
+      timeoutMs: 15_000,
+      intervalMs: 500,
+    });
+    if (!stillAssociated) {
+      await logStatus('lost external id after settle');
+      return { success: false, reason: 'external_id_lost_after_settle' };
+    }
+
+    const statusBefore = await logStatus('BEFORE welcome API');
+    if (!statusBefore.readyForWelcome) {
+      console.log(
+        '🔕 [WelcomePush] Skip API — need subscribe + OneSignal.login(user_id)',
+      );
       return {
         success: false,
-        reason: settled.optedIn
-          ? 'subscription_missing_after_settle'
-          : 'still_unsubscribed_after_settle',
+        reason: statusBefore.associated
+          ? 'subscription_incomplete_before_api'
+          : 'external_id_missing_before_api',
+        statusBefore,
       };
     }
 
     const callWelcome = async () => {
-      console.log('🟢 [WelcomePush] Calling welcome API (after ≥4s settle)', {
-        subscriptionId: settled.subscriptionId,
-        waitedMs: Date.now() - settleStartedAt,
+      const gate = await getPushAssociationStatus(userId);
+      if (!gate.readyForWelcome) {
+        console.log('🔕 [WelcomePush] Abort API — gate failed', {
+          associated: gate.associated,
+          subscribedLocally: gate.subscribedLocally,
+          subscriptionId: gate.subscriptionId,
+          externalId: gate.externalId,
+        });
+        return {
+          success: false,
+          message: 'Device not subscribed / External ID missing',
+          _aborted_not_ready: true,
+        };
+      }
+      console.log('🟢 [WelcomePush] Calling welcome API', {
+        subscriptionId: gate.subscriptionId,
+        externalId: gate.externalId,
+        associated: gate.associated,
+        subscribedLocally: gate.subscribedLocally,
       });
       return welcome_notification();
     };
 
     let response = await callWelcome();
+    let statusAfter = await logStatus('AFTER welcome API (1st)');
 
-    const looksUnsubscribed = (res: any) => {
-      const msg = String(
-        res?.message ?? res?.data?.message ?? res?.error ?? '',
-      ).toLowerCase();
-      return (
-        msg.includes('unsubscrib') ||
-        msg.includes('not subscrib') ||
-        msg.includes('no subscription') ||
-        msg.includes('subscription')
-      );
-    };
+    if (response?._aborted_not_ready) {
+      return {
+        success: false,
+        reason: 'not_ready_at_call_time',
+        response,
+        statusBefore,
+        statusAfter,
+      };
+    }
 
-    // Backend may still lag — one more hard 4s + retry.
-    if (response?.success === false && looksUnsubscribed(response)) {
+    // Backend: "Ensure the device is subscribed via OneSignal.login(user_id)"
+    if (response?.success === false && welcomeNeedsRetry(response)) {
       console.log(
-        '⏳ [WelcomePush] Backend still unsubscribed — waiting another 4s then retry...',
+        '⏳ [WelcomePush] Backend cannot find user — re-login + settle + retry...',
+        response?.message,
       );
-      await wait(WELCOME_SETTLE_MS);
+
+      OneSignal.login(String(userId));
       try {
         OneSignal.User.pushSubscription.optIn();
       } catch {
         // ignore
       }
+
+      const reAssociated = await waitForExternalIdAssociation(userId, {
+        timeoutMs: 20_000,
+        intervalMs: 500,
+      });
+      const reReady = await waitForPushSubscriptionReady({
+        timeoutMs: 20_000,
+        intervalMs: 500,
+      });
+
+      if (!reAssociated || !reReady) {
+        statusAfter = await logStatus('retry aborted — still not ready');
+        return {
+          success: false,
+          reason: 'still_not_ready_on_retry',
+          response,
+          statusBefore,
+          statusAfter,
+        };
+      }
+
+      await wait(WELCOME_SETTLE_MS);
+      OneSignal.login(String(userId));
+      await waitForExternalIdAssociation(userId, {
+        timeoutMs: 10_000,
+        intervalMs: 400,
+      });
+
+      const statusBeforeRetry = await logStatus('BEFORE welcome API (retry)');
+      if (!statusBeforeRetry.readyForWelcome) {
+        return {
+          success: false,
+          reason: 'not_ready_before_retry_api',
+          response,
+          statusBefore: statusBeforeRetry,
+        };
+      }
+
       response = await callWelcome();
+      statusAfter = await logStatus('AFTER welcome API (retry)');
+
+      if (response?._aborted_not_ready) {
+        return {
+          success: false,
+          reason: 'not_ready_at_retry_call_time',
+          response,
+          statusBefore: statusBeforeRetry,
+          statusAfter,
+        };
+      }
     }
 
     if (response?.success === false) {
@@ -482,15 +601,19 @@ export const completeWelcomePushFlow = async (
         success: false,
         reason: 'welcome_api_failed',
         response,
+        statusBefore,
+        statusAfter,
       };
     }
 
     console.log('🎉 [WelcomePush] Welcome API success', response);
-    return { success: true, response };
+    return { success: true, response, statusBefore, statusAfter };
   } catch (error: any) {
+    const statusAfter = await logStatus('after exception');
     return {
       success: false,
       reason: error?.message ?? 'welcome_flow_error',
+      statusAfter,
     };
   }
 };

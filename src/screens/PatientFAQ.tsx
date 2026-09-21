@@ -7,6 +7,7 @@ const PatientFAQ = ({ navigation, route }: any) => (
     mode="prakriti"
     allowBack={route?.params?.allowBack !== false}
     noteSeen={Boolean(route?.params?.noteSeen)}
+    allowIncompleteProfile={Boolean(route?.params?.allowIncompleteProfile)}
   />
 );
 

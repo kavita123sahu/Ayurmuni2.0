@@ -51,6 +51,8 @@ export const Images = {
     Ingredient: require('../assets/images/Ingredient.png'),
     HelloIcon: require('../assets/images/HelloIcon.png'),
     doctorbanner: require('../assets/images/doctorbanner.png'),
+    /** Default DP when doctor has no profile photo */
+    doctorDefaultAvatar: require('../assets/images/doctorDefaultAvatar.png'),
 };
 
 export const Icons = {};

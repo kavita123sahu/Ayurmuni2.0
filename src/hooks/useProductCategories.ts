@@ -7,7 +7,15 @@ import {
 
 export type ProductCategoryItem = ReturnType<typeof mapProductCategory>;
 
-export const useProductCategories = (parentId?: string | null) => {
+const mapList = (response: any): ProductCategoryItem[] =>
+  normalizeApiList(response)
+    .map(mapProductCategory)
+    .filter(item => item.id);
+
+export const useProductCategories = (
+  parentId?: string | null,
+  serviceCategoryId?: string | null,
+) => {
   const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -16,26 +24,48 @@ export const useProductCategories = (parentId?: string | null) => {
   const loadCategories = useCallback(
     async (options?: { refresh?: boolean }) => {
       const reqId = ++requestIdRef.current;
+      const parent = parentId ? String(parentId) : '';
 
       try {
         if (!options?.refresh) {
           setLoading(true);
         }
 
-        const response = await getProductCategories(parentId ?? undefined);
+        let response = await getProductCategories(
+          parent || undefined,
+          serviceCategoryId,
+        );
+
         if (reqId !== requestIdRef.current) {
           return;
         }
 
         if (response?.success === false) {
           console.log('PRODUCT_CATEGORIES_ERROR =>', response?.message);
-          setCategories([]);
-          return;
+          response = null;
         }
 
-        const list = normalizeApiList(response)
-          .map(mapProductCategory)
-          .filter(item => item.id);
+        let list = mapList(response);
+
+        // Top-level empty with service filter → retry without service filter
+        if (!list.length && !parent && serviceCategoryId) {
+          const fallbackRes = await getProductCategories(undefined, undefined);
+          if (reqId !== requestIdRef.current) {
+            return;
+          }
+          list = mapList(fallbackRes);
+        }
+
+        // When loading children, keep only rows under this parent
+        if (parent) {
+          list = list.filter(item => {
+            if (item.id === parent) return false;
+            const itemParent = String(item.parent_id || '');
+            if (itemParent) return itemParent === parent;
+            // API already scoped by ?id=parent
+            return true;
+          });
+        }
 
         setCategories(list);
       } catch (error) {
@@ -51,7 +81,7 @@ export const useProductCategories = (parentId?: string | null) => {
         }
       }
     },
-    [parentId],
+    [parentId, serviceCategoryId],
   );
 
   useEffect(() => {

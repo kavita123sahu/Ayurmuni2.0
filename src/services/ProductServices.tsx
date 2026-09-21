@@ -81,6 +81,7 @@ const buildProductQuery = (params: ProductQuery = {}) => {
 const buildProductCategoryQuery = (params: ProductCategoryQuery = {}) => {
   const query = new URLSearchParams();
   appendQueryParam(query, 'id', params.id);
+  appendQueryParam(query, 'service_category_id', params.service_category_id);
   const qs = query.toString();
   return qs ? `customers/product-categories/?${qs}` : 'customers/product-categories/';
 };
@@ -242,20 +243,36 @@ const resolveImageUrl = (item: any): string => {
 export const mapProductCategory = (item: any) => ({
   id: String(
     item?.id ??
-    item?.health_disease_id ??
-    item?.product_category_id ??
-    item?.category_id ??
-    item?.health_category_id ??
-    '',
+      item?.health_disease_id ??
+      item?.product_category_id ??
+      item?.category_id ??
+      item?.health_category_id ??
+      '',
   ),
   name: String(
     item?.name ??
-    item?.disease_name ??
-    item?.category_name ??
-    item?.product_category_name ??
-    item?.title ??
-    'Category',
+      item?.disease_name ??
+      item?.category_name ??
+      item?.product_category_name ??
+      item?.title ??
+      'Category',
   ),
+  description: String(
+    item?.description ??
+      item?.short_description ??
+      item?.category_description ??
+      item?.desc ??
+      item?.about ??
+      '',
+  ).trim(),
+  subscription: String(
+    item?.subscription ??
+      item?.subscription_text ??
+      item?.subtitle ??
+      item?.tagline ??
+      item?.short_title ??
+      '',
+  ).trim(),
   image_url: resolveImageUrl(item),
   parent_id:
     item?.parent_id != null
@@ -407,10 +424,18 @@ export const getHealthDiseases = async (params?: {
   }
 };
 
-export const getProductCategories = async (parentId?: string) => {
+export const getProductCategories = async (
+  parentId?: string,
+  serviceCategoryId?: string | null,
+) => {
   try {
     const response = await apiClient(
-      buildProductCategoryQuery(parentId ? { id: parentId } : {}),
+      buildProductCategoryQuery({
+        ...(parentId ? { id: parentId } : {}),
+        ...(serviceCategoryId
+          ? { service_category_id: String(serviceCategoryId) }
+          : {}),
+      }),
       { method: 'GET' },
     );
     return response;

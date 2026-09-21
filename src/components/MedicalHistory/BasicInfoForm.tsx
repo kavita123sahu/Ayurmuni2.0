@@ -1,25 +1,30 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   Image,
   StyleSheet,
 } from 'react-native';
-import { Fonts } from '../../common/Fonts';
 
 import {
   styles,
 } from '../../components/MedicalHistory/styles/MedicalHistor';
-import BmiGaugeCard from './BmiGaugeCard';
+import BmiGaugeCard, {
+  heightValidationMessage,
+  isValidHeightInput,
+  isValidWeightInput,
+  weightValidationMessage,
+} from './BmiGaugeCard';
+import { Fonts } from '../../common/Fonts';
 
-/* =====================================================
-   INPUT CARD
-===================================================== */
-
-
+const sanitizeDecimal = (text: string) => {
+  const cleaned = String(text || '').replace(/[^\d.]/g, '');
+  const parts = cleaned.split('.');
+  if (parts.length <= 1) return cleaned;
+  return `${parts[0]}.${parts.slice(1).join('')}`;
+};
 
 const InputCard = memo(({
   label,
@@ -28,78 +33,40 @@ const InputCard = memo(({
   onChangeText,
   unit,
   icon,
+  error,
 }: any) => {
-
   return (
     <View style={styles.basicCard}>
-
       <View style={styles.inputRow}>
-
         <View style={styles.iconCircle}>
-
-          <Image
-            source={icon}
-            style={styles.basicIcon}
-          />
-
-          {/* {
-            icon?.startsWith?.('http')
-              ? ( */}
-
-          {/* ) : (
-                <Ionicons
-                  name={icon}
-                  size={20}
-                  color={COLORS.primary}
-                />
-              )
-          } */}
-
+          <Image source={icon} style={styles.basicIcon} />
         </View>
-
         <View style={{ flex: 1 }}>
-
-          <Text style={styles.label}>
-            {label}
-          </Text>
-
+          <Text style={styles.label}>{label}</Text>
           <TextInput
             blurOnSubmit={false}
             placeholder={placeholder}
             placeholderTextColor="#B0B7C3"
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             value={value}
             onChangeText={onChangeText}
             style={styles.singleInput}
           />
-
         </View>
-
-        <Text style={styles.unitText}>
-          {unit}
-        </Text>
-
+        <Text style={styles.unitText}>{unit}</Text>
       </View>
-
+      {error ? <Text style={fieldStyles.error}>{error}</Text> : null}
     </View>
   );
 });
+
 const BasicInfoSection = ({
   questions,
   selectedAnswers,
   onChange,
 }: any) => {
   const [bmiReady, setBmiReady] = useState(false);
-
-  /* =====================================================
-     FIND QUESTIONS — show whichever basic fields API returns
-  ===================================================== */
-
-  // const ageQuestion = useMemo(() => {
-  //   return questions.find((item: any) =>
-  //     item?.question?.toLowerCase()?.includes('age'),
-  //   );
-  // }, [questions]);
+  const [touched, setTouched] = useState({ height: false, weight: false });
 
   const heightQuestion = useMemo(() => {
     return questions.find((item: any) => {
@@ -113,15 +80,9 @@ const BasicInfoSection = ({
     return questions.find((item: any) => {
       const q = item?.question?.toLowerCase?.() ?? '';
       if (!q.includes('weight')) return false;
-      // Prefer a dedicated weight question when height is separate
       return !heightId || item.id !== heightId || !q.includes('height');
     });
   }, [questions, heightQuestion?.id]);
-
-  // Body-type flow should render only the measurement fields returned by API.
-  if (!heightQuestion && !weightQuestion) {
-    return null;
-  }
 
   const heightId = heightQuestion
     ? String(heightQuestion.id)
@@ -138,66 +99,72 @@ const BasicInfoSection = ({
       ? selectedAnswers?.[String(weightQuestion.id)]
       : '') ||
     '';
-  const canCalculate = Boolean(
-    String(heightValue).replace(/[^\d.]/g, '') &&
-      String(weightValue).replace(/[^\d.]/g, ''),
-  );
+
+  const heightError = touched.height
+    ? heightValidationMessage(heightValue)
+    : heightValue
+      ? heightValidationMessage(heightValue)
+      : '';
+  const weightError = touched.weight
+    ? weightValidationMessage(weightValue)
+    : weightValue
+      ? weightValidationMessage(weightValue)
+      : '';
+
+  const canCalculate =
+    Boolean(heightId) &&
+    isValidHeightInput(heightValue) &&
+    isValidWeightInput(weightValue);
+
+  useEffect(() => {
+    setBmiReady(false);
+    if (!canCalculate) return undefined;
+
+    const timer = setTimeout(() => {
+      setBmiReady(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [canCalculate, heightValue, weightValue]);
+
+  if (!heightQuestion && !weightQuestion) {
+    return null;
+  }
 
   return (
     <View style={styles.basicInfoWrapper}>
-
-      {/* {ageQuestion ? (
-        <InputCard
-          label="Age *"
-          placeholder="Enter your age"
-          value={selectedAnswers?.[ageId] || ''}
-          onChangeText={(text: any) => onChange(ageId, text)}
-          unit="Years"
-          icon={require('../../assets/images/SVG.png')}
-        />
-      ) : null} */}
-
       {heightId ? (
         <>
           <InputCard
             label="Height *"
-            placeholder="Enter height"
+            placeholder="Enter height in cm"
             value={heightValue}
             onChangeText={(text: string) => {
-              setBmiReady(false);
-              onChange(`${heightId}_height`, text);
+              setTouched(prev => ({ ...prev, height: true }));
+              onChange(`${heightId}_height`, sanitizeDecimal(text));
             }}
             unit="cm"
             icon={require('../../assets/images/SVG2.png')}
+            error={heightError}
           />
 
           <InputCard
             label="Weight *"
-            placeholder="Enter weight"
+            placeholder="Enter weight in kg"
             value={weightValue}
             onChangeText={(text: string) => {
-              setBmiReady(false);
-              onChange(`${heightId}_weight`, text);
+              setTouched(prev => ({ ...prev, weight: true }));
+              onChange(`${heightId}_weight`, sanitizeDecimal(text));
             }}
             unit="kg"
             icon={require('../../assets/images/SVG3.png')}
+            error={weightError}
           />
-          {canCalculate && !bmiReady ? (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={calcStyles.btn}
-              onPress={() => setBmiReady(true)}
-            >
-              <Text style={calcStyles.text}>Calculate BMI</Text>
-            </TouchableOpacity>
-          ) : null}
-          {bmiReady ? (
-            <BmiGaugeCard
-              revealed
-              heightCm={heightValue}
-              weightKg={weightValue}
-            />
-          ) : null}
+          <BmiGaugeCard
+            revealed={bmiReady && canCalculate}
+            heightCm={heightValue}
+            weightKg={weightValue}
+          />
         </>
       ) : null}
     </View>
@@ -206,18 +173,12 @@ const BasicInfoSection = ({
 
 export default React.memo(BasicInfoSection);
 
-const calcStyles = StyleSheet.create({
-  btn: {
-    marginTop: 12,
-    backgroundColor: '#0D614E',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  text: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: Fonts.PoppinsSemiBold,
+const fieldStyles = StyleSheet.create({
+  error: {
+    marginTop: 6,
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#B91C1C',
+    fontFamily: Fonts.PoppinsMedium,
   },
 });
-

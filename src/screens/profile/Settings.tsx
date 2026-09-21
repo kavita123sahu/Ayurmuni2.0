@@ -8,20 +8,27 @@ import SettingItem, { SettingItemData } from '../../components/SettingItem';
 import { Colors } from '../../common/Colors';
 import PrimaryButton from '../../components/PrimaryButton';
 import { Fontisto } from '../../common/Vector';
-import { Utils } from '../../common/Utils';
 import { showSuccessToast } from '../../config/Key';
 import { OneSignal } from 'react-native-onesignal';
 import {
   logoutOneSignalUser,
   requestNotificationPermission,
 } from '../../services/pushNotificationService';
-import { update_Profile } from '../../services/ProfileServices';
+import { update_Profile, deleteAccount } from '../../services/ProfileServices';
 import { useCustomerProfile } from '../../hooks/useCustomerProfile';
 import { useAppDispatch } from '../../store/hooks';
-import { fetchCustomerData } from '../../store/slices/homeSlice';
+import {
+  fetchCustomerData,
+  fetchHomeData,
+  resetHomeState,
+} from '../../store/slices/homeSlice';
 import { invalidateCache } from '../../services/apiCache';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { markThrottledRun } from '../../utils/fetchThrottle';
+import { clearAppSession } from '../../services/sessionCleanup';
+import { useLocation } from '../../context/LocationContext';
+import CommonModal from '../../components/LogoutModal';
+import { Utils } from '../../common/Utils';
 
 const readNotificationEnabled = (customer: any): boolean => {
   const value =
@@ -40,6 +47,7 @@ const readNotificationEnabled = (customer: any): boolean => {
 const SettingsScreen = (props: any) => {
   const navigation = props.navigation;
   const dispatch = useAppDispatch();
+  const { clearLocationSession } = useLocation();
   // Single path: hydrate from Redux; refresh on focus only if cache is stale
   const { customerData } = useCustomerProfile({
     refreshOnFocus: true,
@@ -49,6 +57,10 @@ const SettingsScreen = (props: any) => {
   const [pushSaving, setPushSaving] = useState(false);
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountDoneVisible, setDeleteAccountDoneVisible] = useState(false);
+  const [deleteRetentionDays, setDeleteRetentionDays] = useState(30);
 
   useEffect(() => {
     setPushEnabled(readNotificationEnabled(customerData));
@@ -118,12 +130,36 @@ const SettingsScreen = (props: any) => {
             type: 'arrow',
             screen: 'PrivacyCenter',
           },
+          // {
+          //   title: 'Clear Cache',
+          //   subtitle: 'Refresh home data and clear temporary cache',
+          //   iconName: 'trash',
+          //   type: 'arrow',
+          //   onPress: async () => {
+          //     try {
+          //       invalidateCache();
+          //       dispatch(resetHomeState());
+          //       await dispatch(fetchCustomerData(true));
+          //       await dispatch(fetchHomeData(true));
+          //       showSuccessToast('Cache cleared. Home data reloaded.', 'success');
+          //     } catch {
+          //       showSuccessToast('Unable to clear cache', 'error');
+          //     }
+          //   },
+          // },
           {
             title: 'Payments',
             subtitle: 'Saved payment methods',
             iconName: 'credit-card',
             type: 'arrow',
             screen: 'PaymentsScreen',
+          },
+          {
+            title: 'Delete Account',
+            subtitle: 'Permanently remove your account',
+            iconName: 'trash',
+            type: 'arrow',
+            onPress: () => setDeleteAccountVisible(true),
           },
         ] as SettingItemData[],
       },
@@ -159,7 +195,7 @@ const SettingsScreen = (props: any) => {
         ] as SettingItemData[],
       },
     ],
-    [pushEnabled, emailEnabled, biometricEnabled],
+    [pushEnabled, emailEnabled, biometricEnabled, dispatch],
   );
 
   const persistNotificationPreference = useCallback(
@@ -228,13 +264,52 @@ const SettingsScreen = (props: any) => {
 
   const handleSignOut = async () => {
     logoutOneSignalUser();
-    await Utils.clearAllData();
+    await clearAppSession({ clearLocationSession });
     showSuccessToast('Signed out successfully', 'success');
     navigation.reset({
       index: 0,
       routes: [{ name: 'Welcome' }],
     });
   };
+
+  const finishDeleteSession = useCallback(async () => {
+    setDeleteAccountDoneVisible(false);
+    const info = await Utils.getData('_USER_INFO');
+    const phone =
+      info?.phone_number || info?.phone || info?.mobile || null;
+    await clearAppSession({ clearLocationSession });
+    await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
+      phone,
+      retention_days: deleteRetentionDays,
+      held_at: Date.now(),
+    });
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Welcome' }],
+    });
+  }, [clearLocationSession, deleteRetentionDays, navigation]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (deleteAccountLoading) return;
+    setDeleteAccountLoading(true);
+    try {
+      const res: any = await deleteAccount();
+      const daysRaw =
+        res?.data?.retention_days ??
+        res?.retention_days ??
+        res?.data?.backup_days ??
+        res?.backup_days ??
+        30;
+      const days = Number(daysRaw);
+      setDeleteRetentionDays(Number.isFinite(days) && days > 0 ? days : 30);
+      setDeleteAccountVisible(false);
+      setDeleteAccountDoneVisible(true);
+    } catch {
+      showSuccessToast('Unable to delete account. Try again.', 'error');
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  }, [deleteAccountLoading]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -292,6 +367,35 @@ const SettingsScreen = (props: any) => {
           </View>
         </View>
       </ScrollView>
+
+      {deleteAccountVisible && (
+        <CommonModal
+          visible={deleteAccountVisible}
+          icon="🗑️"
+          title="Delete account"
+          subtitle={`This will permanently delete your account. Your appointments, orders, and patient records will remain retrievable for ${deleteRetentionDays} days.`}
+          cancelText="Cancel"
+          confirmText={deleteAccountLoading ? 'Deleting...' : 'Delete'}
+          loading={deleteAccountLoading}
+          onClose={() => setDeleteAccountVisible(false)}
+          onConfirm={handleDeleteAccount}
+        />
+      )}
+
+      {deleteAccountDoneVisible && (
+        <CommonModal
+          visible={deleteAccountDoneVisible}
+          icon="✅"
+          title="Account scheduled for deletion"
+          subtitle={`Your appointments, orders, and patient records stay recoverable for ${deleteRetentionDays} days. After that they cannot be restored. Until you recover (or the period ends), this phone number cannot enter the app — use Recover with OTP, or a new number.`}
+          cancelText="Close"
+          confirmText="OK"
+          stackButtons
+          loading={false}
+          onClose={finishDeleteSession}
+          onConfirm={finishDeleteSession}
+        />
+      )}
     </SafeAreaView>
   );
 };

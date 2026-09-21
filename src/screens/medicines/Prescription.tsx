@@ -69,6 +69,9 @@ const Prescription = (props: any) => {
   const routeVariantIds = Array.isArray(props.route?.params?.variantIds)
     ? props.route.params.variantIds.map((id: any) => String(id).trim()).filter(Boolean)
     : [];
+
+  console.log('PrescriptionvariantIds =>', routeVariantIds, props.route?.params?.productName, props.route?.params?.fromPrescriptionGate);
+
   const gatedProductName = String(props.route?.params?.productName || '').trim();
   const fromGate = Boolean(props.route?.params?.fromPrescriptionGate);
 
@@ -78,19 +81,19 @@ const Prescription = (props: any) => {
   const [openingCamera, setOpeningCamera] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ uri: string; fileType?: string } | null>(null);
 
-  const cartData = useAppSelector((s: any) => s.cart?.cartData);
-  const variantQuantities = useAppSelector(
-    (s: any) => s.cart?.variantQuantities ?? {},
-  );
-  const variantIds = useMemo(() => {
-    const fromCart = (cartData?.my_cart?.items ?? [])
-      .map((item: any) => String(item?.variant_id || '').trim())
-      .filter(Boolean);
-    const fromQty = Object.keys(variantQuantities || {}).filter(
-      id => Number(variantQuantities[id]) > 0,
-    );
-    return [...new Set([...routeVariantIds, ...fromCart, ...fromQty])];
-  }, [cartData, variantQuantities, routeVariantIds]);
+  // const cartData = useAppSelector((s: any) => s.cart?.cartData);
+  // const variantQuantities = useAppSelector(
+  //   (s: any) => s.cart?.variantQuantities ?? {},
+  // );
+  // const variantIds = useMemo(() => {
+  //   const fromCart = (cartData?.my_cart?.items ?? [])
+  //     .map((item: any) => String(item?.variant_id || '').trim())
+  //     .filter(Boolean);
+  //   const fromQty = Object.keys(variantQuantities || {}).filter(
+  //     id => Number(variantQuantities[id]) > 0,
+  //   );
+  //   return [...new Set([...routeVariantIds, ...fromCart, ...fromQty])];
+  // }, [cartData, variantQuantities, routeVariantIds]);
 
   const loadRecent = useCallback(async () => {
     try {
@@ -220,7 +223,7 @@ const Prescription = (props: any) => {
       fileUri: selectedFiles[0].uri,
       fileName: selectedFiles[0].name,
       fileType: selectedFiles[0].type,
-      variantIds,
+      variantIds: routeVariantIds,
     });
   };
 
@@ -232,7 +235,7 @@ const Prescription = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <AppHeader
         title="Prescription"
@@ -444,25 +447,25 @@ const Prescription = (props: any) => {
                     </View>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => openExisting(item)} activeOpacity={0.88}>
-                  <Text style={styles.date} numberOfLines={1}>
-                    {formatPrescriptionDate(item?.created_at || item?.updated_at) ||
-                      'Submitted'}
-                  </Text>
-                  <View style={styles.verifiedRow}>
-                    <TablerIcon
-                      name={approved ? 'approved' : pending ? 'clock' : 'shield'}
-                      size={11}
-                      color={approved ? Colors.primaryColor : '#64748B'}
-                    />
-                    <Text
-                      style={[
-                        styles.verified,
-                        approved && { color: Colors.primaryColor },
-                      ]}
-                    >
-                      {getStatusLabel(item)}
+                    <Text style={styles.date} numberOfLines={1}>
+                      {formatPrescriptionDate(item?.created_at || item?.updated_at) ||
+                        'Submitted'}
                     </Text>
-                  </View>
+                    <View style={styles.verifiedRow}>
+                      <TablerIcon
+                        name={approved ? 'approved' : pending ? 'clock' : 'shield'}
+                        size={11}
+                        color={approved ? Colors.primaryColor : '#64748B'}
+                      />
+                      <Text
+                        style={[
+                          styles.verified,
+                          approved && { color: Colors.primaryColor },
+                        ]}
+                      >
+                        {getStatusLabel(item)}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 </View>
               );
@@ -479,7 +482,7 @@ const Prescription = (props: any) => {
       />
 
       <TouchableOpacity
-        style={[styles.ctaWrap, { bottom: insets.bottom + 12 }]}
+        style={[styles.ctaWrap, ]}
         disabled={!selectedFiles.length}
         onPress={proceed}
         activeOpacity={0.9}
@@ -785,9 +788,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
   },
   ctaWrap: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
+    // position: 'absolute',
+   paddingHorizontal: 14,
   },
   checkout: {
     paddingVertical: 13,

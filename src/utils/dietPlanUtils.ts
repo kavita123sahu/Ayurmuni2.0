@@ -12,6 +12,7 @@ export type DietMeal = {
   time: string;
   title: string;
   subtitle: string;
+  guidance?: string;
   kcal: number;
   carbs: number;
   protein: number;
@@ -23,6 +24,13 @@ export type DietMeal = {
   preparationSteps: string[];
   /** Clickable prep video URLs (YouTube / mp4 / etc.) */
   preparationVideos: string[];
+  /** Meal-level gallery images from diet_gallery */
+  gallery: Array<{
+    image_url: string;
+    caption?: string;
+    is_cover?: boolean;
+    media_url?: string;
+  }>;
   image?: any;
   status: 'log' | 'done';
   raw?: any;
@@ -33,6 +41,21 @@ export type DietFoodItem = {
   notes: string;
   quantity: string;
   label: string;
+  recipe: string[];
+  preparationSteps: string[];
+  gallery: Array<{
+    image_url: string;
+    caption?: string;
+    is_cover?: boolean;
+    media_url?: string;
+  }>;
+  nutrition: {
+    kcal: number;
+    carbs: number;
+    protein: number;
+    fat: number;
+  };
+  raw?: any;
 };
 
 export type DietPlanSummary = {
@@ -45,6 +68,8 @@ export type DietPlanSummary = {
   is_paid?: boolean;
   price?: number;
   short_description?: string;
+  /** Plan guidance / tip from patients/diet-plans/ */
+  guidance?: string | null;
   patient_diet_plan_id?: string | null;
   patient_assignment_status?: string | null;
   started_at?: string | null;
@@ -257,14 +282,23 @@ const MEAL_TIMES: Record<string, string> = {
   dinner: '07:45 PM',
 };
 
-/** API may send diet as strings OR { name, notes, quantity } objects. */
+/** API may send diet as strings OR rich dish objects. */
 export const normalizeDietFoodItem = (item: any): DietFoodItem | null => {
   if (item == null) return null;
 
   if (typeof item === 'string' || typeof item === 'number') {
     const name = String(item).trim();
     if (!name) return null;
-    return { name, notes: '', quantity: '', label: name };
+    return {
+      name,
+      notes: '',
+      quantity: '',
+      label: name,
+      recipe: [],
+      preparationSteps: [],
+      gallery: [],
+      nutrition: { kcal: 0, carbs: 0, protein: 0, fat: 0 },
+    };
   }
 
   if (typeof item === 'object') {
@@ -274,17 +308,61 @@ export const normalizeDietFoodItem = (item: any): DietFoodItem | null => {
     const quantity = String(
       item.quantity ?? item.qty ?? item.amount ?? '',
     ).trim();
-    const notes = String(item.notes ?? item.note ?? item.description ?? '').trim();
+    const notes = String(
+      item.notes ?? item.note ?? item.description ?? '',
+    ).trim();
 
-    const parts = [
-      name,
-      quantity ? `(${quantity})` : '',
-      notes,
-    ].filter(Boolean);
+    const parts = [name, quantity ? `(${quantity})` : '', notes].filter(
+      Boolean,
+    );
     const label = parts.join(' ').trim();
     if (!label) return null;
 
-    return { name: name || label, notes, quantity, label };
+    const nutritionNode = item.nutrition || {};
+    const recipe = Array.isArray(item.recipe)
+      ? item.recipe.map((r: any) => String(r || '').trim()).filter(Boolean)
+      : typeof item.recipe === 'string' && item.recipe.trim()
+        ? [item.recipe.trim()]
+        : [];
+
+    const preparationSteps = Array.isArray(item.preparation_steps)
+      ? item.preparation_steps
+          .map((step: any) => {
+            if (typeof step === 'string' || typeof step === 'number') {
+              return String(step).trim();
+            }
+            return String(step?.name ?? step?.title ?? step?.label ?? '').trim();
+          })
+          .filter(Boolean)
+      : Array.isArray(item.steps)
+        ? item.steps
+            .map((step: any) => {
+              if (typeof step === 'string' || typeof step === 'number') {
+                return String(step).trim();
+              }
+              return String(step?.name ?? step?.title ?? step?.label ?? '').trim();
+            })
+            .filter(Boolean)
+        : [];
+
+    const gallery = getMealGallery(item);
+
+    return {
+      name: name || label,
+      notes,
+      quantity,
+      label,
+      recipe,
+      preparationSteps,
+      gallery,
+      nutrition: {
+        kcal: nutritionValue(nutritionNode, 'total_calories'),
+        carbs: nutritionValue(nutritionNode, 'carbs'),
+        protein: nutritionValue(nutritionNode, 'protein'),
+        fat: nutritionValue(nutritionNode, 'fat'),
+      },
+      raw: item,
+    };
   }
 
   return null;
@@ -420,6 +498,40 @@ export const resolveMealImage = (mealRaw?: any) => {
   return FALLBACK_MEAL_IMAGE;
 };
 
+/** Full meal gallery for MealDetails carousel. */
+export const getMealGallery = (mealRaw?: any): DietGalleryItem[] => {
+  if (!mealRaw || typeof mealRaw !== 'object') return [];
+
+  const gallery = Array.isArray(mealRaw?.diet_gallery)
+    ? mealRaw.diet_gallery
+    : Array.isArray(mealRaw?.gallery)
+      ? mealRaw.gallery
+      : [];
+
+  const fromGallery = gallery
+    .map((g: any) => {
+      const url = galleryItemUrl(g);
+      return {
+        image_url: url,
+        caption: String(g?.caption || g?.title || ''),
+        is_cover: Boolean(g?.is_cover),
+        media_url: url,
+      };
+    })
+    .filter((g: any) => !!g.image_url);
+
+  if (fromGallery.length) {
+    return [...fromGallery].sort(
+      (a, b) => Number(b.is_cover) - Number(a.is_cover),
+    );
+  }
+
+  const fallback = getMealGalleryUrl(mealRaw);
+  return fallback
+    ? [{ image_url: fallback, caption: '', is_cover: true, media_url: fallback }]
+    : [];
+};
+
 const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
 
 const normalizeVideoUrl = (value: string): string | null => {
@@ -429,6 +541,10 @@ const normalizeVideoUrl = (value: string): string | null => {
   if (/^\/\//.test(raw)) return `https:${raw}`;
   if (/^(www\.)?(youtube\.com|youtu\.be)\//i.test(raw)) {
     return `https://${raw.replace(/^https?:\/\//i, '')}`;
+  }
+  // bare host / path (e.g. youtube.abc.com, youtu.be/xxxx)
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(raw)) {
+    return `https://${raw}`;
   }
   // bare youtu.be id / watch query sometimes arrives without host
   if (/^[\w-]{11}$/.test(raw)) {
@@ -842,13 +958,19 @@ export const mapDietPlanSummary = (item: any): DietPlanSummary => {
     .map((d: any) => d?.name)
     .filter(Boolean)
     .join(', ');
+  const guidance = String(
+    item?.guidance || item?.guide || item?.tips || item?.tip || '',
+  ).trim();
 
   return {
     ...item,
     id: String(item?.id ?? ''),
     name: String(item?.name ?? item?.title ?? 'Diet Plan'),
     title: String(item?.name ?? item?.title ?? 'Diet Plan'),
-    short_description: diseaseNames || item?.season || item?.prakriti || '',
+    guidance: guidance || null,
+    // Prefer guidance for one-line card copy; else diseases / season / prakriti
+    short_description:
+      guidance || diseaseNames || item?.season || item?.prakriti || '',
     health_diseases: diseases,
     patient_diet_plan_id: item?.patient_diet_plan_id ?? null,
     patient_assignment_status:
@@ -1218,17 +1340,53 @@ export const mapPlanJsonMeals = (
     const raw = dayData[mealKey] || {};
     const dietItemDetails = normalizeDietFoodItems(raw.diet);
     const dietItems = dietItemDetails.map(item => item.label);
-    const steps: string[] = Array.isArray(raw.preparation_steps)
+
+    // Meal-level steps/videos OR aggregate from each dish
+    const mealSteps: string[] = Array.isArray(raw.preparation_steps)
       ? raw.preparation_steps.map(toSafeText).filter(Boolean)
       : [];
-    const preparationVideos = resolveMealPreparationVideos(raw);
+    const dishSteps = dietItemDetails.flatMap(d => d.preparationSteps);
+    const steps = mealSteps.length ? mealSteps : dishSteps;
+
+    const preparationVideos = [
+      ...resolveMealPreparationVideos(raw),
+      ...dietItemDetails.flatMap(d =>
+        resolveMealPreparationVideos({
+          recipe: d.recipe,
+          preparation_video: d.recipe,
+        }),
+      ),
+    ].filter((url, i, arr) => url && arr.indexOf(url) === i);
+
     const nutrition = raw.nutrition || {};
-    const kcal = nutritionValue(nutrition, 'total_calories');
-    const carbs = nutritionValue(nutrition, 'carbs');
-    const protein = nutritionValue(nutrition, 'protein');
-    const fat = nutritionValue(nutrition, 'fat');
+    let kcal = nutritionValue(nutrition, 'total_calories');
+    let carbs = nutritionValue(nutrition, 'carbs');
+    let protein = nutritionValue(nutrition, 'protein');
+    let fat = nutritionValue(nutrition, 'fat');
+
+    // Sum dish nutrition when meal-level totals are missing
+    if (!kcal && !carbs && !protein && !fat) {
+      kcal = dietItemDetails.reduce((s, d) => s + (d.nutrition.kcal || 0), 0);
+      carbs = dietItemDetails.reduce((s, d) => s + (d.nutrition.carbs || 0), 0);
+      protein = dietItemDetails.reduce(
+        (s, d) => s + (d.nutrition.protein || 0),
+        0,
+      );
+      fat = dietItemDetails.reduce((s, d) => s + (d.nutrition.fat || 0), 0);
+    }
+
     const done = isMealCompleted(progress, dayKey, mealKey);
-    const mealImage = resolveMealImage(raw);
+    const dishGallery = dietItemDetails.flatMap(d => d.gallery);
+    const gallery = getMealGallery(raw);
+    const resolvedGallery = gallery.length ? gallery : dishGallery;
+    const mealImage =
+      resolveMealImage(raw) ||
+      (resolvedGallery[0]?.image_url
+        ? { uri: resolvedGallery[0].image_url }
+        : FALLBACK_MEAL_IMAGE);
+    const guidance = String(
+      raw?.guidance || raw?.guide || raw?.tips || raw?.tip || '',
+    ).trim();
 
     return {
       id: `${dayKey}-${mealKey}`,
@@ -1237,19 +1395,27 @@ export const mapPlanJsonMeals = (
       type: MEAL_LABELS[mealKey] || mealKey.toUpperCase(),
       time: MEAL_TIMES[mealKey] || '',
       title:
-        dietItemDetails[0]?.name ||
-        dietItems[0] ||
-        MEAL_LABELS[mealKey] ||
-        mealKey,
+        dietItemDetails.length > 1
+          ? `${MEAL_LABELS[mealKey] || mealKey} · ${dietItemDetails.length} items`
+          : dietItemDetails[0]?.name ||
+            dietItems[0] ||
+            MEAL_LABELS[mealKey] ||
+            mealKey,
       subtitle:
-        dietItemDetails
-          .slice(1)
-          .map(d => d.name)
-          .filter(Boolean)
-          .join(' · ') ||
-        dietItems.slice(1).join(' · ') ||
-        steps[0] ||
-        '',
+        dietItemDetails.length > 1
+          ? dietItemDetails
+              .map(d => d.name)
+              .filter(Boolean)
+              .join(' · ')
+          : dietItemDetails
+              .slice(1)
+              .map(d => d.name)
+              .filter(Boolean)
+              .join(' · ') ||
+            dietItems.slice(1).join(' · ') ||
+            steps[0] ||
+            '',
+      guidance,
       kcal,
       carbs,
       protein,
@@ -1258,6 +1424,7 @@ export const mapPlanJsonMeals = (
       dietItemDetails,
       preparationSteps: steps,
       preparationVideos,
+      gallery: resolvedGallery,
       image: mealImage,
       status: done ? 'done' : 'log',
       raw,

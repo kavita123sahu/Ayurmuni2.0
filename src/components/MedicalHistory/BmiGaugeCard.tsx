@@ -63,9 +63,52 @@ const toCentimeters = (raw: number) => {
   return null;
 };
 
+export const parseMeasurementInput = (raw: string | number | null | undefined) => {
+  const n = Number(String(raw ?? '').replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) ? n : NaN;
+};
+
+/** Accepts cm (50–250) or common meter/ft shorthand handled by toCentimeters. */
+export const isValidHeightInput = (raw: string | number | null | undefined) => {
+  const n = parseMeasurementInput(raw);
+  if (!Number.isFinite(n) || n <= 0) return false;
+  const cm = toCentimeters(n);
+  return cm != null && cm >= 50 && cm <= 250;
+};
+
+/** Adult/child weight in kg. */
+export const isValidWeightInput = (raw: string | number | null | undefined) => {
+  const n = parseMeasurementInput(raw);
+  return Number.isFinite(n) && n >= 10 && n <= 300;
+};
+
+export const heightValidationMessage = (
+  raw: string | number | null | undefined,
+) => {
+  const text = String(raw ?? '').trim();
+  if (!text) return 'Height is required';
+  if (!isValidHeightInput(text)) {
+    return 'Enter a valid height (50–250 cm)';
+  }
+  return '';
+};
+
+export const weightValidationMessage = (
+  raw: string | number | null | undefined,
+) => {
+  const text = String(raw ?? '').trim();
+  if (!text) return 'Weight is required';
+  if (!isValidWeightInput(text)) {
+    return 'Enter a valid weight (10–300 kg)';
+  }
+  return '';
+};
+
 export const calculateBmi = (heightInput: number, weightKg: number) => {
   const heightCm = toCentimeters(heightInput);
   if (heightCm == null || !(weightKg > 0) || weightKg > 400) return null;
+  if (heightCm < 50 || heightCm > 250) return null;
+  if (weightKg < 10 || weightKg > 300) return null;
   const meters = heightCm / 100;
   const bmi = weightKg / (meters * meters);
   if (!Number.isFinite(bmi) || bmi < 8 || bmi > 80) return null;
@@ -159,17 +202,37 @@ const BmiGaugeCard = ({
   weightKg?: string;
   revealed?: boolean;
 }) => {
-  const result = useMemo<BmiResult | null>(() => {
-    if (!revealed) return null;
-    const height = Number(String(heightCm || '').replace(/[^\d.]/g, ''));
-    const weight = Number(String(weightKg || '').replace(/[^\d.]/g, ''));
-    const value = calculateBmi(height, weight);
-    if (value == null) return null;
-    const band = classify(value);
-    const needle = Math.min(1, Math.max(0, (value - MIN_BMI) / (MAX_BMI - MIN_BMI)));
-    return { value, needle, ...band };
-  }, [heightCm, revealed, weightKg]);
 
+  const calculateBmi = (heightCm: number, weightKg: number) => {
+  if (!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0) {
+    return null;
+  }
+
+  const heightM = heightCm / 100;
+  return Number((weightKg / (heightM * heightM)).toFixed(2));
+};
+
+
+  const result = useMemo<BmiResult | null>(() => {
+  if (!revealed) return null;
+
+  const height = Number(String(heightCm || '').replace(/[^\d.]/g, ''));
+  const weight = Number(String(weightKg || '').replace(/[^\d.]/g, ''));
+
+  const value = calculateBmi(height, weight);
+  if (value == null) return null;
+  const band = classify(value);
+  const needle = Math.min(
+    1,
+    Math.max(0, (value - MIN_BMI) / (MAX_BMI - MIN_BMI))
+  );
+
+  return { value, needle, ...band };
+}, [heightCm, revealed, weightKg]);
+
+
+
+  console.log('BmiGaugeCard', { heightCm, weightKg, revealed, result });
   return (
     <View style={styles.card}>
       <View style={styles.copy}>

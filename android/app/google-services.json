@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "56883138760",
-    "project_id": "ayurmuni-app",
-    "storage_bucket": "ayurmuni-app.firebasestorage.app"
+    "project_number": "682211111789",
+    "project_id": "ayurmuni-e6967",
+    "storage_bucket": "ayurmuni-e6967.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:56883138760:android:7d6a8dd03e28896f30d5fd",
+        "mobilesdk_app_id": "1:682211111789:android:299145afc341043748a064",
         "android_client_info": {
           "package_name": "com.ayurmuniapp"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAtDw8q19Uwq5QZLqVvosjqQ6oHP_PG9Jo"
+          "current_key": "AIzaSyCCTD0MxQ-Xx6kqyjWKA5L9N7Qq6fHbF5w"
         }
       ],
       "services": {

@@ -126,16 +126,6 @@ export const useCategoryProducts = (
         const size = parsedFilter.pageSize ?? PRODUCT_PAGE_SIZE;
         const searchOnly = Boolean(parsedFilter.search?.trim());
 
-        const hasFilter = Boolean(
-          searchOnly ||
-            parsedFilter.id ||
-            parsedFilter.product_subcategory_id ||
-            parsedFilter.health_category_id ||
-            parsedFilter.health_disease_id ||
-            parsedFilter.brand_name_id ||
-            parsedFilter.service_category_id,
-        );
-
         const response = await getProduct(
           toProductQuery(parsedFilter, pageNumber, size),
         );
@@ -171,6 +161,7 @@ export const useCategoryProducts = (
             return merged;
           });
         } else if (!append) {
+          // No API rows — do not invent unrelated catalog items for concern filters
           const fallback = Array.isArray(fallbackRef.current)
             ? fallbackRef.current
             : [];
@@ -185,10 +176,8 @@ export const useCategoryProducts = (
             !healthScoped &&
             !parsedFilter.brand_name_id;
 
-          if (!hasFilter || (serviceOnly && fallback.length > 0)) {
-            setProducts(fallback);
-          } else if (healthScoped && fallback.length > 0) {
-            // Concern query empty → show general catalog fallback
+          if (serviceOnly && fallback.length > 0) {
+            // View-all / service-wide with no products from API yet
             setProducts(fallback);
           } else {
             setProducts([]);

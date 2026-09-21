@@ -17,7 +17,7 @@ import { Colors } from '../common/Colors';
 import * as _PROFILE_SERVICES from '../services/ProfileServices';
 import LocationBottomSheet from './LocationBottomSheet';
 import { useHomeData } from '../hooks/UseHomeData';
-import { requireAuth } from '../services/guestAuth';
+import { requireAuth, isGuestUser } from '../services/guestAuth';
 import { useLocation } from '../context/LocationContext';
 import { savedAddressToParsed } from '../services/locationService';
 import { useAppDispatch } from '../store/hooks';
@@ -25,6 +25,7 @@ import { fetchCart } from '../store/slices/cartSlice';
 import { useUnreadNotificationCount } from '../hooks/useNotification';
 import { DOSHA } from './Questionnaire/PrakritiQuestTheme';
 import { shouldRunThrottled } from '../utils/fetchThrottle';
+import { Images } from '../common/Images';
 
 interface AddressItem {
     id: string;
@@ -152,6 +153,7 @@ const HomeHeader = ({
     const [localAddresses, setLocalAddresses] = useState<AddressItem[]>([]);
     const [showSheet, setShowSheet] = useState(false);
     const [prakritiResultName, setPrakritiResultName] = useState('');
+    const [isGuest, setIsGuest] = useState(false);
     const [stablePrakritiProgress, setStablePrakritiProgress] = useState(
         Math.max(0, Math.min(100, Math.round(Number(progress1) || 0))),
     );
@@ -159,6 +161,16 @@ const HomeHeader = ({
     const { customerData, fetchCustomerData } = useHomeData();
 
     const PRAKRITI_RESULT_KEY = 'PRAKRITI_RESULT_NAME';
+
+    useEffect(() => {
+        let cancelled = false;
+        isGuestUser().then(guest => {
+            if (!cancelled) setIsGuest(guest);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [customerData]);
 
     // Load persisted prakriti result name once to reduce flicker when customerData reloads
     useEffect(() => {
@@ -190,6 +202,7 @@ const HomeHeader = ({
     const {
         currentAddress,
         loadingLocation,
+        locationEnabled,
         setDeliveryLocation,
     } = useLocation();
 
@@ -200,13 +213,16 @@ const HomeHeader = ({
         [savedAddresses],
     );
 
-    // Home always shows saved active/default address — not live GPS selection
+    // Saved profile address first; live GPS only when permission is enabled
     const activeLocation = useMemo(() => {
         if (defaultAddress) {
             return savedAddressToParsed(defaultAddress);
         }
-        return currentAddress;
-    }, [defaultAddress, currentAddress]);
+        if (locationEnabled && currentAddress) {
+            return currentAddress;
+        }
+        return null;
+    }, [defaultAddress, currentAddress, locationEnabled]);
 
     const shortAddress = useMemo(() => {
         if (defaultAddress) {
@@ -219,6 +235,9 @@ const HomeHeader = ({
             const city = defaultAddress.city || '';
             const text = [line, city].filter(Boolean).join(', ');
             return (text || 'Saved address').slice(0, 44);
+        }
+        if (!locationEnabled) {
+            return 'Select location';
         }
         if (loadingLocation && !activeLocation) {
             return 'Detecting location...';
@@ -238,7 +257,7 @@ const HomeHeader = ({
                   ? `, ${activeLocation.state}`
                   : '';
         return `${area}${suffix}`.slice(0, 44);
-    }, [activeLocation, defaultAddress, loadingLocation]);
+    }, [activeLocation, defaultAddress, loadingLocation, locationEnabled]);
 
     const prakritiProgress = stablePrakritiProgress;
     const isPrakritiComplete = prakritiProgress >= 100;
@@ -250,13 +269,13 @@ const HomeHeader = ({
     }, [customerData, prakritiResultName]);
 
     const theme = useMemo(
-        () => getPrakritiTheme(prakritiName || 'vata'),
+        () => getPrakritiTheme(prakritiName),
         [prakritiName],
     );
 
     // When assessment is done, always show prakriti (name or "Prakriti done")
     const locationSubtext = isPrakritiComplete
-        ? prakritiName || 'Prakriti done'
+        ? prakritiName
         : 'Deliver to';
 
     const profileImage = customerData?.profile_picture || '';
@@ -291,8 +310,11 @@ const HomeHeader = ({
     }, [fetchCustomerData]);
 
     useEffect(() => {
-        if (customerData?.addresses) {
+        if (Array.isArray(customerData?.addresses)) {
             setLocalAddresses(customerData.addresses);
+        } else {
+            // Logout / new guest session — drop previous user's addresses
+            setLocalAddresses([]);
         }
     }, [customerData]);
 
@@ -389,13 +411,36 @@ const HomeHeader = ({
         stackNavigation.navigate('TabStack', { screen: 'Profile' });
     }, [navigation, stackNavigation]);
 
-    const openPrakriti = useCallback(() => {
+    const openPrakriti = useCallback(async () => {
         if (isPrakritiComplete) {
             stackNavigation.navigate('PrakritiProfile');
             return;
         }
+        // Guest / incomplete profile → same CompleteDetails gate as cart/book
+        if (
+            !(await requireAuth(
+                'Complete your profile to start prakriti assessment',
+            ))
+        ) {
+            return;
+        }
         stackNavigation.navigate('PatientFAQ', { allowBack: true });
     }, [isPrakritiComplete, stackNavigation]);
+
+    const openAvatar = useCallback(async () => {
+        if (isPrakritiComplete) {
+            openProfile();
+            return;
+        }
+        if (
+            !(await requireAuth(
+                'Complete your profile to start prakriti assessment',
+            ))
+        ) {
+            return;
+        }
+        stackNavigation.navigate('PatientFAQ', { allowBack: true });
+    }, [isPrakritiComplete, openProfile, stackNavigation]);
 
     const openLocationSheet = useCallback(() => {
         setShowSheet(true);
@@ -413,13 +458,18 @@ const HomeHeader = ({
                 <View style={styles.leftSection}>
                     <TouchableOpacity
                         style={styles.avatarPress}
-                        onPress={openProfile}
+                        onPress={openAvatar}
                         activeOpacity={0.85}
                     >
                         <ProgressRing progress={prakritiProgress} color={ringColor}>
                             {profileImage ? (
                                 <Image
                                     source={{ uri: profileImage }}
+                                    style={styles.profileImage}
+                                />
+                            ) : isGuest ? (
+                                <Image
+                                    source={Images.logoRound}
                                     style={styles.profileImage}
                                 />
                             ) : (
@@ -432,7 +482,7 @@ const HomeHeader = ({
                                     ]}
                                 >
                                     <Text style={styles.profileText}>
-                                        {firstLetter || 'A'}
+                                        {firstLetter || ''}
                                     </Text>
                                 </View>
                             )}
@@ -450,7 +500,9 @@ const HomeHeader = ({
                     <View style={styles.locationContainer}>
                         <TouchableOpacity
                             onPress={
-                                isPrakritiComplete ? openPrakriti : openLocationSheet
+                                isPrakritiComplete
+                                    ? openPrakriti
+                                    : openLocationSheet
                             }
                             activeOpacity={0.85}
                         >

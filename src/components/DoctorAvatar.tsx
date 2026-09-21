@@ -8,8 +8,8 @@ import {
   ViewStyle,
   ImageStyle,
 } from 'react-native';
-import TablerIcon from './TablerIcon';
 import { Fonts } from '../common/Fonts';
+import { Images } from '../common/Images';
 import { resolveDoctorProfileImageUri } from '../utils/doctorUtils';
 import { sanitizeImageUri } from '../utils/imageUtils';
 
@@ -96,7 +96,6 @@ const DoctorAvatar = ({
         ? size / 2
         : Math.max(10, Math.round(size * 0.18));
 
-  const iconSize = Math.max(18, Math.round((fill ? 56 : size) * 0.5));
   const initialSize = Math.max(12, Math.round((fill ? 56 : size) * 0.36));
   const bg = colorForName(displayName);
   const initials = getInitials(displayName);
@@ -104,31 +103,31 @@ const DoctorAvatar = ({
   const boxStyle = fill
     ? [styles.wrap, styles.fill, { borderRadius: radius }, style]
     : [
-        styles.wrap,
-        {
-          width: size,
-          height: size,
-          borderRadius: radius,
-        },
-        style,
-      ];
+      styles.wrap,
+      {
+        width: size,
+        height: size,
+        borderRadius: radius,
+      },
+      style,
+    ];
 
   const mediaStyle = fill
     ? [styles.image, styles.fill, { borderRadius: radius }, imageStyle]
     : [
-        styles.image,
-        {
-          width: size,
-          height: size,
-          borderRadius: radius,
-        },
-        imageStyle,
-      ];
+      styles.image,
+      {
+        width: size,
+        height: size,
+        borderRadius: radius,
+      },
+      imageStyle,
+    ];
 
   return (
     <View style={boxStyle}>
       {resolvedUri ? (
-        <Image source={{ uri: resolvedUri }} style={mediaStyle} resizeMode="cover" />
+        <Image source={{ uri: resolvedUri }} style={mediaStyle} resizeMode="contain" />
       ) : emptyMode === 'initials' && initials ? (
         <View
           style={[
@@ -142,15 +141,11 @@ const DoctorAvatar = ({
           </Text>
         </View>
       ) : (
-        <View
-          style={[
-            styles.empty,
-            fill ? styles.fill : { width: size, height: size },
-            { borderRadius: radius, backgroundColor: '#DFE5E7' },
-          ]}
-        >
-          <TablerIcon name="user-filled" size={iconSize} color="#FFFFFF" />
-        </View>
+        <Image
+          source={Images.doctorDefaultAvatar}
+          style={mediaStyle}
+          resizeMode="contain"
+        />
       )}
     </View>
   );
@@ -161,7 +156,7 @@ export default React.memo(DoctorAvatar);
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
-    backgroundColor: '#DFE5E7',
+    backgroundColor: '#EEF1F2',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -172,7 +167,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   image: {
-    backgroundColor: '#E8EEEA',
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#EEF1F2',
   },
   empty: {
     alignItems: 'center',

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,14 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Product } from '../types';
 import { Fonts } from '../common/Fonts';
-import { requireAuth } from '../services/guestAuth';
-import { showSuccessToast } from '../config/Key';
-import { navigateToCheckoutWithProduct } from '../navigation/productNavigation';
 import { Colors } from '../common/Colors';
 import { RupeeAmount } from '../utils/currencyUtils';
+import { navigateToProductDetails } from '../navigation/productNavigation';
+import { HORIZONTAL_SCROLL_CONTENT } from '../constants/layout';
 
 interface Props {
   data?: Product[];
@@ -22,36 +21,17 @@ interface Props {
 }
 
 const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
-  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(168, Math.round(width * 0.42));
   const safeData = Array.isArray(data) ? data : [];
 
-  const handleReorder = useCallback(
-    async (item: Product) => {
-      console.log('itemitem', item)
-      const variantId = String(item?.variantId ?? '');
-
-      if (!variantId) {
-        showSuccessToast('Unable to reorder this item', 'error');
-        return;
-      }
-
-      if (!(await requireAuth('Please login to reorder items'))) {
-        return;
-      }
-
-      setReorderingId(item.id);
-      return 0;
-
-      try {
-        navigateToCheckoutWithProduct(navigation, {
-          variantId,
-          name: item.name,
-          price: Number(item.price),
-          image: item.image,
-        });
-      } finally {
-        setReorderingId(null);
-      }
+  const handlePress = useCallback(
+    (item: Product) => {
+      const variantId = String(
+        (item as any)?.variantId ?? (item as any)?.variant_id ?? '',
+      );
+      if (!variantId || !navigation) return;
+      navigateToProductDetails(navigation, variantId);
     },
     [navigation],
   );
@@ -61,53 +41,30 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
   return (
     <FlatList
       data={safeData}
-      scrollEnabled={false}
+      horizontal
+      showsHorizontalScrollIndicator={false}
       nestedScrollEnabled
       keyExtractor={(item, index) => String(item?.id ?? index)}
+      contentContainerStyle={[HORIZONTAL_SCROLL_CONTENT, styles.listContent]}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
-      renderItem={({ item }) => {
-        const isLoading = reorderingId === item.id;
-
-        return (
-          <View style={styles.card}>
-            <View style={styles.imageBox}>
-              <Image source={item.image} style={styles.img} />
-            </View>
-
-            <View style={styles.rightSection}>
-              <View>
-                <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">
-                  {item.name}
-                </Text>
-
-                <Text style={styles.sub}>
-                  Last Ordered: {item.lastOrdered ?? '—'}
-                </Text>
-              </View>
-
-              <View style={styles.bottomRow}>
-                <RupeeAmount
-                  value={item.price}
-                  style={styles.price}
-                  decimals={2}
-                />
-{/* 
-                <TouchableOpacity
-                  style={styles.btn}
-                  disabled={isLoading}
-                  onPress={() => handleReorder(item)}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.btnText}>Reorder</Text>
-                  )}
-                </TouchableOpacity> */}
-              </View>
-            </View>
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={[styles.card, { width: cardWidth }]}
+          onPress={() => handlePress(item)}
+          activeOpacity={0.88}
+        >
+          <View style={styles.imageBox}>
+            <Image source={item.image} style={styles.img} />
           </View>
-        );
-      }}
+          <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">
+            {item.name}
+          </Text>
+          <Text style={styles.sub} numberOfLines={1}>
+            {item.lastOrdered ? `Ordered ${item.lastOrdered}` : 'Recent order'}
+          </Text>
+          <RupeeAmount value={item.price} style={styles.price} decimals={0} />
+        </TouchableOpacity>
+      )}
     />
   );
 };
@@ -115,72 +72,51 @@ const RecentProductsList: React.FC<Props> = ({ data = [], navigation }) => {
 export default React.memo(RecentProductsList);
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    padding: 10,
-    borderColor: '#F1F5F9',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  listContent: {
+    paddingVertical: 2,
   },
   separator: {
-    height: 8,
+    width: 8,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E8EEF2',
+    padding: 8,
   },
   imageBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 14,
-    backgroundColor: '#0D614E1A',
-    justifyContent: 'center',
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 10,
+    backgroundColor: '#F3F7F5',
+    overflow: 'hidden',
+    marginBottom: 6,
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
   },
   img: {
-    width: 72,
-    height: 72,
-    borderRadius: 14,
+    width: '100%',
+    height: '100%',
     resizeMode: 'contain',
   },
-  rightSection: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
   name: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#1E293B',
+    lineHeight: 16,
+    minHeight: 32,
   },
   sub: {
-    fontSize: 11,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
     marginTop: 2,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
+    fontSize: 10,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
   },
   price: {
-    fontSize: 16,
+    marginTop: 4,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.primaryColor,
   },
-  btn: {
-    backgroundColor: Colors.primaryColor,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-    minWidth: 88,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  
 });

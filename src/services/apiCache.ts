@@ -5,6 +5,8 @@ type CacheEntry<T> = {
 
 const cache = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
+/** Bumps on force so a stale in-flight response cannot overwrite fresh cache. */
+const generations = new Map<string, number>();
 
 const DEFAULT_TTL = 60_000;
 
@@ -25,9 +27,13 @@ export const setCached = <T>(key: string, data: T): void => {
 export const invalidateCache = (key?: string): void => {
   if (key) {
     cache.delete(key);
+    inflight.delete(key);
+    generations.set(key, (generations.get(key) ?? 0) + 1);
     return;
   }
   cache.clear();
+  inflight.clear();
+  generations.clear();
 };
 
 export const fetchWithCache = async <T>(
@@ -37,29 +43,40 @@ export const fetchWithCache = async <T>(
 ): Promise<T> => {
   const ttl = options?.ttl ?? DEFAULT_TTL;
 
-  if (!options?.force) {
+  if (options?.force) {
+    cache.delete(key);
+    inflight.delete(key);
+    generations.set(key, (generations.get(key) ?? 0) + 1);
+  } else {
     const cached = getCached<T>(key, ttl);
     if (cached !== null) return cached;
+
+    const pending = inflight.get(key);
+    if (pending) {
+      return pending as Promise<T>;
+    }
   }
 
-  // Always share in-flight requests — force only bypasses TTL, not dedupe
-  const pending = inflight.get(key);
-  if (pending) {
-    return pending as Promise<T>;
-  }
+  const gen = generations.get(key) ?? 0;
 
   const request = fetcher()
     .then(data => {
-      // Don't cache empty lists — a first empty parse would hide later valid data
-      const isEmptyArray = Array.isArray(data) && data.length === 0;
-      if (!isEmptyArray && data != null) {
-        setCached(key, data);
+      if ((generations.get(key) ?? 0) === gen) {
+        const isEmptyArray = Array.isArray(data) && data.length === 0;
+        if (isEmptyArray || data == null) {
+          // Empty / null means no data — drop any stale entry so UI clears
+          cache.delete(key);
+        } else {
+          setCached(key, data);
+        }
+        inflight.delete(key);
       }
-      inflight.delete(key);
       return data;
     })
     .catch(err => {
-      inflight.delete(key);
+      if ((generations.get(key) ?? 0) === gen) {
+        inflight.delete(key);
+      }
       throw err;
     });
 

@@ -22,6 +22,7 @@ import { PrakritiProfileSkeleton } from '../../simmerScreen/ShimmerHook';
 import BackIconButton from '../../components/BackIconButton';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { PRAKRITI_IMAGES } from '../../common/DataInterface';
+import { requireAuth } from '../../services/guestAuth';
 
 type DoshaItem = {
   id: number;
@@ -302,6 +303,10 @@ const PrakritiProfile = (props: any) => {
     });
   };
 
+  const handleVikritiAssessment = () => {
+    props.navigation.navigate('AssessmentType', { form: 'medical' });
+  };
+
   const handleHeaderBack = useCallback(() => {
     if (fromAssessment) {
       return;
@@ -319,11 +324,25 @@ const PrakritiProfile = (props: any) => {
     }, [fromAssessment]),
   );
 
-  const handleEditAssessment = () => {
+  const handleEditAssessment = async () => {
+    if (
+      !(await requireAuth(
+        'Complete your profile to start prakriti assessment',
+      ))
+    ) {
+      return;
+    }
     props.navigation.navigate('PatientFAQ', { allowBack: true });
   };
 
-  const handleStartAssessment = () => {
+  const handleStartAssessment = async () => {
+    if (
+      !(await requireAuth(
+        'Complete your profile to start prakriti assessment',
+      ))
+    ) {
+      return;
+    }
     props.navigation.navigate('PatientFAQ');
   };
 
@@ -533,12 +552,10 @@ const PrakritiProfile = (props: any) => {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.85}
-            onPress={() =>
-              props.navigation.navigate('AssessmentType', { form: 'medical' })
-            }
+            onPress={handleGoHome}
           >
-            <TablerIcon name="clipboard-list" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryBtnText}>Vikriti assessment </Text>
+            <TablerIcon name="home" size={16} color={Colors.primaryColor} />
+            <Text style={styles.secondaryBtnText}>Go to Home</Text>
           </TouchableOpacity>
         </View>
 
@@ -599,16 +616,17 @@ const PrakritiProfile = (props: any) => {
             { paddingBottom: Math.max(insets.bottom, 12) },
           ]}
         >
-          <TouchableOpacity activeOpacity={0.9} onPress={handleGoHome}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handleVikritiAssessment}
+          >
             <LinearGradient
               colors={['#0D614E', '#14937A']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.homeBtn}
             >
-              <Text style={styles.homeBtnText}>
-                {fromAssessment ? 'Continue to Home' : 'Go to Home'}
-              </Text>
+              <Text style={styles.homeBtnText}>Vikriti assessment</Text>
               <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
             </LinearGradient>
           </TouchableOpacity>
