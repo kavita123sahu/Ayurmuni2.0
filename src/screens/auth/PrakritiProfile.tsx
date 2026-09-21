@@ -538,7 +538,7 @@ const PrakritiProfile = (props: any) => {
             }
           >
             <TablerIcon name="clipboard-list" size={16} color={Colors.primaryColor} />
-            <Text style={styles.secondaryBtnText}>Body type</Text>
+            <Text style={styles.secondaryBtnText}>Vikriti assessment </Text>
           </TouchableOpacity>
         </View>
 

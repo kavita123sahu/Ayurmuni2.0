@@ -14,6 +14,7 @@ import {
     ScrollView,
     StatusBar,
     RefreshControl,
+    Image,
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,14 +26,19 @@ import { Fonts } from '../../common/Fonts';
 import { useAllCartData } from '../../hooks/Cart';
 import { useAppDispatch } from '../../store/hooks';
 import type { RootState } from '../../store/store';
-import { queueCartLineSync } from '../../store/slices/cartSlice';
-import { getProductData, SectionType } from '../../common/DataInterface';
+import {
+    addToCart,
+    fetchCart,
+    queueCartLineSync,
+} from '../../store/slices/cartSlice';
+import { getProductData, resolveCartItemImage, SectionType } from '../../common/DataInterface';
 import MyProductCard from '../../components/MyProductCard';
 import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import { navigateToCheckout } from '../../navigation/productNavigation';
+import { showSuccessToast } from '../../config/Key';
 import SegmentTabs from '../../components/SegmentTabs';
 import { getScreenBottomPadding } from '../../constants/layout';
 import {
@@ -43,7 +49,26 @@ import {
     resolveCartItemSellingPrice,
 } from '../../utils/cartPriceUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
+import { getOrderFeeQuote } from '../../services/OrderService';
+import {
+    calculateOrderFees,
+    feeRateLabel,
+    parseFeeQuoteConfig,
+    type FeeQuoteConfig,
+} from '../../utils/feeQuote';
 import CommonModal from '../../components/LogoutModal';
+import { isCartLineOutOfStock } from '../../services/CartService';
+import {
+    getAddQtyBlockMessage,
+    getCartInventoryQty,
+} from '../../utils/productStockUtils';
+import { resolveImageUri } from '../../utils/imageUtils';
+import {
+    formatPrescriptionDate,
+    getStatusLabel,
+    isPrescriptionApproved,
+    isPrescriptionRejected,
+} from '../../services/PrescriptionRequestService';
 
 /** Skip incomplete API rows (no variant / name) so empty shells never render. */
 const isRenderableCartProduct = (product: {
@@ -55,6 +80,57 @@ const isRenderableCartProduct = (product: {
     const name = String(product?.name ?? '').trim();
     const qty = Number(product?.quantity) || 0;
     return Boolean(variantId && name && qty > 0);
+};
+
+const rxStatusTone = (item: any) => {
+    const status = String(item?.status || '').toLowerCase();
+    if (isPrescriptionApproved(item)) {
+        return { label: 'Approved', color: '#166534', bg: '#DCFCE7' };
+    }
+    if (isPrescriptionRejected(item)) {
+        return { label: 'Rejected', color: '#991B1B', bg: '#FEE2E2' };
+    }
+    if (status === 'sent') {
+        return { label: 'Sent', color: '#0D614E', bg: '#E8F6F2' };
+    }
+    return {
+        label: getStatusLabel(item) || 'Waiting for approval',
+        color: '#92400E',
+        bg: '#FEF3C7',
+    };
+};
+
+const groupRxLines = (lines: any[]) => {
+    const groups = new Map<string, { meta: any; items: any[] }>();
+    lines.forEach((item: any) => {
+        const key = String(item?.rx_group_id || item?.id);
+        const existing = groups.get(key);
+        if (existing) {
+            existing.items.push(item);
+            return;
+        }
+        groups.set(key, { meta: item?.rx_group || {}, items: [item] });
+    });
+    return [...groups.values()];
+};
+
+const previewItemsFor = (group: { meta: any; items: any[] }) => {
+    const raw = Array.isArray(group.meta?.items) ? group.meta.items : [];
+    return raw.length ? raw : group.items;
+};
+
+const markCartProductStock = (product: any, sourceItem: any) => {
+    const outOfStock =
+        isCartLineOutOfStock(sourceItem) ||
+        isCartLineOutOfStock(product) ||
+        (getCartInventoryQty(sourceItem) != null &&
+            Number(getCartInventoryQty(sourceItem)) <= 0);
+    return {
+        ...product,
+        _isOutOfStock: outOfStock,
+        variant: product?.variant ?? sourceItem?.variant,
+        available_quantity: getCartInventoryQty(sourceItem),
+    };
 };
 
 const MyCart = ({ navigation }: any) => {
@@ -71,8 +147,12 @@ const MyCart = ({ navigation }: any) => {
         cartItemId: string;
         oldQty: number;
         nextQty: number;
+        doctorQty: number;
+        productName: string;
     } | null>(null);
     const qtyConfirmBusyRef = useRef(false);
+    /** Baseline doctor-prescribed qty per prescribed cart line id */
+    const doctorQtyByLineRef = useRef<Record<string, number>>({});
 
     const onRefresh = useCallback(async () => {
 
@@ -96,12 +176,14 @@ const MyCart = ({ navigation }: any) => {
     const knownItemIdsRef = useRef<Set<string>>(new Set());
     const didSetInitialTabRef = useRef(false);
     const [focusTick, setFocusTick] = useState(0);
+    const [expandedRxIds, setExpandedRxIds] = useState<Record<string, boolean>>({});
 
     const sections = useMemo<SectionType[]>(() => {
         const next: SectionType[] = [];
 
-        // Variant / line ids already shown under Prescribed — never duplicate in My Cart
-        const prescribedVariantIds = new Set<string>();
+        // Only skip a My Cart line if it is the exact same cart line already
+        // listed under a prescription. Same product can exist in both with
+        // different ids and quantities.
         const prescribedLineIds = new Set<string>();
         (CartData?.prescription_cart?.items ?? []).forEach((prescription: any) => {
             const lineItems = Array.isArray(prescription?.items)
@@ -110,32 +192,24 @@ const MyCart = ({ navigation }: any) => {
             lineItems.forEach((item: any) => {
                 const lineId = String(item?.id ?? '').trim();
                 if (lineId) prescribedLineIds.add(lineId);
-                const variantId = String(
-                    item?.variant_id ??
-                        item?.variant?.variant_id ??
-                        item?.variant?.id ??
-                        '',
-                ).trim();
-                if (variantId) prescribedVariantIds.add(variantId);
             });
         });
 
         if (CartData?.my_cart?.items?.length) {
             const cartItems = CartData.my_cart.items
-                .map((item: any) => ({
-                    ...getProductData(item),
-                    source: 'cart' as const,
-                }))
+                .map((item: any) =>
+                    markCartProductStock(
+                        {
+                            ...getProductData(item),
+                            source: 'cart' as const,
+                        },
+                        item,
+                    ),
+                )
                 .filter(isRenderableCartProduct)
                 .filter(item => {
                     const id = String(item.id ?? '').trim();
-                    const variantId = String(item.variant_id ?? '').trim();
-                    // Qty bumps on prescribed lines must not surface a second card here
-                    if (id && prescribedLineIds.has(id)) return false;
-                    if (variantId && prescribedVariantIds.has(variantId)) {
-                        return false;
-                    }
-                    return true;
+                    return !(id && prescribedLineIds.has(id));
                 });
 
             if (cartItems.length) {
@@ -156,6 +230,8 @@ const MyCart = ({ navigation }: any) => {
             const lineItems = Array.isArray(prescription?.items)
                 ? prescription.items
                 : [];
+            const isUpload =
+                String(prescription?.source || '').toLowerCase() === 'upload';
             return lineItems
                 .filter((item: any) => item?.id)
                 .map((item: any) => {
@@ -164,15 +240,36 @@ const MyCart = ({ navigation }: any) => {
                         item,
                         prescription?.doctor_name,
                     );
-                    return {
-                        ...product,
-                        id: lineId,
-                        cart_item_id: lineId,
-                        source: 'prescribed' as const,
-                        prescription_id: prescription?.prescription_id,
-                        prescription_cart_id: prescription?.id,
-                        extra_qty: 0,
-                    };
+                    const qtyNow = Math.max(1, Number(item?.quantity) || 1);
+                    const prescribedBaseline = Math.max(
+                        1,
+                        Number(
+                            item?.prescribed_quantity ??
+                                item?.doctor_quantity ??
+                                item?.prescription_quantity ??
+                                doctorQtyByLineRef.current[lineId] ??
+                                qtyNow,
+                        ) || qtyNow,
+                    );
+                    if (doctorQtyByLineRef.current[lineId] == null) {
+                        doctorQtyByLineRef.current[lineId] = prescribedBaseline;
+                    }
+                    return markCartProductStock(
+                        {
+                            ...product,
+                            id: lineId,
+                            cart_item_id: lineId,
+                            source: 'prescribed' as const,
+                            prescription_source: isUpload ? 'upload' : 'doctor',
+                            rx_group_id: String(prescription?.id || lineId),
+                            rx_group: prescription,
+                            prescription_id: prescription?.prescription_id,
+                            prescription_cart_id: prescription?.id,
+                            extra_qty: 0,
+                            doctor_qty: doctorQtyByLineRef.current[lineId],
+                        },
+                        item,
+                    );
                 })
                 .filter(isRenderableCartProduct);
         });
@@ -223,34 +320,51 @@ const MyCart = ({ navigation }: any) => {
 
         if (selectAllPendingRef.current) {
             selectAllPendingRef.current = false;
+            // Auto-select only in-stock items
+            const selectableIds = sections.flatMap(section =>
+                section.items
+                    .filter((it: any) => !it?._isOutOfStock)
+                    .map((it: any) => String(it.id)),
+            );
             knownItemIdsRef.current = new Set(allItemIds);
-            setSelectedItems(allItemIds);
+            setSelectedItems(selectableIds);
             return;
         }
 
-        // Newly added lines while staying on cart → auto-select them
-        const newIds = allItemIds.filter(
-            id => !knownItemIdsRef.current.has(id),
+        // Newly added lines while staying on cart → auto-select them (only if in-stock)
+        const selectableAllIds = sections.flatMap(section =>
+            section.items
+                .filter((it: any) => !it?._isOutOfStock)
+                .map((it: any) => String(it.id)),
         );
+        const newIds = selectableAllIds.filter(id => !knownItemIdsRef.current.has(id));
         knownItemIdsRef.current = new Set(allItemIds);
 
         if (newIds.length) {
-            setSelectedItems(prev => [...new Set([...prev, ...newIds])]);
+            setSelectedItems(prev =>
+                [...new Set([...prev, ...newIds])].filter(id =>
+                    selectableAllIds.includes(id),
+                ),
+            );
             return;
         }
 
-        // Drop selections for removed lines
+        // Drop selections for removed / out-of-stock lines
         setSelectedItems(prev =>
-            prev.filter(id => knownItemIdsRef.current.has(id)),
+            prev.filter(id => selectableAllIds.includes(id)),
         );
-    }, [allItemIds, hasCartItems, focusTick]);
+    }, [allItemIds, hasCartItems, focusTick, sections]);
 
     const toggleSectionSelection =
         useCallback(
             (section: SectionType) => {
-                const sectionIds = section.items.map(item =>
-                    String(item.id),
-                );
+                const sectionIds = section.items
+                    .filter((item: any) => !item?._isOutOfStock)
+                    .map(item => String(item.id));
+
+                if (!sectionIds.length) {
+                    return;
+                }
 
                 const isSelected = sectionIds.every(id =>
                     selectedItems.includes(id),
@@ -272,7 +386,8 @@ const MyCart = ({ navigation }: any) => {
 
     /* ========================================================= */
 
-    const toggleItemSelection = useCallback((id: string) => {
+    const toggleItemSelection = useCallback((id: string, outOfStock?: boolean) => {
+        if (outOfStock) return;
         const itemId = String(id);
         setSelectedItems(prev => {
             if (prev.includes(itemId)) {
@@ -288,24 +403,7 @@ const MyCart = ({ navigation }: any) => {
             const cartData = store.getState().cart.cartData;
             const id = String(itemId);
 
-            const myCartItem = (cartData?.my_cart?.items ?? []).find(
-                (item: any) => String(item?.id ?? item?.cart_item_id) === id,
-            );
-            if (myCartItem) {
-                return {
-                    variant_id: String(
-                        myCartItem.variant_id ??
-                        myCartItem.variant?.variant_id ??
-                        myCartItem.variant?.id ??
-                        '',
-                    ),
-                    quantity: Number(myCartItem.quantity) || 0,
-                    source: 'cart' as const,
-                    cart_item_id: id,
-                    prescription_required: isPrescriptionRequired(myCartItem),
-                };
-            }
-
+            // Prefer prescribed match first so qty bumps never hit my_cart as qty=0
             for (const prescription of cartData?.prescription_cart?.items ?? []) {
                 const prescribedItem = (prescription?.items ?? []).find(
                     (item: any) => String(item?.id) === id,
@@ -325,6 +423,24 @@ const MyCart = ({ navigation }: any) => {
                             isPrescriptionRequired(prescribedItem),
                     };
                 }
+            }
+
+            const myCartItem = (cartData?.my_cart?.items ?? []).find(
+                (item: any) => String(item?.id ?? item?.cart_item_id) === id,
+            );
+            if (myCartItem) {
+                return {
+                    variant_id: String(
+                        myCartItem.variant_id ??
+                        myCartItem.variant?.variant_id ??
+                        myCartItem.variant?.id ??
+                        '',
+                    ),
+                    quantity: Number(myCartItem.quantity) || 0,
+                    source: 'cart' as const,
+                    cart_item_id: id,
+                    prescription_required: isPrescriptionRequired(myCartItem),
+                };
             }
 
             return null;
@@ -361,16 +477,41 @@ const MyCart = ({ navigation }: any) => {
                 const oldQty = Math.max(0, Number(line.quantity) || 0);
 
                 if (action === 'plus') {
-                    // Ask before bumping — prevents accidental / double adds
+                    const source =
+                        sections
+                            .flatMap(s => s.items)
+                            .find(it => String(it.id) === String(itemId)) ??
+                        line;
+                    const stockMsg = getAddQtyBlockMessage(
+                        source,
+                        oldQty + 1,
+                        { cartLine: true },
+                    );
+                    if (stockMsg) {
+                        showSuccessToast(stockMsg, 'error');
+                        return;
+                    }
+                    // Ask before bumping — doctor prescribed a fixed qty
                     if (qtyConfirmBusyRef.current || qtyConfirm) {
                         return;
                     }
+                    const doctorQty =
+                        doctorQtyByLineRef.current[String(itemId)] ??
+                        oldQty;
+                    const productName = String(
+                        sections
+                            .flatMap(s => s.items)
+                            .find(it => String(it.id) === String(itemId))
+                            ?.name ?? 'this medicine',
+                    );
                     setQtyConfirm({
                         itemId: String(itemId),
                         variantId: line.variant_id,
                         cartItemId: String(line.cart_item_id ?? itemId),
                         oldQty,
                         nextQty: oldQty + 1,
+                        doctorQty,
+                        productName,
                     });
                     return;
                 }
@@ -379,16 +520,38 @@ const MyCart = ({ navigation }: any) => {
                     if (oldQty <= 1) {
                         return;
                     }
-                    dispatch(
-                        queueCartLineSync({
-                            variantId: line.variant_id,
-                            quantity: oldQty - 1,
-                            source: 'prescribed',
-                            cartItemId: line.cart_item_id,
-                            currentQuantity: oldQty,
-                            prescriptionRequired: false,
-                        }),
-                    );
+                    // Direct cart API for prescribed qty change (variant + cart_item_id)
+                    void (async () => {
+                        try {
+                            const result: any = await dispatch(
+                                addToCart({
+                                    variantId: String(line.variant_id),
+                                    quantity: oldQty - 1,
+                                    source: 'prescribed',
+                                    cartItemId: String(
+                                        line.cart_item_id ?? itemId,
+                                    ),
+                                    skipOptimistic: false,
+                                    currentQuantity: oldQty,
+                                    prescriptionRequired: false,
+                                    suppressAddedToast: true,
+                                }),
+                            ).unwrap();
+                            await dispatch(fetchCart({ force: true, silent: true }));
+                            showSuccessToast(
+                                result?.message || 'Cart quantity updated',
+                                'success',
+                            );
+                        } catch (error: any) {
+                            showSuccessToast(
+                                typeof error === 'string'
+                                    ? error
+                                    : error?.message || 'Unable to update quantity',
+                                'error',
+                            );
+                            await dispatch(fetchCart({ force: true, silent: true }));
+                        }
+                    })();
                 }
                 return;
             }
@@ -409,6 +572,20 @@ const MyCart = ({ navigation }: any) => {
                             ? oldQty + 1
                             : oldQty - 1;
 
+            if (action === 'plus') {
+                const source =
+                    sections
+                        .flatMap(s => s.items)
+                        .find(it => String(it.id) === String(itemId)) ?? line;
+                const stockMsg = getAddQtyBlockMessage(source, newQty, {
+                    cartLine: true,
+                });
+                if (stockMsg) {
+                    showSuccessToast(stockMsg, 'error');
+                    return;
+                }
+            }
+
             dispatch(
                 queueCartLineSync({
                     variantId: line.variant_id,
@@ -417,34 +594,74 @@ const MyCart = ({ navigation }: any) => {
                     cartItemId: String(line.cart_item_id ?? itemId),
                     currentQuantity: oldQty,
                     prescriptionRequired: rxRequired,
+                    suppressAddedToast: true,
                 }),
             );
         },
-        [findLineInCartData, dispatch, qtyConfirm],
+        [findLineInCartData, dispatch, qtyConfirm, sections],
     );
 
-    const confirmPrescribedQtyIncrease = useCallback(() => {
+    const confirmPrescribedQtyIncrease = useCallback(async () => {
         if (!qtyConfirm || qtyConfirmBusyRef.current) return;
         qtyConfirmBusyRef.current = true;
 
-        const { variantId, cartItemId, oldQty, nextQty } = qtyConfirm;
-        // Absolute SET to oldQty + 1 only — never oldQty + oldQty
-        dispatch(
-            queueCartLineSync({
-                variantId,
-                quantity: nextQty,
-                source: 'prescribed',
-                cartItemId,
-                currentQuantity: oldQty,
-                prescriptionRequired: false,
-            }),
-        );
-
+        const { itemId, variantId, cartItemId, oldQty, nextQty } = qtyConfirm;
         setQtyConfirm(null);
-        setTimeout(() => {
-            qtyConfirmBusyRef.current = false;
-        }, 500);
-    }, [qtyConfirm, dispatch]);
+
+        try {
+            // Re-resolve from live cart so we never send qty=0 / wrong variant
+            const live = findLineInCartData(itemId);
+            const safeVariantId = String(
+                live?.variant_id || variantId || '',
+            ).trim();
+            const safeCartItemId = String(
+                live?.cart_item_id || cartItemId || itemId || '',
+            ).trim();
+            const safeNextQty = Math.max(
+                1,
+                Math.floor(Number(live?.quantity ?? oldQty) + 1) || nextQty,
+            );
+
+            if (!safeVariantId || !safeCartItemId) {
+                showSuccessToast(
+                    'Unable to update this item. Please refresh cart.',
+                    'error',
+                );
+                return;
+            }
+
+            // Hit add/update cart API immediately (variant_id + quantity + cart_item_id)
+            const result: any = await dispatch(
+                addToCart({
+                    variantId: safeVariantId,
+                    quantity: safeNextQty,
+                    source: 'prescribed',
+                    cartItemId: safeCartItemId,
+                    skipOptimistic: false,
+                    currentQuantity: Number(live?.quantity ?? oldQty) || oldQty,
+                    prescriptionRequired: false,
+                    suppressAddedToast: true,
+                }),
+            ).unwrap();
+
+            await dispatch(fetchCart({ force: true, silent: true }));
+            showSuccessToast(
+                result?.message || 'Cart quantity updated',
+                'success',
+            );
+        } catch (error: any) {
+            const msg =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || 'Unable to update quantity';
+            showSuccessToast(msg, 'error');
+            await dispatch(fetchCart({ force: true, silent: true }));
+        } finally {
+            setTimeout(() => {
+                qtyConfirmBusyRef.current = false;
+            }, 500);
+        }
+    }, [qtyConfirm, dispatch, findLineInCartData]);
 
     const cancelPrescribedQtyIncrease = useCallback(() => {
         setQtyConfirm(null);
@@ -460,11 +677,18 @@ const MyCart = ({ navigation }: any) => {
                 )
                 .filter(item =>
                     selectedItems.includes(String(item.id)),
-                );
+                )
+                .filter((item: any) => !item?._isOutOfStock);
         }, [sections, selectedItems]);
 
-
-
+    const outOfStockItems = useMemo(
+        () =>
+            sections.flatMap(section =>
+                section.items.filter((item: any) => item?._isOutOfStock),
+            ),
+        [sections],
+    );
+    const outOfStockCount = outOfStockItems.length;
 
     const totalItems =
         selectedProducts.length;
@@ -477,8 +701,6 @@ const MyCart = ({ navigation }: any) => {
             ),
         [selectedProducts],
     );
-
-    const deliveryFee = 0;
 
     const subtotal = useMemo(() => {
         const selected = selectedProducts as any[];
@@ -495,9 +717,68 @@ const MyCart = ({ navigation }: any) => {
         );
     }, [selectedProducts]);
 
-    const total = subtotal + deliveryFee;
+    const cartItemIds = useMemo(
+        () =>
+            (selectedProducts as any[])
+                .map(item =>
+                    String(item.cart_item_id || item.id || '').trim(),
+                )
+                .filter(Boolean),
+        [selectedProducts],
+    );
 
-    const totalSubtotal = subtotal;
+    const [feeConfig, setFeeConfig] = useState<FeeQuoteConfig | null>(null);
+    const [feeQuoteLoading, setFeeQuoteLoading] = useState(false);
+
+    useEffect(() => {
+        if (!cartItemIds.length) {
+            setFeeConfig(null);
+            setFeeQuoteLoading(false);
+            return;
+        }
+        let active = true;
+        setFeeQuoteLoading(true);
+        (async () => {
+            try {
+                const response = await getOrderFeeQuote({
+                    cart_item_ids: cartItemIds,
+                });
+                if (!active) return;
+                const quoteData = response?.data ?? response;
+                const hasRates = Boolean(
+                    quoteData?.configurations?.gst ||
+                        quoteData?.configurations?.platform_fee ||
+                        quoteData?.configurations?.delivery ||
+                        (Array.isArray(quoteData?.items) && quoteData.items.length),
+                );
+                setFeeConfig(
+                    hasRates
+                        ? parseFeeQuoteConfig(quoteData, subtotal, {
+                              ignoreConsultationFee: true,
+                          })
+                        : null,
+                );
+            } catch {
+                if (active) setFeeConfig(null);
+            } finally {
+                if (active) setFeeQuoteLoading(false);
+            }
+        })();
+        return () => {
+            active = false;
+        };
+    }, [cartItemIds, subtotal]);
+
+    const feeBreakdown = useMemo(
+        () =>
+            calculateOrderFees({
+                quote: feeConfig,
+                fallbackSubtotal: subtotal,
+            }),
+        [feeConfig, subtotal],
+    );
+
+    const total = feeConfig ? feeBreakdown.total : subtotal;
 
     const cartSection = sections.find(item => item.type === 'cart');
     const prescribedSection = sections.find(item => item.type === 'prescribed');
@@ -526,6 +807,36 @@ const MyCart = ({ navigation }: any) => {
         item =>
             item.type ===
             (activeTab === 'cart' ? 'cart' : 'prescribed'),
+    );
+
+    const visibleSectionItems = useMemo(
+        () =>
+            (currentSection?.items ?? []).filter(
+                (item: any) => !item?._isOutOfStock,
+            ),
+        [currentSection],
+    );
+
+    const prescribedLines = prescribedSection?.items ?? [];
+
+    const doctorRxGroups = useMemo(
+        () =>
+            groupRxLines(
+                prescribedLines.filter(
+                    (item: any) => item?.prescription_source === 'doctor',
+                ),
+            ),
+        [prescribedLines],
+    );
+
+    const uploadRxGroups = useMemo(
+        () =>
+            groupRxLines(
+                prescribedLines.filter(
+                    (item: any) => item?.prescription_source === 'upload',
+                ),
+            ),
+        [prescribedLines],
     );
 
     useEffect(() => {
@@ -558,7 +869,44 @@ const MyCart = ({ navigation }: any) => {
             return;
         }
 
-        navigateToCheckout(navigation, selectedProducts, totalSubtotal);
+        // Ensure only in-stock items are sent to checkout
+        const checkoutProducts = selectedProducts.filter(item => !item?._isOutOfStock);
+        if (checkoutProducts.length === 0) {
+            showSuccessToast(
+                'Out of stock. Remove it and continue with in-stock items.',
+                'error',
+            );
+            return;
+        }
+
+        const overStock = checkoutProducts.find((item: any) => {
+            const msg = getAddQtyBlockMessage(item, Number(item.quantity) || 0, {
+                cartLine: true,
+            });
+            return Boolean(msg);
+        });
+        if (overStock) {
+            const msg = getAddQtyBlockMessage(
+                overStock,
+                Number(overStock.quantity) || 0,
+                { cartLine: true },
+            );
+            showSuccessToast(
+                msg || 'Some items are out of stock. Please update quantities.',
+                'error',
+            );
+            return;
+        }
+
+        const checkoutSubtotal = Math.round(
+            checkoutProducts.reduce((sum: number, item: any) => {
+                const unitPrice = resolveCartItemSellingPrice(item) || Number(item.price) || 0;
+                const qty = Number(item.quantity) || 0;
+                return sum + unitPrice * qty;
+            }, 0),
+        );
+
+        navigateToCheckout(navigation, checkoutProducts, checkoutSubtotal);
     };
 
 
@@ -576,7 +924,7 @@ const MyCart = ({ navigation }: any) => {
         ? getScreenBottomPadding(insets)
         : Math.max(insets.bottom, 12);
 
-    const sectionIds = currentSection?.items.map(item => String(item.id)) ?? [];
+    const sectionIds = visibleSectionItems.map(item => String(item.id));
     const isSectionSelected =
         sectionIds.length > 0 &&
         sectionIds.every(id => selectedItems.includes(id));
@@ -670,6 +1018,108 @@ const MyCart = ({ navigation }: any) => {
                             />
                         ) : null}
 
+                        {outOfStockCount > 0 ? (
+                            <View style={styles.oosPanel}>
+                                <View style={styles.oosPanelHeader}>
+                                    <View style={styles.oosPanelIcon}>
+                                        <TablerIcon
+                                            name="alert-circle"
+                                            size={18}
+                                            color="#FFFFFF"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.oosPanelTitle}>
+                                            {outOfStockCount === 1
+                                                ? '1 product is out of stock'
+                                                : `${outOfStockCount} products are out of stock`}
+                                        </Text>
+                                        <Text style={styles.oosPanelSub}>
+                                            Increase is disabled. These items are excluded from payment.
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                {outOfStockItems.map((item: any, idx: number) => {
+                                    const thumb =
+                                        resolveImageUri(item?.image) ||
+                                        resolveCartItemImage(item);
+                                    const units = Number(item?.quantity) || 1;
+                                    const size = String(item?.size || '').trim();
+                                    const meta = [
+                                        `${units} unit${units === 1 ? '' : 's'}`,
+                                        size || null,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' • ');
+
+                                    return (
+                                        <View
+                                            key={String(
+                                                item.id ?? item.variant_id ?? idx,
+                                            )}
+                                            style={styles.oosItemRow}
+                                        >
+                                            {thumb ? (
+                                                <Image
+                                                    source={{ uri: thumb }}
+                                                    style={styles.oosThumb}
+                                                />
+                                            ) : (
+                                                <View
+                                                    style={[
+                                                        styles.oosThumb,
+                                                        styles.oosThumbFallback,
+                                                    ]}
+                                                >
+                                                    <TablerIcon
+                                                        name="package"
+                                                        size={18}
+                                                        color="#CBD5E1"
+                                                    />
+                                                </View>
+                                            )}
+                                            <View style={styles.oosItemCopy}>
+                                                <Text
+                                                    style={styles.oosItemName}
+                                                    numberOfLines={2}
+                                                >
+                                                    {item.name}
+                                                    {meta ? `, ${meta}` : ''}
+                                                </Text>
+                                                <Text style={styles.oosItemHint}>
+                                                    Out of stock
+                                                </Text>
+                                            </View>
+                                            {item?.source !== 'prescribed' ? (
+                                                <TouchableOpacity
+                                                    style={styles.oosRemoveBtn}
+                                                    onPress={() =>
+                                                        updateQuantity(
+                                                            String(item.id),
+                                                            'remove',
+                                                        )
+                                                    }
+                                                    hitSlop={{
+                                                        top: 8,
+                                                        bottom: 8,
+                                                        left: 8,
+                                                        right: 8,
+                                                    }}
+                                                >
+                                                    <TablerIcon
+                                                        name="trash"
+                                                        size={14}
+                                                        color="#B91C1C"
+                                                    />
+                                                </TouchableOpacity>
+                                            ) : null}
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        ) : null}
+
                         <View style={styles.trustStrip}>
                             <View style={styles.trustItem}>
                                 <View
@@ -722,15 +1172,16 @@ const MyCart = ({ navigation }: any) => {
                             </View>
                         </View>
 
-                        {currentSection?.items.length ? (
+                        {visibleSectionItems.length ? (
                             <>
                                 <View style={styles.selectAllRow}>
                                     <Text style={styles.selectAllText}>
-                                        {currentSection.items.length} items ·{' '}
+                                        {visibleSectionItems.length} items ·{' '}
                                         {totalItems} selected
                                     </Text>
                                     <TouchableOpacity
                                         onPress={() =>
+                                            currentSection &&
                                             toggleSectionSelection(currentSection)
                                         }
                                         style={[
@@ -750,7 +1201,10 @@ const MyCart = ({ navigation }: any) => {
                                 </View>
 
                                 <View style={styles.productsWrap}>
-                                    {currentSection.items.map((item, idx) => (
+                                    {(currentSection?.type === 'prescribed'
+                                        ? []
+                                        : visibleSectionItems
+                                    ).map((item, idx) => (
                                         <MyProductCard
                                             key={String(
                                                 item.id ??
@@ -759,19 +1213,495 @@ const MyCart = ({ navigation }: any) => {
                                             )}
                                             item={item}
                                             navigation={navigation}
-                                            type={currentSection.type}
+                                            type={
+                                                currentSection?.type ?? 'cart'
+                                            }
                                             isSelected={selectedItems.includes(
                                                 String(item.id),
                                             )}
-                                            toggleItemSelection={
-                                                toggleItemSelection
+                                            toggleItemSelection={id =>
+                                                toggleItemSelection(
+                                                    id,
+                                                    Boolean(item?._isOutOfStock),
+                                                )
                                             }
                                             updateQuantity={updateQuantity}
                                         />
                                     ))}
+                                    {currentSection?.type === 'prescribed'
+                                        ? doctorRxGroups.map(group => {
+                                              const meta = group.meta || {};
+                                              const groupKey = String(
+                                                  meta.id || group.items[0]?.rx_group_id,
+                                              );
+                                              const open = expandedRxIds[groupKey] !== false;
+                                              const tone = rxStatusTone(meta);
+                                              const groupIds = group.items
+                                                  .filter((line: any) => !line?._isOutOfStock)
+                                                  .map((line: any) => String(line.id));
+                                              const groupSelected =
+                                                  groupIds.length > 0 &&
+                                                  groupIds.every(id => selectedItems.includes(id));
+                                              const itemCount =
+                                                  Number(meta.items_count) || group.items.length;
+                                              const subtotal =
+                                                  meta.subtotal == null || meta.subtotal === ''
+                                                      ? null
+                                                      : Number(meta.subtotal);
+                                              const symptom = String(
+                                                  meta.symptom_description || '',
+                                              ).trim();
+                                              return (
+                                                  <View key={groupKey} style={styles.doctorCard}>
+                                                      <View style={styles.uploadTop}>
+                                                          <TouchableOpacity
+                                                              onPress={() => {
+                                                                  if (groupSelected) {
+                                                                      setSelectedItems(prev =>
+                                                                          prev.filter(id => !groupIds.includes(id)),
+                                                                      );
+                                                                      return;
+                                                                  }
+                                                                  setSelectedItems(prev => [
+                                                                      ...new Set([...prev, ...groupIds]),
+                                                                  ]);
+                                                              }}
+                                                              style={[
+                                                                  styles.checkbox,
+                                                                  groupSelected && styles.checkboxActive,
+                                                              ]}
+                                                          >
+                                                              {groupSelected ? (
+                                                                  <TablerIcon name="check" size={14} color="#FFF" />
+                                                              ) : null}
+                                                          </TouchableOpacity>
+                                                          <View style={{ flex: 1 }}>
+                                                              <Text style={styles.doctorKicker}>Doctor prescription</Text>
+                                                              <Text style={styles.uploadTitle} numberOfLines={1}>
+                                                                  {meta.doctor_name || 'Doctor'}
+                                                              </Text>
+                                                              <Text style={styles.uploadMeta} numberOfLines={1}>
+                                                                  {[
+                                                                      meta.patient_name,
+                                                                      formatPrescriptionDate(meta.created_at) || null,
+                                                                      itemCount
+                                                                          ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
+                                                                          : null,
+                                                                      subtotal != null && Number.isFinite(subtotal)
+                                                                          ? formatRupee(subtotal, { decimals: 2 })
+                                                                          : null,
+                                                                  ]
+                                                                      .filter(Boolean)
+                                                                      .join(' · ')}
+                                                              </Text>
+                                                          </View>
+                                                          <View style={[styles.uploadStatus, { backgroundColor: tone.bg }]}>
+                                                              <Text style={[styles.uploadStatusText, { color: tone.color }]}>
+                                                                  {tone.label}
+                                                              </Text>
+                                                          </View>
+                                                      </View>
+                                                      {symptom ? (
+                                                          <Text style={styles.doctorSymptom} numberOfLines={1}>
+                                                              {symptom}
+                                                          </Text>
+                                                      ) : null}
+                                                      {open ? (
+                                                          <View style={styles.uploadItemList}>
+                                                              {group.items.map((item: any, idx: number) => {
+                                                                  const lineId = String(item.id);
+                                                                  const outOfStock = Boolean(item?._isOutOfStock);
+                                                                  const checked =
+                                                                      !outOfStock &&
+                                                                      selectedItems.includes(lineId);
+                                                                  const thumb =
+                                                                      resolveImageUri(item?.image) ||
+                                                                      resolveCartItemImage(item);
+                                                                  return (
+                                                                      <View key={lineId || idx} style={styles.uploadItemRow}>
+                                                                          <TouchableOpacity
+                                                                              disabled={outOfStock}
+                                                                              onPress={() =>
+                                                                                  toggleItemSelection(lineId, outOfStock)
+                                                                              }
+                                                                              style={[
+                                                                                  styles.lineCheck,
+                                                                                  checked && styles.checkboxActive,
+                                                                                  outOfStock && styles.lineCheckDisabled,
+                                                                              ]}
+                                                                          >
+                                                                              {checked ? (
+                                                                                  <TablerIcon name="check" size={12} color="#FFF" />
+                                                                              ) : null}
+                                                                          </TouchableOpacity>
+                                                                          {thumb ? (
+                                                                              <Image source={{ uri: thumb }} style={styles.uploadThumb} />
+                                                                          ) : (
+                                                                              <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                  <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                              </View>
+                                                                          )}
+                                                                          <View style={{ flex: 1 }}>
+                                                                              <Text style={styles.uploadItemName} numberOfLines={1}>
+                                                                                  {item.name}
+                                                                              </Text>
+                                                                              <Text style={styles.uploadItemMeta}>
+                                                                                  {outOfStock
+                                                                                      ? 'Out of stock'
+                                                                                      : `×${item.quantity || 1}`}
+                                                                              </Text>
+                                                                          </View>
+                                                                      </View>
+                                                                  );
+                                                              })}
+                                                          </View>
+                                                      ) : (
+                                                          <View style={styles.uploadThumbRow}>
+                                                              {group.items.slice(0, 5).map((item: any, idx: number) => {
+                                                                  const lineId = String(item.id);
+                                                                  const outOfStock = Boolean(item?._isOutOfStock);
+                                                                  const checked =
+                                                                      !outOfStock &&
+                                                                      selectedItems.includes(lineId);
+                                                                  const thumb =
+                                                                      resolveImageUri(item?.image) ||
+                                                                      resolveCartItemImage(item);
+                                                                  return (
+                                                                      <TouchableOpacity
+                                                                          key={lineId || idx}
+                                                                          disabled={outOfStock}
+                                                                          onPress={() =>
+                                                                              toggleItemSelection(lineId, outOfStock)
+                                                                          }
+                                                                          style={styles.uploadThumbWrap}
+                                                                      >
+                                                                          {thumb ? (
+                                                                              <Image source={{ uri: thumb }} style={styles.uploadThumb} />
+                                                                          ) : (
+                                                                              <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                  <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                              </View>
+                                                                          )}
+                                                                          <View
+                                                                              style={[
+                                                                                  styles.thumbCheck,
+                                                                                  checked && styles.checkboxActive,
+                                                                                  outOfStock && styles.lineCheckDisabled,
+                                                                              ]}
+                                                                          >
+                                                                              {checked ? (
+                                                                                  <TablerIcon name="check" size={9} color="#FFF" />
+                                                                              ) : null}
+                                                                          </View>
+                                                                      </TouchableOpacity>
+                                                                  );
+                                                              })}
+                                                          </View>
+                                                      )}
+                                                      <View style={styles.uploadActions}>
+                                                          <TouchableOpacity
+                                                              style={styles.uploadCollapse}
+                                                              onPress={() =>
+                                                                  setExpandedRxIds(prev => ({
+                                                                      ...prev,
+                                                                      [groupKey]: prev[groupKey] === false,
+                                                                  }))
+                                                              }
+                                                          >
+                                                              <Text style={styles.uploadCollapseText}>
+                                                                  {open ? 'Hide items' : 'Items'}
+                                                              </Text>
+                                                              <TablerIcon
+                                                                  name={open ? 'chevron-up' : 'chevron-down'}
+                                                                  size={14}
+                                                                  color="#64748B"
+                                                              />
+                                                          </TouchableOpacity>
+                                                          <TouchableOpacity
+                                                              style={styles.uploadDetails}
+                                                              onPress={() =>
+                                                                  navigation.navigate('PrescriptionDetail', {
+                                                                      appointment_id: meta.appointment_id,
+                                                                      prescription_id: meta.prescription_id,
+                                                                      PrisData: meta,
+                                                                      doctorData: {
+                                                                          doctor_name: meta.doctor_name,
+                                                                          id: meta.doctor_id,
+                                                                          doctor_id: meta.doctor_id,
+                                                                      },
+                                                                  })
+                                                              }
+                                                          >
+                                                              <Text style={styles.uploadDetailsText}>View details</Text>
+                                                              <TablerIcon name="chevron-right" size={14} color={Colors.primaryColor} />
+                                                          </TouchableOpacity>
+                                                      </View>
+                                                  </View>
+                                              );
+                                          })
+                                        : null}
+                                    {currentSection?.type === 'prescribed'
+                                        ? uploadRxGroups.map(group => {
+                                              const meta = group.meta || {};
+                                              const groupKey = String(
+                                                  meta.id || group.items[0]?.rx_group_id,
+                                              );
+                                              const open = expandedRxIds[groupKey] !== false;
+                                              const tone = rxStatusTone(meta);
+                                              const groupIds = group.items
+                                                  .filter((line: any) => !line?._isOutOfStock)
+                                                  .map((line: any) => String(line.id));
+                                              const groupSelected =
+                                                  groupIds.length > 0 &&
+                                                  groupIds.every(id =>
+                                                      selectedItems.includes(id),
+                                                  );
+                                              const itemCount =
+                                                  Number(meta.items_count) || group.items.length;
+                                              const subtotal =
+                                                  meta.subtotal == null || meta.subtotal === ''
+                                                      ? null
+                                                      : Number(meta.subtotal);
+                                              return (
+                                                  <View key={groupKey} style={styles.uploadCard}>
+                                                      <View style={styles.uploadTop}>
+                                                          <TouchableOpacity
+                                                              onPress={() => {
+                                                                  if (groupSelected) {
+                                                                      setSelectedItems(prev =>
+                                                                          prev.filter(id => !groupIds.includes(id)),
+                                                                      );
+                                                                      return;
+                                                                  }
+                                                                  setSelectedItems(prev => [
+                                                                      ...new Set([...prev, ...groupIds]),
+                                                                  ]);
+                                                              }}
+                                                              style={[
+                                                                  styles.checkbox,
+                                                                  groupSelected && styles.checkboxActive,
+                                                              ]}
+                                                          >
+                                                              {groupSelected ? (
+                                                                  <TablerIcon
+                                                                      name="check"
+                                                                      size={14}
+                                                                      color="#FFF"
+                                                                  />
+                                                              ) : null}
+                                                          </TouchableOpacity>
+                                                          <View style={{ flex: 1 }}>
+                                                              <Text style={styles.uploadTitle} numberOfLines={1}>
+                                                                  Uploaded prescription
+                                                              </Text>
+                                                              <Text style={styles.uploadMeta} numberOfLines={1}>
+                                                                  {[
+                                                                      itemCount
+                                                                          ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
+                                                                          : null,
+                                                                      subtotal != null && Number.isFinite(subtotal)
+                                                                          ? formatRupee(subtotal, { decimals: 2 })
+                                                                          : null,
+                                                                  ]
+                                                                      .filter(Boolean)
+                                                                      .join(' · ')}
+                                                              </Text>
+                                                          </View>
+                                                          <View style={[styles.uploadStatus, { backgroundColor: tone.bg }]}>
+                                                              <Text style={[styles.uploadStatusText, { color: tone.color }]}>
+                                                                  {tone.label}
+                                                              </Text>
+                                                          </View>
+                                                      </View>
+                                                      {open ? (
+                                                          <View style={styles.uploadItemList}>
+                                                              {group.items.map((item: any, idx: number) => {
+                                                                  const lineId = String(item.id);
+                                                                  const outOfStock = Boolean(item?._isOutOfStock);
+                                                                  const checked =
+                                                                      !outOfStock &&
+                                                                      selectedItems.includes(lineId);
+                                                                  const thumb =
+                                                                      resolveImageUri(item?.image) ||
+                                                                      resolveCartItemImage(item);
+                                                                  return (
+                                                                      <View
+                                                                          key={lineId || idx}
+                                                                          style={styles.uploadItemRow}
+                                                                      >
+                                                                          <TouchableOpacity
+                                                                              disabled={outOfStock}
+                                                                              onPress={() =>
+                                                                                  toggleItemSelection(lineId, outOfStock)
+                                                                              }
+                                                                              style={[
+                                                                                  styles.lineCheck,
+                                                                                  checked && styles.checkboxActive,
+                                                                                  outOfStock && styles.lineCheckDisabled,
+                                                                              ]}
+                                                                          >
+                                                                              {checked ? (
+                                                                                  <TablerIcon name="check" size={12} color="#FFF" />
+                                                                              ) : null}
+                                                                          </TouchableOpacity>
+                                                                          {thumb ? (
+                                                                              <Image
+                                                                                  source={{ uri: thumb }}
+                                                                                  style={styles.uploadThumb}
+                                                                              />
+                                                                          ) : (
+                                                                              <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                  <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                              </View>
+                                                                          )}
+                                                                          <View style={{ flex: 1 }}>
+                                                                              <Text style={styles.uploadItemName} numberOfLines={1}>
+                                                                                  {item.name}
+                                                                              </Text>
+                                                                              <Text style={styles.uploadItemMeta} numberOfLines={1}>
+                                                                                  {outOfStock
+                                                                                      ? 'Out of stock'
+                                                                                      : `×${item.quantity || 1}`}
+                                                                              </Text>
+                                                                          </View>
+                                                                          {!outOfStock ? (
+                                                                              <Text style={styles.uploadItemPrice}>
+                                                                                  {formatRupee(
+                                                                                      (resolveCartItemSellingPrice(item) ||
+                                                                                          Number(item.price) ||
+                                                                                          0) * (Number(item.quantity) || 1),
+                                                                                      { decimals: 2 },
+                                                                                  )}
+                                                                              </Text>
+                                                                          ) : null}
+                                                                      </View>
+                                                                  );
+                                                              })}
+                                                          </View>
+                                                      ) : (
+                                                          <View style={styles.uploadThumbRow}>
+                                                              {group.items.slice(0, 5).map((item: any, idx: number) => {
+                                                                  const lineId = String(item.id);
+                                                                  const outOfStock = Boolean(item?._isOutOfStock);
+                                                                  const checked =
+                                                                      !outOfStock &&
+                                                                      selectedItems.includes(lineId);
+                                                                  const thumb =
+                                                                      resolveImageUri(item?.image) ||
+                                                                      resolveCartItemImage(item);
+                                                                  const extra =
+                                                                      idx === 4 && group.items.length > 5
+                                                                          ? group.items.length - 5
+                                                                          : 0;
+                                                                  return (
+                                                                      <TouchableOpacity
+                                                                          key={lineId || idx}
+                                                                          disabled={outOfStock}
+                                                                          onPress={() =>
+                                                                              toggleItemSelection(lineId, outOfStock)
+                                                                          }
+                                                                          style={styles.uploadThumbWrap}
+                                                                      >
+                                                                          {thumb ? (
+                                                                              <Image source={{ uri: thumb }} style={styles.uploadThumb} />
+                                                                          ) : (
+                                                                              <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                  <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                              </View>
+                                                                          )}
+                                                                          <View
+                                                                              style={[
+                                                                                  styles.thumbCheck,
+                                                                                  checked && styles.checkboxActive,
+                                                                                  outOfStock && styles.lineCheckDisabled,
+                                                                              ]}
+                                                                          >
+                                                                              {checked ? (
+                                                                                  <TablerIcon name="check" size={9} color="#FFF" />
+                                                                              ) : null}
+                                                                          </View>
+                                                                          {extra ? (
+                                                                              <View style={styles.uploadMore}>
+                                                                                  <Text style={styles.uploadMoreText}>+{extra}</Text>
+                                                                              </View>
+                                                                          ) : null}
+                                                                      </TouchableOpacity>
+                                                                  );
+                                                              })}
+                                                          </View>
+                                                      )}
+                                                      <View style={styles.uploadActions}>
+                                                          <TouchableOpacity
+                                                              style={styles.uploadCollapse}
+                                                              activeOpacity={0.85}
+                                                              onPress={() =>
+                                                                  setExpandedRxIds(prev => ({
+                                                                      ...prev,
+                                                                      [groupKey]: prev[groupKey] === false,
+                                                                  }))
+                                                              }
+                                                          >
+                                                              <Text style={styles.uploadCollapseText}>
+                                                                  {open ? 'Hide items' : 'Items'}
+                                                              </Text>
+                                                              <TablerIcon
+                                                                  name={open ? 'chevron-up' : 'chevron-down'}
+                                                                  size={14}
+                                                                  color="#64748B"
+                                                              />
+                                                          </TouchableOpacity>
+                                                          <TouchableOpacity
+                                                              style={styles.uploadDetails}
+                                                              onPress={() =>
+                                                                  navigation.navigate('VerifyPresciption', {
+                                                                      requestId:
+                                                                          meta.prescription_request_id || meta.id,
+                                                                      fileUri: meta.file_url,
+                                                                      fileName: meta.file_name || 'prescription',
+                                                                      fileType: meta.file_type || 'image',
+                                                                      existingRequest: {
+                                                                          ...meta,
+                                                                          items: previewItemsFor(group),
+                                                                      },
+                                                                      previewItems: previewItemsFor(group),
+                                                                  })
+                                                              }
+                                                          >
+                                                              <Text style={styles.uploadDetailsText}>View details</Text>
+                                                              <TablerIcon
+                                                                  name="chevron-right"
+                                                                  size={14}
+                                                                  color={Colors.primaryColor}
+                                                              />
+                                                          </TouchableOpacity>
+                                                      </View>
+                                                  </View>
+                                              );
+                                          })
+                                        : null}
                                 </View>
+                                <TouchableOpacity
+                                    activeOpacity={0.85}
+                                    style={styles.viewMoreBtn}
+                                    onPress={() => navigation.navigate('ProductsScreen')}
+                                >
+                                    <Text style={styles.viewMoreText}>View more products</Text>
+                                    <TablerIcon
+                                        name="chevron-right"
+                                        size={16}
+                                        color={Colors.primaryColor}
+                                    />
+                                </TouchableOpacity>
                             </>
-                        ) : null}
+                        ) : (
+                            <View style={styles.tabEmptyWrap}>
+                                <Text style={styles.tabEmptyText}>
+                                    {outOfStockCount > 0
+                                        ? 'In-stock items will appear here'
+                                        : 'No items in this list'}
+                                </Text>
+                            </View>
+                        )}
 
                         <View style={styles.billBox}>
                             <View style={styles.orderHeader}>
@@ -791,27 +1721,88 @@ const MyCart = ({ navigation }: any) => {
                             </View>
 
                             <BillRow
-                                label="Subtotal"
-                                value={formatRupee(Math.round(subtotal))}
+                                label="Item total"
+                                value={formatRupee(feeConfig ? feeBreakdown.baseAmount : subtotal, {
+                                    decimals: feeConfig ? 2 : 0,
+                                })}
                             />
 
                             {showDetails ? (
-                                <>
-                                    <BillRow
-                                        label="Delivery Fee"
-                                        value={formatRupee(deliveryFee)}
-                                    />
-                                    <BillRow
-                                        label="Discount"
-                                        value={formatRupee(0)}
-                                    />
-                                    <View style={styles.divider} />
-                                </>
+                                feeQuoteLoading ? (
+                                    <Text style={styles.feeNote}>Calculating fees</Text>
+                                ) : !feeConfig ? (
+                                    <Text style={styles.feeNoteMuted}>
+                                        Fee details unavailable
+                                    </Text>
+                                ) : (
+                                    <>
+                                        <BillRow
+                                            label={
+                                                feeBreakdown.freeDelivery &&
+                                                feeBreakdown.freeDeliveryMinimum > 0
+                                                    ? `Delivery · free above ${formatRupee(
+                                                          feeBreakdown.freeDeliveryMinimum,
+                                                      )}`
+                                                    : 'Delivery'
+                                            }
+                                            value={
+                                                feeBreakdown.freeDelivery
+                                                    ? 'FREE'
+                                                    : formatRupee(feeBreakdown.shipping, {
+                                                          decimals: 2,
+                                                      })
+                                            }
+                                            success={feeBreakdown.freeDelivery}
+                                        />
+                                        {feeBreakdown.freeDeliveryNote ? (
+                                            <Text style={styles.feeNote}>
+                                                {feeBreakdown.freeDeliveryNote}
+                                            </Text>
+                                        ) : null}
+                                        {feeBreakdown.platformFee > 0 ? (
+                                            <BillRow
+                                                label={feeRateLabel(
+                                                    'Platform fee',
+                                                    feeBreakdown.platformRate,
+                                                )}
+                                                value={formatRupee(feeBreakdown.platformFee, {
+                                                    decimals: 2,
+                                                })}
+                                            />
+                                        ) : null}
+                                        {feeBreakdown.gst > 0 ? (
+                                            <BillRow
+                                                label={feeRateLabel(
+                                                    'GST',
+                                                    feeBreakdown.gstRate,
+                                                )}
+                                                value={formatRupee(feeBreakdown.gst, {
+                                                    decimals: 2,
+                                                })}
+                                            />
+                                        ) : null}
+                                        {feeBreakdown.discount > 0 ? (
+                                            <BillRow
+                                                label="Discount"
+                                                value={`− ${formatRupee(feeBreakdown.discount, {
+                                                    decimals: 2,
+                                                })}`}
+                                                success
+                                            />
+                                        ) : null}
+                                        {feeBreakdown.discount > 0 ? (
+                                            <BillRow
+                                                label="After coupon"
+                                                value={formatRupee(total, { decimals: 2 })}
+                                            />
+                                        ) : null}
+                                    </>
+                                )
                             ) : null}
 
                             <BillRow
                                 label="Total"
-                                value={formatRupee(Math.round(total))}
+                                value={formatRupee(total, { decimals: feeConfig ? 2 : 0 })}
                                 isTotal
                             />
                         </View>
@@ -825,12 +1816,16 @@ const MyCart = ({ navigation }: any) => {
                     >
                         <View style={styles.footerPriceBox}>
                             <RupeeAmount
-                                value={Math.round(total)}
+                                value={total}
+                                decimals={feeConfig ? 2 : 0}
                                 style={styles.footerTotal}
                             />
                             <Text style={styles.footerHint}>
                                 {selectedUnits}{' '}
                                 {selectedUnits === 1 ? 'item' : 'items'}
+                                {outOfStockCount > 0
+                                    ? ` · ${outOfStockCount} out of stock`
+                                    : ''}
                             </Text>
                         </View>
 
@@ -867,15 +1862,17 @@ const MyCart = ({ navigation }: any) => {
 
             <CommonModal
                 visible={Boolean(qtyConfirm)}
-                title="Update quantity?"
+                title="Add extra quantity?"
                 subtitle={
                     qtyConfirm
-                        ? `1 more item will be added to your cart (total ${qtyConfirm.nextQty}). Continue?`
+                        ? `Doctor prescribed ${qtyConfirm.doctorQty} ${
+                              qtyConfirm.doctorQty === 1 ? 'unit' : 'units'
+                          } of ${qtyConfirm.productName}. Are you sure you want to add 1 more to your cart (total ${qtyConfirm.nextQty})?`
                         : ''
                 }
-                icon="🛒"
+                icon="💊"
                 cancelText="No"
-                confirmText="Yes"
+                confirmText="Yes, add"
                 onClose={cancelPrescribedQtyIncrease}
                 onConfirm={confirmPrescribedQtyIncrease}
             />
@@ -891,16 +1888,24 @@ const BillRow = ({
     label,
     value,
     isTotal,
+    success,
 }: {
     label: string;
     value: string;
     isTotal?: boolean;
+    success?: boolean;
 }) => (
     <View style={[styles.billRow, isTotal && styles.billRowTotal]}>
         <Text style={[styles.billLabel, isTotal && styles.billLabelTotal]}>
             {label}
         </Text>
-        <Text style={[styles.billValue, isTotal && styles.billValueTotal]}>
+        <Text
+            style={[
+                styles.billValue,
+                isTotal && styles.billValueTotal,
+                success && styles.billValueSuccess,
+            ]}
+        >
             {value}
         </Text>
     </View>
@@ -931,6 +1936,133 @@ const styles = StyleSheet.create({
     tabContainer: {
         marginTop: 4,
         marginBottom: 10,
+    },
+
+    outOfStockBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: '#DC2626',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        marginBottom: 10,
+    },
+    outOfStockBannerIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    outOfStockBannerTextWrap: {
+        flex: 1,
+        minWidth: 0,
+    },
+    outOfStockBannerTitle: {
+        fontSize: 13,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginBottom: 1,
+    },
+    outOfStockBannerSub: {
+        fontSize: 11,
+        lineHeight: 15,
+        color: 'rgba(255,255,255,0.88)',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+
+    oosPanel: {
+        backgroundColor: '#FEF2F2',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        paddingHorizontal: 14,
+        paddingTop: 12,
+        paddingBottom: 8,
+        marginBottom: 10,
+    },
+    oosPanelHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        marginBottom: 10,
+    },
+    oosPanelIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#DC2626',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 1,
+    },
+    oosPanelTitle: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    oosPanelSub: {
+        marginTop: 2,
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#7F1D1D',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    oosItemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 8,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: '#F1F5F9',
+    },
+    oosThumb: {
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+        backgroundColor: '#F8FAFC',
+    },
+    oosThumbFallback: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    oosItemCopy: {
+        flex: 1,
+        minWidth: 0,
+    },
+    oosItemName: {
+        fontSize: 13,
+        lineHeight: 18,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    oosItemHint: {
+        marginTop: 2,
+        fontSize: 11,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    oosRemoveBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FEF2F2',
+    },
+    tabEmptyWrap: {
+        paddingVertical: 28,
+        alignItems: 'center',
+    },
+    tabEmptyText: {
+        fontSize: 13,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsMedium,
     },
 
     trustStrip: {
@@ -989,11 +2121,196 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#FFF',
     },
+    lineCheck: {
+        width: 18,
+        height: 18,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: '#CAD5D1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF',
+    },
+    lineCheckDisabled: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+    },
+    thumbCheck: {
+        position: 'absolute',
+        right: -3,
+        bottom: -3,
+        width: 14,
+        height: 14,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#CAD5D1',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     checkboxActive: {
         backgroundColor: Colors.primaryColor,
         borderColor: Colors.primaryColor,
     },
 
+    viewMoreBtn: {
+        marginTop: 4,
+        marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D7E8E3',
+        paddingVertical: 12,
+    },
+    viewMoreText: {
+        fontSize: 13,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    doctorCard: {
+        backgroundColor: '#F7FBFA',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#B7D9D0',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginBottom: 8,
+    },
+    doctorKicker: {
+        fontSize: 10,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    doctorSymptom: {
+        marginTop: 6,
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    uploadCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D7E8E3',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginBottom: 8,
+    },
+    uploadTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    uploadTitle: {
+        fontSize: 13,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    uploadMeta: {
+        marginTop: 1,
+        fontSize: 11,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    uploadStatus: {
+        borderRadius: 999,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+    },
+    uploadStatusText: {
+        fontSize: 10,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    uploadThumbRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+    },
+    uploadThumbWrap: {
+        width: 36,
+        height: 36,
+    },
+    uploadThumb: {
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        backgroundColor: '#F1F5F9',
+    },
+    uploadThumbFallback: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uploadMore: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        borderRadius: 8,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uploadMoreText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    uploadItemList: {
+        marginTop: 6,
+        gap: 6,
+    },
+    uploadItemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    uploadItemName: {
+        fontSize: 12,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    uploadItemMeta: {
+        fontSize: 10,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
+    },
+    uploadItemPrice: {
+        fontSize: 12,
+        color: '#0F172A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    uploadActions: {
+        marginTop: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    uploadCollapse: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    uploadCollapseText: {
+        fontSize: 12,
+        color: '#475569',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    uploadDetails: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    uploadDetailsText: {
+        fontSize: 12,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
     productsWrap: {
         marginBottom: 8,
     },
@@ -1094,6 +2411,25 @@ const styles = StyleSheet.create({
     billValueTotal: {
         fontSize: 16,
         color: Colors.primaryColor,
+    },
+    billValueSuccess: {
+        color: '#15803D',
+    },
+    feeNote: {
+        marginTop: -4,
+        marginBottom: 8,
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#15803D',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    feeNoteMuted: {
+        marginTop: -4,
+        marginBottom: 8,
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsMedium,
     },
     divider: {
         height: StyleSheet.hairlineWidth,

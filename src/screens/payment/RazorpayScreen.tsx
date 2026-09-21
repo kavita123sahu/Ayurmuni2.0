@@ -20,13 +20,16 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
-import RazorpayCheckout from 'react-native-razorpay';
 
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { showSuccessToast } from '../../config/Key';
-import { openRazorpayPayment } from '../../services/RazorpayService';
+import {
+    isRazorpayUserCancelled,
+    openRazorpayPayment,
+    toRazorpayPaise,
+} from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
 import { formatTo12Hour } from '../../common/DataInterface';
 import { RupeeAmount } from '../../utils/currencyUtils';
@@ -34,8 +37,15 @@ import CouponApplyCard from '../../components/CouponApplyCard';
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import TablerIcon from '../../components/TablerIcon';
 import AppHeader from '../../components/AppHeader';
-import { getDoctorDisplayName } from '../../utils/doctorUtils';
+import { getDoctorDisplayName, resolveDoctorProfileImageUri } from '../../utils/doctorUtils';
 import { usePatientData } from '../../hooks/usePatientData';
+import {
+    calculateFeeBreakdown,
+    feeRateLabel,
+    parseFeeQuoteConfig,
+    roundMoney,
+    type FeeQuoteConfig,
+} from '../../utils/feeQuote';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 /** Persists first book-slot payment so a return visit can call retry. */
@@ -45,23 +55,6 @@ const getPatientDisplayName = (patient: any) =>
     `${patient?.first_name || ''} ${patient?.last_name || ''}`.trim() ||
     patient?.full_name ||
     'Patient';
-
-type FeeQuote = {
-    slot_id?: string;
-    doctor_id?: string;
-    doctor_name?: string;
-    consultation_fee: number;
-    gst_percent: number;
-    gst_amount: number;
-    platform_fee_percent: number;
-    platform_fee: number;
-    convenience: number;
-    amount: number;
-    currency?: string;
-};
-
-const roundMoney = (value: number) =>
-    Math.round((Number(value) || 0) * 100) / 100;
 
 type PendingConsultPayment = {
     slot_id: string;
@@ -125,11 +118,54 @@ const clearPendingConsultPayment = async (
     }
 };
 
-const resolveProfileImageUri = (doctor: any): string => {
-    const img = doctor?.profile_image;
-    if (!img) return '';
-    if (typeof img === 'string') return img;
-    return String(img?.url || img?.uri || img?.media_url || '').trim();
+const resolveProfileImageUri = (doctor: any): string =>
+    resolveDoctorProfileImageUri(doctor);
+
+const isApiSuccess = (response: any) =>
+    response?.success === true ||
+    response?.success === 'true' ||
+    response?.success === 1;
+
+const isPendingPaymentStatus = (data: any) => {
+    const status = String(
+        data?.status ?? data?.payment_status ?? '',
+    ).toLowerCase();
+    return (
+        status === 'pending' ||
+        status === 'created' ||
+        status === 'initiated'
+    );
+};
+
+/** Book-slot no longer sends data.amount. Use summary / configurations, then the screen total. */
+const resolveConsultPayableRupees = (data: any, fallback: number) => {
+    const summary = data?.summary ?? {};
+    const direct = [
+        data?.amount,
+        data?.total_payable_amount,
+        summary?.total_payable_amount,
+        summary?.payable_amount,
+        summary?.amount,
+    ];
+    for (const value of direct) {
+        const n = Number(value);
+        if (Number.isFinite(n) && n > 0) return n;
+    }
+
+    const parsed = parseFeeQuoteConfig(data, fallback);
+    if (parsed) {
+        const breakdown = calculateFeeBreakdown({
+            baseAmount: parsed.baseAmount,
+            discount: parsed.couponDiscount ?? 0,
+            gst: parsed.gst,
+            platformFee: parsed.platformFee,
+            includeShipping: false,
+            includeCod: false,
+        });
+        if (breakdown.total > 0) return breakdown.total;
+    }
+
+    return fallback > 0 ? fallback : 0;
 };
 
 const formatDisplayDate = (value?: string) => {
@@ -162,7 +198,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const [loading, setLoading] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
     const paymentStartedRef = useRef(false);
-    const [feeQuote, setFeeQuote] = useState<FeeQuote | null>(null);
+    const [feeQuote, setFeeQuote] = useState<FeeQuoteConfig | null>(null);
+    const [quotedCouponCode, setQuotedCouponCode] = useState('');
     const [feeQuoteLoading, setFeeQuoteLoading] = useState(true);
     const [activePatient, setActivePatient] = useState<any>(patientsList || null);
     const [patientPickerVisible, setPatientPickerVisible] = useState(false);
@@ -199,8 +236,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         () =>
             String(
                 doctorInfo?.qualification ||
-                    doctorInfo?.designation ||
-                    '',
+                doctorInfo?.designation ||
+                '',
             ).trim(),
         [doctorInfo],
     );
@@ -236,7 +273,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         [activePatient?.id, switchPatient],
     );
 
-    const loadFeeQuote = useCallback(async () => {
+    const loadFeeQuote = useCallback(async (couponCode?: string) => {
         const id = slotId?.id;
         if (!id) {
             setFeeQuoteLoading(false);
@@ -244,38 +281,26 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         }
         setFeeQuoteLoading(true);
         try {
-            const response = await _CONSULT_SERVICES.getConsultationFeeQuote(id);
-            if (response?.success && response?.data) {
-                const d = response.data;
-                setFeeQuote({
-                    slot_id: d.slot_id,
-                    doctor_id: d.doctor_id,
-                    doctor_name: d.doctor_name,
-                    consultation_fee: roundMoney(d.consultation_fee),
-                    gst_percent: Number(d.gst_percent) || 0,
-                    gst_amount: roundMoney(d.gst_amount),
-                    platform_fee_percent: Number(d.platform_fee_percent) || 0,
-                    platform_fee: roundMoney(d.platform_fee),
-                    convenience: roundMoney(d.convenience),
-                    amount: roundMoney(d.amount),
-                    currency: d.currency || 'INR',
-                });
-            } else {
-                setFeeQuote(null);
-            }
+            const response = await _CONSULT_SERVICES.getConsultationFeeQuote(
+                id,
+                couponCode,
+            );
+            console.log('Consultationfeequoteresponse =>', response);
+            const parsed = parseFeeQuoteConfig(
+                response?.data,
+                Number(slotId?.amount || 0),
+            );
+            setQuotedCouponCode(String(couponCode || '').trim());
+            setFeeQuote(response?.success && parsed ? parsed : null);
         } catch {
             setFeeQuote(null);
         } finally {
             setFeeQuoteLoading(false);
         }
-    }, [slotId?.id]);
-
-    useEffect(() => {
-        loadFeeQuote();
-    }, [loadFeeQuote]);
+    }, [slotId?.id, slotId?.amount]);
 
     const consultationFee = useMemo(() => {
-        if (feeQuote) return feeQuote.consultation_fee;
+        if (feeQuote?.baseAmount) return feeQuote.baseAmount;
         return roundMoney(Number(slotId?.amount || 0));
     }, [feeQuote, slotId?.amount]);
 
@@ -290,53 +315,35 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         remove: removeCoupon,
     } = useCheckoutCoupons('consultation', consultationFee);
 
+    useEffect(() => {
+        loadFeeQuote(appliedCoupon?.code);
+    }, [appliedCoupon?.code, loadFeeQuote]);
+
     const feeBreakdown = useMemo(() => {
-        const gstPercent = feeQuote?.gst_percent ?? 0;
-        const platformPercent = feeQuote?.platform_fee_percent ?? 0;
-        const convenience = feeQuote?.convenience ?? 0;
-        const discount = Math.min(roundMoney(couponDiscount), consultationFee);
-        const feeAfterDiscount = roundMoney(
-            Math.max(0, consultationFee - discount),
-        );
-
-        const scaleOrPercent = (
-            percent: number,
-            apiAmount: number | undefined,
-        ) => {
-            if (percent > 0) {
-                return roundMoney((feeAfterDiscount * percent) / 100);
-            }
-            if (discount <= 0) {
-                return roundMoney(apiAmount ?? 0);
-            }
-            if (consultationFee > 0 && (apiAmount ?? 0) > 0) {
-                return roundMoney(
-                    ((apiAmount ?? 0) * feeAfterDiscount) / consultationFee,
-                );
-            }
-            return 0;
-        };
-
-        const gst = scaleOrPercent(gstPercent, feeQuote?.gst_amount);
-        const platformFee = scaleOrPercent(
-            platformPercent,
-            feeQuote?.platform_fee,
-        );
-        const total = roundMoney(
-            feeAfterDiscount + gst + platformFee + convenience,
-        );
+        const requestedCoupon = String(appliedCoupon?.code || '').trim();
+        const quoteDiscount =
+            requestedCoupon === quotedCouponCode && feeQuote?.couponDiscount != null
+                ? feeQuote.couponDiscount
+                : couponDiscount;
+        const quote = calculateFeeBreakdown({
+            baseAmount: consultationFee,
+            discount: quoteDiscount,
+            gst: feeQuote?.gst ?? { flat: 0, percent: 0 },
+            platformFee: feeQuote?.platformFee ?? { flat: 0, percent: 0 },
+            includeShipping: false,
+            includeCod: false,
+        });
         return {
-            consultationFee,
-            discount,
-            feeAfterDiscount,
-            gst,
-            gstPercent,
-            platformFee,
-            platformPercent,
-            convenience,
-            total,
+            consultationFee: quote.baseAmount,
+            discount: quote.discount,
+            feeAfterDiscount: quote.taxable,
+            gst: quote.gst,
+            gstLabel: feeRateLabel('GST', quote.gstRate),
+            platformFee: quote.platformFee,
+            platformLabel: feeRateLabel('Platform fee', quote.platformRate),
+            total: quote.total,
         };
-    }, [feeQuote, consultationFee, couponDiscount]);
+    }, [feeQuote, consultationFee, couponDiscount, appliedCoupon, quotedCouponCode]);
 
     const totalAmount = feeBreakdown.total;
 
@@ -375,127 +382,184 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         concern: concern,
                         medical_record_ids: medical_record_ids,
                         coupon_code: appliedCoupon?.code,
-                        patient_id: activePatient?.id,
                     });
             }
+            console.log('ConsultationPaymentResponse =>', paymentResponse);
 
-            if (!paymentResponse?.success) {
+            // success: true with status pending is a created Razorpay order, not a failure.
+            if (!isApiSuccess(paymentResponse)) {
                 if (pendingPayment?.appointment_id) {
                     await clearPendingConsultPayment(currentSlotId);
                 }
-                showSuccessToast(paymentResponse?.message, 'error');
+                showSuccessToast(
+                    paymentResponse?.message || 'Unable to start payment',
+                    'error',
+                );
                 return;
             }
 
-            const paymentData = paymentResponse?.data;
-            const appointmentId =
+            let paymentData = paymentResponse?.data ?? {};
+            const appointmentId = String(
                 paymentData?.appointment_id ||
                 paymentData?.appointmentId ||
                 paymentData?.consultation_id ||
-                pendingPayment?.appointment_id;
-
-            await savePendingConsultPayment(
-                currentSlotId,
-                appointmentId,
-                paymentData?.payment_id,
-            );
-
-            const contactNumber = String(doctorInfo?.phone_number || '').replace(
-                /\D/g,
+                pendingPayment?.appointment_id ||
                 '',
+            ).trim();
+
+            if (appointmentId) {
+                await savePendingConsultPayment(
+                    currentSlotId,
+                    appointmentId,
+                    paymentData?.payment_id,
+                );
+            }
+
+            // Pending order already exists — refresh checkout via retry before opening Razorpay.
+            if (
+                appointmentId &&
+                !pendingPayment?.appointment_id &&
+                isPendingPaymentStatus(paymentData)
+            ) {
+                try {
+                    const retryResponse =
+                        await _CONSULT_SERVICES.retryConsultationPayment(
+                            appointmentId,
+                        );
+                    console.log('ConsultationRetryResponse =>', retryResponse);
+                    if (isApiSuccess(retryResponse) && retryResponse?.data) {
+                        paymentData = {
+                            ...paymentData,
+                            ...retryResponse.data,
+                            summary:
+                                retryResponse.data?.summary ??
+                                paymentData?.summary,
+                            configurations:
+                                retryResponse.data?.configurations ??
+                                paymentData?.configurations,
+                        };
+                    }
+                } catch (retryError) {
+                    console.log('CONSULT_RETRY_ERROR =>', retryError);
+                }
+            }
+
+            const payableRupees = resolveConsultPayableRupees(
+                paymentData,
+                totalAmount,
+            );
+            const amountPaise = toRazorpayPaise(
+                paymentData?.amount ??
+                paymentData?.summary?.total_payable_amount,
+                payableRupees,
             );
 
-            await openRazorpayPayment({
-                key: paymentData?.razorpay_key,
-                amount: Number(paymentData?.amount) * 100,
-                order_id: paymentData?.razorpay_order_id,
-                name: doctorInfo?.full_name || doctorName,
-                email: doctorInfo?.email || 'test@gmail.com',
-                contact: `91${contactNumber}`,
-                themeColor: Colors.primaryColor,
-            })
-                .then(async (razorpayResult: any) => {
-                    setIsVerifyingPayment(true);
+            const contactNumber = String(
+                activePatient?.phone_number ||
+                activePatient?.phone ||
+                doctorInfo?.phone_number ||
+                '',
+            ).replace(/\D/g, '');
 
-                    const verifyResponse =
-                        await _CONSULT_SERVICES.verifyConsultationPayment({
-                            payment_id: paymentData?.payment_id,
-                            razorpay_order_id: paymentData?.razorpay_order_id,
-                            razorpay_payment_id:
-                                razorpayResult?.razorpay_payment_id,
-                            razorpay_signature:
-                                razorpayResult?.razorpay_signature,
-                        });
-
-                    setIsVerifyingPayment(false);
-
-                    const SlotsDetail = verifyResponse?.data;
-                    if (verifyResponse?.success) {
-                        setIsVerifyingPayment(false);
-                        showSuccessToast('Payment Successful', 'success');
-                        try {
-                            const { OneSignal } = require('react-native-onesignal');
-                            OneSignal.User.pushSubscription.optIn();
-                        } catch {
-                            // ignore
-                        }
-                        try {
-                            const {
-                                refreshUnreadBadge,
-                            } = require('../../screens/notifications/notificationRouter');
-                            refreshUnreadBadge();
-                        } catch {
-                            // ignore
-                        }
-                        try {
-                            await Utils.storeData(STORAGE_KEY, null);
-                            await clearPendingConsultPayment(currentSlotId);
-                        } catch (e) {
-                            console.log('clear storage on success error', e);
-                        }
-                        navigation.navigate('BookingConfrimScreen', {
-                            SlotsDetail,
-                        });
-                    } else {
-                        setIsVerifyingPayment(false);
-                        showSuccessToast('Payment verification failed', 'error');
-                    }
-                })
-                .catch(async (error: any) => {
-                    setIsVerifyingPayment(false);
-                    paymentStartedRef.current = false;
-
-                    if (
-                        error?.code === RazorpayCheckout.PAYMENT_CANCELLED ||
-                        error?.description?.toLowerCase().includes('cancel') ||
-                        error?.description?.toLowerCase().includes('dismiss') ||
-                        error?.description?.toLowerCase().includes('exit')
-                    ) {
-                        try {
-                            await Utils.storeData(STORAGE_KEY, null);
-                        } catch (e) {
-                            console.log(e);
-                        }
-
-                        navigation.reset({
-                            index: 0,
-                            routes: [{ name: 'HomeScreen' }],
-                        });
-                        return;
-                    }
-
-                    showSuccessToast('Payment Failed', 'error');
+            let razorpayResult: any;
+            try {
+                razorpayResult = await openRazorpayPayment({
+                    key: paymentData?.razorpay_key,
+                    amount: amountPaise,
+                    order_id: paymentData?.razorpay_order_id,
+                    name: doctorInfo?.full_name || doctorName,
+                    email: doctorInfo?.email || 'customer@ayurmuni.com',
+                    contact: contactNumber,
+                    description: 'Consultation payment',
+                    themeColor: Colors.primaryColor,
                 });
-        } catch (error) {
+            } catch (error: any) {
+                setIsVerifyingPayment(false);
+                console.log('CONSULT_RAZORPAY_CATCH =>', error);
+
+                if (isRazorpayUserCancelled(error)) {
+                    showSuccessToast(
+                        'Payment cancelled. You can try again anytime.',
+                        'error',
+                    );
+                    return;
+                }
+
+                showSuccessToast(
+                    error?.description ||
+                    error?.message ||
+                    'Payment failed. Please try again.',
+                    'error',
+                );
+                return;
+            }
+
+            setIsVerifyingPayment(true);
+
+            const verifyResponse =
+                await _CONSULT_SERVICES.verifyConsultationPayment({
+                    payment_id: paymentData?.payment_id,
+                    razorpay_order_id: paymentData?.razorpay_order_id,
+                    razorpay_payment_id:
+                        razorpayResult?.razorpay_payment_id,
+                    razorpay_signature:
+                        razorpayResult?.razorpay_signature,
+                });
+
             setIsVerifyingPayment(false);
-            showSuccessToast('Something went wrong', 'error');
+
+            const SlotsDetail = verifyResponse?.data;
+            if (verifyResponse?.success) {
+                showSuccessToast('Payment Successful', 'success');
+                try {
+                    const { OneSignal } = require('react-native-onesignal');
+                    OneSignal.User.pushSubscription.optIn();
+                } catch {
+                    // ignore
+                }
+                try {
+                    const {
+                        refreshUnreadBadge,
+                    } = require('../../screens/notifications/notificationRouter');
+                    refreshUnreadBadge();
+                } catch {
+                    // ignore
+                }
+                try {
+                    await Utils.storeData(STORAGE_KEY, null);
+                    await clearPendingConsultPayment(currentSlotId);
+                } catch (e) {
+                    console.log('clear storage on success error', e);
+                }
+                navigation.navigate('BookingConfrimScreen', {
+                    SlotsDetail,
+                });
+            } else {
+                showSuccessToast('Payment verification failed', 'error');
+            }
+        } catch (error: any) {
+            setIsVerifyingPayment(false);
+            console.log('CONSULT_HANDLE_PAYMENT_CATCH =>', error);
+            if (isRazorpayUserCancelled(error)) {
+                showSuccessToast(
+                    'Payment cancelled. You can try again anytime.',
+                    'error',
+                );
+                return;
+            }
+            showSuccessToast(
+                error?.description ||
+                error?.message ||
+                'Something went wrong. Please try again.',
+                'error',
+            );
         } finally {
             setLoading(false);
             paymentStartedRef.current = false;
         }
     };
 
-    const payDisabled = loading || feeQuoteLoading;
+    const payDisabled = loading || feeQuoteLoading || !feeQuote;
 
     return (
         <>
@@ -538,11 +602,11 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                         />
                                     ) : (
                                         <View style={styles.avatarFallback}>
-                                            <Text style={styles.avatarLetter}>
-                                                {doctorName
-                                                    ?.charAt(0)
-                                                    ?.toUpperCase() || 'D'}
-                                            </Text>
+                                            <TablerIcon
+                                                name="user-filled"
+                                                size={28}
+                                                color="#FFFFFF"
+                                            />
                                         </View>
                                     )}
                                 </View>
@@ -707,7 +771,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             ) : null}
 
                             {Array.isArray(medical_records) &&
-                            medical_records.length > 0 ? (
+                                medical_records.length > 0 ? (
                                 <View style={styles.docsSection}>
                                     <Text style={styles.docsTitle}>
                                         Attached documents
@@ -751,7 +815,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                 cartAmount={consultationFee}
                                 loading={couponsLoading}
                                 applied={appliedCoupon}
-                                discount={couponDiscount}
+                                discount={feeBreakdown.discount || couponDiscount}
+                                payable={totalAmount}
                                 error={couponError}
                                 checkoutScope="consultation"
                                 onApply={applyCode}
@@ -848,10 +913,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
                                     <View style={styles.summaryRow}>
                                         <Text style={styles.summaryLabel}>
-                                            Platform fee
-                                            {feeBreakdown.platformPercent > 0
-                                                ? ` (${feeBreakdown.platformPercent}%)`
-                                                : ''}
+                                            {feeBreakdown.platformLabel}
                                         </Text>
                                         <RupeeAmount
                                             value={feeBreakdown.platformFee}
@@ -862,10 +924,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
                                     <View style={styles.summaryRow}>
                                         <Text style={styles.summaryLabel}>
-                                            GST
-                                            {feeBreakdown.gstPercent > 0
-                                                ? ` (${feeBreakdown.gstPercent}%)`
-                                                : ''}
+                                            {feeBreakdown.gstLabel}
                                         </Text>
                                         <RupeeAmount
                                             value={feeBreakdown.gst}
@@ -873,21 +932,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             decimals={2}
                                         />
                                     </View>
-
-                                    {feeBreakdown.convenience > 0 ? (
-                                        <View style={styles.summaryRow}>
-                                            <Text style={styles.summaryLabel}>
-                                                Convenience
-                                            </Text>
-                                            <RupeeAmount
-                                                value={
-                                                    feeBreakdown.convenience
-                                                }
-                                                style={styles.summaryValue}
-                                                decimals={2}
-                                            />
-                                        </View>
-                                    ) : null}
 
                                     <LinearGradient
                                         colors={['#ECFDF5', '#D1FAE5']}
@@ -1052,14 +1096,14 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                                 style={[
                                                     styles.pickerAvatar,
                                                     selected &&
-                                                        styles.pickerAvatarSelected,
+                                                    styles.pickerAvatarSelected,
                                                 ]}
                                             >
                                                 <Text
                                                     style={[
                                                         styles.pickerInitial,
                                                         selected &&
-                                                            styles.pickerInitialSelected,
+                                                        styles.pickerInitialSelected,
                                                     ]}
                                                 >
                                                     {name
@@ -1106,7 +1150,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 visible={isVerifyingPayment}
                 transparent={false}
                 animationType="fade"
-                onRequestClose={() => {}}
+                onRequestClose={() => { }}
             >
                 <SafeAreaView style={styles.verificationScreen}>
                     <View style={styles.verificationContent}>
@@ -1176,7 +1220,7 @@ const styles = StyleSheet.create({
     },
     avatarFallback: {
         flex: 1,
-        backgroundColor: Colors.primaryColor,
+        backgroundColor: '#DFE5E7',
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -2,15 +2,14 @@ import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images';
 import TablerIcon from './TablerIcon';
+import DoctorAvatar from './DoctorAvatar';
 import {
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
@@ -118,9 +117,12 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
         style={styles.card}
       >
         <View style={styles.avatarRing}>
-          <Image
-            source={imageUri ? { uri: imageUri } : Images.doctorImage}
-            style={styles.avatar}
+          <DoctorAvatar
+            uri={imageUri}
+            name={doctorName}
+            size={48}
+            shape="circle"
+            emptyMode="icon"
           />
           {isLive ? (
             <View style={styles.liveDot}>

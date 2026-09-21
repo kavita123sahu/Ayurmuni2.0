@@ -63,12 +63,15 @@ export const usePatientData = () => {
                     activePatient || null,
                 );
 
+                return data as any[];
+
             } catch (error) {
 
                 console.log(
                     'PATIENT LIST ERROR ===>',
                     error,
                 );
+                return [] as any[];
 
             } finally {
 
@@ -97,7 +100,7 @@ export const usePatientData = () => {
     const switchPatient =
         async (
             patientId: string,
-        ) => {
+        ): Promise<boolean> => {
 
             try {
 
@@ -107,15 +110,26 @@ export const usePatientData = () => {
 
                 console.log('switch_patient_response', resposne);
 
-                const JSONDATA = await resposne.data;
+                if (resposne?.success === false) {
+                    return false;
+                }
+
+                const JSONDATA = resposne?.data ?? resposne;
 
                 console.log('switch_patient_json', JSONDATA);
 
-                Utils.storeData('_USER_ID', JSONDATA?.user_id);
-                Utils.storeData('_TOKEN', JSONDATA?.access);
-                Utils.storeData('_REFRESH_TOKEN', JSONDATA?.refresh);
+                if (JSONDATA?.user_id) {
+                    await Utils.storeData('_USER_ID', JSONDATA.user_id);
+                }
+                if (JSONDATA?.access) {
+                    await Utils.storeData('_TOKEN', JSONDATA.access);
+                }
+                if (JSONDATA?.refresh) {
+                    await Utils.storeData('_REFRESH_TOKEN', JSONDATA.refresh);
+                }
 
                 await fetchPatients();
+                return true;
 
             } catch (error) {
 
@@ -123,6 +137,7 @@ export const usePatientData = () => {
                     'SWITCH PATIENT ERROR ===>',
                     error,
                 );
+                return false;
 
             }
         };

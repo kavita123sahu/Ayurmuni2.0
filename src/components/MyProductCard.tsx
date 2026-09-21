@@ -19,6 +19,10 @@ import {
     resolveCartItemSellingPrice,
 } from '../utils/cartPriceUtils';
 import { RupeeAmount } from '../utils/currencyUtils';
+import {
+    getCartInventoryQty,
+    LOW_STOCK_THRESHOLD,
+} from '../utils/productStockUtils';
 
 type Props = {
     item: any;
@@ -52,22 +56,44 @@ const MyProductCard = ({
 
     const rxRequired = isPrescriptionRequired(item);
     const isPrescribed = type === 'prescribed';
+    const stockQty = getCartInventoryQty(item);
+    const isOutOfStock =
+        Boolean(item?._isOutOfStock) || (stockQty != null && stockQty <= 0);
+    const increaseBlocked =
+        !isOutOfStock && stockQty != null && qty >= stockQty;
+    const lowStockNote =
+        !isOutOfStock &&
+        stockQty != null &&
+        stockQty > 0 &&
+        stockQty <= LOW_STOCK_THRESHOLD
+            ? stockQty === 1
+                ? 'Only 1 item available.'
+                : `Only ${stockQty} items available.`
+            : '';
 
     // prescription_required true → locked qty (no increase / remove)
     // prescription_required false on prescribed → increase OK, min qty 1, no remove
     // regular cart → normal controls (increase still blocked in handler if Rx)
-    const showLockedQty = isPrescribed && rxRequired;
-    const showPrescribedAdjust = isPrescribed && !rxRequired;
+    const showLockedQty = isPrescribed && rxRequired && !isOutOfStock;
+    const showPrescribedAdjust = isPrescribed && !rxRequired && !isOutOfStock;
     const showNormalControls = !isPrescribed;
+    const showOutOfStockControls = isOutOfStock;
 
     return (
         <View style={styles.card}>
             <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => toggleItemSelection(item.id)}
-                style={[styles.checkbox, isSelected && styles.checkboxActive]}
+                onPress={() => {
+                    if (isOutOfStock) return;
+                    toggleItemSelection(item.id);
+                }}
+                style={[
+                    styles.checkbox,
+                    isSelected && styles.checkboxActive,
+                    isOutOfStock && styles.checkboxDisabled,
+                ]}
             >
-                {isSelected && (
+                {isSelected && !isOutOfStock && (
                     <TablerIcon name="check" size={12} color="#FFF" />
                 )}
             </TouchableOpacity>
@@ -91,6 +117,11 @@ const MyProductCard = ({
                             <TablerIcon name="package" size={28} color="#CBD5E1" />
                         </View>
                     )}
+                    {isOutOfStock ? (
+                        <View style={styles.outOfStockBadge}>
+                            <Text style={styles.outOfStockBadgeText}>Out of stock</Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 <View style={styles.info}>
@@ -99,14 +130,21 @@ const MyProductCard = ({
                     </Text>
 
                     <View style={styles.metaRow}>
-                        {!!item.brand_name && (
-                            <Text numberOfLines={1} style={styles.brand}>
-                                {item.brand_name}
+                        {lowStockNote ? (
+                            <Text numberOfLines={1} style={styles.stockNote}>
+                                {lowStockNote}
                             </Text>
-                        )}
-
-                        {!!item.size && (
-                            <Text style={styles.size}>({item.size})</Text>
+                        ) : (
+                            <>
+                                {!!item.brand_name && (
+                                    <Text numberOfLines={1} style={styles.brand}>
+                                        {item.brand_name}
+                                    </Text>
+                                )}
+                                {!!item.size && (
+                                    <Text style={styles.size}>({item.size})</Text>
+                                )}
+                            </>
                         )}
                     </View>
 
@@ -134,6 +172,11 @@ const MyProductCard = ({
                             </Text>
                         </View>
                     )}
+                    {showPrescribedAdjust ? (
+                        <Text style={styles.prescribedHint} numberOfLines={1}>
+                            Doctor qty {Number(item?.doctor_qty) || qty} · tap + to add more
+                        </Text>
+                    ) : null}
                 </View>
             </Pressable>
 
@@ -141,6 +184,12 @@ const MyProductCard = ({
                 style={styles.qtyWrap}
                 onStartShouldSetResponder={() => true}
             >
+                {showOutOfStockControls ? (
+                    <View style={styles.outOfStockBox}>
+                        <Text style={styles.outOfStockText}>Out of stock</Text>
+                    </View>
+                ) : null}
+
                 {showLockedQty ? (
                     <TouchableOpacity
                         activeOpacity={0.85}
@@ -159,6 +208,7 @@ const MyProductCard = ({
                         quantity={displayQty}
                         compact
                         minQuantity={1}
+                        maxQuantity={stockQty}
                         onAdd={() => updateQuantity(String(item.id), 'plus')}
                         onIncrement={() =>
                             updateQuantity(String(item.id), 'plus')
@@ -169,11 +219,12 @@ const MyProductCard = ({
                     />
                 ) : null}
 
-                {showNormalControls ? (
+                {showNormalControls && !isOutOfStock ? (
                     <>
                         <BlinkitAddButton
                             quantity={qty}
                             compact
+                            maxQuantity={stockQty}
                             onAdd={() => updateQuantity(String(item.id), 'plus')}
                             onIncrement={() =>
                                 updateQuantity(String(item.id), 'plus')
@@ -193,6 +244,19 @@ const MyProductCard = ({
                             <Text style={styles.removeBtnText}>Remove</Text>
                         </TouchableOpacity>
                     </>
+                ) : null}
+
+                {showNormalControls && isOutOfStock ? (
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() =>
+                            updateQuantity(String(item.id), 'remove')
+                        }
+                        style={styles.removeBtn}
+                    >
+                        <TablerIcon name="trash" size={14} color="#B91C1C" />
+                        <Text style={styles.removeBtnText}>Remove</Text>
+                    </TouchableOpacity>
                 ) : null}
             </View>
         </View>
@@ -235,6 +299,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#0D614E',
         borderColor: '#0D614E',
     },
+    checkboxDisabled: {
+        opacity: 0.5,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F8FAFC',
+    },
     imageWrap: {
         width: 64,
         height: 64,
@@ -263,6 +332,7 @@ const styles = StyleSheet.create({
         lineHeight: 17,
     },
     metaRow: {
+        minHeight: 16,
         flexDirection: 'row',
         justifyContent: 'flex-start',
         alignItems: 'center',
@@ -323,6 +393,12 @@ const styles = StyleSheet.create({
         color: '#047857',
         fontFamily: Fonts.PoppinsMedium,
     },
+    prescribedHint: {
+        marginTop: 4,
+        fontSize: 10,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsRegular,
+    },
     qtyWrap: {
         alignItems: 'center',
         gap: 6,
@@ -364,4 +440,39 @@ const styles = StyleSheet.create({
         color: '#B91C1C',
         fontFamily: Fonts.PoppinsSemiBold,
     },
+    stockNote: {
+        flex: 1,
+        fontSize: 11,
+        lineHeight: 14,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    outOfStockBox: {
+        backgroundColor: '#FEF3F2',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    outOfStockText: {
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 12,
+    },
+    outOfStockBadge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        backgroundColor: 'rgba(249, 115, 22, 0.95)',
+        paddingHorizontal: 6,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    outOfStockBadgeText: {
+        color: '#fff',
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
 });
+    

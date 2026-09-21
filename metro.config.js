@@ -3,6 +3,10 @@ const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 const exclusionList = require('metro-config/private/defaults/exclusionList').default;
 const fs = require('fs');
 
+const {
+  withSentryConfig
+} = require("@sentry/react-native/metro");
+
 try {
   const gracefulFs = require('graceful-fs');
   gracefulFs.gracefulify(fs);
@@ -77,4 +81,4 @@ const config = {
   },
 };
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = withSentryConfig(mergeConfig(getDefaultConfig(__dirname), config));

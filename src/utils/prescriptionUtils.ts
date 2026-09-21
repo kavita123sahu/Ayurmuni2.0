@@ -18,18 +18,51 @@ export const isPrescriptionRequired = (item: any): boolean => {
   return raw === true || raw === 1 || raw === '1' || raw === 'true';
 };
 
-const PRESCRIPTION_TITLE = 'Prescription required';
 const PRESCRIPTION_MSG =
-  'You cannot increase the quantity or add this medicine to cart without a doctor’s prescription.';
+  'This medicine needs a valid prescription before it can be added to cart.';
 
-/** Custom modal (Consult Now) or toast for prescription-gated products */
+const resolveVariantId = (item: any): string | undefined => {
+  const id = String(
+    item?.variant_id ??
+      item?.variant?.variant_id ??
+      item?.variant?.id ??
+      item?.id ??
+      '',
+  ).trim();
+  return id || undefined;
+};
+
+const resolveProductName = (item: any): string | undefined => {
+  const name = String(
+    item?.name ||
+      item?.product_name ||
+      item?.title ||
+      item?.variant?.name ||
+      item?.product?.name ||
+      '',
+  ).trim();
+  return name || undefined;
+};
+
+/** Custom modal (Consult / Upload Rx) or toast for prescription-gated products */
 export const showPrescriptionRequiredMessage = (options?: {
   useAlert?: boolean;
   message?: string;
+  item?: any;
+  variantId?: string;
+  productName?: string;
 }) => {
   const message = options?.message || PRESCRIPTION_MSG;
   if (options?.useAlert !== false) {
-    showPrescriptionModal({ message });
+    showPrescriptionModal({
+      message,
+      variantId:
+        options?.variantId ||
+        (options?.item ? resolveVariantId(options.item) : undefined),
+      productName:
+        options?.productName ||
+        (options?.item ? resolveProductName(options.item) : undefined),
+    });
     return;
   }
   showSuccessToast(message, 'error');
@@ -41,11 +74,14 @@ export const showPrescriptionRequiredMessage = (options?: {
  */
 export const canAddProductWithoutPrescription = (
   item: any,
-  options?: { useAlert?: boolean },
+  options?: { useAlert?: boolean; message?: string },
 ): boolean => {
   if (!isPrescriptionRequired(item)) {
     return true;
   }
-  showPrescriptionRequiredMessage(options);
+  showPrescriptionRequiredMessage({
+    ...options,
+    item,
+  });
   return false;
 };

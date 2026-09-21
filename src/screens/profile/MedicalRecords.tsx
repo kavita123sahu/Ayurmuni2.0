@@ -1,648 +1,440 @@
 import React, { useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    FlatList,
-    Image,
-    ScrollView,
-    ActivityIndicator,
-    Linking,
-    RefreshControl,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  Linking,
+  RefreshControl,
 } from 'react-native';
 import TablerIcon from '../../components/TablerIcon';
-import SelectedUploadCard from '../../components/SelectedUploadCard';
 import SearchBar from '../../components/SearchBar';
 import Header from '../../components/Header';
-import { Images } from '../../common/Images';
 import UploadRecordModal from '../../components/UploadRecordModal';
 import { Fonts } from '../../common/Fonts';
-import SectionHeader from '../../components/SectionHeader';
 import { Colors } from '../../common/Colors';
-import PrimaryButton from '../../components/PrimaryButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MedicalRecordCard from '../consult/MedicalRecordCard';
 import PreviewModal from '../consult/PreviewModal';
-import { useMedicalRecord, useMedicalUpload, usePatientData } from '../../hooks/usePatientData';
+import { useMedicalRecord, useMedicalUpload } from '../../hooks/usePatientData';
 import { deleteMedicalRecord } from '../../services/PatientServices';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { matchesSearch } from '../../utils/searchUtils';
 
+const TABS = [
+  { key: 'All Records', type: null as string | null },
+  { key: 'Prescriptions', type: 'prescription' },
+  { key: 'Lab Reports', type: 'lab_report' },
+] as const;
+
+const isImageRecord = (item: any) => {
+  const type = String(item?.file_type || '').toLowerCase();
+  const url = String(item?.file_url || '');
+  if (type.includes('pdf')) return false;
+  if (type.includes('image') || type === 'jpg' || type === 'jpeg' || type === 'png') {
+    return true;
+  }
+  return /\.(jpe?g|png|gif|webp|heic)(\?|$)/i.test(url);
+};
 
 const MedicalRecords = (props: any) => {
-    const [activeTab, setActiveTab] = useState('All Records');
-    const [searchText, setSearchText] = useState('');
-    const debouncedSearch = useDebounce(searchText, 400);
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['key']>(
+    'All Records',
+  );
+  const [searchText, setSearchText] = useState('');
+  const debouncedSearch = useDebounce(searchText, 400);
 
-    const {
-        patientsRecord,
-        fetchPatientsRecord,
-        onRefresh,
-        refreshing,
-    } = useMedicalRecord();
+  const {
+    patientsRecord,
+    fetchPatientsRecord,
+    onRefresh,
+    refreshing,
+  } = useMedicalRecord();
 
-    console.log("patientsRecordpatientsRecord", patientsRecord);
+  const {
+    selectFile,
+    uploading,
+    modalVisible,
+    pickedFile,
+    submitRecord,
+    closeUploadModal,
+  } = useMedicalUpload(fetchPatientsRecord);
 
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewRecord, setPreviewRecord] = useState<any>(null);
 
-
-    const TAB_TYPE_MAP: Record<string, string | null> = {
-        'All Records': null,
-        'Prescriptions': 'prescription',
-        'Lab Reports': 'lab_report',
+  const counts = useMemo(() => {
+    const list = patientsRecord || [];
+    return {
+      all: list.length,
+      prescription: list.filter(
+        (i: any) => i?.medical_record_type === 'prescription',
+      ).length,
+      lab_report: list.filter(
+        (i: any) => i?.medical_record_type === 'lab_report',
+      ).length,
     };
+  }, [patientsRecord]);
 
-    const {
-        selectFile,
-        CameraUpload,
-        removeFile,
-        pickedFile,
-        uploading,
-        modalVisible,
-        submitRecord,
-        closeUploadModal,
-    } = useMedicalUpload(
-        fetchPatientsRecord,
-        (recordId) => {
-            setSelectedRecords(prev => [...prev, recordId]);
-        },
-    );
-    console.log("patientsRecordpatientsRecord", patientsRecord);
+  const filteredRecords = useMemo(() => {
+    const tab = TABS.find(t => t.key === activeTab);
+    let list = patientsRecord || [];
 
-    const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
-    const [previewVisible, setPreviewVisible] = useState(false);
-    const [previewUrl, setPreviewUrl] = useState('');
-
-    // const selectedRecordItems = (patientsRecord || []).filter((item: any) =>
-    //     selectedRecords?.includes(item.id),
-    // );
-
-
-    const filteredRecords = React.useMemo(() => {
-        const targetType = TAB_TYPE_MAP[activeTab];
-        let list = patientsRecord || [];
-
-        if (targetType) {
-            list = list.filter(
-                (item: any) => item?.medical_record_type === targetType,
-            );
-        }
-
-        const q = debouncedSearch.trim();
-        if (!q) return list;
-
-        return list.filter((item: any) =>
-            matchesSearch(
-                q,
-                item?.title,
-                item?.description,
-                item?.medical_record_type,
-                item?.file_name,
-            ),
-        );
-    }, [patientsRecord, activeTab, debouncedSearch]);
-
-
-    const selectedRecordItems = (filteredRecords || []).filter((item: any) =>
-        selectedRecords?.includes(item.id),
-    );
-
-    const TabButton = () => {
-
-        return (
-            <View style={styles.tabs}>
-                {['All Records', 'Prescriptions', 'Lab Reports'].map(tab => (
-                    <TouchableOpacity
-                        key={tab}
-                        onPress={() => setActiveTab(tab)}
-                        style={[
-                            styles.tabBtn,
-                            activeTab === tab && styles.activeTab,
-                        ]}
-                    >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === tab && styles.activeTabText,
-                            ]}
-                        >
-                            {tab}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-        )
+    if (tab?.type) {
+      list = list.filter(
+        (item: any) => item?.medical_record_type === tab.type,
+      );
     }
 
-    const toggleRecord = (id: string) => {
-        setSelectedRecords(prev =>
-            prev.includes(id)
-                ? prev.filter(item => item !== id)
-                : [...prev, id]
-        );
-    };
+    const q = debouncedSearch.trim();
+    if (!q) return list;
 
-    const deleteRecord = async (id: string) => {
-        try {
-            console.log('delete id =>', id);
+    return list.filter((item: any) =>
+      matchesSearch(
+        q,
+        item?.title,
+        item?.description,
+        item?.medical_record_type,
+        item?.file_name,
+      ),
+    );
+  }, [patientsRecord, activeTab, debouncedSearch]);
 
-            await deleteMedicalRecord(id);
+  const deleteRecord = async (id: string) => {
+    try {
+      await deleteMedicalRecord(id);
+      await fetchPatientsRecord();
+    } catch (error) {
+      console.log('DELETE ERROR =>', error);
+    }
+  };
 
-            await fetchPatientsRecord();
+  const openPreview = (item: any) => {
+    const url = item?.file_url;
+    if (!url) return;
 
-        } catch (error) {
-            console.log(
-                'DELETE ERROR =>',
-                error,
-            );
-        }
-    };
+    if (isImageRecord(item)) {
+      setPreviewRecord(item);
+      setPreviewUrl(url);
+      setPreviewVisible(true);
+      return;
+    }
 
-    const renderItem = ({ item }: any) => (
-        <MedicalRecordCard
-            item={item}
-            selected={selectedRecords?.includes(
-                item.id,
-            )}
-            onSelect={() =>
-                toggleRecord(item.id)
-            }
-            onPreview={() => {
-                setPreviewUrl(item?.file_url);
-                // setPreviewVisible(true);
-                Linking.openURL(item?.file_url)
-            }}
-            onDelete={() =>
-                deleteRecord(item?.id)
-            }
+    Linking.openURL(url);
+  };
+
+  const renderItem = ({ item }: any) => (
+    <MedicalRecordCard
+      item={item}
+      onPreview={() => openPreview(item)}
+      onDelete={() => deleteRecord(item?.id)}
+    />
+  );
+
+  const ListHeader = (
+    <View>
+      <TouchableOpacity
+        style={styles.uploadRow}
+        onPress={selectFile}
+        activeOpacity={0.88}
+        disabled={uploading}
+      >
+        <View style={styles.uploadIcon}>
+          {uploading ? (
+            <ActivityIndicator size="small" color={Colors.primaryColor} />
+          ) : (
+            <TablerIcon name="upload" size={18} color={Colors.primaryColor} />
+          )}
+        </View>
+        <View style={styles.uploadCopy}>
+          <Text style={styles.uploadTitle}>
+            {uploading ? 'Uploading…' : 'Upload medical record'}
+          </Text>
+          <Text style={styles.uploadSub} numberOfLines={1}>
+            Prescription, lab report · PDF or image
+          </Text>
+        </View>
+        <View style={styles.uploadPlus}>
+          <TablerIcon name="plus" size={16} color="#FFFFFF" />
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionTitle}>Your documents</Text>
+        <Text style={styles.sectionCount}>
+          {filteredRecords.length}{' '}
+          {filteredRecords.length === 1 ? 'file' : 'files'}
+        </Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <Header
+        title="Medical Records"
+        subtitle="Your health documents in one place"
+        onBack={() => props.navigation.goBack()}
+        onRefreshPress={onRefresh}
+      />
+
+      <View style={styles.pad}>
+        <SearchBar
+          placeholder="Search by title or type…"
+          value={searchText}
+          onChangeText={setSearchText}
+          compact
+          containerStyle={styles.search}
         />
-    );
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <Header
-                title="Medical Records"
-                subtitle="Manage your health documents"
-                onBack={() => { props.navigation.goBack() }}
-                onRefreshPress={onRefresh}
-            />
-
-            <SearchBar
-                placeholder="Search records by title or type..."
-                value={searchText}
-                onChangeText={setSearchText}
-            />
-
-            <TabButton />
-
-            <ScrollView
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[Colors.primaryColor]}
-                        tintColor={Colors.primaryColor}
-                    />
-                }
-            >
-
-                {uploading ? (
-                    <View
-                        style={{
-                            paddingVertical: 30,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <ActivityIndicator
-                            size="large"
-                            color={Colors.primaryColor}
-                        />
-
-                        <Text
-                            style={{
-                                marginTop: 10,
-                                color: Colors.primaryColor,
-                                fontFamily: Fonts.PoppinsMedium,
-                            }}
-                        >
-                            Uploading...
-                        </Text>
-                    </View>
-                ) : (
-                    <>
-                        <TouchableOpacity
-                            style={styles.uploadContainer}
-                            onPress={selectFile}
-                            activeOpacity={0.9}
-                        >
-                            <View style={styles.uploadIcon}>
-                                <TablerIcon name="upload" size={28} color="#065F46" />
-                            </View>
-
-                            <Text style={styles.uploadTitle}>
-                                Upload Medical Record
-                            </Text>
-
-                            <Text style={styles.uploadSub}>
-                                Prescription, lab report, PDF or image
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* {selectedRecordItems?.length > 0 && (
-                            <View style={styles.selectedSection}>
-                                <Text style={styles.selectedLabel}>
-                                    Selected ({selectedRecordItems?.length})
-                                </Text>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                >
-                                    {selectedRecordItems?.map((item: any) => (
-                                        <SelectedUploadCard
-                                            key={item.id}
-                                            name={item.description || 'Medical record'}
-                                            uri={item.file_url}
-                                            fileType={item.file_type}
-                                            onRemove={() =>
-                                                setSelectedRecords(prev =>
-                                                    prev.filter(id => id !== item.id),
-                                                )
-                                            }
-                                        />
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        )} */}
-
-
-                    </>
-                )}
-
-                <SectionHeader title="Recent Documents" />
-
-                <FlatList
-                    // data={patientsRecord}
-                    data={[
-                        ...(filteredRecords || []),
+        <View style={styles.tabs}>
+          {TABS.map(tab => {
+            const active = activeTab === tab.key;
+            const count =
+              tab.type == null
+                ? counts.all
+                : counts[tab.type as 'prescription' | 'lab_report'];
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                style={[styles.tabBtn, active && styles.activeTab]}
+                activeOpacity={0.85}
+              >
+                <Text
+                  style={[styles.tabText, active && styles.activeTabText]}
+                  numberOfLines={1}
+                >
+                  {tab.key === 'All Records' ? 'All' : tab.key}
+                </Text>
+                <View
+                  style={[styles.tabCount, active && styles.tabCountActive]}
+                >
+                  <Text
+                    style={[
+                      styles.tabCountText,
+                      active && styles.tabCountTextActive,
                     ]}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No records found</Text>
-                        </View>
-                    }
-                />
-
-                <View style={{ paddingBottom: 40, paddingTop: 10 }}>
-                    {/* <PrimaryButton title="Upload File"
-                        iconName="upload"
-                        onPress={() => console.log}
-                        backgroundColor="#0D614E"
-                        TextFont={Fonts.PoppinsRegular}
-                        textColor="#FFFFFF" /> */}
-
-                    {/* {selectedRecords.length > 0 && (
-                        <View
-                            style={{
-                                flexDirection: 'row',
-                                gap: 10,
-                                marginTop: 20,
-                            }}>
-
-                            <PrimaryButton
-                                iconName="upload"
-                                backgroundColor="#0D614E"
-                                TextFont={Fonts.PoppinsRegular}
-                                textColor="#FFFFFF"
-                                title="Preview"
-                                onPress={() =>
-                                    setPreviewVisible(true)
-                                }
-                            />
-
-                            <PrimaryButton
-                                iconName="upload"
-                                backgroundColor="#0D614E"
-                                TextFont={Fonts.PoppinsRegular}
-                                textColor="#FFFFFF"
-                                title="Upload Selected"
-                                onPress={handleSubmitRecords}
-                            />
-                        </View>
-                    )} */}
-
-                    {/* {selectedFiles.length > 0 && (
-
-                        <PrimaryButton
-                            title={uploading ? "Uploading..." : "Upload Selected"}
-                            onPress={submitFiles}
-                            backgroundColor="#0D614E"
-                            textColor="#fff"
-                        />
-                    )} */}
+                  >
+                    {count}
+                  </Text>
                 </View>
-            </ScrollView>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-            {previewVisible && (
-                <PreviewModal
-                    visible={previewVisible}
-                    imageUrl={previewUrl}
-                    record={selectedRecords}
-                    onClose={() => {
-                        setPreviewVisible(false);
-                        setPreviewUrl('');
-                        // setSelectedRecord(null);
-                    }}
-                />
-            )}
+      <FlatList
+        data={filteredRecords}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => String(item?.id ?? index)}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primaryColor]}
+            tintColor={Colors.primaryColor}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <TablerIcon name="file" size={22} color={Colors.primaryColor} />
+            </View>
+            <Text style={styles.emptyTitle}>No records yet</Text>
+            <Text style={styles.emptyText}>
+              Upload a prescription or lab report to keep it handy.
+            </Text>
+          </View>
+        }
+      />
 
-            <UploadRecordModal
-                visible={modalVisible}
-                file={pickedFile}
-                uploading={uploading}
-                onClose={closeUploadModal}
-                onSubmit={submitRecord}
-            />
+      {previewVisible ? (
+        <PreviewModal
+          visible={previewVisible}
+          imageUrl={previewUrl}
+          record={previewRecord}
+          onClose={() => {
+            setPreviewVisible(false);
+            setPreviewUrl('');
+            setPreviewRecord(null);
+          }}
+        />
+      ) : null}
 
-
-        </SafeAreaView>
-    );
+      <UploadRecordModal
+        visible={modalVisible}
+        file={pickedFile}
+        uploading={uploading}
+        onClose={closeUploadModal}
+        onSubmit={submitRecord}
+      />
+    </SafeAreaView>
+  );
 };
 
 export default MedicalRecords;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F8FAFC',
-        // padding: 16,
-        paddingHorizontal: 10
-    },
-
-    header: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#0F172A',
-    },
-
-    subHeader: {
-        fontSize: 13,
-        color: '#64748B',
-        marginBottom: 16,
-    },
-
-    searchBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F1F5F9',
-        paddingHorizontal: 12,
-        borderRadius: 12,
-        height: 44,
-        marginBottom: 16,
-    },
-
-    input: {
-        marginLeft: 8,
-        flex: 1,
-    },
-
-    tabs: {
-        flexDirection: 'row',
-        marginBottom: 16,
-        marginTop: 10,
-
-    },
-
-    tabBtn: {
-        paddingVertical: 12,
-        paddingHorizontal: 15,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: Colors.borderColor,
-        backgroundColor: '#ffff',
-        marginRight: 8,
-    },
-
-    activeTab: {
-        backgroundColor: '#065F46',
-    },
-
-    tabText: {
-        fontSize: 12,
-        color: '#334155',
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-    activeTabText: {
-        color: '#fff',
-        fontFamily: Fonts.PoppinsMedium
-    },
-
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 10,
-    },
-
-    card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 15,
-        paddingVertical: 20,
-        borderRadius: 24,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: Colors.borderColor
-
-    },
-
-    iconContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 8,
-        backgroundColor: "#E8F3F1", // light green like figma
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 12,
-    },
-
-    icon: {
-        height: 25,
-        width: 25, // dark green icon
-    },
-
-    iconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: '#ECFDF5',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-
-    title: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: Colors.black,
-    },
-
-    subtitle: {
-        fontSize: 12,
-        color: Colors.subTextColor,
-        fontFamily: Fonts.PoppinsRegular,
-
-    },
-    addBox: {
-        borderWidth: 1.5,
-        borderStyle: 'dashed',
-        borderColor: '#059669', // darker green like figma
-        borderRadius: 18,
-        paddingVertical: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 16,
-        backgroundColor: '#F9FAFB',
-    },
-
-    iconWrapper: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: '#ECFDF5', // light green bg
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
-    },
-
-    uploadContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        borderWidth: 1.5,
-        borderStyle: 'dashed',
-        borderColor: '#10B981',
-        paddingVertical: 28,
-        alignItems: 'center',
-        marginTop: 16,
-        marginBottom: 20,
-    },
-
-    uploadIcon: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#ECFDF5',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-
-    uploadTitle: {
-        fontFamily: Fonts.PoppinsSemiBold,
-        fontSize: 16,
-        color: '#065F46',
-    },
-
-    uploadSub: {
-        fontFamily: Fonts.PoppinsRegular,
-        fontSize: 12,
-        color: '#64748B',
-    },
-    selectedSection: {
-        marginTop: 16,
-        paddingTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
-    },
-    selectedLabel: {
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsSemiBold,
-        marginBottom: 10,
-    },
-    selectedCountBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginVertical: 15,
-        backgroundColor: '#ECFDF5',
-        padding: 14,
-        borderRadius: 14,
-    },
-    selectedCountText: {
-        color: '#065F46',
-        fontFamily: Fonts.PoppinsMedium,
-        fontSize: 13,
-    },
-    addTitle: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#065F46',
-    },
-
-    addSub: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-        color: Colors.subTextColor,
-    },
-
-    emptyContainer: {
-        alignItems: 'center',
-        paddingVertical: 40,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: Colors.subTextColor,
-        fontFamily: Fonts.PoppinsRegular,
-    },
-    prescriptionBadge: {
-        backgroundColor: '#DCFCE7',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        marginRight: 8,
-    },
-    prescriptionBadgeText: {
-        fontSize: 11,
-        color: '#065F46',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    labBadge: {
-        backgroundColor: '#FEF3C7',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        marginRight: 8,
-    },
-    labBadgeText: {
-        fontSize: 11,
-        color: '#D97706',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-
-    uploadBtn: {
-        flexDirection: 'row',
-        backgroundColor: '#065F46',
-        paddingVertical: 16,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-
-    uploadText: {
-        color: '#fff',
-        marginLeft: 8,
-        fontWeight: '600',
-        fontSize: 15,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  pad: {
+    paddingHorizontal: 12,
+  },
+  search: {
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  tabs: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E6EFEA',
+    backgroundColor: '#FFFFFF',
+  },
+  activeTab: {
+    backgroundColor: Colors.primaryColor,
+    borderColor: Colors.primaryColor,
+  },
+  tabText: {
+    fontSize: 11,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+  },
+  tabCount: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+  },
+  tabCountActive: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  tabCountText: {
+    fontSize: 10,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  tabCountTextActive: {
+    color: '#FFFFFF',
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 28,
+    flexGrow: 1,
+  },
+  uploadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CDEADF',
+    borderStyle: 'dashed',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+    gap: 10,
+  },
+  uploadIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  uploadTitle: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 13,
+    color: Colors.primaryColor,
+  },
+  uploadSub: {
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  uploadPlus: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  sectionCount: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  emptyText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    fontFamily: Fonts.PoppinsRegular,
+    lineHeight: 18,
+  },
 });

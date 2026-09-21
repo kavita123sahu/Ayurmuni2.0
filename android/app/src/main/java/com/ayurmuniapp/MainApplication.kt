@@ -22,6 +22,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    HeadsUpNotificationModule.ensureChannels(this)
     loadReactNative(this)
   }
 }

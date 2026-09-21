@@ -3,17 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   ImageSourcePropType,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
-import { Images } from '../common/Images';
 import { getStatusStyle } from '../common/DataInterface';
 import TablerIcon from './TablerIcon';
 import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
-import { canRescheduleAppointment } from '../utils/appointmentUtils';
+import { canModifyAppointment } from '../utils/appointmentUtils';
+import DoctorAvatar from './DoctorAvatar';
 
 interface Props {
   image: ImageSourcePropType;
@@ -57,6 +56,7 @@ const RecentDoctors: React.FC<Props> = ({
     typeof image === 'object' &&
     'uri' in image &&
     Boolean((image as { uri?: string }).uri);
+  const imageUri = hasImage ? String((image as { uri?: string }).uri || '') : '';
 
   const statusLabel = formatStatusLabel(status);
   const statusStyle = useMemo(
@@ -64,10 +64,15 @@ const RecentDoctors: React.FC<Props> = ({
     [status],
   );
   const showReschedule = useMemo(
-    () => canRescheduleAppointment(status),
-    [status],
+    () => canModifyAppointment(status, date, time),
+    [status, date, time],
   );
-  const showBookAgain = !showReschedule && Boolean(onPressBookAgain);
+  const showBookAgain =
+    !showReschedule &&
+    Boolean(onPressBookAgain) &&
+    ['completed', 'cancelled', 'missed', 'expired', 'no_show', 'noshow'].includes(
+      String(status || '').toLowerCase(),
+    );
 
   const hasSchedule = Boolean(day || date || time);
 
@@ -79,9 +84,12 @@ const RecentDoctors: React.FC<Props> = ({
       disabled={!onPress}
     >
       <View style={styles.topRow}>
-        <Image
-          source={hasImage ? image : Images.doctorImage}
-          style={styles.avatar}
+        <DoctorAvatar
+          uri={imageUri}
+          name={name}
+          size={AVATAR}
+          shape="circle"
+          emptyMode="icon"
         />
 
         <View style={styles.info}>

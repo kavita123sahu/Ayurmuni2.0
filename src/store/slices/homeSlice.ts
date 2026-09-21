@@ -102,19 +102,19 @@ export const normalizeDietPlans = (response: any): any[] => {
 };
 
 export const mapDietPlanForHome = (item: any) => {
-  const diseases = Array.isArray(item?.health_diseases)
-    ? item.health_diseases
-      .map((d: any) => d?.name)
-      .filter(Boolean)
-      .join(', ')
-    : '';
+  const subtitle =
+    String(item?.season || item?.subtitle || item?.short_description || '')
+      .trim() || '';
 
   return {
     ...item,
     id: String(item?.id ?? ''),
     title: String(item?.name ?? 'Diet Plan'),
     name: String(item?.name ?? 'Diet Plan'),
-    short_description: diseases || item?.season || item?.prakriti || '',
+    // Home card: never use disease names as subtitle
+    short_description: subtitle,
+    subtitle,
+    prakriti: item?.prakriti || '',
     difficulty: item?.prakriti || item?.season || 'Diet',
     thumbnail_url: item?.thumbnail_url || item?.image_url || '',
     price: item?.price ?? 0,
@@ -428,7 +428,11 @@ const homeSlice = createSlice({
       })
       .addCase(fetchCustomerData.fulfilled, (state, action) => {
         state.loadingCustomer = false;
-        state.customerData = action.payload;
+        // Keep last known profile during soft refresh / auth race (null payload)
+        // so home header prakriti does not flicker away.
+        if (action.payload != null) {
+          state.customerData = action.payload;
+        }
       })
       .addCase(fetchCustomerData.rejected, state => {
         state.loadingCustomer = false;

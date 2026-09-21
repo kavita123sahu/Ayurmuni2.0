@@ -11,6 +11,8 @@ import {
     FlatList,
     StatusBar,
     RefreshControl,
+    TouchableOpacity,
+    Text,
 } from 'react-native';
 
 import {
@@ -27,6 +29,7 @@ import Header from '../../components/Header';
 import { ExpandableSearch } from '../../components/SearchBar';
 import AppointmentCard, { Appointment } from '../../components/AppointmnetCard';
 import SegmentTabs from '../../components/SegmentTabs';
+import TablerIcon from '../../components/TablerIcon';
 
 import {
     getConsultHistory,
@@ -65,6 +68,10 @@ const ConsultHistory = (props: any) => {
     const [activeTab, setActiveTab] = useState<Tab>('all');
     const [history, setHistory] = useState([]);
     const historyLenRef = React.useRef(0);
+
+    // Pagination state: show 5 items per page
+    const [page, setPage] = useState(0);
+    const PAGE_SIZE = 5;
 
     useEffect(() => {
         historyLenRef.current = history.length;
@@ -105,6 +112,22 @@ const ConsultHistory = (props: any) => {
             );
         });
     }, [history, debouncedSearch]);
+
+    // Derived pagination values — always 5 items per page
+    const totalPages = Math.max(1, Math.ceil((filteredHistory?.length || 0) / PAGE_SIZE));
+
+    useEffect(() => {
+        setPage(0);
+    }, [activeTab, debouncedSearch]);
+
+    useEffect(() => {
+        if (page >= totalPages) setPage(Math.max(0, totalPages - 1));
+    }, [filteredHistory.length, page, totalPages]);
+
+    const pagedData = useMemo(() => {
+        const start = page * PAGE_SIZE;
+        return (filteredHistory || []).slice(start, start + PAGE_SIZE);
+    }, [filteredHistory, page]);
 
     useEffect(() => {
         fetchConsultHistory(activeTab);
@@ -200,8 +223,37 @@ const ConsultHistory = (props: any) => {
                     }
                 />
             ) : (
-                <FlatList
-                    data={filteredHistory}
+                <>
+                  {/* Pagination — 5 records per page */}
+                  {totalPages > 1 ? (
+                  <View style={styles.paginationRow}>
+                    <TouchableOpacity
+                      disabled={page <= 0}
+                      onPress={() => setPage(p => Math.max(0, p - 1))}
+                      style={[styles.pageBtn, page <= 0 && styles.pageBtnDisabled]}
+                    >
+                      <TablerIcon name="chevron-left" size={16} color={Colors.primaryColor} />
+                    </TouchableOpacity>
+
+                    <Text style={styles.pageLabel}>
+                      {`Page ${page + 1} of ${totalPages}`}
+                    </Text>
+
+                    <TouchableOpacity
+                      disabled={page >= totalPages - 1}
+                      onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                      style={[
+                        styles.pageBtn,
+                        page >= totalPages - 1 && styles.pageBtnDisabled,
+                      ]}
+                    >
+                      <TablerIcon name="chevron-right" size={16} color={Colors.primaryColor} />
+                    </TouchableOpacity>
+                  </View>
+                  ) : null}
+
+                  <FlatList
+                    data={pagedData}
                     renderItem={renderItem}
                     keyExtractor={(item, index) =>
                         String(
@@ -220,7 +272,8 @@ const ConsultHistory = (props: any) => {
                             tintColor={Colors.primaryColor}
                         />
                     }
-                />
+                  />
+                </>
             )}
         </SafeAreaView>
     );
@@ -246,5 +299,29 @@ const styles = StyleSheet.create({
         gap: SPACING.md,
         paddingBottom: SPACING.xxl,
         paddingTop: SPACING.xs,
+    },
+    paginationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 8,
+        marginBottom: 8,
+    },
+    pageBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    pageBtnDisabled: {
+        opacity: 0.45,
+    },
+    pageLabel: {
+        fontSize: 13,
+        color: '#64748B',
+        fontFamily: Fonts.PoppinsMedium,
+        paddingHorizontal: 4,
     },
 });

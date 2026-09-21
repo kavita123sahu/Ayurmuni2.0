@@ -6,6 +6,7 @@ const PatientFAQ = ({ navigation, route }: any) => (
     navigation={navigation}
     mode="prakriti"
     allowBack={route?.params?.allowBack !== false}
+    noteSeen={Boolean(route?.params?.noteSeen)}
   />
 );
 

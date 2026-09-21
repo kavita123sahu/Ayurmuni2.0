@@ -26,6 +26,10 @@ import {
 
   getDoctorAvailabilityLabel,
 
+  resolveDoctorProfileImageUri,
+
+  formatConsultationFeeLabel,
+
 } from '../utils/doctorUtils';
 
 
@@ -107,26 +111,6 @@ interface Props {
 
 
 
-const resolveProfileImageUri = (img?: ProfileImage): string => {
-
-  if (typeof img === 'string') {
-
-    return img.trim();
-
-  }
-
-  if (img && typeof img === 'object' && img.url) {
-
-    return String(img.url).trim();
-
-  }
-
-  return '';
-
-};
-
-
-
 const AllDoctorCard: React.FC<Props> = ({
 
   item,
@@ -165,20 +149,13 @@ const AllDoctorCard: React.FC<Props> = ({
 
     rating > 0 ? rating.toFixed(1) : '—';
 
-  const feeRaw = item?.consultation_fee;
-
-  const hasFee =
-
-    feeRaw != null && String(feeRaw).trim() !== '' && Number(feeRaw) >= 0;
+  const feeLabel = formatConsultationFeeLabel(item);
 
 
 
   const imageUri = useMemo(
-
-    () => resolveProfileImageUri(item?.profile_image ?? item?.image),
-
-    [item?.profile_image, item?.image],
-
+    () => resolveDoctorProfileImageUri(item),
+    [item],
   );
 
 
@@ -287,7 +264,7 @@ const AllDoctorCard: React.FC<Props> = ({
 
       experience={formatDoctorExperience(item?.experience_years ?? item?.experience)}
 
-      feeLabel={hasFee ? String(feeRaw).replace(/\.0+$/, '') : null}
+      feeLabel={feeLabel}
 
       imageUri={imageUri}
 

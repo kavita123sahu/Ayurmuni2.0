@@ -111,7 +111,8 @@ const RewardsScreen = ({ navigation }: any) => {
       {
         key: 'referral',
         label: 'Referral',
-        match: r => {
+          //  match: r  => {
+        match: (r : Reward) => {
           const source = String(r.source || r.coupon?.source || '').toLowerCase();
           const trigger = String(r.trigger || '').toLowerCase();
           return source === 'referral' || trigger === 'referral';
@@ -120,7 +121,7 @@ const RewardsScreen = ({ navigation }: any) => {
       {
         key: 'reward',
         label: 'Reward',
-        match: r => {
+        match: (r : Reward) => {
           const source = String(r.source || r.coupon?.source || '').toLowerCase();
           const trigger = String(r.trigger || '').toLowerCase();
           return source === 'reward' || trigger === 'reward';

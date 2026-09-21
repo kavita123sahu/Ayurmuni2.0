@@ -14,9 +14,9 @@ const wait = (ms: number) =>
 
 const HeadsUpNative = NativeModules.HeadsUpNotification as
   | {
-      show?: (payload: { title?: string; message?: string }) => void;
-      ensureChannels?: () => void;
-    }
+    show?: (payload: { title?: string; message?: string }) => void;
+    ensureChannels?: () => void;
+  }
   | undefined;
 
 /** WhatsApp-style system tray / heads-up banner (Android). */

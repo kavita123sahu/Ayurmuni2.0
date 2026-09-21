@@ -7,6 +7,7 @@ import {
   Image,
   ImageBackground,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -16,21 +17,46 @@ import { Colors } from '../common/Colors';
 
 import DashboardCard from './DashboardCard';
 import { useProfileDashboardStats } from '../hooks/useProfileDashboardStats';
+import TablerIcon from './TablerIcon';
+import DiseaseSelectionModal from './DiseaseSelectionModal';
+import { getServiceCategoryId } from '../utils/serviceCategoryUtils';
+import { useHomeData } from '../hooks/UseHomeData';
 
-const ProfileHeader = ({ user, navigation }: any) => {
+const resolveDiseaseList = (user: any): { id: string; name: string }[] => {
+  const list = Array.isArray(user?.health_diseases) ? user.health_diseases : [];
+  return list
+    .map((item: any) => {
+      if (typeof item === 'string') {
+        return { id: item, name: item };
+      }
+      const id = String(item?.id ?? item?.health_disease_id ?? '').trim();
+      const name = String(item?.name ?? item?.title ?? '').trim();
+      if (!id && !name) return null;
+      return { id: id || name, name: name || id };
+    })
+    .filter(Boolean) as { id: string; name: string }[];
+};
 
-  console.log('UserinProfileHeader:', user);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [profileImage, setProfileImage] =
-    useState('');
+const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
+  const [loading] = useState(false);
+  const [profileImage, setProfileImage] = useState('');
+  const [showDiseaseModal, setShowDiseaseModal] = useState(false);
 
   const { stats: dashboardStats, refresh: refreshDashboardStats } =
     useProfileDashboardStats();
+  const { categories, fetchCustomerData } = useHomeData();
+  const medicineCategoryId = useMemo(
+    () => getServiceCategoryId(categories, 'medicine'),
+    [categories],
+  );
 
   const stackNav = navigation?.getParent?.() || navigation;
+
+  const diseases = useMemo(() => resolveDiseaseList(user), [user]);
+  const selectedDiseaseIds = useMemo(
+    () => diseases.map(d => d.id).filter(Boolean),
+    [diseases],
+  );
 
   const dashboardData = useMemo(
     () =>
@@ -63,161 +89,136 @@ const ProfileHeader = ({ user, navigation }: any) => {
   );
 
   useEffect(() => {
-
     if (user?.profile_picture) {
-
-      setProfileImage(
-        user.profile_picture
-      );
+      setProfileImage(user.profile_picture);
     }
-
   }, [user]);
-  /*
-  =====================================================
-      IMAGE PICKER
-  =====================================================
-  */
 
-  /*
-  =====================================================
-      FIRST LETTER
-  =====================================================
-  */
+  const firstLetter = user?.first_name?.charAt(0)?.toUpperCase() || 'U';
 
-  const firstLetter =
-    user?.first_name
-      ?.charAt(0)
-      ?.toUpperCase() || 'U';
+  const onDiseaseSaved = async (saved: boolean) => {
+    setShowDiseaseModal(false);
+    if (!saved) return;
+    try {
+      await fetchCustomerData?.(true);
+    } catch {
+      // ignore
+    }
+    onUserUpdated?.();
+  };
 
   return (
     <View style={styles.wrapper}>
-
       <View style={styles.container}>
-
-        {/* LEAFS */}
-
-        <Image
-          source={Images.leaf1}
-          style={styles.leafLeft}
-        />
-
-        <Image
-          source={Images.leaf2}
-          style={styles.leafRight}
-        />
-
-        {/* AVATAR */}
+        <Image source={Images.leaf1} style={styles.leafLeft} />
+        <Image source={Images.leaf2} style={styles.leafRight} />
 
         <View style={styles.avatarBgWrapper}>
-
           <ImageBackground
             source={Images.BackgroundImage}
             style={styles.avatarBg}
-            imageStyle={{
-              borderRadius: 100,
-            }}
+            imageStyle={{ borderRadius: 100 }}
           >
-
-            <View
-              style={styles.avatarWrapper}
-            >
-
-              {/* IMAGE */}
-
+            <View style={styles.avatarWrapper}>
               {profileImage ? (
-
-                <Image
-                  source={{
-                    uri: profileImage,
-                  }}
-                  style={styles.avatar}
-                />
-
+                <Image source={{ uri: profileImage }} style={styles.avatar} />
               ) : (
-                <View
-                  style={
-                    styles.initialWrapper
-                  }
-                >
-                  <Text
-                    style={
-                      styles.initialText
-                    }
-                  >
-                    {firstLetter}
-                  </Text>
+                <View style={styles.initialWrapper}>
+                  <Text style={styles.initialText}>{firstLetter}</Text>
                 </View>
               )}
 
-              {/* LOADER */}
-
-              {loading && (
-                <View
-                  style={
-                    styles.loaderOverlay
-                  }
-                >
-                  <ActivityIndicator
-                    size="small"
-                    color="#fff"
-                  />
+              {loading ? (
+                <View style={styles.loaderOverlay}>
+                  <ActivityIndicator size="small" color="#fff" />
                 </View>
-              )}
-
-              {/* EDIT */}
-
-              {/* <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.editIcon}
-              >
-                <TablerIcon name="edit" size={16} color={Colors.primaryColor} />
-              </TouchableOpacity> */}
-
+              ) : null}
             </View>
-
           </ImageBackground>
         </View>
 
-        {/* NAME */}
-
-        <Text
-          style={styles.name}
-          numberOfLines={1}
-        >
-          {`${user?.first_name || ''
-            } ${user?.last_name || ''
-            }`}
+        <Text style={styles.name} numberOfLines={1}>
+          {`${user?.first_name || ''} ${user?.last_name || ''}`}
         </Text>
-
-        {/* INFO */}
 
         <Text style={styles.info}>
-          +91{' '}
-          {user?.phone_number?.slice(
-            -10,
-          )}{' '}
-          • {user?.email}
+          +91 {user?.phone_number?.slice(-10)} • {user?.email}
         </Text>
 
-        {/* STATS */}
+        <View style={styles.personalCard}>
+          <View style={styles.personalHeader}>
+            <View style={styles.personalTitleRow}>
+              <View style={styles.personalIcon}>
+                <TablerIcon
+                  name="heart-handshake"
+                  size={14}
+                  color={Colors.primaryColor}
+                />
+              </View>
+              <Text style={styles.personalTitle}>Health concerns</Text>
+            </View>
+          </View>
+
+          <View style={styles.personalRow}>
+            <View style={styles.personalBlock}>
+              {diseases.length ? (
+                <View style={styles.chipWrap}>
+                  {diseases.slice(0, 4).map(item => (
+                    <View key={item.id} style={styles.concernChip}>
+                      <Text style={styles.concernChipText} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                    </View>
+                  ))}
+                  {diseases.length > 4 ? (
+                    <View style={styles.concernChip}>
+                      <Text style={styles.concernChipText}>
+                        +{diseases.length - 4}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={styles.personalValue} numberOfLines={2}>
+                  Add concerns to personalize care
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.editChip}
+              onPress={() => setShowDiseaseModal(true)}
+              activeOpacity={0.85}
+            >
+              <TablerIcon name="edit" size={12} color={Colors.primaryColor} />
+              <Text style={styles.editChipText}>
+                {diseases.length ? 'Edit' : 'Add'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <DashboardCard data={dashboardData} />
-
       </View>
+
+      <DiseaseSelectionModal
+        visible={showDiseaseModal}
+        serviceCategoryId={medicineCategoryId}
+        initialSelectedIds={selectedDiseaseIds}
+        title="Update health concerns"
+        subtitle="Personalize doctors, diet & products"
+        onClose={() => {}}
+        onDone={onDiseaseSaved}
+      />
     </View>
   );
 };
 
-export default React.memo(
-  ProfileHeader,
-);
+export default React.memo(ProfileHeader);
 
 const styles = StyleSheet.create({
-
   wrapper: {
     flex: 1,
   },
-
   container: {
     borderRadius: 28,
     paddingTop: 28,
@@ -225,170 +226,173 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
-
   leafLeft: {
     position: 'absolute',
     top: 20,
     left: 10,
     width: 60,
     height: 60,
-    tintColor:
-      Colors.secondaryColor,
+    tintColor: Colors.secondaryColor,
     resizeMode: 'contain',
     opacity: 0.5,
   },
-
   leafRight: {
     position: 'absolute',
     top: 100,
     right: 5,
     width: 60,
     height: 60,
-    tintColor:
-      Colors.secondaryColor,
+    tintColor: Colors.secondaryColor,
     resizeMode: 'contain',
     opacity: 0.5,
   },
-
   avatarBgWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: -10,
   },
-
   avatarBg: {
     padding: 30,
     height: 150,
     width: 200,
     borderRadius: 100,
     overflow: 'hidden',
-
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   avatarWrapper: {
     width: 105,
     height: 105,
-
     borderRadius: 24,
-
     borderWidth: 1,
     borderColor: '#DDEBE8',
-
     backgroundColor: '#FFFFFF',
-
     justifyContent: 'center',
     alignItems: 'center',
-
     marginBottom: 12,
-
     overflow: 'hidden',
-
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     elevation: 5,
   },
-
   avatar: {
     width: 90,
     height: 90,
     borderRadius: 16,
   },
-
-  /*
-  =====================================================
-      FIRST LETTER UI
-  =====================================================
-  */
-
   initialWrapper: {
     width: 90,
     height: 90,
-
     borderRadius: 18,
-
-    backgroundColor:
-      Colors.primaryColor,
-
+    backgroundColor: Colors.primaryColor,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   initialText: {
     fontSize: 34,
-
     color: '#fff',
-
-    fontFamily:
-      Fonts.PoppinsBold,
+    fontFamily: Fonts.PoppinsBold,
   },
-
-  /*
-  =====================================================
-      LOADER
-  =====================================================
-  */
-
   loaderOverlay: {
     position: 'absolute',
-
     width: '100%',
     height: '100%',
-
-    backgroundColor:
-      'rgba(0,0,0,0.45)',
-
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  editIcon: {
-    position: 'absolute',
-    bottom: -2,
-    right: 1,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  IconSize: {
-    width: 30,
-    height: 30,
-  },
-
   name: {
     fontSize: 18,
-
     flexShrink: 1,
-
-    fontFamily:
-      Fonts.PoppinsSemiBold,
-
+    fontFamily: Fonts.PoppinsSemiBold,
     color: '#1A1A1A',
   },
-
   info: {
     fontSize: 12,
-
     color: Colors.subTextColor,
-
-    fontFamily:
-      Fonts.PoppinsMedium,
-
-    marginBottom: 18,
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 14,
   },
-
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent:
-      'space-between',
-
+  personalCard: {
     width: '100%',
+    backgroundColor: '#F4FAF7',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D8EBE4',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  personalHeader: {
+    marginBottom: 10,
+  },
+  personalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  personalIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  personalTitle: {
+    fontSize: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  personalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  personalBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  personalValue: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  editChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#D8EBE4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  editChipText: {
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  concernChip: {
+    maxWidth: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#D8EBE4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  concernChipText: {
+    fontSize: 11,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsMedium,
   },
 });

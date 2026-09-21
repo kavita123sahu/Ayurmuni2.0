@@ -8,11 +8,10 @@ import {
     TextInput,
     ActivityIndicator,
     ScrollView,
-    Image,
     Platform,
     KeyboardAvoidingView,
 } from 'react-native';
-import { Images } from '../../common/Images';
+import DoctorAvatar from '../../components/DoctorAvatar';
 import { Fonts } from '../../common/Fonts';
 import { createReview } from '../../services/ProfileServices';
 import { showSuccessToast } from '../../config/Key';
@@ -166,17 +165,13 @@ const ReviewModal = ({
                                 </Text>
 
                                 <View style={styles.doctorCard}>
-                                    {/* {doctorImage ? ( */}
-                                    <Image
-                                        source={Images.doctorImage}
-                                        style={styles.doctorImage}
+                                    <DoctorAvatar
+                                        uri={doctorImage}
+                                        name={doctorName}
+                                        size={80}
+                                        shape="circle"
+                                        emptyMode="icon"
                                     />
-
-                                    {/* // ) : (
-                            //     <View style={styles.placeholder}>
-                            //         <Text>👨‍⚕️</Text>
-                            //     </View>
-                            // )} */}
 
                                     <Text style={styles.doctorName}>
                                         {doctorName}
@@ -341,21 +336,6 @@ const styles = StyleSheet.create({
     },
 
     doctorCard: {
-        alignItems: 'center',
-    },
-
-    doctorImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-    },
-
-    placeholder: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
         alignItems: 'center',
     },
 

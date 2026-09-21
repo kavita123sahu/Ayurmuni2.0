@@ -13,9 +13,12 @@ import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import AppointAction from './AppointAction';
 import TablerIcon from './TablerIcon';
+import DoctorAvatar from './DoctorAvatar';
 import {
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
+  canModifyAppointment,
+  resolveAppointmentDateTime,
 } from '../utils/appointmentUtils';
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
@@ -70,9 +73,9 @@ const RenderAppoint = ({
 
   const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
     ? item.rawData.doctor.health_diseases
-        .map((disease: any) => disease.name)
-        .filter(Boolean)
-        .join(', ')
+      .map((disease: any) => disease.name)
+      .filter(Boolean)
+      .join(', ')
     : '';
 
   const therapyPreview = therapies
@@ -80,6 +83,23 @@ const RenderAppoint = ({
     : item?.specialty || 'Ayurvedic consultation';
 
   const statusLabel = formatStatusLabel(item.status);
+  const schedule = resolveAppointmentDateTime(item);
+  const withinModifyWindow = canModifyAppointment(
+    item.status,
+    schedule.date,
+    schedule.time,
+  );
+  const showViewDetails = [
+    'completed',
+    'cancelled',
+    'missed',
+    'expired',
+    'no_show',
+    'noshow',
+  ].includes(String(item.status || '').toLowerCase());
+  const showJoinCall = item.call_status === 'in_progress';
+  const showActionRow =
+    withinModifyWindow || showViewDetails || showJoinCall;
 
   const openAppointmentDetails = () => {
     navigation.navigate(
@@ -96,13 +116,13 @@ const RenderAppoint = ({
         onPress={openAppointmentDetails}
       >
         <View style={styles.hInner}>
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.hAvatar} />
-          ) : (
-            <View style={[styles.hAvatar, styles.avatarFallback]}>
-              <TablerIcon name="user" size={20} color={Colors.primaryColor} />
-            </View>
-          )}
+          <DoctorAvatar
+            uri={item.image}
+            name={item.doctorName}
+            size={48}
+            shape="circle"
+            emptyMode="icon"
+          />
 
           <View style={styles.hBody}>
             <Text style={styles.hDoctorName} numberOfLines={1}>
@@ -157,13 +177,13 @@ const RenderAppoint = ({
     >
       <View style={styles.vHeader}>
         <View style={styles.avatarRing}>
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <TablerIcon name="user" size={22} color={Colors.primaryColor} />
-            </View>
-          )}
+          <DoctorAvatar
+            uri={item.image}
+            name={item.doctorName}
+            size={48}
+            shape="circle"
+            emptyMode="icon"
+          />
         </View>
 
         <View style={styles.vHeaderText}>
@@ -212,10 +232,12 @@ const RenderAppoint = ({
         </View>
       ) : null}
 
-      <View style={styles.actionDivider} />
+      {showActionRow ? <View style={styles.actionDivider} /> : null}
 
       <AppointAction
         status={item.status}
+        date={schedule.date}
+        time={schedule.time}
         call_status={item.call_status}
         onReschedule={onReschedule}
         onCancel={onCancel}
@@ -241,7 +263,11 @@ const RenderAppoint = ({
             ),
           );
         }}
-        onViewDetails={() =>
+        onViewDetails={() => {
+          // if (!hasPrescription) {
+          //   showSuccessToast('No prescription available for this appointment', 'error');
+          //   return;
+          // }
           navigation.navigate('PrescriptionDetail', {
             appointment_id:
               item?.appointment_id ||
@@ -251,8 +277,8 @@ const RenderAppoint = ({
             consultation_id:
               item?.consultation_id ||
               item?.rawData?.appointment?.consultation_id,
-          })
-        }
+          });
+        }}
       />
     </TouchableOpacity>
   );
@@ -287,11 +313,16 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   avatarRing: {
-    padding: 2,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 1.5,
     borderColor: '#D8EBE4',
     backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
   },
   vHeaderText: {
     flex: 1,

@@ -182,6 +182,7 @@ import InAppNotificationWatcher from './src/components/InAppNotificationWatcher'
 
 import PrescriptionRequiredModalHost from './src/components/PrescriptionRequiredModalHost';
 
+import * as Sentry from '@sentry/react-native';
 import {
   initializeOneSignal,
 } from './src/services/pushNotificationService';
@@ -268,14 +269,14 @@ const toastConfig = {
 
 
 
-// console.log = () => { };
-// console.warn = () => { };
-// console.error = () => { };
+console.log = () => { };
+console.warn = () => { };
+console.error = () => { };
 
 
-// =====================================================
-// APP
-// =====================================================
+Sentry.init({
+  dsn: 'https://207c5547f95ff58010564e7a7677c49a@o4512060861972480.ingest.us.sentry.io/4512060889104384',
+});
 
 const App = () => {
 
@@ -354,4 +355,4 @@ const App = () => {
 };
 
 
-export default App;
+export default Sentry.wrap(App);

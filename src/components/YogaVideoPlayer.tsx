@@ -13,7 +13,6 @@ import Video, { VideoRef } from 'react-native-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TablerIcon from './TablerIcon';
 import { Fonts } from '../common/Fonts';
-import { Images } from '../common/Images';
 import { formatYogaTime } from '../utils/yogaUtils';
 
 type Props = {
@@ -198,12 +197,14 @@ const YogaVideoPlayer = ({
     );
   };
 
-  const poster = posterUri ? { uri: posterUri } : Images.doctorImage;
-
   if (!videoUri || failed) {
     return (
       <View style={styles.frame}>
-        <Image source={poster} style={styles.video} resizeMode="cover" />
+        {posterUri ? (
+          <Image source={{ uri: posterUri }} style={styles.video} resizeMode="cover" />
+        ) : (
+          <View style={[styles.video, styles.emptyPoster]} />
+        )}
         <View style={styles.fallback}>
           <TablerIcon name="video" size={28} color="#FFFFFF" />
           <Text style={styles.fallbackText}>Video unavailable</Text>
@@ -258,6 +259,9 @@ const styles = StyleSheet.create({
   video: {
     width: '100%',
     height: '100%',
+  },
+  emptyPoster: {
+    backgroundColor: '#0F172A',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

@@ -3,9 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
+import { canModifyAppointment, resolveAppointmentDateTime } from '../utils/appointmentUtils';
 
 type Props = {
   status: string;
+  date?: string;
+  time?: string;
   onReschedule?: () => void;
   onCancel?: () => void;
   onJoinCall?: () => void;
@@ -13,8 +16,11 @@ type Props = {
   call_status?: string;
 };
 
+
 const AppointmentActions = ({
   status,
+  date,
+  time,
   onReschedule,
   onCancel,
   onJoinCall,
@@ -22,24 +28,15 @@ const AppointmentActions = ({
   call_status,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
+  const schedule = resolveAppointmentDateTime({ date, time, status });
+  const withinModifyWindow = canModifyAppointment(
+    status,
+    schedule.date || date,
+    schedule.time || time,
+  );
 
-  const showReschedule = [
-    'pending',
-    'confirmed',
-    'reschedule',
-    'rescheduled',
-    'upcoming',
-    'booked',
-  ].includes(appointmentStatus);
-
-  const showCancel = [
-    'pending',
-    'confirmed',
-    'reschedule',
-    'rescheduled',
-    'upcoming',
-    'booked',
-  ].includes(appointmentStatus);
+  const showReschedule = withinModifyWindow;
+  const showCancel = withinModifyWindow;
 
   const showViewDetails = [
     'completed',
@@ -120,6 +117,7 @@ const AppointmentActions = ({
 
   return null;
 };
+
 
 export default React.memo(AppointmentActions);
 

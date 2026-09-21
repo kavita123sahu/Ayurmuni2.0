@@ -1,5 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
-import { OneSignal } from 'react-native-onesignal';
+import { OneSignal, NotificationWillDisplayEvent } from 'react-native-onesignal';
 import type { CustomNotificationRef, NotificationData } from '../components/CustomNotification';
 import { handleNotificationNavigation } from '../screens/notifications/notificationRouter';
 import { navigationRef } from '../navigation/navigationRef';
@@ -85,14 +85,19 @@ export const setupOneSignalInAppListeners = () => {
 
   OneSignal.Notifications.addEventListener(
     'foregroundWillDisplay',
-    event => {
-      // Do not preventDefault — Android shows the system heads-up popup.
-      const payload = mapOneSignalPayload(event.getNotification());
+    (event: NotificationWillDisplayEvent) => {
+      const notification = event.getNotification();
+      const payload = mapOneSignalPayload(notification);
+
+      // System heads-up (killed/background use the native channel; foreground
+      // must call display() or OneSignal swallows the popup).
+      notification.display();
       notificationRef?.show(payload);
+      showDeviceHeadsUp(payload.title, payload.message);
     },
   );
 
-  OneSignal.Notifications.addEventListener('click', event => {
+  OneSignal.Notifications.addEventListener('click', (event: any) => {
     const payload = mapOneSignalPayload(event.notification);
     // Always hand off — router queues if nav is not ready yet
     handleNotificationNavigation(navigationRef, payload);

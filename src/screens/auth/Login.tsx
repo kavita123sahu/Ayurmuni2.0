@@ -376,14 +376,14 @@ const PhoneAuthScreen = (props: any) => {
             </TouchableOpacity>
 
             <View style={styles.termsBlock}>
-              
+
               <Text style={styles.termsNote}>
                 Agreeing to Terms and Privacy Policy is mandatory when you complete customer onboarding.
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.cta,  isLoading && styles.ctaDisabled]}
+              style={[styles.cta, isLoading && styles.ctaDisabled]}
               activeOpacity={0.88}
               onPress={onLogin}
               disabled={isLoading}
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   },
 
   termsBlock: {
-    marginTop: 5,  alignItems: 'center',
+    marginTop: 5, alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   termsNote: {
     // marginTop: 8,
     // marginLeft: 32,
-    
+
     fontSize: 11,
     lineHeight: 16,
     color: C.body,

@@ -10,6 +10,78 @@ type RazorpayOptions = {
   themeColor?: string;
 };
 
+/**
+ * Detect user cancel / dismiss / back-exit from Razorpay.
+ * SDK shapes vary: flat `{ code, description }` or nested `{ error: { reason, description } }`.
+ */
+export const isRazorpayUserCancelled = (error: any): boolean => {
+  if (!error) return false;
+
+  let cancelledCode: unknown;
+  try {
+    const RazorpayCheckout = require('react-native-razorpay').default;
+    cancelledCode = RazorpayCheckout?.PAYMENT_CANCELLED;
+  } catch {
+    cancelledCode = undefined;
+  }
+
+  const nested = error?.error && typeof error.error === 'object' ? error.error : null;
+  const code = error?.code ?? nested?.code;
+  const reason = String(
+    nested?.reason ?? error?.reason ?? '',
+  ).toLowerCase();
+  const desc = String(
+    error?.description ??
+      nested?.description ??
+      error?.message ??
+      nested?.message ??
+      '',
+  ).toLowerCase();
+  const source = String(nested?.source ?? error?.source ?? '').toLowerCase();
+
+  const looksCancelledByText =
+    reason.includes('cancel') ||
+    reason === 'payment_cancelled' ||
+    reason.includes('dismiss') ||
+    desc.includes('cancel') ||
+    desc.includes('dismiss') ||
+    desc.includes('exit') ||
+    desc.includes('closed by user') ||
+    desc.includes('back pressed');
+
+  if (looksCancelledByText) {
+    return true;
+  }
+
+  if (code === cancelledCode || code === 2 || code === '2') {
+    return true;
+  }
+
+  // Code 0 is often cancel on RN Razorpay, but can also be network — only treat as
+  // cancel when there is no hard failure wording.
+  if (code === 0 || code === '0') {
+    const looksFailed =
+      desc.includes('network') ||
+      desc.includes('fail') ||
+      desc.includes('timeout') ||
+      desc.includes('invalid') ||
+      desc.includes('error');
+    if (!looksFailed) {
+      return true;
+    }
+  }
+
+  // Common UPI back-exit payload from Razorpay
+  if (
+    source === 'customer' &&
+    (reason.includes('payment') || desc.includes('upi') || desc.includes('delay'))
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 const delay = (ms: number) =>
   new Promise<void>(resolve => {
     setTimeout(resolve, ms);

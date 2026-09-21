@@ -2,7 +2,6 @@ import React from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   Pressable,
   TouchableOpacity,
@@ -10,13 +9,13 @@ import {
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import { Ionicons } from '../common/Vector';
-import { Images } from '../common/Images';
 import {
   DOCTOR_GRID,
   DOCTOR_GRID_BODY_HEIGHT,
   DOCTOR_GRID_CARD_HEIGHT,
 } from '../constants/doctorGridLayout';
 import { RupeeAmount } from '../utils/currencyUtils';
+import DoctorAvatar from './DoctorAvatar';
 
 type Props = {
   name: string;
@@ -61,7 +60,6 @@ const DoctorListCard = ({
   cardWidth,
 }: Props) => {
   const isGrid = variant === 'grid';
-  const photo = imageUri ? { uri: imageUri } : Images.doctorImage;
   const reviewText =
     reviews != null && String(reviews).trim() !== ''
       ? ` (${reviews})`
@@ -163,7 +161,14 @@ const DoctorListCard = ({
         onPress={onPress}
       >
         <View style={styles.gridPhotoOuter}>
-          <Image source={photo} style={styles.gridPhoto} resizeMode="cover" />
+          <DoctorAvatar
+            uri={imageUri}
+            name={name}
+            fill
+            shape="rounded"
+            borderRadius={0}
+            emptyMode="icon"
+          />
           {renderStatusBadge()}
           {topRight ? <View style={styles.overlayRight}>{topRight}</View> : null}
         </View>
@@ -201,7 +206,14 @@ const DoctorListCard = ({
       onPress={onPress}
     >
       <View style={styles.photoCol}>
-        <Image source={photo} style={styles.listPhoto} />
+        <DoctorAvatar
+          uri={imageUri}
+          name={name}
+          fill
+          shape="rounded"
+          borderRadius={0}
+          emptyMode="icon"
+        />
         {renderStatusBadge()}
         {topRight ? <View style={styles.overlayRight}>{topRight}</View> : null}
       </View>
@@ -340,6 +352,11 @@ const styles = StyleSheet.create({
   gridPhoto: {
     width: '100%',
     height: '100%',
+  },
+  photoFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAF8F4',
   },
   gridBody: {
     paddingHorizontal: DOCTOR_GRID.cardPaddingH,

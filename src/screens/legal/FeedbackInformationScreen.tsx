@@ -27,7 +27,7 @@ const FeedbackInformationScreen = (props: any) => {
     {
       title: 'Terms of Use',
       subtitle: 'Rules for using Ayurmuni',
-      iconName: 'file-medical',
+      iconName: 'clipboard-list',
       type: 'arrow',
       onPress: () =>
         navigation.navigate('PolicyDetail', {

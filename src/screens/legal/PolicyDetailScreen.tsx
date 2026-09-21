@@ -22,7 +22,7 @@ import {
   getPoliciesList,
   getRequiredPolicies,
 } from '../../services/PolicyServices';
-import { isPolicyVersionUpdated } from '../../utils/policyUtils';
+import { isPolicyAccepted, isPolicyVersionUpdated } from '../../utils/policyUtils';
 
 type RouteParams = {
   policyType?: string;
@@ -166,7 +166,7 @@ const PolicyDetailScreen = (props: any) => {
                 {!!policy?.subtitle && (
                   <Text style={styles.bannerSub}>{policy.subtitle}</Text>
                 )}
-                {isPolicyVersionUpdated(policyEntry) ? (
+                {isPolicyAccepted(policyEntry) ? (
                   <View style={styles.updateNote}>
                     <TablerIcon
                       name="alert-circle"

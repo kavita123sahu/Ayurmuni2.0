@@ -282,17 +282,14 @@ export const useQuestionnaireFlow = (
   const handleBack = useCallback(() => {
     pendingAdvanceRef.current = false;
     if (step === 0) {
-      if (!allowBack) {
-        return;
-      }
       safeGoBack(navigation);
       return;
     }
     setStep(prev => prev - 1);
-  }, [allowBack, navigation, step]);
+  }, [navigation, step]);
 
   const handleSkip = useCallback(() => {
-    if (step === 0 || step >= steps.length - 1) {
+    if (step >= steps.length - 1) {
       return;
     }
     setStep(prev => prev + 1);
@@ -320,11 +317,8 @@ export const useQuestionnaireFlow = (
     [answers, currentStep],
   );
 
-  const showSkip = isPrakriti
-    ? step > 0 &&
-      step < steps.length - 1 &&
-      currentStep?.key !== 'prakritiType'
-    : step > 0 && step < steps.length - 1;
+  // Skip available on every question except the final submit step
+  const showSkip = step < steps.length - 1;
 
   return {
     loading,

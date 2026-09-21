@@ -3,20 +3,19 @@ import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
   StatusBar,
   StyleSheet,
-  Dimensions,
   Platform,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Images } from '../../common/Images';
+import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
-import BackIconButton from '../../components/BackIconButton';
+import DoctorAvatar from '../../components/DoctorAvatar';
+import AppHeader from '../../components/AppHeader';
 import {
   buildAppointmentCalendarEvent,
   openGoogleCalendar,
@@ -30,12 +29,17 @@ import {
 } from '../../utils/appointmentUtils';
 import { showSuccessToast } from '../../config/Key';
 
-const { width } = Dimensions.get('window');
-const isSmallDevice = width < 360;
+type AppointmentStatus =
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'UPCOMING'
+  | 'CONFIRMED'
+  | string;
 
-type AppointmentStatus = 'COMPLETED' | 'CANCELLED' | 'UPCOMING' | 'CONFIRMED' | string;
-
-const BADGE_CONFIG: Record<string, { bg: string; color: string; label: string }> = {
+const BADGE_CONFIG: Record<
+  string,
+  { bg: string; color: string; label: string }
+> = {
   COMPLETED: { bg: '#DCFCE7', color: '#16A34A', label: 'Completed' },
   CANCELLED: { bg: '#FEE2E2', color: '#DC2626', label: 'Cancelled' },
   UPCOMING: { bg: '#FEF3C7', color: '#D97706', label: 'Upcoming' },
@@ -46,10 +50,11 @@ const BADGE_CONFIG: Record<string, { bg: string; color: string; label: string }>
 const Badge = memo(({ status }: { status: AppointmentStatus }) => {
   const key = String(status || 'CONFIRMED').toUpperCase();
   const config = BADGE_CONFIG[key] || BADGE_CONFIG.CONFIRMED;
-
   return (
     <View style={[styles.badge, { backgroundColor: config.bg }]}>
-      <Text style={[styles.badgeText, { color: config.color }]}>{config.label}</Text>
+      <Text style={[styles.badgeText, { color: config.color }]}>
+        {config.label}
+      </Text>
     </View>
   );
 });
@@ -68,7 +73,7 @@ const DetailRow = memo(
     return (
       <View style={styles.detailRow}>
         <View style={styles.iconWrapper}>
-          <TablerIcon name={iconName} size={20} color={Colors.primaryColor} />
+          <TablerIcon name={iconName} size={16} color={Colors.primaryColor} />
         </View>
         <View style={styles.detailContent}>
           <Text style={styles.detailLabel}>{label}</Text>
@@ -83,7 +88,9 @@ const DetailRow = memo(
 
 const AddCalendar = ({ navigation, route }: any) => {
   const appointment = route?.params?.appointment ?? {};
-  const [busy, setBusy] = useState<'google' | 'outlook' | 'device' | null>(null);
+  const [busy, setBusy] = useState<'google' | 'outlook' | 'device' | null>(
+    null,
+  );
 
   const display = useMemo(() => {
     const dateRaw = appointment.date || appointment.appointment_date || '';
@@ -155,141 +162,111 @@ const AddCalendar = ({ navigation, route }: any) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-
-      <View style={styles.topBar}>
-        <BackIconButton onPress={() => navigation.goBack()} />
-        <Text style={styles.topTitle}>Add to Calendar</Text>
-        <View style={styles.topSpacer} />
-      </View>
+      <AppHeader title="Add to Calendar" onLeftPress={() => navigation.goBack()} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
-        <View style={styles.successWrapper}>
-          <View style={styles.successCircle}>
-            <TablerIcon name="calendar" size={42} color={Colors.primaryColor} />
+        <LinearGradient
+          colors={['#E8F8F2', '#FFFFFF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroIcon}>
+            <TablerIcon name="calendar" size={22} color={Colors.primaryColor} />
           </View>
-        </View>
-
-        <Text style={styles.title}>Add to Calendar</Text>
-        <Text style={styles.subtitle}>
-          Sync your appointment with {display.doctorName} to get reminders on
-          time.
-        </Text>
+          <Text style={styles.title}>Save this visit</Text>
+          <Text style={styles.subtitle}>
+            Add {display.doctorName} to your calendar for timely reminders.
+          </Text>
+        </LinearGradient>
 
         <View style={styles.card}>
-          <View style={styles.badgeWrapper}>
-            <Badge status={display.status} />
-          </View>
-
-          <View style={styles.doctorRow}>
-            <Image
-              source={
-                display.doctorImage
-                  ? { uri: display.doctorImage }
-                  : Images.doctorImage
-              }
-              style={styles.avatar}
-            />
-            <View style={styles.doctorInfo}>
-              <Text style={styles.doctorName} numberOfLines={2}>
-                {display.doctorName}
-              </Text>
-              {!!display.specialization && (
-                <Text style={styles.speciality} numberOfLines={1}>
-                  {display.specialization}
+          <View style={styles.cardHeader}>
+            <View style={styles.doctorRow}>
+              <DoctorAvatar
+                uri={display.doctorImage}
+                name={display.doctorName}
+                size={52}
+                shape="circle"
+                emptyMode="icon"
+              />
+              <View style={styles.doctorInfo}>
+                <Text style={styles.doctorName} numberOfLines={2}>
+                  {display.doctorName}
                 </Text>
-              )}
-              {!!display.hospitalName && (
-                <Text style={styles.hospitalHint} numberOfLines={1}>
-                  {display.hospitalName}
-                </Text>
-              )}
+                {!!display.specialization && (
+                  <Text style={styles.speciality} numberOfLines={1}>
+                    {display.specialization}
+                  </Text>
+                )}
+              </View>
             </View>
+            <Badge status={display.status} />
           </View>
 
           <View style={styles.detailsContainer}>
             <DetailRow
               iconName="calendar"
-              label="DATE"
+              label="Date"
               value={[display.weekday, display.dateLabel]
                 .filter(Boolean)
                 .join(', ')}
             />
-            <DetailRow iconName="clock" label="TIME" value={display.timeRange} />
+            <DetailRow iconName="clock" label="Time" value={display.timeRange} />
             <DetailRow
               iconName="stethoscope"
-              label="CONCERN"
+              label="Concern"
               value={display.concern}
             />
             <DetailRow
               iconName="building"
-              label="LOCATION"
+              label="Location"
               value={display.hospitalName || 'Video consultation'}
             />
           </View>
         </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.secondaryBtn}
-            disabled={!!busy}
-            onPress={() => runAction('google')}
-          >
-            <View style={styles.leftContent}>
-              <TablerIcon name="calendar" size={20} color={Colors.primaryColor} />
-              <Text style={styles.secondaryText} numberOfLines={1}>
-                Google Calendar
-              </Text>
-            </View>
-            {busy === 'google' ? (
-              <ActivityIndicator size="small" color={Colors.primaryColor} />
-            ) : (
-              <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
-            )}
-          </TouchableOpacity>
+        <Text style={styles.actionLabel}>Choose calendar</Text>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.secondaryBtn}
-            disabled={!!busy}
-            onPress={() => runAction('outlook')}
-          >
-            <View style={styles.leftContent}>
-              <TablerIcon name="mail" size={20} color={Colors.primaryColor} />
-              <Text style={styles.secondaryText} numberOfLines={1}>
-                Outlook Calendar
-              </Text>
-            </View>
-            {busy === 'outlook' ? (
-              <ActivityIndicator size="small" color={Colors.primaryColor} />
-            ) : (
-              <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.secondaryBtn}
-            disabled={!!busy}
-            onPress={() => runAction('device')}
-          >
-            <View style={styles.leftContent}>
-              <TablerIcon name="share" size={20} color={Colors.primaryColor} />
-              <Text style={styles.secondaryText} numberOfLines={1}>
-                Other calendar apps
-              </Text>
-            </View>
-            {busy === 'device' ? (
-              <ActivityIndicator size="small" color={Colors.primaryColor} />
-            ) : (
-              <TablerIcon name="arrow-right" size={20} color={Colors.primaryColor} />
-            )}
-          </TouchableOpacity>
+        <View style={styles.actionList}>
+          {(
+            [
+              { key: 'google', label: 'Google Calendar', icon: 'calendar' },
+              { key: 'outlook', label: 'Outlook Calendar', icon: 'mail' },
+              { key: 'device', label: 'Other calendar apps', icon: 'share' },
+            ] as const
+          ).map(item => (
+            <TouchableOpacity
+              key={item.key}
+              activeOpacity={0.85}
+              style={styles.secondaryBtn}
+              disabled={!!busy}
+              onPress={() => runAction(item.key)}
+            >
+              <View style={styles.leftContent}>
+                <View style={styles.actionIcon}>
+                  <TablerIcon
+                    name={item.icon}
+                    size={16}
+                    color={Colors.primaryColor}
+                  />
+                </View>
+                <Text style={styles.secondaryText} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </View>
+              {busy === item.key ? (
+                <ActivityIndicator size="small" color={Colors.primaryColor} />
+              ) : (
+                <TablerIcon name="chevron-right" size={18} color="#94A3B8" />
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
 
         <TouchableOpacity
@@ -303,11 +280,19 @@ const AddCalendar = ({ navigation, route }: any) => {
             navigation.navigate('HomeStack', { screen: 'Home' });
           }}
         >
-          <Text style={styles.primaryText}>Done</Text>
+          <LinearGradient
+            colors={['#0D614E', '#12856A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryGradient}
+          >
+            <Text style={styles.primaryText}>Done</Text>
+          </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity
           activeOpacity={0.7}
+          style={styles.laterBtn}
           onPress={() => {
             if (navigation.canGoBack?.()) navigation.goBack();
           }}
@@ -324,216 +309,191 @@ export default AddCalendar;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
-  },
-  topTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 16,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#0F172A',
-  },
-  topSpacer: {
-    width: 40,
-    height: 40,
+    backgroundColor: '#F7FAF8',
   },
   scrollContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 28,
   },
-  hospitalHint: {
-    marginTop: 2,
-    fontSize: 12,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  successWrapper: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  successCircle: {
-    width: width * 0.28,
-    height: width * 0.28,
-    minWidth: 100,
-    minHeight: 100,
-    maxWidth: 120,
-    maxHeight: 120,
-    borderRadius: 48,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  hero: {
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 8,
-      },
-      android: { elevation: 4 },
-    }),
+    borderColor: '#D8EBE4',
+  },
+  heroIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   title: {
-    marginTop: 20,
-    fontSize: isSmallDevice ? 24 : 28,
-    lineHeight: isSmallDevice ? 32 : 38,
-    textAlign: 'center',
+    fontSize: 20,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   subtitle: {
-    marginTop: 8,
-    fontSize: isSmallDevice ? 14 : 15,
-    lineHeight: 24,
-    textAlign: 'center',
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 19,
     color: '#64748B',
-    paddingHorizontal: 10,
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsRegular,
   },
   card: {
-    marginTop: 28,
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 18,
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5EFEA',
+    marginBottom: 14,
   },
-  badgeWrapper: {
-    alignItems: 'flex-end',
-    marginBottom: 10,
+  cardHeader: {
+    gap: 10,
+    marginBottom: 12,
   },
   badge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   badgeText: {
-    fontSize: 10,
-    textTransform: 'uppercase',
+    fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   doctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  avatar: {
-    width: width * 0.18,
-    height: width * 0.18,
-    minWidth: 68,
-    minHeight: 68,
-    maxWidth: 80,
-    maxHeight: 80,
-    borderRadius: 18,
-    marginRight: 14,
+    gap: 12,
   },
   doctorInfo: {
     flex: 1,
     minWidth: 0,
   },
   doctorName: {
-    fontSize: isSmallDevice ? 18 : 20,
-    lineHeight: 28,
-    color: '#1E293B',
+    fontSize: 16,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   speciality: {
     marginTop: 2,
-    fontSize: 14,
-    color: Colors.primaryColor,
+    fontSize: 12,
+    color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
   detailsContainer: {
-    marginTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E8EEF0',
+    paddingTop: 8,
   },
   detailRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 10,
   },
   iconWrapper: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: Colors.bgcolor,
-    justifyContent: 'center',
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F0F8F5',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
   },
   detailContent: {
     flex: 1,
     minWidth: 0,
   },
   detailLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
-    marginBottom: 2,
     fontFamily: Fonts.PoppinsMedium,
   },
   detailValue: {
-    fontSize: 14,
-    lineHeight: 22,
+    marginTop: 1,
+    fontSize: 13,
     color: '#0F172A',
-    fontFamily: Fonts.PoppinsMedium,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
-  actionRow: {
-    marginTop: 22,
-    gap: 12,
+  actionLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 8,
+    marginLeft: 2,
+  },
+  actionList: {
+    gap: 8,
+    marginBottom: 14,
   },
   secondaryBtn: {
-    minHeight: 60,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5EFEA',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   leftContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     flex: 1,
     minWidth: 0,
-    paddingRight: 12,
-    gap: 10,
+  },
+  actionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F0F8F5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   secondaryText: {
     flex: 1,
-    fontSize: isSmallDevice ? 14 : 16,
-    color: '#334155',
+    fontSize: 14,
+    color: '#0F172A',
     fontFamily: Fonts.PoppinsMedium,
   },
   primaryBtn: {
-    marginTop: 24,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: Colors.primaryColor,
-    justifyContent: 'center',
+    borderRadius: 14,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0D614E',
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: { elevation: 3 },
+    }),
+  },
+  primaryGradient: {
+    height: 50,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryText: {
-    fontSize: 16,
     color: '#FFFFFF',
+    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  laterBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
   bottomText: {
-    marginTop: 18,
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#94A3B8',
+    fontSize: 13,
+    color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
 });

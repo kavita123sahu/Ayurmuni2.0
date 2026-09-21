@@ -6,7 +6,6 @@ import {
     ScrollView,
     TextInput,
     StatusBar,
-    Image,
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
@@ -17,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import PrimaryButton from '../../components/PrimaryButton';
 import AppHeader from '../../components/AppHeader';
-import { Images } from '../../common/Images';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
@@ -150,9 +148,7 @@ const RefundScreen = (props: any) => {
                         </View>
 
                         <View style={styles.card}>
-                            <View style={{ marginRight: 16, backgroundColor: '#F3F4F6', borderRadius: 12, width: 80, height: 80 }} >
-                                <Image source={Images.doctorImage} style={{ height: 80, width: 80, borderRadius: 12 }} />
-                            </View>
+                            <View style={{ marginRight: 16, backgroundColor: '#F3F4F6', borderRadius: 12, width: 80, height: 80 }} />
 
                             <View>
                                 <Text style={styles.cardType}>MEDICINES</Text>

@@ -117,8 +117,14 @@ export const isOrderVerifySuccessful = (response: any): boolean => {
     return true;
   }
 
-  // success:false but only Unicommerce/stock noise (order already created server-side)
-  if (response.success === false && isFulfillmentNoise(msg) && !isHardPaymentFailure(msg)) {
+  // Fulfillment noise only counts if the order (or payment) already exists.
+  // A bare "out of stock" rejection must stay a failure so checkout can notify.
+  if (
+    response.success === false &&
+    isFulfillmentNoise(msg) &&
+    !isHardPaymentFailure(msg) &&
+    (hasOrderEntity(response) || paidLike)
+  ) {
     return true;
   }
 
@@ -141,7 +147,18 @@ export const isPrepaidVerifyAcceptable = (
   const msg = getResponseMessage(response);
   if (isHardPaymentFailure(msg)) return false;
 
-  // Money already collected — soft/fulfillment errors should not block confirmation
+  // Stock rejection with no order must surface on the payment screen.
+  if (
+    (msg.includes('out of stock') ||
+      msg.includes('insufficient') ||
+      msg.includes('not available') ||
+      msg.includes('no stock')) &&
+    !hasOrderEntity(response)
+  ) {
+    return false;
+  }
+
+  // Money already collected — other soft/fulfillment errors should not block confirmation
   return true;
 };
 

@@ -19,6 +19,7 @@ import { CalenderCard } from '../../components/CalenderCard';
 import { generateDates } from '../../common/DataInterface';
 import TimeSlot from '../../components/TimeSlot';
 import TablerIcon from '../../components/TablerIcon';
+import DoctorAvatar from '../../components/DoctorAvatar';
 import { requireAuth } from '../../services/guestAuth';
 
 
@@ -81,7 +82,14 @@ const ServiceCard = memo(
 const MentorHeader = memo(() => (
     <View style={styles.mentorcontainer}>
         <View style={styles.row}>
-            <Image source={Images.doctorImage} style={styles.image} />
+            <DoctorAvatar
+                name="Elena Vance"
+                size={100}
+                shape="rounded"
+                borderRadius={28}
+                emptyMode="icon"
+                style={styles.image}
+            />
 
             <View style={{ flex: 1 }}>
                 <Text style={styles.name}>Elena Vance</Text>
@@ -342,10 +350,6 @@ const styles = StyleSheet.create({
     },
 
     image: {
-        width: 100,
-        height: 100,
-        backgroundColor: Colors.BGIcon,
-        borderRadius: 28,
         marginRight: 12,
     },
 

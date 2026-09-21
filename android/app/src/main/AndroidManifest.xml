@@ -42,6 +42,9 @@
       <meta-data
         android:name="com.onesignal.suppressLaunchURLs"
         android:value="true" />
+      <meta-data
+        android:name="com.onesignal.NotificationServiceExtension"
+        android:value="com.ayurmuniapp.AyurmuniNotificationServiceExtension" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

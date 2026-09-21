@@ -242,6 +242,7 @@ const resolveImageUrl = (item: any): string => {
 export const mapProductCategory = (item: any) => ({
   id: String(
     item?.id ??
+    item?.health_disease_id ??
     item?.product_category_id ??
     item?.category_id ??
     item?.health_category_id ??
@@ -249,6 +250,7 @@ export const mapProductCategory = (item: any) => ({
   ),
   name: String(
     item?.name ??
+    item?.disease_name ??
     item?.category_name ??
     item?.product_category_name ??
     item?.title ??
@@ -260,7 +262,9 @@ export const mapProductCategory = (item: any) => ({
       ? String(item.parent_id)
       : item?.service_category_id != null
         ? String(item.service_category_id)
-        : undefined,
+        : item?.category_id != null
+          ? String(item.category_id)
+          : undefined,
 });
 
 export const getProduct = async (params: ProductQuery = {}) => {
@@ -380,6 +384,29 @@ export const getHealthCategories = async (
   }
 };
 
+/**
+ * Health diseases list for personalization modal.
+ * GET user/health-diseases/ (optional category_id)
+ */
+export const getHealthDiseases = async (params?: {
+  category_id?: string | null;
+}) => {
+  try {
+    const query = new URLSearchParams();
+    const categoryId = String(params?.category_id ?? '').trim();
+    if (categoryId) {
+      query.set('category_id', categoryId);
+    }
+    const qs = query.toString();
+    const path = qs
+      ? `user/health-diseases/?${qs}`
+      : 'user/health-diseases/';
+    return await apiClient(path, { method: 'GET' });
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getProductCategories = async (parentId?: string) => {
   try {
     const response = await apiClient(
@@ -408,6 +435,7 @@ export const getProductByVariant = async (variantID: string) => {
       buildProductQuery({ variant_id: variantID }),
       { method: 'GET' },
     );
+    console.log('getProductByVariantresponse', response);
     return response;
   } catch (error) {
     throw error;

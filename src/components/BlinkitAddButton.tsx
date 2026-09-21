@@ -41,16 +41,16 @@ const BlinkitAddButton: React.FC<Props> = ({
     maxQuantity != null && Number.isFinite(maxQuantity) && quantity >= maxQuantity;
 
   if (quantity <= 0) {
-    const disabled = isAdding || locked || outOfStock;
+    const blocked = locked || outOfStock;
     return (
       <TouchableOpacity
         onPress={onAdd}
-        disabled={disabled}
+        disabled={isAdding || locked}
         activeOpacity={0.75}
         style={[
           styles.addBtn,
           compact && styles.addBtnCompact,
-          (locked || outOfStock) && styles.addBtnDisabled,
+          blocked && styles.addBtnDisabled,
         ]}
       >
         {isAdding && !outOfStock ? (
@@ -90,7 +90,7 @@ const BlinkitAddButton: React.FC<Props> = ({
 
       <TouchableOpacity
         onPress={onIncrement}
-        disabled={isAdding || locked || atMax}
+        disabled={isAdding || locked}
         style={[styles.stepBtn, atMax && styles.stepBtnDisabled]}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >

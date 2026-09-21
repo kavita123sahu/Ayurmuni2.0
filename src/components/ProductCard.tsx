@@ -15,9 +15,13 @@ import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import WishlistButton from './WishlistButton';
 import {
+  getAddQtyBlockMessage,
+  trackListingStock,
   getProductStockQty,
   isProductOutOfStock,
+  LOW_STOCK_THRESHOLD,
 } from '../utils/productStockUtils';
+import { showSuccessToast } from '../config/Key';
 import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { RupeeAmount } from '../utils/currencyUtils';
 
@@ -89,22 +93,42 @@ const ProductCard: React.FC<Props> = ({
       ? Math.round(((item.mrp - item.selling_price) / item.mrp) * 100)
       : 0;
 
+  trackListingStock(item);
   const stockQty = getProductStockQty(item);
   const isOutOfStock = isProductOutOfStock(item);
   const maxQuantity =
     stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
   const productImageUri = item?.image_url || '';
 
+  const lowStockNote =
+    !isOutOfStock &&
+    maxQuantity != null &&
+    maxQuantity > 0 &&
+    maxQuantity <= LOW_STOCK_THRESHOLD
+      ? maxQuantity === 1
+        ? 'Only 1 item available.'
+        : `Only ${maxQuantity} items available.`
+      : '';
+
   const handleAdd = () => {
-    if (isOutOfStock || actionsLocked) return;
+    if (actionsLocked) return;
+    const block = getAddQtyBlockMessage(item, 1);
+    if (block) {
+      showSuccessToast(block, 'error');
+      return;
+    }
     if (!canAddProductWithoutPrescription(item)) return;
     onAdd();
   };
 
   const handleIncrement = () => {
-    if (isOutOfStock || actionsLocked) return;
+    if (actionsLocked) return;
+    const block = getAddQtyBlockMessage(item, cartQty + 1);
+    if (block) {
+      showSuccessToast(block, 'error');
+      return;
+    }
     if (!canAddProductWithoutPrescription(item)) return;
-    if (maxQuantity != null && cartQty >= maxQuantity) return;
     onIncrement();
   };
 
@@ -166,7 +190,7 @@ const ProductCard: React.FC<Props> = ({
             isAdding={isAdding}
             locked={actionsLocked}
             outOfStock={isOutOfStock}
-            maxQuantity={maxQuantity}
+            maxQuantity={isOutOfStock ? 0 : maxQuantity}
             compact
             onAdd={handleAdd}
             onIncrement={handleIncrement}
@@ -179,13 +203,12 @@ const ProductCard: React.FC<Props> = ({
         <Text numberOfLines={1} style={styles.title} allowFontScaling={false}>
           {item.product_name || item.name || 'Product'}
         </Text>
-
         <Text
           numberOfLines={1}
-          style={styles.subtitle}
+          style={[styles.subtitle, lowStockNote ? styles.stockNote : null]}
           allowFontScaling={false}
         >
-          {item.brand_name || item.variant_title || ' '}
+          {lowStockNote || item.brand_name || item.variant_title || ' '}
         </Text>
 
         <View style={styles.bottomRow}>
@@ -286,6 +309,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderBottomRightRadius: 10,
     zIndex: 5,
+  },
+  stockNote: {
+    color: '#B91C1C',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   outOfStockText: {
     color: '#FFF',

@@ -24,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import TablerIcon from '../TablerIcon';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
+import { Colors } from '../../common/Colors';
 import BasicInfoForm from '../MedicalHistory/BasicInfoForm';
 import { DOSHA, DoshaKey, QUEST, XP_PER_LEVEL } from './PrakritiQuestTheme';
 import {
@@ -210,7 +211,7 @@ const QuestOption = memo(
               {title}
             </Text>
             {!!subtitle && (
-              <Text numberOfLines={1} style={styles.optionSubtitle}>
+              <Text numberOfLines={2} style={styles.optionSubtitle}>
                 {subtitle}
               </Text>
             )}
@@ -322,9 +323,11 @@ const QuestLayoutInner = ({
   answers,
   isDisabled,
   isLastStep,
+  showSkip,
   handleSelect,
   handleNext,
   handleBack,
+  handleSkip,
   retryLoad,
   isSelected,
   streak = 0,
@@ -341,8 +344,6 @@ const QuestLayoutInner = ({
   const theme = isMedical ? THEME.medical : THEME.prakriti;
   const { play, muted, toggleMuted } = useQuestSound();
   useQuestStartSound(!loading && !!currentStep);
-  const canExitQuest = allowExit || step > 0;
-
   const prevStepForSound = useRef(step);
   const cardKey = `${getStepKey(currentStep)}-${step}`;
 
@@ -380,14 +381,16 @@ const QuestLayoutInner = ({
     handleSelect(item);
   };
 
-  const onHeaderBack = () => {
-    if (!canExitQuest && step === 0) return;
-    handleBack();
-  };
   const onExitQuest = () => {
-    if (!allowExit) return;
     if (onExit) onExit();
     else handleBack();
+  };
+  const onHeaderBack = () => {
+    if (step === 0) {
+      onExitQuest();
+      return;
+    }
+    handleBack();
   };
 
   if (loading && !currentStep) {
@@ -433,14 +436,13 @@ const QuestLayoutInner = ({
         <View style={styles.topBar}>
           <Pressable
             onPress={onHeaderBack}
-            style={[styles.iconBtn, !canExitQuest && step === 0 && styles.iconBtnDisabled]}
-            hitSlop={8}
-            disabled={!canExitQuest && step === 0}
+            style={styles.iconBtn}
+            hitSlop={10}
           >
             <TablerIcon
               name="arrow-left"
-              size={18}
-              color={!canExitQuest && step === 0 ? '#CBD5E1' : QUEST.ink}
+              size={20}
+              color={Colors.primaryColor}
             />
           </Pressable>
 
@@ -664,16 +666,38 @@ const QuestLayoutInner = ({
         </Animated.View>
 
         <Animated.View entering={FadeIn} style={styles.footer}>
-          <Pressable onPress={onHeaderBack} style={styles.prevBtn} hitSlop={8}>
-            <TablerIcon name="chevron-left" size={16} color={QUEST.ink} />
-            <Text style={styles.prevText}>Previous</Text>
-          </Pressable>
           <Pressable
-            onPress={onExitQuest}
-            style={[styles.exitBtn, { backgroundColor: QUEST.exit }]}
+            onPress={onHeaderBack}
+            style={styles.prevBtn}
+            hitSlop={8}
           >
-            <Text style={styles.exitText}>Exit Quest</Text>
+            <TablerIcon name="chevron-left" size={16} color={Colors.primaryColor} />
+            <Text style={[styles.prevText, { color: Colors.primaryColor }]}>
+              {step === 0 ? 'Back' : 'Previous'}
+            </Text>
           </Pressable>
+
+          <View style={styles.footerRight}>
+            {showSkip ? (
+              <Pressable
+                onPress={() => {
+                  play('select');
+                  handleSkip();
+                }}
+                style={styles.skipBtn}
+                hitSlop={8}
+              >
+                <Text style={[styles.skipText, { color: accent }]}>Skip</Text>
+                <TablerIcon name="chevron-right" size={14} color={accent} />
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={onExitQuest}
+              style={[styles.exitBtn, { backgroundColor: Colors.primaryColor }]}
+            >
+              <Text style={styles.exitText}>Exit Quest</Text>
+            </Pressable>
+          </View>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -715,12 +739,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   iconBtn: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E8F3EF',
     borderWidth: 1,
-    borderColor: QUEST.border,
+    borderColor: '#C5DED5',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -998,6 +1022,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 2,
   },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   prevBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1008,6 +1037,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
     fontSize: 13,
     color: QUEST.ink,
+  },
+  skipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+  skipText: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 13,
   },
   exitBtn: {
     paddingHorizontal: 14,

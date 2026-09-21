@@ -13,7 +13,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppHeader from '../../components/AppHeader';
 import Detailimages from '../../components/Detailimages';
 import ReviewSection from '../../components/ReviewSecton';
-import BlinkitAddButton from '../../components/BlinkitAddButton';
 import { useProductData } from '../../hooks/useProductData';
 import { Fonts } from '../../common/Fonts';
 import { useCartActions } from '../../hooks/Cart';
@@ -40,11 +39,13 @@ import {
     isPrescriptionRequired,
 } from '../../utils/prescriptionUtils';
 import {
-    canAddProductQty,
+    getAddQtyBlockMessage,
+    trackListingStock,
     getProductStockDisplay,
     getProductStockQty,
     isProductLowStock,
     isProductOutOfStock,
+    LOW_STOCK_THRESHOLD,
 } from '../../utils/productStockUtils';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
 import { SCREEN } from '../../constants/responsive';
@@ -55,6 +56,62 @@ const GALLERY_H = Math.round(Math.min(SCREEN.width * 0.7, 248));
 const SectionHeader = ({ title }: { title: string }) => (
     <Text style={styles.sectionHeader}>{title}</Text>
 );
+
+/** Local qty stepper — does not call cart API. */
+const CompactQtyStepper = ({
+    quantity,
+    onIncrease,
+    onDecrease,
+    disabled,
+    maxQuantity,
+}: {
+    quantity: number;
+    onIncrease: () => void;
+    onDecrease: () => void;
+    disabled?: boolean;
+    maxQuantity?: number | null;
+}) => {
+    const atMax =
+        maxQuantity != null &&
+        Number.isFinite(maxQuantity) &&
+        quantity >= maxQuantity;
+    return (
+        <View style={[styles.qtyStepper, disabled && styles.qtyStepperDisabled]}>
+            <TouchableOpacity
+                onPress={onDecrease}
+                disabled={disabled || quantity <= 1}
+                style={styles.qtyBtn}
+                hitSlop={8}
+            >
+                <TablerIcon
+                    name="minus"
+                    size={14}
+                    color={
+                        disabled || quantity <= 1
+                            ? 'rgba(255,255,255,0.4)'
+                            : '#FFFFFF'
+                    }
+                    strokeWidth={2.6}
+                />
+            </TouchableOpacity>
+            <Text style={styles.qtyValue}>{quantity}</Text>
+            <TouchableOpacity
+                onPress={onIncrease}
+                style={[styles.qtyBtn, (disabled || atMax) && styles.qtyBtnMuted]}
+                hitSlop={8}
+            >
+                <TablerIcon
+                    name="plus"
+                    size={14}
+                    color={
+                        disabled || atMax ? 'rgba(255,255,255,0.4)' : '#FFFFFF'
+                    }
+                    strokeWidth={2.6}
+                />
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 type DetailSheetKey =
     | 'description'
@@ -82,40 +139,53 @@ const ProductDetails = (props: any) => {
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
 
     const variants = ProductData?.variants || [];
+    console.log('ProductData', ProductData);
     const defaultVariant =
         variants.find((v: any) => v?.is_default) || variants[0] || null;
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
+    const [quantity, setQuantity] = useState<number>(1);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
 
     // Prefer selected; fall back to default so stock/CTA never use empty initial state
     const activeVariant = selectedVariant || defaultVariant;
-    // Prefer route/list variant_id so count matches ProductCard cart qty
+    // Prefer selected pack identity so multi-variant products don't all send route id
     const cartVariantId = String(
-        activeVariant?.variant_id ?? varientID ?? activeVariant?.id ?? '',
-    );
+        activeVariant?.id ??
+            activeVariant?.variant_id ??
+            varientID ??
+            '',
+    ).trim();
+    console.log('cartVariantId', cartVariantId);
     const { updateCartQuantity } = useCartActions();
+    console.log('updateCartQuantityupdateCartQuantity', updateCartQuantity,);
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
     const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
     const existingCartQty = useMemo(() => {
         const ids = [
-            activeVariant?.variant_id,
-            varientID,
             activeVariant?.id,
+            activeVariant?.variant_id,
+            cartVariantId,
         ]
             .map(v => String(v ?? '').trim())
             .filter(Boolean);
-        for (const id of ids) {
+        const unique = [...new Set(ids)];
+        for (const id of unique) {
             const q = Number(variantQuantities[id] ?? 0);
             if (q > 0) return q;
         }
-        return Number(variantQuantities[cartVariantId] ?? 0);
+        return 0;
     }, [
         activeVariant?.variant_id,
         activeVariant?.id,
-        varientID,
         cartVariantId,
         variantQuantities,
     ]);
+    const cartQuantity =
+        ProductData?.variants?.find((variant: any) => variant?.id === activeVariant?.id)
+            ?.cart_quantity ?? 0;
+
+    console.log('activeVariantactiveVariant', activeVariant, "cartQuantity", cartQuantity);
+
     const insets = useSafeAreaInsets();
     const [descExpanded, setDescExpanded] = useState(false);
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
@@ -123,8 +193,21 @@ const ProductDetails = (props: any) => {
     const [wishlistBusy, setWishlistBusy] = useState(false);
 
     useEffect(() => {
-        if (defaultVariant) setSelectedVariant(defaultVariant);
-    }, [ProductData]);
+        if (!variants?.length) {
+            setSelectedVariant(null);
+            return;
+        }
+        const routeMatch = variants.find(
+            (v: any) =>
+                String(v?.id) === String(varientID) ||
+                String(v?.variant_id) === String(varientID),
+        );
+        setSelectedVariant(routeMatch || defaultVariant);
+    }, [ProductData, varientID]);
+
+    useEffect(() => {
+        setQuantity(cartQuantity > 0 ? cartQuantity : 1);
+    }, [activeVariant?.id, activeVariant?.variant_id]);
 
     useEffect(() => {
         const wishlisted = Boolean(
@@ -171,9 +254,12 @@ const ProductDetails = (props: any) => {
         }
     }, [activeVariant?.id, coverImageUri]);
 
+    trackListingStock(activeVariant);
     const stockQty = getProductStockQty(activeVariant);
     const maxQty =
-        stockQty == null || !Number.isFinite(stockQty) ? null : stockQty;
+        stockQty == null || !Number.isFinite(stockQty) || stockQty <= 0
+            ? null
+            : stockQty;
 
     const productForRx = useMemo(
         () => ({
@@ -186,24 +272,33 @@ const ProductDetails = (props: any) => {
         [ProductData, activeVariant],
     );
 
-    /** Same cart sync as ProductCard — count stays correct across list & details. */
-    const handleCartUpdate = useCallback(
-        async (newQty: number, goToCart = false) => {
+    /** Local qty only — cart API runs from Add / Buy now. */
+    const increaseQty = () => {
+        setQuantity(q => {
+            const next = q + 1;
+            const block = getAddQtyBlockMessage(activeVariant, next);
+            if (block) {
+                showSuccessToast(block, 'error');
+                return q;
+            }
+            if (maxQty == null) return next;
+            return Math.min(next, maxQty);
+        });
+    };
+    const decreaseQty = () => setQuantity(q => (q > 1 ? q - 1 : 1));
+
+    const handleAddToCart = useCallback(
+        async (goToCart = false) => {
             if (!(await requireAuth('Please login to add items to cart'))) return;
             if (!cartVariantId) return;
 
-            if (newQty > 0 && isProductOutOfStock(activeVariant)) {
-                showSuccessToast('This product is out of stock', 'error');
+            const addQty = Math.max(1, Number(quantity) || 1);
+            const stockMsg = getAddQtyBlockMessage(activeVariant, addQty);
+            if (stockMsg) {
+                showSuccessToast(stockMsg, 'error');
                 return;
             }
-            if (!canAddProductQty(activeVariant, newQty)) {
-                showSuccessToast('Only limited stock left', 'error');
-                return;
-            }
-            if (
-                newQty > existingCartQty &&
-                !canAddProductWithoutPrescription(productForRx)
-            ) {
+            if (!canAddProductWithoutPrescription(productForRx)) {
                 return;
             }
 
@@ -212,16 +307,18 @@ const ProductDetails = (props: any) => {
             }
 
             setPendingCta(goToCart ? 'buy' : 'add');
-            const success = await updateCartQuantity(cartVariantId, newQty, {
+            const success = await updateCartQuantity(cartVariantId, addQty, {
                 currentQuantity: existingCartQty,
                 prescriptionRequired: isPrescriptionRequired(productForRx),
             });
+            console.log('handleAddToCartsuccess', success);
             setPendingCta(null);
 
             if (!success) {
-                showSuccessToast('Try again to update cart', 'error');
+                showSuccessToast('Try again to add into cart', 'error');
                 return;
             }
+            setQuantity(addQty);
             if (goToCart) {
                 props.navigation.navigate('MyCart');
             }
@@ -230,29 +327,26 @@ const ProductDetails = (props: any) => {
             activeVariant,
             cartVariantId,
             coverImageUri,
-            existingCartQty,
+            // existingCartQty,
             productForRx,
             props.navigation,
+            quantity,
             updateCartQuantity,
         ],
     );
-
-    const handleAddToCart = async (goToCart = false) => {
-        await handleCartUpdate(existingCartQty + 1, goToCart);
-    };
 
     const handleToggleWishlist = async () => {
         if (wishlistBusy) return;
         if (!(await requireAuth('Please login to save wishlist items'))) return;
 
         const variantId = String(
-            selectedVariant?.variant_id ??
             selectedVariant?.id ??
-            activeVariant?.variant_id ??
-            activeVariant?.id ??
-            varientID ??
-            '',
-        );
+                selectedVariant?.variant_id ??
+                activeVariant?.id ??
+                activeVariant?.variant_id ??
+                varientID ??
+                '',
+        ).trim();
         if (!variantId) {
             showSuccessToast('Product variant unavailable', 'error');
             return;
@@ -291,10 +385,8 @@ const ProductDetails = (props: any) => {
         ...activeVariant,
     });
 
-    const cartDisplayQty = Math.max(existingCartQty, 1);
-    const totalPrice =
-        (activeVariant?.selling_price || 0) *
-        (existingCartQty > 0 ? existingCartQty : 1);
+    const cartDisplayQty = Math.max(quantity, 1);
+    const totalPrice = (activeVariant?.selling_price || 0) * quantity;
     const saveAmount = Math.max(
         0,
         (Number(activeVariant?.mrp) || 0) -
@@ -561,35 +653,44 @@ const ProductDetails = (props: any) => {
 
                     <View style={styles.priceRow}>
                         <View style={styles.priceLeft}>
-                            {saveAmount > 0 ? (
-                                <></>
-                                // <View style={styles.specialRow}>
-                                //     <TablerIcon name="receipt" size={12} color="#FF3F6C" />
-                                //     <Text style={styles.specialLabel}>Special Price</Text>
-                                // </View>
-                            ) : null}
+                            {/* {saveAmount > 0 ? (
+                                <Text style={styles.specialLabel}>Special Price</Text>
+                            ) : null} */}
                             <View style={styles.priceLine}>
                                 <RupeeAmount
                                     value={selectedVariant?.selling_price}
                                     style={styles.sellingPrice}
+                                    iconColor="#282C3F"
                                 />
                                 {Number(selectedVariant?.mrp) >
                                     Number(selectedVariant?.selling_price || 0) ? (
-                                    <>
-                                        <Text style={styles.mrpPrefix}>MRP</Text>
+                                    <View style={styles.mrpWrap}>
+                                        <Text style={styles.mrpPrefix}>MRP </Text>
                                         <RupeeAmount
                                             value={selectedVariant?.mrp}
                                             style={styles.mrpPrice}
+                                            iconColor="#94969F"
                                         />
-                                    </>
+                                    </View>
                                 ) : null}
-                                {!!selectedVariant?.discount && (
+                                {!!selectedVariant?.discount || saveAmount > 0 ? (
                                     <Text style={styles.discountInline}>
-                                        ({selectedVariant.discount}% OFF)
+                                        (
+                                        {selectedVariant?.discount
+                                            ? `${selectedVariant.discount}% OFF`
+                                            : `${Math.round(
+                                                (saveAmount /
+                                                    Math.max(
+                                                        Number(selectedVariant?.mrp) || 1,
+                                                        1,
+                                                    )) *
+                                                100,
+                                            )}% OFF`}
+                                        )
                                     </Text>
-                                )}
+                                ) : null}
                             </View>
-                            {/* Add stock display here */}
+                            <Text style={styles.taxNote}>inclusive of all taxes</Text>
                             {isLowStock ? (
                                 <View style={styles.hurryStrip}>
                                     <TablerIcon name="flame" size={14} color="#C2410C" />
@@ -610,22 +711,31 @@ const ProductDetails = (props: any) => {
                                     </Text>
                                 </View>
                             )}
-                            {/* <Text style={styles.taxNote}>Inclusive of all taxes</Text> */}
                         </View>
-                        <BlinkitAddButton
-                            quantity={isOutOfStock ? 0 : existingCartQty}
-                            isAdding={isAdding}
-                            outOfStock={isOutOfStock}
-                            maxQuantity={maxQty}
-                            onAdd={() => handleCartUpdate(existingCartQty + 1)}
-                            onIncrement={() =>
-                                handleCartUpdate(existingCartQty + 1)
-                            }
-                            onDecrement={() =>
-                                handleCartUpdate(Math.max(0, existingCartQty - 1))
-                            }
-                        />
-                        {/* Add stock display here */}
+                        <View style={styles.qtyBlock}>
+                            {existingCartQty > 0 ? (
+                                <Text style={styles.inCartBadge}>
+                                    {existingCartQty} in cart
+                                </Text>
+                            ) : null}
+                            <CompactQtyStepper
+                                quantity={quantity}
+                                onIncrease={increaseQty}
+                                onDecrease={decreaseQty}
+                                disabled={isOutOfStock}
+                                maxQuantity={maxQty}
+                            />
+                            {maxQty != null &&
+                            maxQty > 0 &&
+                            maxQty <= LOW_STOCK_THRESHOLD &&
+                            quantity >= maxQty ? (
+                                <Text style={styles.qtyLimitNote}>
+                                    {maxQty === 1
+                                        ? 'Only 1 item available.'
+                                        : `Only ${maxQty} items available.`}
+                                </Text>
+                            ) : null}
+                        </View>
                     </View>
 
                     {saveAmount > 0 ? (
@@ -653,14 +763,14 @@ const ProductDetails = (props: any) => {
                         <Text style={styles.deliveryText}>
                             {deliveryMessage}{' '}
                             <Text style={styles.deliveryStrong}>
-                                Delivery in {deliveryBy}
+                                Delivery in {deliveryBy} in NCR & nearby cities. 
                             </Text>
                         </Text>
-                        {selectedVariant?.is_free_shipping ? (
+                        {/* {selectedVariant?.is_free_shipping ? (
                             <View style={styles.freeTag}>
                                 <Text style={styles.freeTagText}>FREE</Text>
                             </View>
-                        ) : null}
+                        ) : null} */}
                     </View>
 
                 </View>
@@ -1129,6 +1239,20 @@ const styles = StyleSheet.create({
         color: Colors.primaryColor,
         marginBottom: 8,
     },
+    qtyBlock: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    inCartBadge: {
+        fontSize: 11,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
+        backgroundColor: '#E8F3EF',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 999,
+        overflow: 'hidden',
+    },
 
     detailsHead: {
         marginBottom: 10,
@@ -1339,16 +1463,17 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sellingPrice: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#0F172A',
+        fontSize: 24,
+        fontFamily: Fonts.PoppinsBold,
+        color: '#282C3F',
         includeFontPadding: false,
     },
     specialLabel: {
-        fontSize: 11,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#FF3F6C',
         includeFontPadding: false,
+        marginBottom: 2,
     },
     specialRow: {
         flexDirection: 'row',
@@ -1356,29 +1481,35 @@ const styles = StyleSheet.create({
         gap: 4,
         marginBottom: 2,
     },
+    mrpWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 6,
+    },
     mrpPrefix: {
         fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#94969F',
         includeFontPadding: false,
     },
     mrpPrice: {
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsRegular,
+        color: '#94969F',
         textDecorationLine: 'line-through',
         includeFontPadding: false,
     },
     discountInline: {
-        fontSize: 13,
+        fontSize: 14,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#FF3F6C',
+        marginLeft: 4,
     },
     taxNote: {
-        marginTop: 2,
+        marginTop: 4,
         fontSize: 11,
-        color: '#94A3B8',
-        fontFamily: Fonts.PoppinsMedium,
+        color: '#94969F',
+        fontFamily: Fonts.PoppinsRegular,
     },
     offerStrip: {
         marginTop: 10,
@@ -1479,6 +1610,44 @@ const styles = StyleSheet.create({
     stockLabel: {
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
+        includeFontPadding: false,
+    },
+
+    qtyStepper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 8,
+        backgroundColor: Colors.primaryColor,
+        overflow: 'hidden',
+        height: 34,
+        minWidth: 86,
+    },
+    qtyStepperDisabled: {
+        backgroundColor: '#94A3B8',
+    },
+    qtyBtn: {
+        width: 28,
+        height: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qtyBtnMuted: {
+        opacity: 0.45,
+    },
+    qtyLimitNote: {
+        marginTop: 6,
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#B91C1C',
+        fontFamily: Fonts.PoppinsMedium,
+        textAlign: 'right',
+    },
+    qtyValue: {
+        minWidth: 22,
+        textAlign: 'center',
+        fontSize: 13,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
         includeFontPadding: false,
     },
 

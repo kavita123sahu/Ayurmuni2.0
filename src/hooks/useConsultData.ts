@@ -8,7 +8,6 @@ import {
 
 import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
-import { Images } from '../common/Images';
 import { isAuthenticated } from '../services/guestAuth';
 import {
     normalizeAppointmentListItem,
@@ -30,7 +29,7 @@ export type SlotItem = {
     status: string;
     displayTime?: string;
 };
-const doctorRecent = [{ id: '1', image: Images.doctorImage, name: 'Dr. Arjun R Nair', speciality: 'Cardiologist', date: '12 May', }, { id: '2', image: Images.doctorImage, name: 'Dr. Priya Sharma', speciality: 'Dermatologist', date: '18 May', }, { id: '3', image: Images.doctorImage, name: 'Dr. Rahul Mehta', speciality: 'Neurologist', date: '22 May', },];
+const doctorRecent = [{ id: '1', image: '', name: 'Dr. Arjun R Nair', speciality: 'Cardiologist', date: '12 May', }, { id: '2', image: '', name: 'Dr. Priya Sharma', speciality: 'Dermatologist', date: '18 May', }, { id: '3', image: '', name: 'Dr. Rahul Mehta', speciality: 'Neurologist', date: '22 May', },];
 
 type UseConsultDataOptions = {
   /** Health concerns / categories. Default true. */

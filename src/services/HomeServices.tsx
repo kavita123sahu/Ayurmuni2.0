@@ -1,4 +1,5 @@
 import { apiClient } from './APIconfig';
+import { applyDoctorFeesToResponse } from '../utils/doctorUtils';
 
 export const getHomeCategory = async () => {
   try {
@@ -19,7 +20,7 @@ export const getSuggestedDoctor = async () => {
       method: 'GET',
     });
     console.log('sugesstedresposneeee', response);
-    return response;
+    return applyDoctorFeesToResponse(response);
   } catch (error) {
     throw error;
   }
@@ -31,6 +32,7 @@ export const getSuggestedProducts = async () => {
     const response = await apiClient('customers/suggested/products/', {
       method: 'GET',
     });
+    console.log('sugesstedresposneeee', response);
     return response;
   } catch (error) {
     throw error;

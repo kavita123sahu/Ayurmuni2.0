@@ -66,7 +66,7 @@ export const useCartActions = (): UseCartActionsReturn => {
   const dispatch = useAppDispatch();
   const cart = useAppSelector(state => state.cart);
   const cartCount = useAppSelector(selectCartCount);
-
+  console.log("resultresultresult", cart);
   const updateCartQuantityFn = useCallback(
     async (
       variantId: string | number,
@@ -120,6 +120,7 @@ export const useCartActions = (): UseCartActionsReturn => {
           prescriptionRequired: options?.prescriptionRequired,
         }),
       );
+      console.log('addToCartresult', result);
       if (syncCartQuantity.rejected.match(result)) {
         return false;
       }

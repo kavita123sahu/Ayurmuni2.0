@@ -49,8 +49,7 @@ import {
   getDoctorGridCardWidth,
 } from '../../constants/doctorGridLayout';
 import {
-  canAddProductQty,
-  isProductOutOfStock,
+  getAddQtyBlockMessage,
 } from '../../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import SuggestedCard from '../../components/SuggestedCard';
@@ -161,6 +160,14 @@ const CategoryDoctor = (props: any) => {
     };
   }, [concernId, selectedDiseaseId, debouncedSearch]);
 
+  const medicineProducts = useAppSelector(
+    (s: any) => s.home?.medicineProducts ?? [],
+  );
+  const storeProducts = useAppSelector((s: any) => s.home?.storeProducts ?? []);
+  const homeProducts = useMemo(
+    () => [...(medicineProducts || []), ...(storeProducts || [])],
+    [medicineProducts, storeProducts],
+  );
   const {
     products,
     setProducts,
@@ -169,7 +176,7 @@ const CategoryDoctor = (props: any) => {
     refreshing: productsRefreshing,
     refresh: refreshProducts,
     loadMore,
-  } = useCategoryProducts(productFilter, [], {
+  } = useCategoryProducts(productFilter, homeProducts, {
     enabled: Boolean(concernId) || Boolean(debouncedSearch.trim()),
   });
 
@@ -287,9 +294,31 @@ const CategoryDoctor = (props: any) => {
     loadConcernYoga();
   }, [loadConcernDiet, loadConcernYoga]);
 
-  const productSectionTitle = selectedDiseaseName
-    ? `${selectedDiseaseName} Products`
-    : `${categoryName || 'Related'} Products`;
+  const productMatchList = useMemo(
+    () => (concernId ? filterByConcern(products) : products),
+    [products, concernId, filterByConcern],
+  );
+
+  // Prefer concern-matched products. If API returned rows but client match
+  // emptied them, keep those rows and label as General Products.
+  // If API returned nothing, hook already fills `products` from home catalog.
+  const scopedProducts = useMemo(() => {
+    if (!concernId) return Array.isArray(products) ? products : [];
+    if (productMatchList.length > 0) return productMatchList;
+    if (Array.isArray(products) && products.length > 0) return products;
+    return [];
+  }, [concernId, productMatchList, products]);
+
+  const showingGeneralProducts =
+    Boolean(concernId) &&
+    productMatchList.length === 0 &&
+    scopedProducts.length > 0;
+
+  const productSectionTitle = showingGeneralProducts
+    ? 'General Products'
+    : selectedDiseaseName
+      ? `${selectedDiseaseName} Products`
+      : `${categoryName || 'Related'} Products`;
 
   const dietSectionTitle = selectedDiseaseName
     ? `${selectedDiseaseName} Diet Plans`
@@ -298,11 +327,6 @@ const CategoryDoctor = (props: any) => {
   const yogaSectionTitle = selectedDiseaseName
     ? `${selectedDiseaseName} Yoga`
     : `${categoryName || 'Related'} Yoga`;
-
-  const scopedProducts = useMemo(
-    () => (concernId ? filterByConcern(products) : products),
-    [products, concernId, filterByConcern],
-  );
 
   const onRefresh = useCallback(async () => {
     await Promise.all([
@@ -358,12 +382,9 @@ const CategoryDoctor = (props: any) => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
       const variantId = String(item?.variant_id);
       if (!variantId) return;
-      if (newQty > 0 && isProductOutOfStock(item)) {
-        showSuccessToast('This product is out of stock', 'error');
-        return;
-      }
-      if (!canAddProductQty(item, newQty)) {
-        showSuccessToast('Not enough stock available', 'error');
+      const stockMsg = getAddQtyBlockMessage(item, newQty);
+      if (stockMsg) {
+        showSuccessToast(stockMsg, 'error');
         return;
       }
       const currentQty = Number(variantQuantities[variantId] ?? 0);
@@ -447,7 +468,7 @@ const CategoryDoctor = (props: any) => {
                 >
                   <View style={styles.diseaseChipIconWrap}>
                     <TablerIcon
-                      name="layout-grid"
+                      name="plus"
                       size={16}
                       color={!selectedDiseaseId ? Colors.primaryColor : '#64748B'}
                     />
@@ -614,25 +635,23 @@ const CategoryDoctor = (props: any) => {
         )}
 
         <SectionHeader title={productSectionTitle} />
+        {showingGeneralProducts ? (
+          <Text style={styles.generalHint}>
+            No products tagged for this concern yet — showing general items.
+          </Text>
+        ) : null}
         {productsLoading && scopedProducts.length === 0 ? (
           <View style={styles.inlineSkeleton}>
             <TopDoctorsCardSkeleton count={2} />
           </View>
-        ) : scopedProducts.length > 0 ? (
-          <SuggestedCard
-            data={scopedProducts}
-            navigation={navigation}
-            home
-            edgeScroll
-          />
-        ) : (
+        ) : scopedProducts.length === 0 ? (
           <View style={styles.sectionEmptyBox}>
             <Text style={styles.emptyTitle}>No products</Text>
             <Text style={styles.emptySub}>
               Products for this concern will appear here.
             </Text>
           </View>
-        )}
+        ) : null}
 
         {/* {!productsLoading && products.length > 0 ? (
           <Text style={styles.resultCount}>
@@ -660,6 +679,7 @@ const CategoryDoctor = (props: any) => {
       productSectionTitle,
       productsLoading,
       scopedProducts,
+      showingGeneralProducts,
       navigation,
     ],
   );
@@ -702,14 +722,14 @@ const CategoryDoctor = (props: any) => {
     Boolean(debouncedSearch.trim()) || Boolean(selectedDiseaseId);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <Header
         title={categoryName || 'Concern'}
         subtitle="Doctors, products, diet & yoga"
         onBack={() => navigation.goBack()}
         onSearchPress={() => setSearchExpanded(true)}
-        onRefreshPress={onRefresh}
+        // onRefreshPress={onRefresh}
         showCart
       />
 
@@ -723,8 +743,8 @@ const CategoryDoctor = (props: any) => {
         <View style={{ flex: 1 }}>
           {StickyFilters}
           <FlatList
-          data={products}
-          keyExtractor={(item, i) => String(item.variant_id || i)}
+          data={scopedProducts}
+          keyExtractor={(item, i) => String(item.variant_id || item.id || i)}
           numColumns={2}
           renderItem={renderProduct}
           ListHeaderComponent={ListHeader}
@@ -735,7 +755,7 @@ const CategoryDoctor = (props: any) => {
             { paddingBottom: bottomPadding },
           ]}
           columnWrapperStyle={
-            products.length > 0 ? styles.columnWrap : undefined
+            scopedProducts.length > 0 ? styles.columnWrap : undefined
           }
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -875,6 +895,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     alignItems: 'center',
+  },
+  generalHint: {
+    marginBottom: 8,
+    marginHorizontal: 2,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
   },
   emptyTitle: {
     fontSize: 15,

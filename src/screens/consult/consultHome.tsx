@@ -61,8 +61,7 @@ import {
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
 import {
-  canAddProductQty,
-  isProductOutOfStock,
+  getAddQtyBlockMessage,
 } from '../../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import { useHomeData } from '../../hooks/UseHomeData';
@@ -160,12 +159,9 @@ const ConsultHome = () => {
       if (!(await requireAuth('Please login to add items to cart'))) return;
       const variantId = String(item?.variant_id);
       if (!variantId) return;
-      if (newQty > 0 && isProductOutOfStock(item)) {
-        showSuccessToast('This product is out of stock', 'error');
-        return;
-      }
-      if (!canAddProductQty(item, newQty)) {
-        showSuccessToast('Not enough stock available', 'error');
+      const stockMsg = getAddQtyBlockMessage(item, newQty);
+      if (stockMsg) {
+        showSuccessToast(stockMsg, 'error');
         return;
       }
       const currentQty = Number(variantQuantities[variantId] ?? 0);
@@ -349,7 +345,7 @@ const ConsultHome = () => {
         onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
         // onSearchPress={() => setSearchExpanded(true)}
-        onRefreshPress={onRefresh}
+        // onRefreshPress={onRefresh}
       />
 
 

@@ -205,7 +205,7 @@ const SearchBar: React.FC<Props> = ({
         </TouchableOpacity>
       ) : null}
 
-      {showMicIcon ? (
+      {/* {showMicIcon ? (
         <TouchableOpacity
           style={styles.trailing}
           onPress={onMicPress ?? onPress}
@@ -214,7 +214,7 @@ const SearchBar: React.FC<Props> = ({
         >
           <TablerIcon name="mic" size={16} color={Colors.primaryColor} />
         </TouchableOpacity>
-      ) : null}
+      ) : null} */}
 
       {showFilterIcon ? (
         <TouchableOpacity
@@ -261,7 +261,7 @@ export const SearchScreenHeader = ({
       value={value}
       onChangeText={onChangeText}
       autoFocus={autoFocus}
-      showMicIcon
+      // showMicIcon
       containerStyle={styles.searchScreenField}
     />
   </View>

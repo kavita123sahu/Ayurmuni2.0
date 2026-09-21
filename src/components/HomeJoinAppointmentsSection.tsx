@@ -139,6 +139,7 @@ const styles = StyleSheet.create({
   },
   horizontalList: {
     paddingRight: 8,
+    paddingBottom: 1,
   },
 });
 

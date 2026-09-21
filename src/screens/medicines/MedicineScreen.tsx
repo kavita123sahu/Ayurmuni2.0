@@ -53,10 +53,7 @@ import {
   CategoryRowSkeleton,
   HorizontalChipSkeleton,
 } from '../../simmerScreen/ShimmerHook';
-import {
-  canAddProductQty,
-  isProductOutOfStock,
-} from '../../utils/productStockUtils';
+import { getAddQtyBlockMessage } from '../../utils/productStockUtils';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 
 const H_PAD = 20;
@@ -195,9 +192,8 @@ const MedicineScreen = (props: any) => {
 
   const handleActionPress = useCallback(
     (item: { screen?: keyof RootStackParamList }) => {
-      if (item?.screen)
-        showSuccessToast('This feature is Coming Soon', 'success');
-      //  stackNav.navigate(item.screen);
+      if (!item?.screen) return;
+      stackNav.navigate(item.screen as any);
     },
     [stackNav],
   );
@@ -208,12 +204,9 @@ const MedicineScreen = (props: any) => {
       const variantId = String(item?.variant_id);
       if (!variantId) return;
 
-      if (newQty > 0 && isProductOutOfStock(item)) {
-        showSuccessToast('This product is out of stock', 'error');
-        return;
-      }
-      if (!canAddProductQty(item, newQty)) {
-        showSuccessToast('Not enough stock available', 'error');
+      const stockMsg = getAddQtyBlockMessage(item, newQty);
+      if (stockMsg) {
+        showSuccessToast(stockMsg, 'error');
         return;
       }
 
