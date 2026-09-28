@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
+    paddingHorizontal: 14,
   },
   brandRow: {
     flexDirection: 'row',

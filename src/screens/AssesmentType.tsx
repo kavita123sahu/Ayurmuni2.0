@@ -7,7 +7,6 @@ import {
   Dimensions,
   Platform,
   BackHandler,
-  Alert,
   StatusBar,
   ScrollView,
   Image,
@@ -94,18 +93,12 @@ const AssessmentType = (props: any) => {
   const [prakritiNoteVisible, setPrakritiNoteVisible] = useState(false);
 
   const handleBackPress = () => {
-    Alert.alert(
-      'Exit Assessment?',
-      'Are you sure you want to exit the assessment?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Exit',
-          style: 'destructive',
-          onPress: () => BackHandler.exitApp(),
-        },
-      ],
-    );
+    if (props.navigation?.canGoBack?.()) {
+      props.navigation.goBack();
+      return true;
+    }
+    // No stack history — return to AccessMode rather than killing the app.
+    props.navigation?.navigate?.('AccessMode');
     return true;
   };
 
@@ -115,7 +108,7 @@ const AssessmentType = (props: any) => {
       handleBackPress,
     );
     return () => subscription.remove();
-  }, []);
+  }, [props.navigation]);
 
   const handleSkip = async () => {
     try {
@@ -278,7 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   hero: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 14,
     paddingTop: 8,
     paddingBottom: 8,
     zIndex: 1,

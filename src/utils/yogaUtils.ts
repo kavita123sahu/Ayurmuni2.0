@@ -63,16 +63,13 @@ export const mapYogaSessionForList = (item: any) => {
     ...item,
     id: String(id),
     type: 'yoga',
-    title: String(item.title ?? item.name ?? 'Yoga Session'),
-    name: String(item.name ?? item.title ?? 'Yoga Session'),
+    title: String(item.title ?? 'Yoga Session'),
+    // name: String(item.name ?? item.title ?? 'Yoga Session'),
     short_description:
       item.short_description ||
-      item.description ||
-      item.difficulty ||
-      item.duration ||
       '',
-    difficulty: item.difficulty ?? item.level ?? '',
-    duration: item.duration ?? item.duration_minutes ?? '',
+    difficulty: item.difficulty || '',
+    duration: item.duration_minutes ?? '',
     thumbnail_url,
     video_url: video_url || item.video_url,
   };
@@ -129,12 +126,12 @@ const toBreakdownItem = (raw: any, index: number): YogaBreakdownItem | null => {
   if (!title) return null;
   const startSeconds = parseTimeToSeconds(
     raw.start_seconds ??
-      raw.start_time ??
-      raw.timestamp ??
-      raw.time_seconds ??
-      raw.time ??
-      raw.offset ??
-      0,
+    raw.start_time ??
+    raw.timestamp ??
+    raw.time_seconds ??
+    raw.time ??
+    raw.offset ??
+    0,
   );
   return {
     id: String(raw.id ?? `pose-${index}`),

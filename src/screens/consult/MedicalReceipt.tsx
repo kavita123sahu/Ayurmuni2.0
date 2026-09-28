@@ -22,6 +22,7 @@ import { createMedicalReceiptPdfBytes } from '../../utils/buildConsultationDocum
 import { formatDate } from '../../common/DataInterface';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import { formatDisplayIdHash, formatReceiptId } from '../../utils/formatDisplayId';
+import { parseConsultationReceiptBreakdown } from '../../utils/consultationReceiptUtils';
 const { width } = Dimensions.get('window');
 
 interface ReceiptData {
@@ -37,6 +38,9 @@ interface ReceiptData {
     patient_name: string;
     payment_method?: string;
     payment_type?: string;
+    payment_status?: string;
+    currency?: string;
+    payment_information?: any;
 
     patient: {
         name: string;
@@ -128,6 +132,17 @@ const MedicalReceipt = (props: any) => {
             ? receipt.info.doctor_specialization.join(', ')
             : receipt?.info?.doctor_specialization || '';
 
+    const breakdown = parseConsultationReceiptBreakdown(receipt);
+    const receiptNoSource =
+        breakdown.paymentId ||
+        receipt?.payment_id ||
+        receipt?.consultation_id;
+    const legacyAdmin = Number(receipt?.administrative_charges ?? 0);
+    const legacyDigital = Number(receipt?.digital_report_access ?? 0);
+    const statusLabel = breakdown.paymentStatus
+        ? breakdown.paymentStatus.charAt(0).toUpperCase() +
+          breakdown.paymentStatus.slice(1)
+        : '';
 
     return (
         <SafeAreaView style={styles.container}>
@@ -175,36 +190,80 @@ const MedicalReceipt = (props: any) => {
 
                                     {/* INFO ROWS */}
                                     <View style={styles.infoRow}>
-                                        <View>
+                                        <View style={styles.infoCol}>
                                             <Text style={styles.label}>Receipt No.</Text>
                                             <Text style={styles.value} numberOfLines={1}>
-                                                {formatDisplayIdHash(
-                                                    'RCP',
-                                                    receipt?.payment_id ?? receipt?.consultation_id,
-                                                )}
+                                                {formatDisplayIdHash('RCP', receiptNoSource)}
                                             </Text>
                                         </View>
 
-                                        <View style={{ alignItems: 'flex-end' }}>
+                                        <View style={styles.infoColEnd}>
                                             <Text style={styles.label}>Date</Text>
-                                            <Text style={styles.value} numberOfLines={1}>{formatDate(receipt?.date ?? '')}</Text>
+                                            <Text style={styles.value} numberOfLines={1}>
+                                                {formatDate(receipt?.date ?? '')}
+                                            </Text>
                                         </View>
                                     </View>
 
                                     <View style={styles.infoRow}>
-                                        <View>
+                                        <View style={styles.infoCol}>
                                             <Text style={styles.label}>Patient Name</Text>
-                                            <Text style={styles.value} numberOfLines={1}>{receipt?.patient_name}</Text>
+                                            <Text style={styles.value} numberOfLines={2}>
+                                                {receipt?.patient_name || '—'}
+                                            </Text>
                                         </View>
 
-                                        <View style={{ alignItems: 'flex-end' }}>
+                                        <View style={styles.infoColEnd}>
                                             <Text style={styles.label}>Payment Method</Text>
                                             <Text style={[styles.value, { color: Colors.primaryColor }]}>
-                                                {receipt?.payment_method ?? receipt?.payment_type ?? '—'}
+                                                {breakdown.paymentMethod}
                                             </Text>
                                         </View>
                                     </View>
 
+                                    {(!!statusLabel || !!breakdown.bank) && (
+                                        <View style={styles.infoRow}>
+                                            {!!statusLabel && (
+                                                <View style={styles.infoCol}>
+                                                    <Text style={styles.label}>Payment Status</Text>
+                                                    <Text style={styles.value}>{statusLabel}</Text>
+                                                </View>
+                                            )}
+                                            {!!breakdown.bank && (
+                                                <View style={styles.infoColEnd}>
+                                                    <Text style={styles.label}>Bank</Text>
+                                                    <Text style={styles.value}>{breakdown.bank}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+
+                                    {!!breakdown.paymentId && (
+                                        <View style={styles.metaBlock}>
+                                            <Text style={styles.label}>Payment ID</Text>
+                                            <Text style={styles.metaValue} selectable>
+                                                {breakdown.paymentId}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {!!breakdown.orderId && (
+                                        <View style={styles.metaBlock}>
+                                            <Text style={styles.label}>Order ID</Text>
+                                            <Text style={styles.metaValue} selectable>
+                                                {breakdown.orderId}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {!!breakdown.bankTransactionId && (
+                                        <View style={styles.metaBlock}>
+                                            <Text style={styles.label}>Bank Transaction ID</Text>
+                                            <Text style={styles.metaValue} selectable>
+                                                {breakdown.bankTransactionId}
+                                            </Text>
+                                        </View>
+                                    )}
 
                                     <View style={styles.dashed} />
 
@@ -245,45 +304,67 @@ const MedicalReceipt = (props: any) => {
                                     <View style={styles.priceRow}>
                                         <Text style={styles.priceLabel}>Consultation Fee</Text>
                                         <RupeeAmount
-                                            value={receipt?.consultation_fees ?? 0}
+                                            value={breakdown.consultationFee}
                                             style={styles.priceValue}
                                             iconSize={14}
                                             iconColor={Colors.primaryColor}
                                         />
                                     </View>
 
-                                    <View style={styles.priceRow1}>
-                                        <Text style={styles.priceLabel}>Administrative Charges</Text>
-                                        <RupeeAmount
-                                            value={receipt?.administrative_charges ?? 0}
-                                            style={styles.priceValue}
-                                            iconSize={14}
-                                            iconColor={Colors.primaryColor}
-                                        />
-                                    </View>
+                                    {breakdown.platformFee > 0 && (
+                                        <View style={styles.priceRow1}>
+                                            <Text style={styles.priceLabel}>Platform Fee</Text>
+                                            <RupeeAmount
+                                                value={breakdown.platformFee}
+                                                style={styles.priceValue}
+                                                iconSize={14}
+                                                iconColor={Colors.primaryColor}
+                                            />
+                                        </View>
+                                    )}
 
-                                    <View style={styles.priceRow1}>
-                                        <Text style={styles.priceLabel}>Digital Report Access</Text>
-                                        <RupeeAmount
-                                            value={receipt?.digital_report_access ?? 0}
-                                            style={styles.priceValue}
-                                            iconSize={14}
-                                            iconColor={Colors.primaryColor}
-                                        />
-                                    </View>
+                                    {breakdown.gstAmount > 0 && (
+                                        <View style={styles.priceRow1}>
+                                            <Text style={styles.priceLabel}>GST</Text>
+                                            <RupeeAmount
+                                                value={breakdown.gstAmount}
+                                                style={styles.priceValue}
+                                                iconSize={14}
+                                                iconColor={Colors.primaryColor}
+                                            />
+                                        </View>
+                                    )}
 
+                                    {legacyAdmin > 0 && (
+                                        <View style={styles.priceRow1}>
+                                            <Text style={styles.priceLabel}>Administrative Charges</Text>
+                                            <RupeeAmount
+                                                value={legacyAdmin}
+                                                style={styles.priceValue}
+                                                iconSize={14}
+                                                iconColor={Colors.primaryColor}
+                                            />
+                                        </View>
+                                    )}
+
+                                    {legacyDigital > 0 && (
+                                        <View style={styles.priceRow1}>
+                                            <Text style={styles.priceLabel}>Digital Report Access</Text>
+                                            <RupeeAmount
+                                                value={legacyDigital}
+                                                style={styles.priceValue}
+                                                iconSize={14}
+                                                iconColor={Colors.primaryColor}
+                                            />
+                                        </View>
+                                    )}
 
                                     <View style={styles.dashed} />
 
-                                    {/* TOTAL */}
                                     <View style={styles.totalRow}>
                                         <Text style={styles.totalText}>Total Paid</Text>
                                         <RupeeAmount
-                                            value={
-                                                receipt?.total_amount ??
-                                                receipt?.consultation_fees ??
-                                                0
-                                            }
+                                            value={breakdown.totalPaid}
                                             style={styles.totalAmount}
                                             iconSize={16}
                                             iconColor={Colors.primaryColor}
@@ -379,6 +460,29 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 12,
         flexWrap: 'wrap',
+        gap: 8,
+    },
+
+    infoCol: {
+        flex: 1,
+        minWidth: '40%',
+    },
+
+    infoColEnd: {
+        flex: 1,
+        minWidth: '40%',
+        alignItems: 'flex-end',
+    },
+
+    metaBlock: {
+        marginBottom: 10,
+    },
+
+    metaValue: {
+        fontSize: 12,
+        color: '#1E293B',
+        fontFamily: Fonts.PoppinsSemiBold,
+        marginTop: 2,
     },
 
     label: {

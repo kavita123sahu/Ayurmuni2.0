@@ -1110,18 +1110,53 @@ export const appointmentActionAPI = async ({
 }: {
     appointmentId: string;
     payload: {
-        action: "reschedule" | "cancel" | "confirm_reschedule";
+        action:
+            | "reschedule"
+            | "cancel"
+            | "confirm_reschedule"
+            | "mark_doctor_missed";
         availability?: string;
         reschedule_reason?: string;
         cancellation_reason?: string;
+        cancellation_reason_detail?: string;
+        missed_reason?: string;
     };
 }) => {
     try {
+        const body: Record<string, unknown> = {
+            action: payload.action,
+        };
+
+        if (payload.action === "reschedule") {
+            body.availability = String(payload.availability || "").trim();
+            body.reschedule_reason = String(
+                payload.reschedule_reason || "",
+            ).trim();
+        } else if (payload.action === "confirm_reschedule") {
+            body.availability = String(payload.availability || "").trim();
+        } else if (payload.action === "cancel") {
+            body.cancellation_reason = String(
+                payload.cancellation_reason || "",
+            ).trim();
+            const detail = String(
+                payload.cancellation_reason_detail || "",
+            ).trim();
+            if (
+                body.cancellation_reason === "other_reasonable_circumstance" &&
+                detail
+            ) {
+                body.cancellation_reason_detail = detail;
+            }
+        } else if (payload.action === "mark_doctor_missed") {
+            const missed = String(payload.missed_reason || "").trim();
+            if (missed) body.missed_reason = missed;
+        }
+
         const response = await apiClient(
             `customers/doctors/appointments/action/?id=${appointmentId}`,
             {
                 method: "POST",
-                body: JSON.stringify(payload),
+                body: JSON.stringify(body),
             }
         );
 

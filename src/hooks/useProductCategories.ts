@@ -15,19 +15,28 @@ const mapList = (response: any): ProductCategoryItem[] =>
 export const useProductCategories = (
   parentId?: string | null,
   serviceCategoryId?: string | null,
+  options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled !== false;
   const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [refreshing, setRefreshing] = useState(false);
   const requestIdRef = useRef(0);
 
   const loadCategories = useCallback(
-    async (options?: { refresh?: boolean }) => {
+    async (opts?: { refresh?: boolean }) => {
+      if (!enabled) {
+        setCategories([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       const reqId = ++requestIdRef.current;
       const parent = parentId ? String(parentId) : '';
 
       try {
-        if (!options?.refresh) {
+        if (!opts?.refresh) {
           setLoading(true);
         }
 
@@ -81,7 +90,7 @@ export const useProductCategories = (
         }
       }
     },
-    [parentId, serviceCategoryId],
+    [enabled, parentId, serviceCategoryId],
   );
 
   useEffect(() => {
@@ -89,9 +98,10 @@ export const useProductCategories = (
   }, [loadCategories]);
 
   const refresh = useCallback(() => {
+    if (!enabled) return;
     setRefreshing(true);
     loadCategories({ refresh: true });
-  }, [loadCategories]);
+  }, [enabled, loadCategories]);
 
   return {
     categories,

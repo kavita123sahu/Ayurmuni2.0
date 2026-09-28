@@ -16,6 +16,7 @@ import {
     Modal,
     RefreshControl,
     Pressable,
+    Keyboard,
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -33,10 +34,6 @@ import {
     DOCTOR_GRID,
     getDoctorGridCardWidth,
 } from '../../constants/doctorGridLayout';
-import {
-    FILTER_CHIP_PADDING_H,
-    FILTER_CHIP_RADIUS,
-} from '../../constants/layout';
 
 import * as _CONSULT_SERVICES
     from '../../services/ConsultServce';
@@ -403,6 +400,9 @@ const AllDoctors = (props: any) => {
                             showsVerticalScrollIndicator={
                                 false
                             }
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            onScrollBeginDrag={Keyboard.dismiss}
                             contentContainerStyle={[
                                 styles.listContent,
                                 { paddingBottom: insets.bottom + 24 },
@@ -532,8 +532,9 @@ const styles = StyleSheet.create({
 
     body: {
         flex: 1,
-        marginTop:10,
-        paddingHorizontal: 20,
+        marginTop: 6,
+        paddingHorizontal: 16,
+        gap: 8,
     },
 
     headerWrap: {
@@ -542,19 +543,21 @@ const styles = StyleSheet.create({
 
     listContent: {
         paddingBottom: 120,
+        paddingTop: 4,
     },
 
     hubRow: {
         flexDirection: 'row',
-        gap: 8,
-        marginBottom: 12,
+        gap: 6,
+        marginBottom: 0,
     },
 
     hubChip: {
         flex: 1,
-        minHeight: 36,
-        borderRadius: FILTER_CHIP_RADIUS,
-        paddingHorizontal: FILTER_CHIP_PADDING_H,
+        height: 32,
+        minHeight: 32,
+        borderRadius: 10,
+        paddingHorizontal: 8,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F1F5F9',
@@ -568,7 +571,7 @@ const styles = StyleSheet.create({
     },
 
     hubChipText: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#64748B',
         fontFamily: Fonts.PoppinsMedium,
     },

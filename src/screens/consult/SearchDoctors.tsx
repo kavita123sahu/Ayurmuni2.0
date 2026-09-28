@@ -16,6 +16,7 @@ import {
     StatusBar,
     ActivityIndicator,
     Modal,
+    Keyboard,
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -641,6 +642,9 @@ const AllDoctors = (props: any) => {
                         showsVerticalScrollIndicator={
                             false
                         }
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        onScrollBeginDrag={Keyboard.dismiss}
 
                         contentContainerStyle={
                             styles.listContent

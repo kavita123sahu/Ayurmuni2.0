@@ -367,7 +367,8 @@ const PrescriptionDetail = (props: any) => {
         showSuccessToast('Diet plan unavailable', 'error');
         return;
       }
-      props.navigation.navigate('DietScreen', {
+      props.navigation.navigate('DietPlanDetail', {
+        planId: String(planId),
         item: {
           ...diet,
           id: planId,

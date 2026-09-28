@@ -37,7 +37,7 @@ import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { MyProductCardSkeleton } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
-import { navigateToCheckout, navigateToSearchScreen } from '../../navigation/productNavigation';
+import { navigateToCheckout, navigateToCategoryProducts, navigateToProductDetails } from '../../navigation/productNavigation';
 import { showSuccessToast } from '../../config/Key';
 import SegmentTabs from '../../components/SegmentTabs';
 import { getScreenBottomPadding } from '../../constants/layout';
@@ -736,19 +736,18 @@ const MyCart = ({ navigation }: any) => {
                     cart_item_ids: cartItemIds,
                 });
                 if (!active) return;
+                if (response?.success === false) {
+                    setFeeConfig(null);
+                    return;
+                }
                 const quoteData = response?.data ?? response;
-                const hasRates = Boolean(
-                    quoteData?.configurations?.gst ||
-                    quoteData?.configurations?.platform_fee ||
-                    quoteData?.configurations?.delivery ||
-                    (Array.isArray(quoteData?.items) && quoteData.items.length),
-                );
                 setFeeConfig(
-                    hasRates
-                        ? parseFeeQuoteConfig(quoteData, subtotal, {
-                            ignoreConsultationFee: true,
-                        })
-                        : null,
+                    parseFeeQuoteConfig(quoteData, subtotal, {
+                        ignoreConsultationFee: true,
+                    }) ??
+                    parseFeeQuoteConfig(response, subtotal, {
+                        ignoreConsultationFee: true,
+                    }),
                 );
             } catch {
                 if (active) setFeeConfig(null);
@@ -769,6 +768,7 @@ const MyCart = ({ navigation }: any) => {
             }),
         [feeConfig, subtotal],
     );
+    console.log("feeBreakdownfeeBreakdownfeeBreakdown", feeBreakdown, subtotal, feeConfig);
 
     const total = feeConfig ? feeBreakdown.total : subtotal;
 
@@ -795,7 +795,7 @@ const MyCart = ({ navigation }: any) => {
         () => [
             {
                 key: 'cart',
-                label: cartCount > 0 ? `My Cart (${cartCount})` : 'My Cart',
+                label: cartCount > 0 ? `Cart (${cartCount})` : 'Cart',
             },
             {
                 key: 'prescribed',
@@ -855,10 +855,6 @@ const MyCart = ({ navigation }: any) => {
     );
 
     useEffect(() => {
-        if (!hasCartItems) {
-            return;
-        }
-
         if (!didSetInitialTabRef.current) {
             didSetInitialTabRef.current = true;
             if (cartCount > 0) {
@@ -866,18 +862,9 @@ const MyCart = ({ navigation }: any) => {
             } else if (prescribedCount > 0) {
                 setActiveTab('prescribed');
             }
-            return;
         }
-
-        if (activeTab === 'cart' && !cartCount && prescribedCount) {
-            setActiveTab('prescribed');
-            return;
-        }
-
-        if (activeTab === 'prescribed' && !prescribedCount && cartCount) {
-            setActiveTab('cart');
-        }
-    }, [activeTab, cartCount, prescribedCount, hasCartItems]);
+        // Both tabs stay enabled even when empty — never auto-switch away.
+    }, [cartCount, prescribedCount]);
 
     const handleCheckout = () => {
         if (selectedProducts.length === 0) {
@@ -965,831 +952,868 @@ const MyCart = ({ navigation }: any) => {
                 <View style={styles.skeletonWrap}>
                     <MyProductCardSkeleton />
                 </View>
-            ) : !hasCartItems ? (
-                <View style={styles.emptyContainer}>
-                    <View style={styles.emptyIconCircle}>
-                        <TablerIcon
-                            name="shopping-cart"
-                            size={36}
-                            color={Colors.primaryColor}
-                        />
-                    </View>
-
-                    <Text style={styles.emptyTitle}>Your cart is empty</Text>
-
-                    <Text style={styles.emptySubTitle}>
-                        Add products from the store to start your wellness order.
-                    </Text>
-
-                    <TouchableOpacity
-                        activeOpacity={0.85}
-                        style={styles.shopNowBtn}
-                        onPress={() =>
-                            navigation.replace('ProductsScreen', {
-                                screen: 'Home',
-                            })
-                        }
-                    >
-                        <Text style={styles.shopNowText}>Shop Now</Text>
-                    </TouchableOpacity>
-                </View>
             ) : (
                 <>
-                    <ScrollView
-                        style={styles.scrollView}
-                        showsVerticalScrollIndicator={false}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[Colors.primaryColor]}
-                                tintColor={Colors.primaryColor}
-                            />
-                        }
-                        contentContainerStyle={[
-                            styles.scrollContent,
-                            { paddingBottom: listBottomPad + 88 },
-                        ]}
-                    >
-                        {/* {showTabs ? ( */}
+                    <View style={styles.tabsAlwaysWrap}>
                         <SegmentTabs
                             tabs={cartTabs}
                             activeKey={activeTab}
                             onChange={key => {
-                                const nextTab = key as 'cart' | 'prescribed';
-                                if (nextTab === 'cart' && cartCount === 0) {
-                                    return;
-                                }
-                                if (
-                                    nextTab === 'prescribed' &&
-                                    prescribedCount === 0
-                                ) {
-                                    return;
-                                }
-                                setActiveTab(nextTab);
+                                setActiveTab(key as 'cart' | 'prescribed');
                             }}
                             variant="pill"
                             style={styles.tabContainer}
                         />
-                        {/* ) : null} */}
+                    </View>
 
-                        {outOfStockCount > 0 ? (
-                            <View style={styles.oosPanel}>
-                                <View style={styles.oosPanelHeader}>
-                                    <View style={styles.oosPanelIcon}>
-                                        <TablerIcon
-                                            name="alert-circle"
-                                            size={18}
-                                            color="#FFFFFF"
-                                        />
-                                    </View>
-                                    {/* <View style={{ flex: 1 }}> */}
-                                    <Text style={styles.oosPanelTitle}>
-                                        {outOfStockCount === 1
-                                            ? '1 product is out of stock'
-                                            : `${outOfStockCount} products are out of stock`}
-                                    </Text>
-                                    {/* <Text style={styles.oosPanelSub}>
-                                            Increase is disabled. These items are excluded from payment.
-                                        </Text> */}
-                                    {/* </View> */}
-                                </View>
-
-                                {outOfStockItems.map((item: any, idx: number) => {
-                                    const thumb =
-                                        resolveImageUri(item?.image) ||
-                                        resolveCartItemImage(item);
-                                    const units = Number(item?.quantity) || 1;
-                                    const size = String(item?.size || '').trim();
-                                    const meta = [
-                                        `${units} unit${units === 1 ? '' : 's'}`,
-                                        size || null,
-                                    ]
-                                        .filter(Boolean)
-                                        .join(' • ');
-
-                                    return (
-                                        <View
-                                            key={String(
-                                                item.id ?? item.variant_id ?? idx,
-                                            )}
-                                            style={styles.oosItemRow}
-                                        >
-                                            {thumb ? (
-                                                <Image
-                                                    source={{ uri: thumb }}
-                                                    style={styles.oosThumb}
-                                                />
-                                            ) : (
-                                                <View
-                                                    style={[
-                                                        styles.oosThumb,
-                                                        styles.oosThumbFallback,
-                                                    ]}
-                                                >
-                                                    <TablerIcon
-                                                        name="package"
-                                                        size={18}
-                                                        color="#CBD5E1"
-                                                    />
-                                                </View>
-                                            )}
-                                            <View style={styles.oosItemCopy}>
-                                                <Text
-                                                    style={styles.oosItemName}
-                                                    numberOfLines={2}
-                                                >
-                                                    {item.name}
-                                                    {meta ? `, ${meta}` : ''}
-                                                </Text>
-                                                <Text style={styles.oosItemHint}>
-                                                    Out of stock
-                                                </Text>
-                                            </View>
-                                            {item?.source !== 'prescribed' ? (
-                                                <TouchableOpacity
-                                                    style={styles.oosRemoveBtn}
-                                                    onPress={() =>
-                                                        updateQuantity(
-                                                            String(item.id),
-                                                            'remove',
-                                                        )
-                                                    }
-                                                    hitSlop={{
-                                                        top: 8,
-                                                        bottom: 8,
-                                                        left: 8,
-                                                        right: 8,
-                                                    }}
-                                                >
-                                                    <TablerIcon
-                                                        name="trash"
-                                                        size={14}
-                                                        color="#B91C1C"
-                                                    />
-                                                </TouchableOpacity>
-                                            ) : null}
-                                        </View>
-                                    );
-                                })}
+                    {!hasCartItems ||
+                        (activeTab === 'cart' && cartCount === 0) ||
+                        (activeTab === 'prescribed' && prescribedCount === 0) ? (
+                        <View style={styles.emptyContainer}>
+                            <View style={styles.emptyIconCircle}>
+                                <TablerIcon
+                                    name={
+                                        activeTab === 'prescribed'
+                                            ? 'file-medical'
+                                            : 'shopping-cart'
+                                    }
+                                    size={36}
+                                    color={Colors.primaryColor}
+                                />
                             </View>
-                        ) : null}
 
-                        <View style={styles.trustStrip}>
-                            <View style={styles.trustItem}>
-                                <View
-                                    style={[
-                                        styles.trustIcon,
-                                        { backgroundColor: '#E0F2FE' },
-                                    ]}
-                                >
-                                    <TablerIcon
-                                        name="lock"
-                                        size={14}
-                                        color="#0369A1"
-                                    />
-                                </View>
-                                <Text style={styles.trustText}>Secure pay</Text>
-                            </View>
-                            <View style={styles.trustDivider} />
-                            <View style={styles.trustItem}>
-                                <View
-                                    style={[
-                                        styles.trustIcon,
-                                        { backgroundColor: '#EAF8F4' },
-                                    ]}
-                                >
-                                    <TablerIcon
-                                        name="leaf"
-                                        size={14}
-                                        color={Colors.primaryColor}
-                                    />
-                                </View>
-                                <Text style={styles.trustText}>
-                                    Genuine products
-                                </Text>
-                            </View>
-                            <View style={styles.trustDivider} />
-                            <View style={styles.trustItem}>
-                                <View
-                                    style={[
-                                        styles.trustIcon,
-                                        { backgroundColor: '#FEF3C7' },
-                                    ]}
-                                >
-                                    <TablerIcon
-                                        name="message"
-                                        size={14}
-                                        color="#B45309"
-                                    />
-                                </View>
-                                <Text style={styles.trustText}>Easy support</Text>
-                            </View>
-                        </View>
+                            <Text style={styles.emptyTitle}>
+                                {activeTab === 'prescribed'
+                                    ? 'No prescribed items'
+                                    : 'Your cart is empty'}
+                            </Text>
 
-                        {visibleSectionItems.length ? (
-                            <>
-                                <View style={styles.selectAllRow}>
-                                    <Text style={styles.selectAllText}>
-                                        {visibleSectionItems.length} items ·{' '}
-                                        {totalItems} selected
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() =>
-                                            currentSection &&
-                                            toggleSectionSelection(currentSection)
-                                        }
-                                        style={[
-                                            styles.checkbox,
-                                            isSectionSelected &&
-                                            styles.checkboxActive,
-                                        ]}
-                                    >
-                                        {isSectionSelected ? (
-                                            <TablerIcon
-                                                name="check"
-                                                size={14}
-                                                color="#FFF"
-                                            />
-                                        ) : null}
-                                    </TouchableOpacity>
-                                </View>
+                            <Text style={styles.emptySubTitle}>
+                                {activeTab === 'prescribed'
+                                    ? 'Prescribed medicines from your doctor will appear here.'
+                                    : 'Add products from the store to start your wellness order.'}
+                            </Text>
 
-                                <View style={styles.productsWrap}>
-                                    {(currentSection?.type === 'prescribed'
-                                        ? []
-                                        : visibleSectionItems
-                                    ).map((item, idx) => (
-                                        <MyProductCard
-                                            key={String(
-                                                item.id ??
-                                                item.variant_id ??
-                                                idx,
-                                            )}
-                                            item={item}
-                                            navigation={navigation}
-                                            type={
-                                                currentSection?.type ?? 'cart'
-                                            }
-                                            isSelected={selectedItems.includes(
-                                                String(item.id),
-                                            )}
-                                            toggleItemSelection={id =>
-                                                toggleItemSelection(
-                                                    id,
-                                                    Boolean(item?._isOutOfStock),
-                                                )
-                                            }
-                                            updateQuantity={updateQuantity}
-                                        />
-                                    ))}
-                                    {currentSection?.type === 'prescribed'
-                                        ? doctorRxGroups.map(group => {
-                                            const meta = group.meta || {};
-                                            const groupKey = String(
-                                                meta.id || group.items[0]?.rx_group_id,
-                                            );
-                                            const open = expandedRxIds[groupKey] !== false;
-                                            const tone = rxStatusTone(meta);
-                                            const groupIds = group.items
-                                                .filter((line: any) => !line?._isOutOfStock)
-                                                .map((line: any) => String(line.id));
-                                            const groupSelected =
-                                                groupIds.length > 0 &&
-                                                groupIds.every(id => selectedItems.includes(id));
-                                            const itemCount =
-                                                Number(meta.items_count) || group.items.length;
-                                            const subtotal =
-                                                meta.subtotal == null || meta.subtotal === ''
-                                                    ? null
-                                                    : Number(meta.subtotal);
-                                            const symptom = String(
-                                                meta.symptom_description || '',
-                                            ).trim();
-                                            return (
-                                                <View key={groupKey} style={styles.doctorCard}>
-                                                    <View style={styles.uploadTop}>
-                                                        <TouchableOpacity
-                                                            onPress={() => {
-                                                                if (groupSelected) {
-                                                                    setSelectedItems(prev =>
-                                                                        prev.filter(id => !groupIds.includes(id)),
-                                                                    );
-                                                                    return;
-                                                                }
-                                                                setSelectedItems(prev => [
-                                                                    ...new Set([...prev, ...groupIds]),
-                                                                ]);
-                                                            }}
-                                                            style={[
-                                                                styles.checkbox,
-                                                                groupSelected && styles.checkboxActive,
-                                                            ]}
-                                                        >
-                                                            {groupSelected ? (
-                                                                <TablerIcon name="check" size={14} color="#FFF" />
-                                                            ) : null}
-                                                        </TouchableOpacity>
-                                                        <View style={{ flex: 1 }}>
-                                                            <Text style={styles.doctorKicker}>Doctor prescription</Text>
-                                                            <Text style={styles.uploadTitle} numberOfLines={1}>
-                                                                {meta.doctor_name || 'Doctor'}
-                                                            </Text>
-                                                            <Text style={styles.uploadMeta} numberOfLines={1}>
-                                                                {[
-                                                                    meta.patient_name,
-                                                                    formatPrescriptionDate(meta.created_at) || null,
-                                                                    itemCount
-                                                                        ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
-                                                                        : null,
-                                                                    subtotal != null && Number.isFinite(subtotal)
-                                                                        ? formatRupee(subtotal, { decimals: 2 })
-                                                                        : null,
-                                                                ]
-                                                                    .filter(Boolean)
-                                                                    .join(' · ')}
-                                                            </Text>
-                                                        </View>
-                                                        <View style={[styles.uploadStatus, { backgroundColor: tone.bg }]}>
-                                                            <Text style={[styles.uploadStatusText, { color: tone.color }]}>
-                                                                {tone.label}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                    {symptom ? (
-                                                        <Text style={styles.doctorSymptom} numberOfLines={1}>
-                                                            {symptom}
-                                                        </Text>
-                                                    ) : null}
-                                                    {open ? (
-                                                        <View style={styles.uploadItemList}>
-                                                            {group.items.map((item: any, idx: number) => {
-                                                                const lineId = String(item.id);
-                                                                const outOfStock = Boolean(item?._isOutOfStock);
-                                                                const checked =
-                                                                    !outOfStock &&
-                                                                    selectedItems.includes(lineId);
-                                                                const thumb =
-                                                                    resolveImageUri(item?.image) ||
-                                                                    resolveCartItemImage(item);
-                                                                return (
-                                                                    <View key={lineId || idx} style={styles.uploadItemRow}>
-                                                                        <TouchableOpacity
-                                                                            disabled={outOfStock}
-                                                                            onPress={() =>
-                                                                                toggleItemSelection(lineId, outOfStock)
-                                                                            }
-                                                                            style={[
-                                                                                styles.lineCheck,
-                                                                                checked && styles.checkboxActive,
-                                                                                outOfStock && styles.lineCheckDisabled,
-                                                                            ]}
-                                                                        >
-                                                                            {checked ? (
-                                                                                <TablerIcon name="check" size={12} color="#FFF" />
-                                                                            ) : null}
-                                                                        </TouchableOpacity>
-                                                                        {thumb ? (
-                                                                            <Image source={{ uri: thumb }} style={styles.uploadThumb} />
-                                                                        ) : (
-                                                                            <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
-                                                                                <TablerIcon name="package" size={14} color="#CBD5E1" />
-                                                                            </View>
-                                                                        )}
-                                                                        <View style={{ flex: 1 }}>
-                                                                            <Text style={styles.uploadItemName} numberOfLines={1}>
-                                                                                {item.name}
-                                                                            </Text>
-                                                                            <Text style={styles.uploadItemMeta}>
-                                                                                {outOfStock
-                                                                                    ? 'Out of stock'
-                                                                                    : `×${item.quantity || 1}`}
-                                                                            </Text>
-                                                                        </View>
-                                                                    </View>
-                                                                );
-                                                            })}
-                                                        </View>
-                                                    ) : (
-                                                        <View style={styles.uploadThumbRow}>
-                                                            {group.items.slice(0, 5).map((item: any, idx: number) => {
-                                                                const lineId = String(item.id);
-                                                                const outOfStock = Boolean(item?._isOutOfStock);
-                                                                const checked =
-                                                                    !outOfStock &&
-                                                                    selectedItems.includes(lineId);
-                                                                const thumb =
-                                                                    resolveImageUri(item?.image) ||
-                                                                    resolveCartItemImage(item);
-                                                                return (
-                                                                    <TouchableOpacity
-                                                                        key={lineId || idx}
-                                                                        disabled={outOfStock}
-                                                                        onPress={() =>
-                                                                            toggleItemSelection(lineId, outOfStock)
-                                                                        }
-                                                                        style={styles.uploadThumbWrap}
-                                                                    >
-                                                                        {thumb ? (
-                                                                            <Image source={{ uri: thumb }} style={styles.uploadThumb} />
-                                                                        ) : (
-                                                                            <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
-                                                                                <TablerIcon name="package" size={14} color="#CBD5E1" />
-                                                                            </View>
-                                                                        )}
-                                                                        <View
-                                                                            style={[
-                                                                                styles.thumbCheck,
-                                                                                checked && styles.checkboxActive,
-                                                                                outOfStock && styles.lineCheckDisabled,
-                                                                            ]}
-                                                                        >
-                                                                            {checked ? (
-                                                                                <TablerIcon name="check" size={9} color="#FFF" />
-                                                                            ) : null}
-                                                                        </View>
-                                                                    </TouchableOpacity>
-                                                                );
-                                                            })}
-                                                        </View>
-                                                    )}
-                                                    <View style={styles.uploadActions}>
-                                                        <TouchableOpacity
-                                                            style={styles.uploadCollapse}
-                                                            onPress={() =>
-                                                                setExpandedRxIds(prev => ({
-                                                                    ...prev,
-                                                                    [groupKey]: prev[groupKey] === false,
-                                                                }))
-                                                            }
-                                                        >
-                                                            <Text style={styles.uploadCollapseText}>
-                                                                {open ? 'Hide items' : 'Items'}
-                                                            </Text>
-                                                            <TablerIcon
-                                                                name={open ? 'chevron-up' : 'chevron-down'}
-                                                                size={14}
-                                                                color="#64748B"
-                                                            />
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={styles.uploadDetails}
-                                                            onPress={() =>
-                                                                navigation.navigate('PrescriptionDetail', {
-                                                                    appointment_id: meta.appointment_id,
-                                                                    prescription_id: meta.prescription_id,
-                                                                    PrisData: meta,
-                                                                    doctorData: {
-                                                                        doctor_name: meta.doctor_name,
-                                                                        id: meta.doctor_id,
-                                                                        doctor_id: meta.doctor_id,
-                                                                    },
-                                                                })
-                                                            }
-                                                        >
-                                                            <Text style={styles.uploadDetailsText}>View details</Text>
-                                                            <TablerIcon name="chevron-right" size={14} color={Colors.primaryColor} />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
-                                            );
-                                        })
-                                        : null}
-                                        
-                                    {currentSection?.type === 'prescribed'
-                                        ? uploadRxGroups.map(group => {
-                                            const meta = group.meta || {};
-                                            const groupKey = String(
-                                                meta.id || group.items[0]?.rx_group_id,
-                                            );
-                                            const open = expandedRxIds[groupKey] !== false;
-                                            const tone = rxStatusTone(meta);
-                                            const groupIds = group.items
-                                                .filter((line: any) => !line?._isOutOfStock)
-                                                .map((line: any) => String(line.id));
-                                            const groupSelected =
-                                                groupIds.length > 0 &&
-                                                groupIds.every(id =>
-                                                    selectedItems.includes(id),
-                                                );
-                                            const itemCount =
-                                                Number(meta.items_count) || group.items.length;
-                                            const subtotal =
-                                                meta.subtotal == null || meta.subtotal === ''
-                                                    ? null
-                                                    : Number(meta.subtotal);
-                                            return (
-                                                <View key={groupKey} style={styles.uploadCard}>
-                                                    <View style={styles.uploadTop}>
-                                                        <TouchableOpacity
-                                                            onPress={() => {
-                                                                if (groupSelected) {
-                                                                    setSelectedItems(prev =>
-                                                                        prev.filter(id => !groupIds.includes(id)),
-                                                                    );
-                                                                    return;
-                                                                }
-                                                                setSelectedItems(prev => [
-                                                                    ...new Set([...prev, ...groupIds]),
-                                                                ]);
-                                                            }}
-                                                            style={[
-                                                                styles.checkbox,
-                                                                groupSelected && styles.checkboxActive,
-                                                            ]}
-                                                        >
-                                                            {groupSelected ? (
-                                                                <TablerIcon
-                                                                    name="check"
-                                                                    size={14}
-                                                                    color="#FFF"
-                                                                />
-                                                            ) : null}
-                                                        </TouchableOpacity>
-                                                        <View style={{ flex: 1 }}>
-                                                            <Text style={styles.uploadTitle} numberOfLines={1}>
-                                                                Uploaded prescription
-                                                            </Text>
-                                                            <Text style={styles.uploadMeta} numberOfLines={1}>
-                                                                {[
-                                                                    itemCount
-                                                                        ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
-                                                                        : null,
-                                                                    subtotal != null && Number.isFinite(subtotal)
-                                                                        ? formatRupee(subtotal, { decimals: 2 })
-                                                                        : null,
-                                                                ]
-                                                                    .filter(Boolean)
-                                                                    .join(' · ')}
-                                                            </Text>
-                                                        </View>
-                                                        <View style={[styles.uploadStatus, { backgroundColor: tone.bg }]}>
-                                                            <Text style={[styles.uploadStatusText, { color: tone.color }]}>
-                                                                {tone.label}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                    {open ? (
-                                                        <View style={styles.uploadItemList}>
-                                                            {group.items.map((item: any, idx: number) => {
-                                                                const lineId = String(item.id);
-                                                                const outOfStock = Boolean(item?._isOutOfStock);
-                                                                const checked =
-                                                                    !outOfStock &&
-                                                                    selectedItems.includes(lineId);
-                                                                const thumb =
-                                                                    resolveImageUri(item?.image) ||
-                                                                    resolveCartItemImage(item);
-                                                                return (
-                                                                    <View
-                                                                        key={lineId || idx}
-                                                                        style={styles.uploadItemRow}
-                                                                    >
-                                                                        <TouchableOpacity
-                                                                            disabled={outOfStock}
-                                                                            onPress={() =>
-                                                                                toggleItemSelection(lineId, outOfStock)
-                                                                            }
-                                                                            style={[
-                                                                                styles.lineCheck,
-                                                                                checked && styles.checkboxActive,
-                                                                                outOfStock && styles.lineCheckDisabled,
-                                                                            ]}
-                                                                        >
-                                                                            {checked ? (
-                                                                                <TablerIcon name="check" size={12} color="#FFF" />
-                                                                            ) : null}
-                                                                        </TouchableOpacity>
-                                                                        {thumb ? (
-                                                                            <Image
-                                                                                source={{ uri: thumb }}
-                                                                                style={styles.uploadThumb}
-                                                                            />
-                                                                        ) : (
-                                                                            <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
-                                                                                <TablerIcon name="package" size={14} color="#CBD5E1" />
-                                                                            </View>
-                                                                        )}
-                                                                        <View style={{ flex: 1 }}>
-                                                                            <Text style={styles.uploadItemName} numberOfLines={1}>
-                                                                                {item.name}
-                                                                            </Text>
-                                                                            <Text style={styles.uploadItemMeta} numberOfLines={1}>
-                                                                                {outOfStock
-                                                                                    ? 'Out of stock'
-                                                                                    : `×${item.quantity || 1}`}
-                                                                            </Text>
-                                                                        </View>
-                                                                        {!outOfStock ? (
-                                                                            <Text style={styles.uploadItemPrice}>
-                                                                                {formatRupee(
-                                                                                    (resolveCartItemSellingPrice(item) ||
-                                                                                        Number(item.price) ||
-                                                                                        0) * (Number(item.quantity) || 1),
-                                                                                    { decimals: 2 },
-                                                                                )}
-                                                                            </Text>
-                                                                        ) : null}
-                                                                    </View>
-                                                                );
-                                                            })}
-                                                        </View>
-                                                    ) : (
-                                                        <View style={styles.uploadThumbRow}>
-                                                            {group.items.slice(0, 5).map((item: any, idx: number) => {
-                                                                const lineId = String(item.id);
-                                                                const outOfStock = Boolean(item?._isOutOfStock);
-                                                                const checked =
-                                                                    !outOfStock &&
-                                                                    selectedItems.includes(lineId);
-                                                                const thumb =
-                                                                    resolveImageUri(item?.image) ||
-                                                                    resolveCartItemImage(item);
-                                                                const extra =
-                                                                    idx === 4 && group.items.length > 5
-                                                                        ? group.items.length - 5
-                                                                        : 0;
-                                                                return (
-                                                                    <TouchableOpacity
-                                                                        key={lineId || idx}
-                                                                        disabled={outOfStock}
-                                                                        onPress={() =>
-                                                                            toggleItemSelection(lineId, outOfStock)
-                                                                        }
-                                                                        style={styles.uploadThumbWrap}
-                                                                    >
-                                                                        {thumb ? (
-                                                                            <Image source={{ uri: thumb }} style={styles.uploadThumb} />
-                                                                        ) : (
-                                                                            <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
-                                                                                <TablerIcon name="package" size={14} color="#CBD5E1" />
-                                                                            </View>
-                                                                        )}
-                                                                        <View
-                                                                            style={[
-                                                                                styles.thumbCheck,
-                                                                                checked && styles.checkboxActive,
-                                                                                outOfStock && styles.lineCheckDisabled,
-                                                                            ]}
-                                                                        >
-                                                                            {checked ? (
-                                                                                <TablerIcon name="check" size={9} color="#FFF" />
-                                                                            ) : null}
-                                                                        </View>
-                                                                        {extra ? (
-                                                                            <View style={styles.uploadMore}>
-                                                                                <Text style={styles.uploadMoreText}>+{extra}</Text>
-                                                                            </View>
-                                                                        ) : null}
-                                                                    </TouchableOpacity>
-                                                                );
-                                                            })}
-                                                        </View>
-                                                    )}
-                                                    <View style={styles.uploadActions}>
-                                                        <TouchableOpacity
-                                                            style={styles.uploadCollapse}
-                                                            activeOpacity={0.85}
-                                                            onPress={() =>
-                                                                setExpandedRxIds(prev => ({
-                                                                    ...prev,
-                                                                    [groupKey]: prev[groupKey] === false,
-                                                                }))
-                                                            }
-                                                        >
-                                                            <Text style={styles.uploadCollapseText}>
-                                                                {open ? 'Hide items' : 'Items'}
-                                                            </Text>
-                                                            <TablerIcon
-                                                                name={open ? 'chevron-up' : 'chevron-down'}
-                                                                size={14}
-                                                                color="#64748B"
-                                                            />
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={styles.uploadDetails}
-                                                            onPress={() =>
-                                                                navigation.navigate('VerifyPresciption', {
-                                                                    requestId:
-                                                                        meta.prescription_request_id || meta.id,
-                                                                    fileUri: meta.file_url,
-                                                                    fileName: meta.file_name || 'prescription',
-                                                                    fileType: meta.file_type || 'image',
-                                                                    existingRequest: {
-                                                                        ...meta,
-                                                                        items: previewItemsFor(group),
-                                                                    },
-                                                                    previewItems: previewItemsFor(group),
-                                                                })
-                                                            }
-                                                        >
-                                                            <Text style={styles.uploadDetailsText}>View details</Text>
-                                                            <TablerIcon
-                                                                name="chevron-right"
-                                                                size={14}
-                                                                color={Colors.primaryColor}
-                                                            />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
-                                            );
-                                        })
-                                        : null}
-
-                                </View>
+                            {activeTab === 'cart' ? (
                                 <TouchableOpacity
                                     activeOpacity={0.85}
-                                    style={styles.viewMoreBtn}
-                                    size={16}
-                                    onPress={() => navigateToSearchScreen(navigation)}
-                                // Global search — products + medicines
+                                    style={styles.shopNowBtn}
+                                    onPress={() =>
+                                        navigation.replace('ProductsScreen', {
+                                            screen: 'Home',
+                                        })
+                                    }
                                 >
-                                    <Text style={styles.viewMoreText}>Browse more products</Text>
-                                    <TablerIcon
-                                        name="chevron-right"
-                                        size={16}
-                                        color={Colors.primaryColor}
+                                    <Text style={styles.shopNowText}>Shop Now</Text>
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+                    ) : (
+                        <>
+                            <ScrollView
+                                style={styles.scrollView}
+                                showsVerticalScrollIndicator={false}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[Colors.primaryColor]}
+                                        tintColor={Colors.primaryColor}
                                     />
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <View style={styles.tabEmptyWrap}>
-                                <Text style={styles.tabEmptyText}>
-                                    {outOfStockCount > 0
-                                        ? 'In-stock items will appear here'
-                                        : 'No items in this list'}
-                                </Text>
-                            </View>
-                        )}
+                                }
+                                contentContainerStyle={[
+                                    styles.scrollContent,
+                                    { paddingBottom: listBottomPad + 88 },
+                                ]}
+                            >
+                                {/* tabs moved above — always visible */}
 
-                        <View style={styles.billBox}>
-                            <View style={styles.orderHeader}>
-                                <Text style={styles.orderTitle}>
-                                    Order summary
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => setShowDetails(!showDetails)}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                >
-                                    <Text style={styles.viewDetails}>
-                                        {showDetails
-                                            ? 'Hide details'
-                                            : 'View details'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <BillRow
-                                label="Item total"
-                                value={formatRupee(feeConfig ? feeBreakdown.baseAmount : subtotal, {
-                                    decimals: feeConfig ? 2 : 0,
-                                })}
-                            />
-
-                            {showDetails ? (
-                                feeQuoteLoading ? (
-                                    <Text style={styles.feeNote}>Calculating fees</Text>
-                                ) : !feeConfig ? (
-                                    <Text style={styles.feeNoteMuted}>
-                                        Fee details unavailable
-                                    </Text>
-                                ) : (
-                                    <>
-                                        <BillRow
-                                            label={
-                                                feeBreakdown.freeDelivery &&
-                                                    feeBreakdown.freeDeliveryMinimum > 0
-                                                    ? `Delivery · free above ${formatRupee(
-                                                        feeBreakdown.freeDeliveryMinimum,
-                                                    )}`
-                                                    : 'Delivery'
-                                            }
-                                            value={
-                                                feeBreakdown.freeDelivery
-                                                    ? 'FREE'
-                                                    : formatRupee(feeBreakdown.shipping, {
-                                                        decimals: 2,
-                                                    })
-                                            }
-                                            success={feeBreakdown.freeDelivery}
-                                        />
-                                        {feeBreakdown.freeDeliveryNote ? (
-                                            <Text style={styles.feeNote}>
-                                                {feeBreakdown.freeDeliveryNote}
+                                {outOfStockCount > 0 ? (
+                                    <View style={styles.oosPanel}>
+                                        <View style={styles.oosPanelHeader}>
+                                            <View style={styles.oosPanelIcon}>
+                                                <TablerIcon
+                                                    name="alert-circle"
+                                                    size={18}
+                                                    color="#FFFFFF"
+                                                />
+                                            </View>
+                                            {/* <View style={{ flex: 1 }}> */}
+                                            <Text style={styles.oosPanelTitle}>
+                                                {outOfStockCount === 1
+                                                    ? '1 product is out of stock'
+                                                    : `${outOfStockCount} products are out of stock`}
                                             </Text>
-                                        ) : null}
-                                        {feeBreakdown.platformFee > 0 ? (
-                                            <BillRow
-                                                label={feeRateLabel(
-                                                    'Platform fee',
-                                                    feeBreakdown.platformRate,
-                                                )}
-                                                value={formatRupee(feeBreakdown.platformFee, {
-                                                    decimals: 2,
-                                                })}
+                                            {/* <Text style={styles.oosPanelSub}>
+                                            Increase is disabled. These items are excluded from payment.
+                                        </Text> */}
+                                            {/* </View> */}
+                                        </View>
+
+                                        {outOfStockItems.map((item: any, idx: number) => {
+                                            const thumb =
+                                                resolveImageUri(item?.image) ||
+                                                resolveCartItemImage(item);
+                                            const units = Number(item?.quantity) || 1;
+                                            const size = String(item?.size || '').trim();
+                                            const meta = [
+                                                `${units} unit${units === 1 ? '' : 's'}`,
+                                                size || null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' • ');
+
+                                            return (
+                                                <View
+                                                    key={String(
+                                                        item.id ?? item.variant_id ?? idx,
+                                                    )}
+                                                    style={styles.oosItemRow}
+                                                >
+                                                    {thumb ? (
+                                                        <Image
+                                                            source={{ uri: thumb }}
+                                                            style={styles.oosThumb}
+                                                        />
+                                                    ) : (
+                                                        <View
+                                                            style={[
+                                                                styles.oosThumb,
+                                                                styles.oosThumbFallback,
+                                                            ]}
+                                                        >
+                                                            <TablerIcon
+                                                                name="package"
+                                                                size={18}
+                                                                color="#CBD5E1"
+                                                            />
+                                                        </View>
+                                                    )}
+                                                    <View style={styles.oosItemCopy}>
+                                                        <Text
+                                                            style={styles.oosItemName}
+                                                            numberOfLines={2}
+                                                        >
+                                                            {item.name}
+                                                            {meta ? `, ${meta}` : ''}
+                                                        </Text>
+                                                        <Text style={styles.oosItemHint}>
+                                                            Out of stock
+                                                        </Text>
+                                                    </View>
+                                                    {item?.source !== 'prescribed' ? (
+                                                        <TouchableOpacity
+                                                            style={styles.oosRemoveBtn}
+                                                            onPress={() =>
+                                                                updateQuantity(
+                                                                    String(item.id),
+                                                                    'remove',
+                                                                )
+                                                            }
+                                                            hitSlop={{
+                                                                top: 8,
+                                                                bottom: 8,
+                                                                left: 8,
+                                                                right: 8,
+                                                            }}
+                                                        >
+                                                            <TablerIcon
+                                                                name="trash"
+                                                                size={14}
+                                                                color="#B91C1C"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    ) : null}
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                ) : null}
+
+                                <View style={styles.trustStrip}>
+                                    <View style={styles.trustItem}>
+                                        <View
+                                            style={[
+                                                styles.trustIcon,
+                                                { backgroundColor: '#E0F2FE' },
+                                            ]}
+                                        >
+                                            <TablerIcon
+                                                name="lock"
+                                                size={14}
+                                                color="#0369A1"
                                             />
-                                        ) : null}
-                                        {feeBreakdown.gst > 0 ? (
+                                        </View>
+                                        <Text style={styles.trustText}>Secure pay</Text>
+                                    </View>
+                                    <View style={styles.trustDivider} />
+                                    <View style={styles.trustItem}>
+                                        <View
+                                            style={[
+                                                styles.trustIcon,
+                                                { backgroundColor: '#EAF8F4' },
+                                            ]}
+                                        >
+                                            <TablerIcon
+                                                name="leaf"
+                                                size={14}
+                                                color={Colors.primaryColor}
+                                            />
+                                        </View>
+                                        <Text style={styles.trustText}>
+                                            Genuine products
+                                        </Text>
+                                    </View>
+                                    <View style={styles.trustDivider} />
+                                    <View style={styles.trustItem}>
+                                        <View
+                                            style={[
+                                                styles.trustIcon,
+                                                { backgroundColor: '#FEF3C7' },
+                                            ]}
+                                        >
+                                            <TablerIcon
+                                                name="message"
+                                                size={14}
+                                                color="#B45309"
+                                            />
+                                        </View>
+                                        <Text style={styles.trustText}>Easy support</Text>
+                                    </View>
+                                </View>
+
+                                {visibleSectionItems.length ? (
+                                    <>
+                                        <View style={styles.selectAllRow}>
+                                            <Text style={styles.selectAllText}>
+                                                {visibleSectionItems.length} items ·{' '}
+                                                {totalItems} selected
+                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() =>
+                                                    currentSection &&
+                                                    toggleSectionSelection(currentSection)
+                                                }
+                                                style={[
+                                                    styles.checkbox,
+                                                    isSectionSelected &&
+                                                    styles.checkboxActive,
+                                                ]}
+                                            >
+                                                {isSectionSelected ? (
+                                                    <TablerIcon
+                                                        name="check"
+                                                        size={14}
+                                                        color="#FFF"
+                                                    />
+                                                ) : null}
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        <View style={styles.productsWrap}>
+                                            {(currentSection?.type === 'prescribed'
+                                                ? []
+                                                : visibleSectionItems
+                                            ).map((item, idx) => (
+                                                <MyProductCard
+                                                    key={String(
+                                                        item.id ??
+                                                        item.variant_id ??
+                                                        idx,
+                                                    )}
+                                                    item={item}
+                                                    navigation={navigation}
+                                                    type={
+                                                        currentSection?.type ?? 'cart'
+                                                    }
+                                                    isSelected={selectedItems.includes(
+                                                        String(item.id),
+                                                    )}
+                                                    toggleItemSelection={id =>
+                                                        toggleItemSelection(
+                                                            id,
+                                                            Boolean(item?._isOutOfStock),
+                                                        )
+                                                    }
+                                                    updateQuantity={updateQuantity}
+                                                />
+                                            ))}
+                                            {currentSection?.type === 'prescribed'
+                                                ? doctorRxGroups.map(group => {
+                                                    const meta = group.meta || {};
+                                                    const groupKey = String(
+                                                        meta.id || group.items[0]?.rx_group_id,
+                                                    );
+                                                    const open = expandedRxIds[groupKey] !== false;
+                                                    const tone = rxStatusTone(meta);
+                                                    const groupIds = group.items
+                                                        .filter((line: any) => !line?._isOutOfStock)
+                                                        .map((line: any) => String(line.id));
+                                                    const groupSelected =
+                                                        groupIds.length > 0 &&
+                                                        groupIds.every(id => selectedItems.includes(id));
+                                                    const itemCount =
+                                                        Number(meta.items_count) || group.items.length;
+                                                    const subtotal =
+                                                        meta.subtotal == null || meta.subtotal === ''
+                                                            ? null
+                                                            : Number(meta.subtotal);
+                                                    const symptom = String(
+                                                        meta.symptom_description || '',
+                                                    ).trim();
+                                                    return (
+                                                        <View key={groupKey} style={styles.doctorCard}>
+                                                            <View style={styles.uploadTop}>
+                                                                <TouchableOpacity
+                                                                    onPress={() => {
+                                                                        if (groupSelected) {
+                                                                            setSelectedItems(prev =>
+                                                                                prev.filter(id => !groupIds.includes(id)),
+                                                                            );
+                                                                            return;
+                                                                        }
+                                                                        setSelectedItems(prev => [
+                                                                            ...new Set([...prev, ...groupIds]),
+                                                                        ]);
+                                                                    }}
+                                                                    style={[
+                                                                        styles.checkbox,
+                                                                        groupSelected && styles.checkboxActive,
+                                                                    ]}
+                                                                >
+                                                                    {groupSelected ? (
+                                                                        <TablerIcon name="check" size={14} color="#FFF" />
+                                                                    ) : null}
+                                                                </TouchableOpacity>
+                                                                <View style={{ flex: 1 }}>
+                                                                    <Text style={styles.doctorKicker}>Doctor prescription</Text>
+                                                                    <Text style={styles.uploadTitle} numberOfLines={1}>
+                                                                        {meta.doctor_name || 'Doctor'}
+                                                                    </Text>
+                                                                    <Text style={styles.uploadMeta} numberOfLines={1}>
+                                                                        {[
+                                                                            meta.patient_name,
+                                                                            formatPrescriptionDate(meta.created_at) || null,
+                                                                            itemCount
+                                                                                ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
+                                                                                : null,
+                                                                            subtotal != null && Number.isFinite(subtotal)
+                                                                                ? formatRupee(subtotal, { decimals: 2 })
+                                                                                : null,
+                                                                        ]
+                                                                            .filter(Boolean)
+                                                                            .join(' · ')}
+                                                                    </Text>
+                                                                </View>
+                                                                <View style={[styles.uploadStatus, { backgroundColor: tone.bg }]}>
+                                                                    <Text style={[styles.uploadStatusText, { color: tone.color }]}>
+                                                                        {tone.label}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                            {symptom ? (
+                                                                <Text style={styles.doctorSymptom} numberOfLines={1}>
+                                                                    {symptom}
+                                                                </Text>
+                                                            ) : null}
+                                                            {open ? (
+                                                                <View style={styles.uploadItemList}>
+                                                                    {group.items.map((item: any, idx: number) => {
+                                                                        const lineId = String(item.id);
+                                                                        const outOfStock = Boolean(item?._isOutOfStock);
+                                                                        const checked =
+                                                                            !outOfStock &&
+                                                                            selectedItems.includes(lineId);
+                                                                        const thumb =
+                                                                            resolveImageUri(item?.image) ||
+                                                                            resolveCartItemImage(item);
+                                                                        return (
+                                                                            <View key={lineId || idx} style={styles.uploadItemRow}>
+                                                                                <TouchableOpacity
+                                                                                    disabled={outOfStock}
+                                                                                    onPress={() =>
+                                                                                        toggleItemSelection(lineId, outOfStock)
+                                                                                    }
+                                                                                    style={[
+                                                                                        styles.lineCheck,
+                                                                                        checked && styles.checkboxActive,
+                                                                                        outOfStock && styles.lineCheckDisabled,
+                                                                                    ]}
+                                                                                >
+                                                                                    {checked ? (
+                                                                                        <TablerIcon name="check" size={12} color="#FFF" />
+                                                                                    ) : null}
+                                                                                </TouchableOpacity>
+                                                                                <TouchableOpacity
+                                                                                    style={styles.uploadItemTap}
+                                                                                    activeOpacity={0.85}
+                                                                                    onPress={() =>
+                                                                                        navigateToProductDetails(
+                                                                                            navigation,
+                                                                                            item?.variant_id ??
+                                                                                                item?.variant?.variant_id ??
+                                                                                                item?.variant?.id,
+                                                                                        )
+                                                                                    }
+                                                                                >
+                                                                                    {thumb ? (
+                                                                                        <Image source={{ uri: thumb }} style={styles.uploadThumb} />
+                                                                                    ) : (
+                                                                                        <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                            <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                                        </View>
+                                                                                    )}
+                                                                                    <View style={{ flex: 1 }}>
+                                                                                        <Text style={styles.uploadItemName} numberOfLines={1}>
+                                                                                            {item.name}
+                                                                                        </Text>
+                                                                                        <Text style={styles.uploadItemMeta}>
+                                                                                            {outOfStock
+                                                                                                ? 'Out of stock'
+                                                                                                : `×${item.quantity || 1}`}
+                                                                                        </Text>
+                                                                                    </View>
+                                                                                </TouchableOpacity>
+                                                                            </View>
+                                                                        );
+                                                                    })}
+                                                                </View>
+                                                            ) : (
+                                                                <View style={styles.uploadThumbRow}>
+                                                                    {group.items.slice(0, 5).map((item: any, idx: number) => {
+                                                                        const lineId = String(item.id);
+                                                                        const outOfStock = Boolean(item?._isOutOfStock);
+                                                                        const checked =
+                                                                            !outOfStock &&
+                                                                            selectedItems.includes(lineId);
+                                                                        const thumb =
+                                                                            resolveImageUri(item?.image) ||
+                                                                            resolveCartItemImage(item);
+                                                                        return (
+                                                                            <TouchableOpacity
+                                                                                key={lineId || idx}
+                                                                                disabled={outOfStock}
+                                                                                onPress={() =>
+                                                                                    toggleItemSelection(lineId, outOfStock)
+                                                                                }
+                                                                                style={styles.uploadThumbWrap}
+                                                                            >
+                                                                                {thumb ? (
+                                                                                    <Image source={{ uri: thumb }} style={styles.uploadThumb} />
+                                                                                ) : (
+                                                                                    <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                        <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                                    </View>
+                                                                                )}
+                                                                                <View
+                                                                                    style={[
+                                                                                        styles.thumbCheck,
+                                                                                        checked && styles.checkboxActive,
+                                                                                        outOfStock && styles.lineCheckDisabled,
+                                                                                    ]}
+                                                                                >
+                                                                                    {checked ? (
+                                                                                        <TablerIcon name="check" size={9} color="#FFF" />
+                                                                                    ) : null}
+                                                                                </View>
+                                                                            </TouchableOpacity>
+                                                                        );
+                                                                    })}
+                                                                </View>
+                                                            )}
+                                                            <View style={styles.uploadActions}>
+                                                                <TouchableOpacity
+                                                                    style={styles.uploadCollapse}
+                                                                    onPress={() =>
+                                                                        setExpandedRxIds(prev => ({
+                                                                            ...prev,
+                                                                            [groupKey]: prev[groupKey] === false,
+                                                                        }))
+                                                                    }
+                                                                >
+                                                                    <Text style={styles.uploadCollapseText}>
+                                                                        {open ? 'Hide items' : 'Items'}
+                                                                    </Text>
+                                                                    <TablerIcon
+                                                                        name={open ? 'chevron-up' : 'chevron-down'}
+                                                                        size={14}
+                                                                        color="#64748B"
+                                                                    />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={styles.uploadDetails}
+                                                                    onPress={() =>
+                                                                        navigation.navigate('PrescriptionDetail', {
+                                                                            appointment_id: meta.appointment_id,
+                                                                            prescription_id: meta.prescription_id,
+                                                                            PrisData: meta,
+                                                                            doctorData: {
+                                                                                doctor_name: meta.doctor_name,
+                                                                                id: meta.doctor_id,
+                                                                                doctor_id: meta.doctor_id,
+                                                                            },
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    <Text style={styles.uploadDetailsText}>View details</Text>
+                                                                    <TablerIcon name="chevron-right" size={14} color={Colors.primaryColor} />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </View>
+                                                    );
+                                                })
+                                                : null}
+
+                                            {currentSection?.type === 'prescribed'
+                                                ? uploadRxGroups.map(group => {
+                                                    const meta = group.meta || {};
+                                                    const groupKey = String(
+                                                        meta.id || group.items[0]?.rx_group_id,
+                                                    );
+                                                    const open = expandedRxIds[groupKey] !== false;
+                                                    const tone = rxStatusTone(meta);
+                                                    const groupIds = group.items
+                                                        .filter((line: any) => !line?._isOutOfStock)
+                                                        .map((line: any) => String(line.id));
+                                                    const groupSelected =
+                                                        groupIds.length > 0 &&
+                                                        groupIds.every(id =>
+                                                            selectedItems.includes(id),
+                                                        );
+                                                    const itemCount =
+                                                        Number(meta.items_count) || group.items.length;
+                                                    const subtotal =
+                                                        meta.subtotal == null || meta.subtotal === ''
+                                                            ? null
+                                                            : Number(meta.subtotal);
+                                                    return (
+                                                        <View key={groupKey} style={styles.uploadCard}>
+                                                            <View style={styles.uploadTop}>
+                                                                <TouchableOpacity
+                                                                    onPress={() => {
+                                                                        if (groupSelected) {
+                                                                            setSelectedItems(prev =>
+                                                                                prev.filter(id => !groupIds.includes(id)),
+                                                                            );
+                                                                            return;
+                                                                        }
+                                                                        setSelectedItems(prev => [
+                                                                            ...new Set([...prev, ...groupIds]),
+                                                                        ]);
+                                                                    }}
+                                                                    style={[
+                                                                        styles.checkbox,
+                                                                        groupSelected && styles.checkboxActive,
+                                                                    ]}
+                                                                >
+                                                                    {groupSelected ? (
+                                                                        <TablerIcon
+                                                                            name="check"
+                                                                            size={14}
+                                                                            color="#FFF"
+                                                                        />
+                                                                    ) : null}
+                                                                </TouchableOpacity>
+                                                                <View style={{ flex: 1 }}>
+                                                                    <Text style={styles.uploadTitle} numberOfLines={1}>
+                                                                        Uploaded prescription
+                                                                    </Text>
+                                                                    <Text style={styles.uploadMeta} numberOfLines={1}>
+                                                                        {[
+                                                                            itemCount
+                                                                                ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
+                                                                                : null,
+                                                                            subtotal != null && Number.isFinite(subtotal)
+                                                                                ? formatRupee(subtotal, { decimals: 2 })
+                                                                                : null,
+                                                                        ]
+                                                                            .filter(Boolean)
+                                                                            .join(' · ')}
+                                                                    </Text>
+                                                                </View>
+                                                                <View style={[styles.uploadStatus, { backgroundColor: tone.bg }]}>
+                                                                    <Text style={[styles.uploadStatusText, { color: tone.color }]}>
+                                                                        {tone.label}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                            {open ? (
+                                                                <View style={styles.uploadItemList}>
+                                                                    {group.items.map((item: any, idx: number) => {
+                                                                        const lineId = String(item.id);
+                                                                        const outOfStock = Boolean(item?._isOutOfStock);
+                                                                        const checked =
+                                                                            !outOfStock &&
+                                                                            selectedItems.includes(lineId);
+                                                                        const thumb =
+                                                                            resolveImageUri(item?.image) ||
+                                                                            resolveCartItemImage(item);
+                                                                        return (
+                                                                            <View
+                                                                                key={lineId || idx}
+                                                                                style={styles.uploadItemRow}
+                                                                            >
+                                                                                <TouchableOpacity
+                                                                                    disabled={outOfStock}
+                                                                                    onPress={() =>
+                                                                                        toggleItemSelection(lineId, outOfStock)
+                                                                                    }
+                                                                                    style={[
+                                                                                        styles.lineCheck,
+                                                                                        checked && styles.checkboxActive,
+                                                                                        outOfStock && styles.lineCheckDisabled,
+                                                                                    ]}
+                                                                                >
+                                                                                    {checked ? (
+                                                                                        <TablerIcon name="check" size={12} color="#FFF" />
+                                                                                    ) : null}
+                                                                                </TouchableOpacity>
+                                                                                <TouchableOpacity
+                                                                                    style={styles.uploadItemTap}
+                                                                                    activeOpacity={0.85}
+                                                                                    onPress={() =>
+                                                                                        navigateToProductDetails(
+                                                                                            navigation,
+                                                                                            item?.variant_id ??
+                                                                                                item?.variant?.variant_id ??
+                                                                                                item?.variant?.id,
+                                                                                        )
+                                                                                    }
+                                                                                >
+                                                                                    {thumb ? (
+                                                                                        <Image
+                                                                                            source={{ uri: thumb }}
+                                                                                            style={styles.uploadThumb}
+                                                                                        />
+                                                                                    ) : (
+                                                                                        <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                            <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                                        </View>
+                                                                                    )}
+                                                                                    <View style={{ flex: 1 }}>
+                                                                                        <Text style={styles.uploadItemName} numberOfLines={1}>
+                                                                                            {item.name}
+                                                                                        </Text>
+                                                                                        <Text style={styles.uploadItemMeta} numberOfLines={1}>
+                                                                                            {outOfStock
+                                                                                                ? 'Out of stock'
+                                                                                                : `×${item.quantity || 1}`}
+                                                                                        </Text>
+                                                                                    </View>
+                                                                                </TouchableOpacity>
+                                                                                {!outOfStock ? (
+                                                                                    <Text style={styles.uploadItemPrice}>
+                                                                                        {formatRupee(
+                                                                                            (resolveCartItemSellingPrice(item) ||
+                                                                                                Number(item.price) ||
+                                                                                                0) * (Number(item.quantity) || 1),
+                                                                                            { decimals: 2 },
+                                                                                        )}
+                                                                                    </Text>
+                                                                                ) : null}
+                                                                            </View>
+                                                                        );
+                                                                    })}
+                                                                </View>
+                                                            ) : (
+                                                                <View style={styles.uploadThumbRow}>
+                                                                    {group.items.slice(0, 5).map((item: any, idx: number) => {
+                                                                        const lineId = String(item.id);
+                                                                        const outOfStock = Boolean(item?._isOutOfStock);
+                                                                        const checked =
+                                                                            !outOfStock &&
+                                                                            selectedItems.includes(lineId);
+                                                                        const thumb =
+                                                                            resolveImageUri(item?.image) ||
+                                                                            resolveCartItemImage(item);
+                                                                        const extra =
+                                                                            idx === 4 && group.items.length > 5
+                                                                                ? group.items.length - 5
+                                                                                : 0;
+                                                                        return (
+                                                                            <TouchableOpacity
+                                                                                key={lineId || idx}
+                                                                                disabled={outOfStock}
+                                                                                onPress={() =>
+                                                                                    toggleItemSelection(lineId, outOfStock)
+                                                                                }
+                                                                                style={styles.uploadThumbWrap}
+                                                                            >
+                                                                                {thumb ? (
+                                                                                    <Image source={{ uri: thumb }} style={styles.uploadThumb} />
+                                                                                ) : (
+                                                                                    <View style={[styles.uploadThumb, styles.uploadThumbFallback]}>
+                                                                                        <TablerIcon name="package" size={14} color="#CBD5E1" />
+                                                                                    </View>
+                                                                                )}
+                                                                                <View
+                                                                                    style={[
+                                                                                        styles.thumbCheck,
+                                                                                        checked && styles.checkboxActive,
+                                                                                        outOfStock && styles.lineCheckDisabled,
+                                                                                    ]}
+                                                                                >
+                                                                                    {checked ? (
+                                                                                        <TablerIcon name="check" size={9} color="#FFF" />
+                                                                                    ) : null}
+                                                                                </View>
+                                                                                {extra ? (
+                                                                                    <View style={styles.uploadMore}>
+                                                                                        <Text style={styles.uploadMoreText}>+{extra}</Text>
+                                                                                    </View>
+                                                                                ) : null}
+                                                                            </TouchableOpacity>
+                                                                        );
+                                                                    })}
+                                                                </View>
+                                                            )}
+                                                            <View style={styles.uploadActions}>
+                                                                <TouchableOpacity
+                                                                    style={styles.uploadCollapse}
+                                                                    activeOpacity={0.85}
+                                                                    onPress={() =>
+                                                                        setExpandedRxIds(prev => ({
+                                                                            ...prev,
+                                                                            [groupKey]: prev[groupKey] === false,
+                                                                        }))
+                                                                    }
+                                                                >
+                                                                    <Text style={styles.uploadCollapseText}>
+                                                                        {open ? 'Hide items' : 'Items'}
+                                                                    </Text>
+                                                                    <TablerIcon
+                                                                        name={open ? 'chevron-up' : 'chevron-down'}
+                                                                        size={14}
+                                                                        color="#64748B"
+                                                                    />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={styles.uploadDetails}
+                                                                    onPress={() =>
+                                                                        navigation.navigate('VerifyPresciption', {
+                                                                            requestId:
+                                                                                meta.prescription_request_id || meta.id,
+                                                                            fileUri: meta.file_url,
+                                                                            fileName: meta.file_name || 'prescription',
+                                                                            fileType: meta.file_type || 'image',
+                                                                            existingRequest: {
+                                                                                ...meta,
+                                                                                items: previewItemsFor(group),
+                                                                            },
+                                                                            previewItems: previewItemsFor(group),
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    <Text style={styles.uploadDetailsText}>View details</Text>
+                                                                    <TablerIcon
+                                                                        name="chevron-right"
+                                                                        size={14}
+                                                                        color={Colors.primaryColor}
+                                                                    />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </View>
+                                                    );
+                                                })
+                                                : null}
+
+                                        </View>
+                                        <TouchableOpacity
+                                            activeOpacity={0.85}
+                                            style={styles.viewMoreBtn}
+                                            onPress={() =>
+                                                navigateToCategoryProducts(navigation, {
+                                                    categoryMode: 'both',
+                                                    categoryName: 'Shop all',
+                                                })
+                                            }
+                                        >
+                                            <Text style={styles.viewMoreText}>Browse more products</Text>
+                                            <TablerIcon
+                                                name="chevron-right"
+                                                size={16}
+                                                color={Colors.primaryColor}
+                                            />
+                                        </TouchableOpacity>
+                                    </>
+                                ) : (
+                                    <View style={styles.tabEmptyWrap}>
+                                        <Text style={styles.tabEmptyText}>
+                                            {outOfStockCount > 0
+                                                ? 'In-stock items will appear here'
+                                                : 'No items in this list'}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.billBox}>
+                                    <View style={styles.orderHeader}>
+                                        <Text style={styles.orderTitle}>
+                                            Order summary
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => setShowDetails(!showDetails)}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <Text style={styles.viewDetails}>
+                                                {showDetails
+                                                    ? 'Hide details'
+                                                    : 'View details'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <BillRow
+                                        label="Item total"
+                                        value={formatRupee(feeConfig ? feeBreakdown.baseAmount : subtotal, {
+                                            decimals: feeConfig ? 2 : 0,
+                                        })}
+                                    />
+
+                                    {showDetails ? (
+                                        feeQuoteLoading ? (
+                                            <Text style={styles.feeNote}>Calculating fees</Text>
+                                        ) : !feeConfig ? (
+                                            <Text style={styles.feeNoteMuted}>
+                                                Fee details unavailable
+                                            </Text>
+                                        ) : (
+                                            <>
+                                                <BillRow
+                                                    label={
+                                                        feeBreakdown.freeDelivery &&
+                                                            feeBreakdown.freeDeliveryMinimum > 0
+                                                            ? `Delivery · free above ${formatRupee(
+                                                                feeBreakdown.freeDeliveryMinimum,
+                                                            )}`
+                                                            : 'Delivery'
+                                                    }
+                                                    value={
+                                                        feeBreakdown.freeDelivery
+                                                            ? 'FREE'
+                                                            : formatRupee(feeBreakdown.shipping, {
+                                                                decimals: 2,
+                                                            })
+                                                    }
+                                                    success={feeBreakdown.freeDelivery}
+                                                />
+                                                {feeBreakdown.freeDeliveryNote ? (
+                                                    <Text style={styles.feeNote}>
+                                                        {feeBreakdown.freeDeliveryNote}
+                                                    </Text>
+                                                ) : null}
+                                                {feeBreakdown.platformFee > 0 ? (
+                                                    <BillRow
+                                                        label={feeRateLabel(
+                                                            'Platform fee',
+                                                            feeBreakdown.platformRate,
+                                                        )}
+                                                        value={formatRupee(feeBreakdown.platformFee, {
+                                                            decimals: 2,
+                                                        })}
+                                                    />
+                                                ) : null}
+                                                {/* {feeBreakdown.gst > 0 ? (
                                             <BillRow
                                                 label={feeRateLabel(
                                                     'GST',
@@ -1799,90 +1823,92 @@ const MyCart = ({ navigation }: any) => {
                                                     decimals: 2,
                                                 })}
                                             />
-                                        ) : null}
-                                        {feeBreakdown.discount > 0 ? (
-                                            <BillRow
-                                                label="Discount"
-                                                value={`− ${formatRupee(feeBreakdown.discount, {
-                                                    decimals: 2,
-                                                })}`}
-                                                success
-                                            />
-                                        ) : null}
-                                        {feeBreakdown.discount > 0 ||
-                                            feeBreakdown.itemsAfterDiscount !==
-                                            feeBreakdown.baseAmount ? (
-                                            <BillRow
-                                                label="Sub total"
-                                                value={formatRupee(
-                                                    feeBreakdown.itemsAfterDiscount,
-                                                    {
-                                                        decimals: 2,
-                                                    },
-                                                )}
-                                            />
-                                        ) : null}
-                                    </>
-                                )
-                            ) : null}
+                                        ) : null} */}
+                                                {feeBreakdown.discount > 0 ? (
+                                                    <BillRow
+                                                        label="Discount"
+                                                        value={`− ${formatRupee(feeBreakdown.discount, {
+                                                            decimals: 2,
+                                                        })}`}
+                                                        success
+                                                    />
+                                                ) : null}
+                                                {feeBreakdown.discount > 0 ||
+                                                    feeBreakdown.itemsAfterDiscount !==
+                                                    feeBreakdown.baseAmount ? (
+                                                    <BillRow
+                                                        label="Sub total"
+                                                        value={formatRupee(
+                                                            feeBreakdown.itemsAfterDiscount,
+                                                            {
+                                                                decimals: 2,
+                                                            },
+                                                        )}
+                                                    />
+                                                ) : null}
+                                            </>
+                                        )
+                                    ) : null}
 
-                            <BillRow
-                                label="Total"
-                                value={formatRupee(total, { decimals: feeConfig ? 2 : 0 })}
-                                isTotal
-                            />
-                        </View>
-                    </ScrollView>
+                                    <BillRow
+                                        label="Total"
+                                        value={formatRupee(total, { decimals: feeConfig ? 2 : 0 })}
+                                        isTotal
+                                    />
+                                </View>
+                            </ScrollView>
 
-                    <View
-                        style={[
-                            styles.checkoutFooter,
-                            { paddingBottom: footerBottomPad },
-                        ]}
-                    >
-                        <View style={styles.footerPriceBox}>
-                            <RupeeAmount
-                                value={total}
-                                decimals={feeConfig ? 2 : 0}
-                                style={styles.footerTotal}
-                            />
-                            <Text style={styles.footerHint}>
-                                {selectedUnits}{' '}
-                                {selectedUnits === 1 ? 'item' : 'items'}
-                                {outOfStockCount > 0
-                                    ? ` · ${outOfStockCount} out of stock`
-                                    : ''}
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity
-                            activeOpacity={0.9}
-                            disabled={!canCheckout}
-                            onPress={handleCheckout}
-                            style={[
-                                styles.checkoutBtnWrap,
-                                !canCheckout && styles.checkoutBtnDisabled,
-                            ]}
-                        >
-                            <LinearGradient
-                                colors={
-                                    canCheckout
-                                        ? ['#0D614E', '#14937A']
-                                        : ['#94A3B8', '#94A3B8']
-                                }
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.checkoutBtn}
+                            <View
+                                style={[
+                                    styles.checkoutFooter,
+                                    { paddingBottom: footerBottomPad },
+                                ]}
                             >
-                                <Text style={styles.checkoutText}>Checkout</Text>
-                                <TablerIcon
-                                    name="chevron-right"
-                                    size={18}
-                                    color="#FFF"
-                                />
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </View>
+                                <View style={styles.footerPriceBox}>
+                                    <RupeeAmount
+                                        value={total}
+                                        decimals={feeConfig ? 2 : 0}
+                                        style={styles.footerTotal}
+                                    />
+                                    <Text style={styles.footerHint}>
+                                        {selectedUnits}{' '}
+                                        {selectedUnits === 1 ? 'item' : 'items'}
+                                        {outOfStockCount > 0
+                                            ? ` · ${outOfStockCount} out of stock`
+                                            : ''}
+                                    </Text>
+                                </View>
+
+                                <TouchableOpacity
+                                    activeOpacity={0.9}
+                                    disabled={!canCheckout}
+                                    onPress={handleCheckout}
+                                    style={[
+                                        styles.checkoutBtnWrap,
+                                        !canCheckout && styles.checkoutBtnDisabled,
+                                    ]}
+                                >
+                                    <LinearGradient
+                                        colors={
+                                            canCheckout
+                                                ? ['#0D614E', '#14937A']
+                                                : ['#94A3B8', '#94A3B8']
+                                        }
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.checkoutBtn}
+                                    >
+                                        <Text style={styles.checkoutText}>Checkout</Text>
+                                        <TablerIcon
+                                            name="chevron-right"
+                                            size={18}
+                                            color="#FFF"
+                                        />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
                 </>
             )}
 
@@ -1959,8 +1985,14 @@ const styles = StyleSheet.create({
     },
 
     tabContainer: {
-        marginTop: 4,
-        marginBottom: 10,
+        marginTop: 6,
+        marginBottom: 12,
+    },
+
+    tabsAlwaysWrap: {
+        paddingHorizontal: 12,
+        paddingTop: 4,
+        backgroundColor: Colors.background,
     },
 
     outOfStockBanner: {
@@ -2294,6 +2326,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+    },
+    uploadItemTap: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        minWidth: 0,
     },
     uploadItemName: {
         fontSize: 12,

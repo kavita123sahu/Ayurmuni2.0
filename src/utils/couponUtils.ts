@@ -1,4 +1,4 @@
-import { formatRupee } from './currencyUtils';
+import { formatDiscountOff, formatRupee, roundDiscountPercent } from './currencyUtils';
 
 export type CouponScope = 'product' | 'consultation' | 'all';
 export type CouponAppliesTo = 'order' | 'consultation' | 'both';
@@ -242,7 +242,7 @@ export const normalizeCoupon = (raw: any): Coupon | null => {
       src.name ||
       description ||
       (discount_type === 'percent'
-        ? `${discount_value}% off`
+        ? formatDiscountOff(discount_value, 'off') || `${roundDiscountPercent(discount_value)}% off`
         : `Flat ${formatRupee(discount_value)} off`),
   ).trim();
 
@@ -358,10 +358,11 @@ export const couponOfferTitle = (coupon: Coupon) => {
 
 export const couponSavingsLabel = (coupon: Coupon) => {
   if (coupon.discount_type === 'percent') {
+    const pct = roundDiscountPercent(coupon.discount_value);
     if (coupon.max_discount != null && coupon.max_discount > 0) {
-      return `${coupon.discount_value}% off up to ${formatRupee(coupon.max_discount)}`;
+      return `${pct}% off up to ${formatRupee(coupon.max_discount)}`;
     }
-    return `${coupon.discount_value}% off`;
+    return formatDiscountOff(pct, 'off');
   }
   return `Flat ${formatRupee(coupon.discount_value)} off`;
 };

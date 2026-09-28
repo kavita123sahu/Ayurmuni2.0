@@ -104,8 +104,10 @@ import IconMaximize from '@tabler/icons-react-native/IconMaximize';
 import IconMinimize from '@tabler/icons-react-native/IconMinimize';
 import IconLeaf from '@tabler/icons-react-native/IconLeaf';
 import IconHeartHandshake from '@tabler/icons-react-native/IconHeartHandshake';
+import IconCurrencyRupee from '@tabler/icons-react-native/IconCurrencyRupee';
+import IconLayoutGrid from '@tabler/icons-react-native/IconLayoutGrid';
+import IconFlask from '@tabler/icons-react-native/IconFlask';
 import { Colors } from '../common/Colors';
-import { IconList } from '@tabler/icons-react-native';
 
 const IconFileMedical = IconStethoscope;
 
@@ -133,6 +135,13 @@ const ICON_MAP = {
   'layout-list-filled': IconLayoutListFilled,
   'category-filled': IconCategoryFilled,
   'apps-filled': IconAppsFilled,
+  apps: IconAppsFilled,
+  'view-all': IconLayoutGrid,
+  'layout-grid': IconLayoutGrid,
+  'currency-rupee': IconCurrencyRupee,
+  rupee: IconCurrencyRupee,
+  flask: IconFlask,
+  'test-pipe': IconFlask,
   'barbell-filled': IconBarbellFilled,
   'salad-filled': IconSaladFilled,
   'clipboard-list-filled': IconClipboardListFilled,

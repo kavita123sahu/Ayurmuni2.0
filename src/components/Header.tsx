@@ -14,6 +14,7 @@ import TablerIcon, { TablerIconName } from './TablerIcon';
 import BackIconButton from './BackIconButton';
 import CartBadge from './CartBadge';
 import { useCartCount } from '../hooks/Cart';
+import { navigateToMyCart } from '../navigation/productNavigation';
 
 interface HeaderProps {
   title: string;
@@ -42,7 +43,6 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const navigation = useNavigation<any>();
   const cartCount = useCartCount();
-  const stackNavigation = navigation.getParent?.() || navigation;
 
   const hasRightActions = !!(
     onSearchPress ||
@@ -113,7 +113,7 @@ const Header: React.FC<HeaderProps> = ({
             {showCart ? (
               <TouchableOpacity
                 style={styles.iconBtn}
-                onPress={() => stackNavigation.navigate('MyCart')}
+                onPress={() => navigateToMyCart(navigation)}
                 activeOpacity={0.75}
               >
                 <TablerIcon

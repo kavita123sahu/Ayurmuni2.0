@@ -130,9 +130,9 @@ const MedicineScreen = (props: any) => {
             if (!mapped.id) return;
             navigateToCategoryProducts(navigation, {
               categoryMode: 'product',
-              categoryName: mapped.name,
+              brandOnly: true,
               brand_name_id: mapped.id,
-              brandName: mapped.name,
+              brandId: mapped.id,
               serviceCategoryId: medicineCategoryId || undefined,
             });
           },
@@ -443,9 +443,11 @@ const styles = StyleSheet.create({
   },
   bannerWrap: {
     marginBottom: 10,
-    width: '100%',
+    marginHorizontal: -H_PAD,
+    width: Dimensions.get('window').width,
+    alignSelf: 'center',
     overflow: 'hidden',
-    borderRadius: 14,
+    borderRadius: 0,
   },
   columnWrap: {
     justifyContent: 'space-between',

@@ -112,6 +112,14 @@ export const normalizeApiList = (response: any): any[] => {
     if (Array.isArray(data.subcategories)) return data.subcategories;
     if (Array.isArray(data.items)) return data.items;
     if (Array.isArray(data.children)) return data.children;
+    // Single health-category / concern object
+    if (
+      data.id != null ||
+      data.health_category_id != null ||
+      data.category_id != null
+    ) {
+      return [data];
+    }
   }
 
   if (Array.isArray(response?.results)) return response.results;
@@ -125,6 +133,40 @@ export const normalizeApiList = (response: any): any[] => {
   if (numericKeys.length > 0) {
     const list = numericKeys.map(key => response[key]).filter(Boolean);
     if (list.length > 0) return list;
+  }
+
+  return [];
+};
+
+/** Parse health-category `symptoms` from array, JSON string, or comma-separated text. */
+export const parseHealthSymptoms = (raw: any): string[] => {
+  const toList = (arr: any[]) =>
+    arr
+      .map((s: any) => {
+        if (s == null) return '';
+        if (typeof s === 'string') return s.trim();
+        if (typeof s === 'object') {
+          return String(
+            s.name || s.symptom || s.title || s.label || s.text || '',
+          ).trim();
+        }
+        return String(s).trim();
+      })
+      .filter(Boolean);
+
+  if (Array.isArray(raw)) return toList(raw);
+
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return toList(parsed);
+    } catch {
+      /* plain text */
+    }
+    return raw
+      .split(/[\n,|•]+/)
+      .map((s: string) => s.trim())
+      .filter(Boolean);
   }
 
   return [];
@@ -273,6 +315,12 @@ export const mapProductCategory = (item: any) => ({
       item?.short_title ??
       '',
   ).trim(),
+  symptoms: parseHealthSymptoms(
+    item?.symptoms ??
+      item?.symptom_list ??
+      item?.common_symptoms ??
+      item?.symptoms_list,
+  ),
   image_url: resolveImageUrl(item),
   parent_id:
     item?.parent_id != null
@@ -282,6 +330,9 @@ export const mapProductCategory = (item: any) => ({
         : item?.category_id != null
           ? String(item.category_id)
           : undefined,
+  service_category_name: item?.service_category_name
+    ? String(item.service_category_name)
+    : undefined,
 });
 
 export const getProduct = async (params: ProductQuery = {}) => {

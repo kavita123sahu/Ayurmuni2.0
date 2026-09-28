@@ -26,7 +26,6 @@ import { useScrollHide } from '../../context/ScrollHideContext';
 import { getScreenBottomPadding } from '../../constants/layout';
 import {
   TYPO,
-  RADIUS,
   getScreenPaddingH,
 } from '../../constants/responsive';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -203,7 +202,16 @@ const ProductsScreen = () => {
     () => (
       <View style={styles.headerContent}>
         {bannerImages.length > 0 ? (
-          <View style={styles.bannerWrap}>
+          <View
+            style={[
+              styles.bannerWrap,
+              {
+                marginHorizontal: -hPad,
+                width: windowWidth,
+                alignSelf: 'center',
+              },
+            ]}
+          >
             <Detailimages
               images={bannerImages}
               DynamicResize="cover"
@@ -377,9 +385,8 @@ const styles = StyleSheet.create({
   bannerWrap: {
     marginBottom: 8,
     marginTop: 20,
-    width: '100%',
     overflow: 'hidden',
-    borderRadius: RADIUS.md,
+    borderRadius: 0,
   },
   listContent: {},
   columnWrap: {

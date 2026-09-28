@@ -48,10 +48,7 @@ export const Colors = {
 
 
 
-import { Dimensions, PixelRatio } from 'react-native';
+import { scale as responsiveScale } from '../constants/responsive';
 
-const { width } = Dimensions.get('window');
-
-const guidelineBaseWidth = 375;
-
-export const scale = (size : any) => PixelRatio.roundToNearestPixel((width / guidelineBaseWidth) * size);
+// Re-export shared scale so Medical History / legacy imports stay in sync
+export const scale = (size: any) => responsiveScale(Number(size) || 0);

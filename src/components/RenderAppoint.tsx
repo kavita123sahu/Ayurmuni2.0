@@ -17,7 +17,8 @@ import DoctorAvatar from './DoctorAvatar';
 import {
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
-  canModifyAppointment,
+  canOfferCancel,
+  canOfferReschedule,
   resolveAppointmentDateTime,
 } from '../utils/appointmentUtils';
 import { showSuccessToast } from '../config/Key';
@@ -85,11 +86,18 @@ const RenderAppoint = ({
 
   const statusLabel = formatStatusLabel(item.status);
   const schedule = resolveAppointmentDateTime(item);
-  const withinModifyWindow = canModifyAppointment(
+  const showRescheduleAction = canOfferReschedule(
+    item.status,
+    schedule.date,
+    schedule.time,
+    item,
+  );
+  const showCancelAction = canOfferCancel(
     item.status,
     schedule.date,
     schedule.time,
   );
+  const withinModifyWindow = showRescheduleAction || showCancelAction;
   const hasPrescription = useMemo(() => {
     const raw = item?.rawData ?? item;
     if (consultationHasPrescription(raw)) return true;
@@ -254,6 +262,7 @@ const RenderAppoint = ({
         status={item.status}
         date={schedule.date}
         time={schedule.time}
+        item={item}
         call_status={item.call_status}
         hasPrescription={hasPrescription}
         onReschedule={onReschedule}

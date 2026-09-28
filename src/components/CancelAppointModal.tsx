@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -14,12 +14,39 @@ import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 
-const REASONS = [
-  'Scheduling conflict',
-  'Feeling better / no longer needed',
-  'Booked by mistake',
-  'Found another doctor',
-  'Personal emergency',
+/** API cancellation_reason enum values */
+export const APPOINTMENT_CANCEL_REASONS: {
+  value: string;
+  label: string;
+}[] = [
+  {
+    value: 'professional_or_medical_exigency',
+    label: 'Professional or medical exigency',
+  },
+  {
+    value: 'personal_or_unforeseen_circumstance',
+    label: 'Personal or unforeseen circumstance',
+  },
+  {
+    value: 'unavailability',
+    label: 'Unavailability',
+  },
+  {
+    value: 'technical_difficulty',
+    label: 'Technical difficulty',
+  },
+  {
+    value: 'unable_to_conduct_consultation',
+    label: 'Unable to conduct consultation',
+  },
+  {
+    value: 'requires_user_in_person_care',
+    label: 'Requires in-person care',
+  },
+  {
+    value: 'other_reasonable_circumstance',
+    label: 'Other reasonable circumstance',
+  },
 ];
 
 const CANCEL_NOTES = [
@@ -29,16 +56,49 @@ const CANCEL_NOTES = [
   'You can rebook another slot anytime from Appointments.',
 ];
 
-const CancelAppointmentModal = ({ visible, onClose, onSubmit }: any) => {
-  const [reason, setReason] = useState('');
+export type CancelAppointmentPayload = {
+  action: 'cancel';
+  cancellation_reason: string;
+  cancellation_reason_detail?: string;
+};
+
+const CancelAppointmentModal = ({
+  visible,
+  onClose,
+  onSubmit,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSubmit: (payload: CancelAppointmentPayload) => void;
+}) => {
   const [selected, setSelected] = useState('');
+  const [detail, setDetail] = useState('');
 
   useEffect(() => {
     if (!visible) {
-      setReason('');
       setSelected('');
+      setDetail('');
     }
   }, [visible]);
+
+  const needsDetail = selected === 'other_reasonable_circumstance';
+  const canSubmit = useMemo(() => {
+    if (!selected) return false;
+    if (needsDetail && !detail.trim()) return false;
+    return true;
+  }, [selected, needsDetail, detail]);
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    const payload: CancelAppointmentPayload = {
+      action: 'cancel',
+      cancellation_reason: selected,
+    };
+    if (needsDetail) {
+      payload.cancellation_reason_detail = detail.trim();
+    }
+    onSubmit(payload);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -48,7 +108,10 @@ const CancelAppointmentModal = ({ visible, onClose, onSubmit }: any) => {
       >
         <View style={styles.overlay}>
           <View style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.handle} />
 
               <Text style={styles.title}>Cancel Appointment</Text>
@@ -60,7 +123,11 @@ const CancelAppointmentModal = ({ visible, onClose, onSubmit }: any) => {
                 {CANCEL_NOTES.map(item => (
                   <View key={item} style={styles.noteRow}>
                     <View style={styles.bullet}>
-                      <TablerIcon name="check" size={11} color={Colors.primaryColor} />
+                      <TablerIcon
+                        name="check"
+                        size={11}
+                        color={Colors.primaryColor}
+                      />
                     </View>
                     <Text style={styles.noteText}>{item}</Text>
                   </View>
@@ -69,50 +136,55 @@ const CancelAppointmentModal = ({ visible, onClose, onSubmit }: any) => {
 
               <Text style={styles.reasonTitle}>Reason for cancellation</Text>
 
-              {REASONS.map(item => (
-                <TouchableOpacity
-                  key={item}
-                  style={[
-                    styles.reasonItem,
-                    {
-                      backgroundColor:
-                        selected === item ? Colors.primaryColor : '#FAFAFA',
-                      borderColor:
-                        selected === item ? Colors.primaryColor : '#E5E7EB',
-                    },
-                  ]}
-                  onPress={() => setSelected(item)}
-                >
-                  <Text
-                    style={{
-                      color: selected === item ? Colors.white : Colors.black,
-                      fontFamily: Fonts.PoppinsMedium,
-                      fontSize: 13,
-                    }}
+              {APPOINTMENT_CANCEL_REASONS.map(item => {
+                const active = selected === item.value;
+                return (
+                  <TouchableOpacity
+                    key={item.value}
+                    style={[
+                      styles.reasonItem,
+                      {
+                        backgroundColor: active
+                          ? Colors.primaryColor
+                          : '#FAFAFA',
+                        borderColor: active
+                          ? Colors.primaryColor
+                          : '#E5E7EB',
+                      },
+                    ]}
+                    onPress={() => setSelected(item.value)}
+                    activeOpacity={0.85}
                   >
-                    {selected === item ? '◉' : '○'} {item}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={{
+                        color: active ? Colors.white : Colors.black,
+                        fontFamily: Fonts.PoppinsMedium,
+                        fontSize: 13,
+                      }}
+                    >
+                      {active ? '◉' : '○'} {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
 
-              <TextInput
-                placeholder="Additional note (optional)..."
-                value={reason}
-                onChangeText={setReason}
-                multiline
-                style={styles.input}
-                placeholderTextColor="#94A3B8"
-              />
+              {needsDetail ? (
+                <TextInput
+                  placeholder="Please describe the circumstance..."
+                  value={detail}
+                  onChangeText={setDetail}
+                  multiline
+                  style={styles.input}
+                  placeholderTextColor="#94A3B8"
+                />
+              ) : null}
             </ScrollView>
 
             <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() =>
-                onSubmit({
-                  action: 'cancel',
-                  cancellation_reason: reason || selected,
-                })
-              }
+              style={[styles.cancelBtn, !canSubmit && styles.cancelBtnDisabled]}
+              disabled={!canSubmit}
+              onPress={handleSubmit}
+              activeOpacity={0.85}
             >
               <Text style={styles.cancelText}>Cancel Appointment</Text>
             </TouchableOpacity>
@@ -198,56 +270,56 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsRegular,
   },
   reasonTitle: {
-    fontSize: 13,
-    color: '#0F172A',
+    fontSize: 14,
     fontFamily: Fonts.PoppinsSemiBold,
-    marginBottom: 8,
+    color: '#111827',
+    marginBottom: 10,
   },
   reasonItem: {
     borderWidth: 1,
     borderRadius: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     marginBottom: 8,
   },
   input: {
-    minHeight: 84,
+    minHeight: 88,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 12,
-    fontFamily: Fonts.PoppinsMedium,
-    marginTop: 8,
+    marginTop: 4,
+    marginBottom: 8,
     textAlignVertical: 'top',
-    backgroundColor: '#FAFAFA',
-    color: '#111827',
+    fontFamily: Fonts.PoppinsRegular,
     fontSize: 13,
+    color: '#111827',
   },
   cancelBtn: {
-    backgroundColor: '#EF4444',
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
+    marginTop: 10,
+    backgroundColor: '#DC2626',
+    borderRadius: 14,
+    height: 50,
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+  },
+  cancelBtnDisabled: {
+    opacity: 0.45,
   },
   cancelText: {
     color: '#FFFFFF',
-    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 15,
   },
   keepBtn: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.primaryColor,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 10,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   keepText: {
     color: Colors.primaryColor,
-    fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 14,
   },
 });

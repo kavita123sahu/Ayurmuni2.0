@@ -30,7 +30,8 @@ import FeedbackModal from '../../components/FeedbackModal';
 import TablerIcon from '../../components/TablerIcon';
 import {
   buildVideoCallNavParams,
-  canModifyAppointment,
+  canOfferCancel,
+  canOfferReschedule,
   formatAppointmentDateFull,
   getAppointmentIds,
   getAppointmentPatientId,
@@ -393,11 +394,24 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     appointment: detail?.appointment,
     rawData: detail,
   });
-  const showButtons = canModifyAppointment(
+  const modifyItem = {
+    ...normalizedAppointment,
+    appointment: detail?.appointment,
+    rawData: detail,
+    status: appointmentStatus,
+  };
+  const showRescheduleBtn = canOfferReschedule(
+    appointmentStatus,
+    scheduleFields.date || normalizedAppointment?.date,
+    scheduleFields.time || normalizedAppointment?.time,
+    modifyItem,
+  );
+  const showCancelBtn = canOfferCancel(
     appointmentStatus,
     scheduleFields.date || normalizedAppointment?.date,
     scheduleFields.time || normalizedAppointment?.time,
   );
+  const showButtons = showRescheduleBtn || showCancelBtn;
   const isRescheduleRequest = appointmentStatus === 'reschedule';
 
   // Show Add to Calendar for upcoming visits (including completed if still future).
@@ -436,24 +450,28 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     appointmentId: string,
     payload: {
       action: string;
-      availability: number;
+      availability: string | number;
       reschedule_reason?: string;
       cancellation_reason?: string;
+      cancellation_reason_detail?: string;
     }
   ) => {
     let payloadSend: any = { action: payload.action };
 
     switch (payload.action) {
       case 'reschedule':
-        payloadSend.availability = payload.availability;
+        payloadSend.availability = String(payload.availability);
         payloadSend.reschedule_reason = payload.reschedule_reason;
         break;
       case 'confirm_reschedule':
-        payloadSend.availability = payload.availability;
-        payloadSend.reschedule_reason = payload.reschedule_reason;
+        payloadSend.availability = String(payload.availability);
         break;
       case 'cancel':
         payloadSend.cancellation_reason = payload.cancellation_reason;
+        if (payload.cancellation_reason_detail) {
+          payloadSend.cancellation_reason_detail =
+            payload.cancellation_reason_detail;
+        }
         break;
     }
 
@@ -529,12 +547,20 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
   const handleCancel = async (
     appointmentId: string,
-    payload: { action: string; cancellation_reason: string }
+    payload: {
+      action: string;
+      cancellation_reason: string;
+      cancellation_reason_detail?: string;
+    }
   ) => {
     let payloadSend: any = {
-      action: payload.action,
+      action: 'cancel',
       cancellation_reason: payload.cancellation_reason,
     };
+    if (payload.cancellation_reason_detail) {
+      payloadSend.cancellation_reason_detail =
+        payload.cancellation_reason_detail;
+    }
 
     const res = await handleAppointmentAction({ appointmentId, payload: payloadSend });
 
@@ -581,9 +607,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
 
   const paymentAmount =
-    detail?.payment?.consultation_fee ??
+    // detail?.payment?.consultation_fee ??
     detail?.payment?.amount ??
-    appointment?.payment?.consultation_fee ??
+    // appointment?.payment?.consultation_fee ??
     appointment?.payment?.amount ??
     null;
   const paymentStatusValue =
@@ -607,8 +633,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     {
       icon: 'cash-outline',
       label: 'Consultation Fee',
-      value: paymentAmount != null ? formatRupee(paymentAmount) : null,
-      isAmount: true,
+      value: paymentAmount != null ? paymentAmount : null,
+      // isAmount: true,
       amountValue: paymentAmount,
     },
     {
@@ -877,26 +903,30 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
 
             {showButtons ? (
               <View style={styles.actionRow}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.rescheduleBtn}
-                  onPress={() => setShowRescheduleModal(true)}
-                >
-                  <Ionicons name="time-outline" size={16} color={Theme.emerald} />
-                  <Text style={styles.rescheduleBtnText} numberOfLines={1}>
-                    {isRescheduleRequest ? 'Request Change' : 'Reschedule'}
-                  </Text>
-                </TouchableOpacity>
+                {showRescheduleBtn ? (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.rescheduleBtn}
+                    onPress={() => setShowRescheduleModal(true)}
+                  >
+                    <Ionicons name="time-outline" size={16} color={Theme.emerald} />
+                    <Text style={styles.rescheduleBtnText} numberOfLines={1}>
+                      {isRescheduleRequest ? 'Request Change' : 'Reschedule'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
 
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.cancelBtn}
-                  onPress={openCancelFlow}
-                >
-                  <Text style={styles.cancelBtnText} numberOfLines={1}>
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
+                {showCancelBtn ? (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.cancelBtn}
+                    onPress={openCancelFlow}
+                  >
+                    <Text style={styles.cancelBtnText} numberOfLines={1}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ) : null}
 
@@ -904,7 +934,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
         )}
 
         <RescheduleModal
-          visible={showRescheduleModal}
+          visible={showRescheduleModal && !!normalizedAppointment}
           appointment={normalizedAppointment}
           isRescheduleRequest={isRescheduleRequest}
           onClose={() => setShowRescheduleModal(false)}

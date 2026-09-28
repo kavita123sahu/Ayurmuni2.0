@@ -137,17 +137,18 @@ const ProductSearchFilterBar: React.FC<Props> = ({
             active={priceActive}
             onPress={() => setSheet('price')}
           />
-          <FilterChip
-            label="Filters"
-            selectedText={filtersActive ? String(activeFilterCount) : undefined}
-            icon="filter"
-            active={filtersActive}
-            onPress={() => {
-              if (filtersActive) {
-                onClearFilters();
-              }
-            }}
-          />
+          {filtersActive ? (
+            <TouchableOpacity
+              style={[styles.chip, styles.clearChip]}
+              onPress={onClearFilters}
+              activeOpacity={0.85}
+            >
+              <TablerIcon name="x" size={13} color="#B45309" />
+              <Text style={styles.clearChipText} numberOfLines={1}>
+                Clear Filter
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       </View>
 
@@ -365,6 +366,16 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  clearChip: {
+    borderColor: '#FDBA74',
+    backgroundColor: '#FFF7ED',
+  },
+  clearChipText: {
+    marginHorizontal: 4,
+    fontSize: 11,
+    color: '#B45309',
     fontFamily: Fonts.PoppinsSemiBold,
   },
   overlay: {

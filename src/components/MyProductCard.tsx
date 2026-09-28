@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Pressable,
 } from 'react-native';
+import { navigateToProductDetails } from '../navigation/productNavigation';
 import TablerIcon from './TablerIcon';
 import BlinkitAddButton from './BlinkitAddButton';
 import { Fonts } from '../common/Fonts';
@@ -104,9 +105,12 @@ const MyProductCard = ({
                     pressed && styles.cardPressed,
                 ]}
                 onPress={() =>
-                    navigation.navigate('ProductDetails', {
-                        varientID: item?.variant_id,
-                    })
+                    navigateToProductDetails(
+                        navigation,
+                        item?.variant_id ??
+                            item?.variant?.variant_id ??
+                            item?.variant?.id,
+                    )
                 }
             >
                 <View style={styles.imageWrap}>

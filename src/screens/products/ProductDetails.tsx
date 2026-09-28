@@ -47,7 +47,7 @@ import {
     isProductOutOfStock,
     LOW_STOCK_THRESHOLD,
 } from '../../utils/productStockUtils';
-import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
+import { formatDiscountOff, formatRupee, RupeeAmount, roundDiscountPercent } from '../../utils/currencyUtils';
 import { SCREEN } from '../../constants/responsive';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -151,9 +151,9 @@ const ProductDetails = (props: any) => {
     // Prefer selected pack identity so multi-variant products don't all send route id
     const cartVariantId = String(
         activeVariant?.id ??
-            activeVariant?.variant_id ??
-            varientID ??
-            '',
+        activeVariant?.variant_id ??
+        varientID ??
+        '',
     ).trim();
     console.log('cartVariantId', cartVariantId);
     const { updateCartQuantity } = useCartActions();
@@ -341,11 +341,11 @@ const ProductDetails = (props: any) => {
 
         const variantId = String(
             selectedVariant?.id ??
-                selectedVariant?.variant_id ??
-                activeVariant?.id ??
-                activeVariant?.variant_id ??
-                varientID ??
-                '',
+            selectedVariant?.variant_id ??
+            activeVariant?.id ??
+            activeVariant?.variant_id ??
+            varientID ??
+            '',
         ).trim();
         if (!variantId) {
             showSuccessToast('Product variant unavailable', 'error');
@@ -591,7 +591,7 @@ const ProductDetails = (props: any) => {
                             color={isWishlisted ? '#0D614E' : '#0F172A'}
                         />
                     </TouchableOpacity>
-                    {!!selectedVariant?.discount && (
+                    {roundDiscountPercent(selectedVariant?.discount) > 0 && (
                         <LinearGradient
                             colors={['#15803D', '#22C55E']}
                             start={{ x: 0, y: 0 }}
@@ -599,7 +599,7 @@ const ProductDetails = (props: any) => {
                             style={styles.discountOverlay}
                         >
                             <Text style={styles.discountOverlayText}>
-                                {selectedVariant.discount}% OFF
+                                {formatDiscountOff(selectedVariant.discount)}
                             </Text>
                         </LinearGradient>
                     )}
@@ -673,19 +673,20 @@ const ProductDetails = (props: any) => {
                                         />
                                     </View>
                                 ) : null}
-                                {!!selectedVariant?.discount || saveAmount > 0 ? (
+                                {roundDiscountPercent(selectedVariant?.discount) > 0 ||
+                                saveAmount > 0 ? (
                                     <Text style={styles.discountInline}>
                                         (
-                                        {selectedVariant?.discount
-                                            ? `${selectedVariant.discount}% OFF`
-                                            : `${Math.round(
+                                        {roundDiscountPercent(selectedVariant?.discount) > 0
+                                            ? formatDiscountOff(selectedVariant.discount)
+                                            : formatDiscountOff(
                                                 (saveAmount /
                                                     Math.max(
                                                         Number(selectedVariant?.mrp) || 1,
                                                         1,
                                                     )) *
-                                                100,
-                                            )}% OFF`}
+                                                    100,
+                                              )}
                                         )
                                     </Text>
                                 ) : null}
@@ -726,9 +727,9 @@ const ProductDetails = (props: any) => {
                                 maxQuantity={maxQty}
                             />
                             {maxQty != null &&
-                            maxQty > 0 &&
-                            maxQty <= LOW_STOCK_THRESHOLD &&
-                            quantity >= maxQty ? (
+                                maxQty > 0 &&
+                                maxQty <= LOW_STOCK_THRESHOLD &&
+                                quantity >= maxQty ? (
                                 <Text style={styles.qtyLimitNote}>
                                     {maxQty === 1
                                         ? 'Only 1 item available.'
@@ -763,7 +764,7 @@ const ProductDetails = (props: any) => {
                         <Text style={styles.deliveryText}>
                             {deliveryMessage}{' '}
                             <Text style={styles.deliveryStrong}>
-                                Delivery in {deliveryBy} in NCR & nearby cities. 
+                                Delivery in {deliveryBy} in NCR & nearby cities.
                             </Text>
                         </Text>
                         {/* {selectedVariant?.is_free_shipping ? (
@@ -790,9 +791,11 @@ const ProductDetails = (props: any) => {
                             {variants.map((item: any) => {
                                 const selected = selectedVariant?.id === item?.id;
                                 const isBest = bestDealVariantId === item?.id;
-                                const details = [item?.size, item?.weightage, item?.physical_state]
+                                const imageUri = resolveProductImageUri(item) || coverImageUri;
+                                const weightLabel = [item?.weightage, item?.physical_state]
                                     .filter(Boolean)
                                     .join(' ');
+                                const sizeLabel = String(item?.size || item?.title || 'Pack').trim();
                                 return (
                                     <TouchableOpacity
                                         key={item?.id}
@@ -813,16 +816,21 @@ const ProductDetails = (props: any) => {
                                                 <TablerIcon name="check" size={10} color="#FFFFFF" />
                                             </View>
                                         ) : null}
-                                        <Text
-                                            numberOfLines={1}
-                                            style={[
-                                                styles.variantName,
-                                                selected && styles.variantNameSelected,
-                                            ]}
-                                        >
-                                            {item?.title || item?.size || 'Pack'}
-                                        </Text>
-                                        {!!details && details !== item?.title && (
+                                        <View style={styles.variantImageWrap}>
+                                            {imageUri ? (
+                                                <Image
+                                                    source={{ uri: imageUri }}
+                                                    style={styles.variantImage}
+                                                    resizeMode="contain"
+                                                />
+                                            ) : (
+                                                <View style={styles.variantImagePlaceholder}>
+                                                    <TablerIcon name="package" size={22} color="#94A3B8" />
+                                                </View>
+                                            )}
+                                        </View>
+
+                                        {!!weightLabel && (
                                             <Text
                                                 numberOfLines={1}
                                                 style={[
@@ -830,17 +838,17 @@ const ProductDetails = (props: any) => {
                                                     selected && styles.variantDetailsSelected,
                                                 ]}
                                             >
-                                                {details}
+                                                {sizeLabel} {weightLabel}
                                             </Text>
                                         )}
                                         <RupeeAmount
                                             value={item?.selling_price}
                                             style={[
-                                                styles.variantPrice,
+                                                // styles.variantPrice,
                                                 selected && styles.variantPriceSelected,
                                             ]}
                                         />
-                                        {!!item?.discount && (
+                                        {/* {!!item?.discount && (
                                             <Text
                                                 style={[
                                                     styles.variantOff,
@@ -849,7 +857,7 @@ const ProductDetails = (props: any) => {
                                             >
                                                 {item.discount}% off
                                             </Text>
-                                        )}
+                                        )} */}
                                     </TouchableOpacity>
                                 );
                             })}
@@ -1050,15 +1058,15 @@ const ProductDetails = (props: any) => {
                 )}
 
                 {Array.isArray(ReviewAll) && ReviewAll.length > 0 ? (
-                <View style={styles.card}>
-                    <ReviewSection
-                        navigation={props.navigation}
-                        reviews={ReviewAll}
-                        entityType="product"
-                        variantId={String(varientID || '')}
-                        title="Ratings & reviews"
-                    />
-                </View>
+                    <View style={styles.card}>
+                        <ReviewSection
+                            navigation={props.navigation}
+                            reviews={ReviewAll}
+                            entityType="product"
+                            variantId={String(varientID || '')}
+                            title="Ratings & reviews"
+                        />
+                    </View>
                 ) : null}
 
                 {!!discoveryProductId && (
@@ -1461,8 +1469,8 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sellingPrice: {
-        fontSize: 24,
-        fontFamily: Fonts.PoppinsBold,
+        fontSize: 22,
+        fontFamily: Fonts.PoppinsSemiBold,
         color: '#282C3F',
         includeFontPadding: false,
     },
@@ -1682,22 +1690,42 @@ const styles = StyleSheet.create({
         backgroundColor: '#E2E8F0',
     },
 
-    variantRow: { paddingVertical: 2, gap: 8, paddingRight: 4 },
+    variantRow: { paddingVertical: 2, gap: 10, paddingRight: 4 },
     variantCard: {
-        minWidth: 96,
-        borderRadius: 12,
+        width: 112,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        paddingHorizontal: 10,
-        paddingTop: 16,
-        paddingBottom: 8,
+        paddingHorizontal: 8,
+        paddingTop: 14,
+        paddingBottom: 10,
         backgroundColor: '#FFFFFF',
         overflow: 'hidden',
+        alignItems: 'center',
     },
     variantCardSelected: {
         backgroundColor: '#F0FBF7',
         borderColor: Colors.primaryColor,
         borderWidth: 1.5,
+    },
+    variantImageWrap: {
+        width: '100%',
+        height: 50,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        overflow: 'hidden',
+    },
+    variantImage: {
+        width: '100%',
+        height: '100%',
+    },
+    variantImagePlaceholder: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     bestPill: {
         position: 'absolute',
@@ -1707,6 +1735,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
         paddingVertical: 1,
         borderBottomRightRadius: 8,
+        zIndex: 2,
     },
     bestPillText: {
         fontSize: 8,
@@ -1724,26 +1753,31 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: 2,
     },
     variantName: {
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#1E293B',
+        textAlign: 'center',
+        width: '100%',
     },
     variantNameSelected: {
         color: Colors.primaryColor,
     },
     variantDetails: {
-        marginTop: 1,
+        marginTop: 2,
         fontSize: 10,
         fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
+        textAlign: 'center',
+        width: '100%',
     },
     variantDetailsSelected: {
         color: '#3D7A6C',
     },
     variantPrice: {
-        marginTop: 4,
+        marginTop: 6,
         fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',

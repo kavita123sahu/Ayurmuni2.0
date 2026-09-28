@@ -10,9 +10,20 @@ export const RESCHEDULABLE_STATUSES = [
   ...UPCOMING_STATUS,
   'upcoming',
   'booked',
+].filter(s => s !== 'cancelled' && s !== 'rescheduled');
+
+/** Statuses that still allow Cancel (includes already-rescheduled). */
+export const CANCELABLE_STATUSES = [
+  'confirmed',
+  'upcoming',
+  'booked',
+  'reschedule',
+  'rescheduled',
+  're-scheduled',
+  're_scheduled',
 ];
 
-/** Terminal / past statuses — never offer Reschedule. */
+/** Terminal / past statuses — never offer Reschedule or Cancel. */
 export const NON_RESCHEDULABLE_STATUSES = [
   ...PAST_STATUS,
   'expired',
@@ -26,39 +37,144 @@ export const canRescheduleAppointment = (status?: string | null): boolean => {
   const value = normalizeStatus(status);
   if (!value) return false;
   if (NON_RESCHEDULABLE_STATUSES.includes(value)) return false;
+  if (
+    value === 'rescheduled' ||
+    value === 're-scheduled' ||
+    value === 're_scheduled'
+  ) {
+    return false;
+  }
   return RESCHEDULABLE_STATUSES.includes(value);
 };
 
 /**
- * Allow reschedule/cancel when status is reschedulable and the appointment
- * start is MORE than `windowMinutes` away (default 3 hours).
- * Hidden once inside the last 3 hours before start, or after it has started.
- * Example: a 14 Sep booking shows Cancel/Reschedule until 3h before that slot.
+ * True when this appointment has already been rescheduled once.
+ * After that, only Cancel should remain available.
+ */
+export const hasAlreadyRescheduled = (source?: any): boolean => {
+  if (source == null) return false;
+
+  if (typeof source === 'string') {
+    const s = normalizeStatus(source);
+    return (
+      s === 'rescheduled' ||
+      s === 're-scheduled' ||
+      s === 're_scheduled'
+    );
+  }
+
+  const root = source?.rawData ?? source;
+  const appt = root?.appointment ?? root;
+  const status = normalizeStatus(
+    source?.status ??
+      appt?.appointment_status ??
+      root?.appointment_status ??
+      appt?.status,
+  );
+  if (status === 'rescheduled') return true;
+  // Display label variants from API
+  if (status === 're-scheduled' || status === 're_scheduled') return true;
+
+  const count = Number(
+    appt?.reschedule_count ??
+      root?.reschedule_count ??
+      source?.reschedule_count ??
+      0,
+  );
+  if (Number.isFinite(count) && count >= 1) return true;
+
+  if (
+    appt?.is_rescheduled === true ||
+    root?.is_rescheduled === true ||
+    appt?.already_rescheduled === true ||
+    root?.already_rescheduled === true ||
+    source?.is_rescheduled === true
+  ) {
+    return true;
+  }
+
+  if (
+    appt?.previous_appointment_date ||
+    appt?.original_appointment_date ||
+    appt?.previous_start_time ||
+    appt?.original_start_time ||
+    root?.previous_appointment_date
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const isWithinModifyWindow = (
+  dateStr?: string,
+  timeStr?: string,
+  windowMinutes = 180,
+): boolean => {
+  const date = String(dateStr || '').trim();
+  const time = String(timeStr || '').trim();
+  if (!date) return false;
+
+  const mins = getMinutesUntilAppointment(date, time || undefined);
+  if (mins == null || !Number.isFinite(mins)) return false;
+  if (mins <= 0) return false;
+
+  const lockWindow = Math.max(1, Math.floor(Number(windowMinutes) || 180));
+  if (mins <= lockWindow) return false;
+  return true;
+};
+
+/**
+ * Allow reschedule when status is reschedulable, not already rescheduled once,
+ * and start is MORE than `windowMinutes` away (default 3 hours).
  */
 export const canModifyAppointment = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
   windowMinutes = 180,
+  item?: any,
 ): boolean => {
+  if (hasAlreadyRescheduled(item ?? status)) return false;
   if (!canRescheduleAppointment(status)) return false;
+  return isWithinModifyWindow(dateStr, timeStr, windowMinutes);
+};
 
-  const date = String(dateStr || '').trim();
-  const time = String(timeStr || '').trim();
-  // Must have a real schedule — never enable from status alone
-  if (!date) return false;
+/** Reschedule button — hidden after one successful reschedule. */
+export const canOfferReschedule = (
+  status?: string | null,
+  dateStr?: string,
+  timeStr?: string,
+  item?: any,
+  windowMinutes = 180,
+): boolean => canModifyAppointment(status, dateStr, timeStr, windowMinutes, item);
 
-  const mins = getMinutesUntilAppointment(date, time || undefined);
-  if (mins == null || !Number.isFinite(mins)) return false;
-  // Already started / past — no cancel/reschedule
-  if (mins <= 0) return false;
-
-  const lockWindow = Math.max(1, Math.floor(Number(windowMinutes) || 180));
-  // Inside last 3 hours before start → hide buttons
-  if (mins <= lockWindow) return false;
-
-  // More than 3 hours away → show Cancel + Reschedule
-  return true;
+/** Cancel stays available even after a one-time reschedule (within the time window). */
+export const canOfferCancel = (
+  status?: string | null,
+  dateStr?: string,
+  timeStr?: string,
+  windowMinutes = 180,
+): boolean => {
+  const value = normalizeStatus(status);
+  if (!value) return false;
+  if (
+    [
+      'cancelled',
+      'canceled',
+      'completed',
+      'missed',
+      'expired',
+      'no_show',
+      'noshow',
+      'rejected',
+      'cancellation_requested',
+    ].includes(value)
+  ) {
+    return false;
+  }
+  if (!CANCELABLE_STATUSES.includes(value)) return false;
+  return isWithinModifyWindow(dateStr, timeStr, windowMinutes);
 };
 
 /** Resolve date/time from list or detail appointment payloads. */
@@ -752,8 +868,20 @@ export function getJoinableAppointment(
     const validEnd =
       end && end.getTime() > start.getTime() ? end : null;
 
+    // Without a usable end_time, treat the slot as ending 15 min after start
+    const endMs = validEnd
+      ? validEnd.getTime()
+      : start.getTime() + 15 * 60 * 1000;
+
     // Hide when appointment end_time is reached / matched
-    if (validEnd && now >= validEnd.getTime()) {
+    if (now >= endMs) {
+      continue;
+    }
+
+    const msUntilStart = start.getTime() - now;
+
+    // Not yet inside the pre-start window (e.g. 9:12 slot → visible from 9:07)
+    if (msUntilStart > windowMs) {
       continue;
     }
 
@@ -761,16 +889,8 @@ export function getJoinableAppointment(
       return { item, minutesLeft: 0, isLive: true };
     }
 
-    const msUntilStart = start.getTime() - now;
-
-    // Show from 5 min before start until end_time (or short grace if no end)
-    const withinPreWindow =
-      msUntilStart >= 0 && msUntilStart <= windowMs;
-    const afterStartBeforeEnd =
-      msUntilStart < 0 &&
-      (validEnd
-        ? now < validEnd.getTime()
-        : msUntilStart >= -15 * 60 * 1000);
+    const withinPreWindow = msUntilStart >= 0;
+    const afterStartBeforeEnd = msUntilStart < 0 && now < endMs;
 
     if (withinPreWindow || afterStartBeforeEnd) {
       return {

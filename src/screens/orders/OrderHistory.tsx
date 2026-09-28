@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Keyboard,
 } from 'react-native';
 import OrderCard from '../../components/OrderCard';
 import Header from '../../components/Header';
@@ -82,7 +83,6 @@ const OrderHistory = (props: any) => {
   const highlightRequestId = String(props.route?.params?.requestId || '');
   const [activeTab, setActiveTab] = useState<HistoryTab>(openedTab);
   const [searchText, setSearchText] = useState('');
-  const [searchExpanded, setSearchExpanded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [requests, setRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
@@ -100,7 +100,7 @@ const OrderHistory = (props: any) => {
     hasMore,
     refresh,
     loadMore,
-  } = useOrders();
+  } = useOrders({ search: debouncedSearch });
 
   // Refresh when returning to this screen (not on first mount — useOrders already loads)
   const isFirstFocus = useRef(true);
@@ -147,13 +147,10 @@ const OrderHistory = (props: any) => {
     refresh();
   }, [activeTab, loadRequests, refresh]);
 
-  // Filter by search + status chip
+  // Status chip filter (search is server-side via useOrders)
   const filteredOrders = useMemo(() => {
-    const q = debouncedSearch.trim();
-
     let list = orderListItems;
 
-    // Status filter
     if (statusFilter !== 'all') {
       const allowed = STATUS_GROUPS[statusFilter];
       list = list.filter(item =>
@@ -161,11 +158,41 @@ const OrderHistory = (props: any) => {
       );
     }
 
-    // Search filter
+    // Light client fallback while API search is applied (covers display id / titles)
+    const q = debouncedSearch.trim();
     if (q) {
-      list = list.filter(item =>
-        matchesSearch(q, item.title, item.orderCode, item.id, item.status, item.date),
-      );
+      list = list.filter(item => {
+        const raw = item.raw || {};
+        const itemTitles = Array.isArray(raw?.items)
+          ? raw.items
+              .map(
+                (line: any) =>
+                  line?.variant?.variant_title ||
+                  line?.product_name ||
+                  line?.name ||
+                  '',
+              )
+              .join(' ')
+          : '';
+        const orderCodeRaw = String(
+          raw?.order_code ?? raw?.order_number ?? item.id ?? '',
+        );
+        const displayCode = String(item.orderCode || '').replace(/^#/, '');
+        return matchesSearch(
+          q,
+          item.title,
+          item.orderCode,
+          displayCode,
+          displayCode.replace(/^ORD-/i, ''),
+          item.id,
+          item.status,
+          item.date,
+          orderCodeRaw,
+          orderCodeRaw.replace(/^ORD-/i, ''),
+          raw?.id,
+          itemTitles,
+        );
+      });
     }
 
     return list;
@@ -205,8 +232,7 @@ const OrderHistory = (props: any) => {
         title="Order History"
         subtitle="Track your medicines & labs"
         onBack={() => props.navigation.goBack()}
-        onSearchPress={() => setSearchExpanded(true)}
-
+        showCart
       />
 
       <SegmentTabs
@@ -225,14 +251,15 @@ const OrderHistory = (props: any) => {
       />
 
       {activeTab === 'orders' ? (
-        <ExpandableSearch
-          placeholder="Search order id or title..."
-          value={searchText}
-          onChangeText={setSearchText}
-          showTrigger={false}
-          expanded={searchExpanded}
-          onExpandedChange={setSearchExpanded}
-        />
+        <View style={styles.searchBlock}>
+          <ExpandableSearch
+            placeholder="Search order id, product, status..."
+            value={searchText}
+            onChangeText={setSearchText}
+            showTrigger={false}
+            expanded
+          />
+        </View>
       ) : null}
 
       {/* Status filter chips */}
@@ -279,6 +306,9 @@ const OrderHistory = (props: any) => {
           <FlatList
             data={requests}
             keyExtractor={(item, index) => String(item?.id ?? index)}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
             renderItem={({ item }) => {
               const variants = getRequestedVariants(item);
               const tone = requestStatusTone(item);
@@ -416,6 +446,9 @@ const OrderHistory = (props: any) => {
         <FlatList
           data={filteredOrders}
           keyExtractor={item => item.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onScrollBeginDrag={Keyboard.dismiss}
           renderItem={({ item }) => (
             <OrderCard
               title={item.title}
@@ -498,6 +531,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     marginTop: 8,
     marginBottom: 6,
+  },
+  searchBlock: {
+    marginBottom: 2,
   },
   requestCard: {
     backgroundColor: '#fff',

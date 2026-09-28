@@ -53,7 +53,7 @@ type ActionKey =
 const TABS = [
     { key: 'all', label: 'All' },
     { key: 'last_30_days', label: 'Last 30 Days' },
-    { key: 'last_90_days', label: 'Last 90 Days' },
+    { key: 'last_6_months', label: 'Last 6 Months' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['key'];
@@ -288,12 +288,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: getScreenPaddingH(),
     },
     filtersBlock: {
-        marginTop: SPACING.xs,
-        marginBottom: SPACING.sm,
-        gap: SPACING.sm,
+        marginTop: 4,
+        marginBottom: 8,
+        gap: 8,
     },
     tabs: {
         marginTop: 0,
+        marginBottom: 0,
     },
     listContent: {
         gap: SPACING.md,

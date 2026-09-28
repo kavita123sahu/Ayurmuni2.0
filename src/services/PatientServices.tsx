@@ -144,9 +144,9 @@ export const getDietPlans = async (params?: DietPlanListParams) => {
         if (params?.page != null) {
             query.set('page', String(params.page));
         }
-        // if (params?.page_size != null) {
-        //     query.set('page_size', String(params.page_size));
-        // }
+        if (params?.page_size != null) {
+            query.set('page_size', String(params.page_size));
+        }
         if (params?.search != null && String(params.search).trim() !== '') {
             query.set('search', String(params.search).trim());
         }

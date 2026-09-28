@@ -58,7 +58,14 @@ export type RootStackParamList = {
   CategoryDoctor: {
     categoryName?: string;
     categoryId?: string;
+    categoryDesc?: string;
+    categorySubscription?: string;
+    categorySymptoms?: string[];
+    categoryImage?: string;
+    categoryTag?: string;
   };
+  OrangeLabScreen: undefined;
+  PackagesScreen: undefined;
   Splash: undefined;
   BookingConfrimScreen: undefined;
   Appointments:
@@ -124,6 +131,7 @@ export type RootStackParamList = {
   RazorpayScreen: undefined;
   Checkout: undefined;
   DietScreen: undefined;
+  DietPlanDetail: undefined;
   Wishlist: undefined;
   Rewards: undefined;
   MedicalRecords: undefined;
@@ -152,13 +160,19 @@ export type RootStackParamList = {
   | {
     categoryId?: string;
     categoryName?: string;
-    categoryMode?: 'health' | 'product';
+    categoryMode?: 'health' | 'product' | 'both';
     productSubcategoryId?: string;
     healthCategoryId?: string;
     healthDiseaseId?: string;
     brand_name_id?: string;
     brandName?: string;
+    brandId?: string;
+    brandID?: string;
+    /** Banner / Trusted Brands — filter by brand; sidebar stays API categories only */
+    brandOnly?: boolean;
     serviceCategoryId?: string;
+    categoryDesc?: string;
+    categorySubscription?: string;
   }
   | undefined;
   OrderStatus: undefined;

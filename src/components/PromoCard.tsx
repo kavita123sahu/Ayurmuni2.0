@@ -1,5 +1,5 @@
 // components/PromoCard.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,16 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon, { TablerIconName } from './TablerIcon';
 import { BUTTON, RADIUS, SPACING, TYPO } from '../constants/responsive';
+import { resolveImageUri } from '../utils/imageUtils';
 
 interface Props {
   onPress?: () => void;
-  image?: ImageSourcePropType;
+  image?: ImageSourcePropType | string | null;
   arrowIcon?: ImageSourcePropType;
   arrowIconName?: TablerIconName;
   buttontext?: string;
@@ -28,9 +30,32 @@ interface Props {
   imageLeft?: ImageSourcePropType;
   imageLeftIconName?: TablerIconName;
   showButton?: boolean;
-  /** Compact aesthetic card for category landings */
-  variant?: 'default' | 'compact';
+  /** compact = slim strip; banner = clean hero with optional symptom bullets */
+  variant?: 'default' | 'compact' | 'banner';
+  /** Symptom / concern bullets (banner variant) */
+  symptoms?: string[] | null;
 }
+
+const normalizeSymptoms = (raw?: string[] | null, max = 6): string[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(s => {
+      if (s == null) return '';
+      if (typeof s === 'string') return s.trim();
+      if (typeof s === 'object') {
+        return String(
+          (s as any).name ||
+            (s as any).symptom ||
+            (s as any).title ||
+            (s as any).label ||
+            '',
+        ).trim();
+      }
+      return String(s).trim();
+    })
+    .filter(Boolean)
+    .slice(0, max);
+};
 
 const PromoCard: React.FC<Props> = ({
   onPress,
@@ -47,11 +72,88 @@ const PromoCard: React.FC<Props> = ({
   approved = false,
   showButton = true,
   variant = 'default',
+  symptoms,
 }) => {
   const isCompact = variant === 'compact';
+  const isBanner = variant === 'banner';
   const descText = String(desc || '').trim();
   const subText = String(subscription || '').trim();
   const tagText = String(tag || '').trim();
+  const symptomList = useMemo(() => normalizeSymptoms(symptoms), [symptoms]);
+console.log("symptomssymptomssymptomssymptoms",symptoms)
+  const imageSource: ImageSourcePropType | null = useMemo(() => {
+    if (!image) return null;
+    if (typeof image === 'string') {
+      const uri = resolveImageUri(image) || image.trim();
+      return uri ? { uri } : null;
+    }
+    return image;
+  }, [image]);
+
+  if (isBanner) {
+    return (
+      <View style={styles.bannerShell}>
+        <LinearGradient
+          colors={['#EEF8F4', '#F7FBFA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.bannerStrip}
+        >
+          <View style={styles.bannerTop}>
+            <View style={styles.bannerCopy}>
+              {tagText ? (
+                <Text style={styles.bannerTag} numberOfLines={1}>
+                  {tagText}
+                </Text>
+              ) : null}
+              <Text style={styles.bannerTitle} numberOfLines={1}>
+                {title}
+              </Text>
+              {subText ? (
+                <Text style={styles.bannerSub} numberOfLines={1}>
+                  {subText}
+                </Text>
+              ) : null}
+              {descText ? (
+                <Text style={styles.bannerDesc} numberOfLines={3}>
+                  {descText}
+                </Text>
+              ) : null}
+            </View>
+
+            {imageSource ? (
+              <Image
+                source={imageSource}
+                style={styles.bannerImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.bannerImage, styles.bannerImageFallback]}>
+                <TablerIcon
+                  name={imageLeftIconName || 'heart'}
+                  size={24}
+                  color={Colors.primaryColor}
+                />
+              </View>
+            )}
+          </View>
+
+          {symptomList.length > 0 ? (
+            <View style={styles.symptomList}>
+              {symptomList.map((item, index) => (
+                <View key={`${item}-${index}`} style={styles.symptomBulletRow}>
+                  <Text style={styles.bulletGlyph}>•</Text>
+                  <Text style={styles.symptomText} numberOfLines={2}>
+                    {item}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </LinearGradient>
+      </View>
+    );
+  }
 
   if (isCompact) {
     return (
@@ -75,6 +177,18 @@ const PromoCard: React.FC<Props> = ({
             <Text style={styles.compactDesc} numberOfLines={3}>
               {descText}
             </Text>
+          ) : null}
+          {symptomList.length > 0 ? (
+            <View style={styles.compactSymptoms}>
+              {symptomList.slice(0, 3).map((item, index) => (
+                <View key={`${item}-${index}`} style={styles.symptomRow}>
+                  <View style={styles.bulletDotCompact} />
+                  <Text style={styles.compactSymptomText} numberOfLines={1}>
+                    {item}
+                  </Text>
+                </View>
+              ))}
+            </View>
           ) : null}
         </View>
         {imageLeftIconName ? (
@@ -134,8 +248,8 @@ const PromoCard: React.FC<Props> = ({
           ) : null}
         </View>
 
-        {image ? (
-          <Image source={image} style={styles.image} resizeMode="contain" />
+        {imageSource ? (
+          <Image source={imageSource} style={styles.image} resizeMode="contain" />
         ) : (
           <View style={styles.imagePlaceholder}>
             <TablerIcon name="package" size={32} color={Colors.primaryColor} />
@@ -169,8 +283,113 @@ const PromoCard: React.FC<Props> = ({
 export default PromoCard;
 
 const IMAGE_SIZE = 72;
+const BANNER_IMAGE = 72;
 
 const styles = StyleSheet.create({
+  bannerShell: {
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  bannerStrip: {
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    overflow: 'hidden',
+  },
+  bannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bannerCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  bannerTag: {
+    fontSize: 10,
+    letterSpacing: 0.35,
+    textTransform: 'uppercase',
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginBottom: 2,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  bannerSub: {
+    marginTop: 2,
+    fontSize: 11,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  bannerDesc: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#64748B',
+    fontFamily: Fonts.PoppinsRegular,
+  },
+  bannerImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0D614E12',
+  },
+  bannerImage: {
+    width: BANNER_IMAGE,
+    height: BANNER_IMAGE,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  symptomList: {
+    marginTop: 10,
+    gap: 6,
+  },
+  symptomBulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  symptomChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: '100%',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D5E8E1',
+  },
+  symptomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulletGlyph: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+    marginTop: 0,
+  },
+  bulletDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 5,
+    backgroundColor: Colors.primaryColor,
+  },
+  symptomText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsRegular,
+  },
   card: {
     marginTop: SPACING.md,
     paddingHorizontal: SPACING.lg,
@@ -237,6 +456,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: Fonts.PoppinsRegular,
     color: '#64748B',
+    lineHeight: 15,
+  },
+  compactSymptoms: {
+    marginTop: 8,
+    gap: 4,
+  },
+  bulletDotCompact: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 5,
+    backgroundColor: Colors.primaryColor,
+  },
+  compactSymptomText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsMedium,
     lineHeight: 15,
   },
   row: {

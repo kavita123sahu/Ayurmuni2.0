@@ -19,25 +19,32 @@ import { showSuccessToast } from '../../config/Key';
 import { safeGoBack } from '../../navigation/navigationUtils';
 import {
   acceptPolicies,
+  getLegalRequiredPolicies,
   getPoliciesList,
+  getPolicyDocument,
   getRequiredPolicies,
+  normalizePolicyContent,
 } from '../../services/PolicyServices';
-import { isPolicyAccepted, isPolicyVersionUpdated } from '../../utils/policyUtils';
+import { isPolicyAccepted } from '../../utils/policyUtils';
 
 type RouteParams = {
   policyType?: string;
   title?: string;
   requireAccept?: boolean;
   agreed?: boolean;
+  /** Load via GET /policies/legal/required/ without auth token (Login). */
+  publicView?: boolean;
 };
 
 const PolicyDetailScreen = (props: any) => {
   const insets = useSafeAreaInsets();
   const params = (props?.route?.params || {}) as RouteParams;
   const policyType = params.policyType;
+  const publicView = params.publicView === true;
 
   const requireAccept =
-    params.requireAccept === true || params.agreed === false;
+    !publicView &&
+    (params.requireAccept === true || params.agreed === false);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,7 +57,8 @@ const PolicyDetailScreen = (props: any) => {
     params.title ||
     policy?.title ||
     policy?.name ||
-    (policyType === 'terms_of_service'
+    (policyType === 'terms_of_service' ||
+    policyType === 'terms_and_conditions'
       ? 'Terms of Use'
       : policyType === 'privacy_policy'
         ? 'Privacy Policy'
@@ -58,22 +66,40 @@ const PolicyDetailScreen = (props: any) => {
 
   const load = useCallback(
     async (isRefresh = false) => {
-      // if (isRefresh) setRefreshing(true);
-      // else setLoading(true);
-      // setError(null);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
 
       try {
-        const res = await getRequiredPolicies(policyType);
+        const res: any = publicView
+          ? await getLegalRequiredPolicies(policyType)
+          : await getRequiredPolicies(policyType);
+
+        if (res?.success === false) {
+          setError(res?.message || 'Unable to load this policy right now.');
+          setPolicy(null);
+          setPolicyEntry(null);
+          return;
+        }
+
         const list = getPoliciesList(res);
-        const entry = list[0];
-        const doc = entry?.policy ?? entry ?? null;
+        const entry =
+          list.find(
+            (item: any) =>
+              (item?.policy?.policy_type || item?.policy_type) ===
+              policyType,
+          ) || list[0];
+        const doc = getPolicyDocument(entry);
         if (!doc) {
           setError('Unable to load this policy right now.');
           setPolicy(null);
           setPolicyEntry(null);
           return;
         }
-        setPolicy(doc);
+        setPolicy({
+          ...doc,
+          content: normalizePolicyContent(doc?.content),
+        });
         setPolicyEntry(entry);
       } catch (e: any) {
         setError(e?.message || 'Failed to load policy. Please try again.');
@@ -83,7 +109,7 @@ const PolicyDetailScreen = (props: any) => {
         setRefreshing(false);
       }
     },
-    [policyType],
+    [policyType, publicView],
   );
 
   useEffect(() => {
@@ -166,7 +192,7 @@ const PolicyDetailScreen = (props: any) => {
                 {!!policy?.subtitle && (
                   <Text style={styles.bannerSub}>{policy.subtitle}</Text>
                 )}
-                {isPolicyAccepted(policyEntry) ? (
+                {!publicView && isPolicyAccepted(policyEntry) ? (
                   <View style={styles.updateNote}>
                     <TablerIcon
                       name="alert-circle"

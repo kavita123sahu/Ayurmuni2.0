@@ -23,7 +23,7 @@ import {
 } from '../utils/productStockUtils';
 import { showSuccessToast } from '../config/Key';
 import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
-import { RupeeAmount } from '../utils/currencyUtils';
+import { formatDiscountOff, RupeeAmount, roundDiscountPercent } from '../utils/currencyUtils';
 
 const GRID_GAP = 10;
 const IMAGE_HEIGHT_GRID = 136;
@@ -88,10 +88,12 @@ const ProductCard: React.FC<Props> = ({
   const cardHeight = isGrid ? GRID_CARD_HEIGHT : HORIZONTAL_CARD_HEIGHT;
   const imageHeight = isGrid ? IMAGE_HEIGHT_GRID : IMAGE_HEIGHT_HORIZONTAL;
 
-  const discount =
+  const discountFromPrice =
     item?.mrp > item?.selling_price
       ? Math.round(((item.mrp - item.selling_price) / item.mrp) * 100)
       : 0;
+  const discount =
+    roundDiscountPercent(item?.discount) || discountFromPrice;
 
   trackListingStock(item);
   const stockQty = getProductStockQty(item);
@@ -172,7 +174,7 @@ const ProductCard: React.FC<Props> = ({
         ) : discount > 0 ? (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText} allowFontScaling={false}>
-              {discount}% OFF
+              {formatDiscountOff(discount)}
             </Text>
           </View>
         ) : null}
@@ -228,7 +230,13 @@ const ProductCard: React.FC<Props> = ({
           </View>
 
           <View style={styles.ratingRow}>
-            <TablerIcon name="star" size={11} color="#FBBF24" strokeWidth={2} />
+            <View style={styles.ratingIconWrap}>
+              <TablerIcon
+                name="star-filled"
+                size={11}
+                color="#FBBF24"
+              />
+            </View>
             <Text
               style={styles.ratingText}
               numberOfLines={1}
@@ -392,7 +400,15 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    gap: 3,
+    minHeight: 14,
+  },
+  ratingIconWrap: {
+    width: 12,
+    height: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ratingText: {
     fontSize: TYPO.xs,
@@ -400,5 +416,6 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
     includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });

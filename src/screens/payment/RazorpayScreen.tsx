@@ -924,16 +924,18 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                         />
                                     </View>
 
-                                    <View style={styles.summaryRow}>
-                                        <Text style={styles.summaryLabel}>
-                                            {feeBreakdown.gstLabel}
-                                        </Text>
-                                        <RupeeAmount
-                                            value={feeBreakdown.gst}
-                                            style={styles.summaryValue}
-                                            decimals={2}
-                                        />
-                                    </View>
+                                    {feeBreakdown.gst > 0 ? (
+                                      <View style={styles.summaryRow}>
+                                          <Text style={styles.summaryLabel}>
+                                              {feeBreakdown.gstLabel}
+                                          </Text>
+                                          <RupeeAmount
+                                              value={feeBreakdown.gst}
+                                              style={styles.summaryValue}
+                                              decimals={2}
+                                          />
+                                      </View>
+                                    ) : null}
 
                                     <LinearGradient
                                         colors={['#ECFDF5', '#D1FAE5']}

@@ -956,7 +956,14 @@ import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import { useHealthCategories } from '../../hooks/useHealthCategories';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
+import {
+  TogglewishlistProduct,
+  getHealthCategories,
+  mapProductCategory,
+  normalizeApiList,
+  parseHealthSymptoms,
+} from '../../services/ProductServices';
+import { apiClient } from '../../services/APIconfig';
 import { showSuccessToast } from '../../config/Key';
 import { requireAuth } from '../../services/guestAuth';
 import { navigateToProductDetails } from '../../navigation/productNavigation';
@@ -1015,9 +1022,117 @@ const CategoryDoctor = (props: any) => {
   const [dietLoading, setDietLoading] = useState(false);
   const [yogaLoading, setYogaLoading] = useState(false);
 
-  const { categoryName, categoryId, categoryDesc, categorySubscription } =
-    route.params || {};
+  const {
+    categoryName,
+    categoryId,
+    categoryDesc,
+    categorySubscription,
+    categorySymptoms,
+    categoryImage,
+    categoryTag,
+  } = route.params || {};
   const concernId = categoryId ? String(categoryId) : '';
+
+  const routeSymptoms = useMemo(
+    () => parseHealthSymptoms(categorySymptoms),
+    [categorySymptoms],
+  );
+
+  /** Hydrate from health-categories APIs so symptoms always show when present. */
+  const [apiConcern, setApiConcern] = useState<{
+    name?: string;
+    description?: string;
+    subscription?: string;
+    symptoms: string[];
+    image_url?: string;
+    service_category_name?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!concernId) return;
+    let cancelled = false;
+
+    const matchConcern = (item: any) =>
+      String(
+        item?.id ??
+          item?.health_category_id ??
+          item?.category_id ??
+          '',
+      ) === concernId;
+
+    const applyFound = (found: any) => {
+      if (!found || cancelled) return false;
+      const mapped = mapProductCategory(found);
+      const symptoms = parseHealthSymptoms(
+        found?.symptoms ??
+          found?.symptom_list ??
+          found?.common_symptoms ??
+          mapped.symptoms,
+      );
+      setApiConcern({
+        name: mapped.name,
+        description: mapped.description,
+        subscription: mapped.subscription,
+        symptoms,
+        image_url:
+          typeof mapped.image_url === 'string' ? mapped.image_url : undefined,
+        service_category_name: mapped.service_category_name,
+      });
+      return symptoms.length > 0;
+    };
+
+    (async () => {
+      try {
+        // 1) user/health-categories/ — includes symptoms in list payloads
+        const userRes = await apiClient('user/health-categories/', {
+          method: 'GET',
+        });
+        if (!cancelled) {
+          const userList = normalizeApiList(userRes);
+          const fromUser = userList.find(matchConcern);
+          if (fromUser && applyFound(fromUser)) return;
+          if (fromUser) applyFound(fromUser);
+        }
+
+        // 2) customers/health-categories/ fallback
+        const response = await getHealthCategories();
+        if (cancelled || response?.success === false) return;
+        const found = normalizeApiList(response).find(matchConcern);
+        if (found) applyFound(found);
+      } catch (error) {
+        console.log('CATEGORY_DOCTOR_CONCERN_META_ERROR =>', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [concernId]);
+
+  const concernSymptoms = useMemo(() => {
+    const fromRoute = routeSymptoms;
+    const fromApi = Array.isArray(apiConcern?.symptoms)
+      ? apiConcern.symptoms
+      : [];
+    // Prefer whichever source actually has symptoms
+    if (fromRoute.length > 0) return fromRoute;
+    return fromApi;
+  }, [routeSymptoms, apiConcern?.symptoms]);
+
+  const bannerTitle = String(
+    categoryName || apiConcern?.name || 'Concern',
+  );
+  const bannerDesc = String(
+    categoryDesc || apiConcern?.description || '',
+  ).trim();
+  const bannerSubscription = String(
+    categorySubscription || apiConcern?.subscription || '',
+  ).trim();
+  const bannerImage = categoryImage || apiConcern?.image_url || undefined;
+  const bannerTag =
+    String(categoryTag || apiConcern?.service_category_name || '').trim() ||
+    undefined;
+
   const debouncedSearch = useDebounce(searchText, 400);
 
   // Diseases = children of health category
@@ -1173,7 +1288,7 @@ const CategoryDoctor = (props: any) => {
             : {}),
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       });
-      const list = filterByConcern(normalizeDietPlanList(res))
+      const list = normalizeDietPlanList(res)
         .map(mapDietPlanForHome)
         .filter(item => item.id)
         .slice(0, DIET_YOGA_PREVIEW);
@@ -1469,11 +1584,13 @@ const CategoryDoctor = (props: any) => {
     () => (
       <>
         <PromoCard
-          variant="compact"
-          title={String(categoryName || 'Concern')}
-          desc={String(categoryDesc || '').trim()}
-          subscription={String(categorySubscription || '').trim()}
-          imageLeftIconName="plus-bag"
+          variant="banner"
+          title={bannerTitle}
+          desc={bannerDesc}
+          subscription={bannerSubscription}
+          tag={bannerTag}
+          image={bannerImage}
+          symptoms={concernSymptoms}
           showButton={false}
         />
 
@@ -1576,9 +1693,13 @@ const CategoryDoctor = (props: any) => {
       </>
     ),
     [
+      bannerTitle,
+      bannerDesc,
+      bannerSubscription,
+      bannerImage,
+      bannerTag,
+      concernSymptoms,
       categoryName,
-      categoryDesc,
-      categorySubscription,
       doctorList.length,
       doctorsLoading,
       hasDoctors,

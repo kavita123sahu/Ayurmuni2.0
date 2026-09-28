@@ -29,7 +29,7 @@
 -keep class com.facebook.jni.** { *; }
 
 # App package
--keep class com.ayurmuniapp.** { *; }
+-keep class com.ayurmuniecosystem.** { *; }
 
 # Networking
 -dontwarn okhttp3.**

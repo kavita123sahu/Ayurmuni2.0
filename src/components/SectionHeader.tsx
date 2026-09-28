@@ -49,6 +49,9 @@ const styles = StyleSheet.create({
   },
   containerHome: {
     paddingHorizontal: 0,
+    /** Parent `sections` gap owns spacing — avoid double gap vs rest of home */
+    marginTop: 0,
+    marginBottom: 8,
   },
   title: {
     fontFamily: Fonts.PoppinsSemiBold,

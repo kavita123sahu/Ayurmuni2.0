@@ -7,6 +7,8 @@ export const ORDER_PAGE_SIZE = 10;
 export type GetOrdersParams = {
   page?: number;
   page_size?: number;
+  /** Server-side search (order code, product name, status, etc.) */
+  search?: string;
 };
 
 /**
@@ -31,6 +33,7 @@ export const getOrderFeeQuote = async (payload: {
     method: 'POST',
     body: JSON.stringify(body),
   });
+  console.log("orderfessssss", response)
   return response;
 };
 
@@ -124,6 +127,8 @@ export const getOrders = async (params?: GetOrdersParams) => {
     const query = new URLSearchParams();
     if (params?.page) query.set('page', String(params.page));
     if (params?.page_size) query.set('page_size', String(params.page_size));
+    const search = String(params?.search || '').trim();
+    if (search) query.set('search', search);
 
     const path = query.toString() ? `order/?${query.toString()}` : 'order/';
 

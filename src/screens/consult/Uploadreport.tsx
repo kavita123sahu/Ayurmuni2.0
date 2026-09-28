@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   Pressable,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
@@ -126,9 +127,18 @@ const PrescriptionUpload: React.FC<Props> = ({
       <Modal visible={showRecordModal} animationType="slide">
         <SafeAreaView style={styles.recordModalContainer} edges={['top', 'left', 'right']}>
           <View style={styles.recordModalHeader}>
-            <Text style={styles.recordTitle}>Existing records</Text>
-            <TouchableOpacity onPress={() => setShowRecordModal(false)}>
-              <TablerIcon name="x" size={22} color="#64748B" />
+            <View>
+              <Text style={styles.recordTitle}>Existing records</Text>
+              <Text style={styles.recordSubtitle}>
+                Tap a card to select • {selectedRecords?.length || 0} selected
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowRecordModal(false)}
+              style={styles.recordCloseBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <TablerIcon name="x" size={18} color="#64748B" />
             </TouchableOpacity>
           </View>
 
@@ -136,10 +146,15 @@ const PrescriptionUpload: React.FC<Props> = ({
             style={styles.recordList}
             data={records}
             keyExtractor={item => item.id}
+            numColumns={2}
+            columnWrapperStyle={styles.recordGridRow}
             contentContainerStyle={styles.recordListContent}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
               const selected = selectedRecords?.includes(item.id);
+              const isImage =
+                item.file_type === 'image' ||
+                /\.(jpe?g|png|webp|gif)$/i.test(String(item.file_url || ''));
               return (
                 <TouchableOpacity
                   onPress={() => toggleRecord(item.id)}
@@ -149,31 +164,42 @@ const PrescriptionUpload: React.FC<Props> = ({
                   ]}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.recordIcon}>
-                    <TablerIcon
-                      name={item.file_type === 'pdf' ? 'file' : 'photo'}
-                      size={20}
-                      color={Colors.primaryColor}
-                    />
+                  <View style={styles.recordThumbWrap}>
+                    {isImage && item.file_url ? (
+                      <Image
+                        source={{ uri: item.file_url }}
+                        style={styles.recordThumb}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.recordThumbFallback}>
+                        <TablerIcon
+                          name={item.file_type === 'pdf' ? 'file' : 'photo'}
+                          size={28}
+                          color={Colors.primaryColor}
+                        />
+                      </View>
+                    )}
+                    {selected ? (
+                      <View style={styles.recordSelectedBadge}>
+                        <TablerIcon name="check" size={12} color="#FFFFFF" />
+                      </View>
+                    ) : null}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.recordName} numberOfLines={1}>
-                      {item.description}
-                    </Text>
-                    <Text style={styles.recordType}>
-                      {item.file_type?.toUpperCase()}
-                    </Text>
-                  </View>
-                  <TablerIcon
-                    name={selected ? 'check' : 'clipboard-list'}
-                    size={22}
-                    color={selected ? Colors.primaryColor : '#CBD5E1'}
-                  />
+                  <Text style={styles.recordName} numberOfLines={2}>
+                    {item.description || 'Medical record'}
+                  </Text>
+                  <Text style={styles.recordType}>
+                    {String(item.file_type || 'file').toUpperCase()}
+                  </Text>
                 </TouchableOpacity>
               );
             }}
             ListEmptyComponent={
-              <Text style={styles.emptyRecords}>No saved records yet</Text>
+              <View style={styles.emptyRecordsWrap}>
+                <TablerIcon name="file-medical" size={36} color="#CBD5E1" />
+                <Text style={styles.emptyRecords}>No saved records yet</Text>
+              </View>
             }
           />
 
@@ -410,7 +436,7 @@ const styles = StyleSheet.create({
   },
   recordModalContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#F8FAFC',
   },
   recordModalHeader: {
     flexDirection: 'row',
@@ -418,16 +444,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+  },
+  recordCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   recordList: {
     flex: 1,
   },
   recordListContent: {
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     flexGrow: 1,
+  },
+  recordGridRow: {
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   recordModalFooter: {
     paddingHorizontal: 20,
@@ -441,20 +481,52 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#111827',
   },
+  recordSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsMedium,
+  },
   recordCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    marginHorizontal: 16,
-    marginTop: 10,
+    width: '48%',
     backgroundColor: '#FFF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    padding: 10,
+    overflow: 'hidden',
   },
   selectedRecordCard: {
     borderColor: Colors.primaryColor,
     backgroundColor: '#F0FDF4',
+  },
+  recordThumbWrap: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#ECFDF5',
+    marginBottom: 8,
+  },
+  recordThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  recordThumbFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordSelectedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.primaryColor,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   recordIcon: {
     width: 40,
@@ -466,19 +538,26 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   recordName: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#111827',
+    minHeight: 34,
   },
   recordType: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94A3B8',
-    fontFamily: Fonts.PoppinsRegular,
+    fontFamily: Fonts.PoppinsMedium,
     marginTop: 2,
+    letterSpacing: 0.3,
+  },
+  emptyRecordsWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 64,
+    gap: 10,
   },
   emptyRecords: {
     textAlign: 'center',
-    marginTop: 40,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
   },
