@@ -598,8 +598,8 @@
 | View prescription | ✅ | ✅ | ✅ OK | After consultation |
 | Download receipt | ✅ | ✅ | ✅ OK | Medical receipt |
 | Share experience | ✅ | ✅ | ✅ OK | Write review |
-| Reschedule appointment | ✅ | ❌ | ❌ MISSING | Change date/time |
-| Cancel appointment | ✅ | ❌ | ❌ MISSING | Cancel booking |
+| Reschedule appointment | ✅ | ✅ | ✅ OK | ✅ ALREADY IMPLEMENTED: Full modal with slot selection |
+| Cancel appointment | ✅ | ✅ | ✅ OK | ✅ ALREADY IMPLEMENTED: Modal with reasons & notes |
 | Upload reports | ✅ | ❌ | ❌ MISSING | Upload medical reports |
 | Download reports | ✅ | ❌ | ❌ MISSING | Download uploaded reports |
 
@@ -1524,7 +1524,7 @@
 
 1. ~~**Referral System**~~ - ✅ COMPLETED: Referral code/link/sharing system
 2. **Order Returns/Refunds** - Return request, tracking, refund status
-3. **Appointment Reschedule/Cancel** - Change/cancel appointments
+3. ~~**Appointment Reschedule/Cancel**~~ - ✅ ALREADY IMPLEMENTED: Change/cancel appointments
 4. **Prescription Expiry** - Track prescription expiry dates
 5. **Live Order Tracking** - Real-time tracking with map
 6. **Notification Settings** - Enable/disable notifications
