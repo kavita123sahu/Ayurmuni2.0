@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Gift, Star } from 'lucide-react';
 import AppShell from '../components/AppShell';
 import PageHeader from '../components/PageHeader';
+import ReferralCard from '../components/ReferralCard';
 import { requireAuth } from '../services/guestAuth';
 import { showSuccessToast } from '../config/key';
 import { fetchRewards } from '../services/rewardService';
@@ -88,6 +89,11 @@ export default function Rewards() {
     <AppShell tab="profile">
       <section className="rw-page">
         <PageHeader title={T.title} subtitle={T.subtitle} backTo="/profile" />
+
+        {/* Referral Card */}
+        <div className="rw-referral-section">
+          <ReferralCard />
+        </div>
 
         <div className="rw-how">
           <h2>{T.howTitle}</h2>

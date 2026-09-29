@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, LogOut } from 'lucide-react';
 import AppShell from '../components/AppShell';
 import PageHeader from '../components/PageHeader';
+import ReferralCard from '../components/ReferralCard';
 import { Utils } from '../common/utils';
 import { showSuccessToast } from '../config/key';
 import {
@@ -222,6 +223,11 @@ export default function Profile() {
               <small>{item.subtitle}</small>
             </button>
           ))}
+        </div>
+
+        {/* Referral Card */}
+        <div className="pf-referral-section">
+          <ReferralCard />
         </div>
 
         <div className="pf-menus">

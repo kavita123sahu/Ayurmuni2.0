@@ -115,6 +115,11 @@
   font-size: var(--am-text-xs);
 }
 
+/* Referral Section */
+.pf-referral-section {
+  margin: var(--am-space-6) 0;
+}
+
 /* Menus */
 .pf-menus {
   display: flex;
