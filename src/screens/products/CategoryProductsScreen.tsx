@@ -738,6 +738,11 @@ import { safeGoBack } from '../../navigation/navigationUtils';
 import { navigateToProductDetails } from '../../navigation/productNavigation';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import {
+  getProduct,
+  mapCatalogProductItem,
+  normalizeApiList,
+} from '../../services/ProductServices';
+import {
   ProductCategoryItem,
   useProductCategories,
 } from '../../hooks/useProductCategories';
@@ -751,6 +756,7 @@ import {
 import { renderCategoryName } from '../../common/DataInterface';
 import TablerIcon from '../../components/TablerIcon';
 import PromoCard from '../../components/PromoCard';
+import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CATEGORY_PANEL_WIDTH = 78;
@@ -759,7 +765,21 @@ const GRID_GAP = 8;
 const PRODUCT_PANEL_WIDTH = SCREEN_W - CATEGORY_PANEL_WIDTH;
 const GRID_CARD_WIDTH = (PRODUCT_PANEL_WIDTH - CONTENT_PADDING - GRID_GAP) / 2;
 
-type CategoryItem = ProductCategoryItem & { isAll?: boolean };
+type CategoryRail = 'product' | 'health';
+
+type CategoryItem = Omit<
+  ProductCategoryItem,
+  'symptoms' | 'parent_id' | 'service_category_name'
+> &
+  Partial<
+    Pick<ProductCategoryItem, 'symptoms' | 'parent_id' | 'service_category_name'>
+  > & {
+  isAll?: boolean;
+  /** Which catalog this sidebar row filters (both-mode). */
+  rail?: CategoryRail;
+  /** Real API category id when `id` is rail-prefixed. */
+  sourceId?: string;
+};
 
 const ALL_CATEGORY: CategoryItem = {
   id: 'all',
@@ -771,42 +791,81 @@ const ALL_CATEGORY: CategoryItem = {
   isAll: true,
 };
 
+const toRailCategory = (
+  item: ProductCategoryItem,
+  rail: CategoryRail,
+): CategoryItem => {
+  const sourceId = String(item?.id || '');
+  return {
+    ...item,
+    id: `${rail}:${sourceId}`,
+    sourceId,
+    rail,
+  };
+};
+
 const CategoryProductsScreen = (props: any) => {
   const routeParams = props?.route?.params ?? {};
   const rawMode = String(routeParams.categoryMode || '').toLowerCase();
   // medicine → product catalog filtered by medicine service_category_id
-  const categoryMode: 'health' | 'product' =
+  // both → merged Products + Medicine (health) category rails
+  // brandOnly / brand_name_id from banner → filter products by brand; sidebar = API only
+
+  const isBrandLanding = Boolean(
+    routeParams.brandOnly ||
+      ((routeParams.brand_name_id ||
+        routeParams.brandId ||
+        routeParams.brandID) &&
+        !routeParams.categoryId &&
+        !routeParams.healthCategoryId),
+  );
+
+  const categoryMode: 'health' | 'product' | 'both' =
     rawMode === 'health'
       ? 'health'
-      : rawMode === 'medicine' || rawMode === 'product'
-        ? 'product'
-        : routeParams.healthCategoryId && !routeParams.categoryId
-          ? 'health'
-          : 'product';
+      : rawMode === 'both'
+        ? 'both'
+        : rawMode === 'medicine' || rawMode === 'product'
+          ? 'product'
+          : routeParams.healthCategoryId && !routeParams.categoryId
+            ? 'health'
+            : 'product';
 
-  const initialCategoryId = routeParams.categoryId
-    ? String(routeParams.categoryId)
-    : routeParams.healthCategoryId
-      ? String(routeParams.healthCategoryId)
-      : 'all';
-  const initialSubcategoryId = routeParams.productSubcategoryId
-    ? String(routeParams.productSubcategoryId)
-    : routeParams.healthDiseaseId
-      ? String(routeParams.healthDiseaseId)
-      : null;
+  const initialCategoryId =
+    isBrandLanding
+      ? 'all'
+      : routeParams.categoryId
+        ? String(routeParams.categoryId)
+        : routeParams.healthCategoryId
+          ? String(routeParams.healthCategoryId)
+          : 'all';
+  const initialSubcategoryId = isBrandLanding
+    ? null
+    : routeParams.productSubcategoryId
+      ? String(routeParams.productSubcategoryId)
+      : routeParams.healthDiseaseId
+        ? String(routeParams.healthDiseaseId)
+        : null;
+  /** Banner brand id only — never use categoryName as brand. */
   const initialBrandId = routeParams.brand_name_id
     ? String(routeParams.brand_name_id)
-    : null;
-  const initialBrandName = routeParams.brandName
-    ? String(routeParams.brandName)
-    : null;
+    : routeParams.brandId
+      ? String(routeParams.brandId)
+      : routeParams.brandID
+        ? String(routeParams.brandID)
+        : null;
   const serviceCategoryId = routeParams.serviceCategoryId
     ? String(routeParams.serviceCategoryId)
     : null;
 
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
-  const { medicineProducts, storeProducts, productData } = useHomeData();
+  const {
+    categories: dashboardCategories,
+    medicineProducts,
+    storeProducts,
+    productData,
+  } = useHomeData();
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
@@ -815,55 +874,194 @@ const CategoryProductsScreen = (props: any) => {
   const [brandIds, setBrandIds] = useState<string[]>(
     initialBrandId ? [initialBrandId] : [],
   );
-  const [brandNames, setBrandNames] = useState<string[]>(
-    initialBrandName ? [initialBrandName] : [],
-  );
+  /** Names resolved from brands list by id — not from banner categoryName */
+  const [brandNames, setBrandNames] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<PriceRangeKey>('all');
-  const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
+    if (isBrandLanding || initialCategoryId === 'all') return 'all';
+    if (rawMode === 'both') {
+      if (routeParams.healthCategoryId) {
+        return `health:${String(routeParams.healthCategoryId)}`;
+      }
+      if (routeParams.categoryId) {
+        return `product:${String(routeParams.categoryId)}`;
+      }
+    }
+    return initialCategoryId;
+  });
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(
     initialSubcategoryId,
   );
 
-  const activeCategoryId =
-    selectedCategoryId === 'all' ? null : selectedCategoryId;
-
-  // Medicine Shop by Concern → health concerns + disease subcategories
-  // Medicine product browse → product categories under medicine service
   const useHealthRail = categoryMode === 'health';
+  const useBothRail = categoryMode === 'both';
 
-  const { categories: productTopCategories, loading: productTopLoading, refresh: refreshProductTop } =
-    useProductCategories(null, useHealthRail ? null : serviceCategoryId);
+  const productsServiceId = useMemo(
+    () => getServiceCategoryId(dashboardCategories, 'products'),
+    [dashboardCategories],
+  );
+  const medicineServiceId = useMemo(
+    () => getServiceCategoryId(dashboardCategories, 'medicine'),
+    [dashboardCategories],
+  );
 
-  const { categories: healthTopCategories, loading: healthTopLoading, refresh: refreshHealthTop } =
-    useHealthCategories(null, useHealthRail ? serviceCategoryId : null);
+  // Product browse (or products half of both-mode merge)
+  const productTopServiceId = useBothRail
+    ? productsServiceId
+    : useHealthRail
+      ? null
+      : serviceCategoryId;
 
-  const topCategories = useHealthRail ? healthTopCategories : productTopCategories;
+  const {
+    categories: productTopCategories,
+    loading: productTopLoading,
+    refresh: refreshProductTop,
+  } = useProductCategories(null, productTopServiceId, {
+    enabled: !useHealthRail,
+  });
+
+  // Medicine side of both-mode = health concerns (same format as product categories)
+  const healthTopServiceId = useHealthRail
+    ? serviceCategoryId
+    : useBothRail
+      ? medicineServiceId
+      : null;
+
+  const {
+    categories: healthTopCategories,
+    loading: healthTopLoading,
+    refresh: refreshHealthTop,
+  } = useHealthCategories(null, healthTopServiceId);
+
+  const topCategories = useMemo<CategoryItem[]>(() => {
+    if (useHealthRail) return healthTopCategories;
+    if (!useBothRail) return productTopCategories;
+
+    const merged: CategoryItem[] = [];
+    const seen = new Set<string>();
+
+    const pushUnique = (
+      list: ProductCategoryItem[],
+      rail: CategoryRail,
+    ) => {
+      (Array.isArray(list) ? list : []).forEach(item => {
+        const sourceId = String(item?.id || '');
+        if (!sourceId) return;
+        const key = `${rail}:${sourceId}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        merged.push(toRailCategory(item, rail));
+      });
+    };
+
+    pushUnique(productTopCategories, 'product');
+    pushUnique(healthTopCategories, 'health');
+    return merged;
+  }, [
+    useHealthRail,
+    useBothRail,
+    healthTopCategories,
+    productTopCategories,
+  ]);
+
   const topCategoriesLoading = useHealthRail
     ? healthTopLoading
-    : productTopLoading;
-  const refreshTopCategories = useHealthRail
-    ? refreshHealthTop
-    : refreshProductTop;
+    : useBothRail
+      ? productTopLoading || healthTopLoading
+      : productTopLoading;
 
-  const { categories: productSubcategories, loading: productSubLoading, refresh: refreshProductSub } =
-    useProductCategories(
-      !useHealthRail ? activeCategoryId : null,
-      !useHealthRail ? serviceCategoryId : null,
-    );
+  const refreshTopCategories = useCallback(() => {
+    if (useHealthRail) {
+      refreshHealthTop();
+      return;
+    }
+    refreshProductTop();
+    if (useBothRail) {
+      refreshHealthTop();
+    }
+  }, [
+    useHealthRail,
+    useBothRail,
+    refreshHealthTop,
+    refreshProductTop,
+  ]);
 
-  const { categories: healthSubcategories, loading: healthSubLoading, refresh: refreshHealthSub } =
-    useHealthCategories(
-      useHealthRail ? activeCategoryId : null,
-      useHealthRail ? serviceCategoryId : null,
-    );
+  const selectedCategoryMeta = useMemo(() => {
+    if (selectedCategoryId === 'all') return null;
+    if (useBothRail) {
+      const fromList = topCategories.find(
+        item => item.id === selectedCategoryId,
+      );
+      if (fromList) return fromList;
+      // Route / stale selection before list loads
+      if (selectedCategoryId.startsWith('product:')) {
+        return {
+          id: selectedCategoryId,
+          sourceId: selectedCategoryId.slice('product:'.length),
+          rail: 'product' as CategoryRail,
+        };
+      }
+      if (selectedCategoryId.startsWith('health:')) {
+        return {
+          id: selectedCategoryId,
+          sourceId: selectedCategoryId.slice('health:'.length),
+          rail: 'health' as CategoryRail,
+        };
+      }
+    }
+    return {
+      id: selectedCategoryId,
+      sourceId: selectedCategoryId,
+      rail: (useHealthRail ? 'health' : 'product') as CategoryRail,
+    };
+  }, [selectedCategoryId, useBothRail, useHealthRail, topCategories]);
 
-  const subcategories = useHealthRail
+  const activeCategoryId =
+    selectedCategoryId === 'all'
+      ? null
+      : selectedCategoryMeta?.sourceId || selectedCategoryId;
+  const activeRail: CategoryRail | null =
+    selectedCategoryId === 'all'
+      ? null
+      : selectedCategoryMeta?.rail || (useHealthRail ? 'health' : 'product');
+
+  const loadProductSubs =
+    !!activeCategoryId &&
+    (useBothRail ? activeRail === 'product' : !useHealthRail);
+  const loadHealthSubs =
+    !!activeCategoryId &&
+    (useBothRail ? activeRail === 'health' : useHealthRail);
+
+  const {
+    categories: productSubcategories,
+    loading: productSubLoading,
+    refresh: refreshProductSub,
+  } = useProductCategories(
+    loadProductSubs ? activeCategoryId : null,
+    useBothRail ? null : !useHealthRail ? serviceCategoryId : null,
+    { enabled: loadProductSubs },
+  );
+
+  const {
+    categories: healthSubcategories,
+    loading: healthSubLoading,
+    refresh: refreshHealthSub,
+  } = useHealthCategories(
+    loadHealthSubs ? activeCategoryId : null,
+    useBothRail
+      ? medicineServiceId
+      : useHealthRail
+        ? serviceCategoryId
+        : null,
+  );
+
+  const subcategories = loadHealthSubs
     ? healthSubcategories
     : productSubcategories;
-  const subcategoriesLoading = useHealthRail
+  const subcategoriesLoading = loadHealthSubs
     ? healthSubLoading
     : productSubLoading;
-  const refreshSubcategories = useHealthRail
+  const refreshSubcategories = loadHealthSubs
     ? refreshHealthSub
     : refreshProductSub;
 
@@ -876,17 +1074,40 @@ const CategoryProductsScreen = (props: any) => {
         ? brandIds[0]
         : brandIds.join(',');
 
+  const isBrandAllView =
+    isBrandLanding && selectedCategoryId === 'all' && !!apiBrandNameId;
+
   const productFilter = useMemo(() => {
-    if (useHealthRail) {
+    // Brand landing + All → every product of the selected brand(s), any service
+    if (isBrandAllView) {
+      return {
+        id: null,
+        product_subcategory_id: null,
+        brand_name_id: apiBrandNameId,
+        service_category_id: null,
+      };
+    }
+
+    if (useHealthRail || activeRail === 'health') {
       return {
         health_category_id: activeCategoryId,
         health_disease_id: selectedSubcategoryId,
         brand_name_id: apiBrandNameId,
-        service_category_id: serviceCategoryId,
+        service_category_id: useBothRail ? null : serviceCategoryId,
       };
     }
 
-    // Shop by Category: parent category + optional subcategory + products service
+    if (useBothRail) {
+      // All → full merged catalog; product row → product category filter
+      return {
+        id: activeRail === 'product' ? activeCategoryId : null,
+        product_subcategory_id:
+          activeRail === 'product' ? selectedSubcategoryId : null,
+        brand_name_id: apiBrandNameId,
+        service_category_id: null,
+      };
+    }
+
     return {
       id: activeCategoryId,
       product_subcategory_id: selectedSubcategoryId,
@@ -894,7 +1115,10 @@ const CategoryProductsScreen = (props: any) => {
       service_category_id: serviceCategoryId,
     };
   }, [
+    isBrandAllView,
     useHealthRail,
+    useBothRail,
+    activeRail,
     activeCategoryId,
     selectedSubcategoryId,
     apiBrandNameId,
@@ -906,17 +1130,39 @@ const CategoryProductsScreen = (props: any) => {
     const medicine = Array.isArray(medicineProducts) ? medicineProducts : [];
     const home = Array.isArray(productData) ? productData : [];
 
-    if (useHealthRail) {
+    if (useHealthRail || activeRail === 'health') {
       return medicine.length ? medicine : store.length ? store : home;
+    }
+
+    if (useBothRail || isBrandAllView) {
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      [...store, ...medicine, ...home].forEach(item => {
+        const key = String(
+          item?.variant_id ?? item?.id ?? item?.product_id ?? '',
+        );
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        merged.push(item);
+      });
+      return merged;
     }
 
     // Shop by Category (products) → store catalog
     return store.length ? store : home.length ? home : medicine;
-  }, [useHealthRail, medicineProducts, storeProducts, productData]);
+  }, [
+    isBrandAllView,
+    useHealthRail,
+    useBothRail,
+    activeRail,
+    medicineProducts,
+    storeProducts,
+    productData,
+  ]);
 
   const {
     products: fetchedProducts,
-    loading,
+    loading: baseLoading,
     loadingMore,
     refreshing,
     refresh,
@@ -924,9 +1170,143 @@ const CategoryProductsScreen = (props: any) => {
   } = useCategoryProducts(productFilter, fallbackCatalog);
   const [products, setProducts] = useState<any[]>([]);
 
+  /**
+   * Brand + All: the brand-only catalog query can come back empty, while
+   * brand + category works. Query every sidebar category with the brand too
+   * and merge, so All = every product of that brand.
+   */
+  const [brandAllProducts, setBrandAllProducts] = useState<any[]>([]);
+  const [brandAllLoading, setBrandAllLoading] = useState(false);
+  const [brandAllNonce, setBrandAllNonce] = useState(0);
+
+  const brandAllTargets = useMemo(() => {
+    if (!isBrandAllView) return [];
+    return topCategories
+      .map(item => {
+        const sourceId = String(item.sourceId || item.id || '');
+        if (!sourceId || sourceId === 'all') return null;
+        const rail: CategoryRail =
+          item.rail || (useHealthRail ? 'health' : 'product');
+        return { sourceId, rail };
+      })
+      .filter(Boolean) as { sourceId: string; rail: CategoryRail }[];
+  }, [isBrandAllView, topCategories, useHealthRail]);
+
+  const brandAllKey = useMemo(
+    () =>
+      isBrandAllView
+        ? JSON.stringify({
+            brand: apiBrandNameId,
+            targets: brandAllTargets,
+            service: useBothRail ? null : serviceCategoryId,
+            nonce: brandAllNonce,
+          })
+        : '',
+    [
+      isBrandAllView,
+      apiBrandNameId,
+      brandAllTargets,
+      useBothRail,
+      serviceCategoryId,
+      brandAllNonce,
+    ],
+  );
+
   useEffect(() => {
-    setProducts(fetchedProducts);
-  }, [fetchedProducts]);
+    if (!brandAllKey) {
+      setBrandAllProducts([]);
+      setBrandAllLoading(false);
+      return;
+    }
+    const { brand, targets, service } = JSON.parse(brandAllKey) as {
+      brand: string;
+      targets: { sourceId: string; rail: CategoryRail }[];
+      service: string | null;
+    };
+    if (!targets.length) return;
+
+    let cancelled = false;
+    setBrandAllLoading(true);
+
+    Promise.allSettled(
+      targets.map(target =>
+        getProduct(
+          target.rail === 'health'
+            ? {
+                health_category_id: target.sourceId,
+                brand_name_id: brand,
+                ...(service ? { service_category_id: service } : {}),
+                page: 1,
+                page_size: 50,
+              }
+            : {
+                id: target.sourceId,
+                brand_name_id: brand,
+                ...(service ? { service_category_id: service } : {}),
+                page: 1,
+                page_size: 50,
+              },
+        ),
+      ),
+    )
+      .then(results => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const merged: any[] = [];
+        results.forEach(result => {
+          if (result.status !== 'fulfilled') return;
+          normalizeApiList(result.value)
+            .map(mapCatalogProductItem)
+            .filter(Boolean)
+            .forEach((item: any) => {
+              const key = String(item?.variant_id ?? item?.id ?? '');
+              if (!key || seen.has(key)) return;
+              seen.add(key);
+              merged.push(item);
+            });
+        });
+        setBrandAllProducts(merged);
+      })
+      .finally(() => {
+        if (!cancelled) setBrandAllLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brandAllKey]);
+
+  const loading = isBrandAllView
+    ? (baseLoading || brandAllLoading) && products.length === 0
+    : baseLoading;
+
+  useEffect(() => {
+    if (!isBrandAllView) {
+      setProducts(fetchedProducts);
+      return;
+    }
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    [...fetchedProducts, ...brandAllProducts].forEach(item => {
+      const key = String(item?.variant_id ?? item?.id ?? '');
+      if (key && seen.has(key)) return;
+      if (key) seen.add(key);
+      merged.push(item);
+    });
+    // Brand filter still applies on top (applyProductFilters), so local catalog is safe
+    if (merged.length === 0 && !baseLoading && !brandAllLoading) {
+      setProducts(fallbackCatalog);
+      return;
+    }
+    setProducts(merged);
+  }, [
+    fetchedProducts,
+    brandAllProducts,
+    isBrandAllView,
+    baseLoading,
+    brandAllLoading,
+    fallbackCatalog,
+  ]);
 
   const prevCategoryRef = useRef(selectedCategoryId);
 
@@ -938,26 +1318,39 @@ const CategoryProductsScreen = (props: any) => {
   }, [selectedCategoryId]);
 
   const categoryList = useMemo(() => {
-    const base = [ALL_CATEGORY, ...topCategories].filter(item => item.id);
+    // Brand banner landing → sidebar shows API categories only (no injected categoryName)
+    const base: CategoryItem[] = [ALL_CATEGORY, ...topCategories].filter(
+      item => item.id,
+    );
+
+    if (isBrandLanding) {
+      return base;
+    }
 
     // Keep the tapped concern visible on the left even before top list loads
     const routeHealthId = routeParams.healthCategoryId
       ? String(routeParams.healthCategoryId)
       : '';
     if (
-      useHealthRail &&
+      (useHealthRail || useBothRail) &&
       routeHealthId &&
-      routeHealthId !== 'all' &&
-      !base.some(item => item.id === routeHealthId)
+      routeHealthId !== 'all'
     ) {
-      base.splice(1, 0, {
-        id: routeHealthId,
-        name: String(routeParams.categoryName || 'Concern'),
-        parent_id: '',
-        image_url: '',
-        description: String(routeParams.categoryDesc || ''),
-        subscription: String(routeParams.categorySubscription || ''),
-      });
+      const healthKey = useBothRail
+        ? `health:${routeHealthId}`
+        : routeHealthId;
+      if (!base.some(item => item.id === healthKey)) {
+        base.splice(1, 0, {
+          id: healthKey,
+          sourceId: routeHealthId,
+          rail: 'health',
+          name: String(routeParams.categoryName || 'Concern'),
+          parent_id: '',
+          image_url: '',
+          description: String(routeParams.categoryDesc || ''),
+          subscription: String(routeParams.categorySubscription || ''),
+        });
+      }
     }
 
     // Same for product Shop by Category
@@ -965,25 +1358,33 @@ const CategoryProductsScreen = (props: any) => {
       ? String(routeParams.categoryId)
       : '';
     if (
-      !useHealthRail &&
+      (!useHealthRail || useBothRail) &&
       routeProductId &&
-      routeProductId !== 'all' &&
-      !base.some(item => item.id === routeProductId)
+      routeProductId !== 'all'
     ) {
-      base.splice(1, 0, {
-        id: routeProductId,
-        name: String(routeParams.categoryName || 'Category'),
-        parent_id: '',
-        image_url: '',
-        description: String(routeParams.categoryDesc || ''),
-        subscription: String(routeParams.categorySubscription || ''),
-      });
+      const productKey = useBothRail
+        ? `product:${routeProductId}`
+        : routeProductId;
+      if (!base.some(item => item.id === productKey)) {
+        base.splice(1, 0, {
+          id: productKey,
+          sourceId: routeProductId,
+          rail: 'product',
+          name: String(routeParams.categoryName || 'Category'),
+          parent_id: '',
+          image_url: '',
+          description: String(routeParams.categoryDesc || ''),
+          subscription: String(routeParams.categorySubscription || ''),
+        });
+      }
     }
 
     return base;
   }, [
     topCategories,
     useHealthRail,
+    useBothRail,
+    isBrandLanding,
     routeParams.healthCategoryId,
     routeParams.categoryId,
     routeParams.categoryName,
@@ -1026,6 +1427,28 @@ const CategoryProductsScreen = (props: any) => {
     return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [brandRecords, products]);
 
+  /** Resolve banner brand name from list once — never re-lock user's brand choice */
+  const bannerBrandAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!initialBrandId || bannerBrandAppliedRef.current) return;
+    if (brandOptions.length === 0) return;
+    const match = brandOptions.find(
+      b => String(b.id) === String(initialBrandId),
+    );
+    bannerBrandAppliedRef.current = true;
+    if (match?.name) {
+      setBrandNames([match.name]);
+    }
+  }, [initialBrandId, brandOptions]);
+
+  const selectedBrandLabel = useMemo(() => {
+    if (brandIds.length === 0) return '';
+    if (brandNames.length > 0) return brandNames[0];
+    return (
+      brandOptions.find(b => String(b.id) === String(brandIds[0]))?.name || ''
+    );
+  }, [brandIds, brandNames, brandOptions]);
+
   const filteredProducts = useMemo(
     () =>
       applyProductFilters({
@@ -1058,8 +1481,17 @@ const CategoryProductsScreen = (props: any) => {
     if (activeCategoryId) {
       refreshSubcategories();
     }
+    if (isBrandAllView) {
+      setBrandAllNonce(n => n + 1);
+    }
     refresh();
-  }, [refreshTopCategories, refreshSubcategories, refresh, activeCategoryId]);
+  }, [
+    refreshTopCategories,
+    refreshSubcategories,
+    refresh,
+    activeCategoryId,
+    isBrandAllView,
+  ]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {
@@ -1219,15 +1651,19 @@ const CategoryProductsScreen = (props: any) => {
       <View style={styles.headerWrap}>
         <Header
           title={
-            routeParams.brandName
-              ? String(routeParams.brandName)
-              : routeParams.categoryName ??
-              (useHealthRail ? 'Shop by Concern' : 'Shop by Category')
+            selectedBrandLabel ||
+            routeParams.brandName ||
+            (!isBrandLanding ? routeParams.categoryName : undefined) ||
+            (useHealthRail
+              ? 'Shop by Concern'
+              : useBothRail
+                ? 'Shop all'
+                : 'Shop by Category')
           }
           backIcon={Images.backIcon}
           onBack={() => safeGoBack(props.navigation)}
           subtitle={
-            routeParams.brandName
+            selectedBrandLabel || routeParams.brandName
               ? 'Brand products'
               : subtitle
           }

@@ -25,18 +25,21 @@ const AppInputField = ({
   disabled = false,
   containerStyle,
   inputContainerStyle,
+  required = false,
+  error,
+  keyboardType,
+  maxLength,
+  autoCapitalize,
 }: any) => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const isDropdownField = options.length > 0;
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  console.log("value", value);
+  const errorText = String(error || '').trim();
+  const hasError = errorText.length > 0;
 
   const isDateField =
     label?.toLowerCase().includes('date of birth') ||
     label?.toLowerCase().includes('valid thru');
-  // const isDateField =
-  //   label?.toLowerCase() === 'date of birth' ||
-  //   label?.toLowerCase() === 'valid thru';
 
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
@@ -51,25 +54,34 @@ const AppInputField = ({
   };
 
   const handlePress = () => {
-     if (disabled) return;
+    if (disabled) return;
 
-  if (isDateField) {
-    setDatePickerVisibility(true);
-    return;
-  }
+    if (isDateField) {
+      setDatePickerVisibility(true);
+      return;
+    }
 
-  if (isDropdownField) {
-    setDropdownVisible(true);
-  }
-
-
-
-   
+    if (isDropdownField) {
+      setDropdownVisible(true);
+    }
   };
+
+  const labelText = String(label || '').replace(/\s*\*\s*$/, '').trim();
+  const showRequired =
+    required === true || /\*\s*$/.test(String(label || ''));
+  const isDob = labelText.toLowerCase().includes('date of birth');
+  const isValidThru = labelText.toLowerCase().includes('valid thru');
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {!!labelText && (
+        <Text style={styles.label}>
+          {labelText}
+          {showRequired ? (
+            <Text style={styles.requiredMark}> *</Text>
+          ) : null}
+        </Text>
+      )}
 
       <TouchableOpacity
         activeOpacity={disabled ? 1 : 0.7}
@@ -81,13 +93,14 @@ const AppInputField = ({
             styles.inputContainer,
             inputContainerStyle,
             disabled && styles.inputDisabled,
+            hasError && styles.inputError,
           ]}
         >
           {leftIconName && (
             <TablerIcon
               name={leftIconName as TablerIconName}
               size={18}
-              color="#64748B"
+              color={hasError ? '#EF4444' : '#64748B'}
             />
           )}
 
@@ -96,26 +109,32 @@ const AppInputField = ({
             placeholder={placeholder}
             editable={!disabled && !isDateField && !isDropdownField}
             onChangeText={onChangeText}
+            keyboardType={keyboardType}
+            maxLength={maxLength}
+            autoCapitalize={autoCapitalize}
             style={[styles.input, disabled && styles.inputTextDisabled]}
+            placeholderTextColor="#94A3B8"
           />
 
           {rightIconName && (
             <TablerIcon
               name={rightIconName as TablerIconName}
               size={18}
-              color="#64748B"
+              color={hasError ? '#EF4444' : '#64748B'}
             />
           )}
         </View>
       </TouchableOpacity>
+
+      {hasError ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
         mode="date"
         onConfirm={handleConfirm}
         onCancel={() => setDatePickerVisibility(false)}
-        maximumDate={label === 'Date of Birth' ? new Date() : undefined}
-        minimumDate={label === 'Valid Thru' ? new Date() : undefined}
+        maximumDate={isDob ? new Date() : undefined}
+        minimumDate={isValidThru ? new Date() : undefined}
       />
 
       <Modal visible={dropdownVisible} transparent animationType="fade">
@@ -160,6 +179,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
     marginBottom: 6,
   },
+  requiredMark: {
+    color: '#EF4444',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -175,6 +198,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderColor: '#E2E8F0',
   },
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
   input: {
     flex: 1,
     fontSize: 14,
@@ -185,6 +212,13 @@ const styles = StyleSheet.create({
   },
   inputTextDisabled: {
     color: '#94A3B8',
+  },
+  errorText: {
+    marginTop: 4,
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#EF4444',
+    fontFamily: Fonts.PoppinsMedium,
   },
   modalOverlay: {
     flex: 1,

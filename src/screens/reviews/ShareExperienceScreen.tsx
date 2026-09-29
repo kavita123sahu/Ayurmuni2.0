@@ -397,7 +397,7 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
 
             {mediaItems.length < MAX_MEDIA && (
               <TouchableOpacity style={styles.addTile} onPress={showMediaOptions} activeOpacity={0.85}>
-                <TablerIcon name="plus" size={24} color={Colors.primaryColor} />
+                <TablerIcon name="plus" size={20} color={Colors.primaryColor} />
                 <Text style={styles.addTileText}>Add</Text>
               </TouchableOpacity>
             )}
@@ -543,58 +543,61 @@ const styles = StyleSheet.create({
   mediaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   mediaTile: {
-    width: 88,
-    height: 88,
-    borderRadius: 14,
+    width: 72,
+    height: 72,
+    borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
   },
   mediaImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#EEF2F6',
   },
   videoTile: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: Colors.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   videoLabel: {
-    marginTop: 4,
+    marginTop: 2,
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: Fonts.PoppinsMedium,
   },
   removeBtn: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: 'rgba(15,23,42,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addTile: {
-    width: 88,
-    height: 88,
-    borderRadius: 14,
+    width: 72,
+    height: 72,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: '#B7D8CE',
-    backgroundColor: '#F3FBF8',
+    backgroundColor: '#F0FAF7',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
   addTileText: {
-    marginTop: 4,
+    fontSize: 10,
     color: Colors.primaryColor,
-    fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   footer: {

@@ -39,6 +39,7 @@ import { Fonts } from '../../common/Fonts';
 import { useConsultData } from '../../hooks/useConsultData';
 import Detailimages from '../../components/Detailimages';
 import { useBanners } from '../../hooks/useBanners';
+import OrangeLabHomeSection from '../../components/home/OrangeLabHomeSection';
 import { SCREEN_PADDING_H, getScreenBottomPadding, HORIZONTAL_SCROLL_CONTENT } from '../../constants/layout';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
@@ -392,10 +393,17 @@ const ConsultHome = () => {
             />
 
             {bannerImages.length > 0 ? (
-              <View >
+              <View
+                style={{
+                  marginBottom: 8,
+                  marginHorizontal: -SCREEN_PAD,
+                  width: Dimensions.get('window').width,
+                  alignSelf: 'center',
+                  overflow: 'hidden',
+                }}
+              >
                 <Detailimages
                   images={bannerImages}
-                  itemWidth={Dimensions.get('window').width - SCREEN_PADDING_H * 2}
                   DynamicResize="cover"
                   autoSlide
                   embedded
@@ -462,6 +470,16 @@ const ConsultHome = () => {
                   />
                 </>
               )}
+
+              <SectionHeader
+                title="Health Lab"
+                actionText="View all"
+                onPress={() => navigation.navigate('OrangeLabScreen')}
+              />
+              <OrangeLabHomeSection
+                onPressBanner={() => navigation.navigate('OrangeLabScreen')}
+                onPressTest={() => navigation.navigate('OrangeLabScreen')}
+              />
 
               {filteredTopDoctors?.length > 0 && (
                 <>

@@ -85,8 +85,19 @@ const CouponApplyCard = ({
         : scopedCoupons.filter(
           item => calcCouponDiscount(item, cartAmount).ok,
         );
-    return eligible.slice(0, 2);
-  }, [eligibleCoupons, scopedCoupons, cartAmount, checkoutScope]);
+    // Prefer other valid offers when one is already applied
+    const ordered = applied
+      ? [
+          ...eligible.filter(
+            c => c.code.toUpperCase() !== applied.code.toUpperCase(),
+          ),
+          ...eligible.filter(
+            c => c.code.toUpperCase() === applied.code.toUpperCase(),
+          ),
+        ]
+      : eligible;
+    return ordered.slice(0, 2);
+  }, [eligibleCoupons, scopedCoupons, cartAmount, checkoutScope, applied]);
 
   const submit = async (raw?: string) => {
     Keyboard.dismiss();
@@ -206,9 +217,6 @@ const CouponApplyCard = ({
               returnKeyType="done"
               onSubmitEditing={() => submit()}
             />
-            {/* <TouchableOpacity style={styles.pasteBtn} onPress={pasteCode}>
-              <Text style={styles.pasteText}>Paste</Text>
-            </TouchableOpacity> */}
             <TouchableOpacity
               style={styles.applyBtn}
               onPress={() => submit()}
@@ -222,21 +230,27 @@ const CouponApplyCard = ({
             </TouchableOpacity>
           </View>
           {!!error && <Text style={styles.error}>{error}</Text>}
-          {preview.length ? (
-            <View style={styles.previewList}>
-              {preview.map(item => (
-                <CouponTicket
-                  key={item.id}
-                  coupon={item}
-                  onApply={submit}
-                  onCopy={copyCode}
-                  notchColor="#F4F7F6"
-                />
-              ))}
-            </View>
-          ) : null}
         </>
       )}
+
+      {/* Top 2 valid coupons — always visible; View all opens full list */}
+      {preview.length ? (
+        <View style={styles.previewList}>
+          {preview.map(item => (
+            <CouponTicket
+              key={item.id}
+              coupon={item}
+              onApply={submit}
+              onCopy={copyCode}
+              notchColor="#F4F7F6"
+              applied={
+                !!applied &&
+                applied.code.toUpperCase() === item.code.toUpperCase()
+              }
+            />
+          ))}
+        </View>
+      ) : null}
 
       <Modal
         visible={sheetOpen}

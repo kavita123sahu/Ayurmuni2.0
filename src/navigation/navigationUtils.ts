@@ -67,6 +67,18 @@ export const resetRootToHomeStack = (
   );
 };
 
+/** Sign-out land — Welcome → Login so guest can enter a different number. */
+export const resetRootToWelcome = (navigation?: any) => {
+  const root = navigation ? getRootNavigation(navigation) : null;
+
+  root?.dispatch?.(
+    CommonActions.reset({
+      index: 0,
+      routes: [{ name: 'Welcome' }],
+    }),
+  );
+};
+
 /** Walk up navigators to find the root stack that owns product/category screens. */
 export const getStackNavigation = (navigation: any) => {
   let current = navigation;

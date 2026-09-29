@@ -437,6 +437,7 @@ import {
   PixelRatio,
   TouchableOpacity,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
@@ -462,6 +463,9 @@ type Props = {
   mode?: 'product' | 'banner';
   /** Disable fullscreen preview (banner default) */
   enablePreview?: boolean;
+  /** Accepted for callers; current layout does not use them. */
+  fullBleed?: boolean;
+  showPreviewChip?: boolean;
 };
 
 const getUriFromSource = (source: ImageSourcePropType | null): string | null => {
@@ -488,11 +492,16 @@ const Detailimages: React.FC<Props> = ({
   const resizeMode = DynamicResize ?? (isBanner ? 'cover' : 'cover');
   const allowPreview = enablePreview ?? !isBanner;
 
-  const paddingH = getScreenPaddingH();
-  const fallbackWidth = itemWidth ?? getContentWidth(paddingH);
+  const { width: windowWidth } = useWindowDimensions();
+  const paddingH = getScreenPaddingH(windowWidth);
+  const fallbackWidth = itemWidth ?? getContentWidth(paddingH, windowWidth);
   const [layoutWidth, setLayoutWidth] = useState(0);
-  const finalWidth =
-    isBanner && layoutWidth > 0 ? layoutWidth : fallbackWidth;
+  // Banners always page at full device width so snaps stay edge-to-edge.
+  const finalWidth = isBanner
+    ? Math.round(windowWidth)
+    : layoutWidth > 0
+      ? layoutWidth
+      : fallbackWidth;
   const finalHeight =
     itemHeight ?? PixelRatio.roundToNearestPixel(finalWidth / aspectRatio);
 
@@ -528,6 +537,8 @@ const Detailimages: React.FC<Props> = ({
       const uri =
         item?.image_url ||
         item?.media_url ||
+        item?.hero_image ||
+        item?.banner_image ||
         item?.image ||
         item?.url;
 
@@ -571,7 +582,10 @@ const Detailimages: React.FC<Props> = ({
     (item: any) => {
       if (!isBanner) return;
 
-      const target = resolveBannerNavigation(item?.redirect_url, item);
+      const target = resolveBannerNavigation(
+        item?.redirect_link || item?.redirect_url,
+        item,
+      );
 
       if (!target) {
         return;
@@ -582,10 +596,13 @@ const Detailimages: React.FC<Props> = ({
         return;
       }
 
+      const stackNav =
+        (navigation as any)?.getParent?.() || navigation;
+
       if (target.params) {
-        navigation.navigate(target.screen, target.params);
+        stackNav.navigate(target.screen, target.params);
       } else {
-        navigation.navigate(target.screen);
+        stackNav.navigate(target.screen);
       }
     },
     [isBanner, navigation],
@@ -713,7 +730,7 @@ const Detailimages: React.FC<Props> = ({
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <TablerIcon name="eye" size={14} color="#FFFFFF" />
-          <Text style={styles.previewBtnText}>Preview</Text>
+          {/* <Text style={styles.previewBtnText}>Preview</Text> */}
         </TouchableOpacity>
       ) : null}
 
@@ -795,11 +812,11 @@ const styles = StyleSheet.create({
   },
   wrapperBanner: {
     marginTop: 0,
-    marginBottom: 6,
+    marginBottom: 0,
     width: '100%',
     alignSelf: 'stretch',
     overflow: 'hidden',
-    borderRadius: 14,
+    borderRadius: 0,
   },
   listContent: {
     paddingRight: SPACING,
@@ -815,7 +832,7 @@ const styles = StyleSheet.create({
     borderColor: '#E8EDF2',
   },
   slideBanner: {
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
     overflow: 'hidden',
@@ -830,7 +847,7 @@ const styles = StyleSheet.create({
   },
   previewBtn: {
     position: 'absolute',
-    top: 10,
+    bottom: 10,
     right: 10,
     zIndex: 6,
     elevation: 6,

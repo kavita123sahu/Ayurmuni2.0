@@ -81,11 +81,17 @@ export const getDetailBottomPadding = (insets: EdgeInsets) =>
 export const getScreenPaddingH = () =>
   SCREEN_W < 360 ? 16 : SCREEN_PADDING_H;
 
-/** Break out of screen padding so horizontal lists scroll edge-to-edge. */
-export const getHorizontalScrollBleedStyle = () => ({
-  marginHorizontal: -getScreenPaddingH(),
-  width: SCREEN.width,
-});
+/** Break out of screen padding so horizontal lists / banners span the device width. */
+export const getHorizontalScrollBleedStyle = (
+  paddingH: number = getScreenPaddingH(),
+) => {
+  const deviceWidth = Dimensions.get('window').width;
+  return {
+    marginHorizontal: -paddingH,
+    width: deviceWidth,
+    alignSelf: 'center' as const,
+  };
+};
 
 /** Standard horizontal list insets — flush left, breathing room on the right. */
 export const HORIZONTAL_SCROLL_CONTENT = {

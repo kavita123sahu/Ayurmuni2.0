@@ -81,7 +81,7 @@ export default React.memo(BrandList);
 
 const styles = StyleSheet.create({
   listContent: {
-    paddingBottom: 10,
+    paddingBottom: 0,
   },
 
   separator: {
@@ -119,15 +119,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   name: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#FFFFFF',

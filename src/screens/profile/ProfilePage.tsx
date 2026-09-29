@@ -1040,12 +1040,11 @@ import {
     navigateToCompleteDetails,
     promoteToFullUser,
     resolveAccessLikeProfile,
+    signOutToChangeNumber,
 } from '../../services/guestAuth';
-import { logoutOneSignalUser } from '../../services/pushNotificationService';
 import LinearGradient from 'react-native-linear-gradient';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
 import { shouldRunThrottled } from '../../utils/fetchThrottle';
-import { clearAppSession } from '../../services/sessionCleanup';
 import { useLocation } from '../../context/LocationContext';
 
 
@@ -1281,9 +1280,7 @@ const ProfilePage = ({ navigation }: any) => {
 
     const handleLogout = async () => {
         setLogoutVisible(false);
-        logoutOneSignalUser();
-        await clearAppSession({ clearLocationSession });
-        navigation.replace('Welcome');
+        await signOutToChangeNumber(navigation, { clearLocationSession });
     };
 
     const MenuItem = ({ item, isLast }: { item: MenuEntry; isLast?: boolean }) => (

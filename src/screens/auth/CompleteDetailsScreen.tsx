@@ -19,8 +19,10 @@ import {
   getOnboardingEntryScreen,
   markAsGuest,
   resolveAccessLikeProfile,
+  signOutToChangeNumber,
 } from '../../services/guestAuth';
 import TablerIcon from '../../components/TablerIcon';
+import CommonModal from '../../components/LogoutModal';
 
 const CompleteDetailsScreen = ({ navigation, route }: any) => {
   const reason =
@@ -28,6 +30,8 @@ const CompleteDetailsScreen = ({ navigation, route }: any) => {
     'Complete your profile and prakriti assessment to continue.';
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [signOutVisible, setSignOutVisible] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   // If profile is already created, dismiss this gate (same check as ProfileScreen)
   useFocusEffect(
@@ -77,6 +81,16 @@ const CompleteDetailsScreen = ({ navigation, route }: any) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const confirmSignOut = async () => {
+    try {
+      setSigningOut(true);
+      setSignOutVisible(false);
+      await signOutToChangeNumber(navigation);
+    } finally {
+      setSigningOut(false);
     }
   };
 
@@ -144,12 +158,43 @@ const CompleteDetailsScreen = ({ navigation, route }: any) => {
         <TouchableOpacity
           style={styles.secondaryBtn}
           activeOpacity={0.85}
-          disabled={loading}
+          disabled={loading || signingOut}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.secondaryBtnText}>Keep browsing</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.changeNumberBtn}
+          activeOpacity={0.85}
+          disabled={loading || signingOut}
+          onPress={() => setSignOutVisible(true)}
+        >
+          {signingOut ? (
+            <ActivityIndicator size="small" color={Colors.primaryColor} />
+          ) : (
+            <>
+              <TablerIcon name="phone" size={15} color={Colors.primaryColor} />
+              <Text style={styles.changeNumberText}>
+                Use a different phone number
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
+
+      {signOutVisible ? (
+        <CommonModal
+          visible={signOutVisible}
+          icon="📱"
+          title="Change phone number?"
+          subtitle="You’ll sign out and can verify a different number on the login screen."
+          cancelText="Stay"
+          confirmText="Sign out"
+          onClose={() => setSignOutVisible(false)}
+          onConfirm={confirmSignOut}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -270,6 +315,19 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     color: '#64748B',
     fontSize: 14,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  changeNumberBtn: {
+    marginTop: 4,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  changeNumberText: {
+    color: Colors.primaryColor,
+    fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
   },
 });

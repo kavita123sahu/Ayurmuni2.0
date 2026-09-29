@@ -113,10 +113,12 @@ const DoctorListCard = ({
     <View style={styles.statsFeeRow}>
       <View style={styles.statsLeft}>
         <View style={styles.statItem}>
-          <Ionicons name="star" size={compact ? 12 : 13} color="#F5B301" />
+          <View style={styles.statIconWrap}>
+            <Ionicons name="star" size={compact ? 12 : 13} color="#F5B301" />
+          </View>
           <Text
             style={[styles.ratingText, compact && styles.gridRatingText]}
-            numberOfLines={2}
+            numberOfLines={1}
           >
             {ratingLabel}
             {reviewText}
@@ -244,6 +246,7 @@ const DoctorListCard = ({
           <Text style={styles.consultText}>Consult Now</Text>
         </TouchableOpacity>
       </View>
+
     </Pressable>
   );
 };
@@ -321,6 +324,12 @@ const styles = StyleSheet.create({
     gap: 3,
     flexShrink: 1,
     minWidth: 0,
+  },
+  statIconWrap: {
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statSep: {
     width: 3,
@@ -423,7 +432,7 @@ const styles = StyleSheet.create({
   photoCol: {
     width: LIST_PHOTO_W,
     alignSelf: 'stretch',
-    backgroundColor: '#E8F3EE',
+    backgroundColor: 'transparent',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -474,8 +483,10 @@ const styles = StyleSheet.create({
   ratingText: {
     flexShrink: 1,
     fontSize: 12,
+    lineHeight: 14,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
   expText: {
     // flexShrink: 1,

@@ -23,6 +23,7 @@ import {
   launchCamera,
   launchImageLibrary,
   Asset,
+  PhotoQuality,
 } from 'react-native-image-picker';
 import TablerIcon from '../../components/TablerIcon';
 import { requireAuth } from '../../services/guestAuth';
@@ -146,7 +147,7 @@ const Prescription = (props: any) => {
 
       const result = await launchCamera({
         mediaType: 'photo',
-        quality: 0.92,
+        quality: 0.92 as PhotoQuality,
         saveToPhotos: false,
         cameraType: 'back',
         includeBase64: false,
@@ -196,7 +197,7 @@ const Prescription = (props: any) => {
     try {
       const result = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.92,
+        quality: 0.92 as PhotoQuality,
         selectionLimit: 4,
       });
       if (result.didCancel || result.errorCode) return;

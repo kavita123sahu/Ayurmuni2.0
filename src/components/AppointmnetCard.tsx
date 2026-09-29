@@ -14,7 +14,7 @@ import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
 import {
   buildAppointmentDetailsParams,
   getConsultationScheduleLabels,
-  canModifyAppointment,
+  canOfferReschedule,
 } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
 
@@ -89,10 +89,11 @@ const AppointmentCard = ({
   const statusStyle = useMemo(() => getStatusStyle(status.toLowerCase()), [status]);
   const statusLabel = formatStatusLabel(status);
 
-  const showReschedule = canModifyAppointment(
+  const showReschedule = canOfferReschedule(
     status,
     schedule.dateRaw || item?.date || item?.appointment_date,
     schedule.timeRaw || item?.time || item?.start_time,
+    item,
   );
   const showReceipt = Boolean(item?.consultation_id);
   // Book again only for past visits — not for upcoming bookings outside the 3h window

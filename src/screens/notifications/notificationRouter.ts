@@ -186,15 +186,16 @@ export const handleNotificationNavigation = (
   };
 
   const goDiet = () => {
-    goHomeStack(nav, 'DietScreen', {
-      dietId: data?.diet_id ?? data?.dietId,
-      planId: data?.plan_id ?? data?.planId ?? data?.diet_plan_id,
-      item: data?.plan_id
-        ? { id: String(data.plan_id) }
-        : data?.diet_plan_id
-          ? { id: String(data.diet_plan_id) }
-          : undefined,
-    });
+    const planId =
+      data?.plan_id ?? data?.planId ?? data?.diet_plan_id ?? data?.diet_id ?? data?.dietId;
+    if (planId) {
+      goHomeStack(nav, 'DietPlanDetail', {
+        planId: String(planId),
+        item: { id: String(planId), diet_plan_id: String(planId) },
+      });
+      return;
+    }
+    goHomeStack(nav, 'DietScreen');
   };
 
   const goChat = () => {
@@ -572,6 +573,16 @@ export const handleNotificationNavigation = (
       return;
     }
     if (
+      blob.includes('reschedule') ||
+      type === 'reschedule' ||
+      type === 'rescheduled' ||
+      event.includes('reschedule') ||
+      templateName.includes('reschedule')
+    ) {
+      goAppointment();
+      return;
+    }
+    if (
       blob.includes('appointment') ||
       blob.includes('consult') ||
       blob.includes('booking') ||
@@ -641,6 +652,14 @@ export const handleNotificationNavigation = (
 
   if (event.startsWith('order.') || orderId) {
     goOrderDetails();
+    return;
+  }
+
+  if (
+    event.includes('reschedule') ||
+    event.startsWith('appointment.reschedule')
+  ) {
+    goAppointment();
     return;
   }
 

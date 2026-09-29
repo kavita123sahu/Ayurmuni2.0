@@ -456,7 +456,7 @@ export const globalSearch = async (params: GlobalSearchParams | string) => {
   );
   qs.set(
     'save_recent',
-    String(opts.save_recent !== undefined ? opts.save_recent : true),
+    String(opts.save_recent !== undefined ? opts.save_recent : false),
   );
   qs.set('page', String(opts.page || 1));
   qs.set('page_size', String(opts.page_size || 10));
@@ -475,6 +475,21 @@ const normalizeRecentItem = (
   raw: any,
   index: number,
 ): RecentSearchItem | null => {
+  if (typeof raw === 'string') {
+    const query = raw.trim();
+    if (!query) return null;
+    return {
+      id: `q-${index}-${query}`,
+      query,
+      types: null,
+      search_type: null,
+      search_count: null,
+      created_at: null,
+      last_searched_at: null,
+      last_variant_id: null,
+      raw,
+    };
+  }
   if (!raw || typeof raw !== 'object') return null;
   const query = String(
     raw.query ||
@@ -482,11 +497,17 @@ const normalizeRecentItem = (
       raw.term ||
       raw.keyword ||
       raw.search_query ||
+      raw.search_term ||
+      raw.search_text ||
       raw.text ||
+      raw.name ||
+      raw.title ||
       '',
   ).trim();
   if (!query) return null;
-  const id = String(raw.id || raw.uuid || raw.recent_search_id || index);
+  const id = String(
+    raw.id || raw.uuid || raw.recent_search_id || `q-${index}-${query}`,
+  );
   return {
     id,
     query,
@@ -500,24 +521,103 @@ const normalizeRecentItem = (
   };
 };
 
-/** GET /customers/search/recent/ — list of recent queries */
-export const getRecentSearches = async () => {
-  const response = await apiClient('customers/search/recent/', {
+/** Collect a list from common API envelope shapes (incl. apiClient array spread). */
+const extractRecentList = (response: any): any[] => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+
+  const candidates = [
+    response?.data?.results,
+    response?.data?.recent_searches,
+    response?.data?.search_history,
+    response?.data?.history,
+    response?.data?.searches,
+    response?.data?.items,
+    response?.data?.recent,
+    response?.data?.data,
+    response?.results,
+    response?.recent_searches,
+    response?.search_history,
+    response?.history,
+    response?.searches,
+    response?.items,
+    response?.recent,
+    response?.data,
+  ];
+
+  for (const item of candidates) {
+    if (Array.isArray(item)) return item;
+  }
+
+  // apiClient spreads JSON arrays → { success, 0: item, 1: item, ... }
+  const numericKeys = Object.keys(response)
+    .filter(key => /^\d+$/.test(key))
+    .sort((a, b) => Number(a) - Number(b));
+  if (numericKeys.length > 0) {
+    return numericKeys.map(key => response[key]).filter(Boolean);
+  }
+
+  return [];
+};
+
+/** GET /customers/search/recent/?limit=10 — list of recent queries */
+export const getRecentSearches = async (limit = 10) => {
+  const qs = new URLSearchParams();
+  qs.set('limit', String(limit > 0 ? limit : 10));
+
+  const response = await apiClient(`customers/search/recent/?${qs.toString()}`, {
     method: 'GET',
   });
-  const root = response?.data ?? response ?? {};
 
-  let list: any[] = [];
-  if (Array.isArray(root)) list = root;
-  else if (Array.isArray(root?.results)) list = root.results;
-  else if (Array.isArray(root?.recent)) list = root.recent;
-  else if (Array.isArray(root?.items)) list = root.items;
-  else if (Array.isArray(root?.searches)) list = root.searches;
+  if (response?.success === false) {
+    console.log('RECENT_SEARCH_LIST_ERROR =>', response?.message);
+    return [];
+  }
 
-  return list
+  return extractRecentList(response)
     .map((item, index) => normalizeRecentItem(item, index))
     .filter(Boolean) as RecentSearchItem[];
 };
+
+/**
+ * DELETE /customers/search/recent/
+ * - ?id=… → remove one by id
+ * - ?query=… → remove one by text
+ * - no params → clear all
+ */
+export const deleteRecentSearches = async (opts?: {
+  id?: string | null;
+  query?: string | null;
+}) => {
+  const qs = new URLSearchParams();
+  const id = String(opts?.id || '').trim();
+  const query = String(opts?.query || '').trim();
+  if (id) qs.set('id', id);
+  else if (query) qs.set('query', query);
+
+  const endpoint = qs.toString()
+    ? `customers/search/recent/?${qs.toString()}`
+    : 'customers/search/recent/';
+
+  const response = await apiClient(endpoint, {
+    method: 'DELETE',
+  });
+
+  if (response?.success === false) {
+    throw new Error(response?.message || 'Unable to delete recent search');
+  }
+
+  return response;
+};
+
+export const clearAllRecentSearches = async () =>
+  deleteRecentSearches();
+
+export const deleteRecentSearchById = async (id: string) =>
+  deleteRecentSearches({ id });
+
+export const deleteRecentSearchByQuery = async (query: string) =>
+  deleteRecentSearches({ query });
 
 /**
  * GET /customers/search/recent/?id={recent_search_id}

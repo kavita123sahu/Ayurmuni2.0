@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  BackHandler,
 } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -392,6 +393,14 @@ const QuestLayoutInner = ({
     }
     handleBack();
   };
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onHeaderBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [step, onExit, handleBack]);
 
   if (loading && !currentStep) {
     return (

@@ -156,9 +156,14 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
         onRequestClose={closeDropdown}
       >
         <View style={styles.modalRoot}>
-          <Pressable style={styles.backdrop} onPress={closeDropdown} />
-          <View style={styles.dropdownSheet}>
-            <Text style={styles.dropdownTitle}>
+          <Pressable
+            style={styles.backdrop}
+            onPress={closeDropdown}
+            accessibilityRole="button"
+            accessibilityLabel="Close filter"
+          />
+          <Pressable style={styles.dropdownSheet} onPress={() => {}}>
+            <Text style={styles.dropdownTitle} numberOfLines={1}>
               {openTab ? getTabLabel(openTab) : "Filter"}
             </Text>
             <FlatList
@@ -177,7 +182,7 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                 </TouchableOpacity>
               )}
             />
-          </View>
+          </Pressable>
         </View>
       </Modal>
     </View>
@@ -189,10 +194,11 @@ export default FilterTabs;
 export const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: "row",
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    backgroundColor: "#FFFFFF",
-    gap: 8,
+    alignItems: "center",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: "transparent",
+    gap: 6,
     zIndex: 20,
   },
 
@@ -205,9 +211,10 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 34,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 32,
+    minHeight: 32,
+    paddingHorizontal: 8,
+    paddingVertical: 0,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#E2E8F0",
@@ -221,11 +228,11 @@ export const styles = StyleSheet.create({
 
   tabText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
     fontFamily: Fonts.PoppinsMedium,
     color: "#0F172A",
-    marginRight: 4,
+    marginRight: 2,
     textTransform: "capitalize",
   },
 
@@ -246,7 +253,7 @@ export const styles = StyleSheet.create({
   modalRoot: {
     flex: 1,
     justifyContent: "flex-start",
-    paddingTop: 120,
+    paddingTop: 118,
     paddingHorizontal: 16,
   },
 

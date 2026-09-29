@@ -1339,7 +1339,7 @@ import { useHealthConcernCategories } from '../../hooks/useHealthConcernCategori
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
 import TablerIcon from '../../components/TablerIcon';
-import { navigateToSearchScreen } from '../../navigation/productNavigation';
+import { navigateToSearchScreen, navigateToCategoryProducts } from '../../navigation/productNavigation';
 import { useBanners } from '../../hooks/useBanners';
 import { CallEvents, CALL_ENDED } from '../../common/Utils';
 import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
@@ -1355,6 +1355,12 @@ import {
 import * as Sentry from '@sentry/react-native';
 import DiseaseSelectionModal from '../../components/DiseaseSelectionModal';
 import { requireAuth } from '../../services/guestAuth';
+import BrandList from '../../components/BrandList';
+import { useBrands } from '../../hooks/useBrands';
+import { mapBrandItem } from '../../utils/orderUtils';
+import ConsultationPackagesSection from '../../components/home/ConsultationPackagesSection';
+import PanchakarmaSection from '../../components/home/PanchakarmaSection';
+import OrangeLabHomeSection from '../../components/home/OrangeLabHomeSection';
 
 const { width } = Dimensions.get('window');
 let prakritiModalShownThisSession = false;
@@ -1416,7 +1422,7 @@ const HomePage: React.FC = (props: any) => {
     : 'Meet Our Doctors';
   const medicineSectionTitle = hasSelectedDiseases
     ? 'Suggested Medicines'
-    : 'Our Health Experts ';
+    : 'Shop by Medicine  ';
   const productSectionTitle = hasSelectedDiseases
     ? 'Suggested Products'
     : 'Shop by product ';
@@ -1438,6 +1444,30 @@ const HomePage: React.FC = (props: any) => {
     refresh: refreshHealthConcerns,
   } = useHealthConcernCategories(medicineCategoryId);
   const safeHealthConcerns = Array.isArray(healthConcerns) ? healthConcerns : [];
+
+  const { brands, refresh: refreshBrands } = useBrands();
+  const brandListData = useMemo(
+    () =>
+      (Array.isArray(brands) ? brands : []).map((brand: any) => {
+        const mapped = mapBrandItem(brand);
+        return {
+          ...mapped,
+          onPress: () => {
+            if (!mapped.id) return;
+            const stackNav =
+              props.navigation.getParent?.() || props.navigation;
+            navigateToCategoryProducts(stackNav, {
+              categoryMode: 'product',
+              brandOnly: true,
+              brand_name_id: mapped.id,
+              brandId: mapped.id,
+              serviceCategoryId: medicineCategoryId || undefined,
+            });
+          },
+        };
+      }),
+    [brands, props.navigation, medicineCategoryId],
+  );
 
   const [showDiseaseModal, setShowDiseaseModal] = useState(false);
   const [showPrakritiModal, setShowPrakritiModal] = useState(false);
@@ -1577,11 +1607,12 @@ const HomePage: React.FC = (props: any) => {
         refreshHealthConcerns(),
         refreshActiveDiet(),
         refreshVisitedDoctors(),
+        refreshBrands(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshPreview, refreshBanners, refreshHealthConcerns, refreshActiveDiet, refreshVisitedDoctors]);
+  }, [refreshHomeData, refreshPreview, refreshBanners, refreshHealthConcerns, refreshActiveDiet, refreshVisitedDoctors, refreshBrands]);
 
 
   useEffect(() => {
@@ -1818,28 +1849,6 @@ const HomePage: React.FC = (props: any) => {
               </View>
             )}
 
-            {(activeDietPreview ? (
-              <View style={styles.homeSection}>
-                <ActiveDietHomeCard
-                  data={activeDietPreview}
-                  onPress={() => {
-                    const stackNav =
-                      props.navigation.getParent?.() || props.navigation;
-                    stackNav.navigate('DietScreen', {
-                      item: { id: activeDietPreview.planId },
-                    });
-                  }}
-                />
-              </View>
-            ) : null)}
-
-            <HomeJoinAppointmentsSection
-              appointments={upcomingAppointments}
-              endedCallIds={endedCallIds}
-              loading={loadingAppointments}
-              navigation={props.navigation}
-            />
-
             {safeHealthConcerns.length > 0 && (
               <View style={styles.homeSection}>
                 <SectionHeader
@@ -1864,6 +1873,39 @@ const HomePage: React.FC = (props: any) => {
                 />
               </View>
             )}
+
+            {brandListData.length > 0 ? (
+              <View style={styles.homeSection}>
+                <SectionHeader home title="Trusted Brands" />
+                <BrandList data={brandListData} />
+              </View>
+            ) : null}
+
+
+            {(activeDietPreview ? (
+              <View style={styles.homeSection}>
+                <ActiveDietHomeCard
+                  data={activeDietPreview}
+                  onPress={() => {
+                    const stackNav =
+                      props.navigation.getParent?.() || props.navigation;
+                    stackNav.navigate('DietPlanDetail', {
+                      planId: activeDietPreview.planId,
+                      item: { id: activeDietPreview.planId },
+                      preferTracking: true,
+                    });
+                  }}
+                />
+              </View>
+            ) : null)}
+
+            <HomeJoinAppointmentsSection
+              appointments={upcomingAppointments}
+              endedCallIds={endedCallIds}
+              loading={loadingAppointments}
+              navigation={props.navigation}
+            />
+
 
             {(loadingVisitedDoctors && visitedDoctors.length === 0) ||
               visitedDoctors.length > 0 ? (
@@ -2066,16 +2108,56 @@ const HomePage: React.FC = (props: any) => {
               </View>
             ) : null}
 
-            {/* {showConsultBrandShade ? ( */}
-
-            {/* ) :  */}
-            {comingSoonItems.length > 0 ? (
-              <View style={styles.homeSection}>
-                <ComingSoonStrip items={comingSoonItems} />
-              </View>
-            ) : null}
+            {/* Dummy marketing — after diet; SectionHeaders on Home; same padding as products */}
+            <View style={styles.homeSection}>
+              <SectionHeader
+                home
+                title="Consultation Packages"
+                actionText="View all"
+                onPress={() => {
+                  const stackNav =
+                    props.navigation.getParent?.() || props.navigation;
+                  stackNav.navigate('PackagesScreen');
+                }}
+              />
+              <ConsultationPackagesSection
+                onPressPackage={() => {
+                  const stackNav =
+                    props.navigation.getParent?.() || props.navigation;
+                  stackNav.navigate('PackagesScreen');
+                }}
+              />
+            </View>
 
             <View style={styles.homeSection}>
+              <SectionHeader
+                home
+                title="Lab"
+                actionText="View all"
+                onPress={() => {
+                  const stackNav =
+                    props.navigation.getParent?.() || props.navigation;
+                  stackNav.navigate('OrangeLabScreen');
+                }}
+              />
+              <OrangeLabHomeSection
+                onPressBanner={() => {
+                  const stackNav =
+                    props.navigation.getParent?.() || props.navigation;
+                  stackNav.navigate('OrangeLabScreen');
+                }}
+                onPressTest={() => {
+                  const stackNav =
+                    props.navigation.getParent?.() || props.navigation;
+                  stackNav.navigate('OrangeLabScreen');
+                }}
+              />
+            </View>
+
+            <View style={styles.homeSection}>
+              <SectionHeader home title="Panchakarma" actionText="View all" />
+              <PanchakarmaSection />
+              {/* Same section — no gap between Panchakarma and brand art */}
               <AyurmuniBrandShade />
             </View>
           </View>
@@ -2187,15 +2269,15 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 8,
   },
+  bannerSection: {
+    ...getHorizontalScrollBleedStyle(SCREEN_PADDING_H),
+    overflow: 'hidden',
+    borderRadius: 0,
+    marginBottom: 0,
+  },
   homeSection: {
     width: '100%',
-  },
-  bannerSection: {
-    width: '100%',
-    alignSelf: 'stretch',
-    overflow: 'hidden',
-    borderRadius: 12,
-    marginBottom: -27,
+    // marginTop: 2,
   },
   horizontalList: HORIZONTAL_SCROLL_CONTENT,
   comingSoonGroup: {

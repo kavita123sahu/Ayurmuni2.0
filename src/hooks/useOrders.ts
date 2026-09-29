@@ -11,9 +11,15 @@ import {
   OrderListItem,
 } from '../utils/orderUtils';
 
-export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
+export function useOrders(options?: {
+  pageSize?: number;
+  enabled?: boolean;
+  /** Debounced search string — hits GET order/?search= */
+  search?: string;
+}) {
   const pageSize = options?.pageSize ?? ORDER_PAGE_SIZE;
   const enabled = options?.enabled !== false;
+  const search = String(options?.search || '').trim();
 
   const [orders, setOrders] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -57,6 +63,7 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
         const response = await _ORDER_SERVICES.getOrders({
           page: pageToLoad,
           page_size: pageSize,
+          ...(search ? { search } : {}),
         });
 
         // Ignore stale responses (e.g. focus refresh finished after a newer tap)
@@ -106,7 +113,7 @@ export function useOrders(options?: { pageSize?: number; enabled?: boolean }) {
         }
       }
     },
-    [enabled, pageSize],
+    [enabled, pageSize, search],
   );
 
   useEffect(() => {

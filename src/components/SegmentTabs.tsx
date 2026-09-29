@@ -91,23 +91,25 @@ export default React.memo(SegmentTabs);
 const styles = StyleSheet.create({
   pillWrap: {
     flexDirection: 'row',
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.md,
+    alignItems: 'center',
+    marginTop: 0,
+    marginBottom: 0,
   },
   pillItem: {
     flex: 1,
-    minHeight: BUTTON.heightSm,
+    minHeight: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    borderRadius: RADIUS.sm,
+    paddingVertical: 0,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: Colors.borderColor,
     backgroundColor: '#FFFFFF',
   },
   pillItemGap: {
-    marginRight: SPACING.sm,
+    marginRight: 8,
   },
   pillItemActive: {
     backgroundColor: '#065F46',

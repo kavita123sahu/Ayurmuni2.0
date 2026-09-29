@@ -5,12 +5,13 @@ import { Platform } from "react-native";
 export const BaseUrl = {
     base_url: "https://ayurmuni.aimantra.info/"
     // https://aghast-cognition-earflap.ngrok-free.dev/
-    // https://6057-203-110-81-106.ngrok-free.app/
+    // https://6057-203-110-81-106.ngrok-free.app/ 
     // https://6057-203-110-81-106.ngrok-free.app/
     // 'https://ayurmuni.aimantra.info/'
     //"https://ayurmuni-backend.onrender.com/"
     //"https://ayurmunistaging.aimantra.info"
     // https://scarce-derby-voice.ngrok-free.dev    
+    //https://ayurmuniproduction.aimantra.info
 };
 
 export const Method = {

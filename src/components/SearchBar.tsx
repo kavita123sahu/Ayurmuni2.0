@@ -7,6 +7,7 @@ import {
   ImageSourcePropType,
   TouchableOpacity,
   ViewStyle,
+  Platform,
 } from 'react-native';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
@@ -21,6 +22,7 @@ interface Props {
   icon?: ImageSourcePropType;
   value?: string;
   onChangeText?: (text: string) => void;
+  onSubmitEditing?: () => void;
   onPress?: () => void;
   compact?: boolean;
   containerStyle?: ViewStyle;
@@ -161,6 +163,7 @@ const SearchBar: React.FC<Props> = ({
   icon,
   value,
   onChangeText,
+  onSubmitEditing,
   onPress,
   compact = false,
   containerStyle,
@@ -187,10 +190,12 @@ const SearchBar: React.FC<Props> = ({
         style={[styles.input, compact && styles.inputCompact]}
         value={value}
         onChangeText={onChangeText}
+        onSubmitEditing={onSubmitEditing}
         editable={!onPress}
         pointerEvents={onPress ? 'none' : 'auto'}
         autoFocus={autoFocus}
         returnKeyType="search"
+        blurOnSubmit={false}
       />
 
       {!onPress && !!value?.length && onChangeText ? (
@@ -246,12 +251,14 @@ export const SearchScreenHeader = ({
   placeholder,
   value,
   onChangeText,
+  onSubmitEditing,
   autoFocus = true,
 }: {
   onBack: () => void;
   placeholder?: string;
   value: string;
   onChangeText: (text: string) => void;
+  onSubmitEditing?: () => void;
   autoFocus?: boolean;
 }) => (
   <View style={styles.searchScreenHeader}>
@@ -260,6 +267,7 @@ export const SearchScreenHeader = ({
       placeholder={placeholder}
       value={value}
       onChangeText={onChangeText}
+      onSubmitEditing={onSubmitEditing}
       autoFocus={autoFocus}
       // showMicIcon
       containerStyle={styles.searchScreenField}
@@ -294,14 +302,23 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    lineHeight: 20,
+    height: 40,
     minWidth: 0,
     fontFamily: Fonts.PoppinsRegular,
     color: '#0F172A',
     paddingVertical: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    margin: 0,
     includeFontPadding: false,
+    textAlignVertical: 'center',
+    ...(Platform.OS === 'android' ? { textAlignVertical: 'center' as const } : null),
   },
   inputCompact: {
     fontSize: 13,
+    lineHeight: 18,
+    height: 40,
   },
   clearBtn: {
     width: 26,

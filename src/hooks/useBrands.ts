@@ -13,8 +13,12 @@ export function useBrands() {
 
       const response = await _MEDICINE_SERVICES.getBrands();
       console.log("brandataaaaaaaaaaaaa", response);
-      const list = Array.isArray(response?.data) ? response.data : [];
-      setBrands(response.data);
+      const list = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response)
+          ? response
+          : [];
+      setBrands(list);
     } catch {
       setError('Unable to load brands');
       setBrands([]);

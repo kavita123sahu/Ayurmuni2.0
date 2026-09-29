@@ -6,6 +6,7 @@ import RenderAppoint from './RenderAppoint';
 import { HorizontalAppointmentSkeleton } from '../simmerScreen/ShimmerHook';
 import {
   getJoinableAppointment,
+  isAppointmentInPast,
   sortAppointmentsByDateTime,
 } from '../utils/appointmentUtils';
 import { requireAuth } from '../services/guestAuth';
@@ -28,7 +29,7 @@ const HomeJoinAppointmentsSection = ({
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 60_000);
+    const timer = setInterval(() => setTick(t => t + 1), 30_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -39,10 +40,12 @@ const HomeJoinAppointmentsSection = ({
           const status = String(item?.status || '')
             .trim()
             .toLowerCase();
-          return status === 'confirmed';
+          return status === 'confirmed' && !isAppointmentInPast(item);
         }),
       ),
-    [appointments],
+    // tick drops appointments whose end_time has passed while Home stays open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [appointments, tick],
   );
 
   const joinableAppointment = useMemo(() => {

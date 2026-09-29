@@ -14,6 +14,9 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -26,8 +29,15 @@ import { Utils } from '../../common/Utils';
 import { Colors } from '../../common/Colors';
 import { AuthTheme as C } from '../../common/AuthTheme';
 import { parseDeletedAccountInfo } from '../../services/ProfileServices';
-import { parsePolicyAcceptedCustomer } from '../../utils/policyUtils';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
+import InfiniteMarquee from '../../components/InfiniteMarquee';
+import PolicyContentRenderer from '../../components/PolicyContentRenderer';
+import {
+  getLegalRequiredPolicies,
+  getPoliciesList,
+  getPolicyDocument,
+  normalizePolicyContent,
+} from '../../services/PolicyServices';
 
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = height < 700;
@@ -124,55 +134,26 @@ const MarqueeColumn = ({
 
 const TextCarousel = ({
   items,
-  duration = 3200,
 }: {
   items: Array<{ text: string; icon: TablerIconName }>;
-  duration?: number;
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const fade = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      Animated.timing(fade, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }).start(() => {
-        setCurrentIndex(prev => (prev + 1) % items.length);
-        Animated.timing(fade, {
-          toValue: 1,
-          duration: 280,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, duration);
-    return () => clearInterval(timer);
-  }, [duration, fade, items.length]);
-
-  const active = items[currentIndex] ?? items[0];
+  if (!items?.length) return null;
 
   return (
     <View style={styles.carouselBlock}>
-      <Animated.View style={[styles.carouselRow, { opacity: fade }]}>
-        <View style={styles.carouselIcon}>
-          <TablerIcon name={active.icon} size={16} color={C.primary} />
-        </View>
-        <Animated.Text
-          style={styles.carouselText}
-          numberOfLines={2}
-        >
-          {active.text}
-        </Animated.Text>
-      </Animated.View>
-      <View style={styles.dotsContainer}>
-        {items.map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === currentIndex ? styles.dotActive : styles.dotInactive]}
-          />
+      <InfiniteMarquee speed={32} gap={36} style={styles.marqueeClipH}>
+        {items.map((item, index) => (
+          <View key={`${item.text}-${index}`} style={styles.marqueeItem}>
+            <View style={styles.carouselIcon}>
+              <TablerIcon name={item.icon} size={15} color={C.primary} />
+            </View>
+            <Text style={styles.carouselText} numberOfLines={1}>
+              {item.text}
+            </Text>
+
+          </View>
         ))}
-      </View>
+      </InfiniteMarquee>
     </View>
   );
 };
@@ -183,15 +164,68 @@ const PhoneAuthScreen = (props: any) => {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [policySheet, setPolicySheet] = useState<{
+    type: 'terms_and_conditions' | 'privacy_policy';
+    title: string;
+  } | null>(null);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policyDoc, setPolicyDoc] = useState<any>(null);
 
-  const openPolicy = (policyType: 'terms_of_service' | 'privacy_policy') => {
-    props.navigation.navigate('PolicyDetail', {
-      policyType,
-      title:
-        policyType === 'terms_of_service'
-          ? 'Terms of Use'
-          : 'Privacy Policy',
-    });
+  const canSendOtp = phone.length === 10 && termsAgreed && !isLoading;
+
+  const openPolicy = async (
+    policyType: 'terms_and_conditions' | 'privacy_policy',
+  ) => {
+    const title =
+      policyType === 'terms_and_conditions'
+        ? 'Terms of Use'
+        : 'Privacy Policy';
+
+    setPolicySheet({ type: policyType, title });
+    setPolicyLoading(true);
+    setPolicyError(null);
+    setPolicyDoc(null);
+
+    try {
+      const res: any = await getLegalRequiredPolicies(policyType);
+      if (res?.success === false) {
+        setPolicyError(
+          res?.message || 'Unable to load this policy right now.',
+        );
+        return;
+      }
+
+      const list = getPoliciesList(res);
+      const entry =
+        list.find(
+          (item: any) =>
+            (item?.policy?.policy_type || item?.policy_type) === policyType,
+        ) || list[0];
+      const doc = getPolicyDocument(entry);
+
+      if (!doc) {
+        setPolicyError('Unable to load this policy right now.');
+        return;
+      }
+
+      setPolicyDoc({
+        ...doc,
+        content: normalizePolicyContent(doc?.content),
+      });
+    } catch (e: any) {
+      setPolicyError(e?.message || 'Failed to load policy.');
+    } finally {
+      setPolicyLoading(false);
+    }
+  };
+
+  const closePolicySheet = () => {
+    setPolicySheet(null);
+    setPolicyDoc(null);
+    setPolicyError(null);
+    setPolicyLoading(false);
   };
 
   const onChangePhone = (text: string) => {
@@ -210,6 +244,14 @@ const PhoneAuthScreen = (props: any) => {
       return;
     }
 
+    if (!termsAgreed) {
+      showSuccessToast(
+        'Please agree to the Terms of Use and Privacy Policy',
+        'error',
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -223,10 +265,6 @@ const PhoneAuthScreen = (props: any) => {
         const msLeft = heldAt + days * 24 * 60 * 60 * 1000 - Date.now();
         if (msLeft > 0) {
           const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
-          // showSuccessToast(
-          //   `This number is under deletion recovery. Recover with OTP within ~${daysLeft} day(s), or use a new number.`,
-          //   'error',
-          // );
           // Still allow OTP so they can open recover flow on verify
         } else {
           await Utils.removeData('_DELETED_ACCOUNT_HOLD');
@@ -245,11 +283,8 @@ const PhoneAuthScreen = (props: any) => {
       const isCustomer = response?.data?.user_roles?.some(
         (role: string) => role?.toLowerCase() === 'customer',
       );
-      const policyAcceptedCustomer = parsePolicyAcceptedCustomer(response);
-      await Utils.storeData(
-        '_POLICY_ACCEPTED_CUSTOMER',
-        policyAcceptedCustomer,
-      );
+      // User accepted Terms/Privacy on this screen before Send OTP
+      await Utils.storeData('_POLICY_ACCEPTED_CUSTOMER', true);
 
       if (deletedInfo) {
         await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
@@ -265,7 +300,7 @@ const PhoneAuthScreen = (props: any) => {
           customer: isCustomer,
           accountDeleted: true,
           retentionDays: deletedInfo.retentionDays,
-          policyAcceptedCustomer,
+          policyAcceptedCustomer: true,
         });
 
         return;
@@ -282,10 +317,9 @@ const PhoneAuthScreen = (props: any) => {
         props.navigation.navigate('OtpVerify', {
           phone,
           customer: isCustomer,
-          policyAcceptedCustomer,
+          policyAcceptedCustomer: true,
         });
       } else {
-        // ✅ Show field-level API validation error first
         const errorMessage =
           response?.data?.errors?.phone_number?.[0] ||
           response?.message ||
@@ -386,16 +420,40 @@ const PhoneAuthScreen = (props: any) => {
             </TouchableOpacity>
 
             <View style={styles.termsBlock}>
-              <Text style={styles.termsNote}>
-                Agreeing to Terms and Privacy Policy is mandatory when you complete customer onboarding.
-              </Text>
+              <TouchableOpacity
+                style={styles.termsRow}
+                activeOpacity={0.85}
+                onPress={() => setTermsAgreed(prev => !prev)}
+              >
+                <View style={[styles.checkbox, termsAgreed && styles.checkboxOn]}>
+                  {termsAgreed ? (
+                    <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
+                  ) : null}
+                </View>
+                <Text style={styles.termsText}>
+                  I agree to the{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => openPolicy('terms_and_conditions')}
+                  >
+                    Terms of Use
+                  </Text>
+                  {' '}and{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => openPolicy('privacy_policy')}
+                  >
+                    Privacy Policy
+                  </Text>
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={[styles.ctaWrap, isLoading && styles.ctaDisabled]}
+              style={[styles.ctaWrap, !canSendOtp && styles.ctaDisabled]}
               activeOpacity={0.88}
               onPress={onLogin}
-              disabled={isLoading}
+              disabled={!canSendOtp}
             >
               <LinearGradient
                 colors={C.ctaGradient}
@@ -414,6 +472,80 @@ const PhoneAuthScreen = (props: any) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={!!policySheet}
+        transparent
+        animationType="slide"
+        onRequestClose={closePolicySheet}
+      >
+        <View style={styles.policyOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closePolicySheet}
+          />
+          <View
+            style={[
+              styles.policySheet,
+              { paddingBottom: Math.max(insets.bottom, 16) },
+            ]}
+          >
+            <View style={styles.policyHandle} />
+            <View style={styles.policyHeader}>
+              <Text style={styles.policyTitle} numberOfLines={1}>
+                {policySheet?.title || 'Policy'}
+              </Text>
+              <TouchableOpacity
+                onPress={closePolicySheet}
+                hitSlop={10}
+                style={styles.policyClose}
+              >
+                <MaterialCommunityIcons name="close" size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {policyLoading ? (
+              <View style={styles.policyCenter}>
+                <ActivityIndicator size="large" color={C.primary} />
+              </View>
+            ) : policyError ? (
+              <View style={styles.policyCenter}>
+                <Text style={styles.policyError}>{policyError}</Text>
+                <TouchableOpacity
+                  style={styles.policyRetry}
+                  onPress={() =>
+                    policySheet && openPolicy(policySheet.type)
+                  }
+                >
+                  <Text style={styles.policyRetryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.policyScroll}
+                contentContainerStyle={styles.policyScrollContent}
+                showsVerticalScrollIndicator
+                bounces
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                {!!policyDoc?.title && (
+                  <Text style={styles.policyDocTitle}>{policyDoc.title}</Text>
+                )}
+                <PolicyContentRenderer content={policyDoc?.content} />
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={styles.policyDone}
+              activeOpacity={0.9}
+              onPress={closePolicySheet}
+            >
+              <Text style={styles.policyDoneText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -496,30 +628,33 @@ const styles = StyleSheet.create({
   },
 
   carouselBlock: {
-    marginBottom: 12,
-    minHeight: isSmallDevice ? 62 : 70,
+    marginBottom: 14,
+    minHeight: isSmallDevice ? 44 : 48,
     justifyContent: 'center',
   },
-  carouselRow: {
+  marqueeClipH: {
+    height: isSmallDevice ? 40 : 44,
+    justifyContent: 'center',
+  },
+  marqueeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 2,
+    marginRight: 28,
   },
   carouselIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     backgroundColor: C.chipBg,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.border,
+    marginRight: 8
   },
   carouselText: {
-    flex: 1,
-    fontSize: isSmallDevice ? 16 : 18,
-    lineHeight: isSmallDevice ? 22 : 25,
+    fontSize: isSmallDevice ? 14 : 15,
+    lineHeight: isSmallDevice ? 20 : 22,
     color: C.headline,
     textAlign: 'left',
     fontFamily: Fonts.PoppinsSemiBold,
@@ -591,9 +726,7 @@ const styles = StyleSheet.create({
   },
 
   termsBlock: {
-    marginTop: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 10,
     marginBottom: 16,
   },
   termsRow: {
@@ -628,12 +761,109 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     textDecorationLine: 'underline',
   },
-  termsNote: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: C.body,
-    fontFamily: Fonts.PoppinsRegular,
+
+  policyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  policySheet: {
+    maxHeight: height * 0.86,
+    height: height * 0.82,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    overflow: 'hidden',
+  },
+  policyHandle: {
+    alignSelf: 'center',
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  policyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E2E8F0',
+  },
+  policyTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    paddingRight: 12,
+  },
+  policyClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  policyCenter: {
+    flex: 1,
+    minHeight: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  policyError: {
     textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: Fonts.PoppinsRegular,
+    color: '#64748B',
+    marginBottom: 14,
+  },
+  policyRetry: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: C.primary,
+  },
+  policyRetryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  policyScroll: {
+    flex: 1,
+    minHeight: 160,
+  },
+  policyScrollContent: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    flexGrow: 1,
+  },
+  policyDocTitle: {
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  policyDone: {
+    marginHorizontal: 18,
+    marginTop: 8,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  policyDoneText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 
   ctaWrap: {

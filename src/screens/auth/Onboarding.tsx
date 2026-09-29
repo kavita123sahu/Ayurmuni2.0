@@ -16,8 +16,6 @@ import {
     Animated,
     findNodeHandle,
     UIManager,
-    Modal,
-    Pressable,
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
@@ -30,18 +28,14 @@ import { launchImageLibrary, launchCamera, MediaType, ImagePickerResponse, Image
 import { EmailValidator } from '../../common/Validator';
 import { RouteProp, useIsFocused, useRoute } from '@react-navigation/native';
 import { genderOptions } from '../../common/DataInterface';
-import { persistProfileAndSyncAccess } from '../../services/guestAuth';
+import { persistProfileAndSyncAccess, signOutToChangeNumber } from '../../services/guestAuth';
 import CommonButton from '../../components/CommonButton';
 import { Images } from '../../common/Images';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as _PROFILE_SERVICE from '../../services/ProfileServices';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import TablerIcon from '../../components/TablerIcon';
-import PolicyContentRenderer from '../../components/PolicyContentRenderer';
-import {
-    getPoliciesList,
-    getRequiredPolicies,
-} from '../../services/PolicyServices';
+import CommonModal from '../../components/LogoutModal';
 
 
 interface FormData {
@@ -61,7 +55,6 @@ interface FormErrors {
     email: string;
     gender: string;
     dob: string;
-    terms: string;
 }
 
 
@@ -74,6 +67,8 @@ const Onboarding = (props: any) => {
     >(null);
     const [isLoadingImage, setImageloding] = useState(false);
     const [Isloading, setUSERID] = useState('');
+    const [signOutVisible, setSignOutVisible] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
     const scrollRef = useRef<ScrollView>(null);
     const dayRef = useRef<TextInput>(null);
     const monthRef = useRef<TextInput>(null);
@@ -150,50 +145,7 @@ const Onboarding = (props: any) => {
         email: '',
         gender: '',
         dob: '',
-        terms: '',
     });
-    const [termsAgreed, setTermsAgreed] = useState(false);
-    const [policySheet, setPolicySheet] = useState<{
-        type: 'terms_of_service' | 'privacy_policy';
-        title: string;
-    } | null>(null);
-    const [policyLoading, setPolicyLoading] = useState(false);
-    const [policyError, setPolicyError] = useState<string | null>(null);
-    const [policyDoc, setPolicyDoc] = useState<any>(null);
-
-    const openPolicy = async (
-        policyType: 'terms_of_service' | 'privacy_policy',
-    ) => {
-        const title =
-            policyType === 'terms_of_service'
-                ? 'Terms of Use'
-                : 'Privacy Policy';
-        setPolicySheet({ type: policyType, title });
-        setPolicyLoading(true);
-        setPolicyError(null);
-        setPolicyDoc(null);
-        try {
-            const res = await getRequiredPolicies(policyType);
-            const list = getPoliciesList(res);
-            const entry = list[0];
-            const doc = entry?.policy ?? entry ?? null;
-            if (!doc) {
-                setPolicyError('Unable to load this policy right now.');
-                return;
-            }
-            setPolicyDoc(doc);
-        } catch (e: any) {
-            setPolicyError(e?.message || 'Failed to load policy.');
-        } finally {
-            setPolicyLoading(false);
-        }
-    };
-
-    const closePolicySheet = () => {
-        setPolicySheet(null);
-        setPolicyDoc(null);
-        setPolicyError(null);
-    };
 
     const isFocused = useIsFocused();
 
@@ -218,6 +170,16 @@ const Onboarding = (props: any) => {
         }
         // Return to Guest vs Complete ask page instead of remounting Home
         props.navigation.navigate('AccessMode');
+    };
+
+    const confirmSignOut = async () => {
+        try {
+            setSigningOut(true);
+            setSignOutVisible(false);
+            await signOutToChangeNumber(props.navigation);
+        } finally {
+            setSigningOut(false);
+        }
     };
     const avatarAnim = useRef(new Animated.Value(0)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -369,7 +331,6 @@ const Onboarding = (props: any) => {
             email: '',
             gender: '',
             dob: '',
-            terms: '',
         };
 
         // FIRST NAME
@@ -378,11 +339,7 @@ const Onboarding = (props: any) => {
             isValid = false;
         }
 
-        // LAST NAME
-        if (!formData.lastName.trim()) {
-            newErrors.lastName = 'Last name is required';
-            isValid = false;
-        }
+        // LAST NAME — optional (backend must also accept empty last_name)
 
         // EMAIL
         if (
@@ -455,60 +412,41 @@ const Onboarding = (props: any) => {
             }
         }
 
-        if (!termsAgreed) {
-            newErrors.terms = 'Please agree to the Terms of Use and Privacy Policy';
-            isValid = false;
-        }
-
         setErrors(newErrors);
 
         return isValid;
     };
 
-    const isFormValid = () => {
-        // Required fields
+    const canProceed = useMemo(() => {
+        // Inline so Proceed enables as soon as required fields are filled
+        // (last name is intentionally excluded — optional)
         if (!formData.firstName.trim()) return false;
-        if (!formData.lastName.trim()) return false;
         if (!formData.gender) return false;
 
-        // DOB required
         const day = Number(dob.day);
         const month = Number(dob.month);
         const year = Number(dob.year);
-
         if (!day || !month || !year) return false;
 
-        // Validate actual date
         const enteredDate = new Date(year, month - 1, day);
         const today = new Date();
-
         const isRealDate =
             enteredDate.getFullYear() === year &&
             enteredDate.getMonth() === month - 1 &&
             enteredDate.getDate() === day;
-
         if (!isRealDate) return false;
-
-        // Future DOB
         if (enteredDate > today) return false;
 
-        // Age validation
         let age = today.getFullYear() - year;
-
-        const monthDiff =
-            today.getMonth() - (month - 1);
-
+        const monthDiff = today.getMonth() - (month - 1);
         if (
             monthDiff < 0 ||
             (monthDiff === 0 && today.getDate() < day)
         ) {
             age--;
         }
-
         if (age < 1) return false;
 
-        // Email is optional
-        // But if entered, it must be valid
         if (
             formData.email.trim() &&
             !EmailValidator(formData.email.trim())
@@ -517,19 +455,13 @@ const Onboarding = (props: any) => {
         }
 
         return true;
-    };
-
-    const canProceed = useMemo(() => {
-        return isFormValid() && termsAgreed;
     }, [
         formData.firstName,
-        formData.lastName,
         formData.email,
         formData.gender,
         dob.day,
         dob.month,
         dob.year,
-        termsAgreed,
     ]);
 
     const handleProcees = async () => {
@@ -545,13 +477,20 @@ const Onboarding = (props: any) => {
 
             const send_data: Record<string, any> = {
                 first_name: formData.firstName.trim(),
-                last_name: formData.lastName.trim(),
                 email: formData.email.trim(),
                 profile_picture:
                     formData.profileImageUrl,
                 gender: formData.gender,
                 date_of_birth: `${dob.year}-${dob.month}-${dob.day}`,
             };
+
+            // Last name is optional — omit when empty so backend does not reject
+            const lastName = formData.lastName.trim();
+            if (lastName) {
+                send_data.last_name = lastName;
+            } else {
+                send_data.last_name = '';
+            }
 
             console.log(
                 'IMAGE URL ===>',
@@ -560,7 +499,7 @@ const Onboarding = (props: any) => {
 
             console.log('OnboardingData:', send_data);
 
-            // ✅ API CALL (no policy payload — accepted on PolicyAccept screen)
+            // ✅ API CALL — policies already accepted in-sheet before Proceed
             const response: any =
                 await _AUTH_SERVICES.onBoarding(send_data);
 
@@ -598,12 +537,7 @@ const Onboarding = (props: any) => {
                     'success'
                 );
 
-                props.navigation.replace('PolicyAccept', {
-                    nextRoute: {
-                        name: 'AssessmentType',
-                        params: { form: 'all' },
-                    },
-                });
+                props.navigation.replace('AssessmentType', { form: 'all' });
                 setIsLoading(false);
                 return;
             }
@@ -665,8 +599,25 @@ const Onboarding = (props: any) => {
                         end={{ x: 1, y: 1 }}
                         style={styles.heroBanner}
                     >
-                        <View style={styles.stepPill}>
-                            <Text style={styles.stepPillText}>Step 1 of 2</Text>
+                        <View style={styles.heroTopRow}>
+                            <View style={styles.stepPill}>
+                                <Text style={styles.stepPillText}>Step 1 of 2</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.changeNumberChip}
+                                activeOpacity={0.85}
+                                disabled={signingOut || isLoading}
+                                onPress={() => setSignOutVisible(true)}
+                                hitSlop={8}
+                            >
+                                {signingOut ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.changeNumberChipText}>
+                                        Change number
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
                         </View>
                         <Text style={styles.heroTitle}>Welcome to Ayurmuni</Text>
                         <Text style={styles.heroSubtitle}>
@@ -726,7 +677,10 @@ const Onboarding = (props: any) => {
                             <View style={styles.row}>
 
                                 <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>First Name{' '}<Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text></Text>
+                                    <Text style={styles.label}>
+                                      First Name{' '}
+                                      <Text style={styles.requiredMark}>*</Text>
+                                    </Text>
                                     <TextInput
                                         ref={firstNameRef}
                                         placeholder="ABC"
@@ -747,7 +701,10 @@ const Onboarding = (props: any) => {
                                 </View>
 
                                 <View style={styles.inputWrapper}>
-                                    <Text style={styles.label}>Last Name{' '}<Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text> </Text>
+                                    <Text style={styles.label}>
+                                      Last Name{' '}
+                                      <Text style={styles.optionalText}>(optional)</Text>
+                                    </Text>
                                     <TextInput
                                         ref={lastNameRef}
                                         placeholder="XYZ"
@@ -798,7 +755,7 @@ const Onboarding = (props: any) => {
                             <View style={styles.fieldContainer}>
                                 <Text style={styles.label}>
                                     Gender{' '}
-                                    <Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text>
+                                    <Text style={styles.requiredMark}>*</Text>
                                 </Text>
 
                                 <View style={styles.genderRow}>
@@ -830,7 +787,10 @@ const Onboarding = (props: any) => {
                                 )}
                             </View>
                             {/* DOB */}
-                            <Text style={[styles.label,]}>Date of Birth{' '}<Text style={[styles.optionalText, { color: '#EF4444' }]}>*</Text></Text>
+                            <Text style={styles.label}>
+                              Date of Birth{' '}
+                              <Text style={styles.requiredMark}>*</Text>
+                            </Text>
 
                             <View style={styles.dobContainer}>
 
@@ -970,66 +930,6 @@ const Onboarding = (props: any) => {
                                     {errors.dob}
                                 </Text>
                             ) : null}
-
-                            <View style={styles.termsBlock}>
-                                <View style={styles.termsRow}>
-                                    <TouchableOpacity
-                                        activeOpacity={0.85}
-                                        onPress={() => {
-                                            setTermsAgreed(prev => !prev);
-                                            setErrors(prev => ({
-                                                ...prev,
-                                                terms: '',
-                                            }));
-                                        }}
-                                        hitSlop={8}
-                                    >
-                                        <View
-                                            style={[
-                                                styles.termsCheck,
-                                                termsAgreed &&
-                                                    styles.termsCheckActive,
-                                                !!errors.terms &&
-                                                    styles.termsCheckError,
-                                            ]}
-                                        >
-                                            {termsAgreed ? (
-                                                <TablerIcon
-                                                    name="check"
-                                                    size={14}
-                                                    color="#FFFFFF"
-                                                />
-                                            ) : null}
-                                        </View>
-                                    </TouchableOpacity>
-                                    <Text style={styles.termsText}>
-                                        I agree to the{' '}
-                                        <Text
-                                            style={styles.termsLink}
-                                            onPress={() =>
-                                                openPolicy('terms_of_service')
-                                            }
-                                        >
-                                            Terms of Use
-                                        </Text>
-                                        {' '}and{' '}
-                                        <Text
-                                            style={styles.termsLink}
-                                            onPress={() =>
-                                                openPolicy('privacy_policy')
-                                            }
-                                        >
-                                            Privacy Policy
-                                        </Text>
-                                        . Tap to read here.
-                                    </Text>
-                                </View>
-                                {errors.terms ? (
-                                    <Text style={styles.errorText}>
-                                        {errors.terms}
-                                    </Text>
-                                ) : null}
-                            </View>
                         </View>
                     </View>
                 </ScrollView>
@@ -1047,79 +947,24 @@ const Onboarding = (props: any) => {
                         title="Proceed"
                         onPress={handleProcees}
                         loading={isLoading}
-                        disabled={!canProceed || isLoading}
+                        disabled={!canProceed || isLoading || signingOut}
                     />
                 </View>
 
             </KeyboardAvoidingView>
 
-            <Modal
-                visible={!!policySheet}
-                transparent
-                animationType="slide"
-                onRequestClose={closePolicySheet}
-            >
-                <Pressable style={styles.policyOverlay} onPress={closePolicySheet}>
-                    <Pressable style={styles.policySheet} onPress={() => {}}>
-                        <View style={styles.policyHeader}>
-                            <Text style={styles.policyTitle}>
-                                {policySheet?.title || 'Policy'}
-                            </Text>
-                            <TouchableOpacity
-                                onPress={closePolicySheet}
-                                hitSlop={10}
-                                style={styles.policyClose}
-                            >
-                                <TablerIcon name="x" size={18} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        {policyLoading ? (
-                            <View style={styles.policyCenter}>
-                                <ActivityIndicator
-                                    size="large"
-                                    color={Colors.primaryColor}
-                                />
-                            </View>
-                        ) : policyError ? (
-                            <View style={styles.policyCenter}>
-                                <Text style={styles.policyError}>{policyError}</Text>
-                                <TouchableOpacity
-                                    style={styles.policyRetry}
-                                    onPress={() =>
-                                        policySheet && openPolicy(policySheet.type)
-                                    }
-                                >
-                                    <Text style={styles.policyRetryText}>Retry</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <ScrollView
-                                style={styles.policyScroll}
-                                contentContainerStyle={styles.policyScrollContent}
-                                showsVerticalScrollIndicator={false}
-                            >
-                                <PolicyContentRenderer
-                                    content={policyDoc?.content}
-                                />
-                            </ScrollView>
-                        )}
-
-                        <TouchableOpacity
-                            style={styles.policyDone}
-                            activeOpacity={0.9}
-                            onPress={() => {
-                                setTermsAgreed(true);
-                                closePolicySheet();
-                            }}
-                        >
-                            <Text style={styles.policyDoneText}>
-                                Got it · Agree & continue
-                            </Text>
-                        </TouchableOpacity>
-                    </Pressable>
-                </Pressable>
-            </Modal>
+            {signOutVisible ? (
+                <CommonModal
+                    visible={signOutVisible}
+                    icon="📱"
+                    title="Change phone number?"
+                    subtitle="You’ll sign out of this guest session and can verify a different number on login."
+                    cancelText="Stay"
+                    confirmText="Sign out"
+                    onClose={() => setSignOutVisible(false)}
+                    onConfirm={confirmSignOut}
+                />
+            ) : null}
         </SafeAreaView>
     );
 };
@@ -1149,13 +994,34 @@ const styles = StyleSheet.create({
         paddingVertical: 22,
     },
 
+    heroTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        marginBottom: 4,
+    },
+
     stepPill: {
         alignSelf: 'flex-start',
         backgroundColor: 'rgba(255,255,255,0.18)',
         borderRadius: 999,
         paddingHorizontal: 12,
         paddingVertical: 5,
-        marginBottom: 12,
+        marginBottom: 0,
+    },
+
+    changeNumberChip: {
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+
+    changeNumberChipText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     stepPillText: {
@@ -1166,6 +1032,7 @@ const styles = StyleSheet.create({
     },
 
     heroTitle: {
+        marginTop: 12,
         fontSize: 24,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsSemiBold,
@@ -1376,9 +1243,14 @@ const styles = StyleSheet.create({
         marginTop: -15
     },
     optionalText: {
-        color: '#94A3B8',
+        fontSize: 12,
+        color: '#9CA3AF',
         fontFamily: Fonts.PoppinsRegular,
-        fontSize: 13,
+    },
+    requiredMark: {
+        color: '#EF4444',
+        fontFamily: Fonts.PoppinsSemiBold,
+        fontSize: 14,
     },
     inputHalf: {
         height: 54,
@@ -1482,132 +1354,6 @@ const styles = StyleSheet.create({
         flex: 1.3,
         width: '34%',
         textAlign: 'center',
-    },
-
-    termsBlock: {
-        marginTop: 4,
-        marginBottom: 10,
-    },
-    termsRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 10,
-    },
-    termsCheck: {
-        width: 22,
-        height: 22,
-        borderRadius: 7,
-        borderWidth: 1.5,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 1,
-    },
-    termsCheckActive: {
-        backgroundColor: Colors.primaryColor,
-        borderColor: Colors.primaryColor,
-    },
-    termsCheckError: {
-        borderColor: '#EF4444',
-    },
-    termsText: {
-        flex: 1,
-        fontSize: 13,
-        lineHeight: 20,
-        fontFamily: Fonts.PoppinsRegular,
-        color: '#64748B',
-    },
-    termsLink: {
-        color: Colors.primaryColor,
-        fontFamily: Fonts.PoppinsSemiBold,
-        textDecorationLine: 'underline',
-    },
-
-    policyOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.45)',
-        justifyContent: 'flex-end',
-    },
-    policySheet: {
-        maxHeight: '82%',
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
-        paddingBottom: 16,
-        overflow: 'hidden',
-    },
-    policyHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 18,
-        paddingTop: 16,
-        paddingBottom: 12,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#E2E8F0',
-    },
-    policyTitle: {
-        flex: 1,
-        fontSize: 17,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        paddingRight: 12,
-    },
-    policyClose: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: '#F1F5F9',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    policyCenter: {
-        minHeight: 220,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 24,
-    },
-    policyError: {
-        textAlign: 'center',
-        fontSize: 14,
-        lineHeight: 20,
-        fontFamily: Fonts.PoppinsRegular,
-        color: '#64748B',
-        marginBottom: 14,
-    },
-    policyRetry: {
-        paddingHorizontal: 18,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: Colors.primaryColor,
-    },
-    policyRetryText: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    policyScroll: {
-        maxHeight: 420,
-    },
-    policyScrollContent: {
-        paddingHorizontal: 18,
-        paddingVertical: 16,
-        paddingBottom: 24,
-    },
-    policyDone: {
-        marginHorizontal: 18,
-        marginTop: 8,
-        height: 50,
-        borderRadius: 14,
-        backgroundColor: Colors.primaryColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    policyDoneText: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     /* ---------------- ERROR ---------------- */

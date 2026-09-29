@@ -309,19 +309,24 @@ const PrakritiProfile = (props: any) => {
 
   const handleHeaderBack = useCallback(() => {
     if (fromAssessment) {
+      handleGoHome();
       return;
     }
-    props.navigation.goBack();
+    if (props.navigation.canGoBack()) {
+      props.navigation.goBack();
+      return;
+    }
+    handleGoHome();
   }, [fromAssessment, props.navigation]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!fromAssessment) {
-        return undefined;
-      }
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleHeaderBack();
+        return true;
+      });
       return () => sub.remove();
-    }, [fromAssessment]),
+    }, [handleHeaderBack]),
   );
 
   const handleEditAssessment = async () => {

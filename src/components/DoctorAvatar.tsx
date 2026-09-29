@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    backgroundColor: '#EEF1F2',
+    backgroundColor: '#F7F7F7',
   },
   empty: {
     alignItems: 'center',

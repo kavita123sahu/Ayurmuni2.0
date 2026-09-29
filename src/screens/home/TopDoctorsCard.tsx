@@ -179,6 +179,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     rowGap: HOME_DOCTOR.gap,
+    // marginBottom:10
     // gap: 10,
 
   },

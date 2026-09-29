@@ -221,7 +221,6 @@ export async function resolveAccessLikeProfile(): Promise<{
 export function navigateToCompleteDetails(message?: string): void {
   if (!navigationRef.isReady()) return;
 
-  // @ts-expect-error nested home stack screen
   navigationRef.navigate('HomeStack', {
     screen: 'CompleteDetails',
     params: {
@@ -286,4 +285,32 @@ export async function getOnboardingEntryScreen(): Promise<
     !!(info?.first_name || info?.customer_id || info?.id);
 
   return hasProfile ? 'AssessmentType' : 'Onboarding';
+}
+
+/**
+ * Guest / incomplete-profile exit: clear session and open Welcome
+ * so the user can verify a different phone number.
+ */
+export async function signOutToChangeNumber(
+  navigation?: any,
+  options?: { clearLocationSession?: () => Promise<void> | void },
+): Promise<void> {
+  try {
+    const { logoutOneSignalUser } = await import(
+      './pushNotificationService'
+    );
+    logoutOneSignalUser();
+  } catch {
+    // ignore OneSignal errors
+  }
+
+  const { clearAppSession } = await import('./sessionCleanup');
+  await clearAppSession({
+    clearLocationSession: options?.clearLocationSession,
+  });
+
+  const { resetRootToWelcome } = await import(
+    '../navigation/navigationUtils'
+  );
+  resetRootToWelcome(navigation);
 }

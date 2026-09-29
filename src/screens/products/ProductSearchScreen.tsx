@@ -12,8 +12,10 @@ import {
   useWindowDimensions,
   Linking,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { SearchScreenHeader } from '../../components/SearchBar';
 import ProductCard, { GRID_CARD_HEIGHT } from '../../components/ProductCard';
 import { Colors } from '../../common/Colors';
@@ -129,6 +131,7 @@ const ProductSearchScreen = (props: any) => {
     refresh: refreshGlobal,
     reload: reloadGlobal,
     loadMore: loadMoreGlobal,
+    commitRecentSearch,
   } = useGlobalSearch(query, isLiveMode);
 
   const results = isRecentMode && recentOverride ? recentOverride : liveResults;
@@ -141,7 +144,11 @@ const ProductSearchScreen = (props: any) => {
     loading: recentLoading,
     items: recentItems,
     refresh: refreshRecent,
-  } = useRecentSearches(searchSource === 'idle');
+    clearAll: clearRecentSearches,
+    removeOne: removeRecentSearch,
+  } = useRecentSearches(true);
+
+  const [clearingRecent, setClearingRecent] = useState(false);
 
   useEffect(() => {
     if (searchSource === 'idle') {
@@ -149,14 +156,41 @@ const ProductSearchScreen = (props: any) => {
     }
   }, [searchSource]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useFocusEffect(
+    useCallback(() => {
+      refreshRecent();
+    }, [refreshRecent]),
+  );
+
   const onSearchChange = useCallback((text: string) => {
     setSearchText(text);
     setActiveRecentId(null);
     setRecentOverride(null);
     setRecentError(null);
     setRecentLoadingHit(false);
+    // Typing → live suggestions (save_recent stays false in useGlobalSearch)
     setSearchSource(text.trim() ? 'live' : 'idle');
   }, []);
+
+  /** Keyboard submit only runs search — does NOT save recent (click saves). */
+  const onSearchSubmit = useCallback(() => {
+    const q = searchText.trim();
+    if (!q) return;
+    setSearchSource('live');
+  }, [searchText]);
+
+  const onClearRecent = useCallback(async () => {
+    if (clearingRecent) return;
+    try {
+      setClearingRecent(true);
+      await clearRecentSearches();
+    } catch (e: any) {
+      showSuccessToast(e?.message || 'Unable to clear recent searches', 'error');
+      refreshRecent();
+    } finally {
+      setClearingRecent(false);
+    }
+  }, [clearingRecent, clearRecentSearches, refreshRecent]);
 
   // Idle browse is always global (no medicine/product service bias).
   // Typed search uses useGlobalSearch (products + medicines + more).
@@ -307,6 +341,14 @@ const ProductSearchScreen = (props: any) => {
 
   const openHit = useCallback(
     (hit: GlobalSearchHit) => {
+      // Only clicked suggestions are saved to recent search
+      const typed = String(searchText || query || '').trim();
+      const clicked =
+        String(hit.title || '').trim() || typed;
+      if (clicked) {
+        commitRecentSearch(clicked).then(() => refreshRecent());
+      }
+
       const raw = hit.raw || {};
       switch (hit.type) {
         case 'product':
@@ -328,8 +370,10 @@ const ProductSearchScreen = (props: any) => {
         }
         case 'brand': {
           navigateToCategoryProducts(props.navigation, {
+            categoryMode: 'product',
+            brandOnly: true,
             brand_name_id: String(raw.brand_id ?? raw.brand_name_id ?? raw.id ?? hit.id),
-            brandName: hit.title || raw.brand_name,
+            brandId: String(raw.brand_id ?? raw.brand_name_id ?? raw.id ?? hit.id),
           });
           break;
         }
@@ -354,7 +398,9 @@ const ProductSearchScreen = (props: any) => {
           break;
         }
         case 'diet_plan': {
-          props.navigation.navigate('DietScreen', {
+          const planId = String(raw.id ?? raw.diet_plan_id ?? hit.id ?? '').trim();
+          props.navigation.navigate('DietPlanDetail', {
+            planId,
             item: {
               ...raw,
               id: raw.id ?? hit.id,
@@ -375,7 +421,7 @@ const ProductSearchScreen = (props: any) => {
           break;
       }
     },
-    [props.navigation],
+    [props.navigation, searchText, query, commitRecentSearch, refreshRecent],
   );
 
   const searchRows: ListRow[] = useMemo(() => {
@@ -519,7 +565,7 @@ const ProductSearchScreen = (props: any) => {
   const resultLabel = isSearching
     ? recentLoadingHit || globalLoading
       ? 'Searching…'
-      : `${total} result${total === 1 ? '' : 's'}`
+      : `${total} suggestion${total === 1 ? '' : 's'}`
     : `${products.length} product${products.length === 1 ? '' : 's'}`;
 
   const RecentSearchesBlock = () => {
@@ -531,41 +577,81 @@ const ProductSearchScreen = (props: any) => {
         </View>
       );
     }
-    if (!recentItems.length) return null;
 
     return (
       <View style={styles.recentSection}>
         <View style={styles.recentHeader}>
           <Text style={styles.recentTitle}>Recent searches</Text>
-          {/* <TablerIcon name="search" size={14} color="#94A3B8" /> */}
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.recentChipRow}
-          keyboardShouldPersistTaps="handled"
-        >
-          {recentItems.map(item => (
+          {recentItems.length > 0 ? (
             <TouchableOpacity
-              key={item.id}
-              style={[styles.recentChip, isCompact && styles.recentChipCompact]}
+              onPress={onClearRecent}
+              disabled={clearingRecent}
+              hitSlop={8}
               activeOpacity={0.85}
-              onPress={() => applyRecentSearch(item)}
             >
-              <TablerIcon name="search" size={12} color={Colors.primaryColor} />
-              <Text
-                style={[
-                  styles.recentChipText,
-                  isCompact && styles.recentChipTextCompact,
-                ]}
-                numberOfLines={1}
-              >
-                {item.query}
-              </Text>
+              {clearingRecent ? (
+                <ActivityIndicator size="small" color={Colors.primaryColor} />
+              ) : (
+                <Text style={styles.recentClear}>Clear</Text>
+              )}
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          ) : null}
+        </View>
+        {recentItems.length === 0 ? (
+          <Text style={styles.recentEmpty}>
+            Tap a suggestion while searching to save it here
+          </Text>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.recentChipRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            {recentItems.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.recentChip,
+                  isCompact && styles.recentChipCompact,
+                ]}
+                activeOpacity={0.85}
+                onPress={() => applyRecentSearch(item)}
+                onLongPress={() => {
+                  removeRecentSearch({
+                    id: item.id,
+                    query: item.query,
+                  }).catch(() => undefined);
+                }}
+              >
+                <TablerIcon
+                  name="search"
+                  size={12}
+                  color={Colors.primaryColor}
+                />
+                <Text
+                  style={[
+                    styles.recentChipText,
+                    isCompact && styles.recentChipTextCompact,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.query}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
+    );
+  };
+
+  const SuggestionsHint = () => {
+    if (!isLiveMode || recentLoadingHit) return null;
+    return (
+      <Text style={styles.suggestionsHint}>
+        Suggestions — tap one to open and save in Recent
+      </Text>
     );
   };
 
@@ -579,10 +665,12 @@ const ProductSearchScreen = (props: any) => {
           placeholder="Search ashwagandha, doctors, yoga…"
           value={searchText}
           onChangeText={onSearchChange}
+          onSubmitEditing={onSearchSubmit}
           autoFocus
         />
         <View style={{ paddingHorizontal: hPad }}>
           <RecentSearchesBlock />
+          <SuggestionsHint />
           {!loading && (
             <Text style={styles.resultCount}>{resultLabel}</Text>
           )}
@@ -614,6 +702,8 @@ const ProductSearchScreen = (props: any) => {
           }
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onScrollBeginDrag={Keyboard.dismiss}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -701,6 +791,25 @@ const styles = StyleSheet.create({
   recentTitle: {
     fontSize: 16,
     color: '#0F172A',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  recentClear: {
+    fontSize: 13,
+    color: Colors.primaryColor,
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  recentEmpty: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#94A3B8',
+    fontFamily: Fonts.PoppinsRegular,
+    paddingBottom: 4,
+  },
+  suggestionsHint: {
+    marginTop: 8,
+    marginBottom: 2,
+    fontSize: 12,
+    color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
   },
   recentLoading: {

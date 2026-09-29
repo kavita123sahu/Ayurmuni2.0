@@ -3,12 +3,17 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
-import { canModifyAppointment, resolveAppointmentDateTime } from '../utils/appointmentUtils';
+import {
+  canOfferCancel,
+  canOfferReschedule,
+  resolveAppointmentDateTime,
+} from '../utils/appointmentUtils';
 
 type Props = {
   status: string;
   date?: string;
   time?: string;
+  item?: any;
   onReschedule?: () => void;
   onCancel?: () => void;
   onJoinCall?: () => void;
@@ -18,11 +23,11 @@ type Props = {
   hasPrescription?: boolean;
 };
 
-
 const AppointmentActions = ({
   status,
   date,
   time,
+  item,
   onReschedule,
   onCancel,
   onJoinCall,
@@ -31,15 +36,17 @@ const AppointmentActions = ({
   hasPrescription = false,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
-  const schedule = resolveAppointmentDateTime({ date, time, status });
-  const withinModifyWindow = canModifyAppointment(
-    status,
-    schedule.date || date,
-    schedule.time || time,
-  );
+  const schedule = resolveAppointmentDateTime({ date, time, status, ...item });
+  const dateVal = schedule.date || date;
+  const timeVal = schedule.time || time;
 
-  const showReschedule = withinModifyWindow;
-  const showCancel = withinModifyWindow;
+  const showReschedule = canOfferReschedule(
+    status,
+    dateVal,
+    timeVal,
+    item ?? { status, date: dateVal, time: timeVal },
+  );
+  const showCancel = canOfferCancel(status, dateVal, timeVal);
 
   const showViewDetails =
     hasPrescription &&
@@ -89,7 +96,7 @@ const AppointmentActions = ({
         ) : (
           showCancel && (
             <TouchableOpacity
-              style={styles.cancelBtn}
+              style={[styles.cancelBtn, !showReschedule && styles.fullFlex]}
               onPress={onCancel}
               activeOpacity={0.85}
             >
@@ -123,7 +130,6 @@ const AppointmentActions = ({
   return null;
 };
 
-
 export default React.memo(AppointmentActions);
 
 const styles = StyleSheet.create({
@@ -156,6 +162,10 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+
+  fullFlex: {
+    flex: 1,
   },
 
   standaloneWrap: {

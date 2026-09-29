@@ -22,13 +22,19 @@ export const navigateToCategoryProducts = (
     categoryName?: string;
     categoryDesc?: string;
     categorySubscription?: string;
-    /** medicine = product catalog scoped to medicine service_category_id */
-    categoryMode?: 'health' | 'product' | 'medicine';
+    /** medicine = product catalog scoped to medicine service_category_id
+     *  both = merged Products + Medicine categories in the sidebar
+     */
+    categoryMode?: 'health' | 'product' | 'medicine' | 'both';
     productSubcategoryId?: string;
     healthCategoryId?: string;
     healthDiseaseId?: string;
     brand_name_id?: string;
     brandName?: string;
+    brandId?: string;
+    brandID?: string;
+    /** Brand banner / Trusted Brands — filter by brand; no sidebar inject */
+    brandOnly?: boolean;
     serviceCategoryId?: string;
   },
 ) => {
@@ -70,8 +76,8 @@ export const navigateToCheckout = (
   }
 
   const normalizedProducts = selectedProducts.map(item => {
-    // Cart line id from API (data.item.id) — NOT variant.variant_id
-    const cartItemId = String(item.id ?? item.cart_item_id ?? '');
+    // Prefer cart_item_id (line UUID); fall back to id — never use variant_id
+    const cartItemId = String(item.cart_item_id ?? item.id ?? '').trim();
     const variantId = String(item.variant_id ?? '');
 
     return {

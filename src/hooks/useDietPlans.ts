@@ -2748,12 +2748,17 @@ export const useDietPlans = (options: Options = {}) => {
             : normalizeDietPlanList(res);
 
         const seenIds = new Set(mappedRaw.map(p => String(p.id)));
-        const missingAssigned = assignmentOverlay.filter(p => {
-          const id = String(p.id || '');
-          if (!id || seenIds.has(id)) return false;
-          const st = getDietListStatus(p);
-          return st === 'active' || st === 'paused';
-        });
+        // When search/filters are active, only enrich matching rows — do not
+        // inject unrelated assigned plans that would break filter conditions.
+        const missingAssigned =
+          Object.keys(apiFilters).length > 0
+            ? []
+            : assignmentOverlay.filter(p => {
+                const id = String(p.id || '');
+                if (!id || seenIds.has(id)) return false;
+                const st = getDietListStatus(p);
+                return st === 'active' || st === 'paused';
+              });
         missingAssigned.sort((a, b) => {
           const rank = (p: DietPlanSummary) =>
             getDietListStatus(p) === 'active' ? 0 : 1;

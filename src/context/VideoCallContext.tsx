@@ -1040,7 +1040,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     setViewMode('fullscreen');
     if (navigationRef.isReady()) {
       try {
-        // @ts-expect-error nested stack screen
         navigationRef.navigate('HomeStack', {
           screen: 'PatientVideoCallScreen',
           params: params ?? {

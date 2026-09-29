@@ -1,17 +1,12 @@
 import {
     StyleSheet,
-    Dimensions,
     Platform,
 } from 'react-native';
 import { Fonts } from '../../../common/Fonts';
 import { Colors } from '../../../common/Colors';
-const { width } =
-    Dimensions.get('window');
+import { scale } from '../../../constants/responsive';
 
-const guidelineWidth = 375;
-
-export const scale = (size: number) =>
-    (width / guidelineWidth) * size;
+export { scale };
 
 export const COLORS = {
     primary: Colors.primaryColor,

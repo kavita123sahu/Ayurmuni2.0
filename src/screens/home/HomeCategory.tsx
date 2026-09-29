@@ -20,7 +20,7 @@ import { navigateToCategoryProducts } from '../../navigation/productNavigation';
 import { resolveServiceCategoryKey } from '../../utils/serviceCategoryUtils';
 
 const SCREEN_W = Dimensions.get('window').width;
-const ITEM_GAP = 8;
+const ITEM_GAP = 5;
 const ITEM_WIDTH = Math.floor((SCREEN_W - 16) / 5.15);
 const TILE_W = Math.min(52, ITEM_WIDTH - 6);
 const TILE_H = 40;
@@ -29,16 +29,40 @@ interface Category {
   id: string;
   name: string;
   image_url: string;
+  redirect_url: string
 }
+
+/** Title-case first letter of each word for service category labels. */
+const formatCategoryLabel = (name?: string) => {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  return raw
+    .split(/\s+/)
+    .map(word =>
+      word
+        ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        : word,
+    )
+    .join(' ');
+};
 
 /** Filled Tabler icons for every service tile (no outline). */
 const CATEGORY_ICONS: Record<string, TablerIconName> = {
-  all: 'apps-filled',
+  all: 'view-all',
+  'view all': 'view-all',
+  viewall: 'view-all',
   consult: 'medical-cross-filled',
+  consultation: 'medical-cross-filled',
+  consultations: 'medical-cross-filled',
+  doctor: 'medical-cross-filled',
+  doctors: 'medical-cross-filled',
   medicine: 'pill-filled',
+  medicines: 'pill-filled',
   products: 'package-filled',
+  product: 'package-filled',
   yoga: 'barbell-filled',
   diet: 'salad-filled',
+  'diet plan': 'salad-filled',
 };
 
 const SERVICE_ROUTES: Record<string, string> = {
@@ -53,7 +77,10 @@ const ALL_ITEM: Category = {
   id: 'all',
   name: 'All',
   image_url: '',
+  redirect_url: '',
 };
+
+
 
 const resolveCategoryIcon = (item: Category): TablerIconName => {
   if (item.id === 'all') return CATEGORY_ICONS.all;
@@ -109,9 +136,10 @@ const CategoryTile = ({
 
       <Text
         numberOfLines={2}
+        ellipsizeMode="tail"
         style={[styles.label, active && styles.labelActive]}
       >
-        {item.name}
+        {formatCategoryLabel(item.name)}
       </Text>
 
       <View style={active ? styles.activeIndicator : styles.activeIndicatorSpacer} />
@@ -133,13 +161,21 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
     [data],
   );
 
+  console.log("servicesservicesservices", services)
   const listData = useMemo(() => [ALL_ITEM, ...services], [services]);
 
+  // const listData = useMemo(() => [...services], [services]);
+
   const handlePress = useCallback(
+
     (item: Category) => {
+      console.log("itessssssssssssss", item)
       setActiveId(item.id);
 
-      if (item.id === 'all') {
+      const redirectUrl = item?.redirect_url?.trim();
+
+      if (redirectUrl) {
+        navigation.navigate(redirectUrl as never);
         return;
       }
 
@@ -148,26 +184,14 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
       const route =
         SERVICE_ROUTES[serviceKey] || SERVICE_ROUTES[nameKey] || null;
 
-      // Doctor / consult service → Consult tab/screen (never CategoryProducts)
-      if (serviceKey === 'consult' || route === 'ConsultScreen') {
-        navigation.navigate('ConsultScreen' as never);
-        return;
-      }
-
       if (route) {
         navigation.navigate(route as never);
         return;
       }
-
-      navigateToCategoryProducts(navigation, {
-        categoryName: item.name,
-        categoryId: item.id,
-        categoryMode: 'product',
-        serviceCategoryId: item.id,
-      });
     },
     [navigation],
   );
+
 
   const renderItem = useCallback(
     ({ item }: { item: Category }) => (
@@ -224,7 +248,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   item: {
-    width: ITEM_WIDTH - 19,
+    width: ITEM_WIDTH - 16,
     alignItems: 'center',
     marginRight: ITEM_GAP,
   },
@@ -242,14 +266,15 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   label: {
-    marginTop: 1,
+    marginTop: 2,
     fontSize: 10,
-    lineHeight: 13,
-    height: 13,
+    lineHeight: 12,
+    minHeight: 24,
     textAlign: 'center',
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
-    width: ITEM_WIDTH,
+    width: '100%',
+    paddingHorizontal: 1,
   },
   labelActive: {
     color: Colors.primaryColor,

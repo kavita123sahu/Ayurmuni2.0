@@ -25,6 +25,7 @@ import CommonModal from '../../components/LogoutModal';
 import { showSuccessToast } from '../../config/Key';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import {
+  canOfferReschedule,
   getAppointmentPatientId,
   normalizeAppointmentListItem,
 } from '../../utils/appointmentUtils';
@@ -207,7 +208,22 @@ const AppointmentScreen = (props: any) => {
   }, [loading, loadingMore, hasMore, loadMore]);
 
   const openReschedule = useCallback((item: any) => {
-    setSelectedAppointment(item);
+    const normalized = normalizeAppointmentListItem(item);
+    if (
+      !canOfferReschedule(
+        normalized?.status,
+        normalized?.date,
+        normalized?.time,
+        { ...item, ...normalized },
+      )
+    ) {
+      showSuccessToast(
+        'This appointment was already rescheduled once. You can only cancel it.',
+        'error',
+      );
+      return;
+    }
+    setSelectedAppointment({ ...item, ...normalized });
     setShowRescheduleModal(true);
   }, []);
 
@@ -270,9 +286,10 @@ const AppointmentScreen = (props: any) => {
       appointmentId: string,
       payload: {
         action?: string;
-        availability: number;
+        availability: string | number;
         reschedule_reason?: string;
         cancellation_reason?: string;
+        cancellation_reason_detail?: string;
       },
     ) => {
       const action = payload.action || 'reschedule';
@@ -280,12 +297,18 @@ const AppointmentScreen = (props: any) => {
 
       switch (action) {
         case 'reschedule':
-        case 'confirm_reschedule':
-          payloadSend.availability = payload.availability;
+          payloadSend.availability = String(payload.availability);
           payloadSend.reschedule_reason = payload.reschedule_reason;
+          break;
+        case 'confirm_reschedule':
+          payloadSend.availability = String(payload.availability);
           break;
         case 'cancel':
           payloadSend.cancellation_reason = payload.cancellation_reason;
+          if (payload.cancellation_reason_detail) {
+            payloadSend.cancellation_reason_detail =
+              payload.cancellation_reason_detail;
+          }
           break;
       }
 
@@ -314,13 +337,23 @@ const AppointmentScreen = (props: any) => {
   const handleCancel = useCallback(
     async (
       appointmentId: string,
-      payload: { action: string; cancellation_reason: string },
+      payload: {
+        action: string;
+        cancellation_reason: string;
+        cancellation_reason_detail?: string;
+      },
     ) => {
       const res = await handleAppointmentAction({
         appointmentId,
         payload: {
           action: 'cancel',
           cancellation_reason: payload.cancellation_reason,
+          ...(payload.cancellation_reason_detail
+            ? {
+              cancellation_reason_detail:
+                payload.cancellation_reason_detail,
+            }
+            : {}),
         },
       });
       console.log('CancelResponse =>', res);
@@ -389,7 +422,7 @@ const AppointmentScreen = (props: any) => {
     }`;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.topChrome}>
@@ -470,17 +503,22 @@ const AppointmentScreen = (props: any) => {
       />
 
       <RescheduleModal
-        visible={showRescheduleModal}
+        visible={showRescheduleModal && !!selectedAppointment}
         appointment={selectedAppointment}
         onClose={() => {
           setShowRescheduleModal(false);
           setSelectedAppointment(null);
         }}
         isRescheduleRequest={
-          selectedAppointment?.status?.toLowerCase() === 'reschedule'
+          String(selectedAppointment?.status || '').toLowerCase() ===
+          'reschedule'
         }
         onSubmit={payload => {
-          handleReschedule(selectedAppointment?.consultation_id, {
+          const appointmentId =
+            selectedAppointment?.appointment_id ||
+            selectedAppointment?.consultation_id;
+          if (!appointmentId) return;
+          handleReschedule(appointmentId, {
             ...payload,
             action: (payload as any)?.action || 'reschedule',
           });

@@ -176,7 +176,9 @@ const DietPlanCard = ({ item, onPress }: Props) => {
             </View>
             {!!ratingText && (
               <View style={styles.footerItem}>
-                <TablerIcon name="star" size={13} color="#F59E0B" strokeWidth={2} />
+                <View style={styles.footerRatingIcon}>
+                  <TablerIcon name="star-filled" size={12} color="#F59E0B" />
+                </View>
                 <Text style={styles.footerRatingText}>{ratingText}</Text>
               </View>
             )}
@@ -336,17 +338,30 @@ const styles = StyleSheet.create({
   footerItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
+    minHeight: 14,
+  },
+  footerRatingIcon: {
+    width: 13,
+    height: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   footerText: {
     fontSize: 11,
+    lineHeight: 14,
     fontFamily: Fonts.PoppinsMedium,
     color: '#64748B',
+    includeFontPadding: false,
   },
   footerRatingText: {
     fontSize: 11,
+    lineHeight: 14,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#B45309',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   chevronBtn: {
     width: 24,

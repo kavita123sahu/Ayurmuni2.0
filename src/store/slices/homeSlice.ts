@@ -127,8 +127,8 @@ const loadDietPlansForHome = async (
     // No disease → full browse list with no filter params
     const res = healthDiseaseId
       ? await _HOME_SERVICES.getSuggestedDietPlans({
-          health_disease_id: healthDiseaseId,
-        })
+        health_disease_id: healthDiseaseId,
+      })
       : await _HOME_SERVICES.getDietPlansBrowse();
     console.log('HOME_DIET_PLANS_RESPONSE =>', res);
 
@@ -209,14 +209,14 @@ const loadCatalogFallback = async (
     service_category_id?: string | null;
     health_disease_id?: string | null;
   }> = healthDiseaseId
-    ? [
+      ? [
         {
           service_category_id: serviceCategoryId,
           health_disease_id: healthDiseaseId,
         },
         { health_disease_id: healthDiseaseId },
       ]
-    : [{ service_category_id: serviceCategoryId }, {}];
+      : [{ service_category_id: serviceCategoryId }, {}];
 
   for (const attempt of attempts) {
     try {
@@ -259,11 +259,11 @@ const loadSuggestedCatalog = async (
     const res =
       kind === 'medicines'
         ? await _HOME_SERVICES.getSuggestedMedicines({
-            health_disease_id: healthDiseaseId,
-          })
+          health_disease_id: healthDiseaseId,
+        })
         : await _HOME_SERVICES.getSuggestedProducts({
-            health_disease_id: healthDiseaseId,
-          });
+          health_disease_id: healthDiseaseId,
+        });
 
     console.log(`HOME_${kind.toUpperCase()}_SUGGESTED_RAW =>`, res);
 
@@ -446,6 +446,7 @@ export const fetchHomeData = createAsyncThunk<
                 ? { health_disease_id: healthDiseaseId }
                 : undefined,
             );
+            console.log("resresresres",res)
             const list = normalizeYogaSessionList(res);
             console.log('HOME_YOGA_API_RESPONSE =>', list);
             return list;

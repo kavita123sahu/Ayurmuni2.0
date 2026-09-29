@@ -11,7 +11,7 @@ import { Colors } from '../common/Colors';
 import { getStatusStyle } from '../common/DataInterface';
 import TablerIcon from './TablerIcon';
 import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
-import { canModifyAppointment } from '../utils/appointmentUtils';
+import { canOfferReschedule } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
 
 interface Props {
@@ -69,7 +69,7 @@ const RecentDoctors: React.FC<Props> = ({
     [status],
   );
   const showReschedule = useMemo(
-    () => canModifyAppointment(status, date, time),
+    () => canOfferReschedule(status, date, time, { status, date, time }),
     [status, date, time],
   );
   const showBookAgain =
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   metaChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
     marginTop: 2,
   },
   chip: {

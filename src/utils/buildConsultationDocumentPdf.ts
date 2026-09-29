@@ -51,6 +51,7 @@ import {
   formatPrescriptionId,
   formatReceiptId,
 } from './formatDisplayId';
+import { parseConsultationReceiptBreakdown } from './consultationReceiptUtils';
 
 
 
@@ -258,19 +259,22 @@ export async function createMedicalReceiptPdfBytes(
 
   const doctorName = pick(receipt?.info?.doctor_name, receipt?.doctor_name);
 
+  const breakdown = parseConsultationReceiptBreakdown(receipt);
 
+  const consultationFee = breakdown.consultationFee;
 
-  const consultationFee = Number(receipt?.consultation_fees ?? 0);
+  const platformFee = breakdown.platformFee;
+
+  const gstAmount = breakdown.gstAmount;
 
   const adminFee = Number(receipt?.administrative_charges ?? 0);
 
   const digitalFee = Number(receipt?.digital_report_access ?? 0);
 
-  const grandTotal = Number(
-
-    receipt?.total_amount ?? consultationFee + adminFee + digitalFee,
-
-  );
+  const grandTotal =
+    breakdown.totalPaid > 0
+      ? breakdown.totalPaid
+      : consultationFee + platformFee + gstAmount + adminFee + digitalFee;
 
 
 
@@ -295,6 +299,54 @@ export async function createMedicalReceiptPdfBytes(
     },
 
   ];
+
+
+
+  if (platformFee > 0) {
+
+    lineItems.push({
+
+      sno: lineItems.length + 1,
+
+      description: 'Platform Fee',
+
+      qty: 1,
+
+      rate: money(platformFee),
+
+      taxableValue: money(platformFee),
+
+      tax: '0.00',
+
+      total: money(platformFee),
+
+    });
+
+  }
+
+
+
+  if (gstAmount > 0) {
+
+    lineItems.push({
+
+      sno: lineItems.length + 1,
+
+      description: 'GST',
+
+      qty: 1,
+
+      rate: money(gstAmount),
+
+      taxableValue: money(gstAmount),
+
+      tax: money(gstAmount),
+
+      total: money(gstAmount),
+
+    });
+
+  }
 
 
 
@@ -346,9 +398,15 @@ export async function createMedicalReceiptPdfBytes(
 
 
 
-  const taxableSum = consultationFee + adminFee + digitalFee;
+  const taxableSum = consultationFee + platformFee + adminFee + digitalFee;
 
   const patient = receipt?.patient ?? {};
+
+  const paymentId = pick(
+    breakdown.paymentId,
+    receipt?.payment_id,
+    receipt?.consultation_id,
+  );
 
 
 
@@ -376,17 +434,23 @@ export async function createMedicalReceiptPdfBytes(
 
     leftMeta: [
 
-      { label: 'Receipt Date', value: pick(receipt?.date, receipt?.paid_at) || '-' },
+      { label: 'Receipt Date', value: pick(receipt?.date, receipt?.paid_at, breakdown.paidAt) || '-' },
 
       {
 
         label: 'Receipt Code',
 
-        value: formatReceiptId(
-          pick(receipt?.payment_id, receipt?.consultation_id),
-        ),
+        value: formatReceiptId(paymentId),
 
       },
+
+      ...(breakdown.paymentId
+        ? [{ label: 'Payment ID', value: breakdown.paymentId }]
+        : []),
+
+      ...(breakdown.orderId
+        ? [{ label: 'Order ID', value: breakdown.orderId }]
+        : []),
 
     ],
 
@@ -406,9 +470,33 @@ export async function createMedicalReceiptPdfBytes(
 
         label: 'Payment Method',
 
-        value: pick(receipt?.payment_method, receipt?.payment_type) || '-',
+        value: breakdown.paymentMethod || '-',
 
       },
+
+      ...(breakdown.paymentStatus
+        ? [
+            {
+              label: 'Payment Status',
+              value:
+                breakdown.paymentStatus.charAt(0).toUpperCase() +
+                breakdown.paymentStatus.slice(1),
+            },
+          ]
+        : []),
+
+      ...(breakdown.bank
+        ? [{ label: 'Bank', value: breakdown.bank }]
+        : []),
+
+      ...(breakdown.bankTransactionId
+        ? [
+            {
+              label: 'Bank Txn ID',
+              value: breakdown.bankTransactionId,
+            },
+          ]
+        : []),
 
     ],
 
@@ -422,7 +510,7 @@ export async function createMedicalReceiptPdfBytes(
 
       { label: 'Taxable', value: money(taxableSum) },
 
-      { label: 'IGST', value: '0.00' },
+      { label: 'GST', value: money(gstAmount) },
 
       { label: 'Grand Total', value: money(grandTotal) },
 
