@@ -49,6 +49,8 @@ import CommonModal from '../../components/LogoutModal';
 import { usePatientData } from '../../hooks/usePatientData';
 import DoctorAvatar from '../../components/DoctorAvatar';
 import LinearGradient from 'react-native-linear-gradient';
+import PaymentHistoryTimeline from '../../components/PaymentHistoryTimeline';
+import { getPaymentHistory } from '../../utils/paymentHistoryUtils';
 
 const PrimaryButton = ({
   title,
@@ -618,6 +620,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     appointment?.payment?.status ||
     null;
 
+  const paymentHistory = getPaymentHistory(detail, appointment);
+
   const appointmentFields = [
     { icon: 'document-text-outline', label: 'Appointment ID', value: appointment?.appointment_id ?? appointment?.id },
     { icon: 'calendar-outline', label: 'Date', value: appointment?.appointment_date },
@@ -759,6 +763,18 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 </View>
               </>
             )}
+
+            {paymentHistory.length > 0 ? (
+              <>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="wallet-outline" size={15} color={Theme.gold} />
+                  <Text style={styles.sectionTitle}>Payment History</Text>
+                </View>
+                <View style={styles.card}>
+                  <PaymentHistoryTimeline history={paymentHistory} />
+                </View>
+              </>
+            ) : null}
 
             {!!detail?.appointment?.concern ? (
               <>

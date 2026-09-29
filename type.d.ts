@@ -20,8 +20,10 @@ export type RootStackParamList = {
   CompleteDetails: { reason?: string } | undefined;
   ProductRazorpayScreen: undefined;
   FavDoctors: undefined;
-  AppointmentDetails: undefined;
-  HomeStack: undefined;
+  AppointmentDetails:
+    | { consultation_id?: string; appointment_id?: string; [key: string]: any }
+    | undefined;
+  HomeStack: { screen: string; params?: any } | undefined;
   Welcome: undefined; ChatContainer: undefined;
   // ChatScreen: undefined;
   PatientVideoCallScreen: undefined;

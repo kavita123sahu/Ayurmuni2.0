@@ -221,7 +221,6 @@ export async function resolveAccessLikeProfile(): Promise<{
 export function navigateToCompleteDetails(message?: string): void {
   if (!navigationRef.isReady()) return;
 
-  // @ts-expect-error nested home stack screen
   navigationRef.navigate('HomeStack', {
     screen: 'CompleteDetails',
     params: {

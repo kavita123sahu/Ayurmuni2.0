@@ -34,6 +34,9 @@ import { fetchHomeData } from '../../store/slices/homeSlice';
 import { Utils } from '../../common/Utils';
 import CommonModal from '../../components/LogoutModal';
 
+/** `pointerEvents` is supported on Image at runtime but missing from ImageProps. */
+const IGNORE_TOUCHES = { pointerEvents: 'none' } as {};
+
 const GREEN = Colors.primaryColor;
 const GREEN_DEEP = '#0A4F40';
 const GREEN_MID = '#117A63';
@@ -204,7 +207,7 @@ const AccessModeScreen = ({ navigation }: any) => {
               },
             ]}
             resizeMode="contain"
-            pointerEvents="none"
+            {...IGNORE_TOUCHES}
           />
 
           <View style={[styles.heroInner, { paddingHorizontal: metrics.hPad }]}>

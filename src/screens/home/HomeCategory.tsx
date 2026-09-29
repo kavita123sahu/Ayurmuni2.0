@@ -77,6 +77,7 @@ const ALL_ITEM: Category = {
   id: 'all',
   name: 'All',
   image_url: '',
+  redirect_url: '',
 };
 
 

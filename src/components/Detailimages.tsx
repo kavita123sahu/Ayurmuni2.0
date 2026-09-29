@@ -463,6 +463,9 @@ type Props = {
   mode?: 'product' | 'banner';
   /** Disable fullscreen preview (banner default) */
   enablePreview?: boolean;
+  /** Accepted for callers; current layout does not use them. */
+  fullBleed?: boolean;
+  showPreviewChip?: boolean;
 };
 
 const getUriFromSource = (source: ImageSourcePropType | null): string | null => {

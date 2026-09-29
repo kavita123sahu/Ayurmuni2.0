@@ -54,8 +54,9 @@ const formatDateTime = (value?: string | null) => {
 const getStatusColor = (status?: string) => {
     const normalized = String(status ?? '').toLowerCase();
     if (normalized === 'success' || normalized === 'paid') return '#16A34A';
+    if (normalized === 'refund_paid') return '#16A34A';
     if (normalized === 'failed' || normalized === 'refunded') return '#DC2626';
-    if (normalized === 'pending') return '#F59E0B';
+    if (normalized === 'pending' || normalized === 'refund_pending') return '#F59E0B';
     return '#64748B';
 };
 
@@ -63,7 +64,8 @@ const getStatusLabel = (status?: string) => {
     const normalized = String(status ?? '').toLowerCase();
     if (normalized === 'success') return 'Paid';
     if (!status) return 'Unknown';
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    const text = status.replace(/_/g, ' ');
+    return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
 const TransactionDetailsScreen = ({ route, navigation }: Props) => {
@@ -139,6 +141,26 @@ const TransactionDetailsScreen = ({ route, navigation }: Props) => {
                     <DetailRow label="Gateway Ref" value={transaction.gateway_reference} />
                     <DetailRow label="Currency" value={transaction.currency} />
                     <DetailRow label="Paid At" value={formatDateTime(transaction.paid_at)} />
+                    {transaction.at ? (
+                        <DetailRow label="Date" value={formatDateTime(transaction.at)} />
+                    ) : null}
+                    <DetailRow
+                        label="Event"
+                        value={
+                            transaction.event_type
+                                ? String(transaction.event_type).replace(/_/g, ' ')
+                                : null
+                        }
+                    />
+                    <DetailRow label="Doctor" value={transaction.doctor?.name} />
+                    <DetailRow label="Patient" value={transaction.patient?.name} />
+                    <DetailRow
+                        label="Appointment Date"
+                        value={transaction.appointment?.appointment_date}
+                    />
+                    <DetailRow label="Payment ID" value={transaction.gateway_payment_id} />
+                    <DetailRow label="Refund Ref" value={transaction.gateway_refund_id} />
+                    <DetailRow label="Note" value={transaction.note} />
                     <DetailRow label="Created At" value={formatDateTime(transaction.created_at)} />
                     {transaction.failure_reason ? (
                         <DetailRow label="Failure Reason" value={transaction.failure_reason} />

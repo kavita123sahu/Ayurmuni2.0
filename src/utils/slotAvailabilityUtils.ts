@@ -3,6 +3,7 @@
  */
 
 type SlotLike = {
+  id?: string | number;
   date?: string;
   start_time?: string;
   end_time?: string;

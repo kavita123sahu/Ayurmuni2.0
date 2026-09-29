@@ -199,6 +199,35 @@ export const getTransactions = async (params?: {
   }
 };
 
+export type CustomerPaymentHistoryQuery = {
+  type?: 'consultation' | 'order' | null;
+  entry_type?: 'credit' | 'debit' | null;
+  /** YYYY-MM-DD */
+  date_from?: string | null;
+  /** YYYY-MM-DD */
+  date_to?: string | null;
+  page?: number;
+  page_size?: number;
+};
+
+/** GET payments/customer/history/ — consultation + order payments and refunds. */
+export const getCustomerPaymentHistory = async (
+  params: CustomerPaymentHistoryQuery = {},
+) => {
+  const query = new URLSearchParams();
+  if (params.type) query.set('type', params.type);
+  if (params.entry_type) query.set('entry_type', params.entry_type);
+  if (params.date_from) query.set('date_from', params.date_from);
+  if (params.date_to) query.set('date_to', params.date_to);
+  if (params.page) query.set('page', String(params.page));
+  if (params.page_size) query.set('page_size', String(params.page_size));
+  const qs = query.toString();
+  return apiClient(
+    qs ? `payments/customer/history/?${qs}` : 'payments/customer/history/',
+    { method: 'GET' },
+  );
+};
+
 
 
 export const cancelOrder = async (

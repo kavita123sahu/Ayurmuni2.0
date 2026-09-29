@@ -68,7 +68,7 @@ interface Props {
   isGrid?: boolean;
   header?: boolean;
   navigation: any;
-  ListHeaderComponent?: React.ReactNode;
+  ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
   home?: boolean;
   edgeScroll?: boolean;
 }

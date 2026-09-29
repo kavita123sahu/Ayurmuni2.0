@@ -738,6 +738,11 @@ import { safeGoBack } from '../../navigation/navigationUtils';
 import { navigateToProductDetails } from '../../navigation/productNavigation';
 import { useCategoryProducts } from '../../hooks/useCategoryProducts';
 import {
+  getProduct,
+  mapCatalogProductItem,
+  normalizeApiList,
+} from '../../services/ProductServices';
+import {
   ProductCategoryItem,
   useProductCategories,
 } from '../../hooks/useProductCategories';
@@ -1157,7 +1162,7 @@ const CategoryProductsScreen = (props: any) => {
 
   const {
     products: fetchedProducts,
-    loading,
+    loading: baseLoading,
     loadingMore,
     refreshing,
     refresh,
@@ -1165,14 +1170,143 @@ const CategoryProductsScreen = (props: any) => {
   } = useCategoryProducts(productFilter, fallbackCatalog);
   const [products, setProducts] = useState<any[]>([]);
 
+  /**
+   * Brand + All: the brand-only catalog query can come back empty, while
+   * brand + category works. Query every sidebar category with the brand too
+   * and merge, so All = every product of that brand.
+   */
+  const [brandAllProducts, setBrandAllProducts] = useState<any[]>([]);
+  const [brandAllLoading, setBrandAllLoading] = useState(false);
+  const [brandAllNonce, setBrandAllNonce] = useState(0);
+
+  const brandAllTargets = useMemo(() => {
+    if (!isBrandAllView) return [];
+    return topCategories
+      .map(item => {
+        const sourceId = String(item.sourceId || item.id || '');
+        if (!sourceId || sourceId === 'all') return null;
+        const rail: CategoryRail =
+          item.rail || (useHealthRail ? 'health' : 'product');
+        return { sourceId, rail };
+      })
+      .filter(Boolean) as { sourceId: string; rail: CategoryRail }[];
+  }, [isBrandAllView, topCategories, useHealthRail]);
+
+  const brandAllKey = useMemo(
+    () =>
+      isBrandAllView
+        ? JSON.stringify({
+            brand: apiBrandNameId,
+            targets: brandAllTargets,
+            service: useBothRail ? null : serviceCategoryId,
+            nonce: brandAllNonce,
+          })
+        : '',
+    [
+      isBrandAllView,
+      apiBrandNameId,
+      brandAllTargets,
+      useBothRail,
+      serviceCategoryId,
+      brandAllNonce,
+    ],
+  );
+
   useEffect(() => {
+    if (!brandAllKey) {
+      setBrandAllProducts([]);
+      setBrandAllLoading(false);
+      return;
+    }
+    const { brand, targets, service } = JSON.parse(brandAllKey) as {
+      brand: string;
+      targets: { sourceId: string; rail: CategoryRail }[];
+      service: string | null;
+    };
+    if (!targets.length) return;
+
+    let cancelled = false;
+    setBrandAllLoading(true);
+
+    Promise.allSettled(
+      targets.map(target =>
+        getProduct(
+          target.rail === 'health'
+            ? {
+                health_category_id: target.sourceId,
+                brand_name_id: brand,
+                ...(service ? { service_category_id: service } : {}),
+                page: 1,
+                page_size: 50,
+              }
+            : {
+                id: target.sourceId,
+                brand_name_id: brand,
+                ...(service ? { service_category_id: service } : {}),
+                page: 1,
+                page_size: 50,
+              },
+        ),
+      ),
+    )
+      .then(results => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const merged: any[] = [];
+        results.forEach(result => {
+          if (result.status !== 'fulfilled') return;
+          normalizeApiList(result.value)
+            .map(mapCatalogProductItem)
+            .filter(Boolean)
+            .forEach((item: any) => {
+              const key = String(item?.variant_id ?? item?.id ?? '');
+              if (!key || seen.has(key)) return;
+              seen.add(key);
+              merged.push(item);
+            });
+        });
+        setBrandAllProducts(merged);
+      })
+      .finally(() => {
+        if (!cancelled) setBrandAllLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brandAllKey]);
+
+  const loading = isBrandAllView
+    ? (baseLoading || brandAllLoading) && products.length === 0
+    : baseLoading;
+
+  useEffect(() => {
+    if (!isBrandAllView) {
+      setProducts(fetchedProducts);
+      return;
+    }
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    [...fetchedProducts, ...brandAllProducts].forEach(item => {
+      const key = String(item?.variant_id ?? item?.id ?? '');
+      if (key && seen.has(key)) return;
+      if (key) seen.add(key);
+      merged.push(item);
+    });
     // Brand filter still applies on top (applyProductFilters), so local catalog is safe
-    if (isBrandAllView && !loading && fetchedProducts.length === 0) {
+    if (merged.length === 0 && !baseLoading && !brandAllLoading) {
       setProducts(fallbackCatalog);
       return;
     }
-    setProducts(fetchedProducts);
-  }, [fetchedProducts, isBrandAllView, loading, fallbackCatalog]);
+    setProducts(merged);
+  }, [
+    fetchedProducts,
+    brandAllProducts,
+    isBrandAllView,
+    baseLoading,
+    brandAllLoading,
+    fallbackCatalog,
+  ]);
 
   const prevCategoryRef = useRef(selectedCategoryId);
 
@@ -1347,8 +1481,17 @@ const CategoryProductsScreen = (props: any) => {
     if (activeCategoryId) {
       refreshSubcategories();
     }
+    if (isBrandAllView) {
+      setBrandAllNonce(n => n + 1);
+    }
     refresh();
-  }, [refreshTopCategories, refreshSubcategories, refresh, activeCategoryId]);
+  }, [
+    refreshTopCategories,
+    refreshSubcategories,
+    refresh,
+    activeCategoryId,
+    isBrandAllView,
+  ]);
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {

@@ -3483,8 +3483,11 @@ export const fetchCart = createAsyncThunk<CartData, FetchCartArg>(
         const res = await _CART_SERVICES.getAllCart();
         console.log('CartServiceResponse', res);
         const data = (res?.data ?? {}) as CartData;
-        return typeof structuredClone === 'function'
-          ? structuredClone(data)
+        const cloneFn = (globalThis as any).structuredClone as
+          | (<T>(value: T) => T)
+          | undefined;
+        return typeof cloneFn === 'function'
+          ? cloneFn(data)
           : (JSON.parse(JSON.stringify(data)) as CartData);
       }
 
@@ -3635,7 +3638,9 @@ export const addToCart = createAsyncThunk(
         variantId: String(variantId),
         quantity: Number(cartItem?.quantity ?? quantity),
         cartItemId: String(safeCartItemId ?? cartItem?.id ?? ''),
-        source: source === 'prescribed' ? 'prescribed' : 'cart',
+        source: (source as string) === 'prescribed'
+          ? ('prescribed' as const)
+          : ('cart' as const),
         cartItem,
         message: response?.message,
       };
@@ -3799,7 +3804,7 @@ export const queueCartLineSync = createAsyncThunk(
                 await dispatch(fetchCart({ force: true, silent: true }));
               }
 
-              resolve(result.payload);
+              resolve(result.payload as QueueCartLineSyncResult);
               return;
             }
 

@@ -19,39 +19,39 @@ export const APPOINTMENT_CANCEL_REASONS: {
   value: string;
   label: string;
 }[] = [
-  {
-    value: 'professional_or_medical_exigency',
-    label: 'Professional or medical exigency',
-  },
-  {
-    value: 'personal_or_unforeseen_circumstance',
-    label: 'Personal or unforeseen circumstance',
-  },
-  {
-    value: 'unavailability',
-    label: 'Unavailability',
-  },
-  {
-    value: 'technical_difficulty',
-    label: 'Technical difficulty',
-  },
-  {
-    value: 'unable_to_conduct_consultation',
-    label: 'Unable to conduct consultation',
-  },
-  {
-    value: 'requires_user_in_person_care',
-    label: 'Requires in-person care',
-  },
-  {
-    value: 'other_reasonable_circumstance',
-    label: 'Other reasonable circumstance',
-  },
-];
+    {
+      value: 'professional_or_medical_exigency',
+      label: 'Professional or medical exigency',
+    },
+    {
+      value: 'personal_or_unforeseen_circumstance',
+      label: 'Personal or unforeseen circumstance',
+    },
+    {
+      value: 'unavailability',
+      label: 'Unavailability',
+    },
+    {
+      value: 'technical_difficulty',
+      label: 'Technical difficulty',
+    },
+    {
+      value: 'unable_to_conduct_consultation',
+      label: 'Unable to conduct consultation',
+    },
+    {
+      value: 'requires_user_in_person_care',
+      label: 'Requires in-person care',
+    },
+    {
+      value: 'other_reasonable_circumstance',
+      label: 'Other reasonable circumstance',
+    },
+  ];
 
 const CANCEL_NOTES = [
-  'Free cancellation up to 6 hours before the scheduled consultation.',
-  'Cancellations within 6 hours may be non-refundable, except when the doctor or Ayurmuni cannot provide the consultation.',
+  'Free cancellation up to 3 hours before the scheduled consultation.',
+  'Cancellations within 3 hours may be non-refundable, except when the doctor or Ayurmuni cannot provide the consultation.',
   'Approved refunds are usually started within 72 hours and may take 5–7 business days to reflect.',
   'You can rebook another slot anytime from Appointments.',
 ];

@@ -1,4 +1,5 @@
 /** Helpers for legal policy acceptance + version update banners. */
+import type { TablerIconName } from '../components/TablerIcon';
 
 export type PolicyAcceptedMap = {
   customer?: boolean;
@@ -27,7 +28,7 @@ const POLICY_ICON_FALLBACKS = [
 ] as const;
 
 /** Distinct icon per policy so the All policies list is not one generic medical symbol. */
-export const policyIconName = (entry: any, index = 0): string => {
+export const policyIconName = (entry: any, index = 0): TablerIconName => {
   const doc = getPolicyDoc(entry);
   const key = `${doc?.policy_type || ''} ${doc?.title || ''} ${doc?.name || ''}`
     .toLowerCase();

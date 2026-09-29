@@ -24,6 +24,7 @@ export interface ProductItem {
   prescription_required?: boolean;
   variant?: any;
   cart_item_id?: string;
+  _isOutOfStock?: boolean;
 }
 export type SectionType = {
   id: string;

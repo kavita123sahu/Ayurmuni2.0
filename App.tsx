@@ -4,7 +4,7 @@ import React, {
 } from 'react';
 
 import {
-      Text,
+  Text,
   View,
 } from 'react-native';
 

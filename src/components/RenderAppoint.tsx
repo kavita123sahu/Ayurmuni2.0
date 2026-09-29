@@ -24,6 +24,11 @@ import {
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
 import { consultationHasPrescription } from '../utils/prescriptionDetailUtils';
+import {
+  formatPaymentTimestamp,
+  getCompletedRefund,
+} from '../utils/paymentHistoryUtils';
+import { formatRupee } from '../utils/currencyUtils';
 
 const formatStatusLabel = (status?: string) => {
   if (status === 'cancellation_requested') return 'Confirmed';
@@ -121,6 +126,10 @@ const RenderAppoint = ({
       'no_show',
       'noshow',
     ].includes(String(item.status || '').toLowerCase());
+  const refund = useMemo(
+    () => getCompletedRefund(item?.status, item?.rawData, item),
+    [item],
+  );
   const showJoinCall = item.call_status === 'in_progress';
   const showActionRow =
     withinModifyWindow || showViewDetails || showJoinCall;
@@ -246,6 +255,16 @@ const RenderAppoint = ({
       </View>
 
       <ScheduleRow item={item} />
+
+      {refund ? (
+        <View style={styles.refundRow}>
+          <TablerIcon name="circle-check" size={14} color="#15803D" />
+          <Text style={styles.refundText} numberOfLines={1}>
+            Refunded {refund.amount != null ? formatRupee(refund.amount) : ''}
+            {refund.at ? ` · ${formatPaymentTimestamp(refund.at)}` : ''}
+          </Text>
+        </View>
+      ) : null}
 
       {item?.rawData?.follow_up?.date ? (
         <View style={styles.followUP}>
@@ -399,6 +418,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FAF7',
   },
 
+  refundRow: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  refundText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#15803D',
+    fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+  },
   followUP: {
     marginTop: 10,
     paddingHorizontal: 10,
