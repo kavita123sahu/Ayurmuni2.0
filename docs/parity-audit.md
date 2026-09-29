@@ -186,9 +186,9 @@
 |---|---|---|---|---|
 | Search page | ✅ | ✅ | ✅ OK | `/search` |
 | Search input | ✅ | ✅ | ✅ OK | Real-time search |
-| Search suggestions | ✅ | ❌ | ❌ MISSING | App has autocomplete |
-| Search history | ✅ | ❌ | ❌ MISSING | App shows recent searches |
-| Clear search history | ✅ | ❌ | ❌ MISSING | Delete history |
+| Search suggestions | ✅ | ✅ | ✅ OK | ✅ IMPLEMENTED: Autocomplete dropdown with suggestions |
+| Search history | ✅ | ✅ | ✅ OK | ✅ IMPLEMENTED: Stores last 10 searches in localStorage |
+| Clear search history | ✅ | ✅ | ✅ OK | ✅ IMPLEMENTED: Clear all & remove individual items |
 | Search results | ✅ | ✅ | ✅ OK | Products list |
 | Search filters | ✅ | ❌ | ❌ MISSING | Filter search results |
 | Mode switcher (product/health) | ✅ | ✅ | ✅ OK | Toggle search type |
