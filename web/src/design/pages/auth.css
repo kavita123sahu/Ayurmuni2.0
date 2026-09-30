@@ -10,7 +10,7 @@
 /* —— Welcome —— */
 .au-welcome {
   display: grid;
-  grid-template-rows: minmax(42vh, 1fr) auto;
+  grid-template-rows: minmax(32vh, 1fr) auto;
   min-height: inherit;
   background: var(--am-surface);
 }
@@ -54,8 +54,8 @@
 .au-welcome__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--am-space-5);
-  padding: var(--am-space-5) var(--am-gutter) var(--am-space-8);
+  gap: var(--am-space-3);
+  padding: var(--am-space-3) var(--am-gutter) var(--am-space-4);
   background: var(--am-surface);
 }
 
@@ -68,8 +68,8 @@
 .au-welcome__logo {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   overflow: hidden;
   border-radius: var(--am-radius-md);
   background: var(--am-primary-soft);
@@ -109,7 +109,7 @@
 }
 
 .au-welcome__copy > p:not(.au-welcome__kicker) {
-  margin: 0 0 var(--am-space-4);
+  margin: 0 0 var(--am-space-2);
   color: var(--am-text-soft);
   font-size: var(--am-text-sm);
   line-height: var(--am-leading-relaxed);
@@ -118,16 +118,18 @@
 .au-welcome__progress {
   display: flex;
   gap: var(--am-space-2);
-  margin-bottom: var(--am-space-5);
+  margin-bottom: var(--am-space-3);
 }
 
 .au-welcome__progress button {
   flex: 1 1 auto;
-  height: 3px;
-  padding: 0;
+  min-height: 36px;
+  height: 36px;
+  padding: 16px 0;
   border: 0;
   border-radius: 999px;
   background: var(--am-line);
+  background-clip: content-box;
   cursor: pointer;
 }
 
@@ -254,6 +256,52 @@
   color: var(--am-text-muted);
   font-size: var(--am-text-xs);
   line-height: var(--am-leading-relaxed);
+}
+
+.au-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--am-space-3);
+  margin: 0 0 var(--am-space-5);
+  color: var(--am-text-soft);
+  font-size: var(--am-text-sm);
+  line-height: var(--am-leading-relaxed);
+  cursor: pointer;
+}
+
+.au-terms input {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--am-primary);
+}
+
+.au-terms__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--am-primary);
+  font: inherit;
+  font-weight: var(--am-weight-semibold);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.au-alert {
+  margin: 0 0 var(--am-space-4);
+  padding: var(--am-space-3);
+  border: 1px solid color-mix(in srgb, var(--am-warning, #b45309) 35%, var(--am-line));
+  border-radius: var(--am-radius-md);
+  background: color-mix(in srgb, var(--am-warning, #b45309) 10%, var(--am-surface));
+  color: var(--am-text);
+  font-size: var(--am-text-sm);
+  line-height: var(--am-leading-relaxed);
+}
+
+.au-alert strong {
+  display: block;
+  margin-bottom: 4px;
 }
 
 .au-title {
@@ -636,7 +684,7 @@
 
   .au-welcome__panel {
     justify-content: center;
-    padding: var(--am-space-10) var(--am-space-8);
+    padding: var(--am-space-6) var(--am-space-4);
   }
 
   .au-auth {
