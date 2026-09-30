@@ -973,7 +973,7 @@
 | Guest mode indicator | ✅ | ✅ | ✅ OK | If guest |
 | Complete profile prompt | ✅ | ✅ | ✅ OK | If incomplete |
 | Referral section | ✅ | ✅ | ✅ OK | ✅ IMPLEMENTED: Referral card in profile |
-| Share app button | ✅ | ✅ | ✅ OK | ✅ IMPLEMENTED: Share referral via Web Share API |
+| Share app button | ✅ | ✅ | ✅ OK | ✅ IMPLEMENTED: ShareButton with modal & social platforms |
 
 ### 12.2 Edit Profile
 | Feature/Component | In App? | In Web? | Status | Notes |
