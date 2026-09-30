@@ -60,7 +60,7 @@
 
 /* Wordmark is 4:1 with ~10% transparent side padding baked in */
 .site-brand img {
-  --brand-h: 40px;
+  --brand-h: 32px;
   width: auto;
   height: var(--brand-h);
   margin-inline: calc(var(--brand-h) * -0.36);
@@ -118,9 +118,9 @@
 
 .progress-ring {
   display: block;
-  width: 38px;
-  height: 38px;
-  padding: 3px;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
   border-radius: 50%;
   background: conic-gradient(var(--am-accent) var(--am-progress, 0deg), var(--am-line) 0deg);
 }
@@ -161,10 +161,10 @@
 }
 
 .site-nav-mobile .site-nav-link {
-  min-height: 48px;
+  min-height: 36px;
   padding: 0 var(--am-space-3);
   border-radius: var(--am-radius-md);
-  font-size: var(--am-text-base);
+  font-size: var(--am-text-sm);
 }
 
 .site-nav-mobile .site-nav-link.active {
@@ -191,7 +191,7 @@
   }
 
   .site-brand img {
-    --brand-h: 48px;
+    --brand-h: 36px;
   }
 }
 
@@ -201,7 +201,7 @@
   }
 
   .site-brand img {
-    --brand-h: 52px;
+    --brand-h: 40px;
   }
 
   .site-nav {
@@ -304,8 +304,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 28px;
+  width: 36px;
+  height: 22px;
   border-radius: var(--am-radius-pill);
   transition: background-color var(--am-dur-base) var(--am-ease-standard);
 }
@@ -368,7 +368,7 @@
   gap: var(--am-space-5) var(--am-space-4);
   max-width: var(--am-container);
   margin: 0 auto;
-  padding: var(--am-space-8) var(--am-gutter);
+  padding: var(--am-space-4) var(--am-gutter);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   list-style: none;
 }
@@ -408,7 +408,7 @@
   gap: var(--am-space-8) var(--am-space-5);
   max-width: var(--am-container);
   margin: 0 auto;
-  padding: var(--am-space-10) var(--am-gutter) var(--am-space-8);
+  padding: var(--am-space-6) var(--am-gutter) var(--am-space-4);
 }
 
 .site-footer-brand {
@@ -417,11 +417,11 @@
 }
 
 .site-footer-brand img {
-  height: 52px;
+  height: 36px;
   width: auto;
   margin-left: -19px;
   filter: brightness(0) invert(1);
-  margin-bottom: var(--am-space-4);
+  margin-bottom: var(--am-space-2);
   filter: brightness(0) invert(1);
 }
 
@@ -483,7 +483,7 @@
 .site-footer-bar {
   max-width: var(--am-container);
   margin: 0 auto;
-  padding: var(--am-space-5) var(--am-gutter) var(--am-space-6);
+  padding: var(--am-space-3) var(--am-gutter) var(--am-space-4);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -519,7 +519,7 @@
   .site-footer-inner {
     grid-template-columns: 1.6fr repeat(4, minmax(0, 1fr));
     gap: var(--am-space-8);
-    padding-top: var(--am-space-12);
+    padding-top: var(--am-space-6);
   }
 
   .site-footer-brand {
