@@ -595,7 +595,7 @@
 .collage {
   position: relative;
   background: var(--am-text);
-  min-height: 34vh;
+  min-height: 28vh;
   overflow: hidden;
 }
 
@@ -608,23 +608,23 @@
 
 .collage-row {
   display: flex;
-  gap: 10px;
-  padding: 10px;
+  gap: 6px;
+  padding: 6px;
   height: 100%;
-  min-height: 280px;
+  min-height: 180px;
 }
 
 .marquee {
   flex: 1;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 8px;
   height: 100%;
 }
 
 .marquee-track {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   animation: marquee-up 26s linear infinite;
 }
 
@@ -635,15 +635,15 @@
 
 .marquee img {
   width: 100%;
-  height: 160px;
+  height: 100px;
   object-fit: cover;
-  border-radius: 16px;
+  border-radius: 8px;
   background: #22301d;
 }
 
 @media (min-width: 900px) {
   .marquee img {
-    height: 220px;
+    height: 140px;
   }
 }
 
@@ -671,7 +671,7 @@
 
 .collage-logo {
   position: absolute;
-  top: 16px;
+  top: 10px;
   left: 0;
   right: 0;
   display: flex;
@@ -683,8 +683,8 @@
 
 .logo-pill {
   background: rgba(247, 243, 234, 0.95);
-  border-radius: 22px;
-  padding: 9px 16px;
+  border-radius: 8px;
+  padding: 6px 10px;
 }
 
 .logo-pill img {
