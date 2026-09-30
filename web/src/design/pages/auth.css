@@ -10,7 +10,7 @@
 /* —— Welcome —— */
 .au-welcome {
   display: grid;
-  grid-template-rows: minmax(32vh, 1fr) auto;
+  grid-template-rows: minmax(42vh, 1fr) auto;
   min-height: inherit;
   background: var(--am-surface);
 }
@@ -54,8 +54,8 @@
 .au-welcome__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--am-space-3);
-  padding: var(--am-space-3) var(--am-gutter) var(--am-space-4);
+  gap: var(--am-space-5);
+  padding: var(--am-space-5) var(--am-gutter) var(--am-space-8);
   background: var(--am-surface);
 }
 
@@ -68,8 +68,8 @@
 .au-welcome__logo {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   overflow: hidden;
   border-radius: var(--am-radius-md);
   background: var(--am-primary-soft);
@@ -109,7 +109,7 @@
 }
 
 .au-welcome__copy > p:not(.au-welcome__kicker) {
-  margin: 0 0 var(--am-space-2);
+  margin: 0 0 var(--am-space-4);
   color: var(--am-text-soft);
   font-size: var(--am-text-sm);
   line-height: var(--am-leading-relaxed);
@@ -118,18 +118,16 @@
 .au-welcome__progress {
   display: flex;
   gap: var(--am-space-2);
-  margin-bottom: var(--am-space-3);
+  margin-bottom: var(--am-space-5);
 }
 
 .au-welcome__progress button {
   flex: 1 1 auto;
-  min-height: 36px;
-  height: 36px;
-  padding: 16px 0;
+  height: 3px;
+  padding: 0;
   border: 0;
   border-radius: 999px;
   background: var(--am-line);
-  background-clip: content-box;
   cursor: pointer;
 }
 
@@ -141,28 +139,28 @@
 .au-auth {
   position: relative;
   display: grid;
-  grid-template-rows: minmax(28vh, 1fr) auto;
+  grid-template-rows: minmax(36vh, 1fr) auto;
   min-height: inherit;
 }
 
 .au-auth .collage {
-  min-height: 28vh;
+  min-height: 36vh;
 }
 
 .au-sheet {
   position: relative;
   z-index: 1;
-  margin-top: -16px;
-  padding: var(--am-space-3) var(--am-gutter) var(--am-space-4);
+  margin-top: -24px;
+  padding: var(--am-space-5) var(--am-gutter) var(--am-space-8);
   border-radius: var(--am-radius-xl) var(--am-radius-xl) 0 0;
   background: var(--am-surface);
-  box-shadow: var(--am-shadow-sm);
+  box-shadow: 0 -12px 40px rgba(19, 35, 30, 0.12);
 }
 
 .au-sheet__handle {
   width: 40px;
   height: 4px;
-  margin: 0 auto var(--am-space-2);
+  margin: 0 auto var(--am-space-4);
   border-radius: 999px;
   background: var(--am-line);
 }
@@ -177,8 +175,8 @@
 }
 
 .au-headline {
-  margin: 0 0 var(--am-space-2);
-  min-height: 2.6em;
+  margin: 0 0 var(--am-space-3);
+  min-height: 3.2em;
   font-size: var(--am-text-xl);
   line-height: var(--am-leading-snug);
 }
@@ -186,7 +184,7 @@
 .au-dots {
   display: flex;
   gap: 6px;
-  margin-bottom: var(--am-space-3);
+  margin-bottom: var(--am-space-5);
 }
 
 .au-dots i {
@@ -211,9 +209,8 @@
   display: flex;
   align-items: center;
   gap: var(--am-space-2);
-  min-height: 36px;
-  margin-bottom: var(--am-space-3);
-  padding: 0 var(--am-space-2);
+  margin-bottom: var(--am-space-4);
+  padding: var(--am-space-2) var(--am-space-3);
   border: 1px solid var(--am-line);
   border-radius: var(--am-radius-lg);
   background: var(--am-surface);
@@ -241,11 +238,10 @@
 .au-phone input {
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 36px;
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 16px;
+  font-size: var(--am-text-base);
   outline: none;
 }
 
@@ -254,7 +250,7 @@
 }
 
 .au-note {
-  margin: 0 0 var(--am-space-3);
+  margin: 0 0 var(--am-space-5);
   color: var(--am-text-muted);
   font-size: var(--am-text-xs);
   line-height: var(--am-leading-relaxed);
@@ -263,9 +259,8 @@
 .au-terms {
   display: flex;
   align-items: flex-start;
-  gap: var(--am-space-2);
-  min-height: 36px;
-  margin: 0 0 var(--am-space-3);
+  gap: var(--am-space-3);
+  margin: 0 0 var(--am-space-5);
   color: var(--am-text-soft);
   font-size: var(--am-text-sm);
   line-height: var(--am-leading-relaxed);
@@ -292,8 +287,8 @@
 }
 
 .au-alert {
-  margin: 0 0 var(--am-space-3);
-  padding: var(--am-space-2) var(--am-space-3);
+  margin: 0 0 var(--am-space-4);
+  padding: var(--am-space-3);
   border: 1px solid color-mix(in srgb, var(--am-warning, #b45309) 35%, var(--am-line));
   border-radius: var(--am-radius-md);
   background: color-mix(in srgb, var(--am-warning, #b45309) 10%, var(--am-surface));
@@ -308,7 +303,7 @@
 }
 
 .au-title {
-  margin: 0 0 var(--am-space-2);
+  margin: 0 0 var(--am-space-3);
   font-size: var(--am-text-2xl);
   line-height: var(--am-leading-tight);
 }
@@ -318,8 +313,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--am-space-3);
-  min-height: 36px;
-  margin-bottom: var(--am-space-3);
+  margin-bottom: var(--am-space-5);
   font-size: var(--am-text-sm);
   color: var(--am-text-soft);
 }
@@ -327,19 +321,18 @@
 .au-otp {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--am-space-2);
-  margin-bottom: var(--am-space-3);
+  gap: var(--am-space-3);
+  margin-bottom: var(--am-space-4);
 }
 
 .au-otp input {
+  aspect-ratio: 1;
   width: 100%;
-  min-height: 36px;
-  height: 40px;
   border: 1px solid var(--am-line);
   border-radius: var(--am-radius-md);
   background: var(--am-surface);
   text-align: center;
-  font-size: 16px;
+  font-size: var(--am-text-xl);
   font-weight: var(--am-weight-semibold);
   font-variant-numeric: tabular-nums;
   outline: none;
@@ -354,11 +347,11 @@
 .au-otp-meta {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--am-space-3);
+  margin-bottom: var(--am-space-5);
 }
 
 .au-secure {
-  margin: var(--am-space-2) 0 0;
+  margin: var(--am-space-3) 0 0;
   color: var(--am-text-muted);
   font-size: var(--am-text-xs);
   text-align: center;
@@ -690,7 +683,7 @@
 
   .au-welcome__panel {
     justify-content: center;
-    padding: var(--am-space-6) var(--am-space-4);
+    padding: var(--am-space-10) var(--am-space-8);
   }
 
   .au-auth {
