@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import AppShell from '../components/AppShell';
 import PageHeader from '../components/PageHeader';
+import ShareButton from '../components/ShareButton';
 import { formatRupee } from '../home/catalog';
 import { getDoctorById, toggleFavDoctor } from '../services/consultService';
 import { getReviews } from '../services/productService';
@@ -224,6 +225,12 @@ export default function DoctorProfile() {
       <IconButton label={fav ? T.saved : T.save} pressed={fav} onClick={toggleFav}>
         <Heart size={18} fill={fav ? 'currentColor' : 'none'} aria-hidden />
       </IconButton>
+      <ShareButton
+        title={`Dr. ${displayName} - Ayurmuni`}
+        text={`Consult with Dr. ${displayName}, ${speciality} on Ayurmuni`}
+        url={window.location.href}
+        showModal={true}
+      />
       <Button
         variant="ghost"
         size="sm"

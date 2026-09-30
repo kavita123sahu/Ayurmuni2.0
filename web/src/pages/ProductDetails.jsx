@@ -4,6 +4,7 @@ import { FileText, Heart, Leaf, Minus, Plus, ShoppingBag, Star } from 'lucide-re
 import AppShell from '../components/AppShell';
 import PageHeader from '../components/PageHeader';
 import ReviewSubmitModal from '../components/ReviewSubmitModal';
+import ShareButton from '../components/ShareButton';
 import { formatRupee, resolveImageUrl } from '../home/catalog';
 import { useCart } from '../hooks/useCart';
 import {
@@ -307,6 +308,13 @@ export default function ProductDetails() {
                 >
                   <Heart size={20} aria-hidden fill={wish ? 'currentColor' : 'none'} />
                 </IconButton>
+                <ShareButton
+                  title={`${displayName} - Ayurmuni`}
+                  text={`Check out this amazing product on Ayurmuni!`}
+                  url={window.location.href}
+                  variant="soft"
+                  showModal={true}
+                />
               </div>
 
               <p className="pd-price">
