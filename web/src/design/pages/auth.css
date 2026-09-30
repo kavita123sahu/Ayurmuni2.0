@@ -318,7 +318,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--am-space-3);
-  margin-bottom: var(--am-space-5);
+  min-height: 36px;
+  margin-bottom: var(--am-space-3);
   font-size: var(--am-text-sm);
   color: var(--am-text-soft);
 }
@@ -326,18 +327,19 @@
 .au-otp {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--am-space-3);
-  margin-bottom: var(--am-space-4);
+  gap: var(--am-space-2);
+  margin-bottom: var(--am-space-3);
 }
 
 .au-otp input {
-  aspect-ratio: 1;
   width: 100%;
+  min-height: 36px;
+  height: 40px;
   border: 1px solid var(--am-line);
   border-radius: var(--am-radius-md);
   background: var(--am-surface);
   text-align: center;
-  font-size: var(--am-text-xl);
+  font-size: 16px;
   font-weight: var(--am-weight-semibold);
   font-variant-numeric: tabular-nums;
   outline: none;
@@ -352,11 +354,11 @@
 .au-otp-meta {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--am-space-5);
+  margin-bottom: var(--am-space-3);
 }
 
 .au-secure {
-  margin: var(--am-space-3) 0 0;
+  margin: var(--am-space-2) 0 0;
   color: var(--am-text-muted);
   font-size: var(--am-text-xs);
   text-align: center;
