@@ -37,3 +37,4 @@ Stopped for review. No application code was changed.
 | 12 | S-046 medical record card | done — each row shows type, file, date, and the thumbnail when that is the image |
 | 13 | C-114 upload record dialog | done — name and type are required, and the dialog closes after the record is saved |
 | 14 | C-076 prescription file preview | done — upload and verify open an image or a PDF, and a recent file can be previewed |
+| 15 | C-077 prescription required | done — add and cart increase offer consult, upload, or not now |

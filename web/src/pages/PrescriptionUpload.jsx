@@ -93,6 +93,13 @@ export default function PrescriptionUpload() {
           </div>
         </header>
 
+        {productName ? (
+          <div className="checkout-card">
+            <h3>Approval needed for this product</h3>
+            <p>Upload your Rx to get “{productName}” approved.</p>
+          </div>
+        ) : null}
+
         <label className="upload-drop">
           <strong>Upload prescription</strong>
           <small>JPG, PNG or PDF · up to 4 files</small>
