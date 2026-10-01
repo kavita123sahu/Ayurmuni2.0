@@ -122,7 +122,7 @@ const CategoryTile = ({
 
   return (
     <Pressable onPress={onPress} style={styles.item}>
-      <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>
+      <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>+
         {showImage ? (
           <Image
             source={{ uri: imageUri }}

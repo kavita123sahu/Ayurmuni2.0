@@ -396,6 +396,7 @@ import AddCalendar from "../screens/consult/AddCalendar";
 import CategoryDoctor from "../screens/consult/CategoryDoctor";
 import OrangeLabScreen from "../screens/home/OrangeLabScreen";
 import PackagesScreen from "../screens/home/PackagesScreen";
+import MyPlansScreen from "../screens/profile/MyPlansScreen";
 import DoctorSlipScreen from "../screens/consult/DoctorSlip";
 import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
 import DoctorConsultationHistoryScreen from "../screens/consult/DoctorConsultationHistoryScreen";
@@ -537,6 +538,7 @@ const HomeStackNavigator = () => (
     <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="OrangeLabScreen" component={OrangeLabScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="PackagesScreen" component={PackagesScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="MyPlansScreen" component={MyPlansScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />

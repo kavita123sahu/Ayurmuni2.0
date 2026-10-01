@@ -164,6 +164,48 @@ export const openRazorpayPayment = async (options: RazorpayOptions) => {
   }
 };
 
+/** Open Razorpay for an autopay subscription (uses subscription_id, not an order). */
+export const openRazorpaySubscription = async (options: {
+  key: string;
+  subscription_id: string;
+  name: string;
+  email: string;
+  contact: string;
+  description?: string;
+  themeColor?: string;
+}) => {
+  const RazorpayCheckout = require('react-native-razorpay').default;
+
+  const key = String(options.key || '').trim();
+  const subscriptionId = String(options.subscription_id || '').trim();
+  if (!key) {
+    throw { code: 'BAD_REQUEST', description: 'Payment key missing from response' };
+  }
+  if (!subscriptionId) {
+    throw { code: 'BAD_REQUEST', description: 'Subscription id missing from response' };
+  }
+
+  const name = String(options.name || 'AyurMuni').trim() || 'AyurMuni';
+  const email =
+    String(options.email || 'customer@ayurmuni.com').trim() ||
+    'customer@ayurmuni.com';
+  let contact = String(options.contact || '').replace(/\D/g, '');
+  if (contact.length === 10) contact = `91${contact}`;
+  if (contact.length < 10) contact = '919999999999';
+
+  await delay(250);
+
+  return RazorpayCheckout.open({
+    description: options.description || 'Subscription',
+    image: 'https://rzp-mobile.s3.amazonaws.com/images/rzp.jpg',
+    key,
+    subscription_id: subscriptionId,
+    name,
+    prefill: { name, email, contact },
+    theme: { color: options.themeColor || '#0D614E' },
+  });
+};
+
 /**
  * Convert API amount (rupees like 179 / "179.00") to Razorpay paise.
  * Product order API returns rupees — same as consultation.

@@ -2,8 +2,12 @@ import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { apiClient } from './APIconfig';
 
+// const ONE_SIGNAL_APP_ID =
+//   '3e543921-8737-4c95-92ae-1578d40d99f0';
+
+
 const ONE_SIGNAL_APP_ID =
-  '3e543921-8737-4c95-92ae-1578d40d99f0';
+  '5c79696d-81e8-46a7-922d-b0b08eef4e57';
 
 let initialized = false;
 
@@ -14,9 +18,9 @@ const wait = (ms: number) =>
 
 const HeadsUpNative = NativeModules.HeadsUpNotification as
   | {
-      show?: (payload: { title?: string; message?: string }) => void;
-      ensureChannels?: () => void;
-    }
+    show?: (payload: { title?: string; message?: string }) => void;
+    ensureChannels?: () => void;
+  }
   | undefined;
 
 /** WhatsApp-style system tray / heads-up banner (Android). */
@@ -61,12 +65,30 @@ export const initializeOneSignal = async () => {
       return;
     }
 
+    console.log(
+      '[OneSignal] Initializing with App ID:',
+      ONE_SIGNAL_APP_ID,
+    );
+
     OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+
     OneSignal.initialize(ONE_SIGNAL_APP_ID);
+
     initialized = true;
+
+    console.log(
+      '[OneSignal] SDK initialized successfully',
+    );
+
     ensureHeadsUpChannels();
-  } catch {
-    // ignore init errors — callers retry via wait helpers
+  } catch (error) {
+    console.error(
+      '[OneSignal] SDK initialization FAILED:',
+      error,
+    );
+
+    initialized = false;
+    throw error;
   }
 };
 
@@ -96,9 +118,22 @@ export const requestNotificationPermission = async (
 
     if (granted) {
       try {
+        console.log(
+          '[OneSignal] Calling pushSubscription.optIn()',
+        );
+
         OneSignal.User.pushSubscription.optIn();
-      } catch {
-        // ignore
+
+        console.log(
+          '[OneSignal] pushSubscription.optIn() called',
+        );
+      } catch (error) {
+        console.error(
+          '[OneSignal] optIn failed:',
+          error,
+        );
+
+        return false;
       }
       ensureHeadsUpChannels();
     }
@@ -112,40 +147,99 @@ export const requestNotificationPermission = async (
 /**
  * Ensure permission + opt-in. Call only after OTP / Settings — never on cold start.
  */
-export const ensureDeviceNotificationsEnabled = async (): Promise<boolean> => {
-  try {
-    await initializeOneSignal();
+export const ensureDeviceNotificationsEnabled =
+  async (): Promise<boolean> => {
+    try {
+      await initializeOneSignal();
 
-    if (Platform.OS === 'android' && Platform.Version >= 33) {
-      const status = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      );
-      if (!status) {
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      // Android 13+
+      if (
+        Platform.OS === 'android' &&
+        Platform.Version >= 33
+      ) {
+        const status =
+          await PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          );
+
+        console.log(
+          '[OneSignal] Android notification permission:',
+          status,
         );
-        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-          return false;
+
+        if (!status) {
+          const result =
+            await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+            );
+
+          console.log(
+            '[OneSignal] Permission request result:',
+            result,
+          );
+
+          if (
+            result !==
+            PermissionsAndroid.RESULTS.GRANTED
+          ) {
+            return false;
+          }
         }
       }
-    }
 
-    const permission = await OneSignal.Notifications.getPermissionAsync();
-    if (!permission) {
-      return requestNotificationPermission(false);
-    }
+      const permission =
+        await OneSignal.Notifications.getPermissionAsync();
 
-    try {
+      console.log(
+        '[OneSignal] OneSignal notification permission:',
+        permission,
+      );
+
+      if (!permission) {
+        return requestNotificationPermission(false);
+      }
+
+      // Explicitly opt-in to push subscription
+      console.log(
+        '[OneSignal] Calling pushSubscription.optIn()',
+      );
+
       OneSignal.User.pushSubscription.optIn();
-    } catch {
-      // ignore
+
+      ensureHeadsUpChannels();
+
+      // Give SDK a little time to create/update subscription
+      await wait(1500);
+
+      const pushData =
+        await getOneSignalPushData();
+
+      console.log(
+        '[OneSignal] Subscription after optIn:',
+        {
+          subscriptionId:
+            pushData.subscriptionId,
+          optedIn:
+            pushData.optedIn,
+          hasFcmToken:
+            Boolean(pushData.fcmToken),
+        },
+      );
+
+      return Boolean(
+        pushData.optedIn &&
+        pushData.subscriptionId &&
+        pushData.fcmToken,
+      );
+    } catch (error) {
+      console.error(
+        '[OneSignal] ensureDeviceNotificationsEnabled FAILED:',
+        error,
+      );
+
+      return false;
     }
-    ensureHeadsUpChannels();
-    return true;
-  } catch {
-    return false;
-  }
-};
+  };
 
 /**
  * Get current OneSignal push information.
@@ -237,9 +331,21 @@ export const waitForPushSubscriptionReady = async (options?: {
   const startedAt = Date.now();
 
   try {
+    console.log(
+      '[OneSignal] Calling pushSubscription.optIn()',
+    );
+
     OneSignal.User.pushSubscription.optIn();
-  } catch {
-    // ignore
+
+    console.log(
+      '[OneSignal] pushSubscription.optIn() called',
+    );
+  } catch (error) {
+    console.error(
+      '[OneSignal] optIn failed:',
+      error,
+    );
+
   }
 
   return new Promise(resolve => {
@@ -325,57 +431,143 @@ export const waitForExternalIdAssociation = async (
  */
 export const loginOneSignalUser = async (
   userId: string | number,
-): Promise<{
-  externalId: string;
-  subscriptionId: string | null;
-  fcmToken: string | null;
-  optedIn: boolean;
-  associated: boolean;
-} | null> => {
+) => {
   try {
-    if (userId === undefined || userId === null || userId === '') {
+    if (
+      userId === undefined ||
+      userId === null ||
+      userId === ''
+    ) {
+      console.warn(
+        '[OneSignal] Invalid userId',
+        userId,
+      );
+
       return null;
     }
 
+    // =========================================================
+    // 1. Initialize OneSignal
+    // =========================================================
+
     await initializeOneSignal();
 
-    const readyBeforeLogin = await waitForPushSubscriptionReady({
-      timeoutMs: 45_000,
-      intervalMs: 600,
-    });
-
     const externalId = String(userId);
+
+    console.log(
+      '[OneSignal] Preparing login for External ID:',
+      externalId,
+    );
+
+    // =========================================================
+    // 2. Make sure device has a push subscription
+    // =========================================================
+
+    const subscription =
+      await waitForPushSubscriptionReady({
+        timeoutMs: 45_000,
+        intervalMs: 600,
+      });
+
+    console.log(
+      '[OneSignal] Subscription before login:',
+      subscription,
+    );
+
+    if (!subscription) {
+      console.warn(
+        '[OneSignal] Push subscription not ready before login',
+      );
+
+      return null;
+    }
+
+    // =========================================================
+    // 3. ONE AND ONLY ONE OneSignal.login()
+    // =========================================================
+
+    console.log(
+      '[OneSignal] >>> OneSignal.login() ONCE:',
+      externalId,
+    );
+
     OneSignal.login(externalId);
 
-    const associated = await waitForExternalIdAssociation(externalId, {
-      timeoutMs: 20_000,
-      intervalMs: 500,
-    });
+    // =========================================================
+    // 4. Wait until External ID association is visible
+    // =========================================================
 
-    const readyAfterLogin =
-      (await waitForPushSubscriptionReady({
-        timeoutMs: 25_000,
-        intervalMs: 600,
-      })) ?? readyBeforeLogin;
+    const associated =
+      await waitForExternalIdAssociation(
+        externalId,
+        {
+          timeoutMs: 20_000,
+          intervalMs: 500,
+        },
+      );
 
-    try {
-      OneSignal.User.pushSubscription.optIn();
-    } catch {
-      // ignore
+    console.log(
+      '[OneSignal] External ID associated:',
+      associated,
+    );
+
+    if (!associated) {
+      console.warn(
+        '[OneSignal] External ID association failed',
+      );
+
+      return null;
     }
+
+    // =========================================================
+    // 5. Read final local subscription state
+    // =========================================================
+
+    const finalSubscription =
+      await getOneSignalPushData();
+
+    console.log(
+      '[OneSignal] Final subscription:',
+      finalSubscription,
+    );
+
+    if (
+      !finalSubscription?.subscriptionId ||
+      !finalSubscription?.fcmToken ||
+      !finalSubscription?.optedIn
+    ) {
+      console.warn(
+        '[OneSignal] Final subscription is incomplete',
+        finalSubscription,
+      );
+
+      return null;
+    }
+
+    // =========================================================
+    // 6. Return success
+    // =========================================================
 
     return {
       externalId,
-      subscriptionId: readyAfterLogin?.subscriptionId ?? null,
-      fcmToken: readyAfterLogin?.fcmToken ?? null,
-      optedIn: Boolean(readyAfterLogin?.optedIn),
-      associated,
+      subscriptionId:
+        finalSubscription.subscriptionId,
+      fcmToken:
+        finalSubscription.fcmToken,
+      optedIn:
+        finalSubscription.optedIn,
+      associated: true,
     };
-  } catch {
+
+  } catch (error) {
+    console.error(
+      '[OneSignal] loginOneSignalUser failed:',
+      error,
+    );
+
     return null;
   }
 };
-
 export const welcome_notification = async () => {
   try {
     const response = await apiClient(
@@ -401,219 +593,115 @@ export const welcome_notification = async () => {
  */
 export const completeWelcomePushFlow = async (
   userId: string | number,
-): Promise<{
-  success: boolean;
-  reason?: string;
-  response?: any;
-  statusBefore?: any;
-  statusAfter?: any;
-}> => {
-  // Cloud lag after login() — REST often still misses the user at 4s.
-  const WELCOME_SETTLE_MS = 8_000;
-
-  const logStatus = async (label: string) => {
-    const status = await getPushAssociationStatus(userId);
-    console.log(`🔎 [WelcomePush] STATUS ${label}`, {
-      optedIn: status.optedIn,
-      subscriptionId: status.subscriptionId,
-      hasToken: Boolean(status.fcmToken),
-      externalId: status.externalId,
-      expectedUserId: status.expectedUserId,
-      associated: status.associated,
-      subscribedLocally: status.subscribedLocally,
-      readyForWelcome: status.readyForWelcome,
-    });
-    return status;
-  };
-
+) => {
   try {
-    await initializeOneSignal();
+    console.log('[WelcomePush] START:', userId);
 
-    const permissionOk = await ensureDeviceNotificationsEnabled();
-    if (!permissionOk) {
-      return { success: false, reason: 'permission_denied' };
+    // 1. Notification permission + local subscription
+    const notificationReady =
+      await ensureDeviceNotificationsEnabled();
+
+    console.log(
+      '[WelcomePush] Notification ready:',
+      notificationReady,
+    );
+
+    if (!notificationReady) {
+      console.warn(
+        '[WelcomePush] Device notification subscription is NOT ready',
+      );
+
+      return {
+        success: false,
+        reason: 'notification_not_ready',
+      };
     }
 
-    const loginResult = await loginOneSignalUser(userId);
+    // 2. OneSignal.login() ONLY ONCE
+    console.log(
+      '[WelcomePush] Calling OneSignal.login ONCE:',
+      String(userId),
+    );
+
+    const loginResult =
+      await loginOneSignalUser(userId);
+
     if (!loginResult) {
-      await logStatus('login failed');
-      return { success: false, reason: 'onesignal_login_failed' };
-    }
-    if (!loginResult.associated) {
-      await logStatus('external id not associated');
-      return { success: false, reason: 'external_id_not_associated' };
-    }
+      console.warn(
+        '[WelcomePush] OneSignal login/association failed',
+      );
 
-    try {
-      OneSignal.User.pushSubscription.optIn();
-    } catch {
-      // ignore
-    }
-
-    const readyBeforeSettle = await waitForPushSubscriptionReady({
-      timeoutMs: 45_000,
-      intervalMs: 500,
-    });
-    if (!readyBeforeSettle) {
-      await logStatus('not subscribed before settle');
-      return { success: false, reason: 'still_unsubscribed_before_settle' };
+      return {
+        success: false,
+        reason: 'onesignal_login_failed',
+      };
     }
 
     console.log(
-      `⏳ [WelcomePush] Local OK (sub + External ID). Settle ${WELCOME_SETTLE_MS}ms for cloud...`,
-      {
-        subscriptionId: readyBeforeSettle.subscriptionId,
-        externalId: loginResult.externalId,
-      },
+      '[WelcomePush] OneSignal login successful:',
+      loginResult,
     );
-    await wait(WELCOME_SETTLE_MS);
 
-    // Re-assert login after settle — association can drop briefly
-    OneSignal.login(String(userId));
-    const stillAssociated = await waitForExternalIdAssociation(userId, {
-      timeoutMs: 15_000,
-      intervalMs: 500,
-    });
-    if (!stillAssociated) {
-      await logStatus('lost external id after settle');
-      return { success: false, reason: 'external_id_lost_after_settle' };
-    }
+    // 3. Give OneSignal cloud sync 5 seconds
+    // console.log(
+    //   '[WelcomePush] Waiting 5000ms for OneSignal cloud sync...',
+    // );
 
-    const statusBefore = await logStatus('BEFORE welcome API');
-    if (!statusBefore.readyForWelcome) {
-      console.log(
-        '🔕 [WelcomePush] Skip API — need subscribe + OneSignal.login(user_id)',
+    await new Promise<void>(resolve =>
+      setTimeout(resolve, 5000),
+    );
+
+    // 4. Check final subscription state
+    const status =
+      await getPushAssociationStatus(userId);
+
+    console.log(
+      '[WelcomePush] STATUS BEFORE welcome API:',
+      status,
+    );
+
+    // 5. DO NOT call API until subscription is ready
+    if (!status.readyForWelcome) {
+      console.warn(
+        '[WelcomePush] Subscription is not ready. Welcome API will NOT be called.',
+        status,
       );
+
       return {
         success: false,
-        reason: statusBefore.associated
-          ? 'subscription_incomplete_before_api'
-          : 'external_id_missing_before_api',
-        statusBefore,
+        reason: 'subscription_not_ready',
+        status,
       };
     }
 
-    const callWelcome = async () => {
-      const gate = await getPushAssociationStatus(userId);
-      if (!gate.readyForWelcome) {
-        console.log('🔕 [WelcomePush] Abort API — gate failed', {
-          associated: gate.associated,
-          subscribedLocally: gate.subscribedLocally,
-          subscriptionId: gate.subscriptionId,
-          externalId: gate.externalId,
-        });
-        return {
-          success: false,
-          message: 'Device not subscribed / External ID missing',
-          _aborted_not_ready: true,
-        };
-      }
-      console.log('🟢 [WelcomePush] Calling welcome API', {
-        subscriptionId: gate.subscriptionId,
-        externalId: gate.externalId,
-        associated: gate.associated,
-        subscribedLocally: gate.subscribedLocally,
-      });
-      return welcome_notification();
+    // 6. Now call welcome API
+    console.log(
+      '[WelcomePush] Calling welcome API...',
+    );
+
+    const response =
+      await welcome_notification();
+
+    console.log(
+      '[WelcomePush] welcome API response:',
+      response,
+    );
+
+    return {
+      ...response,
+      statusBefore: status,
     };
 
-    let response = await callWelcome();
-    let statusAfter = await logStatus('AFTER welcome API (1st)');
-
-    if (response?._aborted_not_ready) {
-      return {
-        success: false,
-        reason: 'not_ready_at_call_time',
-        response,
-        statusBefore,
-        statusAfter,
-      };
-    }
-
-    // Backend: "Ensure the device is subscribed via OneSignal.login(user_id)"
-    if (response?.success === false && welcomeNeedsRetry(response)) {
-      console.log(
-        '⏳ [WelcomePush] Backend cannot find user — re-login + settle + retry...',
-        response?.message,
-      );
-
-      OneSignal.login(String(userId));
-      try {
-        OneSignal.User.pushSubscription.optIn();
-      } catch {
-        // ignore
-      }
-
-      const reAssociated = await waitForExternalIdAssociation(userId, {
-        timeoutMs: 20_000,
-        intervalMs: 500,
-      });
-      const reReady = await waitForPushSubscriptionReady({
-        timeoutMs: 20_000,
-        intervalMs: 500,
-      });
-
-      if (!reAssociated || !reReady) {
-        statusAfter = await logStatus('retry aborted — still not ready');
-        return {
-          success: false,
-          reason: 'still_not_ready_on_retry',
-          response,
-          statusBefore,
-          statusAfter,
-        };
-      }
-
-      await wait(WELCOME_SETTLE_MS);
-      OneSignal.login(String(userId));
-      await waitForExternalIdAssociation(userId, {
-        timeoutMs: 10_000,
-        intervalMs: 400,
-      });
-
-      const statusBeforeRetry = await logStatus('BEFORE welcome API (retry)');
-      if (!statusBeforeRetry.readyForWelcome) {
-        return {
-          success: false,
-          reason: 'not_ready_before_retry_api',
-          response,
-          statusBefore: statusBeforeRetry,
-        };
-      }
-
-      response = await callWelcome();
-      statusAfter = await logStatus('AFTER welcome API (retry)');
-
-      if (response?._aborted_not_ready) {
-        return {
-          success: false,
-          reason: 'not_ready_at_retry_call_time',
-          response,
-          statusBefore: statusBeforeRetry,
-          statusAfter,
-        };
-      }
-    }
-
-    if (response?.success === false) {
-      console.log('❌ [WelcomePush] welcome API failed:', response);
-      return {
-        success: false,
-        reason: 'welcome_api_failed',
-        response,
-        statusBefore,
-        statusAfter,
-      };
-    }
-
-    console.log('🎉 [WelcomePush] Welcome API success', response);
-    return { success: true, response, statusBefore, statusAfter };
   } catch (error: any) {
-    const statusAfter = await logStatus('after exception');
+    console.error(
+      '[WelcomePush] Flow failed:',
+      error,
+    );
+
     return {
       success: false,
-      reason: error?.message ?? 'welcome_flow_error',
-      statusAfter,
+      reason: 'exception',
+      error,
     };
   }
 };

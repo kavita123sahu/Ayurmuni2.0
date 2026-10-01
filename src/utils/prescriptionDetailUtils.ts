@@ -142,21 +142,92 @@ export const getMedicineItems = (prescription: any): any[] => {
   return [];
 };
 
-/** Prefer selling / unit / mrp style fields from medicine item. */
-export const getMedicinePrice = (medicine: any): string | number | null => {
+/** "₹1,299.00" / "199" / 199 → number; empty / invalid → null. */
+export const parseAmount = (value: any): number | null => {
+  if (value == null || typeof value === 'boolean') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const cleaned = String(value).replace(/[^0-9.-]/g, '');
+  if (!cleaned) return null;
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : null;
+};
+
+const NESTED_PRICE_KEYS = ['variant', 'product_variant', 'product', 'medicine', 'inventory', 'pricing'];
+const SELLING_KEYS = [
+  'selling_price',
+  'sale_price',
+  'discounted_price',
+  'special_price',
+  'final_price',
+  'price',
+  'unit_price',
+  'amount',
+];
+const MRP_KEYS = ['mrp', 'mrp_price', 'max_retail_price', 'original_price', 'list_price'];
+
+const findAmount = (medicine: any, keys: string[]): number | null => {
   if (!medicine || typeof medicine !== 'object') return null;
-  const candidates = [
-    medicine.selling_price,
-    medicine.price,
-    medicine.mrp,
-    medicine.amount,
-    medicine.unit_price,
-    medicine.total_price,
+  const sources = [
+    medicine,
+    ...NESTED_PRICE_KEYS.map(key => medicine[key]).filter(v => v && typeof v === 'object'),
   ];
-  for (const c of candidates) {
-    if (c != null && String(c).trim() !== '') return c;
+  for (const source of sources) {
+    for (const key of keys) {
+      const num = parseAmount(source[key]);
+      if (num != null && num > 0) return num;
+    }
   }
   return null;
+};
+
+/** Unit MRP of a prescribed medicine (flat or nested product / variant keys). */
+export const getMedicineMrp = (medicine: any): number | null => findAmount(medicine, MRP_KEYS);
+
+/** Unit selling price; falls back to MRP when no selling price is sent. */
+export const getMedicineUnitPrice = (medicine: any): number | null =>
+  findAmount(medicine, SELLING_KEYS) ?? getMedicineMrp(medicine);
+
+/** "10 tablets" / "2" / 2 → 2; missing → 1. */
+export const getMedicineQuantity = (medicine: any): number => {
+  const raw = medicine?.quantity ?? medicine?.qty;
+  const match = String(raw ?? '').match(/\d+(\.\d+)?/);
+  const num = match ? Number(match[0]) : NaN;
+  return Number.isFinite(num) && num > 0 ? num : 1;
+};
+
+/** Prefer selling / unit / mrp style fields from medicine item. */
+export const getMedicinePrice = (medicine: any): string | number | null =>
+  getMedicineUnitPrice(medicine);
+
+const medicineKey = (medicine: any) =>
+  String(
+    medicine?.id ??
+      medicine?.medicine_id ??
+      medicine?.product_id ??
+      medicine?.variant_id ??
+      medicine?.medicine_name ??
+      medicine?.name ??
+      '',
+  )
+    .trim()
+    .toLowerCase();
+
+const withoutEmpty = (obj: any) =>
+  Object.fromEntries(
+    Object.entries(obj ?? {}).filter(
+      ([, v]) => v != null && !(typeof v === 'string' && v.trim() === ''),
+    ),
+  );
+
+/** Download items win, but missing fields (price, mrp…) are filled from the screen items. */
+export const mergeMedicineItems = (primary: any[], fallback: any[]): any[] => {
+  if (!primary.length) return fallback;
+  if (!fallback.length) return primary;
+  const byKey = new Map(fallback.map(item => [medicineKey(item), item]));
+  return primary.map((item, index) => {
+    const match = byKey.get(medicineKey(item)) ?? fallback[index] ?? {};
+    return { ...match, ...withoutEmpty(item) };
+  });
 };
 
 const isBareNumber = (value: string) => /^\d+(\.\d+)?$/.test(value.trim());
@@ -408,6 +479,49 @@ export const getFamilyHistoryText = (prescription: any): string =>
       prescription?.hereditary_history,
   );
 
+const humanizeKey = (key: string) =>
+  key
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\w/, c => c.toUpperCase());
+
+const isEmptyValue = (value: any) =>
+  value == null ||
+  (typeof value === 'string' && value.trim() === '') ||
+  (Array.isArray(value) && value.length === 0);
+
+/** String / array / `{ key: value }` history payload → readable lines ("Diet: Veg"). */
+export const getHistoryLines = (value: any): string[] => {
+  if (isEmptyValue(value)) return [];
+  if (typeof value === 'string' || typeof value === 'number') {
+    return [String(value).trim()].filter(Boolean);
+  }
+  if (typeof value === 'boolean') return [value ? 'Yes' : 'No'];
+  if (Array.isArray(value)) {
+    return value.flatMap(item => getHistoryLines(item));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, inner]) => {
+      if (isEmptyValue(inner)) return [];
+      const text = getHistoryLines(inner).join(', ');
+      return text ? [`${humanizeKey(key)}: ${text}`] : [];
+    });
+  }
+  return [];
+};
+
+export const getPersonalHistoryLines = (prescription: any): string[] =>
+  getHistoryLines(prescription?.personal_history);
+
+export const getGynaecologicalLines = (prescription: any): string[] =>
+  getHistoryLines(
+    prescription?.gynaecological ??
+      prescription?.gynaecological_history ??
+      prescription?.gynecological ??
+      prescription?.gynecological_history,
+  );
+
 export const getSymptomDescription = (prescription: any): string =>
   getClinicalText(
     prescription?.symptom_description ||
@@ -507,7 +621,21 @@ const medicineLine = (medicine: any, index: number): string => {
   const notes = String(
     medicine?.instructions || medicine?.notes || medicine?.advice || '',
   ).trim();
-  return [`  ${index + 1}. ${name}`, chips ? `     ${chips}` : '', notes ? `     Notes: ${notes}` : '']
+  const unit = getMedicineUnitPrice(medicine);
+  const mrp = getMedicineMrp(medicine);
+  const qty = getMedicineQuantity(medicine);
+  const priceLine =
+    unit != null
+      ? `     Price: Rs ${unit.toFixed(2)} x ${qty} = Rs ${(unit * qty).toFixed(2)}${
+          mrp != null && mrp > unit ? ` (MRP Rs ${mrp.toFixed(2)})` : ''
+        }`
+      : '';
+  return [
+    `  ${index + 1}. ${name}`,
+    chips ? `     ${chips}` : '',
+    priceLine,
+    notes ? `     Notes: ${notes}` : '',
+  ]
     .filter(Boolean)
     .join('\n');
 };
@@ -560,6 +688,8 @@ export const buildPrescriptionDownloadText = (data: any): string => {
   const symptoms = getSymptomDescription(prescription);
   const pastIllness = getPastIllnessText(prescription);
   const familyHistory = getFamilyHistoryText(prescription);
+  const personalHistory = getPersonalHistoryLines(prescription);
+  const gynaecological = getGynaecologicalLines(prescription);
   const clinical = getClinicalAdvisory(prescription);
   const diagnosis = getDiagnosisText(prescription);
 
@@ -591,6 +721,8 @@ export const buildPrescriptionDownloadText = (data: any): string => {
   if (familyHistory) {
     sections.push('Family history', `  ${familyHistory}`, '');
   }
+  sections.push(...lineList('Personal history', personalHistory));
+  sections.push(...lineList('Gynaecological history', gynaecological));
   if (clinical) {
     sections.push('Clinical notes', `  ${clinical}`, '');
   }
@@ -598,6 +730,11 @@ export const buildPrescriptionDownloadText = (data: any): string => {
   if (medicines.length) {
     sections.push('Medicines');
     medicines.forEach((med, i) => sections.push(medicineLine(med, i)));
+    const total = medicines.reduce((sum, med) => {
+      const unit = getMedicineUnitPrice(med);
+      return unit != null ? sum + unit * getMedicineQuantity(med) : sum;
+    }, 0);
+    if (total > 0) sections.push(`  Total amount: Rs ${total.toFixed(2)}`);
     sections.push('');
   }
 

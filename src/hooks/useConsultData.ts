@@ -10,6 +10,7 @@ import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
 import { isAuthenticated } from '../services/guestAuth';
 import {
+    isActiveAppointmentStatus,
     normalizeAppointmentListItem,
     sortAppointmentsByDateTime,
 } from '../utils/appointmentUtils';
@@ -404,25 +405,46 @@ export const useUpcomingAppointmentsPreview = (
                 setLoading(true);
             }
 
-            const res = await _CONSULT_SERVICES.getConsultHistory({
-                page: 1,
-                page_size: pageSize,
-                // Prefer confirmed upcoming for Home preview
-                appointment_status: 'confirmed',
-            });
+            // `confirmed` alone misses rescheduled / live (in_progress) slots
+            const [confirmedRes, upcomingRes] = await Promise.all(
+                ['confirmed', 'upcoming'].map(appointment_status =>
+                    _CONSULT_SERVICES
+                        .getConsultHistory({ page: 1, page_size: pageSize, appointment_status })
+                        .catch((e: any) => {
+                            console.log('UPCOMING_PREVIEW_FETCH_ERROR', appointment_status, e);
+                            return null;
+                        }),
+                ),
+            );
 
-            const results = res?.data?.results || [];
-            // Home list: only confirmed appointments (exclude pending/reschedule/etc.)
-            const confirmedOnly = results
+            const seen = new Set<string>();
+            const active = [
+                ...(confirmedRes?.data?.results || []),
+                ...(upcomingRes?.data?.results || []),
+            ]
                 .map((item: any) => normalizeAppointmentListItem(item))
                 .filter((item: any) => {
-                    const status = String(item?.status || '')
-                        .trim()
-                        .toLowerCase();
-                    return status === 'confirmed';
+                    const key = String(item?.appointment_id || item?.consultation_id || '');
+                    if (key && seen.has(key)) return false;
+                    if (key) seen.add(key);
+                    return (
+                        isActiveAppointmentStatus(item?.status) ||
+                        String(item?.call_status || '').toLowerCase() === 'in_progress'
+                    );
                 });
+            console.log(
+                'UPCOMING_PREVIEW =>',
+                active.map((item: any) => ({
+                    id: item?.appointment_id,
+                    date: item?.date,
+                    time: item?.time,
+                    end: item?.endTime,
+                    status: item?.status,
+                    call: item?.call_status,
+                })),
+            );
 
-            setAppointments(sortAppointmentsByDateTime(confirmedOnly));
+            setAppointments(sortAppointmentsByDateTime(active));
         } catch (e) {
             console.log('UPCOMING_PREVIEW_ERROR', e);
             setAppointments([]);

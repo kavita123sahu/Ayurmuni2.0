@@ -654,6 +654,7 @@ import {
   TokenInfo,
 } from '../services/videoCallApi';
 import { CallEvents, CALL_ENDED } from '../common/Utils';
+import { activateKeepAwake, deactivateKeepAwake } from '../utils/keepAwake';
 
 export type VideoCallParams = {
   appointmentId: string;
@@ -1146,6 +1147,16 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
   }, [remoteUid]);
+
+  // Screen must never sleep while a call is connecting, full-screen or minimized.
+  useEffect(() => {
+    if (viewMode === 'idle') {
+      deactivateKeepAwake();
+      return;
+    }
+    activateKeepAwake();
+    return () => deactivateKeepAwake();
+  }, [viewMode]);
 
   useEffect(() => {
     if (viewMode === 'idle' || !appointmentIdRef.current || !isJoined) {

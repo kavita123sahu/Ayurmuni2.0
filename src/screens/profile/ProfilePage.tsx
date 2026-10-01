@@ -1150,6 +1150,7 @@ const ProfilePage = ({ navigation }: any) => {
     const accountMenu: MenuEntry[] = [
         { id: 1, title: 'My Orders', icon: 'receipt' },
         { id: 2, title: 'My Consultations', icon: 'calendar' },
+        { id: 10, title: 'My Plans', icon: 'certificate' },
         { id: 3, title: 'Medical Records', icon: 'file-medical' },
         { id: 4, title: 'Patient Details', icon: 'users' },
         { id: 5, title: 'Saved Address', icon: 'map-pin' },
@@ -1256,6 +1257,9 @@ const ProfilePage = ({ navigation }: any) => {
                 break;
             case 'Cart':
                 stackNav.navigate('MyCart');
+                break;
+            case 'My Plans':
+                stackNav.navigate('MyPlansScreen');
                 break;
             case 'Payments':
                 stackNav.navigate('PaymentsScreen');

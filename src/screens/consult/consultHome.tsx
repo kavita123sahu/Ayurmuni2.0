@@ -40,6 +40,7 @@ import { useConsultData } from '../../hooks/useConsultData';
 import Detailimages from '../../components/Detailimages';
 import { useBanners } from '../../hooks/useBanners';
 import OrangeLabHomeSection from '../../components/home/OrangeLabHomeSection';
+import PackagePlansSection from '../../components/packages/PackagePlansSection';
 import { SCREEN_PADDING_H, getScreenBottomPadding, HORIZONTAL_SCROLL_CONTENT } from '../../constants/layout';
 import { RecentConsultHistory } from '../../services/ConsultServce';
 import { useDebounce } from '../../hooks/useDebaunce';
@@ -497,6 +498,8 @@ const ConsultHome = () => {
                   />
                 </>
               )}
+
+              <PackagePlansSection navigation={navigation} />
 
               {(productList.length > 0 || productsLoading) && (
                 <>

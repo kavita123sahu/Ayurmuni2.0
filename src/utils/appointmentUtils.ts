@@ -589,14 +589,21 @@ export function isAppointmentInPast(raw: any): boolean {
   const item = normalizeAppointmentListItem(raw);
   const now = Date.now();
 
-  const end = parseAppointmentStart(item.date, item.endTime || undefined);
+  const start = parseAppointmentStart(item.date, item.time);
+  const parsedEnd = item.endTime
+    ? parseAppointmentStart(item.date, item.endTime)
+    : null;
+  // Ignore bad end_time (missing / before start) so the slot is not hidden early
+  const end =
+    parsedEnd && (!start || parsedEnd.getTime() > start.getTime())
+      ? parsedEnd
+      : null;
   if (end && now >= end.getTime()) {
     return true;
   }
 
-  const start = parseAppointmentStart(item.date, item.time);
   // No usable end_time: treat as past ~60 min after start
-  if (start && (!item.endTime || !end) && now >= start.getTime() + 60 * 60 * 1000) {
+  if (start && !end && now >= start.getTime() + 60 * 60 * 1000) {
     return true;
   }
 
@@ -835,6 +842,84 @@ export type JoinableAppointment = {
 
 const DEFAULT_JOIN_WINDOW_MINUTES = 5;
 
+/** Call states that close the join window (patient `left` can still rejoin inside the slot). */
+const JOIN_CLOSED_CALL_STATUSES = new Set([
+  'ended',
+  'completed',
+  'cancelled',
+  'canceled',
+  'no_show',
+  'missed',
+  'rejected',
+]);
+
+/** Appointment states that can still have a live consultation. */
+const JOINABLE_APPOINTMENT_STATUSES = new Set([
+  'confirmed',
+  'upcoming',
+  'booked',
+  'scheduled',
+  'reschedule',
+  'rescheduled',
+  're-scheduled',
+  're_scheduled',
+  'cancellation_requested',
+  'in_progress',
+  'ongoing',
+  'started',
+  'live',
+]);
+
+export const isActiveAppointmentStatus = (status?: string | null) =>
+  JOINABLE_APPOINTMENT_STATUSES.has(String(status || '').trim().toLowerCase());
+
+/** Start / effective end (end_time, or start + 15 min) of an appointment slot. */
+const getSlotBounds = (item: ReturnType<typeof normalizeAppointmentListItem>) => {
+  const start = parseAppointmentStart(item.date, item.time);
+  if (!start) return null;
+  const end = item.endTime ? parseAppointmentStart(item.date, item.endTime) : null;
+  const endMs =
+    end && end.getTime() > start.getTime()
+      ? end.getTime()
+      : start.getTime() + 15 * 60 * 1000;
+  return { startMs: start.getTime(), endMs };
+};
+
+/** True while the appointment is inside its join window (5 min before start → end). */
+export function isAppointmentJoinable(
+  raw: any,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
+): boolean {
+  if (!raw) return false;
+  const item = normalizeAppointmentListItem(raw);
+  const callStatus = String(item.call_status || '').toLowerCase().trim();
+  if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) return false;
+  if (callStatus !== 'in_progress' && !isActiveAppointmentStatus(item.status)) {
+    return false;
+  }
+  const bounds = getSlotBounds(item);
+  if (!bounds) return callStatus === 'in_progress';
+  const now = Date.now();
+  if (now >= bounds.endMs) return false;
+  if (callStatus === 'in_progress') return true;
+  return bounds.startMs - now <= windowMinutes * 60 * 1000;
+}
+
+/** ms until the join window opens or closes (null when nothing changes anymore). */
+export function getMsUntilJoinWindowChange(
+  raw: any,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
+): number | null {
+  if (!raw) return null;
+  const item = normalizeAppointmentListItem(raw);
+  const bounds = getSlotBounds(item);
+  if (!bounds) return null;
+  const now = Date.now();
+  const opensAt = bounds.startMs - windowMinutes * 60 * 1000;
+  const next = [opensAt, bounds.endMs].find(t => t > now);
+  return next != null ? next - now : null;
+}
+
 /**
  * Home "Join Now" banner rules:
  * - Hide ONLY when: end_time has passed, OR call_status is completed/ended
@@ -853,7 +938,7 @@ export function getJoinableAppointment(
     const callStatus = String(item.call_status || '').toLowerCase().trim();
 
     // Hide when call is completed / ended (only this call-status condition)
-    if (ENDED_CALL_STATUSES.has(callStatus)) {
+    if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) {
       continue;
     }
 

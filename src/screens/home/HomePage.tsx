@@ -1357,7 +1357,7 @@ import { requireAuth } from '../../services/guestAuth';
 import BrandList from '../../components/BrandList';
 import { useBrands } from '../../hooks/useBrands';
 import { mapBrandItem } from '../../utils/orderUtils';
-import ConsultationPackagesSection from '../../components/home/ConsultationPackagesSection';
+import PackagePlansSection from '../../components/packages/PackagePlansSection';
 import PanchakarmaSection from '../../components/home/PanchakarmaSection';
 import OrangeLabHomeSection from '../../components/home/OrangeLabHomeSection';
 
@@ -1713,13 +1713,13 @@ const HomePage: React.FC = (props: any) => {
                 <Text style={styles.comingSoonChipBadgeText}>Soon</Text>
               </View>
 
-              {/* <TouchableOpacity style={styles.comingSoonChipBadge} onPress={() => {
+              <TouchableOpacity style={styles.comingSoonChipBadge} onPress={() => {
                 Sentry.captureException(
-                  new Error('Sentry Test Error'),
+                  new Error('Sentry Testing from the new DSN kavita'),
                 );
               }}>
                 <Text style={styles.comingSoonChipBadgeText}>Sentry</Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
 
             </View>
           ))}
@@ -1903,6 +1903,7 @@ const HomePage: React.FC = (props: any) => {
               endedCallIds={endedCallIds}
               loading={loadingAppointments}
               navigation={props.navigation}
+              onResume={refreshPreview}
             />
 
 
@@ -1983,6 +1984,13 @@ const HomePage: React.FC = (props: any) => {
                 /> */}
               </View>
             )}
+
+            <View style={styles.homeSection}>
+              <PackagePlansSection
+                home
+                navigation={props.navigation.getParent?.() || props.navigation}
+              />
+            </View>
 
 
             {loadingProducts && !(medicineProducts?.length > 0) ? (
@@ -2106,27 +2114,6 @@ const HomePage: React.FC = (props: any) => {
                 />
               </View>
             ) : null}
-
-            {/* Dummy marketing — after diet; SectionHeaders on Home; same padding as products */}
-            <View style={styles.homeSection}>
-              <SectionHeader
-                home
-                title="Consultation Packages"
-                actionText="View all"
-                onPress={() => {
-                  const stackNav =
-                    props.navigation.getParent?.() || props.navigation;
-                  stackNav.navigate('PackagesScreen');
-                }}
-              />
-              <ConsultationPackagesSection
-                onPressPackage={() => {
-                  const stackNav =
-                    props.navigation.getParent?.() || props.navigation;
-                  stackNav.navigate('PackagesScreen');
-                }}
-              />
-            </View>
 
             <View style={styles.homeSection}>
               <SectionHeader

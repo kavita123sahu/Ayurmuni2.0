@@ -19,6 +19,8 @@ type Props = {
   onJoinCall?: () => void;
   onViewDetails?: () => void;
   call_status?: string;
+  /** True inside the join window (5 min before start → end) or while the call is live. */
+  canJoin?: boolean;
   /** Show "View details" only when a prescription exists for this appointment. */
   hasPrescription?: boolean;
 };
@@ -33,6 +35,7 @@ const AppointmentActions = ({
   onJoinCall,
   onViewDetails,
   call_status,
+  canJoin,
   hasPrescription = false,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
@@ -59,12 +62,35 @@ const AppointmentActions = ({
       'noshow',
     ].includes(appointmentStatus);
 
-  const showJoinCall = call_status === 'in_progress';
+  const isCallLive = String(call_status || '').toLowerCase() === 'in_progress';
+  const showJoinCall = canJoin ?? isCallLive;
+
+  if (showJoinCall) {
+    return (
+      <TouchableOpacity
+        style={styles.standaloneWrap}
+        onPress={onJoinCall}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#0D614E', '#14937A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.gradientBtn, styles.joinBtn]}
+        >
+          <View style={styles.liveDot} />
+          <Text style={styles.primaryText}>
+            {isCallLive ? 'Join video call · Live' : 'Join video call'}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
 
   if (showReschedule || showCancel) {
     return (
       <View style={styles.btnRow}>
-        {!showJoinCall && showReschedule && (
+        {showReschedule && (
           <TouchableOpacity
             style={styles.outlineBtn}
             onPress={onReschedule}
@@ -78,31 +104,14 @@ const AppointmentActions = ({
           </TouchableOpacity>
         )}
 
-        {showJoinCall ? (
+        {showCancel && (
           <TouchableOpacity
-            style={styles.flexBtn}
-            onPress={onJoinCall}
-            activeOpacity={0.9}
+            style={[styles.cancelBtn, !showReschedule && styles.fullFlex]}
+            onPress={onCancel}
+            activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={['#0D614E', '#14937A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.gradientBtn}
-            >
-              <Text style={styles.primaryText}>Join call</Text>
-            </LinearGradient>
+            <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-        ) : (
-          showCancel && (
-            <TouchableOpacity
-              style={[styles.cancelBtn, !showReschedule && styles.fullFlex]}
-              onPress={onCancel}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          )
         )}
       </View>
     );
@@ -158,10 +167,16 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  flexBtn: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
+  joinBtn: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ADE80',
   },
 
   fullFlex: {

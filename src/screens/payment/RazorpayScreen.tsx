@@ -462,7 +462,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             ).replace(/\D/g, '');
 
             let razorpayResult: any;
-            
+
             try {
                 razorpayResult = await openRazorpayPayment({
                     key: paymentData?.razorpay_key,
@@ -474,7 +474,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     description: 'Consultation payment',
                     themeColor: Colors.primaryColor,
                 });
-                console.log("razorpayResultrazorpayResultrazorpayResult",razorpayResult);
+                console.log("razorpayResultrazorpayResultrazorpayResult", razorpayResult);
             } catch (error: any) {
                 setIsVerifyingPayment(false);
                 console.log('CONSULT_RAZORPAY_CATCH =>', error);
@@ -925,16 +925,16 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                     </View>
 
                                     {feeBreakdown.gst > 0 ? (
-                                      <View style={styles.summaryRow}>
-                                          <Text style={styles.summaryLabel}>
-                                              {feeBreakdown.gstLabel}
-                                          </Text>
-                                          <RupeeAmount
-                                              value={feeBreakdown.gst}
-                                              style={styles.summaryValue}
-                                              decimals={2}
-                                          />
-                                      </View>
+                                        <View style={styles.summaryRow}>
+                                            <Text style={styles.summaryLabel}>
+                                                {feeBreakdown.gstLabel}
+                                            </Text>
+                                            <RupeeAmount
+                                                value={feeBreakdown.gst}
+                                                style={styles.summaryValue}
+                                                decimals={2}
+                                            />
+                                        </View>
                                     ) : null}
 
                                     <LinearGradient

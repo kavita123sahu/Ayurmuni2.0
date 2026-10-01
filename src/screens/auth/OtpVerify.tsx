@@ -438,51 +438,70 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
         // + OneSignal.login(user_id) External ID linked.
         // ==========================================
 
-        if (!isNotificationEnabled) {
-          console.log(
-            '🔕 [STEP 11] Notifications disabled — skipping welcome push',
-          );
-        } else {
-          try {
-            console.log(
-              '🚀 [STEP 12] Calling completeWelcomePushFlow for user:',
-              userId,
-            );
+      // ==========================================
+// STEP 11–12: OneSignal + Welcome Push
+// ==========================================
 
-            const welcomeResult =
-              await completeWelcomePushFlow(userId);
+if (!isNotificationEnabled) {
+  console.log(
+    '🔕 [STEP 11] Notifications disabled — skipping OneSignal and welcome push',
+  );
+} else {
+  try {
+    console.log(
+      '🔔 [STEP 11] Notifications enabled',
+    );
 
-            console.log(
-              '🟢 [STEP 12] Welcome push flow result:',
-              welcomeResult,
-            );
-            console.log(
-              '🔎 [STEP 12] Status BEFORE API:',
-              welcomeResult?.statusBefore,
-            );
-            console.log(
-              '🔎 [STEP 12] Status AFTER API:',
-              welcomeResult?.statusAfter,
-            );
+    console.log(
+      '🚀 [STEP 12] Starting OneSignal subscription + welcome push flow',
+    );
 
-            if (welcomeResult?.success) {
-              console.log('🎉 [STEP 12] WELCOME PUSH SUCCESS');
-            } else {
-              console.log(
-                '⚠️ [STEP 12] WELCOME PUSH NOT DELIVERED:',
-                welcomeResult?.reason,
-              );
-            }
-          } catch (oneSignalError: any) {
-            console.error(
-              '❌ [STEP 11] OneSignal / welcome flow ERROR:',
-              oneSignalError?.message ?? oneSignalError,
-            );
+    console.log(
+      '👤 [STEP 12] User ID:',
+      String(userId),
+    );
 
-            // Do not break registration
-          }
-        }
+    /**
+     * completeWelcomePushFlow() will:
+     *
+     * 1. Ensure notification permission
+     * 2. Ensure OneSignal push subscription exists
+     * 3. Call OneSignal.login(userId) ONCE
+     * 4. Wait for External ID association
+     * 5. Wait 5 seconds for cloud sync
+     * 6. Check subscription status
+     * 7. Call welcome API only when subscription is ready
+     */
+    const welcomeResult =
+      await completeWelcomePushFlow(userId);
 
+    console.log(
+      '🟢 [STEP 12] Welcome push flow result:',
+      welcomeResult,
+    );
+
+    if (welcomeResult?.success) {
+      console.log(
+        '🎉 [STEP 12] WELCOME PUSH SUCCESS',
+      );
+    } else {
+      console.warn(
+        '⚠️ [STEP 12] WELCOME PUSH NOT DELIVERED',
+        {
+          reason: welcomeResult?.reason,
+          status: welcomeResult?.status,
+        },
+      );
+    }
+  } catch (oneSignalError: any) {
+    console.error(
+      '❌ [STEP 12] OneSignal / welcome flow ERROR:',
+      oneSignalError?.message ?? oneSignalError,
+    );
+
+    // Registration should continue even if welcome push fails.
+  }
+}
         // ==========================================
         // STEP 13: markAsGuest
         // ==========================================

@@ -412,16 +412,14 @@ const ProductDetails = (props: any) => {
         return bestDisc > 0 ? bestId : null;
     }, [variants]);
 
-    const deliveryBy = useMemo(() => {
-        return '24 hours';
-    }, []);
 
-    const deliveryMessage =
-        'Your order will be delivered in 24 hours between appropriate delivery slots.';
+    const deliveryMessage = ProductData?.delivery_expection;
 
     const fullDescription = String(
         ProductData?.full_description || ProductData?.description || '',
     ).trim();
+
+    const delivery_expection = ProductData?.delivery_expection?.trim();
     const shortDescription = String(ProductData?.short_description || '').trim();
     const highlightSource = ProductData?.benifits || ProductData?.highlights || '';
     const highlightLines = useMemo(
@@ -646,7 +644,7 @@ const ProductDetails = (props: any) => {
                     )}
 
                     {!!shortDescription && (
-                        <Text style={styles.shortDescription} numberOfLines={2}>
+                        <Text style={styles.shortDescription} numberOfLines={3}>
                             {shortDescription}
                         </Text>
                     )}
@@ -674,7 +672,7 @@ const ProductDetails = (props: any) => {
                                     </View>
                                 ) : null}
                                 {roundDiscountPercent(selectedVariant?.discount) > 0 ||
-                                saveAmount > 0 ? (
+                                    saveAmount > 0 ? (
                                     <Text style={styles.discountInline}>
                                         (
                                         {roundDiscountPercent(selectedVariant?.discount) > 0
@@ -685,8 +683,8 @@ const ProductDetails = (props: any) => {
                                                         Number(selectedVariant?.mrp) || 1,
                                                         1,
                                                     )) *
-                                                    100,
-                                              )}
+                                                100,
+                                            )}
                                         )
                                     </Text>
                                 ) : null}
@@ -762,10 +760,8 @@ const ProductDetails = (props: any) => {
                             <TablerIcon name="truck" size={14} color={Colors.primaryColor} />
                         </View>
                         <Text style={styles.deliveryText}>
-                            {deliveryMessage}{' '}
-                            <Text style={styles.deliveryStrong}>
-                                Delivery in {deliveryBy} in NCR & nearby cities.
-                            </Text>
+                            {delivery_expection}{' '}
+
                         </Text>
                         {/* {selectedVariant?.is_free_shipping ? (
                             <View style={styles.freeTag}>
@@ -923,7 +919,7 @@ const ProductDetails = (props: any) => {
                             </>
                         ) : null}
 
-                        {!!fullDescription && (
+                        {/* {!!fullDescription && (
                             <View
                                 style={highlightLines.length > 0 ? styles.aboutBlock : undefined}
                             >
@@ -940,7 +936,7 @@ const ProductDetails = (props: any) => {
                                     </TouchableOpacity>
                                 ) : null}
                             </View>
-                        )}
+                        )} */}
                     </View>
                 )}
 

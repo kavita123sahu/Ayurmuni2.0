@@ -30,8 +30,11 @@ import {
   getDoList,
   getDontList,
   getFamilyHistoryText,
+  getPersonalHistoryLines,
+  getGynaecologicalLines,
   getFollowUpInfo,
   getMedicineItems,
+  mergeMedicineItems,
   getMedicineScheduleChips,
   getPastIllnessText,
   getPaymentAmount,
@@ -215,10 +218,10 @@ const PrescriptionDetail = (props: any) => {
 
   const lookupId = String(
     params.appointment_id ||
-      params.consultation_id ||
-      params.PrisData?.appointment_id ||
-      params.PrisData?.consultation_id ||
-      '',
+    params.consultation_id ||
+    params.PrisData?.appointment_id ||
+    params.PrisData?.consultation_id ||
+    '',
   ).trim();
 
   const [loading, setLoading] = useState(true);
@@ -226,9 +229,9 @@ const PrescriptionDetail = (props: any) => {
   const [payload, setPayload] = useState<any>(
     params.PrisData
       ? {
-          ...params.PrisData,
-          doctor: params.doctorData || params.PrisData?.doctor,
-        }
+        ...params.PrisData,
+        doctor: params.doctorData || params.PrisData?.doctor,
+      }
       : null,
   );
   const hasSeedData = useMemo(
@@ -298,21 +301,23 @@ const PrescriptionDetail = (props: any) => {
   const diagnosisText = getDiagnosisText(prescription);
   const prescriptionCode = formatPrescriptionId(
     prescription?.prescription_code ||
-      prescription?.id ||
-      normalized.prescriptionId,
+    prescription?.id ||
+    normalized.prescriptionId,
   );
   const symptomText = getSymptomDescription(prescription);
   const allergies = getAllergiesList(prescription);
   const pastIllnessText = getPastIllnessText(prescription);
   const familyHistoryText = getFamilyHistoryText(prescription);
+  const personalHistory = getPersonalHistoryLines(prescription);
+  const gynaecological = getGynaecologicalLines(prescription);
   const followUp = getFollowUpInfo(prescription, appointment);
 
   const paymentStatus = String(
     payload?.payment?.status ||
-      payload?.payment?.payment_status ||
-      appointment?.payment?.status ||
-      appointment?.payment?.payment_status ||
-      '',
+    payload?.payment?.payment_status ||
+    appointment?.payment?.status ||
+    appointment?.payment?.payment_status ||
+    '',
   ).trim();
 
   const doctorPhone =
@@ -328,10 +333,10 @@ const PrescriptionDetail = (props: any) => {
   const specialization = Array.isArray(doctor?.doctor_specialization)
     ? doctor.doctor_specialization.filter(Boolean).join(', ')
     : doctor?.doctor_specialization ||
-      doctor?.specialization ||
-      doctor?.speciality ||
-      diseaseTags.slice(0, 2).join(' · ') ||
-      '';
+    doctor?.specialization ||
+    doctor?.speciality ||
+    diseaseTags.slice(0, 2).join(' · ') ||
+    '';
 
   const patientLine = [
     patient?.age != null ? `${patient.age} yrs` : '',
@@ -347,8 +352,8 @@ const PrescriptionDetail = (props: any) => {
       : '',
     appointment?.start_time && appointment?.end_time
       ? `${String(appointment.start_time).slice(0, 5)}–${String(
-          appointment.end_time,
-        ).slice(0, 5)}`
+        appointment.end_time,
+      ).slice(0, 5)}`
       : '',
   ]
     .filter(Boolean)
@@ -436,15 +441,24 @@ const PrescriptionDetail = (props: any) => {
 
       const code = formatPrescriptionId(
         response.prescriptionData?.prescription_code ||
-          prescription?.prescription_code ||
-          prescriptionId,
+        prescription?.prescription_code ||
+        prescriptionId,
       ).replace(/[^a-zA-Z0-9._-]/g, '_');
 
       if (response.prescriptionData) {
         const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+        const downloadRx =
+          response.prescriptionData.prescription ?? response.prescriptionData;
+        const screenRx = prescription ?? {};
+        console.log('PRESCRIPTION_PDF_DOWNLOAD_ITEMS =>', JSON.stringify(getMedicineItems(downloadRx)));
+        console.log('PRESCRIPTION_PDF_SCREEN_ITEMS =>', JSON.stringify(getMedicineItems(screenRx)));
         const mergedPayload = {
           ...(payload ?? {}),
           ...response.prescriptionData,
+          payment:
+            response.prescriptionData.payment ??
+            payload?.payment ??
+            payload?.appointment?.payment,
           doctor:
             response.prescriptionData.doctor ??
             payload?.doctor ??
@@ -455,9 +469,14 @@ const PrescriptionDetail = (props: any) => {
             payload?.appointment?.patient,
           appointment:
             response.prescriptionData.appointment ?? payload?.appointment,
-          prescription:
-            response.prescriptionData.prescription ??
-            response.prescriptionData,
+          prescription: {
+            ...screenRx,
+            ...downloadRx,
+            items: mergeMedicineItems(
+              getMedicineItems(downloadRx),
+              getMedicineItems(screenRx),
+            ),
+          },
           diets:
             response.prescriptionData.diets ??
             payload?.diets ??
@@ -510,11 +529,7 @@ const PrescriptionDetail = (props: any) => {
 
   const stickyPad = Math.max(insets.bottom, 12);
 
-  const presentingComplaint =
-    concernText &&
-    concernText.toLowerCase() !== symptomText.toLowerCase()
-      ? concernText
-      : '';
+  const presentingComplaint = getSymptomDescription(prescription);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -670,57 +685,67 @@ const PrescriptionDetail = (props: any) => {
               !!clinicalNotes ||
               allergies.length > 0 ||
               !!pastIllnessText ||
-              !!familyHistoryText) && (
-              <View style={styles.card}>
-                <SectionLabel
-                  title="Clinical findings"
-                  icon="stethoscope"
-                />
-                {!!presentingComplaint && (
-                  <FindingRow
-                    icon="clipboard-list"
-                    label="Chief complaint"
-                    value={presentingComplaint}
+              !!familyHistoryText ||
+              personalHistory.length > 0 ||
+              gynaecological.length > 0) && (
+                <View style={styles.card}>
+                  <SectionLabel
+                    title="Clinical findings"
+                    icon="stethoscope"
                   />
-                )}
-                {!!symptomText && (
-                  <FindingRow
-                    icon="notes"
-                    label="Symptoms"
-                    value={symptomText}
-                  />
-                )}
-                {!!clinicalNotes && (
-                  <FindingRow
-                    icon="file-medical"
-                    label="Examination"
-                    value={clinicalNotes}
-                  />
-                )}
-                {allergies.length > 0 && (
-                  <FindingRow
-                    icon="alert-circle"
-                    label="Allergies"
-                    value={allergies.join(', ')}
-                    alert
-                  />
-                )}
-                {!!pastIllnessText && (
-                  <FindingRow
-                    icon="history"
-                    label="Past illness"
-                    value={pastIllnessText}
-                  />
-                )}
-                {!!familyHistoryText && (
-                  <FindingRow
-                    icon="users"
-                    label="Family history"
-                    value={familyHistoryText}
-                  />
-                )}
-              </View>
-            )}
+                  {!!presentingComplaint && (
+                    <FindingRow
+                      icon="clipboard-list"
+                      label="Chief complaint"
+                      value={presentingComplaint}
+                    />
+                  )}
+                  {/* {!!symptomText && (
+                    <FindingRow
+                      icon="notes"
+                      label="Symptoms"
+                      value={symptomText}
+                    />
+                  )} */}
+
+                  {allergies.length > 0 && (
+                    <FindingRow
+                      icon="alert-circle"
+                      label="Allergies"
+                      value={allergies.join(', ')}
+                      alert
+                    />
+                  )}
+                  {!!pastIllnessText && (
+                    <FindingRow
+                      icon="history"
+                      label="Past illness"
+                      value={pastIllnessText}
+                    />
+                  )}
+                  {!!familyHistoryText && (
+                    <FindingRow
+                      icon="users"
+                      label="Family history"
+                      value={familyHistoryText}
+                    />
+                  )}
+                  {personalHistory.length > 0 && (
+                    <FindingRow
+                      icon="user"
+                      label="Personal history"
+                      value={personalHistory.join('\n')}
+                    />
+                  )}
+                  {gynaecological.length > 0 && (
+                    <FindingRow
+                      icon="heart"
+                      label="Gynaecological history"
+                      value={gynaecological.join('\n')}
+                    />
+                  )}
+                </View>
+              )}
 
             {/* Diagnosis */}
             {!!diagnosisText && (
@@ -755,7 +780,7 @@ const PrescriptionDetail = (props: any) => {
                   const showSub =
                     !!subtitle &&
                     String(subtitle).toLowerCase() !==
-                      String(medicine?.medicine_name || '').toLowerCase();
+                    String(medicine?.medicine_name || '').toLowerCase();
 
                   return (
                     <View

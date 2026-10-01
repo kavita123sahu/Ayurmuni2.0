@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import {
   getCompletedRefund,
 } from '../utils/paymentHistoryUtils';
 import { formatRupee } from '../utils/currencyUtils';
+import { useJoinWindow } from '../hooks/useJoinWindow';
 
 const formatStatusLabel = (status?: string) => {
   if (status === 'cancellation_requested') return 'Confirmed';
@@ -130,7 +131,19 @@ const RenderAppoint = ({
     () => getCompletedRefund(item?.status, item?.rawData, item),
     [item],
   );
-  const showJoinCall = item.call_status === 'in_progress';
+  const canJoin = useJoinWindow(item);
+  const showJoinCall = canJoin;
+  useEffect(() => {
+    if (canJoin) {
+      console.log('APPOINTMENT_JOIN_VISIBLE =>', {
+        id: item?.appointment_id,
+        date: item?.date,
+        time: item?.time,
+        status: item?.status,
+        call: item?.call_status,
+      });
+    }
+  }, [canJoin, item]);
   const showActionRow =
     withinModifyWindow || showViewDetails || showJoinCall;
 
@@ -138,6 +151,21 @@ const RenderAppoint = ({
     navigation.navigate(
       'AppointmentDetails',
       buildAppointmentDetailsParams({ rawData: item.rawData, ...item }),
+    );
+  };
+
+  const openVideoCall = () => {
+    navigateToStackScreen(
+      navigation,
+      'PatientVideoCallScreen',
+      buildVideoCallNavParams(
+        { rawData: item.rawData, ...item },
+        {
+          role: 'patient',
+          otherPartyName: item?.doctorName,
+          otherPartyImage: item?.image,
+        },
+      ),
     );
   };
 
@@ -185,17 +213,28 @@ const RenderAppoint = ({
               </View>
             </View>
 
-            <View
-              style={[
-                styles.status,
-                styles.hStatus,
-                { backgroundColor: statusStyle.backgroundColor },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: statusStyle.color }]}>
-                {statusLabel}
-              </Text>
-            </View>
+            {canJoin ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={openVideoCall}
+                style={[styles.status, styles.hStatus, styles.hJoinChip]}
+              >
+                <View style={styles.hLiveDot} />
+                <Text style={[styles.statusText, styles.hJoinText]}>Join call</Text>
+              </TouchableOpacity>
+            ) : (
+              <View
+                style={[
+                  styles.status,
+                  styles.hStatus,
+                  { backgroundColor: statusStyle.backgroundColor },
+                ]}
+              >
+                <Text style={[styles.statusText, { color: statusStyle.color }]}>
+                  {statusLabel}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -283,11 +322,12 @@ const RenderAppoint = ({
         time={schedule.time}
         item={item}
         call_status={item.call_status}
+        canJoin={canJoin}
         hasPrescription={hasPrescription}
         onReschedule={onReschedule}
         onCancel={onCancel}
         onJoinCall={() => {
-          if (item.call_status !== 'in_progress') {
+          if (!canJoin) {
             showSuccessToast(
               'Video call is not active yet. Please wait for the doctor to start the consultation.',
               'error',
@@ -295,18 +335,7 @@ const RenderAppoint = ({
             return;
           }
 
-          navigateToStackScreen(
-            navigation,
-            'PatientVideoCallScreen',
-            buildVideoCallNavParams(
-              { rawData: item.rawData, ...item },
-              {
-                role: 'patient',
-                otherPartyName: item?.doctorName,
-                otherPartyImage: item?.image,
-              },
-            ),
-          );
+          openVideoCall();
         }}
         onViewDetails={() => {
           navigation.navigate('PrescriptionDetail', {
@@ -602,5 +631,20 @@ const styles = StyleSheet.create({
   hStatus: {
     alignSelf: 'flex-start',
     marginTop: 1,
+  },
+  hJoinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.primaryColor,
+  },
+  hLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ADE80',
+  },
+  hJoinText: {
+    color: '#FFFFFF',
   },
 });

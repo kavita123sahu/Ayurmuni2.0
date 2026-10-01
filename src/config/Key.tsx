@@ -12,6 +12,7 @@ export const BaseUrl = {
     //"https://ayurmunistaging.aimantra.info"
     // https://scarce-derby-voice.ngrok-free.dev    
     //https://ayurmuniproduction.aimantra.info
+    //https://ranged-reimburse-pentagram.ngrok-free.dev
 };
 
 export const Method = {

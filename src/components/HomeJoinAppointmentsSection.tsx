@@ -1,11 +1,12 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { AppState, View, FlatList, StyleSheet } from 'react-native';
 import SectionHeader from './SectionHeader';
 import JoinCallBanner from './JoinCallBanner';
 import RenderAppoint from './RenderAppoint';
 import { HorizontalAppointmentSkeleton } from '../simmerScreen/ShimmerHook';
 import {
   getJoinableAppointment,
+  isActiveAppointmentStatus,
   isAppointmentInPast,
   sortAppointmentsByDateTime,
 } from '../utils/appointmentUtils';
@@ -17,6 +18,8 @@ type Props = {
   endedCallIds: Set<string>;
   loading: boolean;
   navigation: any;
+  /** Called when the app returns to foreground (refresh call_status). */
+  onResume?: () => void;
 };
 
 /** Owns its own timer so HomePage is not re-rendered every few seconds. */
@@ -25,22 +28,34 @@ const HomeJoinAppointmentsSection = ({
   endedCallIds,
   loading,
   navigation,
+  onResume,
 }: Props) => {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 30_000);
-    return () => clearInterval(timer);
-  }, []);
+    const timer = setInterval(() => setTick(t => t + 1), 15_000);
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        setTick(t => t + 1);
+        onResume?.();
+      }
+    });
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [onResume]);
 
   const sortedUpcoming = useMemo(
     () =>
       sortAppointmentsByDateTime(
         (appointments || []).filter(item => {
-          const status = String(item?.status || '')
-            .trim()
-            .toLowerCase();
-          return status === 'confirmed' && !isAppointmentInPast(item);
+          const callLive =
+            String(item?.call_status || '').toLowerCase() === 'in_progress';
+          return (
+            (callLive || isActiveAppointmentStatus(item?.status)) &&
+            !isAppointmentInPast(item)
+          );
         }),
       ),
     // tick drops appointments whose end_time has passed while Home stays open
@@ -74,7 +89,22 @@ const HomeJoinAppointmentsSection = ({
         },
       };
     });
-    return getJoinableAppointment(bannerSource, 5);
+    const joinable = getJoinableAppointment(bannerSource, 5);
+    console.log(
+      'HOME_JOIN_BANNER =>',
+      joinable
+        ? `${joinable.item.doctorName} ${joinable.item.date} ${joinable.item.time} live=${joinable.isLive}`
+        : 'none',
+      '| upcoming =>',
+      bannerSource.map(item => ({
+        date: item?.date,
+        time: item?.time,
+        end: item?.endTime,
+        status: item?.status,
+        call: item?.call_status,
+      })),
+    );
+    return joinable;
     // tick re-checks the ≤5 min join window without refreshing the whole home feed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedUpcoming, endedCallIds, tick]);
