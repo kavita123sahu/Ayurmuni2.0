@@ -5115,6 +5115,25 @@ button.checkout-item {
   margin: 12px 0;
 }
 
+.record-preview-pdf {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.record-preview-pdf a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--am-tap-min);
+  padding: 0 var(--am-space-4);
+  border-radius: var(--am-radius-pill);
+  background: var(--am-primary);
+  color: #fff;
+  font-weight: var(--am-weight-semibold);
+}
+
 .reward-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

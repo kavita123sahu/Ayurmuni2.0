@@ -14,9 +14,9 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 361 |
+| MATCH | 362 |
 | PARTIAL | 100 |
-| MISSING | 18 |
+| MISSING | 17 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
 
@@ -24,9 +24,9 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 216 |
+| MATCH | 217 |
 | PARTIAL | 100 |
-| MISSING | 18 |
+| MISSING | 17 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
 
@@ -77,7 +77,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-041 | Doctor consultation history | P-034 | Doctor consultation history | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-042 | Medical receipt | P-055 | Medical receipt | MATCH | Both load customers/doctors/consultation-receipt/?consultation_id=. The page shows receipt number, date, patient, method, status, bank, payment and order ids, consultation fee, platform fee, GST, and total paid. Download saves a text file in the browser. | — |
 | S-043 | Upload report | P-031 | Doctor slot | MATCH | On the slot page, Take photo and Choose file open a name and type step (prescription or lab report), then POST user/upload/ with dir customer_avatar and POST customers/medical-records/. The new record is selected. Saved records can be attached before pay. | — |
-| S-044 | Preview modal | — | — | MISSING | Native preview modal is embedded and not a route. The web inventory has no document-preview modal. | P2 |
+| S-044 | Preview modal | P-065 | Medical records | MATCH | View opens a preview. An image shows in the dialog. A PDF shows “PDF document” and Open PDF, which opens the file URL. Close dismisses the dialog. | — |
 | S-045 | Review modal | WC-027 | ReviewSubmitModal | MATCH | Native review modal is embedded. Web review submit is a modal, not a route. | — |
 | S-046 | Medical record card | P-065 | Medical records | PARTIAL | Native medical-record card is an embedded widget. Web renders records on the records page and does not inventory a separate card component. | P3 |
 | S-047 | Patient video call | P-069 | Video call | PARTIAL | Both join an Agora visit. Native uses react-native-agora. Web uses agora-rtc-sdk-ng and redirects /profile/video with no id back to appointments. Camera and microphone permission is the browser prompt. | P1 |

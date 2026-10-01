@@ -152,13 +152,8 @@ export default function MedicalRecords() {
   };
 
   const openPreview = (item) => {
-    const url = item?.file_url;
-    if (!url) return;
-    if (isImageRecord(item)) {
-      setPreview(item);
-      return;
-    }
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (!item?.file_url) return;
+    setPreview(item);
   };
 
   return (
@@ -316,7 +311,16 @@ export default function MedicalRecords() {
         <div className="web-modal" role="dialog" onClick={() => setPreview(null)}>
           <div className="web-modal-card record-preview" onClick={(e) => e.stopPropagation()}>
             <h3>{preview.title || preview.description || 'Record'}</h3>
-            <img src={preview.file_url} alt="" />
+            {isImageRecord(preview) ? (
+              <img src={preview.file_url} alt="" />
+            ) : (
+              <div className="record-preview-pdf">
+                <strong>PDF document</strong>
+                <a href={preview.file_url} target="_blank" rel="noopener noreferrer">
+                  Open PDF
+                </a>
+              </div>
+            )}
             <button type="button" className="ghost" onClick={() => setPreview(null)}>
               Close
             </button>

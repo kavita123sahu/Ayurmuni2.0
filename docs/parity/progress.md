@@ -33,3 +33,4 @@ Stopped for review. No application code was changed.
 | 8 | A-034 and S-040 consultation history | done — period is last_6_months; reschedule opens the doctor’s slots |
 | 9 | S-073 selected patient | done — the patients page already shows the active profile and switches with patients/switch |
 | 10 | S-043 upload report on the slot page | done — a photo or file asks for name and type before it is saved and selected |
+| 11 | S-044 record preview | done — images show in the dialog; a PDF offers Open PDF |
