@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 362 |
-| PARTIAL | 100 |
+| MATCH | 363 |
+| PARTIAL | 99 |
 | MISSING | 17 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 217 |
-| PARTIAL | 100 |
+| MATCH | 218 |
+| PARTIAL | 99 |
 | MISSING | 17 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -79,7 +79,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-043 | Upload report | P-031 | Doctor slot | MATCH | On the slot page, Take photo and Choose file open a name and type step (prescription or lab report), then POST user/upload/ with dir customer_avatar and POST customers/medical-records/. The new record is selected. Saved records can be attached before pay. | — |
 | S-044 | Preview modal | P-065 | Medical records | MATCH | View opens a preview. An image shows in the dialog. A PDF shows “PDF document” and Open PDF, which opens the file URL. Close dismisses the dialog. | — |
 | S-045 | Review modal | WC-027 | ReviewSubmitModal | MATCH | Native review modal is embedded. Web review submit is a modal, not a route. | — |
-| S-046 | Medical record card | P-065 | Medical records | PARTIAL | Native medical-record card is an embedded widget. Web renders records on the records page and does not inventory a separate card component. | P3 |
+| S-046 | Medical record card | P-065 | Medical records | MATCH | Each row shows the title, prescription or lab-report type, file type, and date. The thumb uses file_url, or thumbnail_url when that is the image. The row, View, and Delete open preview or the delete confirm. | — |
 | S-047 | Patient video call | P-069 | Video call | PARTIAL | Both join an Agora visit. Native uses react-native-agora. Web uses agora-rtc-sdk-ng and redirects /profile/video with no id back to appointments. Camera and microphone permission is the browser prompt. | P1 |
 | S-048 | Chat | P-052 | Chat | MATCH | Both load and send appointment messages and use a socket. Web chat redirects to appointments when the route is incomplete. | — |
 | S-049 | Razorpay | P-022 | Checkout | MATCH | Consult pay opens Razorpay checkout.js for a consultation order, retries a pending payment, and verifies it. Product checkout places a prepaid order and opens the same checkout script with the order key, paise amount, and payment_id on verify. The browser script is the stand-in for the native Razorpay SDK. | — |

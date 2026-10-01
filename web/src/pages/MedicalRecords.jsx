@@ -236,12 +236,13 @@ export default function MedicalRecords() {
             const title = item?.title || item?.description || item?.file_name || 'Medical record';
             const typeLabel = formatRecordType(item?.medical_record_type);
             const dateLabel = formatRecordDate(item?.created_at || item?.uploaded_at || item?.updated_at);
+            const thumb = item?.file_url || item?.thumbnail_url || '';
             const image = isImageRecord(item);
             return (
               <div key={item.id} className="record-row">
                 <button type="button" className="record-main" onClick={() => openPreview(item)}>
-                  {image && item.file_url ? (
-                    <img src={item.file_url} alt="" />
+                  {image && thumb ? (
+                    <img src={thumb} alt="" />
                   ) : (
                     <span className="record-file">{String(item.file_type || 'FILE').toUpperCase()}</span>
                   )}
