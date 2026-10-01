@@ -4986,6 +4986,112 @@ button.checkout-item {
   width: 100%;
 }
 
+.water-goal-card {
+  width: min(440px, 100%);
+  text-align: center;
+}
+
+.water-goal-card h3,
+.water-goal-card p {
+  margin: 0;
+}
+
+.water-goal-card > p {
+  margin-top: 4px;
+  color: var(--am-muted, #5d726a);
+}
+
+.water-goal-units {
+  display: flex;
+  margin-top: 14px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.water-goal-units button {
+  flex: 1;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 8px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.water-goal-units button.on {
+  background: #fff;
+  color: var(--am-primary-strong);
+}
+
+.water-goal-hint,
+.water-goal-selected {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.water-goal-selected {
+  color: #0369a1;
+}
+
+.water-goal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.water-goal-option {
+  width: calc(33.33% - 8px);
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fafafa;
+  color: inherit;
+}
+
+.water-goal-option.on {
+  border-color: var(--am-primary);
+  background: #f0fdfa;
+}
+
+.water-goal-option strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.water-goal-option.on strong,
+.water-goal-option.on em {
+  color: var(--am-primary-strong);
+}
+
+.water-goal-option small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.water-goal-option em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.water-goal-option em.spacer {
+  visibility: hidden;
+}
+
+.water-goal-card .detail-cta {
+  margin-top: 12px;
+}
+
 .diet-days {
   display: flex;
   gap: 8px;

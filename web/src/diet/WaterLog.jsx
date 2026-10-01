@@ -6,7 +6,7 @@ import {
   getWaterGlassCount,
 } from './utils';
 
-function WaterGlass({ filled, fillRatio, size = 'sm', disabled, onClick, label }) {
+export function WaterGlass({ filled, fillRatio, size = 'sm', disabled, onClick, label }) {
   const ratio = typeof fillRatio === 'number' ? Math.max(0, Math.min(1, fillRatio)) : filled ? 0.74 : 0.1;
   const Tag = onClick ? 'button' : 'span';
   return (

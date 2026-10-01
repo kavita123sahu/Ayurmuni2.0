@@ -14,9 +14,9 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 371 |
+| MATCH | 372 |
 | PARTIAL | 94 |
-| MISSING | 14 |
+| MISSING | 13 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
 
@@ -24,9 +24,9 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 226 |
+| MATCH | 227 |
 | PARTIAL | 94 |
-| MISSING | 14 |
+| MISSING | 13 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
 
@@ -343,7 +343,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-114 | UploadRecordModal | P-065 | Medical records | MATCH | Choosing a PDF or image opens a dialog with the file name, a required record name, and prescription or lab report. Submit posts user/upload/ with dir customer_avatar, then customers/medical-records/, and the dialog closes. Cancel stays blocked while the upload is running. | — |
 | C-115 | VisitedDoctorHomeCard | WC-013 | HomeJoinAppointments | PARTIAL | Visited-doctor home card is not separately inventoried. Recent-doctors API exists. | P3 |
 | C-116 | WaterGlass | P-080 | Diet plan | MATCH | Log water uses tappable glasses, grouped four to a liter, and a summary glass. | — |
-| C-117 | WaterGoalStartModal | — | — | MISSING | Water-goal start modal is not on the web. | P1 |
+| C-117 | WaterGoalStartModal | P-080 | Diet plan | MATCH | Starting a plan opens Daily water goal. The choice starts empty, Start diet stays off until one amount is picked, and the amounts switch between glasses and liters. 3 L is marked Popular. The chosen amount is sent as daily_water_intake_goal. | — |
 | C-118 | WaterIntakeModal | P-080 | Diet plan | MATCH | Log water shows the day, 250 ml per glass, plus and minus, and posts patients/diet-plans/water on each change. Done closes the dialog. | — |
 | C-119 | WishlistButton | P-056 | Wishlist | PARTIAL | Wishlist button is not a named web component. | P2 |
 | C-120 | WishlistToastBar | WC-032 | ToastHost | MATCH | Wishlist toast. Web uses the toast host. | — |
@@ -423,7 +423,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | F-010 | Profile and account | WF-010 | Profile and account | MATCH | Profile, edit, settings, addresses, and help exist on both. Web adds a notification-settings child route. | — |
 | F-011 | Patients and medical records | WF-011 | Patients and records | MATCH | List, form, switch, and record upload endpoints exist on both. Native upload and preview widgets are not all named on the web. | — |
 | F-012 | Payments and rewards | WF-012 | Payments and rewards | MATCH | Payment history, transaction detail, and rewards exist on both. | — |
-| F-013 | Mentor, diet, and yoga | WF-013 | Mentor, diet, and yoga | PARTIAL | Mentor, diet, weekly meals, and yoga exist on both. Native payment-plan and session-breakdown screens are unrouted and have no web page. The diet plan logs water from a hydration row that opens a glass picker.  Web diet service also calls plan status. | P1 |
+| F-013 | Mentor, diet, and yoga | WF-013 | Mentor, diet, and yoga | PARTIAL | Mentor, diet, weekly meals, and yoga exist on both. Native payment-plan and session-breakdown screens are unrouted and have no web page. The diet plan asks for a daily water goal in glasses or liters before start, then logs water from a hydration row that opens a glass picker.  Web diet service also calls plan status. | P1 |
 | F-014 | Legal, policies, and static pages | WF-014 | Legal and static | PARTIAL | Terms, privacy center, legal hub, and feedback exist on both. Native policy accept and policy detail are routed. Those web routes are commented out. About and Contact exist only on the web. | P0 |
 | F-015 | Notifications | WF-015 | Notifications | PARTIAL | Both list notifications. Native sends a welcome push through OneSignal. Web has browser notification permission and a settings page, and it can POST notifications. Welcome push is not on the web. | P1 |
 | F-016 | Location | WF-016 | Location | PARTIAL | Both pick a place with Google. Native shows an OS permission modal. Web uses the browser prompt. | P1 |
