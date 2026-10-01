@@ -25,3 +25,4 @@ Stopped for review. No application code was changed.
 | --- | --- | --- |
 | 1 | S-001 Splash and A-005 profile GET on splash | done — web matches app session route |
 | 2 | S-004 OTP, A-003, A-004, A-079, policy routes | done — accept, profile, Home; deleted-account alert still open |
+| 3 | A-008 account recover on OTP | done — verify posts recover and clears the hold |

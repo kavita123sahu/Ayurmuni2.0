@@ -14,9 +14,9 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 350 |
-| PARTIAL | 110 |
-| MISSING | 19 |
+| MATCH | 352 |
+| PARTIAL | 109 |
+| MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
 
@@ -24,9 +24,9 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 205 |
-| PARTIAL | 110 |
-| MISSING | 19 |
+| MATCH | 207 |
+| PARTIAL | 109 |
+| MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
 
@@ -37,7 +37,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-001 | Splash | P-001 | Splash | MATCH | Both wait 900 ms, then route from the stored token. No token goes to welcome. Profile GET stores user info when data exists. Onboarded goes home. Guest, non-customer, or skipped goes home as guest. A customer who is not onboarded goes to assessment. Only a thrown error.response status 403 goes to login. Any other failure marks guest and opens home. A returned 403 or logout body is not a login redirect. | — |
 | S-002 | Welcome | P-002 | Welcome | MATCH | Both play six stories (welcome video, then consult, medicine, delivery, diet, yoga) and continue to login. Auto-advance is 4200 ms on image slides. | — |
 | S-003 | Login | P-003 | Login | MATCH | Both collect a 10-digit +91 number, require the terms checkbox, open terms and privacy from the legal-required API, send OTP, store the returned OTP, and pass a deleted-account hold into the next step. | — |
-| S-004 | OTP verify | P-004 | OTP verify | PARTIAL | Login and register call policies/legal/accept, then load the profile. A complete profile opens Home; otherwise the session is guest and opens access mode. Dismissing the notification dialog registers with alerts off. Browser Notification permission stands in for OneSignal. The web page still shows the deleted-account alert; native OTP does not read accountDeleted or retentionDays. | P1 |
+| S-004 | OTP verify | P-004 | OTP verify | MATCH | Login and register accept policies, load the profile, and open Home when it is complete. Dismissing the notification dialog registers with alerts off. When the number belongs to a deleted account, the alert stays and verify posts user/customer/account/recover/ with phone and otp and no auth token. A response with an access token continues like login and clears the hold. Browser Notification permission stands in for OneSignal. | — |
 | S-005 | Access mode | P-005 | Access mode | PARTIAL | Native checks profile completeness and sends a finished profile to Home, and it can sign out to change number. Web does neither. Both Skip and Set up my profile still mark the session as guest. Web has no change-number action. | P0 |
 | S-006 | Complete details | P-006 | Complete details | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-007 | Onboarding | P-007 | Onboarding | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
@@ -442,7 +442,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | A-005 | GET customers/profile/ | A-005 | GET customers/profile/ | MATCH | Same GET. Splash uses the returned body the same way on both sides and does not treat status 403 or logout as a login redirect. | — |
 | A-006 | POST customers/profile/ | A-006 | POST customers/profile/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-007 | DELETE customers/profile/ | A-007 | DELETE customers/profile/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
-| A-008 | POST user/customer/account/recover/ | — | — | MISSING | POST user/customer/account/recover/ is in the native profile service notes and is not in the web API inventory. Deleted-account UI on the web does not call it. | P0 |
+| A-008 | POST user/customer/account/recover/ | A-086 | POST user/customer/account/recover/ | MATCH | Same method, path, and body: phone_number and otp, no auth token. OTP verify calls it when the deleted-account alert is showing. | — |
 | A-009 | POST user/upload/ | A-008 | POST user/upload/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-010 | GET customers/address/ | A-010 | GET customers/address/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-011 | POST customers/address/ | A-011 | POST customers/address/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |

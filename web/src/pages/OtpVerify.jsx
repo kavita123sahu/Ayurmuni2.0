@@ -58,6 +58,8 @@ export default function OtpVerify() {
   const params = location.state || {};
   const phoneNumber = params.phone;
   const NEW_CUSTOMER = params.customer;
+  const accountDeleted = params.accountDeleted === true;
+  const retentionDays = params.retentionDays;
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
@@ -218,6 +220,53 @@ export default function OtpVerify() {
     }
   };
 
+  const finishLoginSession = async (response) => {
+    showSuccessToast(response.message || 'OTP verified successfully', 'success');
+
+    const userId = response?.data?.user_id;
+    await Utils.storeData('_USER_ID', userId);
+    await Utils.storeData('_TOKEN', response?.data?.access);
+    if (response?.data?.refresh) {
+      await Utils.storeData('_REFRESH_TOKEN', response.data.refresh);
+    }
+
+    if (userId) {
+      try {
+        await requestWebNotification();
+      } catch {
+        // Browser notification permission must not block login.
+      }
+    }
+
+    const customerOnboard = response?.data?.customer;
+    const loginFlags = {
+      ...(typeof response?.data === 'object' ? response.data : {}),
+      ...(typeof customerOnboard === 'object' ? customerOnboard : {}),
+    };
+
+    try {
+      const profileRes = await ProfileServices.user_profile();
+      if (profileRes?.data) {
+        await Utils.storeData('_USER_INFO', profileRes.data);
+      }
+      await recordPolicyAcceptance();
+      const mergedProfile = {
+        ...loginFlags,
+        ...(profileRes?.data || {}),
+      };
+      await goAfterProfile(mergedProfile);
+    } catch {
+      await recordPolicyAcceptance();
+      if (isProfileComplete(loginFlags)) {
+        await syncAccessFromProfile(loginFlags);
+        navigate('/home', { replace: true });
+      } else {
+        await markAsGuest();
+        navigate('/access-mode', { replace: true });
+      }
+    }
+  };
+
   const LoginVerfiyOTP = async () => {
     const otpCode = otp.join('');
     if (otpCode.length !== 4) {
@@ -227,60 +276,51 @@ export default function OtpVerify() {
 
     setIsLoading(true);
     try {
-      const send_data = {
+      const response = await AuthService.verify_otp_login({
         phone_number: `+91${phoneNumber}`,
         otp: otpCode,
-      };
-      const response = await AuthService.verify_otp_login(send_data);
+      });
 
       if (response?.success) {
-        showSuccessToast(response.message || 'OTP verified successfully', 'success');
-
-        const userId = response?.data?.user_id;
-        await Utils.storeData('_USER_ID', userId);
-        await Utils.storeData('_TOKEN', response?.data?.access);
-        if (response?.data?.refresh) {
-          await Utils.storeData('_REFRESH_TOKEN', response.data.refresh);
-        }
-
-        if (userId) {
-          try {
-            await requestWebNotification();
-          } catch {
-            // Browser notification permission must not block login.
-          }
-        }
-
-        const customerOnboard = response?.data?.customer;
-        const loginFlags = {
-          ...(typeof response?.data === 'object' ? response.data : {}),
-          ...(typeof customerOnboard === 'object' ? customerOnboard : {}),
-        };
-
-        try {
-          const profileRes = await ProfileServices.user_profile();
-          if (profileRes?.data) {
-            await Utils.storeData('_USER_INFO', profileRes.data);
-          }
-          await recordPolicyAcceptance();
-          const mergedProfile = {
-            ...loginFlags,
-            ...(profileRes?.data || {}),
-          };
-          await goAfterProfile(mergedProfile);
-        } catch {
-          await recordPolicyAcceptance();
-          if (isProfileComplete(loginFlags)) {
-            await syncAccessFromProfile(loginFlags);
-            navigate('/home', { replace: true });
-          } else {
-            await markAsGuest();
-            navigate('/access-mode', { replace: true });
-          }
-        }
+        await finishLoginSession(response);
       } else {
         showSuccessToast(response?.message || 'Failed to verify OTP', 'error');
       }
+    } catch {
+      showSuccessToast('Something went wrong. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const recoverDeletedAccount = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 4) {
+      showSuccessToast('Please enter valid OTP', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await ProfileServices.recoverAccount({
+        phone_number: `+91${phoneNumber}`,
+        otp: otpCode,
+      });
+
+      if (!response?.success) {
+        showSuccessToast(response?.message || 'Unable to recover this account.', 'error');
+        return;
+      }
+
+      await Utils.removeData('_DELETED_ACCOUNT_HOLD');
+
+      if (!response?.data?.access) {
+        showSuccessToast(response?.message || 'Account recovered. Sign in to continue.', 'success');
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      await finishLoginSession(response);
     } catch {
       showSuccessToast('Something went wrong. Please try again.', 'error');
     } finally {
@@ -298,7 +338,11 @@ export default function OtpVerify() {
     setNotifPromptVisible(true);
   };
 
-  const onVerify = NEW_CUSTOMER ? LoginVerfiyOTP : handleVerifyOTP;
+  const onVerify = accountDeleted
+    ? recoverDeletedAccount
+    : NEW_CUSTOMER
+      ? LoginVerfiyOTP
+      : handleVerifyOTP;
   const otpComplete = otp.join('').length === OTP_LEN;
 
   const onResendPress = async () => {
@@ -333,6 +377,12 @@ export default function OtpVerify() {
         <div className="au-sheet__handle" aria-hidden />
         <p className="au-kicker">{T.otpKicker}</p>
         <h2 className="au-title">{T.otpTitle}</h2>
+        {accountDeleted ? (
+          <p className="au-alert" role="status">
+            <strong>{T.deletedAccountTitle}</strong>
+            {T.deletedAccountText(retentionDays)}
+          </p>
+        ) : null}
         <div className="au-phone-row">
           <span>
             {T.sentTo} <strong>+91 {phoneNumber}</strong>
