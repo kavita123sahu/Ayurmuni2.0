@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 354 |
-| PARTIAL | 107 |
+| MATCH | 355 |
+| PARTIAL | 106 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 209 |
-| PARTIAL | 107 |
+| MATCH | 210 |
+| PARTIAL | 106 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -82,7 +82,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-046 | Medical record card | P-065 | Medical records | PARTIAL | Native medical-record card is an embedded widget. Web renders records on the records page and does not inventory a separate card component. | P3 |
 | S-047 | Patient video call | P-069 | Video call | PARTIAL | Both join an Agora visit. Native uses react-native-agora. Web uses agora-rtc-sdk-ng and redirects /profile/video with no id back to appointments. Camera and microphone permission is the browser prompt. | P1 |
 | S-048 | Chat | P-052 | Chat | MATCH | Both load and send appointment messages and use a socket. Web chat redirects to appointments when the route is incomplete. | — |
-| S-049 | Razorpay | P-022 | Checkout | PARTIAL | Native payment is a Razorpay screen. Web package.json has no Razorpay package. Consult payment is a separate page (P-032) and product payment is inside checkout. How the browser opens Razorpay was not in the finished audit batches. | P0 |
+| S-049 | Razorpay | P-022 | Checkout | MATCH | Consult pay opens Razorpay checkout.js for a consultation order, retries a pending payment, and verifies it. Product checkout places a prepaid order and opens the same checkout script with the order key, paise amount, and payment_id on verify. The browser script is the stand-in for the native Razorpay SDK. | — |
 | S-050 | Medicines | P-070 | Medicines | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-051 | Prescription upload | P-073 | Prescription upload | PARTIAL | Both upload a prescription. Native uses the image picker and document picker. Web must use a file input. The accepted file types were not in the finished audit batches. | P1 |
 | S-052 | Verify prescription | P-074 | Prescription verify | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
@@ -416,7 +416,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | F-003 | Medical history questionnaire | WF-003 | Medical history | PARTIAL | Web splits the runner onto /assessment-medical and the saved history onto /medical-history. Native keeps the runner with the medical-history screen. Step parity was not line-checked. | P1 |
 | F-004 | Home dashboard | WF-004 | Home | PARTIAL | Both load categories, banners, suggestions, and a join-visit strip. Web home calls customers/doctors/?suggested=true. That query is not in the native home service notes. Panchakarma section is native-only. | P1 |
 | F-005 | Product catalog and search | WF-005 | Catalog and search | PARTIAL | Both have catalog, category, detail, search, and discovery. customers/search, recent search, health-categories, and health-diseases are in the native API list and not in the web API list, while a search page exists. | P1 |
-| F-006 | Cart, checkout, and orders | WF-006 | Cart, checkout, orders | PARTIAL | Both have cart, fee quote, place order, verify payment, history, and detail. Web also cancels and polls unicommerce. Native has a Razorpay screen. Web has no Razorpay package in package.json. | P0 |
+| F-006 | Cart, checkout, and orders | WF-006 | Cart, checkout, orders | PARTIAL | Both have cart, fee quote, place order, Razorpay or pay on delivery, verify payment, history, and detail. Web also cancels an order and polls unicommerce tracking. Those two calls are not in the native order service. | P1 |
 | F-007 | Doctor consult and booking | WF-007 | Consult and booking | PARTIAL | Both browse doctors, slots, slip, appointments, and receipts. Web adds a consult-pay page, fee quote, and appointment action. Native multiple-slip and unrouted doctor search and upload-report have no web pages. Doctor-slip, receipt, and consultation-history paths are not in the web API list even though the pages exist. | P0 |
 | F-008 | Video call and chat | WF-008 | Video and chat | MATCH | Agora join, socket chat, and a floating overlay exist on both. SDK and permission UI differ by platform. | — |
 | F-009 | Medicines and prescriptions | WF-009 | Medicines and prescriptions | MATCH | Catalog, upload, verify, checkout, and order status exist on both. File picking is the platform difference. | — |
