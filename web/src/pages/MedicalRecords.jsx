@@ -130,7 +130,9 @@ export default function MedicalRecords() {
         return;
       }
       showSuccessToast('Record uploaded', 'success');
-      closeUpload();
+      setPickedFile(null);
+      setDescription('');
+      setRecordType('');
       await load();
     } catch {
       showSuccessToast('Unable to upload record', 'error');

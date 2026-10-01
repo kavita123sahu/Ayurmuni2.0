@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 363 |
-| PARTIAL | 99 |
+| MATCH | 364 |
+| PARTIAL | 98 |
 | MISSING | 17 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 218 |
-| PARTIAL | 99 |
+| MATCH | 219 |
+| PARTIAL | 98 |
 | MISSING | 17 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -340,7 +340,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-111 | TimeSlot | P-031 | Doctor slot | PARTIAL | Time-slot chip is not a named web component. The slot page is the surface. | P2 |
 | C-112 | TopSellingList | P-014 | Products | PARTIAL | Top-selling list is not a named web component. | P3 |
 | C-113 | TransactionCard | P-067 | Payments | PARTIAL | Transaction card is not a named web component. Transaction detail page exists. | P3 |
-| C-114 | UploadRecordModal | P-065 | Medical records | PARTIAL | Upload-record modal is not inventoried. The records page posts medical-records. | P1 |
+| C-114 | UploadRecordModal | P-065 | Medical records | MATCH | Choosing a PDF or image opens a dialog with the file name, a required record name, and prescription or lab report. Submit posts user/upload/ with dir customer_avatar, then customers/medical-records/, and the dialog closes. Cancel stays blocked while the upload is running. | — |
 | C-115 | VisitedDoctorHomeCard | WC-013 | HomeJoinAppointments | PARTIAL | Visited-doctor home card is not separately inventoried. Recent-doctors API exists. | P3 |
 | C-116 | WaterGlass | — | — | MISSING | Water glass is not on the web. Water log API exists without this control. | P1 |
 | C-117 | WaterGoalStartModal | — | — | MISSING | Water-goal start modal is not on the web. | P1 |

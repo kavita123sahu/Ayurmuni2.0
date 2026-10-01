@@ -35,3 +35,4 @@ Stopped for review. No application code was changed.
 | 10 | S-043 upload report on the slot page | done — a photo or file asks for name and type before it is saved and selected |
 | 11 | S-044 record preview | done — images show in the dialog; a PDF offers Open PDF |
 | 12 | S-046 medical record card | done — each row shows type, file, date, and the thumbnail when that is the image |
+| 13 | C-114 upload record dialog | done — name and type are required, and the dialog closes after the record is saved |
