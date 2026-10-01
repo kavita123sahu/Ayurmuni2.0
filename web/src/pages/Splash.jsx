@@ -39,10 +39,6 @@ export default function Splash() {
         }
 
         const result = await ProfileServices.user_profile();
-        if (result?.status === 403 || result?.logout) {
-          await finish(() => navigate('/login', { replace: true }));
-          return;
-        }
         if (result?.data) {
           await Utils.storeData('_USER_INFO', result.data);
         }
@@ -72,7 +68,7 @@ export default function Splash() {
 
         await finish(() => navigate('/home', { replace: true }));
       } catch (error) {
-        if (error?.response?.status === 403 || error?.status === 403) {
+        if (error?.response?.status === 403) {
           await finish(() => navigate('/login', { replace: true }));
           return;
         }
