@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 345 |
-| PARTIAL | 115 |
+| MATCH | 350 |
+| PARTIAL | 110 |
 | MISSING | 19 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 200 |
-| PARTIAL | 115 |
+| MATCH | 205 |
+| PARTIAL | 110 |
 | MISSING | 19 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -37,7 +37,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-001 | Splash | P-001 | Splash | MATCH | Both wait 900 ms, then route from the stored token. No token goes to welcome. Profile GET stores user info when data exists. Onboarded goes home. Guest, non-customer, or skipped goes home as guest. A customer who is not onboarded goes to assessment. Only a thrown error.response status 403 goes to login. Any other failure marks guest and opens home. A returned 403 or logout body is not a login redirect. | — |
 | S-002 | Welcome | P-002 | Welcome | MATCH | Both play six stories (welcome video, then consult, medicine, delivery, diet, yoga) and continue to login. Auto-advance is 4200 ms on image slides. | — |
 | S-003 | Login | P-003 | Login | MATCH | Both collect a 10-digit +91 number, require the terms checkbox, open terms and privacy from the legal-required API, send OTP, store the returned OTP, and pass a deleted-account hold into the next step. | — |
-| S-004 | OTP verify | P-004 | OTP verify | PARTIAL | Web shows the deleted-account alert; native OTP never reads accountDeleted or retentionDays. Native calls policies/legal/accept after success and, after register, loads the profile and may open Home; web register always goes to /access-mode and does not accept policies. Web login can replace to /policy-accept, which has no route. Web notification modal close does not register; native Not now registers with notifications off. Native also runs OneSignal after login. | P0 |
+| S-004 | OTP verify | P-004 | OTP verify | PARTIAL | Login and register call policies/legal/accept, then load the profile. A complete profile opens Home; otherwise the session is guest and opens access mode. Dismissing the notification dialog registers with alerts off. Browser Notification permission stands in for OneSignal. The web page still shows the deleted-account alert; native OTP does not read accountDeleted or retentionDays. | P1 |
 | S-005 | Access mode | P-005 | Access mode | PARTIAL | Native checks profile completeness and sends a finished profile to Home, and it can sign out to change number. Web does neither. Both Skip and Set up my profile still mark the session as guest. Web has no change-number action. | P0 |
 | S-006 | Complete details | P-006 | Complete details | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-007 | Onboarding | P-007 | Onboarding | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
@@ -125,8 +125,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-089 | Weekly meal | P-081 | Weekly meal | MATCH | Web has both /diet/weekly and /diet/:planId/weekly. | — |
 | S-090 | Meal details | P-082 | Meal details | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-091 | Terms | P-084 | Terms | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
-| S-092 | Policy accept | P-088 | Policy accept | PARTIAL | Native policy accept is a real route and blocks the back gesture. The web page exists, but its route is commented out, so OTP navigation to /policy-accept renders nothing. | P0 |
-| S-093 | Policy detail | P-089 | Policy detail | PARTIAL | Native policy detail is a real route, including inside the auth stack. The web page exists, but its route is commented out. | P0 |
+| S-092 | Policy accept | P-088 | Policy accept | MATCH | /policy-accept is mounted and blocks browser back until the user accepts. The page lists required policies and posts policies/legal/accept with type all. | — |
+| S-093 | Policy detail | P-089 | Policy detail | MATCH | /policy-detail is mounted. Policy accept opens it with the selected policy type and title. | — |
 | S-094 | Legal policies hub | P-062 | Legal policies hub | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-095 | Privacy center | P-060 | Privacy center | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-096 | Feedback information | P-061 | Feedback information | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
@@ -437,8 +437,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | --- | --- | --- | --- | --- | --- | --- |
 | A-001 | POST user/token/refresh/ | A-001 | POST user/token/refresh/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-002 | POST user/send-otp/ | A-002 | POST user/send-otp/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
-| A-003 | POST user/customer/login/ | A-003 | POST user/customer/login/ | PARTIAL | Same login body. Native then merges data.customer into profile flags and accepts policies. Web requires data.customer.customer_id and may send the user to the unrouted /policy-accept URL. | P0 |
-| A-004 | POST user/customer/register/ | A-004 | POST user/customer/register/ | PARTIAL | Same register body, including is_notification_enabled. Native loads the profile afterward. Web always continues to /access-mode. | P0 |
+| A-003 | POST user/customer/login/ | A-003 | POST user/customer/login/ | MATCH | Same login body. Both merge data.customer into profile flags, accept policies, and open Home when the profile is complete. | — |
+| A-004 | POST user/customer/register/ | A-004 | POST user/customer/register/ | MATCH | Same register body, including is_notification_enabled. Both load the profile afterward and open Home when it is complete. | — |
 | A-005 | GET customers/profile/ | A-005 | GET customers/profile/ | MATCH | Same GET. Splash uses the returned body the same way on both sides and does not treat status 403 or logout as a login redirect. | — |
 | A-006 | POST customers/profile/ | A-006 | POST customers/profile/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-007 | DELETE customers/profile/ | A-007 | DELETE customers/profile/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
@@ -513,7 +513,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | A-076 | DELETE customers/search/recent/ | — | — | MISSING | DELETE customers/search/recent/ is not in the web API inventory. | P2 |
 | A-077 | GET policies/customer/required/ | — | — | PARTIAL | GET policies/customer/required/ is not in the web API inventory. Web policy calls use policies/legal/required/. | P1 |
 | A-078 | GET policies/legal/required/ | A-073 | GET policies/legal/required/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
-| A-079 | POST policies/legal/accept/ | A-074 | POST policies/legal/accept/ | PARTIAL | Native OTP calls accept after login and register. The web policy service has the call, but the audited OTP page does not use it. | P0 |
+| A-079 | POST policies/legal/accept/ | A-074 | POST policies/legal/accept/ | MATCH | OTP calls accept with type all after login and after register. A failed accept still stores the local policy flag. | — |
 | A-080 | POST customers/prescription-requests/ | A-071 | POST customers/prescription-requests/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-081 | GET customers/faqs/ | A-072 | GET customers/faqs/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-082 | GET customers/brands/ | A-070 | GET customers/brands/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
