@@ -31,3 +31,4 @@ Stopped for review. No application code was changed.
 | 6 | A-036 and S-037 doctor slip | done — page already calls customers/doctor-slip/ and shows multiple visits |
 | 7 | A-035 medical receipt | done — receipt uses consultation-receipt and the payment breakdown |
 | 8 | A-034 and S-040 consultation history | done — period is last_6_months; reschedule opens the doctor’s slots |
+| 9 | S-073 selected patient | done — the patients page already shows the active profile and switches with patients/switch |

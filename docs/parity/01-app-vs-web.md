@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 359 |
-| PARTIAL | 102 |
+| MATCH | 360 |
+| PARTIAL | 101 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 214 |
-| PARTIAL | 102 |
+| MATCH | 215 |
+| PARTIAL | 101 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -106,7 +106,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-070 | Medical records | P-065 | Medical records | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-071 | Patients | P-063 | Patients | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-072 | Patient card | P-063 | Patients | MATCH | Native patient card is embedded. Web patients page is the list that shows each patient. | — |
-| S-073 | Selected patient | P-063 | Patients | PARTIAL | Native selected-patient widget is embedded and not a route. Web switches the active patient from the patients page via patients/switch. A dedicated selected-patient view was not inventoried. | P2 |
+| S-073 | Selected patient | P-063 | Patients | MATCH | The patients page shows the signed-in profile (name, phone, photo, Self, Edit) plus family initials and View records. Choosing a row posts patients/switch and stores the returned user id, access token, and refresh token. | — |
 | S-074 | Add or edit patient | P-064 | Patient form | MATCH | Web uses one form for new and :patientId. | — |
 | S-075 | Share experience | P-054 | Share experience | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-076 | Notifications | P-083 | Notifications | PARTIAL | Both list notifications. Native also delivers them with OneSignal. Web uses the in-app list plus the browser Notification API and a settings page. There is no welcome-push call on the web. | P1 |
