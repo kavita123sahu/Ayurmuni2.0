@@ -32,3 +32,4 @@ Stopped for review. No application code was changed.
 | 7 | A-035 medical receipt | done — receipt uses consultation-receipt and the payment breakdown |
 | 8 | A-034 and S-040 consultation history | done — period is last_6_months; reschedule opens the doctor’s slots |
 | 9 | S-073 selected patient | done — the patients page already shows the active profile and switches with patients/switch |
+| 10 | S-043 upload report on the slot page | done — a photo or file asks for name and type before it is saved and selected |

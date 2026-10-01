@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 360 |
-| PARTIAL | 101 |
+| MATCH | 361 |
+| PARTIAL | 100 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 215 |
-| PARTIAL | 101 |
+| MATCH | 216 |
+| PARTIAL | 100 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -76,7 +76,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-040 | Consult history | P-027 | Consult history | MATCH | The list calls GET customers/doctors/consultation-history/ with period all, last_30_days, or last_6_months. Search waits 400 ms and filters doctor name, concern, and status. Five rows per page. Receipt opens the medical receipt. Book again and reschedule open that doctor’s slots; reschedule also passes the appointment id. | — |
 | S-041 | Doctor consultation history | P-034 | Doctor consultation history | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-042 | Medical receipt | P-055 | Medical receipt | MATCH | Both load customers/doctors/consultation-receipt/?consultation_id=. The page shows receipt number, date, patient, method, status, bank, payment and order ids, consultation fee, platform fee, GST, and total paid. Download saves a text file in the browser. | — |
-| S-043 | Upload report | P-065 | Medical records | PARTIAL | Native Uploadreport is not a registered route. Web has no upload-report page. Record upload lives on medical records, and prescription upload is a different flow. | P2 |
+| S-043 | Upload report | P-031 | Doctor slot | MATCH | On the slot page, Take photo and Choose file open a name and type step (prescription or lab report), then POST user/upload/ with dir customer_avatar and POST customers/medical-records/. The new record is selected. Saved records can be attached before pay. | — |
 | S-044 | Preview modal | — | — | MISSING | Native preview modal is embedded and not a route. The web inventory has no document-preview modal. | P2 |
 | S-045 | Review modal | WC-027 | ReviewSubmitModal | MATCH | Native review modal is embedded. Web review submit is a modal, not a route. | — |
 | S-046 | Medical record card | P-065 | Medical records | PARTIAL | Native medical-record card is an embedded widget. Web renders records on the records page and does not inventory a separate card component. | P3 |
@@ -417,7 +417,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | F-004 | Home dashboard | WF-004 | Home | PARTIAL | Both load categories, banners, suggestions, and a join-visit strip. Web home calls customers/doctors/?suggested=true. That query is not in the native home service notes. Panchakarma section is native-only. | P1 |
 | F-005 | Product catalog and search | WF-005 | Catalog and search | PARTIAL | Both have catalog, category, detail, search, and discovery. customers/search, recent search, health-categories, and health-diseases are in the native API list and not in the web API list, while a search page exists. | P1 |
 | F-006 | Cart, checkout, and orders | WF-006 | Cart, checkout, orders | PARTIAL | Both have cart, fee quote, place order, Razorpay or pay on delivery, verify payment, history, and detail. Web also cancels an order and polls unicommerce tracking. Those two calls are not in the native order service. | P1 |
-| F-007 | Doctor consult and booking | WF-007 | Consult and booking | PARTIAL | Both browse doctors, slots, slip, appointments, and receipts. Slip, receipt, and the history list use the same doctor-slip, consultation-receipt, and consultation-history paths as the app. Unrouted doctor search and upload-report have no web pages. | P1 |
+| F-007 | Doctor consult and booking | WF-007 | Consult and booking | PARTIAL | Both browse doctors, slots, slip, appointments, and receipts. Slip, receipt, and the history list use the same doctor-slip, consultation-receipt, and consultation-history paths as the app. The slot page attaches a named prescription or lab report the same way as the app. Unrouted doctor search has no web page. | P1 |
 | F-008 | Video call and chat | WF-008 | Video and chat | MATCH | Agora join, socket chat, and a floating overlay exist on both. SDK and permission UI differ by platform. | — |
 | F-009 | Medicines and prescriptions | WF-009 | Medicines and prescriptions | MATCH | Catalog, upload, verify, checkout, and order status exist on both. File picking is the platform difference. | — |
 | F-010 | Profile and account | WF-010 | Profile and account | MATCH | Profile, edit, settings, addresses, and help exist on both. Web adds a notification-settings child route. | — |
