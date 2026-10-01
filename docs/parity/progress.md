@@ -28,3 +28,4 @@ Stopped for review. No application code was changed.
 | 3 | A-008 account recover on OTP | done — verify posts recover and clears the hold |
 | 4 | S-005 Access mode | done — complete profile opens Home; change number signs out |
 | 5 | S-049 Razorpay on checkout | done — prepaid order opens checkout.js and verifies with payment_id |
+| 6 | A-036 and S-037 doctor slip | done — page already calls customers/doctor-slip/ and shows multiple visits |
