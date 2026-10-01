@@ -14,9 +14,9 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 364 |
+| MATCH | 365 |
 | PARTIAL | 98 |
-| MISSING | 17 |
+| MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
 
@@ -24,9 +24,9 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 219 |
+| MATCH | 220 |
 | PARTIAL | 98 |
-| MISSING | 17 |
+| MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
 
@@ -302,7 +302,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-073 | PaymentCard | P-067 | Payments | PARTIAL | Payment card is not a named web component. | P3 |
 | C-074 | PaymentHistoryTimeline | P-067 | Payments | PARTIAL | Payment timeline is not a named web component. Payment history page exists. | P2 |
 | C-075 | PolicyContentRenderer | WC-019 | PolicyContent | MATCH | Renders policy body. Login uses it on both clients. | — |
-| C-076 | PrescriptionFilePreview | — | — | MISSING | No prescription file preview component on the web. | P1 |
+| C-076 | PrescriptionFilePreview | PrescriptionFilePreview | Prescription file preview | MATCH | Upload and verify open a preview. An image shows in the dialog. A PDF shows in the page and can be opened. A recent request with a file URL has Preview. Order history leaves this preview commented out, same as the app. | — |
 | C-077 | PrescriptionRequiredModalHost | P-073 | Prescription upload | PARTIAL | Prescription-required gate is not a named web component. Upload page is the surface. | P1 |
 | C-078 | PrimaryButton | WC-034 | Button | MATCH | Primary button. | — |
 | C-079 | ProductCard | WC-023 | ProductCard | MATCH | Product card. | — |

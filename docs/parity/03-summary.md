@@ -4,9 +4,9 @@ Counts are rows in `01-app-vs-web.md`. Every app-inventory ID is one row.
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 364 |
+| MATCH | 365 |
 | PARTIAL | 98 |
-| MISSING | 17 |
+| MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Total | 484 |
 
@@ -14,9 +14,9 @@ Native comparison only. Excludes S-098–S-188 and C-126–C-179, which are webs
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 219 |
+| MATCH | 220 |
 | PARTIAL | 98 |
-| MISSING | 17 |
+| MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
 

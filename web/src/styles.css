@@ -5134,6 +5134,34 @@ button.checkout-item {
   font-weight: var(--am-weight-semibold);
 }
 
+.rx-preview-frame {
+  width: 100%;
+  height: 60vh;
+  border: 0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+button.rx-file-preview {
+  text-align: left;
+  cursor: pointer;
+}
+
+.rx-recent-row > button:first-child {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
 .reward-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
