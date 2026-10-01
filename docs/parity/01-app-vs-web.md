@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 366 |
-| PARTIAL | 97 |
+| MATCH | 367 |
+| PARTIAL | 96 |
 | MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 221 |
-| PARTIAL | 97 |
+| MATCH | 222 |
+| PARTIAL | 96 |
 | MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -329,7 +329,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-100 | SearchBar | WC-047 | SearchField | MATCH | Search field. | — |
 | C-101 | SectionHeader | WC-048 | SectionHeader | MATCH | Section title. | — |
 | C-102 | SegmentTabs | WC-051 | Tabs | MATCH | Segmented tabs. | — |
-| C-103 | SelectedUploadCard | P-073 | Prescription upload | PARTIAL | Selected-file card is not a named web component. | P2 |
+| C-103 | SelectedUploadCard | P-031 | Doctor slot | MATCH | Saved records on the slot page show the description and type. Checking one attaches it to the visit. Clearing it removes that id. A new upload is selected after it is saved. | — |
 | C-104 | SessionCard | P-078 | Yoga session | PARTIAL | Session card is not a named web component. | P3 |
 | C-105 | SettingItem | P-039 | Settings | PARTIAL | Settings row is not a named web component. | P3 |
 | C-106 | SOSHeader | — | — | MISSING | No SOS header on the web. | P1 |
