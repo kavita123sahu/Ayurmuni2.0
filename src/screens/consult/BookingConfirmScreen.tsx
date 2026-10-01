@@ -163,7 +163,21 @@ const InfoRow = memo(
 );
 
 const BookingConfrimScreen = ({ navigation, route }: any) => {
-  const { SlotsDetail } = route?.params || {};
+  const rawSlotsDetail = route?.params?.SlotsDetail;
+  // book-slot / verify may nest the appointment under `booking` (top-level status = payment status)
+  const SlotsDetail = useMemo(() => {
+    const nested = rawSlotsDetail?.booking;
+    if (!nested || typeof nested !== 'object') return rawSlotsDetail;
+    return {
+      ...rawSlotsDetail,
+      ...nested,
+      appointment_id: nested.appointment_id ?? rawSlotsDetail?.appointment_id,
+      status: nested.status ?? rawSlotsDetail?.status,
+      mode: nested.mode_label ?? nested.mode ?? rawSlotsDetail?.mode,
+      amount: nested.paid_amount ?? rawSlotsDetail?.amount,
+    };
+  }, [rawSlotsDetail]);
+  const fundedByPackage = SlotsDetail?.funded_by_package === true;
   const insets = useSafeAreaInsets();
   const footerBottomPad = Math.max(insets.bottom, 8);
   const [visible, setVisible] = useState(false);
@@ -463,13 +477,15 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
               label="Mode"
               value={booking.consultationMode}
             />
-            {!!booking.amount && (
+            {fundedByPackage ? (
+              <MetaChip icon="cash" label="Paid" value="Covered by plan" />
+            ) : !!booking.amount && Number(booking.amount) !== 0 ? (
               <MetaChip
                 icon="cash"
                 label="Paid"
                 value={formatRupee(booking.amount)}
               />
-            )}
+            ) : null}
           </View>
         </View>
 

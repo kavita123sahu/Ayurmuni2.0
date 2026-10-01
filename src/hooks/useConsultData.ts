@@ -11,6 +11,7 @@ import * as _CONSULT_SERVICES
 import { isAuthenticated } from '../services/guestAuth';
 import {
     isActiveAppointmentStatus,
+    isAppointmentInPast,
     normalizeAppointmentListItem,
     sortAppointmentsByDateTime,
 } from '../utils/appointmentUtils';
@@ -406,8 +407,9 @@ export const useUpcomingAppointmentsPreview = (
             }
 
             // `confirmed` alone misses rescheduled / live (in_progress) slots
-            const [confirmedRes, upcomingRes] = await Promise.all(
-                ['confirmed', 'upcoming'].map(appointment_status =>
+            // `completed` keeps the live banner until end_time after the call ends early
+            const [confirmedRes, upcomingRes, completedRes] = await Promise.all(
+                ['confirmed', 'upcoming', 'completed'].map(appointment_status =>
                     _CONSULT_SERVICES
                         .getConsultHistory({ page: 1, page_size: pageSize, appointment_status })
                         .catch((e: any) => {
@@ -421,12 +423,16 @@ export const useUpcomingAppointmentsPreview = (
             const active = [
                 ...(confirmedRes?.data?.results || []),
                 ...(upcomingRes?.data?.results || []),
+                ...(completedRes?.data?.results || []),
             ]
                 .map((item: any) => normalizeAppointmentListItem(item))
                 .filter((item: any) => {
                     const key = String(item?.appointment_id || item?.consultation_id || '');
                     if (key && seen.has(key)) return false;
                     if (key) seen.add(key);
+                    if (String(item?.status || '').toLowerCase() === 'completed') {
+                        return !isAppointmentInPast(item);
+                    }
                     return (
                         isActiveAppointmentStatus(item?.status) ||
                         String(item?.call_status || '').toLowerCase() === 'in_progress'

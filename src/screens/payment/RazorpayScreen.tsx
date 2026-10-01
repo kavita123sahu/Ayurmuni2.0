@@ -39,6 +39,15 @@ import TablerIcon from '../../components/TablerIcon';
 import AppHeader from '../../components/AppHeader';
 import { getDoctorDisplayName, resolveDoctorProfileImageUri } from '../../utils/doctorUtils';
 import { usePatientData } from '../../hooks/usePatientData';
+import { useMyPackages } from '../../hooks/usePackagePlans';
+import ActivePlanPickerSheet from '../../components/packages/ActivePlanPickerSheet';
+import {
+    getConsultBenefit,
+    getPlanConsultState,
+    isActivePlan,
+    isPlanUsableForConsult,
+} from '../../components/packages/packageUi';
+import type { MyPlan } from '../../services/PackageServices';
 import {
     calculateFeeBreakdown,
     feeRateLabel,
@@ -168,6 +177,24 @@ const resolveConsultPayableRupees = (data: any, fallback: number) => {
     return fallback > 0 ? fallback : 0;
 };
 
+/** Payable after the plan is applied (fee-quote with package_purchase_id). Missing → covered (0). */
+const resolvePlanPayableRupees = (data: any): number => {
+    const summary = data?.summary ?? {};
+    const candidates = [
+        summary?.total_payable_amount,
+        data?.total_payable_amount,
+        summary?.payable_amount,
+        data?.payable_amount,
+        data?.amount,
+    ];
+    for (const value of candidates) {
+        if (value == null || value === '') continue;
+        const n = Number(value);
+        if (Number.isFinite(n) && n >= 0) return roundMoney(n);
+    }
+    return 0;
+};
+
 const formatDisplayDate = (value?: string) => {
     if (!value) return '';
     const d = new Date(value);
@@ -204,6 +231,32 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const [activePatient, setActivePatient] = useState<any>(patientsList || null);
     const [patientPickerVisible, setPatientPickerVisible] = useState(false);
     const [switchingPatient, setSwitchingPatient] = useState(false);
+    const [planSheetVisible, setPlanSheetVisible] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<MyPlan | null>(null);
+    const [planPayable, setPlanPayable] = useState<number | null>(null);
+    const [planQuoteLoading, setPlanQuoteLoading] = useState(false);
+    const planPromptShownRef = useRef(false);
+
+    const { purchases: activePurchases } = useMyPackages({ status: 'active' });
+    const activePlans = useMemo(
+        () => activePurchases.filter(isActivePlan),
+        [activePurchases],
+    );
+    const usablePlans = useMemo(
+        () => activePlans.filter(isPlanUsableForConsult),
+        [activePlans],
+    );
+
+    useEffect(() => {
+        console.log(
+            'CONSULT_ACTIVE_PLANS =>',
+            activePlans.map(p => ({ id: p.id, name: p.name, state: getPlanConsultState(p) })),
+        );
+        if (activePlans.length > 0 && !planPromptShownRef.current) {
+            planPromptShownRef.current = true;
+            setPlanSheetVisible(true);
+        }
+    }, [activePlans]);
 
     const {
         patients,
@@ -345,7 +398,53 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         };
     }, [feeQuote, consultationFee, couponDiscount, appliedCoupon, quotedCouponCode]);
 
-    const totalAmount = feeBreakdown.total;
+    const handleSelectPlan = useCallback(
+        async (plan: MyPlan) => {
+            setPlanSheetVisible(false);
+            const id = slotId?.id;
+            if (!id) return;
+            setSelectedPlan(plan);
+            setPlanQuoteLoading(true);
+            try {
+                const response = await _CONSULT_SERVICES.getConsultationFeeQuote(
+                    id,
+                    undefined,
+                    plan.id,
+                );
+                if (!isApiSuccess(response)) {
+                    showSuccessToast(
+                        response?.message || 'This plan cannot be used for this booking',
+                        'error',
+                    );
+                    setSelectedPlan(null);
+                    setPlanPayable(null);
+                    return;
+                }
+                const payable = resolvePlanPayableRupees(response?.data);
+                console.log('CONSULT_PLAN_PAYABLE =>', plan.id, payable);
+                setPlanPayable(payable);
+            } catch (error: any) {
+                console.log('CONSULT_PLAN_QUOTE_ERROR =>', error);
+                showSuccessToast(error?.message || 'Unable to apply plan', 'error');
+                setSelectedPlan(null);
+                setPlanPayable(null);
+            } finally {
+                setPlanQuoteLoading(false);
+            }
+        },
+        [slotId?.id],
+    );
+
+    const clearSelectedPlan = useCallback(() => {
+        setSelectedPlan(null);
+        setPlanPayable(null);
+    }, []);
+
+    const usingPlan = !!selectedPlan && planPayable != null;
+    const totalAmount = usingPlan ? planPayable : feeBreakdown.total;
+    const planCoveredAmount = usingPlan
+        ? Math.max(0, roundMoney(feeBreakdown.total - planPayable))
+        : 0;
 
     useFocusEffect(
         React.useCallback(() => {
@@ -359,6 +458,43 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         }, [isVerifyingPayment]),
     );
 
+    const onBookingSuccess = async (
+        SlotsDetail: any,
+        currentSlotId: string | number | undefined,
+        message: string,
+    ) => {
+        showSuccessToast(message, 'success');
+        try {
+            const { OneSignal } = require('react-native-onesignal');
+            OneSignal.User.pushSubscription.optIn();
+        } catch {
+            // ignore
+        }
+        try {
+            const {
+                refreshUnreadBadge,
+            } = require('../../screens/notifications/notificationRouter');
+            refreshUnreadBadge();
+        } catch {
+            // ignore
+        }
+        try {
+            await Utils.storeData(STORAGE_KEY, null);
+            await clearPendingConsultPayment(currentSlotId);
+        } catch (e) {
+            console.log('clear storage on success error', e);
+        }
+        // Plan bookings return no concern / patient — fill from this screen so both flows match
+        navigation.navigate('BookingConfrimScreen', {
+            SlotsDetail: {
+                concern,
+                patient_name: patientName,
+                patient_phone: activePatient?.phone_number || activePatient?.phone,
+                ...(SlotsDetail ?? {}),
+            },
+        });
+    };
+
     const handlePayment = async () => {
         if (loading || paymentStartedRef.current) return;
 
@@ -367,10 +503,38 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             paymentStartedRef.current = true;
 
             const currentSlotId = slotId?.id;
-            const pendingPayment = await getPendingConsultPayment(currentSlotId);
+            const planPurchaseId = usingPlan ? selectedPlan?.id : undefined;
+            const pendingPayment = planPurchaseId
+                ? null
+                : await getPendingConsultPayment(currentSlotId);
 
             let paymentResponse: any;
-            if (pendingPayment?.appointment_id) {
+            if (planPurchaseId) {
+                paymentResponse =
+                    await _CONSULT_SERVICES.createConsultationPayment({
+                        slot_id: currentSlotId,
+                        package_purchase_id: planPurchaseId,
+                        concern: concern,
+                        medical_record_ids: medical_record_ids,
+                    });
+                console.log('ConsultationPlanBookingResponse =>', paymentResponse);
+                if (!isApiSuccess(paymentResponse)) {
+                    showSuccessToast(
+                        paymentResponse?.message || 'Unable to book with this plan',
+                        'error',
+                    );
+                    return;
+                }
+                // Plan covers the consultation — appointment is confirmed, no Razorpay
+                if (!paymentResponse?.data?.razorpay_order_id) {
+                    await onBookingSuccess(
+                        paymentResponse?.data,
+                        currentSlotId,
+                        paymentResponse?.message || 'Appointment confirmed with your plan',
+                    );
+                    return;
+                }
+            } else if (pendingPayment?.appointment_id) {
                 paymentResponse =
                     await _CONSULT_SERVICES.retryConsultationPayment(
                         pendingPayment.appointment_id,
@@ -510,32 +674,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
             setIsVerifyingPayment(false);
 
-            const SlotsDetail = verifyResponse?.data;
             if (verifyResponse?.success) {
-                showSuccessToast('Payment Successful', 'success');
-                try {
-                    const { OneSignal } = require('react-native-onesignal');
-                    OneSignal.User.pushSubscription.optIn();
-                } catch {
-                    // ignore
-                }
-                try {
-                    const {
-                        refreshUnreadBadge,
-                    } = require('../../screens/notifications/notificationRouter');
-                    refreshUnreadBadge();
-                } catch {
-                    // ignore
-                }
-                try {
-                    await Utils.storeData(STORAGE_KEY, null);
-                    await clearPendingConsultPayment(currentSlotId);
-                } catch (e) {
-                    console.log('clear storage on success error', e);
-                }
-                navigation.navigate('BookingConfrimScreen', {
-                    SlotsDetail,
-                });
+                await onBookingSuccess(
+                    verifyResponse?.data,
+                    currentSlotId,
+                    'Payment Successful',
+                );
             } else {
                 showSuccessToast('Payment verification failed', 'error');
             }
@@ -561,7 +705,18 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         }
     };
 
-    const payDisabled = loading || feeQuoteLoading || !feeQuote;
+    const payDisabled =
+        loading ||
+        planQuoteLoading ||
+        (usingPlan ? false : feeQuoteLoading || !feeQuote);
+    const priceLoading = usingPlan ? planQuoteLoading : feeQuoteLoading || planQuoteLoading;
+    const planIsFree = usingPlan && planPayable === 0;
+    const selectedPlanRemaining = (() => {
+        const benefit = selectedPlan ? getConsultBenefit(selectedPlan) : null;
+        if (!benefit) return '';
+        if (benefit.quantity_remaining == null) return 'Unlimited consultations';
+        return `${benefit.quantity_remaining} consultation${benefit.quantity_remaining === 1 ? '' : 's'} left`;
+    })();
 
     return (
         <>
@@ -809,7 +964,82 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             ) : null}
                         </View>
 
+                        {/* Active plan */}
+                        {activePlans.length > 0 ? (
+                            selectedPlan ? (
+                                <LinearGradient
+                                    colors={['#0A4A3C', '#0D614E', '#178A6E']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.planCard}
+                                >
+                                    <View style={styles.planIcon}>
+                                        <TablerIcon name="star-filled" size={16} color="#E8C27A" />
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text style={styles.planEyebrow}>Booking with your plan</Text>
+                                        <Text style={styles.planName} numberOfLines={1}>
+                                            {selectedPlan.name}
+                                        </Text>
+                                        {planQuoteLoading ? (
+                                            <Text style={styles.planMeta}>Checking plan benefit…</Text>
+                                        ) : (
+                                            <Text style={styles.planMeta} numberOfLines={1}>
+                                                {[
+                                                    planIsFree ? 'No payment needed' : null,
+                                                    selectedPlanRemaining,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <View style={styles.planActions}>
+                                        <TouchableOpacity
+                                            disabled={loading}
+                                            onPress={() => setPlanSheetVisible(true)}
+                                            style={styles.planChangeBtn}
+                                        >
+                                            <Text style={styles.planChangeText}>Change</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            disabled={loading}
+                                            onPress={clearSelectedPlan}
+                                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                        >
+                                            <Text style={styles.planRemoveText}>Remove</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </LinearGradient>
+                            ) : (
+                                <TouchableOpacity
+                                    activeOpacity={0.85}
+                                    onPress={() => setPlanSheetVisible(true)}
+                                    style={styles.planPrompt}
+                                >
+                                    <View style={styles.planPromptIcon}>
+                                        <TablerIcon name="star-filled" size={15} color="#B7791F" />
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text style={styles.planPromptTitle}>
+                                            You have {activePlans.length} active plan
+                                            {activePlans.length > 1 ? 's' : ''}
+                                        </Text>
+                                        <Text style={styles.planPromptSub}>
+                                            {usablePlans.length > 0
+                                                ? 'Book this consultation without paying'
+                                                : 'Consultations in your plans are used up'}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.planPromptCta}>
+                                        {usablePlans.length > 0 ? 'Use plan' : 'View'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        ) : null}
+
                         {/* Coupons */}
+                        {usingPlan ? null : (
                         <View style={styles.card}>
                             <CouponApplyCard
                                 coupons={coupons}
@@ -825,6 +1055,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                 onRemove={removeCoupon}
                             />
                         </View>
+                        )}
 
                         {/* Amount summary */}
                         <View style={styles.card}>
@@ -846,12 +1077,69 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                 </Text>
                             </View>
 
-                            {feeQuoteLoading ? (
+                            {priceLoading ? (
                                 <ActivityIndicator
                                     size="small"
                                     color={Colors.primaryColor}
                                     style={{ marginVertical: 14 }}
                                 />
+                            ) : usingPlan ? (
+                                <>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>
+                                            Consultation total
+                                        </Text>
+                                        <RupeeAmount
+                                            value={feeBreakdown.total}
+                                            style={styles.summaryValue}
+                                            decimals={2}
+                                        />
+                                    </View>
+                                    {planCoveredAmount > 0 ? (
+                                        <View style={styles.summaryRow}>
+                                            <Text style={styles.summaryDiscountLabel} numberOfLines={1}>
+                                                Covered by plan
+                                            </Text>
+                                            <View style={styles.discountRow}>
+                                                <Text style={styles.summaryDiscountValue}>−{' '}</Text>
+                                                <RupeeAmount
+                                                    value={planCoveredAmount}
+                                                    style={styles.summaryDiscountValue}
+                                                    decimals={2}
+                                                />
+                                            </View>
+                                        </View>
+                                    ) : null}
+                                    <LinearGradient
+                                        colors={['#ECFDF5', '#D1FAE5']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.totalStrip}
+                                    >
+                                        <View>
+                                            <Text style={styles.totalLabel}>
+                                                Total payable
+                                            </Text>
+                                            <View style={styles.secureRow}>
+                                                <TablerIcon
+                                                    name="star-filled"
+                                                    size={12}
+                                                    color={Colors.primaryColor}
+                                                />
+                                                <Text style={styles.secureText}>
+                                                    Paid via {selectedPlan?.name || 'plan'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <RupeeAmount
+                                            value={totalAmount}
+                                            style={styles.totalAmount}
+                                            decimals={2}
+                                            iconSize={16}
+                                            iconColor={Colors.primaryColor}
+                                        />
+                                    </LinearGradient>
+                                </>
                             ) : (
                                 <>
                                     <View style={styles.summaryRow}>
@@ -982,7 +1270,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     >
                         <View style={styles.stickyRow}>
                             <View style={styles.stickyPriceBox}>
-                                {feeQuoteLoading ? (
+                                {priceLoading ? (
                                     <ActivityIndicator
                                         size="small"
                                         color={Colors.primaryColor}
@@ -1025,12 +1313,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                     ) : (
                                         <>
                                             <TablerIcon
-                                                name="credit-card"
+                                                name={planIsFree ? 'circle-check' : 'credit-card'}
                                                 size={16}
                                                 color="#FFFFFF"
                                             />
                                             <Text style={styles.primaryBtnText}>
-                                                Pay now
+                                                {planIsFree ? 'Confirm booking' : 'Pay now'}
                                             </Text>
                                         </>
                                     )}
@@ -1048,6 +1336,18 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     </View>
                 </SafeAreaView>
             )}
+
+            <ActivePlanPickerSheet
+                visible={planSheetVisible && !isVerifyingPayment}
+                plans={activePlans}
+                selectedId={selectedPlan?.id}
+                onSelect={handleSelectPlan}
+                onPayNormally={() => {
+                    setPlanSheetVisible(false);
+                    clearSelectedPlan();
+                }}
+                onClose={() => setPlanSheetVisible(false)}
+            />
 
             <Modal
                 visible={patientPickerVisible}
@@ -1193,6 +1493,95 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#F4F7F6',
+    },
+    planCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginHorizontal: 10,
+        marginTop: 8,
+        borderRadius: 16,
+        padding: 12,
+    },
+    planIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.14)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    planEyebrow: {
+        fontSize: 10.5,
+        color: 'rgba(255,255,255,0.75)',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    planName: {
+        fontSize: 14,
+        color: '#FFFFFF',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    planMeta: {
+        marginTop: 1,
+        fontSize: 11,
+        color: '#E8C27A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    planActions: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    planChangeBtn: {
+        backgroundColor: '#E8C27A',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    planChangeText: {
+        fontSize: 11,
+        color: '#0A4A3C',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    planRemoveText: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.8)',
+        fontFamily: Fonts.PoppinsMedium,
+        textDecorationLine: 'underline',
+    },
+    planPrompt: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginHorizontal: 10,
+        marginTop: 8,
+        borderRadius: 14,
+        padding: 12,
+        backgroundColor: '#FFF8EB',
+        borderWidth: 1,
+        borderColor: '#F5D9A3',
+    },
+    planPromptIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FDE9C4',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    planPromptTitle: {
+        fontSize: 13,
+        color: '#5B3A0A',
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+    planPromptSub: {
+        fontSize: 11,
+        color: '#8A5A12',
+        fontFamily: Fonts.PoppinsMedium,
+    },
+    planPromptCta: {
+        fontSize: 12,
+        color: Colors.primaryColor,
+        fontFamily: Fonts.PoppinsSemiBold,
     },
     scrollContent: {
         paddingBottom: 8,

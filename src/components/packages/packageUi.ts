@@ -1,5 +1,45 @@
 import type { TablerIconName } from '../TablerIcon';
-import type { PackagePlan } from '../../services/PackageServices';
+import type { MyPlan, MyPlanBenefit, PackagePlan } from '../../services/PackageServices';
+
+/**
+ * Consultation benefit of a purchased plan (label based — API has no benefit code).
+ * Prefers "Doctor Consultation", then any non-diet consult, then any consult.
+ */
+export const getConsultBenefit = (plan: MyPlan): MyPlanBenefit | null => {
+  const consults = (plan.benefits || []).filter(b =>
+    /consult/i.test(String(b?.label || '')),
+  );
+  return (
+    consults.find(b => /doctor/i.test(String(b.label))) ??
+    consults.find(b => !/diet/i.test(String(b.label))) ??
+    consults[0] ??
+    null
+  );
+};
+
+export type PlanConsultState = 'usable' | 'exhausted' | 'expired' | 'no_consult';
+
+export const getPlanConsultState = (plan: MyPlan): PlanConsultState => {
+  if (plan.expires_at) {
+    const expires = new Date(plan.expires_at).getTime();
+    if (Number.isFinite(expires) && expires <= Date.now()) return 'expired';
+  }
+  const benefit = getConsultBenefit(plan);
+  if (!benefit) return 'no_consult';
+  const status = String(benefit.status || 'available').toLowerCase();
+  if (status !== 'available') return 'exhausted';
+  if (benefit.quantity_remaining != null && benefit.quantity_remaining <= 0) {
+    return 'exhausted';
+  }
+  return 'usable';
+};
+
+export const isActivePlan = (plan: MyPlan) =>
+  String(plan?.status || '').toLowerCase() === 'active';
+
+/** Active, not expired, and (when tracked) has consultations left. */
+export const isPlanUsableForConsult = (plan: MyPlan): boolean =>
+  isActivePlan(plan) && getPlanConsultState(plan) === 'usable';
 
 export const PLAN_GOLD = '#E8C27A';
 

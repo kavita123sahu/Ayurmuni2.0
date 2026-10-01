@@ -1713,13 +1713,6 @@ const HomePage: React.FC = (props: any) => {
                 <Text style={styles.comingSoonChipBadgeText}>Soon</Text>
               </View>
 
-              <TouchableOpacity style={styles.comingSoonChipBadge} onPress={() => {
-                Sentry.captureException(
-                  new Error('Sentry Testing from the new DSN kavita'),
-                );
-              }}>
-                <Text style={styles.comingSoonChipBadgeText}>Sentry</Text>
-              </TouchableOpacity>
 
             </View>
           ))}
@@ -1847,6 +1840,7 @@ const HomePage: React.FC = (props: any) => {
                 />
               </View>
             )}
+
 
             {safeHealthConcerns.length > 0 && (
               <View style={styles.homeSection}>

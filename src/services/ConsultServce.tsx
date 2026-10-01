@@ -1257,20 +1257,21 @@ export const retryConsultationPayment = async (appointmentId: string | number) =
     }
 };
 
-/** GET /payments/customer/consultation/fee-quote/?slot_id=&coupon_code= */
+/** GET /payments/customer/consultation/fee-quote/?slot_id=&coupon_code=&package_purchase_id= */
 export const getConsultationFeeQuote = async (
     slotId: string | number,
     couponCode?: string,
+    packagePurchaseId?: string,
 ) => {
     try {
-        const params = new URLSearchParams();
-        params.set('slot_id', String(slotId));
+        let url = `payments/customer/consultation/fee-quote/?slot_id=${encodeURIComponent(String(slotId))}`;
         const code = String(couponCode || '').trim();
-        if (code) params.set('coupon_code', code);
-        const response = await apiClient(
-            `payments/customer/consultation/fee-quote/?${params.toString()}`,
-            { method: 'GET' },
-        );
+        if (code) url += `&coupon_code=${encodeURIComponent(code)}`;
+        const purchaseId = String(packagePurchaseId || '').trim();
+        if (purchaseId) url += `&package_purchase_id=${encodeURIComponent(purchaseId)}`;
+        console.log('CONSULT_FEE_QUOTE_URL =>', url);
+        const response = await apiClient(url, { method: 'GET' });
+        console.log('CONSULT_FEE_QUOTE_RESPONSE =>', JSON.stringify(response));
         return response;
     } catch (error) {
         throw error;

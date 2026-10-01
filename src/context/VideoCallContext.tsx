@@ -658,9 +658,13 @@ import { activateKeepAwake, deactivateKeepAwake } from '../utils/keepAwake';
 
 export type VideoCallParams = {
   appointmentId: string;
+  consultationId?: string;
   role?: 'doctor' | 'patient';
   otherPartyName?: string;
   otherPartyImage?: string;
+  appointmentDate?: string;
+  startTime?: string;
+  endTime?: string;
 };
 
 type ViewMode = 'idle' | 'fullscreen' | 'minimized';

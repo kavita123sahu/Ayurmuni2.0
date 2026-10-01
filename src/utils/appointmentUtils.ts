@@ -297,12 +297,50 @@ export function buildVideoCallNavParams(
 ) {
   const ids = getAppointmentIds(source);
   const primaryId = ids.appointmentId || ids.consultationId;
+  const slot = resolveAppointmentSlot(source);
 
   return {
     appointmentId: primaryId,
     ...(ids.consultationId ? { consultationId: ids.consultationId } : {}),
+    ...(slot.date ? { appointmentDate: slot.date } : {}),
+    ...(slot.startTime ? { startTime: slot.startTime } : {}),
+    ...(slot.endTime ? { endTime: slot.endTime } : {}),
     ...extras,
   };
+}
+
+/** Date / start / end from list items, raw API rows or detail payloads. */
+export function resolveAppointmentSlot(source?: any): {
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+} {
+  if (!source) return {};
+  const root = source?.rawData ?? source;
+  const appt = source?.appointment ?? root?.appointment ?? root;
+  const pick = (...values: any[]) => {
+    const found = values.find(v => v != null && String(v).trim() !== '');
+    return found != null ? String(found).trim() : undefined;
+  };
+  return {
+    date: pick(source?.date, appt?.appointment_date, root?.appointment_date),
+    startTime: pick(source?.time, appt?.start_time, root?.start_time),
+    endTime: pick(source?.endTime, appt?.end_time, root?.end_time),
+  };
+}
+
+/** Slot start / end timestamps; `endMs` is null when end_time is missing or invalid. */
+export function getAppointmentSlotMs(
+  date?: string,
+  startTime?: string,
+  endTime?: string,
+): { startMs: number | null; endMs: number | null } {
+  const start = parseAppointmentStart(date, startTime);
+  const end = endTime ? parseAppointmentStart(date, endTime) : null;
+  const startMs = start ? start.getTime() : null;
+  const endMs =
+    end && (startMs == null || end.getTime() > startMs) ? end.getTime() : null;
+  return { startMs, endMs };
 }
 
 /** Params for AppointmentDetails screen. */
@@ -920,11 +958,14 @@ export function getMsUntilJoinWindowChange(
   return next != null ? next - now : null;
 }
 
+/** Only a cancelled call removes the Home banner early; otherwise it stays until end_time. */
+const BANNER_CLOSED_CALL_STATUSES = new Set(['cancelled', 'canceled', 'rejected']);
+
 /**
- * Home "Join Now" banner rules:
- * - Hide ONLY when: end_time has passed, OR call_status is completed/ended
- * - Show when call_status is `in_progress` (and not past end)
- * - Or show within `windowMinutes` (default 5) before start until end_time
+ * Home "Join Now" banner rules (time based):
+ * - Show from `windowMinutes` (default 5) before start until end_time
+ *   (no end_time → start + 15 min)
+ * - Ending / leaving the call does NOT hide it; only reaching end_time does
  */
 export function getJoinableAppointment(
   items: any[] = [],
@@ -937,8 +978,7 @@ export function getJoinableAppointment(
     const item = normalizeAppointmentListItem(raw);
     const callStatus = String(item.call_status || '').toLowerCase().trim();
 
-    // Hide when call is completed / ended (only this call-status condition)
-    if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) {
+    if (BANNER_CLOSED_CALL_STATUSES.has(callStatus)) {
       continue;
     }
 

@@ -490,6 +490,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '../../common/Vector';
 import { useVideoCall, VideoCallParams } from '../../context/VideoCallContext';
 import { popVideoCallAndGoToAppointments } from '../../navigation/navigationUtils';
+import CallTimeWarning from '../../components/CallTimeWarning';
 
 const PatientVideoCallScreen: React.FC = () => {
   const route = useRoute();
@@ -671,6 +672,14 @@ const PatientVideoCallScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       )}
+
+      <CallTimeWarning
+        appointmentId={params?.appointmentId}
+        consultationId={params?.consultationId}
+        appointmentDate={params?.appointmentDate}
+        startTime={params?.startTime}
+        endTime={params?.endTime}
+      />
 
       <View style={styles.remoteContainer}>
         {(!isJoined || (isJoined && !remoteAvailable && !showLocalBig)) && (

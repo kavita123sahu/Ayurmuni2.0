@@ -148,9 +148,9 @@ const toastConfig = {
 };
 
 
-// console.log = () => { };
-// console.warn = () => { };
-// console.error = () => { };
+console.log = () => { };
+console.warn = () => { };
+console.error = () => { };
 
 
 // Sentry.init({

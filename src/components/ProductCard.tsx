@@ -31,13 +31,18 @@ const IMAGE_HEIGHT_HORIZONTAL = 124;
 const TITLE_H = 18;
 const SUBTITLE_H = 14;
 const PRICE_H = 20;
+const MRP_H = 14;
 const INFO_PAD_TOP = 8;
-const INFO_PAD_BOTTOM = 10;
+const INFO_PAD_BOTTOM = 9;
+/** Every line has its own fixed slot, so long prices / MRP never wrap out of the card. */
 const INFO_HEIGHT =
-  INFO_PAD_TOP + TITLE_H + 4 + SUBTITLE_H + 4 + PRICE_H + INFO_PAD_BOTTOM;
+  INFO_PAD_TOP + TITLE_H + 4 + SUBTITLE_H + 4 + PRICE_H + 2 + MRP_H + INFO_PAD_BOTTOM;
 export const GRID_CARD_HEIGHT = IMAGE_HEIGHT_GRID + INFO_HEIGHT;
 export const HORIZONTAL_CARD_HEIGHT = IMAGE_HEIGHT_HORIZONTAL + INFO_HEIGHT;
-export const HORIZONTAL_CARD_WIDTH = 158;
+/** Rail card width scales with the screen (≈2.3 cards visible), clamped for tiny / tablet screens. */
+export const HORIZONTAL_CARD_WIDTH = Math.round(
+  Math.min(196, Math.max(150, Dimensions.get('window').width * 0.42)),
+);
 
 /** Default 2-col grid width for full-width screens */
 export const getGridCardWidth = (screenWidth: number) => {
@@ -205,29 +210,14 @@ const ProductCard: React.FC<Props> = ({
         <Text numberOfLines={1} style={styles.title} allowFontScaling={false}>
           {item.product_name || item.name || 'Product'}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={[styles.subtitle, lowStockNote ? styles.stockNote : null]}
-          allowFontScaling={false}
-        >
-          {lowStockNote || item.brand_name || item.variant_title || ' '}
-        </Text>
-
-        <View style={styles.bottomRow}>
-          <View style={styles.priceBlock}>
-            <RupeeAmount
-              value={item?.selling_price || item?.price || 0}
-              style={styles.price}
-            />
-            {Number(item?.mrp) > Number(item?.selling_price || 0) && (
-              <>
-                <Text style={styles.mrpPrefix} allowFontScaling={false}>
-                  MRP
-                </Text>
-                <RupeeAmount value={item.mrp} style={styles.oldPrice} />
-              </>
-            )}
-          </View>
+        <View style={styles.subtitleRow}>
+          <Text
+            numberOfLines={1}
+            style={[styles.subtitle, lowStockNote ? styles.stockNote : null]}
+            allowFontScaling={false}
+          >
+            {lowStockNote || item.brand_name || item.variant_title || ' '}
+          </Text>
 
           <View style={styles.ratingRow}>
             <View style={styles.ratingIconWrap}>
@@ -245,6 +235,24 @@ const ProductCard: React.FC<Props> = ({
               {item?.avg_rating || '0'}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.priceRow}>
+          <RupeeAmount
+            value={item?.selling_price || item?.price || 0}
+            style={styles.price}
+          />
+        </View>
+
+        <View style={styles.mrpRow}>
+          {Number(item?.mrp) > Number(item?.selling_price || 0) ? (
+            <>
+              <Text style={styles.mrpPrefix} allowFontScaling={false}>
+                MRP
+              </Text>
+              <RupeeAmount value={item.mrp} style={styles.oldPrice} />
+            </>
+          ) : null}
         </View>
       </View>
     </Pressable>
@@ -348,39 +356,45 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     includeFontPadding: false,
   },
-  subtitle: {
+  subtitleRow: {
     height: SUBTITLE_H,
     marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  subtitle: {
+    flex: 1,
+    minWidth: 0,
     fontSize: TYPO.xs,
     lineHeight: SUBTITLE_H,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsRegular,
     includeFontPadding: false,
   },
-  bottomRow: {
+  priceRow: {
     height: PRICE_H,
     marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
+    overflow: 'hidden',
   },
-  priceBlock: {
-    flex: 1,
-    minWidth: 0,
+  mrpRow: {
+    height: MRP_H,
+    marginTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 4,
+    overflow: 'hidden',
   },
   mrpPrefix: {
     fontSize: TYPO.xs,
+    lineHeight: MRP_H,
     color: '#94A3B8',
     fontFamily: Fonts.PoppinsMedium,
     includeFontPadding: false,
   },
   price: {
-    flexShrink: 1,
     fontSize: TYPO.md,
     lineHeight: PRICE_H,
     color: '#111827',
@@ -388,9 +402,8 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   oldPrice: {
-    flexShrink: 1,
     fontSize: TYPO.xs,
-    lineHeight: 14,
+    lineHeight: MRP_H,
     color: '#94A3B8',
     textDecorationLine: 'line-through',
     fontFamily: Fonts.PoppinsRegular,
