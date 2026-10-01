@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 357 |
-| PARTIAL | 104 |
+| MATCH | 358 |
+| PARTIAL | 103 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 212 |
-| PARTIAL | 104 |
+| MATCH | 213 |
+| PARTIAL | 103 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -75,7 +75,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-039 | Add calendar | P-036 | Add calendar | PARTIAL | Both have an add-calendar page. Native can write a device calendar event. Web has no device calendar; the page must offer a downloadable event or a manual date. That difference was not line-checked. | P2 |
 | S-040 | Consult history | P-027 | Consult history | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-041 | Doctor consultation history | P-034 | Doctor consultation history | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
-| S-042 | Medical receipt | P-055 | Medical receipt | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
+| S-042 | Medical receipt | P-055 | Medical receipt | MATCH | Both load customers/doctors/consultation-receipt/?consultation_id=. The page shows receipt number, date, patient, method, status, bank, payment and order ids, consultation fee, platform fee, GST, and total paid. Download saves a text file in the browser. | — |
 | S-043 | Upload report | P-065 | Medical records | PARTIAL | Native Uploadreport is not a registered route. Web has no upload-report page. Record upload lives on medical records, and prescription upload is a different flow. | P2 |
 | S-044 | Preview modal | — | — | MISSING | Native preview modal is embedded and not a route. The web inventory has no document-preview modal. | P2 |
 | S-045 | Review modal | WC-027 | ReviewSubmitModal | MATCH | Native review modal is embedded. Web review submit is a modal, not a route. | — |
@@ -417,7 +417,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | F-004 | Home dashboard | WF-004 | Home | PARTIAL | Both load categories, banners, suggestions, and a join-visit strip. Web home calls customers/doctors/?suggested=true. That query is not in the native home service notes. Panchakarma section is native-only. | P1 |
 | F-005 | Product catalog and search | WF-005 | Catalog and search | PARTIAL | Both have catalog, category, detail, search, and discovery. customers/search, recent search, health-categories, and health-diseases are in the native API list and not in the web API list, while a search page exists. | P1 |
 | F-006 | Cart, checkout, and orders | WF-006 | Cart, checkout, orders | PARTIAL | Both have cart, fee quote, place order, Razorpay or pay on delivery, verify payment, history, and detail. Web also cancels an order and polls unicommerce tracking. Those two calls are not in the native order service. | P1 |
-| F-007 | Doctor consult and booking | WF-007 | Consult and booking | PARTIAL | Both browse doctors, slots, slip, appointments, and receipts. The slip page loads customers/doctor-slip/?doctor_id= and shows the multiple-visit layout on that page. Receipt and consultation-history paths are still missing from the web API list even though those pages exist. Unrouted doctor search and upload-report have no web pages. | P1 |
+| F-007 | Doctor consult and booking | WF-007 | Consult and booking | PARTIAL | Both browse doctors, slots, slip, appointments, and receipts. Slip and receipt use the same doctor-slip and consultation-receipt paths as the app. Consultation-history is still missing from the web API list even though that page exists. Unrouted doctor search and upload-report have no web pages. | P1 |
 | F-008 | Video call and chat | WF-008 | Video and chat | MATCH | Agora join, socket chat, and a floating overlay exist on both. SDK and permission UI differ by platform. | — |
 | F-009 | Medicines and prescriptions | WF-009 | Medicines and prescriptions | MATCH | Catalog, upload, verify, checkout, and order status exist on both. File picking is the platform difference. | — |
 | F-010 | Profile and account | WF-010 | Profile and account | MATCH | Profile, edit, settings, addresses, and help exist on both. Web adds a notification-settings child route. | — |
@@ -469,7 +469,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | A-032 | POST favorites/doctors/?doctor_id= | A-036 | POST favorites/doctors/?doctor_id= | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-033 | GET customers/doctors/recent/ | A-037 | GET customers/doctors/recent/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-034 | GET customers/doctors/consultation-history/ | — | — | PARTIAL | GET customers/doctors/consultation-history/ is not in the web API inventory. The consultation-history page exists, so the page may call a different path. | P1 |
-| A-035 | GET customers/doctors/consultation-receipt/ | — | — | PARTIAL | GET customers/doctors/consultation-receipt/ is not in the web API inventory. The receipt page exists. | P1 |
+| A-035 | GET customers/doctors/consultation-receipt/ | consultService | GET customers/doctors/consultation-receipt/?consultation_id= | MATCH | Medical receipt calls this GET with consultation_id and reads the same fee and payment fields as the app. | — |
 | A-036 | GET customers/doctor-slip/ | consultService | GET customers/doctor-slip/?doctor_id= | MATCH | Doctor slip calls this GET with doctor_id. The response consultations and doctor fields drive the single-visit and multiple-visit layouts. | — |
 | A-037 | POST payments/customer/consultation/payment/book-slot/ | A-038 | POST payments/customer/consultation/payment/book-slot/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |
 | A-038 | POST payments/customer/consultation/payment/verify-payment/ | A-040 | POST payments/customer/consultation/payment/verify-payment/ | MATCH | Same method and path on both clients. Response fields were only compared for the auth calls in the finished audit batches. | — |

@@ -29,3 +29,4 @@ Stopped for review. No application code was changed.
 | 4 | S-005 Access mode | done — complete profile opens Home; change number signs out |
 | 5 | S-049 Razorpay on checkout | done — prepaid order opens checkout.js and verifies with payment_id |
 | 6 | A-036 and S-037 doctor slip | done — page already calls customers/doctor-slip/ and shows multiple visits |
+| 7 | A-035 medical receipt | done — receipt uses consultation-receipt and the payment breakdown |
