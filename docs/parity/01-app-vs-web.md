@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 352 |
-| PARTIAL | 109 |
+| MATCH | 354 |
+| PARTIAL | 107 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 207 |
-| PARTIAL | 109 |
+| MATCH | 209 |
+| PARTIAL | 107 |
 | MISSING | 18 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -38,7 +38,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-002 | Welcome | P-002 | Welcome | MATCH | Both play six stories (welcome video, then consult, medicine, delivery, diet, yoga) and continue to login. Auto-advance is 4200 ms on image slides. | — |
 | S-003 | Login | P-003 | Login | MATCH | Both collect a 10-digit +91 number, require the terms checkbox, open terms and privacy from the legal-required API, send OTP, store the returned OTP, and pass a deleted-account hold into the next step. | — |
 | S-004 | OTP verify | P-004 | OTP verify | MATCH | Login and register accept policies, load the profile, and open Home when it is complete. Dismissing the notification dialog registers with alerts off. When the number belongs to a deleted account, the alert stays and verify posts user/customer/account/recover/ with phone and otp and no auth token. A response with an access token continues like login and clears the hold. Browser Notification permission stands in for OneSignal. | — |
-| S-005 | Access mode | P-005 | Access mode | PARTIAL | Native checks profile completeness and sends a finished profile to Home, and it can sign out to change number. Web does neither. Both Skip and Set up my profile still mark the session as guest. Web has no change-number action. | P0 |
+| S-005 | Access mode | P-005 | Access mode | MATCH | On open, a complete profile goes to Home. Skip and Set up my profile still mark the session as guest. Use a different phone number confirms, clears the session, and opens welcome. | — |
 | S-006 | Complete details | P-006 | Complete details | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-007 | Onboarding | P-007 | Onboarding | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-008 | Assessment type | P-008 | Assessment type | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
@@ -287,7 +287,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-058 | LoadingSpinner | WC-049 | Skeleton | PARTIAL | Native uses a spinner. Web inventory uses skeletons for loading. Both mean the loading state. | P3 |
 | C-059 | LocationBottomSheet | WC-015 | LocationSheet | MATCH | Location picker sheet. | — |
 | C-060 | LocationPermissionModal | P-041 | Location picker | N/A-PLATFORM | OS permission dialog cannot be drawn by the site. Web alternative is the browser geolocation prompt on the location picker. | P2 |
-| C-061 | LogoutModal | WC-042 | Modal | PARTIAL | Native confirm modal is used for notifications and change-number. Web Modal is generic. Access mode does not use it for change-number, and the OTP modal close does not submit. | P1 |
+| C-061 | LogoutModal | WC-042 | Modal | MATCH | Confirm dialog. OTP notification dismiss registers with alerts off. Access mode uses it to confirm changing the phone number. | — |
 | C-062 | MealCard | P-082 | Meal details | PARTIAL | Meal card is not a named web component. Meal pages exist. | P3 |
 | C-063 | BasicInfoForm | WC-054 | BasicInfoForm | MATCH | Questionnaire basic-info form. | — |
 | C-064 | BmiGaugeCard | P-012 | Medical history | PARTIAL | BMI gauge is not a web component. bmi.js exists as a helper. Whether the gauge is rendered was not line-checked. | P2 |

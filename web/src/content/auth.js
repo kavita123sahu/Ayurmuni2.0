@@ -63,6 +63,9 @@ export const AUTH_COPY = {
   countryCode: '+91',
   termsNote:
     'Agreeing to Terms and Privacy Policy is mandatory when you complete customer onboarding.',
+  deletedAccountTitle: 'This number was used for a deleted account',
+  deletedAccountText: (days) =>
+    `You can recover it by verifying OTP within ${days || 30} days.`,
   getOtp: 'Get OTP',
   sending: 'Sending…',
 
@@ -97,6 +100,12 @@ export const AUTH_COPY = {
   trust: ['Secure', 'Personalized', 'Ayurveda-first'],
   setupTitle: 'Set up my profile',
   setupSubtitle: 'Details & Prakriti · takes a few minutes',
+  changeNumber: 'Use a different phone number',
+  changeNumberTitle: 'Change phone number?',
+  changeNumberText:
+    'You’ll sign out of this guest session and can verify a different number on login.',
+  changeStay: 'Stay',
+  changeSignOut: 'Sign out',
   accessNote: 'Skip anytime — you can finish setup later from Profile',
 
   policyTitle: 'Terms & Policies',
