@@ -5147,6 +5147,19 @@ button.rx-file-preview {
   cursor: pointer;
 }
 
+.rx-pick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rx-picked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
 .rx-recent-row > button:first-child {
   flex: 1;
   display: flex;

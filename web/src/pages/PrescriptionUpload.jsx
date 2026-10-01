@@ -54,11 +54,23 @@ export default function PrescriptionUpload() {
     [previews],
   );
 
-  const addFiles = (list) => {
-    const next = Array.from(list || []).filter(
-      (file) => file && (file.type?.startsWith('image/') || file.type === 'application/pdf'),
+  const isAllowedFile = (file) => {
+    if (!file) return false;
+    const type = file.type || '';
+    return (
+      type.startsWith('image/') ||
+      type === 'application/pdf' ||
+      (!type && /\.(jpe?g|png|webp|gif|heic|pdf)$/i.test(file.name || ''))
     );
-    if (!next.length) return;
+  };
+
+  const addFiles = (list) => {
+    const incoming = Array.from(list || []).filter(Boolean);
+    const next = incoming.filter(isAllowedFile);
+    if (!next.length) {
+      if (incoming.length) showSuccessToast('Please choose a PDF or image file', 'error');
+      return;
+    }
     setFiles((prev) => {
       const merged = [...prev, ...next].slice(0, 4);
       setPreviews((old) => {
@@ -67,6 +79,15 @@ export default function PrescriptionUpload() {
       });
       return merged;
     });
+  };
+
+  const removeFile = (index) => {
+    setPreviews((old) => {
+      const url = old[index];
+      if (url) URL.revokeObjectURL(url);
+      return old.filter((_, itemIndex) => itemIndex !== index);
+    });
+    setFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const proceed = async () => {
@@ -100,30 +121,46 @@ export default function PrescriptionUpload() {
           </div>
         ) : null}
 
-        <label className="upload-drop">
-          <strong>Upload prescription</strong>
-          <small>JPG, PNG or PDF · up to 4 files</small>
-          <input
-            type="file"
-            accept="image/*,application/pdf"
-            multiple
-            hidden
-            onChange={(e) => {
-              addFiles(e.target.files);
-              e.target.value = '';
-            }}
-          />
-        </label>
+        <div className="rx-pick-row">
+          <label className="upload-drop">
+            <strong>Camera</strong>
+            <small>Take a photo</small>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <label className="upload-drop">
+            <strong>Gallery or PDF</strong>
+            <small>JPG, PNG or PDF · up to 4 files</small>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              multiple
+              hidden
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+          </label>
+        </div>
 
         {files.length > 0 ? (
           <div className="home-rail">
             {files.map((file, index) => (
-              <PrescriptionFilePreview
-                key={`${file.name}-${index}`}
-                uri={previews[index]}
-                fileType={file.type}
-                label={file.name}
-              />
+              <div key={`${file.name}-${index}`} className="rx-picked">
+                <PrescriptionFilePreview uri={previews[index]} fileType={file.type} label={file.name} />
+                <button type="button" className="ghost" onClick={() => removeFile(index)}>
+                  Remove
+                </button>
+              </div>
             ))}
           </div>
         ) : null}

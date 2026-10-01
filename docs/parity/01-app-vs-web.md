@@ -14,8 +14,8 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 367 |
-| PARTIAL | 96 |
+| MATCH | 368 |
+| PARTIAL | 95 |
 | MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
@@ -24,8 +24,8 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 222 |
-| PARTIAL | 96 |
+| MATCH | 223 |
+| PARTIAL | 95 |
 | MISSING | 16 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
@@ -84,7 +84,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | S-048 | Chat | P-052 | Chat | MATCH | Both load and send appointment messages and use a socket. Web chat redirects to appointments when the route is incomplete. | — |
 | S-049 | Razorpay | P-022 | Checkout | MATCH | Consult pay opens Razorpay checkout.js for a consultation order, retries a pending payment, and verifies it. Product checkout places a prepaid order and opens the same checkout script with the order key, paise amount, and payment_id on verify. The browser script is the stand-in for the native Razorpay SDK. | — |
 | S-050 | Medicines | P-070 | Medicines | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
-| S-051 | Prescription upload | P-073 | Prescription upload | PARTIAL | Both upload a prescription. Native uses the image picker and document picker. Web must use a file input. The accepted file types were not in the finished audit batches. | P1 |
+| S-051 | Prescription upload | P-073 | Prescription upload | MATCH | Camera uses the browser camera input. Gallery or PDF accepts an image or a PDF, up to 4 files. Remove drops one file. Continue opens verify with those files. A product name from the prescription gate shows the approval note. | — |
 | S-052 | Verify prescription | P-074 | Prescription verify | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-053 | Medicine checkout | P-075 | Medicine checkout | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
 | S-054 | Medicine order status | P-076 | Order status | MATCH | Same job is routed on both sides. Field-level differences are not in the finished audit batches (only auth screens S-001–S-005 and P-001–P-005 were read line by line). | — |
