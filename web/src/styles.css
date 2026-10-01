@@ -4801,15 +4801,189 @@ button.checkout-item {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
+  text-align: left;
   background: var(--am-primary-soft);
+  border: 0;
   border-radius: 16px;
   padding: 12px;
   margin-bottom: 16px;
+  color: inherit;
+  cursor: pointer;
 }
 
-.diet-water-actions {
+.diet-water-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diet-water-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.diet-water-title strong {
+  color: var(--am-ink, #16352c);
+}
+
+.diet-water-title small,
+.diet-water-meta {
+  color: var(--am-muted, #5d726a);
+  font-size: 12px;
+}
+
+.diet-water-track {
+  display: block;
+  height: 6px;
+  border-radius: 99px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.diet-water-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--am-primary);
+}
+
+.diet-water-action {
+  flex: none;
+  min-width: 52px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--am-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.diet-water-action.done {
+  background: #fff;
+  color: var(--am-primary-strong);
+}
+
+.water-log-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+}
+
+.water-log-card {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+}
+
+.water-log-head,
+.water-log-summary,
+.water-log-liter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.water-log-head h3,
+.water-log-head p,
+.water-log-summary p {
+  margin: 0;
+}
+
+.water-log-summary {
+  margin: 12px 0;
+}
+
+.water-log-summary strong small {
+  font-weight: 500;
+  color: var(--am-muted, #5d726a);
+}
+
+.water-log-step {
   display: flex;
   gap: 8px;
+}
+
+.water-log-step button {
+  width: 40px;
+  min-width: 40px;
+  padding: 8px 0;
+}
+
+.water-log-liters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow: auto;
+  margin: 14px 0;
+}
+
+.water-log-liter small {
+  display: block;
+  color: var(--am-muted, #5d726a);
+}
+
+.water-log-glasses {
+  display: flex;
+  gap: 8px;
+}
+
+.water-glass {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 28px;
+  height: 40px;
+  padding: 0;
+  border: 1.5px solid #9ecfbf;
+  border-radius: 3px 3px 10px 10px;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.water-glass-xs {
+  width: 18px;
+  height: 26px;
+  flex: none;
+  cursor: default;
+}
+
+.water-glass-md {
+  width: 44px;
+  height: 58px;
+  cursor: default;
+}
+
+.water-glass i {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 0 0 8px 8px;
+  background: #7ec8e3;
+}
+
+.water-glass.on {
+  border-color: var(--am-primary);
+}
+
+.water-glass:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.water-log-done {
+  width: 100%;
 }
 
 .diet-days {

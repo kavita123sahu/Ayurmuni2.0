@@ -40,3 +40,4 @@ Stopped for review. No application code was changed.
 | 15 | C-077 prescription required | done — add and cart increase offer consult, upload, or not now |
 | 16 | C-103 selected upload card | done — the slot page already attaches and clears a saved record |
 | 17 | S-051 prescription upload | done — camera or a file, up to 4, and remove before verify |
+| 18 | C-053, C-116, C-118 water log | done — hydration row opens Log water; glasses post patients/diet-plans/water |

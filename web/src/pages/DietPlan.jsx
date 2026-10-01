@@ -5,11 +5,10 @@ import { Images } from '../common/images';
 import { formatRupee } from '../home/catalog';
 import { showSuccessToast } from '../config/key';
 import useDietPlans from '../diet/useDietPlans';
+import WaterLog from '../diet/WaterLog';
 import {
   canShowDietPlanRateButton,
-  WATER_GLASS_ML,
   WATER_GOAL_OPTIONS,
-  formatWaterLiters,
   getDietListStatus,
   getDietPlanGallery,
   getDietPlanRatingLabel,
@@ -76,6 +75,7 @@ export default function DietPlan() {
     plan?.is_paid === false || Number(plan?.price) === 0 ? 'Free' : formatRupee(plan?.price);
   const status = getDietListStatus(plan);
   const waterGoalMl = getWaterGoalMl(plan);
+  const dayLabel = planDays.find((day) => day.dayKey === currentDayKey)?.label || '';
   const [dietReviewed, setDietReviewed] = useState(false);
 
   useEffect(() => {
@@ -217,32 +217,13 @@ export default function DietPlan() {
                   ))}
                 </div>
 
-                <div className="diet-water">
-                  <div>
-                    <strong>Hydration</strong>
-                    <small>
-                      {formatWaterLiters(waterMl)} / {formatWaterLiters(waterGoalMl)}
-                    </small>
-                  </div>
-                  <div className="diet-water-actions">
-                    <button
-                      type="button"
-                      className="ghost"
-                      disabled={updatingWater || waterMl <= 0}
-                      onClick={() => updateWaterIntake(waterMl - WATER_GLASS_ML)}
-                    >
-                      − Glass
-                    </button>
-                    <button
-                      type="button"
-                      className="cta"
-                      disabled={updatingWater || waterMl >= waterGoalMl}
-                      onClick={() => updateWaterIntake(waterMl + WATER_GLASS_ML)}
-                    >
-                      + Glass
-                    </button>
-                  </div>
-                </div>
+                <WaterLog
+                  waterMl={waterMl}
+                  waterGoalMl={waterGoalMl}
+                  dayLabel={dayLabel}
+                  updating={updatingWater}
+                  onSetIntake={updateWaterIntake}
+                />
 
                 <div className="diet-days">
                   {planDays.map((day) => (

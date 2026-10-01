@@ -14,9 +14,9 @@ Priority: P0 blocks sign-in, payment, booking, or legal accept. P1 is a missing 
 
 | Status | Rows |
 | --- | ---: |
-| MATCH | 368 |
-| PARTIAL | 95 |
-| MISSING | 16 |
+| MATCH | 371 |
+| PARTIAL | 94 |
+| MISSING | 14 |
 | N/A-PLATFORM | 5 |
 | Total app IDs | 484 |
 
@@ -24,9 +24,9 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 
 | Status | Native rows |
 | --- | ---: |
-| MATCH | 223 |
-| PARTIAL | 95 |
-| MISSING | 16 |
+| MATCH | 226 |
+| PARTIAL | 94 |
+| MISSING | 14 |
 | N/A-PLATFORM | 5 |
 | Native total | 339 |
 
@@ -279,7 +279,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-050 | HomeDoctorCard | WC-009 | DoctorCard | PARTIAL | Home doctor card is the same job as the web doctor card. | P3 |
 | C-051 | HomeHeader | WC-031 | SiteHeader | PARTIAL | Home header actions (search, location, notifications) are split across the site header and home page. Not line-checked. | P2 |
 | C-052 | HomeJoinAppointmentsSection | WC-013 | HomeJoinAppointments | MATCH | Join upcoming visit from home. | — |
-| C-053 | HydrationCard | P-079 | Diet | PARTIAL | Hydration summary is not a web component. Water log API exists. | P1 |
+| C-053 | HydrationCard | P-080 | Diet plan | MATCH | The started plan shows liters, a progress bar, glasses, and Log or Done. Opening it logs water. | — |
 | C-054 | InAppNotificationWatcher | P-083 | Notifications | N/A-PLATFORM | Native watcher listens for OneSignal. Web alternative is the notifications page, browser Notification permission, and the settings page. | P2 |
 | C-055 | InfiniteMarquee | WC-016 | MarqueeCollage | PARTIAL | Native marquee is a horizontal text strip on login. Web collage is scrolling images plus a rotating headline. Same login surface, different motion. | P3 |
 | C-056 | InteractiveMapPicker | WC-014 | InteractiveMapPicker | MATCH | Map point picker. | — |
@@ -342,9 +342,9 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | C-113 | TransactionCard | P-067 | Payments | PARTIAL | Transaction card is not a named web component. Transaction detail page exists. | P3 |
 | C-114 | UploadRecordModal | P-065 | Medical records | MATCH | Choosing a PDF or image opens a dialog with the file name, a required record name, and prescription or lab report. Submit posts user/upload/ with dir customer_avatar, then customers/medical-records/, and the dialog closes. Cancel stays blocked while the upload is running. | — |
 | C-115 | VisitedDoctorHomeCard | WC-013 | HomeJoinAppointments | PARTIAL | Visited-doctor home card is not separately inventoried. Recent-doctors API exists. | P3 |
-| C-116 | WaterGlass | — | — | MISSING | Water glass is not on the web. Water log API exists without this control. | P1 |
+| C-116 | WaterGlass | P-080 | Diet plan | MATCH | Log water uses tappable glasses, grouped four to a liter, and a summary glass. | — |
 | C-117 | WaterGoalStartModal | — | — | MISSING | Water-goal start modal is not on the web. | P1 |
-| C-118 | WaterIntakeModal | — | — | MISSING | Water intake modal is not on the web. patients/diet-plans/water is called by the web diet service. | P1 |
+| C-118 | WaterIntakeModal | P-080 | Diet plan | MATCH | Log water shows the day, 250 ml per glass, plus and minus, and posts patients/diet-plans/water on each change. Done closes the dialog. | — |
 | C-119 | WishlistButton | P-056 | Wishlist | PARTIAL | Wishlist button is not a named web component. | P2 |
 | C-120 | WishlistToastBar | WC-032 | ToastHost | MATCH | Wishlist toast. Web uses the toast host. | — |
 | C-121 | YogaVideoPlayer | P-078 | Yoga session | PARTIAL | Native video player versus an HTML video on the session page. No shared player component. | P2 |
@@ -423,7 +423,7 @@ Native rows only (S-001–S-097, C-001–C-125, every feature, every API). The o
 | F-010 | Profile and account | WF-010 | Profile and account | MATCH | Profile, edit, settings, addresses, and help exist on both. Web adds a notification-settings child route. | — |
 | F-011 | Patients and medical records | WF-011 | Patients and records | MATCH | List, form, switch, and record upload endpoints exist on both. Native upload and preview widgets are not all named on the web. | — |
 | F-012 | Payments and rewards | WF-012 | Payments and rewards | MATCH | Payment history, transaction detail, and rewards exist on both. | — |
-| F-013 | Mentor, diet, and yoga | WF-013 | Mentor, diet, and yoga | PARTIAL | Mentor, diet, weekly meals, and yoga exist on both. Native payment-plan and session-breakdown screens are unrouted and have no web page. Water UI components are native-only while the water API exists on the web. Web diet service also calls plan status. | P1 |
+| F-013 | Mentor, diet, and yoga | WF-013 | Mentor, diet, and yoga | PARTIAL | Mentor, diet, weekly meals, and yoga exist on both. Native payment-plan and session-breakdown screens are unrouted and have no web page. The diet plan logs water from a hydration row that opens a glass picker.  Web diet service also calls plan status. | P1 |
 | F-014 | Legal, policies, and static pages | WF-014 | Legal and static | PARTIAL | Terms, privacy center, legal hub, and feedback exist on both. Native policy accept and policy detail are routed. Those web routes are commented out. About and Contact exist only on the web. | P0 |
 | F-015 | Notifications | WF-015 | Notifications | PARTIAL | Both list notifications. Native sends a welcome push through OneSignal. Web has browser notification permission and a settings page, and it can POST notifications. Welcome push is not on the web. | P1 |
 | F-016 | Location | WF-016 | Location | PARTIAL | Both pick a place with Google. Native shows an OS permission modal. Web uses the browser prompt. | P1 |
