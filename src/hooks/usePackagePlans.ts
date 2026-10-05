@@ -110,13 +110,19 @@ export const usePackagePlans = () => {
   return { plans: items, ...rest };
 };
 
-/** Purchased plans for Profile → My Plans. */
-export const useMyPackages = (filters: Omit<MyPackagesQuery, 'page'>) => {
-  const { status, search, id } = filters;
+/**
+ * Purchased plans. Profile → My Plans passes no doctor_id;
+ * Confirm Booking passes doctor_id and waits (`enabled`) until it is known.
+ */
+export const useMyPackages = (
+  filters: Omit<MyPackagesQuery, 'page'>,
+  enabled = true,
+) => {
+  const { status, search, id, doctor_id } = filters;
   const fetcher = useCallback(
-    (page: number) => getMyPackages({ status, search, id, page }),
-    [status, search, id],
+    (page: number) => getMyPackages({ status, search, id, doctor_id, page }),
+    [status, search, id, doctor_id],
   );
-  const { items, ...rest } = usePaginatedList<MyPlan>(fetcher, 'MY_PACKAGES');
+  const { items, ...rest } = usePaginatedList<MyPlan>(fetcher, 'MY_PACKAGES', enabled);
   return { purchases: items, ...rest };
 };

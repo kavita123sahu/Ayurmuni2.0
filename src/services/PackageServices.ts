@@ -107,6 +107,8 @@ export type MyPackagesQuery = {
   search?: string;
   page?: number;
   id?: string;
+  /** Confirm Booking only — plans usable with this doctor. Profile → My Plans omits it. */
+  doctor_id?: string;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -177,13 +179,14 @@ export const verifyPackagePayment = async (payload: VerifyPackagePaymentPayload)
   }
 };
 
-/** GET packages/my/?status=active&search=&page=1&id= */
+/** GET packages/my/?status=active&search=&page=1&id=&doctor_id= */
 export const getMyPackages = async (params: MyPackagesQuery = {}) => {
   try {
     let url = `packages/my/?page=${params.page ?? 1}`;
     if (params.status) url += `&status=${encodeURIComponent(params.status)}`;
     if (params.search) url += `&search=${encodeURIComponent(params.search)}`;
     if (params.id) url += `&id=${encodeURIComponent(params.id)}`;
+    if (params.doctor_id) url += `&doctor_id=${encodeURIComponent(params.doctor_id)}`;
     console.log('MY_PACKAGES_URL =>', url);
 
     const response = await apiClient(url, {

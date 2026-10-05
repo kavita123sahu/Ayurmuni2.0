@@ -210,6 +210,7 @@ const formatDisplayDate = (value?: string) => {
 const RazorpayScreen = ({ route, navigation }: any) => {
     const {
         doctorInfo,
+        doctorId,
         slotId,
         date,
         concern,
@@ -237,7 +238,13 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const [planQuoteLoading, setPlanQuoteLoading] = useState(false);
     const planPromptShownRef = useRef(false);
 
-    const { purchases: activePurchases } = useMyPackages({ status: 'active' });
+    const planDoctorId = String(
+        doctorId || doctorInfo?.doctor_id || doctorInfo?.id || '',
+    ).trim();
+    const { purchases: activePurchases } = useMyPackages(
+        { status: 'active', doctor_id: planDoctorId },
+        !!planDoctorId,
+    );
     const activePlans = useMemo(
         () => activePurchases.filter(isActivePlan),
         [activePurchases],
