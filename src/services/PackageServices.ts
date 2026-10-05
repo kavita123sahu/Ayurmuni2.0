@@ -187,7 +187,7 @@ export const getMyPackages = async (params: MyPackagesQuery = {}) => {
     if (params.search) url += `&search=${encodeURIComponent(params.search)}`;
     if (params.id) url += `&id=${encodeURIComponent(params.id)}`;
     if (params.doctor_id) url += `&doctor_id=${encodeURIComponent(params.doctor_id)}`;
-    console.log('MY_PACKAGES_URL =>', url);
+
 
     const response = await apiClient(url, {
       method: 'GET',
