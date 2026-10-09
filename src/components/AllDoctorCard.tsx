@@ -30,6 +30,8 @@ import {
 
   formatConsultationFeeLabel,
 
+  isDietitian,
+
 } from '../utils/doctorUtils';
 
 
@@ -255,6 +257,8 @@ const AllDoctorCard: React.FC<Props> = ({
     <DoctorListCard
 
       name={getDoctorDisplayName(item)}
+
+      isDietitian={isDietitian(item)}
 
       speciality={speciality}
 

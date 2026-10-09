@@ -1,8 +1,51 @@
 import { matchesSearch } from './searchUtils';
 
 import { formatRupee } from './currencyUtils';
+import type { ProductApiSort } from '../services/ProductServices';
 
-export type ProductSortKey = 'relevance' | 'price_low' | 'price_high' | 'discount';
+export type ProductSortKey =
+  | 'relevance'
+  | 'popularity'
+  | 'price_low'
+  | 'price_high'
+  | 'discount';
+
+export type ProductRatingKey = 'all' | '4' | '3';
+
+export const PRODUCT_RATING_OPTIONS: { key: ProductRatingKey; label: string }[] = [
+  { key: 'all', label: 'Any rating' },
+  { key: '4', label: '4★ & above' },
+  { key: '3', label: '3★ & above' },
+];
+
+export type DoshaKey = 'all' | 'Vata' | 'Pitta' | 'Kapha';
+
+export const DOSHA_OPTIONS: { key: DoshaKey; label: string }[] = [
+  { key: 'all', label: 'All doshas' },
+  { key: 'Vata', label: 'Vata' },
+  { key: 'Pitta', label: 'Pitta' },
+  { key: 'Kapha', label: 'Kapha' },
+];
+
+/** UI sort → `sort` query param on `customers/products/`. */
+export const toProductApiSort = (sortBy: ProductSortKey): ProductApiSort | null => {
+  switch (sortBy) {
+    case 'price_low':
+      return 'price_asc';
+    case 'price_high':
+      return 'price_desc';
+    case 'popularity':
+      return 'popularity';
+    default:
+      return null;
+  }
+};
+
+/** Price chip → `min_price` / `max_price` query params. */
+export const getPriceRangeBounds = (priceRange: PriceRangeKey) => {
+  const option = PRICE_RANGE_OPTIONS.find(o => o.key === priceRange);
+  return { min_price: option?.min ?? null, max_price: option?.max ?? null };
+};
 
 export type PriceRangeKey = 'all' | 'under_200' | '200_500' | '500_1000' | 'above_1000';
 
@@ -16,6 +59,7 @@ export const PRICE_RANGE_OPTIONS: { key: PriceRangeKey; label: string; min?: num
 
 export const PRODUCT_SORT_OPTIONS: { key: ProductSortKey; label: string }[] = [
   { key: 'relevance', label: 'Relevance' },
+  { key: 'popularity', label: 'Popularity' },
   { key: 'price_low', label: 'Price: Low to High' },
   { key: 'price_high', label: 'Price: High to Low' },
   { key: 'discount', label: 'Max Discount' },
@@ -40,7 +84,11 @@ export type ApplyProductFiltersInput = {
   brandNames?: string[] | null;
   brandIds?: string[] | null;
   priceRange?: PriceRangeKey;
+  minRating?: ProductRatingKey;
 };
+
+const getItemRating = (item: any) =>
+  Number(item?.average_rating ?? item?.rating ?? item?.avg_rating ?? NaN);
 
 const getItemBrandName = (item: any) =>
   String(item?.brand_name ?? item?.brand?.name ?? '').trim();
@@ -62,7 +110,9 @@ export const applyProductFilters = ({
   brandNames = null,
   brandIds = null,
   priceRange = 'all',
+  minRating = 'all',
 }: ApplyProductFiltersInput): any[] => {
+  const ratingFloor = minRating === 'all' ? null : Number(minRating);
   const list = Array.isArray(products) ? products : [];
   const q = search.trim().toLowerCase();
   const priceOption = PRICE_RANGE_OPTIONS.find(option => option.key === priceRange);
@@ -110,6 +160,12 @@ export const applyProductFilters = ({
       const price = getPrice(item);
       if (priceOption.min !== undefined && price < priceOption.min) return false;
       if (priceOption.max !== undefined && price > priceOption.max) return false;
+    }
+
+    if (ratingFloor != null) {
+      const rating = getItemRating(item);
+      // Rows without a rating are left to the API's `min_rating` filter.
+      if (Number.isFinite(rating) && rating < ratingFloor) return false;
     }
 
     return true;

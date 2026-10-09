@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
+import { fetchActivePlans, invalidateActivePlans, isSamePackage } from './useActivePlans';
 import {
+  MyPlan,
   PackageCheckout,
   PackagePlan,
   PackagePurchase,
@@ -19,24 +21,22 @@ import { Colors } from '../common/Colors';
 
 /**
  * Package CTA flow:
- * - open plan (`book_consultation`) → normal consultation booking
- * - prepaid package → purchase → Razorpay (order or subscription) → verify → My Plans
+ * - open plan (`book_consultation`) â†’ normal consultation booking
+ * - prepaid package â†’ purchase â†’ Razorpay (order or subscription) â†’ verify â†’ My Plans
  */
+export type PlanTransferPrompt = {
+  plan: PackagePlan;
+  /** Buying the same package again (credits keep the old validity). */
+  samePlan: boolean;
+  currentPlan: MyPlan;
+};
+
 export const usePackagePurchase = (navigation: any) => {
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [transferPrompt, setTransferPrompt] = useState<PlanTransferPrompt | null>(null);
 
-  const startPlan = useCallback(
+  const runPurchase = useCallback(
     async (plan: PackagePlan) => {
-      if (processingId) return;
-      console.log('PACKAGE_START =>', plan.id, plan.name, plan.button_action);
-
-      if (plan.button_action === 'book_consultation' || !plan.can_be_purchased) {
-        navigation.navigate('AllDoctors');
-        return;
-      }
-
-      if (!(await requireAuth('Please login to buy a care plan'))) return;
-
       setProcessingId(plan.id);
       try {
         const payer = await getPayerDetails();
@@ -56,7 +56,7 @@ export const usePackagePurchase = (navigation: any) => {
         const checkout: PackageCheckout = res.data.checkout;
         console.log('PACKAGE_PURCHASE_ID =>', purchase.id, '| status =>', purchase.status);
         console.log('PACKAGE_CHECKOUT =>', checkout);
-        console.log('PACKAGE_RAZORPAY_KEY =>', razorpayKey ? `${razorpayKey.slice(0, 8)}…` : '');
+        console.log('PACKAGE_RAZORPAY_KEY =>', razorpayKey ? `${razorpayKey.slice(0, 8)}â€¦` : '');
 
         const checkoutBase = {
           key: razorpayKey,
@@ -104,6 +104,7 @@ export const usePackagePurchase = (navigation: any) => {
           return;
         }
 
+        invalidateActivePlans();
         showSuccessToast(verify?.message || 'Care plan activated', 'success');
         navigation.navigate('MyPlansScreen', { highlightId: purchase.id });
       } catch (error: any) {
@@ -113,8 +114,48 @@ export const usePackagePurchase = (navigation: any) => {
         setProcessingId(null);
       }
     },
-    [navigation, processingId],
+    [navigation],
   );
 
-  return { startPlan, processingId };
+  const startPlan = useCallback(
+    async (plan: PackagePlan) => {
+      if (processingId) return;
+      console.log('PACKAGE_START =>', plan.id, plan.name, plan.button_action);
+
+      if (plan.button_action === 'book_consultation' || !plan.can_be_purchased) {
+        navigation.navigate('AllDoctors');
+        return;
+      }
+
+      if (!(await requireAuth('Please login to buy a care plan'))) return;
+
+      // Existing active plan â†’ confirm credit transfer before calling the purchase API
+      setProcessingId(plan.id);
+      const active = await fetchActivePlans(true);
+      setProcessingId(null);
+      if (active.length > 0) {
+        const same = active.find(p => isSamePackage(p, plan.id));
+        setTransferPrompt({
+          plan,
+          samePlan: !!same,
+          currentPlan: same ?? active[0],
+        });
+        console.log('PACKAGE_TRANSFER_PROMPT =>', plan.id, '| same =>', !!same);
+        return;
+      }
+
+      runPurchase(plan);
+    },
+    [navigation, processingId, runPurchase],
+  );
+
+  const confirmTransfer = useCallback(() => {
+    const plan = transferPrompt?.plan;
+    setTransferPrompt(null);
+    if (plan) runPurchase(plan);
+  }, [transferPrompt, runPurchase]);
+
+  const cancelTransfer = useCallback(() => setTransferPrompt(null), []);
+
+  return { startPlan, processingId, transferPrompt, confirmTransfer, cancelTransfer };
 };

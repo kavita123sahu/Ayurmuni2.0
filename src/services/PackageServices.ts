@@ -29,7 +29,6 @@ export type PackagePlan = {
   benefits: { includes: string[] };
 };
 
-/** packages/purchase/ and packages/my/ → purchase record */
 export type PackagePurchase = {
   id: string;
   package: string;
@@ -59,7 +58,6 @@ export type PackagePurchase = {
   created_at: string;
 };
 
-/** GET packages/my/ → data[] */
 export type MyPlanBenefit = {
   label: string;
   role: string;
@@ -82,6 +80,29 @@ export type MyPlan = {
   starts_at: string | null;
   expires_at: string | null;
   benefits: MyPlanBenefit[];
+  /** Benefits carried over into this plan from an earlier purchase. */
+  shifted_consumables?: MyPlanShiftedConsumable[];
+};
+
+export type MyPlanShiftedConsumable = {
+  id: string;
+  capability: string;
+  label: string;
+  role: string;
+  status: string;
+  quantity_total: number | null;
+  quantity_remaining: number | null;
+  shifted_from_purchase: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  original_valid_until: string | null;
+};
+
+export const isPlanExpired = (plan: Pick<MyPlan, 'status' | 'expires_at'>) => {
+  if (plan.status === 'expired') return true;
+  if (!plan.expires_at || plan.status === 'pending' || plan.status === 'cancelled') return false;
+  const t = new Date(plan.expires_at).getTime();
+  return Number.isFinite(t) && t < Date.now();
 };
 
 export type PackageCheckout = {

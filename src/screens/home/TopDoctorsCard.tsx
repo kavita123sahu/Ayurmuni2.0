@@ -7,7 +7,7 @@ import {
   getDoctorGridCardWidth,
   getHomeDoctorCardWidth,
 } from '../../constants/doctorGridLayout';
-import { formatConsultationFeeLabel } from '../../utils/doctorUtils';
+import { formatConsultationFeeLabel, isDietitian } from '../../utils/doctorUtils';
 
 const toLabelList = (value: any): string[] => {
   if (value == null || value === '') return [];
@@ -127,9 +127,11 @@ const TopDoctorsCard = ({
         const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
 
         const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
+        const dietitian = isDietitian(item);
         const cardProps = {
-          name: item.full_name || item.name || 'Doctor',
-          speciality: labels[0] || 'Ayurveda Specialist',
+          name: item.full_name || item.name || (dietitian ? 'Dietitian' : 'Doctor'),
+          speciality: labels[0] || (dietitian ? 'Diet & Nutrition' : 'Ayurveda Specialist'),
+          isDietitian: dietitian,
           ratingLabel,
           reviews: item?.total_reviews,
           totalPatients:

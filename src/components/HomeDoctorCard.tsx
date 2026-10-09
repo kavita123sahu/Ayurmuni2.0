@@ -10,6 +10,7 @@ import {
 import { formatDoctorExperience } from '../utils/doctorUtils';
 import { RupeeAmount } from '../utils/currencyUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 
 type Props = {
   name: string;
@@ -25,6 +26,8 @@ type Props = {
   availabilityLabel?: string;
   onPress?: () => void;
   cardWidth: number;
+  /** `is_dietitian` → "Dietitian" badge on the avatar. */
+  isDietitian?: boolean;
 };
 
 const HomeDoctorCard = ({
@@ -40,8 +43,10 @@ const HomeDoctorCard = ({
   availabilityLabel,
   onPress,
   cardWidth,
+  isDietitian = false,
 }: Props) => {
-  const subtitle = qualification || speciality || 'Ayurveda Specialist';
+  const subtitle =
+    qualification || speciality || (isDietitian ? 'Diet & Nutrition' : 'Ayurveda Specialist');
   const expLabel = formatDoctorExperience(experience);
   const reviewText =
     reviews != null && String(reviews).trim() !== '' ? ` (${reviews})` : '';
@@ -106,9 +111,17 @@ const HomeDoctorCard = ({
         {name}
       </Text>
 
-      <Text style={styles.qual} numberOfLines={1}>
-        {subtitle}
-      </Text>
+      <View style={styles.qualRow}>
+        {isDietitian ? (
+          <DietitianBadge visible style={styles.inlineDietitianBadge} />
+        ) : null}
+        <Text
+          style={[styles.qual, isDietitian && styles.qualInline]}
+          numberOfLines={1}
+        >
+          {subtitle}
+        </Text>
+      </View>
 
       <View style={styles.statsFeeRow}>
         <View style={styles.statsLeft}>
@@ -138,6 +151,25 @@ const HomeDoctorCard = ({
 export default React.memo(HomeDoctorCard);
 
 const styles = StyleSheet.create({
+  qualRow: {
+    width: '100%',
+    height: HOME_DOCTOR.qualHeight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  qualInline: {
+    width: undefined,
+    flexShrink: 1,
+    textAlign: 'left',
+  },
+  inlineDietitianBadge: {
+    alignSelf: 'center',
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
+  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: HOME_DOCTOR.cardRadius,

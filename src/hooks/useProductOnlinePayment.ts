@@ -322,6 +322,9 @@ const pickRazorpayOrderId = (paymentData: any): string => {
     paymentData?.razorpay_order_id,
     paymentData?.razorpayOrderId,
     paymentData?.rzp_order_id,
+    paymentData?.gateway_order_id,
+    paymentData?.checkout?.razorpay_order_id,
+    paymentData?.checkout?.order_id,
   ];
   for (const value of candidates) {
     const id = String(value ?? '').trim();
@@ -395,6 +398,8 @@ export const useProductOnlinePayment = () => {
           coupon_code,
         });
         delete (placePayload as any).payment_method;
+        // Without this the backend may create the order on its default gateway (Pine Labs).
+        (placePayload as any).payment_gateway = 'razorpay';
 
         console.log(
           'ONLINE_ORDER_PAYLOAD =>',
@@ -433,23 +438,34 @@ export const useProductOnlinePayment = () => {
 
         const paymentData = pickPaymentData(orderResponse);
         const razorpayKey = String(
-          paymentData?.razorpay_key ??
-            paymentData?.key ??
-            paymentData?.key_id ??
+          paymentData?.razorpay_key ||
+            paymentData?.gateway_key ||
+            paymentData?.key ||
+            paymentData?.key_id ||
+            paymentData?.checkout?.key ||
             '',
         ).trim();
         const razorpayOrderId = pickRazorpayOrderId(paymentData);
+        const returnedGateway = String(
+          paymentData?.payment_gateway ?? paymentData?.gateway ?? '',
+        ).toLowerCase();
 
         console.log('ONLINE_RAZORPAY_FIELDS =>', {
           razorpayKey: razorpayKey ? `${razorpayKey.slice(0, 8)}…` : '',
           razorpayOrderId,
+          returnedGateway,
           amount: paymentData?.amount,
           payment_id: paymentData?.payment_id,
+          responseKeys: Object.keys(paymentData ?? {}),
         });
 
         if (!razorpayKey || !razorpayOrderId) {
           showSuccessToast(
-            'Payment gateway not ready. Please try again.',
+            returnedGateway && returnedGateway !== 'razorpay'
+              ? `Order was created on ${returnedGateway}, not Razorpay. Please try again.`
+              : !razorpayKey
+                ? 'Payment gateway not ready: Razorpay key missing from server response.'
+                : 'Payment gateway not ready: Razorpay order was not created.',
             'error',
           );
           return;
@@ -519,11 +535,16 @@ export const useProductOnlinePayment = () => {
 
         setIsVerifyingPayment(true);
 
+        const gatewayOrderId = razorpayResult?.razorpay_order_id || razorpayOrderId;
+        // Legacy razorpay_* and generic gateway_* keys, so either backend contract verifies.
         const verifyBody: Record<string, any> = {
           payment_id: paymentData?.payment_id,
-          razorpay_order_id: razorpayOrderId,
+          razorpay_order_id: gatewayOrderId,
           razorpay_payment_id: razorpayResult?.razorpay_payment_id,
           razorpay_signature: razorpayResult?.razorpay_signature,
+          gateway_order_id: gatewayOrderId,
+          gateway_payment_id: razorpayResult?.razorpay_payment_id,
+          gateway_signature: razorpayResult?.razorpay_signature,
         };
 
         console.log('ONLINE_VERIFY_PAYLOAD =>', verifyBody);

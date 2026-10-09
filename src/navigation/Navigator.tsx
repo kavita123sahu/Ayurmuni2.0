@@ -340,6 +340,8 @@ import Onboarding from "../screens/auth/Onboarding";
 import PatientFAQ from "../screens/PatientFAQ";
 import OrderDetailsScreen from "../screens/orders/OrderDetailsScreen";
 import OrderHistory from "../screens/orders/OrderHistory";
+import ReturnRequestScreen from "../screens/orders/ReturnRequestScreen";
+import ReturnDetailsScreen from "../screens/orders/ReturnDetailsScreen";
 import ProductsScreen from "../screens/products/ProductsScreen";
 import ProductSearchScreen from "../screens/products/ProductSearchScreen";
 import CategoryProductsScreen from "../screens/products/CategoryProductsScreen";
@@ -458,6 +460,8 @@ const HomeStackNavigator = () => (
     <Stack.Screen name="TabStack" component={TabStack} />
     <Stack.Screen name="OrderHistory" component={OrderHistory} />
     <Stack.Screen name="OrderDetailsScreen" component={OrderDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ReturnRequestScreen" component={ReturnRequestScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
+    <Stack.Screen name="ReturnDetailsScreen" component={ReturnDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="Appointments" component={AppointmentScreen} />
     <Stack.Screen name="PatientDetails" component={PatientDetails} />
     <Stack.Screen name="PatientFAQ" component={PatientFAQ} />

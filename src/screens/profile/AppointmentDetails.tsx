@@ -48,6 +48,7 @@ import { SCREEN_THEME } from '../../constants/screenTheme';
 import CommonModal from '../../components/LogoutModal';
 import { usePatientData } from '../../hooks/usePatientData';
 import DoctorAvatar from '../../components/DoctorAvatar';
+import DietitianBadge from '../../components/DietitianBadge';
 import LinearGradient from 'react-native-linear-gradient';
 import PaymentHistoryTimeline from '../../components/PaymentHistoryTimeline';
 import { getPaymentHistory } from '../../utils/paymentHistoryUtils';
@@ -128,6 +129,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
               </View>
             ) : null}
           </View>
+          <DietitianBadge doctor={data} />
           {!!data?.doctor?.doctor_specialization && (
             <Text numberOfLines={1} style={styles.specialtyText}>
               {Array.isArray(data?.doctor?.doctor_specialization)

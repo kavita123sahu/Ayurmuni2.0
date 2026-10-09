@@ -16,6 +16,7 @@ import {
 } from '../constants/doctorGridLayout';
 import { RupeeAmount } from '../utils/currencyUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 
 type Props = {
   name: string;
@@ -32,6 +33,8 @@ type Props = {
   topRight?: React.ReactNode;
   variant?: 'list' | 'grid';
   cardWidth?: number;
+  /** `is_dietitian` → "Dietitian" badge. */
+  isDietitian?: boolean;
 };
 
 const LIST_PHOTO_W = 108;
@@ -58,6 +61,7 @@ const DoctorListCard = ({
   topRight,
   variant = 'list',
   cardWidth,
+  isDietitian = false,
 }: Props) => {
   const isGrid = variant === 'grid';
   const reviewText =
@@ -105,6 +109,23 @@ const DoctorListCard = ({
         numberOfLines={1}
       >
         {statusLabel}
+      </Text>
+    </View>
+  );
+
+  const renderSpecialityRow = (compact: boolean) => (
+    <View style={[styles.specialityRow, compact && styles.gridSpecialityRow]}>
+      {isDietitian ? (
+        <DietitianBadge visible style={styles.inlineDietitianBadge} />
+      ) : null}
+      <Text
+        style={[
+          compact ? styles.gridSpeciality : styles.listSpeciality,
+          styles.specialityText,
+        ]}
+        numberOfLines={1}
+      >
+        {speciality || (isDietitian ? 'Diet & Nutrition' : '')}
       </Text>
     </View>
   );
@@ -181,9 +202,7 @@ const DoctorListCard = ({
             {name}
           </Text>
 
-          <Text style={styles.gridSpeciality} numberOfLines={1}>
-            {speciality || ''}
-          </Text>
+          {renderSpecialityRow(true)}
 
           {renderStatsFeeRow(true)}
 
@@ -227,11 +246,7 @@ const DoctorListCard = ({
           {name}
         </Text>
 
-        {speciality ? (
-          <Text style={styles.listSpeciality} numberOfLines={1}>
-            {speciality}
-          </Text>
-        ) : null}
+        {speciality || isDietitian ? renderSpecialityRow(false) : null}
 
         {renderStatsFeeRow(false)}
 
@@ -254,6 +269,28 @@ const DoctorListCard = ({
 export default React.memo(DoctorListCard);
 
 const styles = StyleSheet.create({
+  specialityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minWidth: 0,
+    marginTop: 2,
+  },
+  gridSpecialityRow: {
+    height: DOCTOR_GRID.specialtyHeight,
+    marginTop: 0,
+  },
+  specialityText: {
+    flex: 1,
+    minWidth: 0,
+    marginTop: 0,
+  },
+  inlineDietitianBadge: {
+    alignSelf: 'center',
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
+  },
   cardPressed: {
     opacity: 0.96,
   },

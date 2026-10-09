@@ -17,6 +17,7 @@ import {
   canOfferReschedule,
 } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 
 export type AppointmentStatus =
   | 'confirmed'
@@ -149,10 +150,12 @@ const AppointmentCard = ({
               </View>
             ) : null}
           </View>
-
-          <Text style={styles.specialty} numberOfLines={1}>
-            {specialty}
-          </Text>
+          <View style={styles.specialtyRow}>
+            <DietitianBadge doctor={item} style={styles.inlineDietitianBadge} />
+            <Text style={[styles.specialty, styles.specialtyInline]} numberOfLines={1}>
+              {specialty}
+            </Text>
+          </View>
 
           <View style={styles.metaChips}>
             {schedule.dayLabel || schedule.weekday ? (
@@ -280,6 +283,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsMedium,
+  },
+  specialtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minWidth: 0,
+  },
+  specialtyInline: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inlineDietitianBadge: {
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
   },
   metaChips: {
     flexDirection: 'row',

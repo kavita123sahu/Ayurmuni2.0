@@ -261,6 +261,7 @@ const DietScreen = (props: any) => {
    * GET ?type=all — View all catalog (also used when search/filters are active)
    */
   const listType = routeWantsAll ? ('all' as const) : null;
+  const [statusTab, setStatusTab] = useState<DietStatusTab>('all');
 
   const listFilters = useMemo(
     () => ({
@@ -289,13 +290,20 @@ const DietScreen = (props: any) => {
       min_rating:
         ratingFilter && ratingFilter !== ALL_VALUE ? ratingFilter : undefined,
       sort:
-        sortFilter === 'popularity' ||
-          sortFilter === 'latest' ||
-          sortFilter === 'rating'
+        sortFilter === 'popularity' || sortFilter === 'latest'
           ? sortFilter
-          : undefined,
+          : sortFilter === 'rating' || sortFilter === 'ratings'
+            ? 'ratings'
+            : undefined,
+      patient_assignment_status:
+        statusTab === 'active'
+          ? 'active'
+          : statusTab === 'inactive'
+            ? 'paused'
+            : undefined,
     }),
     [
+      statusTab,
       debouncedSearch,
       prakritiFilter,
       diseaseFilter,
@@ -399,7 +407,6 @@ const DietScreen = (props: any) => {
   const [reviewCheckTick, setReviewCheckTick] = useState(0);
   /** From list tap — always show catalog detail (even when another plan is active). */
   const [browseDetailMode, setBrowseDetailMode] = useState(false);
-  const [statusTab, setStatusTab] = useState<DietStatusTab>('all');
   const [startWaterModalVisible, setStartWaterModalVisible] = useState(false);
   const pendingStartRef = useRef<{
     mode: 'direct' | 'switch';

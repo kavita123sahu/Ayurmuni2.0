@@ -78,6 +78,8 @@ export type RootStackParamList = {
   | undefined;
   OrderHistory: undefined;
   OrderDetailsScreen: { order?: any };
+  ReturnRequestScreen: { order: any };
+  ReturnDetailsScreen: { returnId: string; returnRequest?: any; order?: any };
   TabStack: undefined;
   MentorOrder: undefined;
   PatientDetails: undefined;

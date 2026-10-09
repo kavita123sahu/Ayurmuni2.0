@@ -1351,8 +1351,8 @@ const MyCart = ({ navigation }: any) => {
                                                                                         navigateToProductDetails(
                                                                                             navigation,
                                                                                             item?.variant_id ??
-                                                                                                item?.variant?.variant_id ??
-                                                                                                item?.variant?.id,
+                                                                                            item?.variant?.variant_id ??
+                                                                                            item?.variant?.id,
                                                                                         )
                                                                                     }
                                                                                 >
@@ -1370,7 +1370,10 @@ const MyCart = ({ navigation }: any) => {
                                                                                         <Text style={styles.uploadItemMeta}>
                                                                                             {outOfStock
                                                                                                 ? 'Out of stock'
-                                                                                                : `×${item.quantity || 1}`}
+                                                                                                : `×${item.quantity || 1}`} 
+                                                                                           <Text style={[styles.uploadItemPrice,{fontFamily: Fonts.PoppinsBold}]}>  {subtotal != null && Number.isFinite(subtotal)
+                                                                                                ? formatRupee(subtotal, { decimals: 2 })
+                                                                                                : null}</Text>
                                                                                         </Text>
                                                                                     </View>
                                                                                 </TouchableOpacity>
@@ -1575,8 +1578,8 @@ const MyCart = ({ navigation }: any) => {
                                                                                         navigateToProductDetails(
                                                                                             navigation,
                                                                                             item?.variant_id ??
-                                                                                                item?.variant?.variant_id ??
-                                                                                                item?.variant?.id,
+                                                                                            item?.variant?.variant_id ??
+                                                                                            item?.variant?.id,
                                                                                         )
                                                                                     }
                                                                                 >
@@ -1594,11 +1597,16 @@ const MyCart = ({ navigation }: any) => {
                                                                                         <Text style={styles.uploadItemName} numberOfLines={1}>
                                                                                             {item.name}
                                                                                         </Text>
-                                                                                        <Text style={styles.uploadItemMeta} numberOfLines={1}>
+                                                                                       <View style={{ flexDirection: 'row', alignItems: 'center',  }}>
+                                                                                         <Text style={styles.uploadItemMeta} numberOfLines={1}>
                                                                                             {outOfStock
                                                                                                 ? 'Out of stock'
-                                                                                                : `×${item.quantity || 1}`}
+                                                                                                : `×${item.quantity || 1}`} {" "} 
                                                                                         </Text>
+                                                                                        <Text style={[styles.uploadItemPrice,{fontFamily: Fonts.PoppinsBold}]}> { subtotal != null && Number.isFinite(subtotal)
+                                                                                ? formatRupee(subtotal, { decimals: 2 })
+                                                                                : null}</Text>
+                                                                                       </View>
                                                                                     </View>
                                                                                 </TouchableOpacity>
                                                                                 {!outOfStock ? (

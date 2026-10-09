@@ -736,7 +736,10 @@ import { requireAuth } from '../../services/guestAuth';
 import { Images } from '../../common/Images';
 import { safeGoBack } from '../../navigation/navigationUtils';
 import { navigateToProductDetails } from '../../navigation/productNavigation';
-import { useCategoryProducts } from '../../hooks/useCategoryProducts';
+import {
+  useCategoryProducts,
+  type CategoryProductFilter,
+} from '../../hooks/useCategoryProducts';
 import {
   getProduct,
   mapCatalogProductItem,
@@ -750,8 +753,12 @@ import { useHealthCategories } from '../../hooks/useHealthCategories';
 import { useBrands } from '../../hooks/useBrands';
 import {
   applyProductFilters,
+  getPriceRangeBounds,
+  toProductApiSort,
   ProductSortKey,
   PriceRangeKey,
+  ProductRatingKey,
+  DoshaKey,
 } from '../../utils/productSearchUtils';
 import { renderCategoryName } from '../../common/DataInterface';
 import TablerIcon from '../../components/TablerIcon';
@@ -877,6 +884,8 @@ const CategoryProductsScreen = (props: any) => {
   /** Names resolved from brands list by id — not from banner categoryName */
   const [brandNames, setBrandNames] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<PriceRangeKey>('all');
+  const [ratingFilter, setRatingFilter] = useState<ProductRatingKey>('all');
+  const [doshaFilter, setDoshaFilter] = useState<DoshaKey>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
     if (isBrandLanding || initialCategoryId === 'all') return 'all';
     if (rawMode === 'both') {
@@ -1077,7 +1086,7 @@ const CategoryProductsScreen = (props: any) => {
   const isBrandAllView =
     isBrandLanding && selectedCategoryId === 'all' && !!apiBrandNameId;
 
-  const productFilter = useMemo(() => {
+  const baseProductFilter = useMemo((): CategoryProductFilter => {
     // Brand landing + All → every product of the selected brand(s), any service
     if (isBrandAllView) {
       return {
@@ -1124,6 +1133,18 @@ const CategoryProductsScreen = (props: any) => {
     apiBrandNameId,
     serviceCategoryId,
   ]);
+
+  const productFilter = useMemo((): CategoryProductFilter => {
+    const { min_price, max_price } = getPriceRangeBounds(priceRange);
+    return {
+      ...baseProductFilter,
+      min_price,
+      max_price,
+      min_rating: ratingFilter === 'all' ? null : ratingFilter,
+      dosha_type: doshaFilter === 'all' ? null : doshaFilter,
+      sort: toProductApiSort(sortBy),
+    };
+  }, [baseProductFilter, priceRange, ratingFilter, doshaFilter, sortBy]);
 
   const fallbackCatalog = useMemo(() => {
     const store = Array.isArray(storeProducts) ? storeProducts : [];
@@ -1457,8 +1478,9 @@ const CategoryProductsScreen = (props: any) => {
         brandIds: brandIds.length > 0 ? brandIds : null,
         brandNames: brandNames.length > 0 ? brandNames : null,
         priceRange,
+        minRating: ratingFilter,
       }),
-    [products, sortBy, brandIds, brandNames, priceRange],
+    [products, sortBy, brandIds, brandNames, priceRange, ratingFilter],
   );
 
   const activeFilterCount = useMemo(() => {
@@ -1466,14 +1488,18 @@ const CategoryProductsScreen = (props: any) => {
     if (sortBy !== 'relevance') count += 1;
     if (brandIds.length > 0 || brandNames.length > 0) count += 1;
     if (priceRange !== 'all') count += 1;
+    if (ratingFilter !== 'all') count += 1;
+    if (doshaFilter !== 'all') count += 1;
     return count;
-  }, [sortBy, brandIds, brandNames, priceRange]);
+  }, [sortBy, brandIds, brandNames, priceRange, ratingFilter, doshaFilter]);
 
   const clearFilters = useCallback(() => {
     setSortBy('relevance');
     setBrandIds([]);
     setBrandNames([]);
     setPriceRange('all');
+    setRatingFilter('all');
+    setDoshaFilter('all');
   }, []);
 
   const handleRefresh = useCallback(async () => {
@@ -1716,6 +1742,10 @@ const CategoryProductsScreen = (props: any) => {
             }}
             priceRange={priceRange}
             onPriceRangeChange={setPriceRange}
+            rating={ratingFilter}
+            onRatingChange={setRatingFilter}
+            dosha={doshaFilter}
+            onDoshaChange={setDoshaFilter}
             brands={brandOptions}
             activeFilterCount={activeFilterCount}
             onClearFilters={clearFilters}

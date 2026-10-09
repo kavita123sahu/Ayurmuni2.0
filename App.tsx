@@ -157,8 +157,6 @@ console.error = () => { };
 //   dsn: 'https://207c5547f95ff58010564e7a7677c49a@o4512060861972480.ingest.us.sentry.io/4512060889104384',
 // });
 
-
-
 Sentry.init({
   dsn: 'https://9001d42ecc147294f70d0b65cfefbde5@o4512179016237056.ingest.us.sentry.io/4512179028295680',
 });

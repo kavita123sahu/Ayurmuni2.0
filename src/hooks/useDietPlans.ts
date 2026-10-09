@@ -2378,11 +2378,24 @@ export type DietListFilters = {
   health_disease_id?: string | number;
   is_paid?: boolean | string;
   duration?: string | number;
+  duration_min?: string | number;
+  duration_max?: string | number;
   calories?: string | number;
-  sort?: 'popularity' | 'latest' | 'rating' | string;
-  /** Client-side min avg rating; also switches list to catalog fetch. */
+  calories_min?: string | number;
+  calories_max?: string | number;
+  patient_assignment_status?: string;
+  sort?: 'popularity' | 'latest' | 'ratings' | 'rating' | string;
+  /** Sent to the API and also applied client-side; switches list to catalog fetch. */
   min_rating?: string | number;
 };
+
+const PASSTHROUGH_FILTER_KEYS = [
+  'duration_min',
+  'duration_max',
+  'calories_min',
+  'calories_max',
+  'patient_assignment_status',
+] as const;
 
 
 interface PlanDetail {
@@ -2438,8 +2451,16 @@ const normalizeListFilters = (filters?: DietListFilters): DietListFilters => {
       filters.is_paid === 'false'
       ? filters.is_paid
       : undefined;
+  const passthrough: DietListFilters = {};
+  PASSTHROUGH_FILTER_KEYS.forEach(key => {
+    const value = filters[key];
+    if (value != null && String(value).trim() !== '') {
+      (passthrough as any)[key] = value;
+    }
+  });
 
   return {
+    ...passthrough,
     ...(search ? { search } : {}),
     ...(prakriti && prakriti.toLowerCase() !== 'all' ? { prakriti } : {}),
     ...(health_category_id != null ? { health_category_id } : {}),
@@ -2698,10 +2719,9 @@ export const useDietPlans = (options: Options = {}) => {
       const requestId = listRequestIdRef.current;
 
       try {
-        const { min_rating: _minRating, ...apiFilters } = normalizedFilters;
         const query: DietPlanListParams = {
           ...(effectiveListType ? { type: effectiveListType } : {}),
-          ...apiFilters,
+          ...normalizedFilters,
           page: pageToLoad,
           page_size: DIET_PLAN_PAGE_SIZE,
         };
@@ -2751,7 +2771,7 @@ export const useDietPlans = (options: Options = {}) => {
         // When search/filters are active, only enrich matching rows — do not
         // inject unrelated assigned plans that would break filter conditions.
         const missingAssigned =
-          Object.keys(apiFilters).length > 0
+          Object.keys(normalizedFilters).length > 0
             ? []
             : assignmentOverlay.filter(p => {
                 const id = String(p.id || '');

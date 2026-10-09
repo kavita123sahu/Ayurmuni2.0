@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -19,7 +19,12 @@ import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import { useMyPackages } from '../../hooks/usePackagePlans';
 import { useDebounce } from '../../hooks/useDebaunce';
-import type { MyPlan, MyPlanBenefit } from '../../services/PackageServices';
+import {
+  isPlanExpired,
+  type MyPlan,
+  type MyPlanBenefit,
+  type MyPlanShiftedConsumable,
+} from '../../services/PackageServices';
 import { SCREEN_PADDING_H } from '../../constants/layout';
 
 const GOLD = '#E8C27A';
@@ -38,12 +43,12 @@ const PLAN_STATUS: Record<string, { label: string; dot: string; gradient: string
   cancelled: { label: 'Cancelled', dot: '#FCA5A5', gradient: ['#5F1D1D', '#7F2626', '#9B3434'] },
 };
 
-const BENEFIT_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
-  available: { label: 'Available', bg: '#E7F7EE', fg: '#15803D' },
-  used: { label: 'Used', bg: '#F1F3F2', fg: '#6B7874' },
-  consumed: { label: 'Used', bg: '#F1F3F2', fg: '#6B7874' },
-  expired: { label: 'Expired', bg: '#FDECEC', fg: '#B91C1C' },
-};
+// const BENEFIT_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
+//   available: { label: 'Available', bg: '#E7F7EE', fg: '#15803D' },
+//   used: { label: 'Used', bg: '#F1F3F2', fg: '#6B7874' },
+//   consumed: { label: 'Used', bg: '#F1F3F2', fg: '#6B7874' },
+//   expired: { label: 'Expired', bg: '#FDECEC', fg: '#B91C1C' },
+// };
 
 const humanize = (value: string) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ') : '';
@@ -80,11 +85,11 @@ const benefitIcon = (label: string): TablerIconName => {
 };
 
 function BenefitRow({ benefit, isLast }: { benefit: MyPlanBenefit; isLast: boolean }) {
-  const tone = BENEFIT_STATUS[benefit.status] ?? {
-    label: humanize(benefit.status),
-    bg: '#F1F3F2',
-    fg: '#44524D',
-  };
+  // const tone = BENEFIT_STATUS[benefit.status] ?? {
+  //   label: humanize(benefit.status),
+  //   bg: '#F1F3F2',
+  //   fg: '#44524D',
+  // };
   const hasQuantity = benefit.quantity_total !== null && benefit.quantity_total > 0;
   const remaining = benefit.quantity_remaining ?? 0;
   const progress = hasQuantity ? Math.max(0, Math.min(1, remaining / benefit.quantity_total!)) : 1;
@@ -99,13 +104,13 @@ function BenefitRow({ benefit, isLast }: { benefit: MyPlanBenefit; isLast: boole
           <Text style={styles.benefitLabel} numberOfLines={2}>
             {benefit.label}
           </Text>
-          {tone.label ? (
+          {/* {tone.label ? (
             <View style={[styles.benefitPill, { backgroundColor: tone.bg }]}>
               <Text style={[styles.benefitPillText, { color: tone.fg }]}>{tone.label}</Text>
             </View>
-          ) : null}
+          ) : null} */}
         </View>
-        {hasQuantity ? (
+        {/* {hasQuantity ? (
           <>
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${progress * 100}%` }]} />
@@ -118,18 +123,97 @@ function BenefitRow({ benefit, isLast }: { benefit: MyPlanBenefit; isLast: boole
           <Text style={styles.benefitMeta}>
             {benefit.role === 'grant' ? 'Included in your plan' : humanize(benefit.role)}
           </Text>
-        )}
+        )} */}
       </View>
     </View>
   );
 }
 
-function MyPlanCard({ plan, highlighted }: { plan: MyPlan; highlighted: boolean }) {
-  const status = PLAN_STATUS[plan.status] ?? {
+function ShiftedRow({
+  item,
+  isLast,
+  fromPlanName,
+}: {
+  item: MyPlanShiftedConsumable;
+  isLast: boolean;
+  fromPlanName: string;
+}) {
+  const total = item.quantity_total ?? 0;
+  const remaining = item.quantity_remaining ?? 0;
+  const hasQuantity = total > 0;
+  const shiftedOn = formatDate(item.valid_from);
+  const validTill = formatDate(item.valid_until);
+  const originalTill = formatDate(item.original_valid_until);
+  const exhausted = hasQuantity && remaining <= 0;
+  const fromLabel =
+    fromPlanName ||
+    (item.shifted_from_purchase ? `Plan #${item.shifted_from_purchase.slice(0, 8).toUpperCase()}` : '');
+
+  return (
+    <View style={[styles.benefit, !isLast && styles.benefitDivider]}>
+      <View style={[styles.benefitIcon, styles.shiftedIcon]}>
+        <TablerIcon name={benefitIcon(item.label)} size={17} color="#6D28D9" />
+      </View>
+      <View style={styles.benefitBody}>
+        <View style={styles.benefitTop}>
+          <Text style={styles.benefitLabel} numberOfLines={2}>
+            {item.label}
+          </Text>
+          <View style={styles.shiftedPill}>
+            <TablerIcon name="refresh" size={10} color="#6D28D9" />
+            <Text style={styles.shiftedPillText}>{humanize(item.status) || 'Shifted'}</Text>
+          </View>
+        </View>
+        {fromLabel ? (
+          <Text style={styles.shiftedFrom} numberOfLines={1}>
+            From {fromLabel}
+          </Text>
+        ) : null}
+        <View style={styles.shiftedMetaRow}>
+          {shiftedOn ? (
+            <View style={styles.shiftedMeta}>
+              <TablerIcon name="calendar" size={11} color="#7A8683" />
+              <Text style={styles.shiftedMetaText}>Shifted on {shiftedOn}</Text>
+            </View>
+          ) : null}
+          {hasQuantity ? (
+            <View style={styles.shiftedMeta}>
+              <TablerIcon name={exhausted ? 'circle-check' : 'clock'} size={11} color="#7A8683" />
+              <Text style={styles.shiftedMetaText}>
+                {exhausted ? `Used ${total}/${total}` : `${remaining} of ${total} left`}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        {validTill || originalTill ? (
+          <Text style={styles.shiftedValidity}>
+            {validTill ? `Valid till ${validTill}` : 'No expiry'}
+            {originalTill && originalTill !== validTill ? `  ·  Originally till ${originalTill}` : ''}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function MyPlanCard({
+  plan,
+  highlighted,
+  planNames,
+}: {
+  plan: MyPlan;
+  highlighted: boolean;
+  /** purchase id → plan name, to show where a shifted benefit came from. */
+  planNames: Record<string, string>;
+}) {
+  const expired = isPlanExpired(plan);
+  const statusKey = expired ? 'expired' : plan.status;
+  const status = PLAN_STATUS[statusKey] ?? {
     label: humanize(plan.status),
     dot: '#CBD5E1',
     gradient: ['#374151', '#4B5563', '#6B7280'],
   };
+  const shifted = (plan.shifted_consumables ?? []).filter(s => !!s?.label);
   const pending = plan.status === 'pending';
   const autopay = !!plan.billing_mode && plan.billing_mode !== 'one_time';
   const paid = Number(plan.paid_price) || 0;
@@ -144,7 +228,7 @@ function MyPlanCard({ plan, highlighted }: { plan: MyPlan; highlighted: boolean 
   const benefits = (plan.benefits ?? []).filter(b => !!b?.label);
   const available = benefits.filter(b => b.status === 'available').length;
   const showTimeline = !!startDate || !!expiryDate;
-  const showValidity = !!expiryDate && remainingDays !== null && plan.status === 'active';
+  const showValidity = !!expiryDate && remainingDays !== null && plan.status === 'active' && !expired;
 
   return (
     <View style={[styles.card, highlighted && styles.cardHighlighted]}>
@@ -211,6 +295,16 @@ function MyPlanCard({ plan, highlighted }: { plan: MyPlan; highlighted: boolean 
           </View>
         ) : null}
 
+        {expired ? (
+          <View style={styles.expiredNote}>
+            <TablerIcon name="alert-circle" size={14} color="#B91C1C" />
+            <Text style={styles.expiredText}>
+              {expiryDate ? `This plan expired on ${expiryDate}.` : 'This plan has expired.'} Its benefits can
+              no longer be used.
+            </Text>
+          </View>
+        ) : null}
+
         {showTimeline ? (
           <View style={styles.timeline}>
             {startDate ? (
@@ -228,7 +322,7 @@ function MyPlanCard({ plan, highlighted }: { plan: MyPlan; highlighted: boolean 
               <View style={[styles.timeCell, startDate ? styles.timeCellEnd : null]}>
                 <View style={styles.timeHead}>
                   <View style={[styles.timeDot, { backgroundColor: GOLD }]} />
-                  <Text style={styles.timeLabel}>Valid till</Text>
+                  <Text style={styles.timeLabel}>{expired ? 'Expired on' : 'Valid till'}</Text>
                 </View>
                 <Text style={styles.timeValue}>{expiryDate}</Text>
                 {expiryTime ? <Text style={styles.timeSub}>{expiryTime}</Text> : null}
@@ -264,9 +358,9 @@ function MyPlanCard({ plan, highlighted }: { plan: MyPlan; highlighted: boolean 
           <View>
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Your benefits</Text>
-              <Text style={styles.sectionMeta}>
+              {/* <Text style={styles.sectionMeta}>
                 {available}/{benefits.length} available
-              </Text>
+              </Text> */}
             </View>
             <View style={styles.benefits}>
               {benefits.map((benefit, index) => (
@@ -274,6 +368,25 @@ function MyPlanCard({ plan, highlighted }: { plan: MyPlan; highlighted: boolean 
                   key={`${plan.id}-${index}`}
                   benefit={benefit}
                   isLast={index === benefits.length - 1}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {shifted.length > 0 ? (
+          <View>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>Shifted benefits</Text>
+              <Text style={[styles.sectionMeta, styles.shiftedCount]}>{shifted.length} shifted</Text>
+            </View>
+            <View style={[styles.benefits, styles.shiftedList]}>
+              {shifted.map((item, index) => (
+                <ShiftedRow
+                  key={item.id || `${plan.id}-shifted-${index}`}
+                  item={item}
+                  isLast={index === shifted.length - 1}
+                  fromPlanName={item.shifted_from_purchase ? planNames[item.shifted_from_purchase] ?? '' : ''}
                 />
               ))}
             </View>
@@ -297,6 +410,14 @@ export default function MyPlansScreen(props: any) {
 
   const { purchases, loading, loadingMore, refreshing, error, loadMore, refresh } =
     useMyPackages({ status, search });
+
+  const planNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    purchases.forEach(p => {
+      if (p.id) map[p.id] = p.name;
+    });
+    return map;
+  }, [purchases]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -342,7 +463,9 @@ export default function MyPlansScreen(props: any) {
         keyExtractor={item => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        renderItem={({ item }) => <MyPlanCard plan={item} highlighted={item.id === highlightId} />}
+        renderItem={({ item }) => (
+          <MyPlanCard plan={item} highlighted={item.id === highlightId} planNames={planNames} />
+        )}
         onEndReachedThreshold={0.4}
         onEndReached={loadMore}
         refreshControl={
@@ -764,6 +887,77 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#6B7874',
     marginTop: 4,
+  },
+  flex1: {
+    flex: 1,
+  },
+  expiredNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FDF2F2',
+    borderRadius: 12,
+    padding: 10,
+  },
+  expiredText: {
+    flex: 1,
+    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: '#991B1B',
+  },
+  shiftedList: {
+    borderColor: '#E9E3FB',
+    backgroundColor: '#FBFAFF',
+  },
+  shiftedCount: {
+    color: '#6D28D9',
+  },
+  shiftedIcon: {
+    backgroundColor: '#EFEAFE',
+  },
+  shiftedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#EFEAFE',
+  },
+  shiftedPillText: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 10,
+    color: '#6D28D9',
+  },
+  shiftedFrom: {
+    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 11.5,
+    color: '#44524D',
+    marginTop: 2,
+  },
+  shiftedMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 12,
+    rowGap: 2,
+    marginTop: 4,
+  },
+  shiftedMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  shiftedMetaText: {
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 11,
+    color: '#7A8683',
+  },
+  shiftedValidity: {
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 10.5,
+    color: '#8A9591',
+    marginTop: 2,
   },
   planId: {
     fontFamily: Fonts.PoppinsMedium,

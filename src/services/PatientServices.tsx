@@ -127,56 +127,51 @@ export type DietPlanListParams = {
     health_disease_id?: string | number;
     prakriti?: string;
     is_paid?: boolean | string;
+    /** `active` | `completed` … — the patient's own assignment status. */
+    patient_assignment_status?: string;
+    /** `7`, `7-14` or `7+` */
     duration?: string | number;
+    duration_min?: string | number;
+    duration_max?: string | number;
+    /** `1500-1800` or `1500+` */
     calories?: string | number;
-    sort?: 'popularity' | 'latest' | 'rating' | string;
+    calories_min?: string | number;
+    calories_max?: string | number;
+    min_rating?: string | number;
+    sort?: 'popularity' | 'latest' | 'ratings' | 'rating' | string;
 };
+
+const DIET_PLAN_QUERY_KEYS: (keyof DietPlanListParams)[] = [
+    'id',
+    'type',
+    'page',
+    'page_size',
+    'search',
+    'health_category_id',
+    'health_disease_id',
+    'prakriti',
+    'is_paid',
+    'patient_assignment_status',
+    'duration',
+    'duration_min',
+    'duration_max',
+    'calories',
+    'calories_min',
+    'calories_max',
+    'min_rating',
+    'sort',
+];
 
 export const getDietPlans = async (params?: DietPlanListParams) => {
     try {
         const query = new URLSearchParams();
-        if (params?.id != null && String(params.id).trim() !== '') {
-            query.set('id', String(params.id));
-        }
-        if (params?.type) {
-            query.set('type', String(params.type));
-        }
-        if (params?.page != null) {
-            query.set('page', String(params.page));
-        }
-        if (params?.page_size != null) {
-            query.set('page_size', String(params.page_size));
-        }
-        if (params?.search != null && String(params.search).trim() !== '') {
-            query.set('search', String(params.search).trim());
-        }
-        if (
-            params?.health_category_id != null &&
-            String(params.health_category_id).trim() !== ''
-        ) {
-            query.set('health_category_id', String(params.health_category_id));
-        }
-        if (
-            params?.health_disease_id != null &&
-            String(params.health_disease_id).trim() !== ''
-        ) {
-            query.set('health_disease_id', String(params.health_disease_id));
-        }
-        if (params?.prakriti != null && String(params.prakriti).trim() !== '') {
-            query.set('prakriti', String(params.prakriti).trim());
-        }
-        if (params?.is_paid != null && params.is_paid !== '') {
-            query.set('is_paid', String(params.is_paid));
-        }
-        if (params?.duration != null && String(params.duration).trim() !== '') {
-            query.set('duration', String(params.duration));
-        }
-        if (params?.calories != null && String(params.calories).trim() !== '') {
-            query.set('calories', String(params.calories));
-        }
-        if (params?.sort != null && String(params.sort).trim() !== '') {
-            query.set('sort', String(params.sort).trim());
-        }
+        DIET_PLAN_QUERY_KEYS.forEach(key => {
+            let value: unknown = params?.[key];
+            if (value == null || String(value).trim() === '') return;
+            // API sort value is `ratings`; older screens pass `rating`.
+            if (key === 'sort' && value === 'rating') value = 'ratings';
+            query.append(key, String(value).trim());
+        });
 
         const qs = query.toString();
         const path = qs

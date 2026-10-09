@@ -33,7 +33,9 @@ import {
     formatDoctorExperience,
     resolveDoctorProfileImageUri,
     resolveConsultationFee,
+    isDietitian,
 } from '../../utils/doctorUtils';
+import DietitianBadge from '../../components/DietitianBadge';
 
 /* -------------------------------------------------------------------------- */
 /*                                   HELPERS                                  */
@@ -265,6 +267,10 @@ const DoctorProfile = ({ navigation, route }: any) => {
     );
 
     const doctorName = useMemo(() => getDoctorDisplayName(doctor), [doctor]);
+    const dietitian = useMemo(
+        () => isDietitian(doctor) || isDietitian(rawDoctorParam),
+        [doctor, rawDoctorParam],
+    );
     const ratingValue = useMemo(() => getDoctorRating(doctor), [doctor]);
     const profileImageUri = useMemo(
         () => resolveDoctorProfileImageUri(doctor),
@@ -549,7 +555,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
             <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
             <AppHeader
-                title="Doctor Details"
+                title={dietitian ? 'Dietitian Details' : 'Doctor Details'}
                 onLeftPress={() => navigation.goBack()}
                 rightIconName={isFavourite ? 'heart-filled' : 'heart'}
                 rightIconColor={isFavourite ? Colors.primaryColor : '#0F172A'}
@@ -627,6 +633,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                             <Text style={styles.doctorName} numberOfLines={2}>
                                 {doctorName}
                             </Text>
+                            <DietitianBadge visible={dietitian} size="md" />
 
                             {!!qualification && (
                                 <Text style={styles.qualification} numberOfLines={2}>
@@ -889,7 +896,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         <View style={[styles.sectionIcon, { backgroundColor: '#EAF8F4' }]}>
                             <TablerIcon name="notes" size={14} color={Colors.primaryColor} />
                         </View>
-                        <Text style={styles.sectionHeaderInline}>About doctor</Text>
+                        <Text style={styles.sectionHeaderInline}>
+                            {dietitian ? 'About dietitian' : 'About doctor'}
+                        </Text>
                     </View>
                         <Text style={styles.aboutText}>
                             {truncatedAbout}

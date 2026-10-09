@@ -45,7 +45,9 @@ import {
     getDoctorDisplayName,
     getDoctorRating,
     formatDoctorExperience,
+    isDietitian,
 } from '../../utils/doctorUtils';
+import DietitianBadge from '../../components/DietitianBadge';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(64, Math.max(54, Math.floor(SCREEN_WIDTH * 0.135)));
@@ -477,6 +479,7 @@ const DoctorSlot = (props: any) => {
                                 <Text style={styles.doctorName} numberOfLines={2}>
                                     {doctorName}
                                 </Text>
+                                <DietitianBadge doctor={doctor} />
 
                                 {!!qualification && (
                                     <Text

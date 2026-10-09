@@ -69,6 +69,7 @@ import { useHomeData } from '../../hooks/UseHomeData';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
+import { isDietitian } from '../../utils/doctorUtils';
 
 const SCREEN_PAD = getScreenPaddingH();
 const GRID_GAP = 10;
@@ -308,6 +309,7 @@ const ConsultHome = () => {
               uri: item?.doctor?.doctor_image,
             }}
             name={item?.doctor?.doctor_name}
+            isDietitian={isDietitian(item)}
             speciality={
               item?.doctor?.doctor_designation ||
               item?.doctor?.qualification ||

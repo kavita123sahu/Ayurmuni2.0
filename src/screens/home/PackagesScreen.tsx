@@ -21,6 +21,8 @@ import PackagePlanDetailSheet from '../../components/packages/PackagePlanDetailS
 import { getDiscountPercent, isCarePlan } from '../../components/packages/packageUi';
 import { usePackagePlans } from '../../hooks/usePackagePlans';
 import { usePackagePurchase } from '../../hooks/usePackagePurchase';
+import { useActivePlans } from '../../hooks/useActivePlans';
+import PlanTransferConfirmModal from '../../components/packages/PlanTransferConfirmModal';
 import type { PackagePlan } from '../../services/PackageServices';
 import { SCREEN_PADDING_H } from '../../constants/layout';
 
@@ -31,7 +33,9 @@ export default function PackagesScreen(props: any) {
   const insets = useSafeAreaInsets();
   const { plans, loading, loadingMore, refreshing, error, loadMore, refresh } =
     usePackagePlans();
-  const { startPlan, processingId } = usePackagePurchase(navigation);
+  const { startPlan, processingId, transferPrompt, confirmTransfer, cancelTransfer } =
+    usePackagePurchase(navigation);
+  const { ownsPackage } = useActivePlans();
 
   const [category, setCategory] = useState(ALL);
   const [selected, setSelected] = useState<PackagePlan | null>(null);
@@ -153,6 +157,7 @@ export default function PackagesScreen(props: any) {
             onPress={setSelected}
             onPressCta={setSelected}
             processing={processingId === item.id}
+            owned={ownsPackage(item.id)}
           />
         )}
         onEndReachedThreshold={0.4}
@@ -192,8 +197,15 @@ export default function PackagesScreen(props: any) {
       <PackagePlanDetailSheet
         plan={selected}
         processing={!!selected && processingId === selected.id}
+        owned={!!selected && ownsPackage(selected.id)}
         onClose={() => setSelected(null)}
         onCta={onCta}
+      />
+
+      <PlanTransferConfirmModal
+        prompt={transferPrompt}
+        onYes={confirmTransfer}
+        onNo={cancelTransfer}
       />
     </SafeAreaView>
   );

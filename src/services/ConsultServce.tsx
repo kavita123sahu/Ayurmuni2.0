@@ -1243,14 +1243,19 @@ export const createConsultationPayment = async (data: object) => {
  * Retry Razorpay checkout for an appointment whose payment was already created.
  * GET/POST /payments/customer/consultation/payment/retry/?appointment_id=
  */
-export const retryConsultationPayment = async (appointmentId: string | number) => {
+export const retryConsultationPayment = async (
+    appointmentId: string | number,
+    paymentGateway?: 'pinelabs' | 'razorpay',
+) => {
     try {
         const id = encodeURIComponent(String(appointmentId));
-        console.log('CONSULT_RETRY => appointment_id=', appointmentId);
-        const response = await apiClient(
-            `payments/customer/consultation/payment/retry/?appointment_id=${id}`,
-            { method: 'POST' },
-        );
+        let url = `payments/customer/consultation/payment/retry/?appointment_id=${id}`;
+        if (paymentGateway) url += `&payment_gateway=${paymentGateway}`;
+        console.log('CONSULT_RETRY =>', url);
+        const response = await apiClient(url, {
+            method: 'POST',
+            body: JSON.stringify(paymentGateway ? { payment_gateway: paymentGateway } : {}),
+        });
         return response;
     } catch (error) {
         throw error;
@@ -1271,21 +1276,36 @@ export const getConsultationFeeQuote = async (
         if (purchaseId) url += `&package_purchase_id=${encodeURIComponent(purchaseId)}`;
         console.log('CONSULT_FEE_QUOTE_URL =>', url);
         const response = await apiClient(url, { method: 'GET' });
-        console.log('CONSULT_FEE_QUOTE_RESPONSE =>', JSON.stringify(response));
-        return response;
+        console.log('CONSULT_FEE_QUOTE_RESPONSE =>', response);
+        return response; 
     } catch (error) {
         throw error;
     }
 };
 
 
-export const verifyConsultationPayment = async (data: object) => {
+/**
+ * POST payments/customer/consultation/payment/verify-payment/
+ * PineLabs: { payment_id, gateway_order_id }
+ * Razorpay: { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
+ */
+export type VerifyConsultationPaymentPayload =
+    | { payment_id: string; gateway_order_id: string }
+    | {
+        payment_id: string;
+        gateway_order_id: string;
+        gateway_payment_id: string;
+        gateway_signature: string;
+    };
+
+export const verifyConsultationPayment = async (data: VerifyConsultationPaymentPayload) => {
     try {
+        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(data));
         const response = await apiClient('payments/customer/consultation/payment/verify-payment/', {
             method: 'POST',
             body: JSON.stringify(data)
         });
-
+        console.log('CONSULT_VERIFY_RESPONSE =>', response);
         return response;
     } catch (error) {
         throw error;

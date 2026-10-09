@@ -14,6 +14,8 @@ import PackagePlanDetailSheet from './PackagePlanDetailSheet';
 import { Fonts } from '../../common/Fonts';
 import { usePackagePlans } from '../../hooks/usePackagePlans';
 import { usePackagePurchase } from '../../hooks/usePackagePurchase';
+import { useActivePlans } from '../../hooks/useActivePlans';
+import PlanTransferConfirmModal from './PlanTransferConfirmModal';
 import type { PackagePlan } from '../../services/PackageServices';
 import { HORIZONTAL_SCROLL_CONTENT } from '../../constants/layout';
 import { PLAN_GOLD, isCarePlan } from './packageUi';
@@ -34,7 +36,10 @@ type Props = {
 const PackagePlansSection = ({ navigation, home = false, title = 'Care Plans' }: Props) => {
   const { width: screenWidth } = useWindowDimensions();
   const { plans, loading } = usePackagePlans();
-  const { startPlan, processingId } = usePackagePurchase(navigation);
+  console.log('PackagePlansSection => plans.length', plans);
+  const { startPlan, processingId, transferPrompt, confirmTransfer, cancelTransfer } =
+    usePackagePurchase(navigation);
+  const { ownsPackage } = useActivePlans();
   const [selected, setSelected] = useState<PackagePlan | null>(null);
 
   // One native-driver value drives card shine, top glide line and tagline pulse.
@@ -134,6 +139,7 @@ const PackagePlansSection = ({ navigation, home = false, title = 'Care Plans' }:
                 width={cardWidth}
                 onPress={setSelected}
                 shine={sweep}
+                owned={ownsPackage(item.id)}
               />
             )}
           />
@@ -143,8 +149,15 @@ const PackagePlansSection = ({ navigation, home = false, title = 'Care Plans' }:
       <PackagePlanDetailSheet
         plan={selected}
         processing={!!selected && processingId === selected.id}
+        owned={!!selected && ownsPackage(selected.id)}
         onClose={() => setSelected(null)}
         onCta={onCta}
+      />
+
+      <PlanTransferConfirmModal
+        prompt={transferPrompt}
+        onYes={confirmTransfer}
+        onNo={cancelTransfer}
       />
     </View>
   );

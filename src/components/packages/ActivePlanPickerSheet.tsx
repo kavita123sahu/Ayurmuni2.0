@@ -17,8 +17,10 @@ import {
   getConsultBenefit,
   getPlanConsultState,
   PlanConsultState,
+  PlanEligibility,
   PLAN_GOLD,
 } from './packageUi';
+import { formatRupee } from '../../utils/currencyUtils';
 
 const UNUSABLE_LABEL: Record<Exclude<PlanConsultState, 'usable'>, string> = {
   exhausted: 'Consultation already used',
@@ -26,9 +28,13 @@ const UNUSABLE_LABEL: Record<Exclude<PlanConsultState, 'usable'>, string> = {
   no_consult: 'Consultation not included',
 };
 
+type RowStatus = { usable: boolean; loading: boolean; label: string };
+
 type Props = {
   visible: boolean;
   plans: MyPlan[];
+  /** Fee-quote package_funding per plan id; when present it decides selectability. */
+  eligibility?: Record<string, PlanEligibility>;
   selectedId?: string | null;
   onSelect: (plan: MyPlan) => void;
   onPayNormally: () => void;
@@ -54,6 +60,7 @@ const getRemainingLabel = (plan: MyPlan) => {
 const ActivePlanPickerSheet = ({
   visible,
   plans,
+  eligibility,
   selectedId,
   onSelect,
   onPayNormally,
@@ -62,16 +69,36 @@ const ActivePlanPickerSheet = ({
   const insets = useSafeAreaInsets();
   const [pickedId, setPickedId] = useState<string | null>(selectedId ?? null);
 
-  const firstUsableId =
-    plans.find(p => getPlanConsultState(p) === 'usable')?.id ?? null;
+  const getRowStatus = (plan: MyPlan): RowStatus => {
+    const quote = eligibility?.[plan.id];
+    if (quote) {
+      if (quote.loading) {
+        return { usable: false, loading: true, label: 'Checking plan for this doctor…' };
+      }
+      if (!quote.canFund) {
+        return { usable: false, loading: false, label: quote.reason };
+      }
+      const left =
+        quote.quantityRemaining != null
+          ? `${quote.quantityRemaining} consultation${quote.quantityRemaining === 1 ? '' : 's'} left`
+          : getRemainingLabel(plan);
+      return { usable: true, loading: false, label: left };
+    }
+    const state = getPlanConsultState(plan);
+    return state === 'usable'
+      ? { usable: true, loading: false, label: getRemainingLabel(plan) }
+      : { usable: false, loading: false, label: UNUSABLE_LABEL[state] };
+  };
+
+  const firstUsableId = plans.find(p => getRowStatus(p).usable)?.id ?? null;
   const hasUsable = firstUsableId != null;
+  const checking = plans.some(p => getRowStatus(p).loading);
 
   useEffect(() => {
     if (visible) setPickedId(selectedId ?? firstUsableId);
   }, [visible, selectedId, firstUsableId]);
 
-  const picked =
-    plans.find(p => p.id === pickedId && getPlanConsultState(p) === 'usable') ?? null;
+  const picked = plans.find(p => p.id === pickedId && getRowStatus(p).usable) ?? null;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -92,9 +119,11 @@ const ActivePlanPickerSheet = ({
             <View style={styles.heroText}>
               <Text style={styles.heroTitle}>Your active plans</Text>
               <Text style={styles.heroSub}>
-                {hasUsable
-                  ? 'No payment needed — this consultation is covered by your plan.'
-                  : 'Consultations in your plans are used up. You can continue with normal payment.'}
+                {checking && !hasUsable
+                  ? 'Checking which of your plans can be used for this doctor…'
+                  : hasUsable
+                    ? 'No payment needed — this consultation is covered by your plan.'
+                    : 'Your plans cannot be used for this consultation. You can continue with normal payment.'}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -106,11 +135,14 @@ const ActivePlanPickerSheet = ({
 
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
             {plans.map(plan => {
-              const state = getPlanConsultState(plan);
-              const usable = state === 'usable';
+              const status = getRowStatus(plan);
+              const usable = status.usable;
               const selected = usable && plan.id === pickedId;
-              const remaining = usable ? getRemainingLabel(plan) : UNUSABLE_LABEL[state];
+              // const remaining = status.label;
+               const remaining = 'Doctor is not eligible for this plan';
               const expires = formatDate(plan.expires_at);
+              const payable = eligibility?.[plan.id]?.payable;
+              const planPrice = Number(plan.paid_price || plan.original_price || 0);
               return (
                 <TouchableOpacity
                   key={plan.id}
@@ -134,22 +166,34 @@ const ActivePlanPickerSheet = ({
                     <Text style={styles.rowName} numberOfLines={2}>
                       {plan.name}
                     </Text>
-                    {remaining ? (
+                    {/* {remaining ? ( */}
                       <Text
-                        style={[styles.rowRemaining, !usable && styles.rowRemainingOff]}
-                        numberOfLines={1}
+                        style={[
+                          styles.rowRemaining,
+                          !usable && (status.loading ? styles.rowRemainingLoading : styles.rowRemainingOff),
+                        ]}
+                        numberOfLines={2}
                       >
+                        {/* {remaining} */}
                         {remaining}
                       </Text>
-                    ) : null}
+                    {/* ) : null} */}
                     {expires ? (
                       <Text style={styles.rowMeta} numberOfLines={1}>
                         Valid till {expires}
                       </Text>
                     ) : null}
                   </View>
-                  <View style={[styles.radio, selected && styles.radioOn]}>
-                    {selected ? <View style={styles.radioDot} /> : null}
+                  <View style={styles.priceCol}>
+                    {planPrice > 0 ? (
+                      <Text style={styles.planPrice}>{formatRupee(planPrice)}</Text>
+                    ) : null}
+                    {usable && payable != null ? (
+                      <Text style={styles.payNow}>Pay {formatRupee(payable)}</Text>
+                    ) : null}
+                    <View style={[styles.radio, selected && styles.radioOn]}>
+                      {selected ? <View style={styles.radioDot} /> : null}
+                    </View>
                   </View>
                 </TouchableOpacity>
               );
@@ -158,7 +202,7 @@ const ActivePlanPickerSheet = ({
 
           <TouchableOpacity
             activeOpacity={0.9}
-            disabled={hasUsable && !picked}
+            disabled={hasUsable ? !picked : checking}
             onPress={() => {
               if (!hasUsable) {
                 onPayNormally();
@@ -169,7 +213,7 @@ const ActivePlanPickerSheet = ({
             style={styles.primaryWrap}
           >
             <LinearGradient
-              colors={!hasUsable || picked ? ['#0D614E', '#14937A'] : ['#9CB8AE', '#9CB8AE']}
+              colors={(hasUsable ? picked : !checking) ? ['#0D614E', '#14937A'] : ['#9CB8AE', '#9CB8AE']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.primaryBtn}
@@ -180,7 +224,7 @@ const ActivePlanPickerSheet = ({
                 color="#FFFFFF"
               />
               <Text style={styles.primaryText}>
-                {hasUsable ? 'Use this plan' : 'Continue with payment'}
+                {hasUsable ? 'Use this plan' : checking ? 'Checking plans…' : 'Continue with payment'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -284,6 +328,23 @@ const styles = StyleSheet.create({
   },
   rowRemainingOff: {
     color: '#B91C1C',
+  },
+  rowRemainingLoading: {
+    color: '#64748B',
+  },
+  priceCol: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  planPrice: {
+    fontSize: 12.5,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  payNow: {
+    fontSize: 10.5,
+    color: '#15803D',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   rowIcon: {
     width: 36,

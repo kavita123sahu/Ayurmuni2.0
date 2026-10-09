@@ -39,6 +39,34 @@ import {
 } from '../../services/PrescriptionRequestService';
 import { formatRupee } from '../../utils/currencyUtils';
 import { PrescriptionFilePreview } from '../../components/PrescriptionFilePreview';
+import { formatOrderId } from '../../utils/formatDisplayId';
+import { formatOrderDateTime } from '../../utils/orderDetailUtils';
+import {
+  ReturnRequest,
+  getAllReturns,
+  getOrderReturns,
+  getReasonLabel,
+  getReturnStatusMeta,
+  normalizeReturnList,
+} from '../../services/ReturnService';
+
+type ReturnFilter = 'all' | 'active' | 'refunded' | 'rejected';
+
+const RETURN_FILTERS: { key: ReturnFilter; label: string; color: string; bg: string }[] = [
+  { key: 'all', label: 'All', color: '#475569', bg: '#F1F5F9' },
+  { key: 'active', label: 'In progress', color: '#1E40AF', bg: '#DBEAFE' },
+  { key: 'refunded', label: 'Refunded', color: '#166534', bg: '#DCFCE7' },
+  { key: 'rejected', label: 'Rejected', color: '#991B1B', bg: '#FEE2E2' },
+];
+
+const RETURN_GROUPS: Record<Exclude<ReturnFilter, 'all'>, string[]> = {
+  active: ['requested', 'pending', 'approved', 'pickup_scheduled', 'picked_up', 'received', 'refund_initiated'],
+  refunded: ['refunded', 'completed'],
+  rejected: ['rejected', 'cancelled'],
+};
+
+/** Orders that can carry return requests (used when the all-returns endpoint is unavailable). */
+const RETURNABLE_ORDER_STATUSES = ['delivered', 'completed', 'returned'];
 
 // ─── Status filter config ─────────────────────────────────────────────────────
 
@@ -58,7 +86,7 @@ const STATUS_GROUPS: Record<StatusFilter, string[]> = {
   all: [],
   pending: ['pending', 'confirmed'],
   processing: ['processing', 'packed'],
-  shipped: ['shipped' ],
+  shipped: ['shipped'],
   //'dispatched', 'in_transit', 'out_for_delivery'      on the shipped filter applied 
   delivered: ['delivered', 'completed'],
   cancelled: ['cancelled', 'returned'],
@@ -66,7 +94,7 @@ const STATUS_GROUPS: Record<StatusFilter, string[]> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type HistoryTab = 'orders' | 'requested';
+type HistoryTab = 'orders' | 'returns' | 'requested';
 
 const requestStatusTone = (item: any) => {
   if (isPrescriptionApproved(item)) {
@@ -79,7 +107,9 @@ const requestStatusTone = (item: any) => {
 };
 
 const OrderHistory = (props: any) => {
-  const openedTab = props.route?.params?.tab === 'requested' ? 'requested' : 'orders';
+  const routeTab = props.route?.params?.tab;
+  const openedTab: HistoryTab =
+    routeTab === 'requested' || routeTab === 'returns' ? routeTab : 'orders';
   const highlightRequestId = String(props.route?.params?.requestId || '');
   const [activeTab, setActiveTab] = useState<HistoryTab>(openedTab);
   const [searchText, setSearchText] = useState('');
@@ -132,20 +162,116 @@ const OrderHistory = (props: any) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (props.route?.params?.tab === 'requested') {
-        setActiveTab('requested');
+      const tab = props.route?.params?.tab;
+      if (tab === 'requested' || tab === 'returns') {
+        setActiveTab(tab);
       }
       loadRequests();
     }, [loadRequests, props.route?.params?.tab]),
   );
+
+  // ── Returns tab ────────────────────────────────────────────────────────────
+  const [returns, setReturns] = useState<ReturnRequest[]>([]);
+  const [returnsLoading, setReturnsLoading] = useState(false);
+  const [returnsRefreshing, setReturnsRefreshing] = useState(false);
+  const [returnsError, setReturnsError] = useState<string | null>(null);
+  const [returnsLoaded, setReturnsLoaded] = useState(false);
+  const [returnFilter, setReturnFilter] = useState<ReturnFilter>('all');
+  const ordersRef = useRef(orderListItems);
+  ordersRef.current = orderListItems;
+
+  const loadReturns = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'refresh') setReturnsRefreshing(true);
+    else setReturnsLoading(true);
+    setReturnsError(null);
+    try {
+      let list: ReturnRequest[] = [];
+      let allOk = false;
+      try {
+        const res = await getAllReturns({ page_size: 50 });
+        if (res?.success !== false) {
+          list = normalizeReturnList(res);
+          allOk = true;
+        }
+      } catch {
+        allOk = false;
+      }
+      if (!allOk) {
+        // Fall back to per-order returns for delivered / returned orders.
+        const candidates = ordersRef.current
+          .filter(o => RETURNABLE_ORDER_STATUSES.includes(String(o.status ?? '').toLowerCase()))
+          .slice(0, 20);
+        const results = await Promise.all(
+          candidates.map(o =>
+            getOrderReturns(o.raw?.id ?? o.id)
+              .then(normalizeReturnList)
+              .catch(() => [] as ReturnRequest[]),
+          ),
+        );
+        list = results.flat();
+      }
+      list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      setReturns(list);
+    } catch {
+      setReturnsError('Could not load returns.');
+    } finally {
+      setReturnsLoaded(true);
+      setReturnsLoading(false);
+      setReturnsRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab === 'returns') loadReturns(returnsLoaded ? 'refresh' : 'initial');
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, loadReturns]),
+  );
+
+  const filteredReturns = useMemo(() => {
+    let list = returns;
+    if (returnFilter !== 'all') {
+      const allowed = RETURN_GROUPS[returnFilter];
+      list = list.filter(r => allowed.includes(r.status));
+    }
+    const q = debouncedSearch.trim();
+    if (q) {
+      list = list.filter(r =>
+        matchesSearch(
+          q,
+          r.orderCode,
+          r.orderCode.replace(/^ORD-/i, ''),
+          r.reason,
+          getReasonLabel(r.reasonCode),
+          getReturnStatusMeta(r.status).label,
+          r.reversePickupCode,
+        ),
+      );
+    }
+    return list;
+  }, [returns, returnFilter, debouncedSearch]);
+
+  const returnCounts = useMemo(() => {
+    const counts: Record<ReturnFilter, number> = { all: returns.length, active: 0, refunded: 0, rejected: 0 };
+    returns.forEach(r => {
+      (Object.keys(RETURN_GROUPS) as Exclude<ReturnFilter, 'all'>[]).forEach(key => {
+        if (RETURN_GROUPS[key].includes(r.status)) counts[key]++;
+      });
+    });
+    return counts;
+  }, [returns]);
 
   const handleRefresh = useCallback(() => {
     if (activeTab === 'requested') {
       loadRequests('refresh');
       return;
     }
+    if (activeTab === 'returns') {
+      loadReturns('refresh');
+      return;
+    }
     refresh();
-  }, [activeTab, loadRequests, refresh]);
+  }, [activeTab, loadRequests, loadReturns, refresh]);
 
   // Status chip filter (search is server-side via useOrders)
   const filteredOrders = useMemo(() => {
@@ -165,14 +291,14 @@ const OrderHistory = (props: any) => {
         const raw = item.raw || {};
         const itemTitles = Array.isArray(raw?.items)
           ? raw.items
-              .map(
-                (line: any) =>
-                  line?.variant?.variant_title ||
-                  line?.product_name ||
-                  line?.name ||
-                  '',
-              )
-              .join(' ')
+            .map(
+              (line: any) =>
+                line?.variant?.variant_title ||
+                line?.product_name ||
+                line?.name ||
+                '',
+            )
+            .join(' ')
           : '';
         const orderCodeRaw = String(
           raw?.order_code ?? raw?.order_number ?? item.id ?? '',
@@ -222,7 +348,7 @@ const OrderHistory = (props: any) => {
   }, [orderListItems]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       <StatusBar
         barStyle={SCREEN_THEME.statusBarStyle}
         backgroundColor={SCREEN_THEME.statusBarBackground}
@@ -235,71 +361,160 @@ const OrderHistory = (props: any) => {
         showCart
       />
 
-      <SegmentTabs
-        tabs={[
-          { key: 'orders', label: 'My orders' },
-          {
-            key: 'requested',
-            label: requests.length
-              ? `Requested (${requests.length})`
-              : 'Requested',
-          },
-        ]}
-        activeKey={activeTab}
-        onChange={key => setActiveTab(key as HistoryTab)}
-        style={styles.historyTabs}
-      />
+      <View style={styles.topPanel}>
+        <SegmentTabs
+          variant="underline"
+          tabs={[
+            { key: 'orders', label: 'Orders' },
+            { key: 'returns', label: returns.length ? `Returns (${returns.length})` : 'Returns' },
+            { key: 'requested', label: requests.length ? `Requested (${requests.length})` : 'Requested' },
+          ]}
+          activeKey={activeTab}
+          onChange={key => setActiveTab(key as HistoryTab)}
+          style={styles.historyTabs}
+        />
 
-      {activeTab === 'orders' ? (
-        <View style={styles.searchBlock}>
-          <ExpandableSearch
-            placeholder="Search order id, product, status..."
-            value={searchText}
-            onChangeText={setSearchText}
-            showTrigger={false}
-            expanded
-          />
-        </View>
-      ) : null}
+        {activeTab !== 'requested' ? (
+          <View style={styles.searchBlock}>
+            <ExpandableSearch
+              placeholder={
+                activeTab === 'returns'
+                  ? 'Search returns by order id, reason…'
+                  : 'Search order id, product, status…'
+              }
+              value={searchText}
+              onChangeText={setSearchText}
+              showTrigger={false}
+              expanded
+            />
+          </View>
+        ) : null}
 
-      {/* Status filter chips */}
-      {activeTab === 'orders' ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterBar}
-          contentContainerStyle={styles.filterBarContent}
-        >
-          {STATUS_FILTERS.map(f => {
-            const active = statusFilter === f.key;
-            const count = countByStatus[f.key];
-            return (
-              <TouchableOpacity
-                key={f.key}
-                onPress={() => setStatusFilter(f.key)}
-                activeOpacity={0.8}
-                style={[
-                  styles.chip,
-                  active && { backgroundColor: f.bg, borderColor: f.color },
-                ]}
-              >
-                <Text style={[styles.chipText, active && { color: f.color }]}>
-                  {f.label}
-                </Text>
-                {count > 0 && (
-                  <View style={[styles.chipBadge, active && { backgroundColor: f.color }]}>
-                    <Text style={[styles.chipBadgeText, active && { color: '#FFFFFF' }]}>
-                      {count}
-                    </Text>
+        {activeTab !== 'requested' ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterBar}
+            contentContainerStyle={styles.filterBarContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {(activeTab === 'returns' ? RETURN_FILTERS : STATUS_FILTERS).map(f => {
+              const active =
+                activeTab === 'returns' ? returnFilter === f.key : statusFilter === f.key;
+              const count =
+                activeTab === 'returns'
+                  ? returnCounts[f.key as ReturnFilter]
+                  : countByStatus[f.key as StatusFilter];
+              return (
+                <TouchableOpacity
+                  key={f.key}
+                  onPress={() =>
+                    activeTab === 'returns'
+                      ? setReturnFilter(f.key as ReturnFilter)
+                      : setStatusFilter(f.key as StatusFilter)
+                  }
+                  activeOpacity={0.8}
+                  style={[styles.chip, active && { backgroundColor: f.bg, borderColor: f.color }]}
+                >
+                  <Text style={[styles.chipText, active && { color: f.color }]}>{f.label}</Text>
+                  {count > 0 ? (
+                    <Text style={[styles.chipCount, active && { color: f.color }]}>{count}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        ) : null}
+      </View>
+
+      {activeTab === 'returns' ? (
+        returnsLoading && returns.length === 0 ? (
+          <OrderHistorySkeleton />
+        ) : (
+          <FlatList
+            data={filteredReturns}
+            keyExtractor={item => item.id}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
+            renderItem={({ item }) => {
+              const meta = getReturnStatusMeta(item.status);
+              const qty = item.items.reduce((s, i) => s + i.quantity, 0);
+              const amount = item.items.reduce((s, i) => s + i.sellingPrice * i.quantity, 0);
+              return (
+                <TouchableOpacity
+                  style={styles.returnCard}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    props.navigation.navigate('ReturnDetailsScreen', {
+                      returnId: item.id,
+                      returnRequest: item.raw,
+                      order: orderListItems.find(o => String(o.raw?.id ?? o.id) === item.orderId)?.raw,
+                    })
+                  }
+                >
+                  <View style={styles.returnTop}>
+                    <View style={styles.returnIcon}>
+                      <TablerIcon name="refresh" size={16} color="#7C3AED" />
+                    </View>
+                    <View style={styles.requestCopy}>
+                      <Text style={styles.requestTitle} numberOfLines={1}>
+                        #{formatOrderId(item.orderCode || item.orderId)}
+                      </Text>
+                      <Text style={styles.requestMeta} numberOfLines={1}>
+                        {formatOrderDateTime(item.createdAt)} · {qty} item{qty === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                    <View style={[styles.requestStatus, { backgroundColor: meta.bg }]}>
+                      <Text style={[styles.requestStatusText, { color: meta.color }]}>{meta.label}</Text>
+                    </View>
                   </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      ) : null}
-
-      {activeTab === 'requested' ? (
+                  <View style={styles.returnBottom}>
+                    <Text style={styles.returnReason} numberOfLines={1}>
+                      {getReasonLabel(item.reasonCode, item.reason) || 'Return request'}
+                    </Text>
+                    {amount > 0 ? (
+                      <Text style={styles.returnAmount}>{formatRupee(amount, { decimals: 2 })}</Text>
+                    ) : null}
+                    <TablerIcon name="chevron-right" size={15} color="#94A3B8" />
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.listContent,
+              filteredReturns.length === 0 && styles.listContentEmpty,
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={returnsRefreshing}
+                onRefresh={handleRefresh}
+                colors={[Colors.primaryColor]}
+              />
+            }
+            ListEmptyComponent={
+              !returnsLoading ? (
+                <EmptyState
+                  iconName="refresh"
+                  title={
+                    returnsError
+                      ? 'Could not load returns'
+                      : returnFilter !== 'all' || searching
+                        ? 'No matching returns'
+                        : 'No returns yet'
+                  }
+                  subtitle={
+                    returnsError
+                      ? 'Pull down to retry.'
+                      : 'Return delivered items from the order details page.'
+                  }
+                />
+              ) : null
+            }
+          />
+        )
+      ) : activeTab === 'requested' ? (
         requestsLoading && requests.length === 0 ? (
           <OrderHistorySkeleton />
         ) : (
@@ -524,16 +739,67 @@ export default OrderHistory;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 15,
     backgroundColor: Colors.background,
   },
 
+  topPanel: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F6',
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
   historyTabs: {
-    marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 6,
+    marginTop: 0,
+    borderWidth: 0,
+    borderRadius: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F6',
   },
   searchBlock: {
-    marginBottom: 2,
+    marginTop: 8,
+  },
+  returnCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8EEF0',
+  },
+  returnTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  returnIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  returnBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  returnReason: {
+    flex: 1,
+    fontSize: 12,
+    color: '#475569',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  returnAmount: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
   requestCard: {
     backgroundColor: '#fff',
@@ -667,32 +933,41 @@ const styles = StyleSheet.create({
   },
   filterBar: {
     flexGrow: 0,
-    marginBottom: 6,
+    marginTop: 8,
   },
 
   filterBarContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    paddingVertical: 4,
+    // paddingHorizontal: 12,
+    gap: 6,
+    alignItems: 'center',
   },
 
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 10,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
   },
 
   chipText: {
     fontSize: 12,
-    marginVertical: -4,
+    lineHeight: 16,
+    fontFamily: Fonts.PoppinsMedium,
+    color: '#475569',
+    includeFontPadding: false,
+  },
+
+  chipCount: {
+    fontSize: 11,
+    lineHeight: 16,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#64748B',
+    color: '#94A3B8',
+    includeFontPadding: false,
   },
 
   chipBadge: {
@@ -712,7 +987,7 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingHorizontal: 12,
+    // paddingHorizontal: 12,
     paddingBottom: 20,
     paddingTop: 4,
   },

@@ -47,6 +47,13 @@ import { formatOrderId } from '../../utils/formatDisplayId';
 import Toast from 'react-native-toast-message';
 import { formatRupee, RUPEE_SYMBOL } from '../../utils/currencyUtils';
 import { SCREEN_THEME } from '../../constants/screenTheme';
+import {
+  ReturnRequest,
+  getOrderReturns,
+  getReturnStatusMeta,
+  normalizeReturnList,
+} from '../../services/ReturnService';
+import { navigateToProductDetails } from '../../navigation/productNavigation';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -107,6 +114,14 @@ const INVOICE_ALLOWED: OrderStatus[] = [
 
 const RETURN_ALLOWED: OrderStatus[] = [
   ORDER_STATUS.DELIVERED,
+  ORDER_STATUS.COMPLETED,
+];
+
+/** Statuses whose order may already have return requests to list. */
+const RETURN_LIST_STATUSES: OrderStatus[] = [
+  ORDER_STATUS.DELIVERED,
+  ORDER_STATUS.COMPLETED,
+  ORDER_STATUS.RETURNED,
 ];
 
 const CANCELLATION_REASONS = [
@@ -228,11 +243,11 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
     route?.params?.order ??
     (route?.params?.orderId || route?.params?.order_id
       ? {
-          id: String(route.params.orderId ?? route.params.order_id),
-          order_id: String(route.params.orderId ?? route.params.order_id),
-          order_code: route.params.order_code,
-          order_status: route.params.order_status,
-        }
+        id: String(route.params.orderId ?? route.params.order_id),
+        order_id: String(route.params.orderId ?? route.params.order_id),
+        order_code: route.params.order_code,
+        order_status: route.params.order_status,
+      }
       : undefined);
   const fromOrderSuccess = Boolean(route?.params?.fromOrderSuccess);
   const dispatch = useAppDispatch();
@@ -259,10 +274,38 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   const statusMeta = getStatusMeta(status);
   const canCancel = CANCEL_ALLOWED.includes(status);
   const canInvoice = INVOICE_ALLOWED.includes(status);
-  const canReturn = RETURN_ALLOWED.includes(status);
   // Delivered / completed orders can rate products (one time per item)
   const canReview =
     status === ORDER_STATUS.DELIVERED || status === ORDER_STATUS.COMPLETED;
+  const [orderReturns, setOrderReturns] = useState<ReturnRequest[]>([]);
+  const [returnsChecked, setReturnsChecked] = useState(false);
+  const canListReturns = RETURN_LIST_STATUSES.includes(status);
+  // One return request per order: once raised, show its status instead of "Return".
+  const latestReturn = orderReturns[0] ?? null;
+  const canReturn =
+    RETURN_ALLOWED.includes(status) && returnsChecked && orderReturns.length === 0;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!order?.id || !canListReturns) return;
+      let active = true;
+      getOrderReturns(order.id)
+        .then(res => {
+          if (!active) return;
+          const list = normalizeReturnList(res).sort((a, b) =>
+            String(b.createdAt).localeCompare(String(a.createdAt)),
+          );
+          setOrderReturns(list);
+        })
+        .catch(() => { })
+        .finally(() => {
+          if (active) setReturnsChecked(true);
+        });
+      return () => {
+        active = false;
+      };
+    }, [order?.id, canListReturns]),
+  );
 
   const items = useMemo(
     () => mapOrderItems(order, fetchedReviewsByVariant),
@@ -531,18 +574,9 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
   }, [order?.id, order?.order_code, invoiceLoading]);
 
   const handleReturn = useCallback(() => {
-    Alert.alert(
-      'Return Order',
-      'Return/exchange requests are handled by our support team. Would you like to contact us?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Contact Support',
-          onPress: () => Linking.openURL('mailto:support@ayurmuni.com'),
-        },
-      ],
-    );
-  }, []);
+    if (!order?.id) return;
+    navigation.navigate('ReturnRequestScreen', { order });
+  }, [navigation, order]);
 
   const openProductReview = useCallback(
     (rating: number) => {
@@ -780,6 +814,24 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
                 <Text style={[styles.heroActionText, { color: '#7C3AED' }]}>Return</Text>
               </TouchableOpacity>
             )}
+            {latestReturn && (
+              <TouchableOpacity
+                style={styles.heroAction}
+                onPress={() =>
+                  navigation.navigate('ReturnDetailsScreen', {
+                    returnId: latestReturn.id,
+                    returnRequest: latestReturn.raw,
+                    order,
+                  })
+                }
+                activeOpacity={0.8}
+              >
+                <TablerIcon name="refresh" size={16} color="#7C3AED" />
+                <Text style={[styles.heroActionText, { color: '#7C3AED' }]} numberOfLines={1}>
+                  Return · {getReturnStatusMeta(latestReturn.status).label}
+                </Text>
+              </TouchableOpacity>
+            )}
             {canCancel && (
               <TouchableOpacity
                 style={[styles.heroAction, styles.heroActionDanger]}
@@ -960,7 +1012,8 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
             Boolean(fetchedReviewsByVariant[item.variantId]);
 
           return (
-            <View key={item.id} style={styles.itemCard}>
+            <TouchableOpacity key={item.id} style={styles.itemCard} onPress={() =>
+              navigateToProductDetails(navigation, item.variantId)}>
               {/* Image + info row */}
               <View style={styles.itemRow}>
                 <View style={styles.itemImgBox}>
@@ -1003,9 +1056,52 @@ const OrderDetailsScreen = ({ route, navigation }: any) => {
                   <Text style={styles.rateBtnText}>Rate & Review</Text>
                 </TouchableOpacity>
               ) : null}
-            </View>
+            </TouchableOpacity>
           );
         })}
+
+        {/* ── Return requests ── */}
+        {orderReturns.length > 0 && (
+          <>
+            <SectionTitle title={`Return requests (${orderReturns.length})`} />
+            {orderReturns.map(ret => {
+              const retMeta = getReturnStatusMeta(ret.status);
+              const qty = ret.items.reduce((s, i) => s + i.quantity, 0);
+              return (
+                <TouchableOpacity
+                  key={ret.id}
+                  style={[styles.card, styles.returnRow]}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    navigation.navigate('ReturnDetailsScreen', {
+                      returnId: ret.id,
+                      returnRequest: ret.raw,
+                      order,
+                    })
+                  }
+                >
+                  <View style={styles.returnIcon}>
+                    <TablerIcon name="refresh" size={16} color="#7C3AED" />
+                  </View>
+                  <View style={styles.returnInfo}>
+                    <Text style={styles.returnTitle} numberOfLines={1}>
+                      {qty} item{qty === 1 ? '' : 's'} · {formatOrderDateTime(ret.createdAt)}
+                    </Text>
+                    <Text style={styles.returnSub} numberOfLines={1}>
+                      {ret.reason || 'Return request'}
+                    </Text>
+                  </View>
+                  <View style={[styles.returnPill, { backgroundColor: retMeta.bg }]}>
+                    <Text style={[styles.returnPillText, { color: retMeta.color }]}>
+                      {retMeta.label}
+                    </Text>
+                  </View>
+                  <TablerIcon name="chevron-right" size={16} color="#94A3B8" />
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
 
         {/* ── Payment summary ── */}
         <SectionTitle title="Payment Summary" />
@@ -1169,6 +1265,21 @@ export default OrderDetailsScreen;
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+
+  returnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  returnIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  returnInfo: { flex: 1, minWidth: 0 },
+  returnTitle: { fontSize: 12.5, color: '#0F172A', fontFamily: Fonts.PoppinsSemiBold },
+  returnSub: { marginTop: 1, fontSize: 11, color: '#64748B', fontFamily: Fonts.PoppinsRegular },
+  returnPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  returnPillText: { fontSize: 10, fontFamily: Fonts.PoppinsSemiBold },
 
   scroll: { paddingHorizontal: 12, paddingTop: 8 },
 

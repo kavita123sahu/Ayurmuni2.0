@@ -634,12 +634,25 @@ const ProductDetails = (props: any) => {
                     <Text style={styles.productName}>{ProductData?.name}</Text>
 
                     {!!(selectedVariant?.size || selectedVariant?.title) && (
+                        // <Text style={styles.packLine} numberOfLines={1}>
+                        //     {[selectedVariant?.title, selectedVariant?.size]
+                        //         .filter(Boolean)
+                        //         .join(' · ')}
+                        //     {" "}
+                        //     {selectedVariant?.weightage + " " + selectedVariant?.physical_state}
+                        // </Text>
                         <Text style={styles.packLine} numberOfLines={1}>
-                            {[selectedVariant?.title, selectedVariant?.size]
-                                .filter(Boolean)
-                                .join(' · ')}
+                            <Text style={styles.variantName}>
+                                {[selectedVariant?.title,]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </Text>
                             {" "}
-                            {selectedVariant?.weightage + " " + selectedVariant?.physical_state}
+                            <Text>
+                                {["-", selectedVariant?.physical_state]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                            </Text>
                         </Text>
                     )}
 
@@ -1755,8 +1768,8 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#1E293B',
-        textAlign: 'center',
-        width: '100%',
+        // textAlign: 'center',
+        // width: '100%',
     },
     variantNameSelected: {
         color: Colors.primaryColor,

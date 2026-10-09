@@ -135,6 +135,7 @@ export const getOrders = async (params?: GetOrdersParams) => {
     const response = await apiClient(path, {
       method: 'GET',
     });
+    console.log("getOrders", response)
     return response;
   } catch (error) {
     throw error;
@@ -350,9 +351,9 @@ export const extractLiveTracking = (pollResponse: any): LiveTrackingInfo | null 
   // Build location history from status_history / tracking_history / scans
   const historyRaw: any[] =
     Array.isArray(raw?.tracking_history) ? raw.tracking_history :
-    Array.isArray(raw?.status_history) ? raw.status_history :
-    Array.isArray(raw?.scans) ? raw.scans :
-    Array.isArray(raw?.activities) ? raw.activities : [];
+      Array.isArray(raw?.status_history) ? raw.status_history :
+        Array.isArray(raw?.scans) ? raw.scans :
+          Array.isArray(raw?.activities) ? raw.activities : [];
 
   const locationHistory = historyRaw
     .slice()
@@ -431,7 +432,7 @@ export const downloadInvoiceFile = async (orderId: string | number) => {
     try {
       const errBody = await response.text();
       if (errBody) errMsg += ` — ${errBody.slice(0, 200)}`;
-    } catch {}
+    } catch { }
     throw new Error(errMsg);
   }
 
