@@ -2,7 +2,6 @@ import { Dimensions } from "react-native";
 import { Colors } from "./Colors";
 import { Fonts } from "./Fonts";
 
-
 export const Styles = {
    name: {
     fontSize: 16,
@@ -17,7 +16,6 @@ export const Styles = {
     fontFamily: Fonts.PoppinsMedium,
   },
   
-
    label: {
     fontSize: 12,
     color: Colors.subTextColor,
@@ -36,7 +34,6 @@ export const Styles = {
     fontFamily : Fonts.PoppinsMedium
   },
 
-  
   sectionTitle: {
     marginTop: 15,
     marginHorizontal: 5,

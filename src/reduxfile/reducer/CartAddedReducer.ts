@@ -1,11 +1,9 @@
 import { Actions } from "../types/Types";
 
-
 const initialState = {
     isAddedToCart: false,
     isRemovedFromCart: false
 };
-
 
 const CartAddedReducer = (state = initialState, action: any) => {
     switch (action.type) {

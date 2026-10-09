@@ -187,6 +187,8 @@ const Checkout: React.FC = (props: any) => {
     const [feeQuoteLoading, setFeeQuoteLoading] = useState(false);
     const [feeQuoteError, setFeeQuoteError] = useState<string | null>(null);
 
+
+
     const subtotal = useMemo(
         () =>
             cartItems.reduce(
@@ -219,9 +221,12 @@ const Checkout: React.FC = (props: any) => {
         remove: removeCoupon,
     } = useCheckoutCoupons('product', subtotal);
 
+    console.log("couponscouponscouponscouponscouponscoupons", coupons)
     const feeQuoteReqId = useRef(0);
     const feeConfigRef = useRef<FeeQuoteConfig | null>(null);
     feeConfigRef.current = feeConfig;
+
+    console.log('Checkout: feeConfigReffeeConfigRef', feeConfig);
 
     const parseQuoteResponse = useCallback(
         (response: any, couponCode?: string | null) => {
@@ -282,7 +287,7 @@ const Checkout: React.FC = (props: any) => {
                 setFeeConfig(null);
                 setFeeQuoteError(
                     response?.message ||
-                        'Unable to load order fees. Please try again.',
+                    'Unable to load order fees. Please try again.',
                 );
             }
         } catch (error) {
@@ -456,7 +461,7 @@ const Checkout: React.FC = (props: any) => {
         if (!feesReady) {
             showSuccessToast(
                 feeQuoteError ||
-                    'Unable to load order fees. Please try again.',
+                'Unable to load order fees. Please try again.',
                 'error',
             );
             return;
@@ -871,7 +876,7 @@ const Checkout: React.FC = (props: any) => {
                                 />
                             ) : null}
                             {feeBreakdown.discount > 0 ||
-                            feeBreakdown.itemsAfterDiscount !==
+                                feeBreakdown.itemsAfterDiscount !==
                                 feeBreakdown.baseAmount ? (
                                 <SummaryRow
                                     label="Sub total"
@@ -1020,13 +1025,13 @@ const Checkout: React.FC = (props: any) => {
                                 ? feeQuoteLoading
                                     ? 'Calculating fees…'
                                     : feeQuoteError
-                                      ? 'Fees unavailable'
-                                      : selectedMethod === 'cod'
-                                        ? 'Pay on delivery'
-                                        : 'Pay now'
+                                        ? 'Fees unavailable'
+                                        : selectedMethod === 'cod'
+                                            ? 'Pay on delivery'
+                                            : 'Pay now'
                                 : selectedMethod === 'cod'
-                                  ? 'Pay on delivery'
-                                  : 'Pay now'}
+                                    ? 'Pay on delivery'
+                                    : 'Pay now'}
                             {' · '}
                             {itemUnits} {itemUnits === 1 ? 'item' : 'items'}
                         </Text>

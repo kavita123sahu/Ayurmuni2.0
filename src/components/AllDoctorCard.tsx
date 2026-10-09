@@ -34,8 +34,6 @@ import {
 
 } from '../utils/doctorUtils';
 
-
-
 type ProfileImage =
 
   | string
@@ -49,8 +47,6 @@ type ProfileImage =
   | null
 
   | undefined;
-
-
 
 export interface DoctorItem {
 
@@ -95,8 +91,6 @@ export interface DoctorItem {
 
 }
 
-
-
 interface Props {
 
   item: DoctorItem;
@@ -110,8 +104,6 @@ interface Props {
   cardWidth?: number;
 
 }
-
-
 
 const AllDoctorCard: React.FC<Props> = ({
 
@@ -133,8 +125,6 @@ const AllDoctorCard: React.FC<Props> = ({
 
   const doctorId = getDoctorId(item);
 
-
-
   const speciality = useMemo(() => {
 
     if (!Array.isArray(item?.health_diseases)) return '';
@@ -142,8 +132,6 @@ const AllDoctorCard: React.FC<Props> = ({
     return item.health_diseases.map(i => i?.name).filter(Boolean).join(', ');
 
   }, [item?.health_diseases]);
-
-
 
   const rating = getDoctorRating(item);
 
@@ -153,14 +141,10 @@ const AllDoctorCard: React.FC<Props> = ({
 
   const feeLabel = formatConsultationFeeLabel(item);
 
-
-
   const imageUri = useMemo(
     () => resolveDoctorProfileImageUri(item),
     [item],
   );
-
-
 
   useEffect(() => {
 
@@ -178,8 +162,6 @@ const AllDoctorCard: React.FC<Props> = ({
 
   ]);
 
-
-
   const handleWishlist = useCallback(async () => {
 
     if (!doctorId) {
@@ -196,13 +178,9 @@ const AllDoctorCard: React.FC<Props> = ({
 
     }
 
-
-
     const previous = isWishlisted;
 
     setIsWishlisted(!previous);
-
-
 
     try {
 
@@ -230,8 +208,6 @@ const AllDoctorCard: React.FC<Props> = ({
 
       }
 
-
-
       const next = getFavoriteStateFromToggleResponse(response);
 
       if (next !== undefined) {
@@ -249,8 +225,6 @@ const AllDoctorCard: React.FC<Props> = ({
     }
 
   }, [isWishlisted, doctorId]);
-
-
 
   return (
 
@@ -304,7 +278,4 @@ const AllDoctorCard: React.FC<Props> = ({
 
 };
 
-
-
 export default React.memo(AllDoctorCard);
-

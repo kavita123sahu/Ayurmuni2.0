@@ -264,28 +264,6 @@ const NotificationCard = ({
                     </Text>
 
                     {/* Action links — inline, small */}
-                    {/* {(showJoinCall || showDetails) ? (
-                        <View style={styles.actionRow}>
-                            {showJoinCall ? (
-                                <TouchableOpacity
-                                    style={styles.joinBtn}
-                                    onPress={() => onJoinCall(item)}
-                                    activeOpacity={0.8}
-                                >
-                                    <TablerIcon name="video" size={11} color="#fff" />
-                                    <Text style={styles.joinText}>Join Call</Text>
-                                </TouchableOpacity>
-                            ) : null}
-                            {showDetails ? (
-                                <TouchableOpacity
-                                    onPress={() => onViewDetails(item)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={styles.detailText}>View Details →</Text>
-                                </TouchableOpacity>
-                            ) : null}
-                        </View>
-                    ) : null} */}
                 </View>
 
                 {/* Unread dot / tap to mark read */}
@@ -625,7 +603,6 @@ const NotificationsScreen = (props: any) => {
         if (item.isRead) {
             return;
         }
-
 
         setSelectedItem(prev =>
             prev && prev.id === item.id

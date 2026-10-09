@@ -143,7 +143,6 @@ const AllDoctors = (props: any) => {
         experience: EXPERIENCE_OPTIONS,
     }), [categories]);
 
-
     const dropdownOptions = useMemo(() => {
         if (!activeTab) return [];
 
@@ -155,7 +154,6 @@ const AllDoctors = (props: any) => {
 
         return map[activeTab] || [];
     }, [activeTab, FILTER_OPTIONS]);
-
 
     const clearFilter = useCallback((key: string) => {
         setSelectedFilters(prev => ({
@@ -192,7 +190,6 @@ const AllDoctors = (props: any) => {
 
         setActiveTab(null);
     }, []);
-
 
     const getPresetDates = (type: string) => {
         const today = dayjs();
@@ -265,7 +262,6 @@ const AllDoctors = (props: any) => {
         return tab.label;
     };
 
-
     const handleDoctorPress =
         useCallback(
             (doctorData: string) => {
@@ -307,11 +303,6 @@ const AllDoctors = (props: any) => {
             [handleDoctorPress],
         );
 
-
-
-
-
-
     return (
         <>
             <SafeAreaView
@@ -325,7 +316,6 @@ const AllDoctors = (props: any) => {
                     }
                 />
 
-                {/* <View style={styles.headerWrap}> */}
                     <AppHeader
                         title="Explore"
                         leftIconName='arrow-left'
@@ -431,7 +421,6 @@ const AllDoctors = (props: any) => {
                         />}
                 </View>
 
-
             </SafeAreaView>
 
             {showCalendar && (
@@ -516,7 +505,6 @@ const AllDoctors = (props: any) => {
             )}
 
         </>
-
 
     );
 };

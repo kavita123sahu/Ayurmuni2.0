@@ -6,7 +6,6 @@ import { resolvePayOnDelivery } from '../utils/payOnDeliveryUtils';
 import { isPrescriptionRequired } from '../utils/prescriptionUtils';
 import { resolveCartItemSellingPrice } from '../utils/cartPriceUtils';
 
-
 export interface ProductItem {
   id: string;
   name: string;
@@ -32,7 +31,6 @@ export type SectionType = {
   type: 'cart' | 'prescribed';
   items: ProductItem[];
 };
-
 
 export type CartItem = {
   id: string;
@@ -77,7 +75,6 @@ export type CartItem = {
     is_cover?: boolean;
   }[];
 };
-
 
 export const renderCategoryName = (
   name: string,
@@ -144,7 +141,6 @@ export type PlaceOrderResponse = {
   };
 };
 
-
 /** Resolve cart/checkout thumbnail from common API shapes */
 export const resolveCartItemImage = (item: any): string =>
   resolveProductImageUri(item);
@@ -194,8 +190,6 @@ export interface GenderOption {
   value: string;
 }
 
-
-
 export const genderOptions: GenderOption[] = [
   { id: '1', label: 'Male', value: 'male' },
   { id: '2', label: 'Female', value: 'female' },
@@ -235,7 +229,6 @@ export const getStatusColor = (status: string) => {
       return '#3366FF';
   }
 };
-
 
 export type Appointment = {
   consultation_id: string;
@@ -294,7 +287,6 @@ export const PRAKRITI_IMAGES: Record<string, string> = {
   Tridosha:
     "https://ayurmuni.s3.ap-south-1.amazonaws.com/prakriti_images/1435b1ad1380475caa127c9f00fb03d7.png",
 };
-
 
 export const getStatusStyle = (status: string) => {
   const styles = {
@@ -360,7 +352,6 @@ export const TABS =
     },
   ];
 
-
 export const EXPERIENCE_OPTIONS = [
   {
     label: '1+ Years',
@@ -383,8 +374,6 @@ export const EXPERIENCE_OPTIONS = [
     value: '20',
   },
 ];
-
-
 
 export const AVAILABILITY_OPTIONS = [
   {
@@ -411,13 +400,7 @@ export const AVAILABILITY_OPTIONS = [
     label: 'Next Month',
     value: 'next_month',
   },
-  // {
-  //   label: 'Select Date',
-  //   value: 'custom_date',
-  // },
 ];
-
-
 
 export const reviews = [
   {
@@ -434,7 +417,6 @@ export const reviews = [
     review: "Very good experience, sessions are helpful.",
   },
 ]
-
 
 export const generateDates = (daysBefore = 3, daysAfter = 10) => {
   const dates = [];
@@ -454,7 +436,6 @@ export const generateDates = (daysBefore = 3, daysAfter = 10) => {
 
   return dates;
 };
-
 
 export const formatTo12Hour = (time24: string) => {
   if (!time24) return '';
@@ -488,7 +469,6 @@ export const formatDate = (
     .toISOString()
     .split('T')[0];
 };
-
 
 export const generateFutureDates = (
   monthOffset = 0,
@@ -638,6 +618,3 @@ export const shadow = (strength: 'sm' | 'md' | 'lg' = 'md') => {
     elevation: Platform.OS === 'android' ? cfg.elevation : 0,
   };
 };
-
-
-

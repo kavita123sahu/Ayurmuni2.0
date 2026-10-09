@@ -210,17 +210,6 @@ const SearchBar: React.FC<Props> = ({
         </TouchableOpacity>
       ) : null}
 
-      {/* {showMicIcon ? (
-        <TouchableOpacity
-          style={styles.trailing}
-          onPress={onMicPress ?? onPress}
-          activeOpacity={0.85}
-          disabled={!onMicPress && !onPress}
-        >
-          <TablerIcon name="mic" size={16} color={Colors.primaryColor} />
-        </TouchableOpacity>
-      ) : null} */}
-
       {showFilterIcon ? (
         <TouchableOpacity
           style={[styles.trailing, filterActive && styles.trailingActive]}

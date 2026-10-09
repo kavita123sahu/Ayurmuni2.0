@@ -1,12 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import DoctorListCard from '../../components/DoctorListCard';
-import HomeDoctorCard from '../../components/HomeDoctorCard';
-import {
-  HOME_DOCTOR,
-  getDoctorGridCardWidth,
-  getHomeDoctorCardWidth,
-} from '../../constants/doctorGridLayout';
+import { DOCTOR_GRID, getDoctorGridCardWidth } from '../../constants/doctorGridLayout';
 import { formatConsultationFeeLabel, isDietitian } from '../../utils/doctorUtils';
 
 const toLabelList = (value: any): string[] => {
@@ -79,7 +74,6 @@ type Props = {
   navigation: any;
   layout?: 'grid' | 'horizontal';
   limit?: number;
-  home?: boolean;
 };
 
 const resolveImageUri = (item: Doctor): string => {
@@ -92,13 +86,8 @@ const TopDoctorsCard = ({
   data = [],
   navigation,
   limit,
-  home = false,
 }: Props) => {
-  const cardWidth = useMemo(
-    () => (home ? getHomeDoctorCardWidth() : getDoctorGridCardWidth()),
-    [home],
-  );
-  console.log('homehomehomehome', home);
+  const cardWidth = useMemo(() => getDoctorGridCardWidth(), []);
   const openDoctorProfile = useCallback(
     (item: Doctor) => {
       navigation?.navigate?.('DoctorProfile', { doctorData: item });
@@ -118,7 +107,6 @@ const TopDoctorsCard = ({
     return null;
   }
 
-  console.log("datadatadatadatadatadata,", data);
   return (
     <View style={styles.grid}>
       {list.map((item, index) => {
@@ -145,20 +133,6 @@ const TopDoctorsCard = ({
           onPress: () => openDoctorProfile(item),
         };
 
-        // if (home) {
-        //   return (
-        //     <HomeDoctorCard
-        //       key={String(item?.id ?? `top-doc-${index}`)}
-        //       cardWidth={cardWidth}
-        //       qualification={
-        //         String(item?.qualification || item?.designation || '').trim() ||
-        //         undefined
-        //       }
-        //       {...cardProps}
-        //     />
-        //   );
-        // }
-
         return (
           <DoctorListCard
             key={String(item?.id ?? `top-doc-${index}`)}
@@ -180,9 +154,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: HOME_DOCTOR.gap,
-    // marginBottom:10
-    // gap: 10,
-
+    rowGap: DOCTOR_GRID.gap,
   },
 });

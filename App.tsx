@@ -4,7 +4,6 @@ import React, {
 } from 'react';
 
 import {
-  Text,
   View,
 } from 'react-native';
 
@@ -63,14 +62,6 @@ import {
 import {
   setupOneSignalInAppListeners,
 } from './src/services/inAppNotificationService';
-
-// Keep layout identical across devices — ignore OS font-size scaling
-(Text as any).defaultProps = {
-  ...((Text as any).defaultProps || {}),
-  allowFontScaling: false,
-  maxFontSizeMultiplier: 1,
-};
-
 
 // =====================================================
 // TOAST CONFIG

@@ -82,20 +82,6 @@ const Prescription = (props: any) => {
   const [openingCamera, setOpeningCamera] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ uri: string; fileType?: string } | null>(null);
 
-  // const cartData = useAppSelector((s: any) => s.cart?.cartData);
-  // const variantQuantities = useAppSelector(
-  //   (s: any) => s.cart?.variantQuantities ?? {},
-  // );
-  // const variantIds = useMemo(() => {
-  //   const fromCart = (cartData?.my_cart?.items ?? [])
-  //     .map((item: any) => String(item?.variant_id || '').trim())
-  //     .filter(Boolean);
-  //   const fromQty = Object.keys(variantQuantities || {}).filter(
-  //     id => Number(variantQuantities[id]) > 0,
-  //   );
-  //   return [...new Set([...routeVariantIds, ...fromCart, ...fromQty])];
-  // }, [cartData, variantQuantities, routeVariantIds]);
-
   const loadRecent = useCallback(async () => {
     try {
       setLoadingRecent(true);

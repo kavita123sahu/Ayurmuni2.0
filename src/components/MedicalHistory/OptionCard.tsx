@@ -13,7 +13,6 @@ import {
 import { Images } from '../../common/Images';
 import TablerIcon from '../../components/TablerIcon';
 
-
 const OptionCard = ({
     item,
     active,
@@ -115,9 +114,6 @@ const OptionCard = ({
                         ]}
                     />
                 )}
-
-
-
 
                 {/* TEXT */}
 

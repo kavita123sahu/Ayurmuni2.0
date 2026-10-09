@@ -43,13 +43,6 @@ const PLAN_STATUS: Record<string, { label: string; dot: string; gradient: string
   cancelled: { label: 'Cancelled', dot: '#FCA5A5', gradient: ['#5F1D1D', '#7F2626', '#9B3434'] },
 };
 
-// const BENEFIT_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
-//   available: { label: 'Available', bg: '#E7F7EE', fg: '#15803D' },
-//   used: { label: 'Used', bg: '#F1F3F2', fg: '#6B7874' },
-//   consumed: { label: 'Used', bg: '#F1F3F2', fg: '#6B7874' },
-//   expired: { label: 'Expired', bg: '#FDECEC', fg: '#B91C1C' },
-// };
-
 const humanize = (value: string) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ') : '';
 
@@ -85,11 +78,6 @@ const benefitIcon = (label: string): TablerIconName => {
 };
 
 function BenefitRow({ benefit, isLast }: { benefit: MyPlanBenefit; isLast: boolean }) {
-  // const tone = BENEFIT_STATUS[benefit.status] ?? {
-  //   label: humanize(benefit.status),
-  //   bg: '#F1F3F2',
-  //   fg: '#44524D',
-  // };
   const hasQuantity = benefit.quantity_total !== null && benefit.quantity_total > 0;
   const remaining = benefit.quantity_remaining ?? 0;
   const progress = hasQuantity ? Math.max(0, Math.min(1, remaining / benefit.quantity_total!)) : 1;
@@ -104,26 +92,7 @@ function BenefitRow({ benefit, isLast }: { benefit: MyPlanBenefit; isLast: boole
           <Text style={styles.benefitLabel} numberOfLines={2}>
             {benefit.label}
           </Text>
-          {/* {tone.label ? (
-            <View style={[styles.benefitPill, { backgroundColor: tone.bg }]}>
-              <Text style={[styles.benefitPillText, { color: tone.fg }]}>{tone.label}</Text>
-            </View>
-          ) : null} */}
         </View>
-        {/* {hasQuantity ? (
-          <>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: `${progress * 100}%` }]} />
-            </View>
-            <Text style={styles.benefitMeta}>
-              {remaining} of {benefit.quantity_total} remaining
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.benefitMeta}>
-            {benefit.role === 'grant' ? 'Included in your plan' : humanize(benefit.role)}
-          </Text>
-        )} */}
       </View>
     </View>
   );
@@ -358,9 +327,6 @@ function MyPlanCard({
           <View>
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Your benefits</Text>
-              {/* <Text style={styles.sectionMeta}>
-                {available}/{benefits.length} available
-              </Text> */}
             </View>
             <View style={styles.benefits}>
               {benefits.map((benefit, index) => (

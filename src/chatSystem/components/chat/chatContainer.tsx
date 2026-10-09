@@ -26,11 +26,7 @@ import { getChatDisabledReason, AppointmentChatLike, shouldSuppressChatError } f
 import { dedupeMessages } from '../../utils/messageUtils';
 import { Colors } from '../../../common/Colors';
 
-
-
 const THEME = '#0D614E';
-
-
 
 interface ChatContainerProps {
 
@@ -52,8 +48,6 @@ interface ChatContainerProps {
 
 }
 
-
-
 export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     appointmentId, role, doctorName = 'Doctor', patientName = 'Patient',
@@ -72,15 +66,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     } = useChat(appointmentId, role, appointmentDate, appointmentContext);
 
-
-
     const flatListRef = useRef<FlatList>(null);
 
     const [isAtBottom] = useState(true);
 
     const markedReadRef = useRef<Set<string>>(new Set());
-
-
 
     const disabledReason = getChatDisabledReason(chatAccess, appointmentDate, appointmentContext);
     const visibleError =
@@ -92,8 +82,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
         : 'Chat closed — read only';
 
-
-
     useFocusEffect(
 
         React.useCallback(() => {
@@ -104,13 +92,9 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     );
 
-
-
     useEffect(() => {
 
         if (!isChatEnabled) return;
-
-
 
         const unread = messages.filter(
 
@@ -128,8 +112,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     }, [messages, participantRole, markAsRead, isChatEnabled]);
 
-
-
     useEffect(() => {
 
         if (isAtBottom && messages.length > 0) {
@@ -141,8 +123,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         }
 
     }, [messages, isAtBottom]);
-
-
 
     useEffect(() => {
 
@@ -156,8 +136,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
     }, [isLoading, messages.length]);
 
-
-
     const handleSend = async (text: string, attachments?: any[]) => {
         if (!isChatEnabled) {
             return;
@@ -167,11 +145,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         }
     };
 
-
-
     const formatDate = (date: string) => new Date(date).toDateString();
-
-
 
     const renderMessage = ({
 
@@ -195,8 +169,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
             formatDate(item.created_at) !== formatDate(prev.created_at);
 
-
-
         return (
 
             <>
@@ -215,8 +187,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                 )}
 
-
-
                 <MessageBubble
 
                     message={item}
@@ -232,8 +202,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         );
 
     };
-
-
 
     const isDoctor = participantRole === 'doctor';
 
@@ -290,8 +258,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                     </View>
 
                 ) : null}
-
-
 
                 <FlatList
 
@@ -351,8 +317,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                 />
 
-
-
                 {!isChatEnabled && disabledReason ? (
 
                     <View style={styles.disabledBanner}>
@@ -366,8 +330,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                     </View>
 
                 ) : null}
-
-
 
                 <View style={[styles.inputWrap, { paddingBottom: bottomPad }]}>
 
@@ -385,8 +347,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                 </View>
 
-
-
                 {visibleError && (
                     <View style={styles.errorToast}>
                         <Text style={styles.errorText}>{visibleError}</Text>
@@ -403,8 +363,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     );
 
 };
-
-
 
 const styles = StyleSheet.create({
 
@@ -564,5 +522,3 @@ const styles = StyleSheet.create({
     errorRetry: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', marginLeft: 12 },
 
 });
-
-

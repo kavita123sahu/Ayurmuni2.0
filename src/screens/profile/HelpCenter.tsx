@@ -251,7 +251,6 @@ const HelpCenterScreen = (props: any) => {
             ))
           )}
 
-
         </View>
 
       </ScrollView>

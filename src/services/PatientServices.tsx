@@ -12,7 +12,6 @@ export const getPatientList = async () => {
     }
 }
 
-
 export const AddNewPatient = async (patientData: any) => {
     try {
         const response = await apiClient('patients/', {
@@ -38,7 +37,6 @@ export const GetPatientById = async (id: string) => {
     }
 }
 
-
 export const updatePatientById = async (id: string, patientData: any) => {
     try {
         const response = await apiClient(`patients/?id=${id}`, {
@@ -52,7 +50,6 @@ export const updatePatientById = async (id: string, patientData: any) => {
         throw error;
     }
 }
-
 
 export const PatientSwitch = async (id: string) => {
     try {
@@ -100,7 +97,6 @@ export const deleteMedicalRecord = async (recordID: string) => {
         throw error;
     }
 }
-
 
 export const AddMedicalRecord = async (patientData: any) => {
     try {
@@ -393,4 +389,3 @@ export const updateDietPlanStatus = async (
         throw error;
     }
 };
-

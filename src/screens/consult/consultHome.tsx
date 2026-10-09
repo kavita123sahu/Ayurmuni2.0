@@ -248,11 +248,6 @@ const ConsultHome = () => {
           );
           setHistory((response?.data?.results || []).slice(0, 3));
 
-          // setHistory(
-          //   response?.data?.results ||
-          //   [],
-          // );
-
         } catch (error) {
 
           console.log(
@@ -342,7 +337,6 @@ const ConsultHome = () => {
       [navigation, openDoctorSlot],
     );
 
-
   return (
     <SafeAreaView
       style={styles.container}>
@@ -359,10 +353,7 @@ const ConsultHome = () => {
         subtitle="Find best doctor"
         onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
-      // onSearchPress={() => setSearchExpanded(true)}
-      // onRefreshPress={onRefresh}
       />
-
 
       <FlatList
         data={[]}
@@ -442,7 +433,6 @@ const ConsultHome = () => {
                 />
               </>
             )}
-
 
           </>
         }

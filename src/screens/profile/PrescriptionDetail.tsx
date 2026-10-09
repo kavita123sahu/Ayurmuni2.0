@@ -52,13 +52,6 @@ import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
 import { createPrescriptionPdfBytes } from '../../utils/buildConsultationDocumentPdf';
 import { createPlainTextPdfBytes } from '../../utils/pdfPlainTextFallback';
 
-// if (
-//   Platform.OS === 'android' &&
-//   UIManager.setLayoutAnimationEnabledExperimental
-// ) {
-//   UIManager.setLayoutAnimationEnabledExperimental(true);
-// }
-
 const C = {
   primary: Colors.primaryColor,
   text: '#0F172A',
@@ -700,13 +693,6 @@ const PrescriptionDetail = (props: any) => {
                       value={presentingComplaint}
                     />
                   )}
-                  {/* {!!symptomText && (
-                    <FindingRow
-                      icon="notes"
-                      label="Symptoms"
-                      value={symptomText}
-                    />
-                  )} */}
 
                   {allergies.length > 0 && (
                     <FindingRow

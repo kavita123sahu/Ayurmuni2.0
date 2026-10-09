@@ -378,21 +378,12 @@ const DoctorProfile = ({ navigation, route }: any) => {
             doctor?.socials ||
             {};
 
-
         const entries: {
             label: string;
             url: string;
             bg: string
             icon: 'facebook' | 'instagram' | 'twitter' | 'linkedin';
         }[] = [
-                // {
-                //     label: 'Website',
-                //     icon: 'website',
-                //     bg: '#1877F2',
-                //     url:
-                //         pickDoctorField('website', 'website_url', 'web_url') ||
-                //         String(social?.website || social?.web || ''),
-                // },
                 {
                     label: 'Facebook',
                     icon: 'facebook',
@@ -426,13 +417,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         pickDoctorField('linkedin', 'linkedin_url') ||
                         String(social?.linkedin || ''),
                 },
-                // {
-                //     label: 'YouTube',
-                //     icon: 'youtube',
-                //     url:
-                //         pickDoctorField('youtube', 'youtube_url') ||
-                //         String(social?.youtube || ''),
-                // },
             ];
         return entries.filter(item => String(item.url || '').trim());
     }, [doctor, pickDoctorField]);
@@ -673,20 +657,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                 iconColor={Colors.primaryColor}
                             />
                         </View>
-                        {/* {!!followupFee && Number(followupFee) > 0 ? (
-                            <>
-                                <View style={styles.feeDivider} />
-                                <View style={styles.feeBlock}>
-                                    <Text style={styles.feeLabel}>Follow-up</Text>
-                                    <RupeeAmount
-                                        value={followupFee}
-                                        style={styles.followupValue}
-                                        iconSize={14}
-                                        iconColor="#475569"
-                                    />
-                                </View>
-                            </>
-                        ) : null} */}
 
                         {consultationModes.length > 0 ? (
                             <>
@@ -715,37 +685,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                                 Video Consult
                                             </Text>
                                         </View>
-                                        {/* {consultationModes.map(mode => {
-                                            const meta = MODE_META[mode] || {
-                                                label: mode,
-                                                icon: 'stethoscope' as TablerIconName,
-                                                bg: '#F1F5F9',
-                                                color: '#475569',
-                                            };
-                                            return (
-                                                <View
-                                                    key={mode}
-                                                    style={[
-                                                        styles.modeChip,
-                                                        { backgroundColor: meta.bg },
-                                                    ]}
-                                                >
-                                                    <TablerIcon
-                                                        name={meta.icon}
-                                                        size={14}
-                                                        color={meta.color}
-                                                    />
-                                                    <Text
-                                                        style={[
-                                                            styles.modeChipText,
-                                                            { color: meta.color },
-                                                        ]}
-                                                    >
-                                                        {meta.label}
-                                                    </Text>
-                                                </View>
-                                            );
-                                        })} */}
                                     </View>
                                 </View>
                             </>
@@ -807,44 +746,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 {/* Modes + languages */}
                 {(consultationModes.length > 0 || languages.length > 0) && (
                     <View style={styles.card}>
-                        {/* {consultationModes.length > 0 ? (
-                            <>
-                                <Text style={styles.sectionHeader}>Consult via</Text>
-                                <View style={styles.modeRow}>
-                                    {consultationModes.map(mode => {
-                                        const meta = MODE_META[mode] || {
-                                            label: mode,
-                                            icon: 'stethoscope' as TablerIconName,
-                                            bg: '#F1F5F9',
-                                            color: '#475569',
-                                        };
-                                        return (
-                                            <View
-                                                key={mode}
-                                                style={[
-                                                    styles.modeChip,
-                                                    { backgroundColor: meta.bg },
-                                                ]}
-                                            >
-                                                <TablerIcon
-                                                    name={meta.icon}
-                                                    size={14}
-                                                    color={meta.color}
-                                                />
-                                                <Text
-                                                    style={[
-                                                        styles.modeChipText,
-                                                        { color: meta.color },
-                                                    ]}
-                                                >
-                                                    {meta.label}
-                                                </Text>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            </>
-                        ) : null} */}
 
                         {languages.length > 0 ? (
                             <View
@@ -958,42 +859,6 @@ const DoctorProfile = ({ navigation, route }: any) => {
                     </View>
                 ) : null}
 
-                {/* {(locationLabel || qualification || socialAccounts.length > 0) && (
-                    <View style={styles.card}>
-                        <View style={styles.sectionTitleRow}>
-                            <View style={[styles.sectionIcon, { backgroundColor: '#F1F5F9' }]}>
-                                <TablerIcon
-                                    name="clipboard-list"
-                                    size={14}
-                                    color="#475569"
-                                />
-                            </View>
-                            <Text style={styles.sectionHeaderInline}>Quick info</Text>
-                        </View>
-                        <View style={styles.specGrid}>
-                            {!!qualification && (
-                                <View style={[styles.specCell, styles.specCellFull]}>
-                                    <Text style={styles.specLabel}>Qualification</Text>
-                                    <Text style={styles.specValue}>{qualification}</Text>
-                                </View>
-                            )}
-                            {!!locationLabel && (
-                                <View style={[styles.specCell, styles.specCellLeft]}>
-                                    <Text style={styles.specLabel}>Location</Text>
-                                    <Text style={styles.specValue}>{locationLabel}</Text>
-                                </View>
-                            )}
-                            {!!experienceLabel && (
-                                <View style={styles.specCell}>
-                                    <Text style={styles.specLabel}>Experience</Text>
-                                    <Text style={styles.specValue}>{experienceLabel}</Text>
-                                </View>
-                            )}
-                        </View>
-
-                       
-                    </View>
-                )} */}
                 {socialAccounts.length > 0 ? (
                 <View style={styles.card}>
                     <Text style={styles.sectionHeaderInline}>Social Account</Text>

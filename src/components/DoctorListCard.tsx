@@ -131,8 +131,8 @@ const DoctorListCard = ({
   );
 
   const renderStatsFeeRow = (compact = false) => (
-    <View style={styles.statsFeeRow}>
-      <View style={styles.statsLeft}>
+    <View style={[styles.statsFeeRow, compact && styles.gridStatsFeeRow]}>
+      <View style={[styles.statsLeft, compact && styles.gridStatsLeft]}>
         <View style={styles.statItem}>
           <View style={styles.statIconWrap}>
             <Ionicons name="star" size={compact ? 12 : 13} color="#F5B301" />
@@ -142,10 +142,10 @@ const DoctorListCard = ({
             numberOfLines={1}
           >
             {ratingLabel}
-            {reviewText}
+            {/* Half-width cards have no room for the review count. */}
+            {compact ? '' : reviewText}
           </Text>
         </View>
-        {/* <View style={styles.statSep} /> */}
         <View style={styles.statItem}>
           <Ionicons
             name="time-outline"
@@ -406,15 +406,25 @@ const styles = StyleSheet.create({
   },
   gridBody: {
     paddingHorizontal: DOCTOR_GRID.cardPaddingH,
-    paddingTop: 8,
+    paddingTop: DOCTOR_GRID.bodyPaddingTop,
     paddingBottom: DOCTOR_GRID.cardPaddingBottom,
   },
   gridName: {
     fontSize: 13,
-    lineHeight: 16,
+    lineHeight: DOCTOR_GRID.nameLineHeight,
+    height: DOCTOR_GRID.nameHeight,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    minHeight: DOCTOR_GRID.nameHeight,
+    includeFontPadding: false,
+    textAlignVertical: 'top',
+  },
+  gridStatsFeeRow: {
+    height: DOCTOR_GRID.statsHeight,
+    marginTop: DOCTOR_GRID.statsGap,
+    gap: 4,
+  },
+  gridStatsLeft: {
+    gap: 8,
   },
   gridSpeciality: {
     // marginTop: 2,
@@ -445,7 +455,7 @@ const styles = StyleSheet.create({
   },
   gridCta: {
     height: DOCTOR_GRID.ctaHeight,
-    marginTop: 6,
+    marginTop: DOCTOR_GRID.ctaGap,
     borderRadius: DOCTOR_GRID.ctaRadius,
     backgroundColor: Colors.primaryColor,
     alignItems: 'center',

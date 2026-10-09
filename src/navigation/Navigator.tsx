@@ -1,313 +1,3 @@
-// import React, { useState } from "react";
-// import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-// import { createNativeStackNavigator } from "@react-navigation/native-stack";
-// import { enableScreens } from "react-native-screens";
-// import {
-//   NavigationContainer,
-//   useNavigation,
-// } from "@react-navigation/native";
-// import Login from "../screens/auth/Login";
-// import OtpVerify from "../screens/auth/OtpVerify";
-// import AccessModeScreen from "../screens/auth/AccessModeScreen";
-// import CompleteDetailsScreen from "../screens/auth/CompleteDetailsScreen";
-// import Splash from "../screens/auth/Splash";
-// import HomePage from "../screens/home/HomePage";
-// import ProfilePage from "../screens/profile/ProfilePage";
-// import { useNetworkStatus } from "../hooks/useDebaunce";
-// import CustomeTab from "../components/CustomeTab";
-// import AppointmentScreen from "../screens/profile/Appointment";
-// import AppointmentDetailsScreen from "../screens/profile/AppointmentDetails";
-// import { RootBottomParamList, RootStackParamList } from "../../type";
-// import PatientDetails from "../screens/patient/PatientDetails";
-// import TermsCondition from "../screens/TermsCondition";
-// import PolicyDetailScreen from "../screens/legal/PolicyDetailScreen";
-// import PolicyAcceptScreen from "../screens/legal/PolicyAcceptScreen";
-// import LegalPoliciesHubScreen from "../screens/legal/LegalPoliciesHubScreen";
-// import PrivacyCenterScreen from "../screens/legal/PrivacyCenterScreen";
-// import FeedbackInformationScreen from "../screens/legal/FeedbackInformationScreen";
-// import Onboarding from "../screens/auth/Onboarding";
-// import PatientFAQ from "../screens/PatientFAQ";
-// import OrderDetailsScreen from "../screens/orders/OrderDetailsScreen";
-// import OrderHistory from "../screens/orders/OrderHistory";
-// import ProductsScreen from "../screens/products/ProductsScreen";
-// import ProductSearchScreen from "../screens/products/ProductSearchScreen";
-// import CategoryProductsScreen from "../screens/products/CategoryProductsScreen";
-// import TopCategories from "../screens/products/TopCategories";
-// import ProductDetails from "../screens/products/ProductDetails";
-// import ReviewPage from "../screens/products/ReviewPage";
-// import ShareExperienceScreen from "../screens/reviews/ShareExperienceScreen";
-// import MyCart from "../screens/cart/MyCart";
-// import Checkout from "../screens/products/Checkout";
-// import MedicalRecords from "../screens/profile/MedicalRecords";
-// import OrderConfirmation from "../screens/products/OrderConfirmation";
-// import MedicineScreen from "../screens/medicines/MedicineScreen";
-// import FAQScreen from "../screens/profile/FAQScreen";
-// import HelpCenterScreen from "../screens/profile/HelpCenter";
-// import SettingsScreen from "../screens/profile/Settings";
-// import PaymentsScreen from "../screens/profile/PaymentScreen";
-// import TransactionDetailsScreen from "../screens/profile/TransactionDetailsScreen";
-// // import EmergencySOS from "../screens/SOS/EmergencySOS";
-// // import SOSPayment from "../screens/SOS/SOSPayment";
-// // import SOSRequest from "../screens/SOS/SOSRequest";
-// // import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
-// // import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
-// // import SOSConfirmed from "../screens/SOS/SOSConfirmed";
-// import NotificationsScreen from "../screens/NotificationsScreen";
-// import ManageAdrees from "../screens/ManageAdrees";
-// import Prescription from "../screens/medicines/Prescription";
-// import VerifyPresciption from "../screens/medicines/VerifyPresciption";
-// import MedicineCheckOut from "../screens/medicines/CheckOut";
-// import OrderStatus from "../screens/medicines/OrderStatus";
-// import Wishlist from "../screens/profile/Wishlist";
-// import RewardsScreen from "../screens/profile/RewardsScreen";
-// import MedicalHistory from "../screens/MedicalHistory";
-// import AssessmentType from "../screens/AssesmentType";
-// import MentorProfile from "../screens/mentor/MentorProfile";
-// import YogaScreen from "../screens/mentor/YogaScreen";
-// import YogaSession from "../screens/mentor/YogaSession";
-// import DietScreen from "../screens/mentor/DietScreen";
-// import MealDetails from "../screens/mentor/MealDetails";
-// import WeeklyMeal from "../screens/mentor/WeeklyMeal";
-// import ConsultMentor from "../screens/mentor/ConsultMentor";
-// import MentorCheckout from "../screens/mentor/MentorCheckout";
-// import MentorOrder from "../screens/mentor/MentorOrder";
-// import WelcomeScreen from "../screens/auth/WelcomeScree";
-// import RefundScreen from "../screens/mentor/RefundScreen";
-// import ExchangeScreen from "../screens/mentor/ExchangeScreen";
-// import MedicalReceipt from "../screens/consult/MedicalReceipt";
-// import ConsultHistory from "../screens/consult/ConsultHistory";
-// import AllDoctors from "../screens/consult/AllDoctors";
-// import DoctorSlot from "../screens/consult/DoctorSlot";
-// import DoctorProfile from "../screens/consult/DoctorProfile";
-// import BookingConfrimScreen from "../screens/consult/BookingConfirmScreen";
-// import AddCalendar from "../screens/consult/AddCalendar";
-// import CategoryDoctor from "../screens/consult/CategoryDoctor";
-// import DoctorSlipScreen from "../screens/consult/DoctorSlip";
-// import MultipleDoctorSlip from "../screens/consult/MultipleDoctorSlip";
-// import DoctorConsultationHistoryScreen from "../screens/consult/DoctorConsultationHistoryScreen";
-// import NetworkError from "../screens/NetworkError";
-// import AddEditAddress from "../components/AddEditAddress";
-// import LocationPickerScreen from "../screens/LocationPickerScreen";
-// import PrakritiProfile from "../screens/auth/PrakritiProfile";
-// import PrescriptionDetail from "../screens/profile/PrescriptionDetail";
-// import EditProfile from "../screens/profile/EditProfile";
-// import RazorpayScreen from "../screens/payment/RazorpayScreen";
-// import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
-// import AllFavDoctors from "../screens/consult/AllFAvDoctor";
-// import ConsultHome from "../screens/consult/ConsultHome";
-// import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
-// import { navigationRef } from "./navigationRef";
-// import { flushPendingNotificationNavigation } from "../screens/notifications/notificationRouter";
-// import PatientVideoCall from "../screens/consult/PatientVideoCall";
-// import { ScrollHideProvider } from "../context/ScrollHideContext";
-// import { useHomeExitBackHandler } from "../hooks/useHomeExitBackHandler";
-
-// enableScreens();
-
-// const Stack = createNativeStackNavigator<RootStackParamList>();
-// const Tab = createBottomTabNavigator<RootBottomParamList>();
-// import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
-// import ChatScreen from "../screens/profile/ChatScreen";
-// // import ConfirmScreen from "../screens/products/ConfirmScreen";
-
-// const TabStack = () => {
-//   return (
-//     <ScrollHideProvider>
-//       <Tab.Navigator
-//         initialRouteName="Home"
-//         tabBar={(props) => <CustomeTab {...props} />}
-//         screenOptions={{
-//           headerShown: false,
-//         }}
-//       >
-//         <Tab.Screen name="Home" component={HomePage} />
-//         <Tab.Screen name="Products" component={ProductsScreen} />
-//         <Tab.Screen
-//           name="MyCart"
-//           component={MyCart}
-//           options={{ tabBarLabel: 'Cart' }}
-//         />
-//         <Tab.Screen name="Medicines" component={MedicineScreen} />
-//         <Tab.Screen name="Consult" component={ConsultHome} />
-//         <Tab.Screen name="Profile" component={ProfilePage} />
-//       </Tab.Navigator>
-//     </ScrollHideProvider>
-//   );
-// };
-
-// const HomeStackNavigator = () => (
-//   <Stack.Navigator
-//     initialRouteName="TabStack"
-//     screenOptions={({ route }) => getStackScreenOptions(route.name)}
-//   >
-//     <Stack.Screen name="TabStack" component={TabStack} />
-//     <Stack.Screen name="OrderHistory" component={OrderHistory} />
-//     <Stack.Screen name="OrderDetailsScreen" component={OrderDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="Appointments" component={AppointmentScreen} />
-//     <Stack.Screen name="PatientDetails" component={PatientDetails} />
-//     <Stack.Screen name="PatientFAQ" component={PatientFAQ} />
-//     <Stack.Screen name="Onboarding" component={Onboarding} />
-//     <Stack.Screen
-//       name="AccessMode"
-//       component={AccessModeScreen}
-//       options={{ headerShown: false, animation: 'slide_from_right' }}
-//     />
-//     <Stack.Screen
-//       name="CompleteDetails"
-//       component={CompleteDetailsScreen}
-//       options={{ headerShown: false, animation: 'slide_from_bottom' }}
-//     />
-//     <Stack.Screen name="TermsCondition" component={TermsCondition} />
-//     <Stack.Screen
-//       name="PolicyAccept"
-//       component={PolicyAcceptScreen}
-//       options={{ gestureEnabled: false, headerBackVisible: false }}
-//     />
-
-
-//     <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
-//     <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
-//     <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />
-//     <Stack.Screen name="FeedbackInformation" component={FeedbackInformationScreen} />
-//     <Stack.Screen name="TopCategories" component={TopCategories} />
-//     <Stack.Screen name="AddEditPatientDetail" component={AddEditPatientDetail} />
-//     <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
-//     <Stack.Screen name="ProductDetails" component={ProductDetails} />
-//     <Stack.Screen name="ReviewPage" component={ReviewPage} />
-//     <Stack.Screen name="ShareExperienceScreen" component={ShareExperienceScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MyCart" component={MyCart} />
-//     <Stack.Screen name="Checkout" component={Checkout} />
-//     <Stack.Screen name="MedicalRecords" component={MedicalRecords} />
-//     <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} />
-//     <Stack.Screen name="MedicineScreen" component={MedicineScreen} />
-//     <Stack.Screen name="ProductsScreen" component={ProductsScreen} />
-//     <Stack.Screen name="FAQScreen" component={FAQScreen} />
-//     <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
-//     <Stack.Screen name="Settings" component={SettingsScreen} />
-//     <Stack.Screen name="PaymentsScreen" component={PaymentsScreen} />
-//     <Stack.Screen name="TransactionDetailsScreen" component={TransactionDetailsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
-//     <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
-//     <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MedicineCheckOut" component={MedicineCheckOut} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="OrderStatus" component={OrderStatus} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="Wishlist" component={Wishlist} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="Rewards" component={RewardsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MedicalHistory" component={MedicalHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="AssessmentType" component={AssessmentType} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="Mentor" component={MentorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="YogaScreen" component={YogaScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="DietScreen" component={DietScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MealDetails" component={MealDetails} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="WeeklyMeal" component={WeeklyMeal} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="YogaSession" component={YogaSession} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MentorCheckout" component={MentorCheckout} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="ConsultMentor" component={ConsultMentor} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MentorOrder" component={MentorOrder} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="History" component={OrderHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="PrakritiProfile" component={PrakritiProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="RefundScreen" component={RefundScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="ExchangeScreen" component={ExchangeScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MedicalReceipt" component={MedicalReceipt} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="ConsultHistory" component={ConsultHistory} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="AllDoctors" component={AllDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="DoctorSlot" component={DoctorSlot} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="DoctorProfile" component={DoctorProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="BookingConfrimScreen" component={BookingConfrimScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="AddCalendar" component={AddCalendar} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="CategoryDoctor" component={CategoryDoctor} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="DoctorSlipScreen" component={DoctorSlipScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="AddEditAddress" component={AddEditAddress} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="LocationPickerScreen" component={LocationPickerScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="MultipleDoctorSlip" component={MultipleDoctorSlip} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="DoctorConsultationHistory" component={DoctorConsultationHistoryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     {/* <Stack.Screen name="ProductRazorpayScreen" component={ProductRazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
-//     <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="ConsultScreen" component={ConsultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-//     {/* <Stack.Screen name="ConfirmScreen" component={ConfirmScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
-//   </Stack.Navigator>
-// );
-
-// const HomeStack = () => {
-//   const navigation = useNavigation();
-//   useHomeExitBackHandler(navigation);
-
-//   return <HomeStackNavigator />;
-// };
-
-
-// // 🔥 AUTH STACK
-// const AuthStack = () => {
-//   return (
-//     <Stack.Navigator initialRouteName="Login" screenOptions={defaultStackOptions}>
-//       <Stack.Screen name="Login" component={Login} options={{
-//         headerShown: false,
-//         animation: 'slide_from_right',
-//       }} />
-//       <Stack.Screen name="OtpVerify" component={OtpVerify} options={{
-//         headerShown: false,
-//         animation: 'slide_from_right',
-//       }} />
-//       <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
-//       <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
-//     </Stack.Navigator>
-//   );
-// };
-
-
-
-// // 🔥 SPLASH STACK
-// const SplashStack = () => {
-//   return (
-//     <Stack.Navigator screenOptions={defaultStackOptions}>
-//       <Stack.Screen name="Splash" component={Splash} options={{
-//         headerShown: false,
-//         animation: 'slide_from_right',
-//       }} />
-//     </Stack.Navigator>
-//   );
-// };
-
-
-// const MainNavigator = () => {
-//   return (
-//     <Stack.Navigator initialRouteName="SplashStack" screenOptions={defaultStackOptions}>
-//       <Stack.Screen name="SplashStack" component={SplashStack} />
-//       <Stack.Screen name="Welcome" component={WelcomeScreen} />
-//       <Stack.Screen name="AuthStack" component={AuthStack} />
-//       <Stack.Screen name="HomeStack" component={HomeStack} />
-//     </Stack.Navigator>
-//   );
-// };
-
-
-// // 🔥 ROOT NAVIGATOR
-// const Navigator = () => {
-//   const isConnected = useNetworkStatus();
-
-//   return (
-//     <NavigationContainer
-//       ref={navigationRef}
-//       onReady={() => {
-//         flushPendingNotificationNavigation();
-//       }}
-//     >
-//       {isConnected === false ? <NetworkError /> : <MainNavigator />}
-//     </NavigationContainer>
-//   );
-// };
-// export default Navigator;
-
 
 import React, { useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -359,12 +49,6 @@ import HelpCenterScreen from "../screens/profile/HelpCenter";
 import SettingsScreen from "../screens/profile/Settings";
 import PaymentsScreen from "../screens/profile/PaymentScreen";
 import TransactionDetailsScreen from "../screens/profile/TransactionDetailsScreen";
-// import EmergencySOS from "../screens/SOS/EmergencySOS";
-// import SOSPayment from "../screens/SOS/SOSPayment";
-// import SOSRequest from "../screens/SOS/SOSRequest";
-// import SOSCancelScreen from "../screens/SOS/SOSCancelScreen";
-// import SOSDoctorAssigned from "../screens/SOS/SOSConfirmed";
-// import SOSConfirmed from "../screens/SOS/SOSConfirmed";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ManageAdrees from "../screens/ManageAdrees";
 import Prescription from "../screens/medicines/Prescription";
@@ -425,7 +109,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootBottomParamList>();
 import { defaultStackOptions, getStackScreenOptions } from "./screenOptions";
 import ChatScreen from "../screens/profile/ChatScreen";
-// import ConfirmScreen from "../screens/products/ConfirmScreen";
 
 const TabStack = () => {
   return (
@@ -482,7 +165,6 @@ const HomeStackNavigator = () => (
       component={PolicyAcceptScreen}
       options={{ gestureEnabled: false, headerBackVisible: false }}
     />
-
 
     <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} />
     <Stack.Screen name="LegalPoliciesHub" component={LegalPoliciesHubScreen} />
@@ -551,13 +233,11 @@ const HomeStackNavigator = () => (
     <Stack.Screen name="PrescriptionDetail" component={PrescriptionDetail} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="EditProfile" component={EditProfile} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="RazorpayScreen" component={RazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-    {/* <Stack.Screen name="ProductRazorpayScreen" component={ProductRazorpayScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
     <Stack.Screen name="FavDoctors" component={AllFavDoctors} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="ConsultScreen" component={ConsultHome} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="ReviewGalleryScreen" component={ReviewGalleryScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="PatientVideoCallScreen" component={PatientVideoCall} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />
-    {/* <Stack.Screen name="ConfirmScreen" component={ConfirmScreen} options={{ headerShown: false, animation: 'slide_from_right' }} /> */}
   </Stack.Navigator>
 );
 
@@ -567,7 +247,6 @@ const HomeStack = () => {
 
   return <HomeStackNavigator />;
 };
-
 
 // 🔥 AUTH STACK
 const AuthStack = () => {
@@ -587,8 +266,6 @@ const AuthStack = () => {
   );
 };
 
-
-
 // 🔥 SPLASH STACK
 const SplashStack = () => {
   return (
@@ -601,7 +278,6 @@ const SplashStack = () => {
   );
 };
 
-
 const MainNavigator = () => {
   return (
     <Stack.Navigator initialRouteName="SplashStack" screenOptions={defaultStackOptions}>
@@ -612,7 +288,6 @@ const MainNavigator = () => {
     </Stack.Navigator>
   );
 };
-
 
 // 🔥 ROOT NAVIGATOR
 const Navigator = () => {

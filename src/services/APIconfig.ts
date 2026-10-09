@@ -2,7 +2,6 @@ import { Utils } from "../common/Utils";
 import { BaseUrl } from "../config/Key";
 import * as _AUTH_SERVICES from "./AuthService";
 
-
 let isRefreshing = false;
 
 let refreshPromise: Promise<string | null> | null =
@@ -13,7 +12,6 @@ let refreshPromise: Promise<string | null> | null =
 | CLEAR SESSION
 |--------------------------------------------------------------------------
 */
-
 
 /*
 |--------------------------------------------------------------------------
@@ -89,7 +87,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
             'TOKEN_REFRESH_RESPONSE =>',
             data,
         );
-
 
         // Backend sometimes returns 401 "User not found" on refresh —
         // do not treat that as a successful rotation; keep existing access token.
@@ -206,7 +203,6 @@ const makeRequest = async (
         },
     );
 };
-
 
 export const apiClient = async (
     endpoint: string,

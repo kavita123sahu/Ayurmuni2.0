@@ -147,7 +147,6 @@ export const useTransactions = (options?: { pageSize?: number }) => {
         const mapped = rawList.map(mapTransaction);
         let more = hasMoreTransactionPages(res, mapped.length, pageSize);
 
-
         setTransactions(prev => {
           if (mode !== 'append') {
             return mapped;

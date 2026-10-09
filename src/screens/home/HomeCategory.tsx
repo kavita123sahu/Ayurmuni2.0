@@ -80,8 +80,6 @@ const ALL_ITEM: Category = {
   redirect_url: '',
 };
 
-
-
 const resolveCategoryIcon = (item: Category): TablerIconName => {
   if (item.id === 'all') return CATEGORY_ICONS.all;
   const serviceKey = resolveServiceCategoryKey(item);
@@ -164,8 +162,6 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
   console.log("servicesservicesservices", services)
   const listData = useMemo(() => [ALL_ITEM, ...services], [services]);
 
-  // const listData = useMemo(() => [...services], [services]);
-
   const handlePress = useCallback(
 
     (item: Category) => {
@@ -191,7 +187,6 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
     },
     [navigation],
   );
-
 
   const renderItem = useCallback(
     ({ item }: { item: Category }) => (

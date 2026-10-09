@@ -1,12 +1,9 @@
 
-
-
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Images } from '../../../common/Images';
 import { Colors } from '../../../common/Colors';
-// import logo from '../../../assets/images//backButton.png';
 
 interface ChatHeaderProps {
   title: string;
@@ -28,7 +25,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline:
       <View style={styles.leftContainer}>
 
         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
-          {/* <Text style={styles.backIcon}>‹</Text> */}
           <Image source={Images.backIcon} style={styles.backImage} />
         </TouchableOpacity>
 
@@ -51,9 +47,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ title, avatar, isOnline:
         </View>
       </View>
 
-      {/* <TouchableOpacity style={styles.moreButton} activeOpacity={0.7}>
-        <Text style={styles.moreIcon}>⋯</Text>
-      </TouchableOpacity> */}
     </View>
   );
 };

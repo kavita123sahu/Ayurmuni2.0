@@ -20,7 +20,6 @@ export const Images = {
     login13: require('../assets/images/login/13.png'),
     login14: require('../assets/images/login/14.jpg'),
 
-
     ayurvedic: require('../assets/images/login/ayurvedic.jpeg'),
     dietlifestyle: require('../assets/images/login/dietlifestyle.jpeg'),
     delivery: require('../assets/images/login/delivery.png'),

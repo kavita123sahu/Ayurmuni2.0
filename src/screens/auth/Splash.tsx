@@ -122,15 +122,6 @@ const Splash = (props: any) => {
       ]),
     ).start();
 
-    // const finish = async (navigate: () => void) => {
-    //   if (navigatedRef.current) return;
-    //   const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - startedAt));
-    //   if (wait) await new Promise(r => setTimeout(r, wait));
-    //   if (navigatedRef.current) return;
-    //   navigatedRef.current = true;
-    //   navigate();
-    // };
-
     const finish = async (navigate: () => void) => {
       if (navigatedRef.current) return;
 
@@ -312,7 +303,6 @@ const Splash = (props: any) => {
           <Text style={styles.brand}>AYURMUNI</Text>
           <View style={styles.goldLine} />
           <Text style={styles.tagline}>Your Ayurveda</Text>
-          {/* <Text style={styles.tagline}>Heal · Balance · Thrive</Text> */}
         </Animated.View>
       </View>
           

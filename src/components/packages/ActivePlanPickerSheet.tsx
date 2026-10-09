@@ -139,7 +139,7 @@ const ActivePlanPickerSheet = ({
               const usable = status.usable;
               const selected = usable && plan.id === pickedId;
               // const remaining = status.label;
-               const remaining = 'Doctor is not eligible for this plan';
+              const remaining = 'Doctor is not eligible for this plan';
               const expires = formatDate(plan.expires_at);
               const payable = eligibility?.[plan.id]?.payable;
               const planPrice = Number(plan.paid_price || plan.original_price || 0);
@@ -167,16 +167,16 @@ const ActivePlanPickerSheet = ({
                       {plan.name}
                     </Text>
                     {/* {remaining ? ( */}
-                      <Text
-                        style={[
-                          styles.rowRemaining,
-                          !usable && (status.loading ? styles.rowRemainingLoading : styles.rowRemainingOff),
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {/* {remaining} */}
-                        {remaining}
-                      </Text>
+                    <Text
+                      style={[
+                        styles.rowRemaining,
+                        !usable && (status.loading ? styles.rowRemainingLoading : styles.rowRemainingOff),
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {/* {remaining} */}
+                      {remaining}
+                    </Text>
                     {/* ) : null} */}
                     {expires ? (
                       <Text style={styles.rowMeta} numberOfLines={1}>

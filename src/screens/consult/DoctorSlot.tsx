@@ -490,21 +490,6 @@ const DoctorSlot = (props: any) => {
                                     </Text>
                                 )}
 
-                                {/* {!!locationLabel && (
-                                    <View style={styles.locRow}>
-                                        <TablerIcon
-                                            name="map-pin"
-                                            size={12}
-                                            color="#B45309"
-                                        />
-                                        <Text
-                                            style={styles.locText}
-                                            numberOfLines={1}
-                                        >
-                                            {locationLabel}
-                                        </Text>
-                                    </View>
-                                )} */}
                             </View>
                         </View>
 

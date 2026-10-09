@@ -50,7 +50,7 @@ const resolveDiscount = (coupon: Coupon, subtotal: number, apiDiscount: number) 
   }
   return local.discount;
 };
-  
+
 export const useCheckoutCoupons = (
   scope: CouponScope,
   subtotal: number,

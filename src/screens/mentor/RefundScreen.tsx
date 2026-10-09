@@ -43,13 +43,11 @@ const refundMethods = [
     },
 ];
 
-
 type Props = {
     label: string;
     selected: boolean;
     onPress: () => void;
 };
-
 
 const RefundScreen = (props: any) => {
     const [selectedReason, setSelectedReason] = useState<string>('Product damaged');
@@ -114,7 +112,6 @@ const RefundScreen = (props: any) => {
                         {selected && <TablerIcon name="check" size={15} color={'#FFFF'} />}
                     </View>
                 </View>
-
 
                 <Text style={styles.radioTitle}>{item?.title}</Text>
                 <Text style={styles.radioSub}>{item?.subtitle}</Text>
@@ -211,7 +208,6 @@ const RefundScreen = (props: any) => {
 };
 
 export default RefundScreen;
-
 
 const styles = StyleSheet.create({
     container: {

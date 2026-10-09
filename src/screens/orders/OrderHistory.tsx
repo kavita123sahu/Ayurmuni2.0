@@ -550,19 +550,6 @@ const OrderHistory = (props: any) => {
                     </View>
                   </View>
 
-                  {/* {getPrescriptionFiles(item).length ? (
-                    <View style={styles.rxBlock}>
-                      {getPrescriptionFiles(item).map(file => (
-                        <PrescriptionFilePreview
-                          key={file.uri}
-                          uri={file.uri}
-                          fileType={file.fileType}
-                          height={132}
-                        />
-                      ))}
-                    </View>
-                  ) : null} */}
-
                   {variants.length ? (
                     <View style={styles.variantList}>
                       <Text style={styles.sectionLabel}>Requested items</Text>

@@ -51,8 +51,6 @@ const TABS = [
     },
 ];
 
-
-
 const AllDoctors = (props: any) => {
     const { all } = props.route.params;
 
@@ -63,7 +61,6 @@ const AllDoctors = (props: any) => {
 
     const [filterLoading, setFilterLoading] =
         useState(false);
-
 
     const [doctorData, setDoctorData] =
         useState<any[]>([]);
@@ -94,16 +91,13 @@ const AllDoctors = (props: any) => {
         experience: '',
     });
 
-
     const isFirstRender = useRef(true);
 
     const { categories } = useConsultData();
 
-
     useEffect(() => {
         setSpecialities(categories || []);
     }, [categories]);
-
 
     const FILTER_OPTIONS =
         useMemo(
@@ -136,8 +130,6 @@ const AllDoctors = (props: any) => {
             const key = activeTab as keyof typeof FILTER_OPTIONS;
             return FILTER_OPTIONS[key] || [];
         }, [activeTab, showCustomDateOptions, FILTER_OPTIONS]);
-
-
 
     const getAllDoctors =
         useCallback(
@@ -580,19 +572,6 @@ const AllDoctors = (props: any) => {
 
     //     return (
 
-    //         <SafeAreaView
-    //             style={styles.loaderContainer}
-    //         >
-
-    //             <ActivityIndicator
-    //                 size="large"
-    //                 color={Colors.primaryColor}
-    //             />
-
-    //         </SafeAreaView>
-    //     );
-    // }
-
     return (
 
         <SafeAreaView
@@ -613,8 +592,6 @@ const AllDoctors = (props: any) => {
                 }
                 rightIconName="bell"
             />
-
-
 
             {
                 loading ? (
@@ -650,11 +627,8 @@ const AllDoctors = (props: any) => {
                             styles.listContent
                         }
 
-
-
                         ListHeaderComponent={
                             <>
-
 
                                 {/* SEARCH */}
 

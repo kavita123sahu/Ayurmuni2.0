@@ -32,7 +32,6 @@ const goHomeStack = (navigation: any, screen: string, params?: object) => {
   });
 };
 
-
 export const handleNotificationNavigation = (
   navigation: any,
   data: NavPayload,

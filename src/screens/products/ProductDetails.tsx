@@ -57,47 +57,66 @@ const SectionHeader = ({ title }: { title: string }) => (
     <Text style={styles.sectionHeader}>{title}</Text>
 );
 
-/** Local qty stepper — does not call cart API. */
+/** Cart quantity stepper. With `minQuantity` 0, minus at qty 1 becomes "remove". */
 const CompactQtyStepper = ({
     quantity,
     onIncrease,
     onDecrease,
     disabled,
     maxQuantity,
+    minQuantity = 1,
+    large = false,
 }: {
     quantity: number;
     onIncrease: () => void;
     onDecrease: () => void;
     disabled?: boolean;
     maxQuantity?: number | null;
+    minQuantity?: number;
+    large?: boolean;
 }) => {
     const atMax =
         maxQuantity != null &&
         Number.isFinite(maxQuantity) &&
         quantity >= maxQuantity;
+    const atMin = quantity <= minQuantity;
+    const showRemove = minQuantity === 0 && quantity <= 1;
     return (
-        <View style={[styles.qtyStepper, disabled && styles.qtyStepperDisabled]}>
+        <View
+            style={[
+                styles.qtyStepper,
+                large && styles.qtyStepperLarge,
+                disabled && styles.qtyStepperDisabled,
+            ]}
+        >
             <TouchableOpacity
                 onPress={onDecrease}
-                disabled={disabled || quantity <= 1}
-                style={styles.qtyBtn}
+                disabled={disabled || atMin}
+                style={[styles.qtyBtn, large && styles.qtyBtnLarge]}
                 hitSlop={8}
             >
                 <TablerIcon
-                    name="minus"
+                    name={showRemove ? 'trash' : 'minus'}
                     size={14}
                     color={
-                        disabled || quantity <= 1
+                        disabled || atMin
                             ? 'rgba(255,255,255,0.4)'
                             : '#FFFFFF'
                     }
-                    strokeWidth={2.6}
+                    strokeWidth={showRemove ? 2.2 : 2.6}
                 />
             </TouchableOpacity>
-            <Text style={styles.qtyValue}>{quantity}</Text>
+            <Text style={[styles.qtyValue, large && styles.qtyValueLarge]}>
+                {quantity}
+            </Text>
             <TouchableOpacity
                 onPress={onIncrease}
-                style={[styles.qtyBtn, (disabled || atMax) && styles.qtyBtnMuted]}
+                disabled={disabled || atMax}
+                style={[
+                    styles.qtyBtn,
+                    large && styles.qtyBtnLarge,
+                    (disabled || atMax) && styles.qtyBtnMuted,
+                ]}
                 hitSlop={8}
             >
                 <TablerIcon
@@ -139,14 +158,24 @@ const ProductDetails = (props: any) => {
     const { ProductData, loading, ReviewAll } = useProductData(varientID);
 
     const variants = ProductData?.variants || [];
-    console.log('ProductData', ProductData);
+    const routeVariant = useMemo(
+        () =>
+            (ProductData?.variants || []).find(
+                (v: any) =>
+                    String(v?.id) === String(varientID) ||
+                    String(v?.variant_id) === String(varientID),
+            ) || null,
+        [ProductData, varientID],
+    );
     const defaultVariant =
-        variants.find((v: any) => v?.is_default) || variants[0] || null;
+        routeVariant ||
+        variants.find((v: any) => v?.is_default) ||
+        variants[0] ||
+        null;
     const [selectedVariant, setSelectedVariant] = useState<any>(null);
-    const [quantity, setQuantity] = useState<number>(1);
     const [pendingCta, setPendingCta] = useState<'add' | 'buy' | null>(null);
 
-    // Prefer selected; fall back to default so stock/CTA never use empty initial state
+    // Route variant is resolved synchronously so the gallery doesn't swap images after first paint.
     const activeVariant = selectedVariant || defaultVariant;
     // Prefer selected pack identity so multi-variant products don't all send route id
     const cartVariantId = String(
@@ -155,9 +184,7 @@ const ProductDetails = (props: any) => {
         varientID ??
         '',
     ).trim();
-    console.log('cartVariantId', cartVariantId);
     const { updateCartQuantity } = useCartActions();
-    console.log('updateCartQuantityupdateCartQuantity', updateCartQuantity,);
     const isAdding = useAppSelector(selectIsAddingVariant(cartVariantId));
     const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
     const existingCartQty = useMemo(() => {
@@ -180,12 +207,16 @@ const ProductDetails = (props: any) => {
         cartVariantId,
         variantQuantities,
     ]);
-    const cartQuantity =
-        ProductData?.variants?.find((variant: any) => variant?.id === activeVariant?.id)
-            ?.cart_quantity ?? 0;
-
-    console.log('activeVariantactiveVariant', activeVariant, "cartQuantity", cartQuantity);
-
+    const apiCartQuantity =
+        Number(
+            ProductData?.variants?.find((variant: any) => variant?.id === activeVariant?.id)
+                ?.cart_quantity,
+        ) || 0;
+    // Redux holds the live (optimistic) cart; API cart_quantity only covers the
+    // window before the cart has been loaded into Redux.
+    const cartLoaded = useAppSelector(s => Boolean(s.cart.cartData?.my_cart));
+    const cartQty = cartLoaded ? existingCartQty : existingCartQty || apiCartQuantity;
+    const inCart = cartQty > 0;
     const insets = useSafeAreaInsets();
     const [descExpanded, setDescExpanded] = useState(false);
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
@@ -204,10 +235,6 @@ const ProductDetails = (props: any) => {
         );
         setSelectedVariant(routeMatch || defaultVariant);
     }, [ProductData, varientID]);
-
-    useEffect(() => {
-        setQuantity(cartQuantity > 0 ? cartQuantity : 1);
-    }, [activeVariant?.id, activeVariant?.variant_id]);
 
     useEffect(() => {
         const wishlisted = Boolean(
@@ -272,66 +299,62 @@ const ProductDetails = (props: any) => {
         [ProductData, activeVariant],
     );
 
-    /** Local qty only — cart API runs from Add / Buy now. */
-    const increaseQty = () => {
-        setQuantity(q => {
-            const next = q + 1;
-            const block = getAddQtyBlockMessage(activeVariant, next);
-            if (block) {
-                showSuccessToast(block, 'error');
-                return q;
+    /** Sets the cart line to an absolute quantity (0 removes it). */
+    const changeCartQty = useCallback(
+        async (next: number) => {
+            if (!cartVariantId) return false;
+            if (next > cartQty) {
+                const stockMsg = getAddQtyBlockMessage(activeVariant, next);
+                if (stockMsg) {
+                    showSuccessToast(stockMsg, 'error');
+                    return false;
+                }
+                if (maxQty != null && next > maxQty) return false;
             }
-            if (maxQty == null) return next;
-            return Math.min(next, maxQty);
-        });
-    };
-    const decreaseQty = () => setQuantity(q => (q > 1 ? q - 1 : 1));
+            const success = await updateCartQuantity(cartVariantId, Math.max(0, next), {
+                currentQuantity: cartQty,
+                prescriptionRequired: isPrescriptionRequired(productForRx),
+            });
+            if (!success) {
+                showSuccessToast('Unable to update cart. Please try again.', 'error');
+            }
+            return success;
+        },
+        [activeVariant, cartQty, cartVariantId, maxQty, productForRx, updateCartQuantity],
+    );
 
+    const increaseQty = () => changeCartQty(cartQty + 1);
+    const decreaseQty = () => changeCartQty(cartQty - 1);
+
+    /** First add puts 1 in the cart; when already in the cart, "Buy now" just opens the cart. */
     const handleAddToCart = useCallback(
         async (goToCart = false) => {
+            if (inCart) {
+                if (goToCart) props.navigation.navigate('MyCart');
+                return;
+            }
             if (!(await requireAuth('Please login to add items to cart'))) return;
-            if (!cartVariantId) return;
-
-            const addQty = Math.max(1, Number(quantity) || 1);
-            const stockMsg = getAddQtyBlockMessage(activeVariant, addQty);
-            if (stockMsg) {
-                showSuccessToast(stockMsg, 'error');
-                return;
-            }
-            if (!canAddProductWithoutPrescription(productForRx)) {
-                return;
-            }
+            if (!canAddProductWithoutPrescription(productForRx)) return;
 
             if (activeVariant?.id && coverImageUri) {
                 cacheVariantImage(activeVariant.id, coverImageUri);
             }
 
             setPendingCta(goToCart ? 'buy' : 'add');
-            const success = await updateCartQuantity(cartVariantId, addQty, {
-                currentQuantity: existingCartQty,
-                prescriptionRequired: isPrescriptionRequired(productForRx),
-            });
-            console.log('handleAddToCartsuccess', success);
+            const success = await changeCartQty(1);
             setPendingCta(null);
 
-            if (!success) {
-                showSuccessToast('Try again to add into cart', 'error');
-                return;
-            }
-            setQuantity(addQty);
-            if (goToCart) {
+            if (success && goToCart) {
                 props.navigation.navigate('MyCart');
             }
         },
         [
-            activeVariant,
-            cartVariantId,
+            activeVariant?.id,
+            changeCartQty,
             coverImageUri,
-            existingCartQty,
+            inCart,
             productForRx,
             props.navigation,
-            quantity,
-            updateCartQuantity,
         ],
     );
 
@@ -385,8 +408,8 @@ const ProductDetails = (props: any) => {
         ...activeVariant,
     });
 
-    const cartDisplayQty = Math.max(quantity, 1);
-    const totalPrice = (activeVariant?.selling_price || 0) * quantity;
+    const cartDisplayQty = Math.max(cartQty, 1);
+    const totalPrice = (activeVariant?.selling_price || 0) * cartDisplayQty;
     const saveAmount = Math.max(
         0,
         (Number(activeVariant?.mrp) || 0) -
@@ -411,7 +434,6 @@ const ProductDetails = (props: any) => {
         });
         return bestDisc > 0 ? bestId : null;
     }, [variants]);
-
 
     const deliveryMessage = ProductData?.delivery_expection;
 
@@ -641,6 +663,7 @@ const ProductDetails = (props: any) => {
                         //     {" "}
                         //     {selectedVariant?.weightage + " " + selectedVariant?.physical_state}
                         // </Text>
+
                         <Text style={styles.packLine} numberOfLines={1}>
                             <Text style={styles.variantName}>
                                 {[selectedVariant?.title,]
@@ -648,8 +671,8 @@ const ProductDetails = (props: any) => {
                                     .join(' · ')}
                             </Text>
                             {" "}
-                            <Text>
-                                {["-", selectedVariant?.physical_state]
+                            <Text style={styles.variantName}>
+                                {["-", selectedVariant?.size, selectedVariant?.weightage, "-", selectedVariant?.physical_state]
                                     .filter(Boolean)
                                     .join(' ')}
                             </Text>
@@ -664,9 +687,6 @@ const ProductDetails = (props: any) => {
 
                     <View style={styles.priceRow}>
                         <View style={styles.priceLeft}>
-                            {/* {saveAmount > 0 ? (
-                                <Text style={styles.specialLabel}>Special Price</Text>
-                            ) : null} */}
                             <View style={styles.priceLine}>
                                 <RupeeAmount
                                     value={selectedVariant?.selling_price}
@@ -724,30 +744,59 @@ const ProductDetails = (props: any) => {
                                 </View>
                             )}
                         </View>
-                        <View style={styles.qtyBlock}>
-                            {existingCartQty > 0 ? (
-                                <Text style={styles.inCartBadge}>
-                                    {existingCartQty} in cart
-                                </Text>
-                            ) : null}
-                            <CompactQtyStepper
-                                quantity={quantity}
-                                onIncrease={increaseQty}
-                                onDecrease={decreaseQty}
-                                disabled={isOutOfStock}
-                                maxQuantity={maxQty}
-                            />
-                            {maxQty != null &&
+                        {/* <View style={styles.qtyBlock}>
+                            {inCart ? (
+                                <>
+                                    <Text style={styles.inCartBadge}>
+                                        {cartQty} in cart
+                                    </Text>
+                                    <CompactQtyStepper
+                                        quantity={cartQty}
+                                        onIncrease={increaseQty}
+                                        onDecrease={decreaseQty}
+                                        disabled={isOutOfStock}
+                                        maxQuantity={maxQty}
+                                        minQuantity={0}
+                                    />
+                                </>
+                            ) : (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.inlineAddBtn,
+                                        (isOutOfStock || ctaBusy) && styles.btnDisabled,
+                                    ]}
+                                    onPress={() => handleAddToCart(false)}
+                                    disabled={isOutOfStock || ctaBusy}
+                                    activeOpacity={0.85}
+                                >
+                                    {addBusy ? (
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                    ) : (
+                                        <>
+                                            <TablerIcon
+                                                name="shopping-cart"
+                                                size={14}
+                                                color="#FFFFFF"
+                                            />
+                                            <Text style={styles.inlineAddText}>
+                                                {isOutOfStock ? 'Sold out' : 'Add to cart'}
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            {inCart &&
+                                maxQty != null &&
                                 maxQty > 0 &&
                                 maxQty <= LOW_STOCK_THRESHOLD &&
-                                quantity >= maxQty ? (
+                                cartQty >= maxQty ? (
                                 <Text style={styles.qtyLimitNote}>
                                     {maxQty === 1
                                         ? 'Only 1 item available.'
                                         : `Only ${maxQty} items available.`}
                                 </Text>
                             ) : null}
-                        </View>
+                        </View> */}
                     </View>
 
                     {saveAmount > 0 ? (
@@ -766,8 +815,6 @@ const ProductDetails = (props: any) => {
                         </LinearGradient>
                     ) : null}
 
-
-
                     <View style={styles.deliveryRow}>
                         <View style={styles.deliveryIcon}>
                             <TablerIcon name="truck" size={14} color={Colors.primaryColor} />
@@ -776,11 +823,6 @@ const ProductDetails = (props: any) => {
                             {delivery_expection}{' '}
 
                         </Text>
-                        {/* {selectedVariant?.is_free_shipping ? (
-                            <View style={styles.freeTag}>
-                                <Text style={styles.freeTagText}>FREE</Text>
-                            </View>
-                        ) : null} */}
                     </View>
 
                 </View>
@@ -788,8 +830,8 @@ const ProductDetails = (props: any) => {
                     <View style={styles.card}>
                         <View style={styles.sectionTitleRow}>
                             <Text style={styles.sectionHeader}>Select pack</Text>
-                            {existingCartQty > 0 ? (
-                                <Text style={styles.inCartHint}>{existingCartQty} in cart</Text>
+                            {inCart ? (
+                                <Text style={styles.inCartHint}>{cartQty} in cart</Text>
                             ) : null}
                         </View>
                         <ScrollView
@@ -819,7 +861,7 @@ const ProductDetails = (props: any) => {
                                             <View style={styles.bestPill}>
                                                 <Text style={styles.bestPillText}>BEST</Text>
                                             </View>
-                                        ) : null}
+                                        ) : null} 
                                         {selected ? (
                                             <View style={styles.variantCheck}>
                                                 <TablerIcon name="check" size={10} color="#FFFFFF" />
@@ -857,16 +899,6 @@ const ProductDetails = (props: any) => {
                                                 selected && styles.variantPriceSelected,
                                             ]}
                                         />
-                                        {/* {!!item?.discount && (
-                                            <Text
-                                                style={[
-                                                    styles.variantOff,
-                                                    selected && styles.variantOffSelected,
-                                                ]}
-                                            >
-                                                {item.discount}% off
-                                            </Text>
-                                        )} */}
                                     </TouchableOpacity>
                                 );
                             })}
@@ -910,8 +942,6 @@ const ProductDetails = (props: any) => {
                     </View>
                 </View>
 
-
-
                 {(highlightLines.length > 0 || !!fullDescription) && (
                     <View style={styles.card}>
                         {highlightLines.length > 0 ? (
@@ -932,24 +962,6 @@ const ProductDetails = (props: any) => {
                             </>
                         ) : null}
 
-                        {/* {!!fullDescription && (
-                            <View
-                                style={highlightLines.length > 0 ? styles.aboutBlock : undefined}
-                            >
-                                <SectionHeader title="About this item" />
-                                <Text style={styles.description}>{aboutPreview}</Text>
-                                {fullDescription.length > 140 ? (
-                                    <TouchableOpacity
-                                        onPress={() => setDescExpanded(prev => !prev)}
-                                        hitSlop={8}
-                                    >
-                                        <Text style={styles.readMore}>
-                                            {descExpanded ? 'Show less' : 'Read more'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ) : null}
-                            </View>
-                        )} */}
                     </View>
                 )}
 
@@ -1103,8 +1115,8 @@ const ProductDetails = (props: any) => {
                             value={totalPrice.toFixed(0)}
                             style={styles.stickyPrice}
                         />
-                        {existingCartQty > 0 ? (
-                            <Text style={styles.stickyHint}>{existingCartQty} in cart</Text>
+                        {inCart ? (
+                            <Text style={styles.stickyHint}>{cartQty} in cart</Text>
                         ) : saveAmount > 0 ? (
                             <Text style={styles.stickySave}>
                                 Save {formatRupee(saveAmount * cartDisplayQty)}
@@ -1113,39 +1125,53 @@ const ProductDetails = (props: any) => {
                             <Text style={styles.stickyHint}>Total</Text>
                         )}
                     </View>
-                    <TouchableOpacity
-                        style={[
-                            styles.secondaryBtn,
-                            (isOutOfStock || ctaBusy) && styles.btnDisabled,
-                        ]}
-                        onPress={() => handleAddToCart(false)}
-                        activeOpacity={0.85}
-                        disabled={isOutOfStock || ctaBusy}
-                    >
-                        {addBusy ? (
-                            <ActivityIndicator size="small" color={Colors.primaryColor} />
-                        ) : (
-                            <View style={styles.ctaInner}>
-                                <TablerIcon
-                                    name="shopping-cart"
-                                    size={15}
-                                    color={isOutOfStock ? '#94A3B8' : Colors.primaryColor}
-                                />
-                                <Text style={styles.secondaryBtnText}>
-                                    {isOutOfStock ? 'Sold out' : 'Add'}
-                                </Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
+                    {inCart ? (
+                        <View style={styles.stickyStepperWrap}>
+                            <CompactQtyStepper
+                                quantity={cartQty}
+                                onIncrease={increaseQty}
+                                onDecrease={decreaseQty}
+                                disabled={isOutOfStock}
+                                maxQuantity={maxQty}
+                                minQuantity={0}
+                                large
+                            />
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={[
+                                styles.secondaryBtn,
+                                (isOutOfStock || ctaBusy) && styles.btnDisabled,
+                            ]}
+                            onPress={() => handleAddToCart(false)}
+                            activeOpacity={0.85}
+                            disabled={isOutOfStock || ctaBusy}
+                        >
+                            {addBusy ? (
+                                <ActivityIndicator size="small" color={Colors.primaryColor} />
+                            ) : (
+                                <View style={styles.ctaInner}>
+                                    <TablerIcon
+                                        name="shopping-cart"
+                                        size={15}
+                                        color={isOutOfStock ? '#94A3B8' : Colors.primaryColor}
+                                    />
+                                    <Text style={styles.secondaryBtnText}>
+                                        {isOutOfStock ? 'Sold out' : 'Add to cart'}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                         onPress={() => handleAddToCart(true)}
                         activeOpacity={0.85}
-                        disabled={(existingCartQty <= 0 && isOutOfStock) || ctaBusy}
+                        disabled={(!inCart && isOutOfStock) || ctaBusy}
                         style={styles.primaryBtnWrap}
                     >
                         <LinearGradient
                             colors={
-                                (existingCartQty <= 0 && isOutOfStock) || ctaBusy
+                                (!inCart && isOutOfStock) || ctaBusy
                                     ? ['#6c9180', '#6c9180']
                                     : ['#0D614E', '#14937A']
                             }
@@ -1157,7 +1183,7 @@ const ProductDetails = (props: any) => {
                                 <ActivityIndicator size="small" color="#FFFFFF" />
                             ) : (
                                 <Text style={styles.primaryBtnText}>
-                                    {existingCartQty > 0 ? 'Go to cart' : 'Buy now'}
+                                    {inCart ? 'Go to cart' : 'Buy now'}
                                 </Text>
                             )}
                         </LinearGradient>
@@ -1665,6 +1691,39 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         includeFontPadding: false,
     },
+    qtyStepperLarge: {
+        height: 46,
+        borderRadius: 12,
+        justifyContent: 'space-between',
+    },
+    qtyBtnLarge: {
+        width: 40,
+        height: 46,
+    },
+    qtyValueLarge: {
+        flex: 1,
+        fontSize: 15,
+    },
+    inlineAddBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        height: 34,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: Colors.primaryColor,
+    },
+    inlineAddText: {
+        fontSize: 12,
+        lineHeight: 16,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: '#FFFFFF',
+        includeFontPadding: false,
+    },
+    stickyStepperWrap: {
+        flex: 1,
+    },
 
     trustStrip: {
         marginTop: 6,
@@ -1768,8 +1827,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#1E293B',
-        // textAlign: 'center',
-        // width: '100%',
     },
     variantNameSelected: {
         color: Colors.primaryColor,

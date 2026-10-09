@@ -84,7 +84,7 @@ const MealCard = ({ data, navigation, onLog, plan }: MealProps) => {
                     {!!time && (
                         <View style={styles.timeRow}>
                             <TablerIcon name="clock" size={13} color="#6B7280" />
-                            <Text style={styles.time}>{time}</Text>
+                            <Text style={styles.time} numberOfLines={1}>{time}</Text>
                         </View>
                     )}
                 </View>
@@ -99,7 +99,7 @@ const MealCard = ({ data, navigation, onLog, plan }: MealProps) => {
                     </Text>
                 ) : null}
 
-                <Text style={styles.kcal}>
+                <Text style={styles.kcal} numberOfLines={1}>
                     {Number(data?.kcal) || 0}{' '}
                     <Text style={styles.kcalText}>KCAL</Text>
                 </Text>
@@ -186,6 +186,8 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0,
         fontSize: TYPO.caption,
+        lineHeight: 14,
+        includeFontPadding: false,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
         letterSpacing: 0.4,
@@ -201,25 +203,32 @@ const styles = StyleSheet.create({
 
     time: {
         fontSize: TYPO.sm,
+        lineHeight: 16,
+        includeFontPadding: false,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsMedium,
     },
 
     title: {
         fontSize: TYPO.body,
+        lineHeight: 18,
+        includeFontPadding: false,
         color: Colors.black,
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 18,
     },
 
     subtitle: {
         fontSize: TYPO.sm,
+        lineHeight: 16,
+        includeFontPadding: false,
         color: "#6B7280",
         fontFamily: Fonts.PoppinsRegular,
     },
 
     kcal: {
         fontSize: TYPO.md,
+        lineHeight: 18,
+        includeFontPadding: false,
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
     },

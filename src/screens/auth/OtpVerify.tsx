@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -884,7 +882,6 @@ if (!isNotificationEnabled) {
     }
   };
 
-
   const handleOTPChange = (text: string, index: number) => {
     const cleaned = text.replace(/[^0-9]/g, '');
 
@@ -1375,6 +1372,3 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsRegular,
   },
 });
-
-
-

@@ -50,7 +50,6 @@ const MentorOrder = ( props : any) => {
                 onLeftPress={() => props.navigation.goBack()}
             />
 
-
             <ScrollView style={styles.scrollview} contentContainerStyle={{ paddingBottom: 50, flexGrow: 1 }}>
 
                 <View style={styles.statusCard}>
@@ -146,7 +145,6 @@ const MentorOrder = ( props : any) => {
 
 export default MentorOrder;
 
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -213,8 +211,6 @@ const styles = StyleSheet.create({
 
     card: {
         backgroundColor: "#fff",
-        // padding: 16,
-        // paddingHorizontal:10,
         marginTop: 10,
         borderRadius: 12,
         marginBottom: 12,
@@ -303,7 +299,6 @@ const styles = StyleSheet.create({
         marginRight: 10,
         width: 30,
 
-
     },
 
     circle: {
@@ -327,9 +322,6 @@ const styles = StyleSheet.create({
         marginBottom: -5
 
     },
-
-
-
 
     timelineTime: {
         fontSize: 12,

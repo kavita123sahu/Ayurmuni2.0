@@ -96,7 +96,7 @@ const VisitedDoctorHomeCard = ({
                 {item.doctor_name}
               </Text>
             )}
-           
+
           </View>
 
 
@@ -110,7 +110,7 @@ const VisitedDoctorHomeCard = ({
             </Text>
           )}
 
- <DietitianBadge doctor={item} style={styles.nameBadge} />
+          <DietitianBadge doctor={item} style={styles.nameBadge} />
 
           {/* RATING + REVIEWS + EXPERIENCE SAME LINE */}
           {(hasRating ||
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     borderColor: '#A7F3D0',
   },
 
- 
+
   availableText: {
     fontSize: 8,
     lineHeight: 11,

@@ -229,8 +229,6 @@ export const getCustomerPaymentHistory = async (
   );
 };
 
-
-
 export const cancelOrder = async (
   orderId: string | number,
   data: object,

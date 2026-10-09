@@ -102,6 +102,7 @@ const ReturnDetailsScreen = ({ route, navigation }: any) => {
   const refundAmount = Number(refundRequest?.amount ?? refundRequest?.refund_amount ?? 0) || itemsTotal;
   const refundReference = String(
     refundRequest?.utr ??
+    
       refundRequest?.reference_id ??
       refundRequest?.gateway_refund_id ??
       refundRequest?.transaction_id ??
