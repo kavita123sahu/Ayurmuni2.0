@@ -38,5 +38,19 @@ target 'AyurmuniApp' do
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
       end
     end
+
+    # The prebuilt React.framework already contains RCTSwiftUI/RCTSwiftUIWrapper;
+    # linking the source-built pods too duplicates their ObjC classes at runtime.
+    unless ReactNativeCoreUtils.build_rncore_from_source()
+      installer.aggregate_targets.each do |aggregate_target|
+        aggregate_target.xcconfigs.each do |config_name, xcconfig|
+          libraries = xcconfig.other_linker_flags[:libraries]
+          next unless libraries
+          libraries.delete('RCTSwiftUI')
+          libraries.delete('RCTSwiftUIWrapper')
+          xcconfig.save_as(aggregate_target.xcconfig_path(config_name))
+        end
+      end
+    end
   end
 end
