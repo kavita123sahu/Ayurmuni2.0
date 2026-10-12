@@ -5,7 +5,7 @@ import { Fonts } from '../common/Fonts';
 /** Tight-cropped promo — black keyed out. */
 const BANNER = require('../assets/images/ayurmuniBrandBannerTransparent.png');
 /** Match actual asset pixels — locks layout height (no letterbox gap). */
-const BANNER_ASPECT = 1033 / 813;
+const BANNER_ASPECT = 960 / 756;
 
 type Props = {
   compact?: boolean;
@@ -27,11 +27,12 @@ const AyurmuniBrandShade = ({
   }, [screenW, compact]);
 
   return (
-    <View style={styles.wrap} pointerEvents="none">
+    <View style={styles.wrap} pointerEvents="none" collapsable={false}>
       <Image
         source={BANNER}
         style={{ width: artW, height: artH }}
         resizeMode="contain"
+        fadeDuration={0}
       />
       {tagline ? (
         <Text style={[styles.tagline, compact && styles.taglineCompact]}>
@@ -54,7 +55,6 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     paddingTop: 5,
     paddingBottom: 0,
-    overflow: 'hidden',
   },
   tagline: {
     marginTop: 5,

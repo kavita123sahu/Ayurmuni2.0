@@ -565,7 +565,8 @@ const HomePage: React.FC = (props: any) => {
         }}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews
+        // Single tall item: clipping gains nothing and hides views near the bottom (brand art).
+        removeClippedSubviews={false}
         renderItem={() => (
           <View style={styles.sections}>
             {homeBannerImages.length > 0 && (
@@ -821,7 +822,7 @@ const HomePage: React.FC = (props: any) => {
               </View>
             ) : null}
 
-            <View style={styles.homeSection}>
+            {/* <View style={styles.homeSection}>
               <SectionHeader
                 home
                 title="Lab"
@@ -844,7 +845,7 @@ const HomePage: React.FC = (props: any) => {
                   stackNav.navigate('OrangeLabScreen');
                 }}
               />
-            </View>
+            </View> */}
 
             <View style={styles.homeSection}>
               <SectionHeader home title="Panchakarma" actionText="View all" />

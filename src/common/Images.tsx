@@ -34,14 +34,12 @@ export const Images = {
 
     HomeBanner: require('../assets/images/banner.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),
-    doctorImage: require('../assets/images/doctorImage.png'),
     FAQImage: require('../assets/images/FAQImage.png'),
     networkissue: require('../assets/images/networklogo.png'),
     yesHuman: require('../assets/images/Yes.png'),
     noHuman: require('../assets/images/No.png'),
     doc1: require('../assets/images/doc1.png'),
 
-    cardiology: require('../assets/images/cardiology.png'),
     leaf1: require('../assets/images/leaf1.png'),
     leaf2: require('../assets/images/leaf2.png'),
     Panchakarma: require('../assets/images/panchkarma.png'),

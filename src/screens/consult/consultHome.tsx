@@ -464,7 +464,7 @@ const ConsultHome = () => {
                 </>
               )}
 
-              <SectionHeader
+              {/* <SectionHeader
                 title="Health Lab"
                 actionText="View all"
                 onPress={() => navigation.navigate('OrangeLabScreen')}
@@ -472,7 +472,7 @@ const ConsultHome = () => {
               <OrangeLabHomeSection
                 onPressBanner={() => navigation.navigate('OrangeLabScreen')}
                 onPressTest={() => navigation.navigate('OrangeLabScreen')}
-              />
+              /> */}
 
               {filteredTopDoctors?.length > 0 && (
                 <>

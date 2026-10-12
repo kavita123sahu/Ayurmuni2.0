@@ -90,12 +90,12 @@ type CategoryItem = Omit<
   Partial<
     Pick<ProductCategoryItem, 'symptoms' | 'parent_id' | 'service_category_name'>
   > & {
-  isAll?: boolean;
-  /** Which catalog this sidebar row filters (both-mode). */
-  rail?: CategoryRail;
-  /** Real API category id when `id` is rail-prefixed. */
-  sourceId?: string;
-};
+    isAll?: boolean;
+    /** Which catalog this sidebar row filters (both-mode). */
+    rail?: CategoryRail;
+    /** Real API category id when `id` is rail-prefixed. */
+    sourceId?: string;
+  };
 
 const ALL_CATEGORY: CategoryItem = {
   id: 'all',
@@ -129,11 +129,11 @@ const CategoryProductsScreen = (props: any) => {
 
   const isBrandLanding = Boolean(
     routeParams.brandOnly ||
-      ((routeParams.brand_name_id ||
-        routeParams.brandId ||
-        routeParams.brandID) &&
-        !routeParams.categoryId &&
-        !routeParams.healthCategoryId),
+    ((routeParams.brand_name_id ||
+      routeParams.brandId ||
+      routeParams.brandID) &&
+      !routeParams.categoryId &&
+      !routeParams.healthCategoryId),
   );
 
   const categoryMode: 'health' | 'product' | 'both' =
@@ -526,11 +526,11 @@ const CategoryProductsScreen = (props: any) => {
     () =>
       isBrandAllView
         ? JSON.stringify({
-            brand: apiBrandNameId,
-            targets: brandAllTargets,
-            service: useBothRail ? null : serviceCategoryId,
-            nonce: brandAllNonce,
-          })
+          brand: apiBrandNameId,
+          targets: brandAllTargets,
+          service: useBothRail ? null : serviceCategoryId,
+          nonce: brandAllNonce,
+        })
         : '',
     [
       isBrandAllView,
@@ -563,19 +563,19 @@ const CategoryProductsScreen = (props: any) => {
         getProduct(
           target.rail === 'health'
             ? {
-                health_category_id: target.sourceId,
-                brand_name_id: brand,
-                ...(service ? { service_category_id: service } : {}),
-                page: 1,
-                page_size: 50,
-              }
+              health_category_id: target.sourceId,
+              brand_name_id: brand,
+              ...(service ? { service_category_id: service } : {}),
+              page: 1,
+              page_size: 50,
+            }
             : {
-                id: target.sourceId,
-                brand_name_id: brand,
-                ...(service ? { service_category_id: service } : {}),
-                page: 1,
-                page_size: 50,
-              },
+              id: target.sourceId,
+              brand_name_id: brand,
+              ...(service ? { service_category_id: service } : {}),
+              page: 1,
+              page_size: 50,
+            },
         ),
       ),
     )
@@ -914,17 +914,20 @@ const CategoryProductsScreen = (props: any) => {
                 size={26}
                 color={Colors.primaryColor}
               />
-            ) : (
+            ) : item.image_url ? (
               <Image
-                source={
-                  item.image_url
-                    ? { uri: item.image_url }
-                    : Images.cardiology // fallback image
-                }
+                source={{ uri: item.image_url }}
                 style={styles.categoryIcon}
                 resizeMode="cover"
               />
+            ) : (
+              <TablerIcon
+                name="photo"
+                size={26}
+                color={Colors.primaryColor}
+              />
             )}
+
           </View>
           <Text
             style={[styles.categoryLabel, active && styles.categoryLabelActive]}
@@ -1103,11 +1106,7 @@ const CategoryProductsScreen = (props: any) => {
                               resizeMode="cover"
                             />
                           ) : (
-                            <Image
-                              source={Images.cardiology}
-                              style={styles.subcategoryChipImage}
-                              resizeMode="cover"
-                            />
+                            null
                           )}
                         </View>
                         <Text

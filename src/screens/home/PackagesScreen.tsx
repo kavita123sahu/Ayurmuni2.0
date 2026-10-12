@@ -141,7 +141,7 @@ export default function PackagesScreen(props: any) {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right','bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <AppHeader title="Care Plans" onLeftPress={() => navigation.goBack()} />
 

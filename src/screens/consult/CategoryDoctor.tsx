@@ -720,11 +720,12 @@ const CategoryDoctor = (props: any) => {
                             resizeMode="cover"
                           />
                         ) : (
-                          <Image
-                            source={Images.cardiology}
-                            style={styles.diseaseChipImage}
-                            resizeMode="cover"
-                          />
+                          null
+                          // <Image
+                          //   source={Images.cardiology}
+                          //   style={styles.diseaseChipImage}
+                          //   resizeMode="cover"
+                          // />
                         )}
                       </View>
                       <Text

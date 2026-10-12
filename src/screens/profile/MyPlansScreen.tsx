@@ -386,7 +386,7 @@ export default function MyPlansScreen(props: any) {
   }, [purchases]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right','bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <AppHeader title="My Plans" onLeftPress={() => navigation.goBack()} />
 
