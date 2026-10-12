@@ -1,7 +1,6 @@
 
 import { apiClient } from "./APIconfig";
 
-
 export const GetQuestionOptions = async (data: any) => {
     try {
         const response = await apiClient('customers/questionnaires/questions/list/', {
@@ -14,8 +13,6 @@ export const GetQuestionOptions = async (data: any) => {
         throw error;
     }
 }
-
-
 
 export const KnowPrakritiSubmit = async (data: Object) => {
     try {
@@ -30,7 +27,6 @@ export const KnowPrakritiSubmit = async (data: Object) => {
     }
 }
 
-
 export const QuestionnaireSubmit = async (data: Object) => {
     try {
         const response = await apiClient('customers/questionnaires/responses/', {
@@ -44,8 +40,6 @@ export const QuestionnaireSubmit = async (data: Object) => {
     }
 }
 
-
-
 export const AssesmentYesSubmit = async (data: Object) => {
     try {
         const response = await apiClient('customers/answer_prakriti/', {
@@ -58,7 +52,6 @@ export const AssesmentYesSubmit = async (data: Object) => {
     }
 }
 
-
 export const SkipAssesment = async (data: Object) => {
     try {
         const response = await apiClient('customers/initiate_onboarding/', {
@@ -70,7 +63,3 @@ export const SkipAssesment = async (data: Object) => {
         throw error;
     }
 }
-
-
-
-

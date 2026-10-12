@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as _PRODUCT_SERVICES from '../services/ProductServices';
 import {
   extractReviewsList,
@@ -10,6 +10,7 @@ export const useProductData = (variantID: string) => {
   const [refreshing, setRefreshing] = useState(false);
   const [ReviewAll, setReviewAll] = useState<any[]>([]);
   const [ProductData, setProductData] = useState<any>(null);
+  const ProductDataRef = useRef<any>(null);
 
   const fetchAllData = useCallback(async () => {
     if (!variantID) {
@@ -17,23 +18,21 @@ export const useProductData = (variantID: string) => {
       return;
     }
 
+    // Reviews load independently so the product renders as soon as it arrives.
+    _PRODUCT_SERVICES
+      .getReviewsAll({ entity_type: 'product', variant_id: variantID })
+      .then(res =>
+        setReviewAll(normalizeReviewsForDisplay(extractReviewsList(res))),
+      )
+      .catch(error => console.log('ProductReviews API ERROR ===>', error));
+
     try {
-      setLoading(true);
-
-      // GET product + GET review/?entity_type=product&variant_id=
-      const [ProductList, ProductReviews] = await Promise.all([
-        _PRODUCT_SERVICES.getProductByVariant(variantID),
-        _PRODUCT_SERVICES.getReviewsAll({
-          entity_type: 'product',
-          variant_id: variantID,
-        }),
-      ]);
-
-      console.log('ProductReviews =>', ProductReviews);
-      setProductData(ProductList?.data || null);
-      setReviewAll(
-        normalizeReviewsForDisplay(extractReviewsList(ProductReviews)),
-      );
+      // Only show the full-screen shimmer on first load; refreshes keep current content.
+      if (!ProductDataRef.current) setLoading(true);
+      const ProductList = await _PRODUCT_SERVICES.getProductByVariant(variantID);
+      const next = ProductList?.data || null;
+      ProductDataRef.current = next;
+      setProductData(next);
     } catch (error) {
       console.log('ProductList API ERROR ===>', error);
     } finally {

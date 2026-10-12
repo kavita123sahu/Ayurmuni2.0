@@ -28,6 +28,8 @@ type Props = {
   variant?: 'rail' | 'full';
   width?: number;
   processing?: boolean;
+  /** User already has this package active → "Buy again". */
+  owned?: boolean;
 };
 
 const PackagePlanCard = ({
@@ -37,6 +39,7 @@ const PackagePlanCard = ({
   variant = 'full',
   width,
   processing = false,
+  owned = false,
 }: Props) => {
   const theme = getPlanTheme(plan);
   const discount = getDiscountPercent(plan);
@@ -157,7 +160,7 @@ const PackagePlanCard = ({
           ) : (
             <>
               <Text style={[styles.ctaText, { color: carePlan ? '#FFFFFF' : theme.accent }]}>
-                {getPlanCtaLabel(plan)}
+                {getPlanCtaLabel(plan, owned)}
               </Text>
               <TablerIcon
                 name="arrow-right"

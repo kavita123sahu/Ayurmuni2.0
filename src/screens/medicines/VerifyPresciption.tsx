@@ -51,7 +51,6 @@ const VerifyPresciption = (props: any) => {
     previewItems: routePreviewItems,
   } = props.route?.params || {};
 
-
   console.log("variantIdsvariantIdsvariantIds", routeVariantIds, routePreviewItems, existingRequest, routeRequestId);
   const [notes, setNotes] = useState(
     String(existingRequest?.notes || '').trim(),
@@ -461,7 +460,6 @@ const VerifyPresciption = (props: any) => {
               />
             </View>
 
-            
           </>
         ) : notes || request?.notes ? (
           <View style={styles.notesCard}>

@@ -144,8 +144,6 @@ export const useConsultData = (options: UseConsultDataOptions = {}) => {
   };
 };
 
-
-
 export const useDoctorSlots = (
     payload?: Record<string, any>,
 ) => {
@@ -204,8 +202,6 @@ export const useDoctorSlots = (
         refetch: fetchSlots,
     };
 };
-
-
 
 export const groupSlotsByTime = (
     slots: SlotItem[] = [],
@@ -381,9 +377,6 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
 
     return { loading, refreshing, doctorData, refetch: getAllDoctors, refresh };
 };
-
-
-
 
 /** Fetch size for home upcoming list — show all upcoming (sorted client-side). */
 const HOME_UPCOMING_PAGE_SIZE = 50;
@@ -611,7 +604,3 @@ export const useAppointmentHistory = (filters?: {
         hasMore,
     };
 };
-
-
-
-

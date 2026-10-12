@@ -23,12 +23,14 @@ type Props = {
   onPress: (plan: PackagePlan) => void;
   /** 0 → 1 sweep shared by the rail (native driver). */
   shine?: Animated.Value;
+  /** User already has this package active → "Buy again". */
+  owned?: boolean;
 };
 
 const SHINE_W = 46;
 
 /** Compact gradient plan card for horizontal rails (Home / Consult). */
-const PackagePlanRailCard = ({ plan, width, onPress, shine }: Props) => {
+const PackagePlanRailCard = ({ plan, width, onPress, shine, owned = false }: Props) => {
   const shineX = shine?.interpolate({
     inputRange: [0, 1],
     outputRange: [-SHINE_W * 2, width + SHINE_W],
@@ -112,7 +114,7 @@ const PackagePlanRailCard = ({ plan, width, onPress, shine }: Props) => {
           </View>
           <View style={styles.cta}>
             <Text style={[styles.ctaText, { color: theme.accent }]}>
-              {carePlan ? 'Buy now' : 'Book'}
+              {carePlan ? (owned ? 'Buy again' : 'Buy now') : 'Book'}
             </Text>
           </View>
         </View>

@@ -37,6 +37,24 @@ export const getFavoriteStateFromToggleResponse = (
   return raw === true || raw === 'true' || raw === 1 || raw === '1';
 };
 
+const isTrueFlag = (v: unknown) => v === true || v === 'true' || v === 1 || v === '1';
+
+/** `is_dietitian` from doctor list / profile / slot / appointment payloads (top level or nested doctor). */
+export const isDietitian = (item: any): boolean => {
+  if (!item) return false;
+  return (
+    isTrueFlag(item?.is_dietitian) ||
+    isTrueFlag(item?.doctor?.is_dietitian) ||
+    isTrueFlag(item?.doctor_details?.is_dietitian) ||
+    isTrueFlag(item?.doctor_info?.is_dietitian) ||
+    isTrueFlag(item?.info?.is_dietitian)
+  );
+};
+
+/** "Dietitian" / "Doctor" — for labels like "About the doctor". */
+export const getDoctorRoleLabel = (item: any): 'Dietitian' | 'Doctor' =>
+  isDietitian(item) ? 'Dietitian' : 'Doctor';
+
 /** Full display name from doctor list / profile payloads. */
 export const getDoctorDisplayName = (item: any): string => {
   if (!item) return 'Doctor';

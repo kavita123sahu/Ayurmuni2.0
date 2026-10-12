@@ -362,8 +362,6 @@ export const formatOrderDateTime = (value?: string | null) => {
   });
 };
 
-
-
 export const refreshOrderTracking = async (
   orderId: string | number,
 ) => {

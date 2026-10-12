@@ -71,7 +71,6 @@ const MedicalReceipt = (props: any) => {
             null,
         );
 
-
     const fetchReceipt =
         async () => {
 
@@ -119,7 +118,6 @@ const MedicalReceipt = (props: any) => {
             );
         }
     };
-
 
     useEffect(() => {
         if (consultationId) {
@@ -396,7 +394,6 @@ const MedicalReceipt = (props: any) => {
 
 export default MedicalReceipt;
 
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -610,10 +607,6 @@ const styles = StyleSheet.create({
     },
 
     downloadBtn: {
-        // position: 'absolute',
-        // // bottom: 0,
-        // left: 16,
-        // right: 16,
         flexDirection: 'row',
         justifyContent: 'center',
         gap: 5,

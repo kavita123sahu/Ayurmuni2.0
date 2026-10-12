@@ -46,8 +46,6 @@ export const Colors = {
 
 };
 
-
-
 import { scale as responsiveScale } from '../constants/responsive';
 
 // Re-export shared scale so Medical History / legacy imports stay in sync

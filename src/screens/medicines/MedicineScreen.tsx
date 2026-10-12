@@ -285,8 +285,6 @@ const MedicineScreen = (props: any) => {
           </View>
         ) : null}
 
-        {/* <ActionCards data={actionItems} onpress={handleActionPress} /> */}
-
         {(ordersLoading || recentProducts.length > 0) && (
           <>
             <SectionHeader
@@ -321,7 +319,6 @@ const MedicineScreen = (props: any) => {
                   serviceCategoryId: medicineCategoryId || undefined,
                 })
               } />
-
 
             <CategoryList
               data={safeHealthConcerns}

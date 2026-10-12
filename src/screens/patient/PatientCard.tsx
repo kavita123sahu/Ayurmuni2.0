@@ -35,7 +35,6 @@ const PatientCard: React.FC<Props> = ({ patient, onSelect, navigation, onDelete 
 
   const full_name = patient?.first_name + " " + patient?.last_name;
 
-
   console.log('patient_card_patient', patient);
 
   const isSelf = String(patient?.relation ?? '').toLowerCase() === 'self';

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import NetInfo from '@react-native-community/netinfo';
 
-
 export const useDebounce = <T,>(
   value: T,
   delay = 500,
@@ -19,7 +18,6 @@ export const useDebounce = <T,>(
 
   return debouncedValue;
 };
-
 
 export const useNetworkStatus = () => {
   // Assume online until NetInfo resolves — never blank the app on cold start
@@ -49,7 +47,6 @@ export const useNetworkStatus = () => {
 
   return isConnected;
 };
-
 
 import dayjs from 'dayjs';
 
@@ -85,5 +82,3 @@ export const getAvailabilityRange =
          };
    }
 };
-
-

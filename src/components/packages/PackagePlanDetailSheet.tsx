@@ -29,6 +29,8 @@ import {
 type Props = {
   plan: PackagePlan | null;
   processing?: boolean;
+  /** User already has this package active → "Buy again". */
+  owned?: boolean;
   onClose: () => void;
   onCta: (plan: PackagePlan) => void;
 };
@@ -46,7 +48,13 @@ const getBillingLabel = (plan: PackagePlan) => {
 };
 
 /** Full plan details — every field from `packages/plans/`. */
-export default function PackagePlanDetailSheet({ plan, processing = false, onClose, onCta }: Props) {
+export default function PackagePlanDetailSheet({
+  plan,
+  processing = false,
+  owned = false,
+  onClose,
+  onCta,
+}: Props) {
   const insets = useSafeAreaInsets();
   if (!plan) return null;
 
@@ -177,7 +185,7 @@ export default function PackagePlanDetailSheet({ plan, processing = false, onClo
             {processing ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.ctaText}>{getPlanCtaLabel(plan)}</Text>
+              <Text style={styles.ctaText}>{getPlanCtaLabel(plan, owned)}</Text>
             )}
           </TouchableOpacity>
         </View>

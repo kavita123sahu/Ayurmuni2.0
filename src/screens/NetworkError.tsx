@@ -37,7 +37,6 @@ const NetworkError: React.FC<NetworkErrorProps> = ({ onGoBack }) => {
                     </Text>
                 </View>
 
-
                 <View style={styles.buttonStyle} >
                     <View style={[styles.goBackButton]}>
                         <Text style={styles.buttonText}>Go back </Text>

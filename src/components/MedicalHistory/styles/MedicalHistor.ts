@@ -157,8 +157,6 @@ skipText: {
         fontFamily: Fonts.PoppinsMedium,
     },
 
-
-
     /* =========================================
        MULTI SELECT TAG
     ========================================= */
@@ -185,7 +183,6 @@ skipText: {
             Fonts.PoppinsSemiBold,
     },
 
-
     /* ================= CARD ================= */
 
     card: {
@@ -207,7 +204,6 @@ skipText: {
         borderColor: COLORS.primary,
         backgroundColor: '#F3F7F3',
     },
-
 
     leftContent: {
         flex: 1,
@@ -252,7 +248,6 @@ skipText: {
         flexShrink: 0,
     },
 
-
     cardSubtitle: {
         marginTop: scale(2),
         fontSize: scale(11),
@@ -261,7 +256,6 @@ skipText: {
         fontFamily: Fonts.PoppinsMedium,
         flexWrap: 'wrap',
     },
-
 
     activeSubtitle: {
         color: '#5B6B63',
@@ -340,7 +334,6 @@ skipText: {
         fontFamily: Fonts.PoppinsMedium,
         marginTop: scale(12),
     },
-
 
     /* ================= BASIC INFO ================= */
 
@@ -436,7 +429,6 @@ skipText: {
         fontFamily: Fonts.PoppinsSemiBold,
     },
 
-
     /* ======================================LAST OPTION =============*/
 
     infoCard: {
@@ -468,7 +460,6 @@ skipText: {
     },
 
     /* ================= BUTTON ================= */
-
 
     bottomFixed: {
         backgroundColor: COLORS.screen,

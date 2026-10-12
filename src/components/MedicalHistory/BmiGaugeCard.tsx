@@ -212,7 +212,6 @@ const BmiGaugeCard = ({
   return Number((weightKg / (heightM * heightM)).toFixed(2));
 };
 
-
   const result = useMemo<BmiResult | null>(() => {
   if (!revealed) return null;
 
@@ -229,8 +228,6 @@ const BmiGaugeCard = ({
 
   return { value, needle, ...band };
 }, [heightCm, revealed, weightKg]);
-
-
 
   console.log('BmiGaugeCard', { heightCm, weightKg, revealed, result });
   return (

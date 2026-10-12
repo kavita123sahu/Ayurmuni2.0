@@ -2,10 +2,6 @@ import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { apiClient } from './APIconfig';
 
-// const ONE_SIGNAL_APP_ID =
-//   '3e543921-8737-4c95-92ae-1578d40d99f0';
-
-
 const ONE_SIGNAL_APP_ID =
   '5c79696d-81e8-46a7-922d-b0b08eef4e57';
 
@@ -641,11 +637,6 @@ export const completeWelcomePushFlow = async (
       '[WelcomePush] OneSignal login successful:',
       loginResult,
     );
-
-    // 3. Give OneSignal cloud sync 5 seconds
-    // console.log(
-    //   '[WelcomePush] Waiting 5000ms for OneSignal cloud sync...',
-    // );
 
     await new Promise<void>(resolve =>
       setTimeout(resolve, 5000),

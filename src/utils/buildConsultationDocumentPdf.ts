@@ -53,8 +53,6 @@ import {
 } from './formatDisplayId';
 import { parseConsultationReceiptBreakdown } from './consultationReceiptUtils';
 
-
-
 const pick = (...values: any[]) => {
 
   for (const value of values) {
@@ -71,8 +69,6 @@ const pick = (...values: any[]) => {
 
 };
 
-
-
 const money = (value: number | string | undefined | null) => {
 
   const num = Number(value);
@@ -82,8 +78,6 @@ const money = (value: number | string | undefined | null) => {
   return num.toFixed(2);
 
 };
-
-
 
 const wellnessSource = (source: any) =>
 
@@ -143,8 +137,6 @@ const wellnessSource = (source: any) =>
 
   });
 
-
-
 const buildMedicineDescription = (med: any): string => {
 
   const name = pick(
@@ -181,8 +173,6 @@ const buildMedicineDescription = (med: any): string => {
 
 };
 
-
-
 const medicineLineTotal = (med: any): string => {
 
   const price = getMedicinePrice(med);
@@ -200,8 +190,6 @@ const medicineLineTotal = (med: any): string => {
   return money(num * q);
 
 };
-
-
 
 const buildPatientShipTo = (patient: any): StructuredDocumentPdfInput['shipTo'] => {
 
@@ -231,8 +219,6 @@ const buildPatientShipTo = (patient: any): StructuredDocumentPdfInput['shipTo'] 
 
           .join(', ');
 
-
-
   const lines = [name, address].filter(Boolean);
 
   if (!lines.length) return null;
@@ -240,8 +226,6 @@ const buildPatientShipTo = (patient: any): StructuredDocumentPdfInput['shipTo'] 
   return { title: 'Ship To', lines };
 
 };
-
-
 
 export async function createMedicalReceiptPdfBytes(
 
@@ -254,8 +238,6 @@ export async function createMedicalReceiptPdfBytes(
     ? receipt.info.doctor_specialization.join(', ')
 
     : receipt?.info?.doctor_specialization || '';
-
-
 
   const doctorName = pick(receipt?.info?.doctor_name, receipt?.doctor_name);
 
@@ -275,8 +257,6 @@ export async function createMedicalReceiptPdfBytes(
     breakdown.totalPaid > 0
       ? breakdown.totalPaid
       : consultationFee + platformFee + gstAmount + adminFee + digitalFee;
-
-
 
   const lineItems = [
 
@@ -300,8 +280,6 @@ export async function createMedicalReceiptPdfBytes(
 
   ];
 
-
-
   if (platformFee > 0) {
 
     lineItems.push({
@@ -323,8 +301,6 @@ export async function createMedicalReceiptPdfBytes(
     });
 
   }
-
-
 
   if (gstAmount > 0) {
 
@@ -348,8 +324,6 @@ export async function createMedicalReceiptPdfBytes(
 
   }
 
-
-
   if (adminFee > 0) {
 
     lineItems.push({
@@ -371,8 +345,6 @@ export async function createMedicalReceiptPdfBytes(
     });
 
   }
-
-
 
   if (digitalFee > 0) {
 
@@ -396,8 +368,6 @@ export async function createMedicalReceiptPdfBytes(
 
   }
 
-
-
   const taxableSum = consultationFee + platformFee + adminFee + digitalFee;
 
   const patient = receipt?.patient ?? {};
@@ -407,8 +377,6 @@ export async function createMedicalReceiptPdfBytes(
     receipt?.payment_id,
     receipt?.consultation_id,
   );
-
-
 
   const input: StructuredDocumentPdfInput = {
 
@@ -528,13 +496,9 @@ export async function createMedicalReceiptPdfBytes(
 
   };
 
-
-
   return createStructuredDocumentPdf(input);
 
 }
-
-
 
 export async function createAppointmentPdfBytes(
 
@@ -549,8 +513,6 @@ export async function createAppointmentPdfBytes(
   const patient =
 
     appointment?.patient ?? appointment?.appointment?.patient ?? {};
-
-
 
   const doctorName = pick(
 
@@ -576,8 +538,6 @@ export async function createAppointmentPdfBytes(
 
       );
 
-
-
   const consultationFee = Number(
 
     appointment?.consultation_fees ??
@@ -592,8 +552,6 @@ export async function createAppointmentPdfBytes(
 
   );
 
-
-
   const hospitalName = pick(
 
     appointment?.hospital_name,
@@ -603,8 +561,6 @@ export async function createAppointmentPdfBytes(
     appointment?.clinic_name,
 
   );
-
-
 
   const lineItems = [
 
@@ -627,8 +583,6 @@ export async function createAppointmentPdfBytes(
     },
 
   ];
-
-
 
   const input: StructuredDocumentPdfInput = {
 
@@ -786,12 +740,8 @@ export async function createAppointmentPdfBytes(
 
   };
 
-
-
   return createStructuredDocumentPdf(input);
 
 }
-
-
 
 export { buildPrescriptionPdfFromData as createPrescriptionPdfBytes } from './prescriptionPdfBuilder';

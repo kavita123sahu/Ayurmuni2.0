@@ -18,6 +18,9 @@ import AppHeader from '../../components/AppHeader';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as _PATIENT_SERVICES from '../../services/PatientServices';
+import { invalidateProfileThrottles } from '../../utils/fetchThrottle';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
 import { usePatientForm } from '../../hooks/usePatientData';
 import { BUTTON, RADIUS, SPACING, TYPO } from '../../constants/responsive';
 
@@ -226,6 +229,7 @@ const mapApiErrorsToFields = (apiError: Record<string, any>): FieldErrors => {
 
 export default function AddEditPatientDetail(props: any) {
   const { mode, patientId } = props.route.params || {};
+  const dispatch = useAppDispatch();
   const { patientData } = usePatientForm(mode === 'edit' ? patientId : undefined);
   const insets = useSafeAreaInsets();
 
@@ -335,6 +339,8 @@ export default function AddEditPatientDetail(props: any) {
         throw apiError;
       }
 
+      invalidateProfileThrottles();
+      dispatch(fetchCustomerData(true));
       props.navigation.goBack();
     } catch (error: any) {
       const apiError = error?.response?.data || error;

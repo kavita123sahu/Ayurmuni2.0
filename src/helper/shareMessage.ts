@@ -36,13 +36,9 @@ export const getProductShareMessage = ({
 
     ].filter(Boolean);
 
-
-
     return lines.join('\n');
 
 };
-
-
 
 export const getAppointmentShareMessage = ({
 
@@ -85,8 +81,6 @@ export const getAppointmentShareMessage = ({
         /video|online|virtual/i.test(mode) || !/in[- ]?person|clinic/i.test(mode);
 
     const phone = String(patientPhone || '').trim();
-
-
 
     const lines = [
 
@@ -142,9 +136,6 @@ export const getAppointmentShareMessage = ({
 
     ];
 
-
-
     return lines.filter(line => line != null).join('\n');
 
 };
-

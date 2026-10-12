@@ -209,7 +209,6 @@ const OrderConfirmation: React.FC = (props: any) => {
         return () => clearTimeout(timer);
     }, [orderResult, props.navigation]);
 
-
     useEffect(() => {
         const backAction = () => {
             props.navigation.navigate('TabStack', { screen: 'Home' });
@@ -415,14 +414,6 @@ const OrderConfirmation: React.FC = (props: any) => {
                 </Animated.View>
             </ScrollView>
 
-            {/* <FeedbackModal
-                visible={showModal}
-                appointmentId={props.route.params?.appointmentId}
-                onClose={() => setShowModal(false)}
-                onSubmit={() => {
-                    setShowModal(false);
-                }}
-            /> */}
         </SafeAreaView>
     );
 };

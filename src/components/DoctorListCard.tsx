@@ -16,6 +16,7 @@ import {
 } from '../constants/doctorGridLayout';
 import { RupeeAmount } from '../utils/currencyUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 
 type Props = {
   name: string;
@@ -32,6 +33,8 @@ type Props = {
   topRight?: React.ReactNode;
   variant?: 'list' | 'grid';
   cardWidth?: number;
+  /** `is_dietitian` → "Dietitian" badge. */
+  isDietitian?: boolean;
 };
 
 const LIST_PHOTO_W = 108;
@@ -58,6 +61,7 @@ const DoctorListCard = ({
   topRight,
   variant = 'list',
   cardWidth,
+  isDietitian = false,
 }: Props) => {
   const isGrid = variant === 'grid';
   const reviewText =
@@ -109,9 +113,26 @@ const DoctorListCard = ({
     </View>
   );
 
+  const renderSpecialityRow = (compact: boolean) => (
+    <View style={[styles.specialityRow, compact && styles.gridSpecialityRow]}>
+      {isDietitian ? (
+        <DietitianBadge visible style={styles.inlineDietitianBadge} />
+      ) : null}
+      <Text
+        style={[
+          compact ? styles.gridSpeciality : styles.listSpeciality,
+          styles.specialityText,
+        ]}
+        numberOfLines={1}
+      >
+        {speciality || (isDietitian ? 'Diet & Nutrition' : '')}
+      </Text>
+    </View>
+  );
+
   const renderStatsFeeRow = (compact = false) => (
-    <View style={styles.statsFeeRow}>
-      <View style={styles.statsLeft}>
+    <View style={[styles.statsFeeRow, compact && styles.gridStatsFeeRow]}>
+      <View style={[styles.statsLeft, compact && styles.gridStatsLeft]}>
         <View style={styles.statItem}>
           <View style={styles.statIconWrap}>
             <Ionicons name="star" size={compact ? 12 : 13} color="#F5B301" />
@@ -121,10 +142,10 @@ const DoctorListCard = ({
             numberOfLines={1}
           >
             {ratingLabel}
-            {reviewText}
+            {/* Half-width cards have no room for the review count. */}
+            {compact ? '' : reviewText}
           </Text>
         </View>
-        {/* <View style={styles.statSep} /> */}
         <View style={styles.statItem}>
           <Ionicons
             name="time-outline"
@@ -181,9 +202,7 @@ const DoctorListCard = ({
             {name}
           </Text>
 
-          <Text style={styles.gridSpeciality} numberOfLines={1}>
-            {speciality || ''}
-          </Text>
+          {renderSpecialityRow(true)}
 
           {renderStatsFeeRow(true)}
 
@@ -227,11 +246,7 @@ const DoctorListCard = ({
           {name}
         </Text>
 
-        {speciality ? (
-          <Text style={styles.listSpeciality} numberOfLines={1}>
-            {speciality}
-          </Text>
-        ) : null}
+        {speciality || isDietitian ? renderSpecialityRow(false) : null}
 
         {renderStatsFeeRow(false)}
 
@@ -254,6 +269,28 @@ const DoctorListCard = ({
 export default React.memo(DoctorListCard);
 
 const styles = StyleSheet.create({
+  specialityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minWidth: 0,
+    marginTop: 2,
+  },
+  gridSpecialityRow: {
+    height: DOCTOR_GRID.specialtyHeight,
+    marginTop: 0,
+  },
+  specialityText: {
+    flex: 1,
+    minWidth: 0,
+    marginTop: 0,
+  },
+  inlineDietitianBadge: {
+    alignSelf: 'center',
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
+  },
   cardPressed: {
     opacity: 0.96,
   },
@@ -369,15 +406,25 @@ const styles = StyleSheet.create({
   },
   gridBody: {
     paddingHorizontal: DOCTOR_GRID.cardPaddingH,
-    paddingTop: 8,
+    paddingTop: DOCTOR_GRID.bodyPaddingTop,
     paddingBottom: DOCTOR_GRID.cardPaddingBottom,
   },
   gridName: {
     fontSize: 13,
-    lineHeight: 16,
+    lineHeight: DOCTOR_GRID.nameLineHeight,
+    height: DOCTOR_GRID.nameHeight,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    minHeight: DOCTOR_GRID.nameHeight,
+    includeFontPadding: false,
+    textAlignVertical: 'top',
+  },
+  gridStatsFeeRow: {
+    height: DOCTOR_GRID.statsHeight,
+    marginTop: DOCTOR_GRID.statsGap,
+    gap: 4,
+  },
+  gridStatsLeft: {
+    gap: 8,
   },
   gridSpeciality: {
     // marginTop: 2,
@@ -408,7 +455,7 @@ const styles = StyleSheet.create({
   },
   gridCta: {
     height: DOCTOR_GRID.ctaHeight,
-    marginTop: 6,
+    marginTop: DOCTOR_GRID.ctaGap,
     borderRadius: DOCTOR_GRID.ctaRadius,
     backgroundColor: Colors.primaryColor,
     alignItems: 'center',

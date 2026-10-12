@@ -4,7 +4,6 @@ import React, {
 } from 'react';
 
 import {
-  Text,
   View,
 } from 'react-native';
 
@@ -63,14 +62,6 @@ import {
 import {
   setupOneSignalInAppListeners,
 } from './src/services/inAppNotificationService';
-
-// Keep layout identical across devices — ignore OS font-size scaling
-(Text as any).defaultProps = {
-  ...((Text as any).defaultProps || {}),
-  allowFontScaling: false,
-  maxFontSizeMultiplier: 1,
-};
-
 
 // =====================================================
 // TOAST CONFIG
@@ -156,8 +147,6 @@ console.error = () => { };
 // Sentry.init({
 //   dsn: 'https://207c5547f95ff58010564e7a7677c49a@o4512060861972480.ingest.us.sentry.io/4512060889104384',
 // });
-
-
 
 Sentry.init({
   dsn: 'https://9001d42ecc147294f70d0b65cfefbde5@o4512179016237056.ingest.us.sentry.io/4512179028295680',

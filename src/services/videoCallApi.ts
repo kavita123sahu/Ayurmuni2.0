@@ -189,5 +189,3 @@ export function buildTokenInfo(tokenRes: any): TokenInfo {
     expiresAt: expiresAtMs,
   };
 }
-
-

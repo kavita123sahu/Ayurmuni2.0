@@ -31,6 +31,9 @@ import { Feather } from '../../common/Vector';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import { uploadImage } from '../../hooks/usePatientData';
 import { Utils } from '../../common/Utils';
+import { invalidateProfileThrottles } from '../../utils/fetchThrottle';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
 
 const toText = (value: unknown): string => {
     if (value == null) return '';
@@ -57,11 +60,10 @@ const normalizeProfileForm = (user: any) => ({
     date_of_birth: toText(user?.date_of_birth),
 });
 
-
 const EditProfile = ({
     navigation,
 }: any) => {
-
+    const dispatch = useAppDispatch();
 
     const [loading, setLoading] =
         useState(false);
@@ -94,7 +96,6 @@ const EditProfile = ({
             date_of_birth: "",
         });
 
-
     const imageUri =
         formData?.profile_picture?.trim();
 
@@ -118,9 +119,6 @@ const EditProfile = ({
             formData.profile_picture
         );
     }, [formData.profile_picture]);
-
-
-
 
     const updateField = (
         key: string,
@@ -183,8 +181,6 @@ const EditProfile = ({
             }
         };
 
-
-
     const handleAddImage = () => {
         showImagePicker(
             handleUploadImage,
@@ -229,14 +225,11 @@ const EditProfile = ({
         }
     };
 
-
-
     const handleUpdateProfile = async () => {
 
         try {
 
             setLoading(true);
-
 
             console.log(
                 'PROFILE PICTURE PAYLOAD =>',
@@ -273,6 +266,8 @@ const EditProfile = ({
 
             if (res?.success) {
                 Utils.storeData('_USER_INFO', res?.data || {});
+                invalidateProfileThrottles();
+                dispatch(fetchCustomerData(true));
 
                 showSuccessToast(
                     'Profile updated successfully',
@@ -294,8 +289,6 @@ const EditProfile = ({
             setLoading(false);
         }
     };
-
-
 
     /*
     ---------------------------------
@@ -321,11 +314,6 @@ const EditProfile = ({
                     navigation.goBack()
                 }
             />
-
-
-
-
-
 
             {
                 profileLoading
@@ -866,8 +854,6 @@ const styles = StyleSheet.create({
     },
 
     profileContainer: {
-        //   width: 110,
-        //   height: 110,
         alignSelf: 'center',
         position: 'relative',
     },

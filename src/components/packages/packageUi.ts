@@ -17,6 +17,15 @@ export const getConsultBenefit = (plan: MyPlan): MyPlanBenefit | null => {
   );
 };
 
+/** Per-plan result of fee-quote `package_funding` for the current slot / doctor. */
+export type PlanEligibility = {
+  loading: boolean;
+  canFund: boolean;
+  reason: string;
+  payable: number | null;
+  quantityRemaining: number | null;
+};
+
 export type PlanConsultState = 'usable' | 'exhausted' | 'expired' | 'no_consult';
 
 export const getPlanConsultState = (plan: MyPlan): PlanConsultState => {
@@ -132,7 +141,10 @@ export const getPlanDurationLabel = (plan: PackagePlan) => {
 export const isCarePlan = (plan: PackagePlan) =>
   plan.purchase_type === 'prepaid_package' && plan.can_be_purchased;
 
-export const getPlanCtaLabel = (plan: PackagePlan) =>
+/** `owned` = user already has this package active → "Buy again". */
+export const getPlanCtaLabel = (plan: PackagePlan, owned = false) =>
   plan.button_action === 'book_consultation' || !plan.can_be_purchased
     ? 'Book consultation'
-    : 'Buy now';
+    : owned
+      ? 'Buy again'
+      : 'Buy now';

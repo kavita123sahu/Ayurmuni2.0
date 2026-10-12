@@ -404,10 +404,6 @@ const HomeHeader = ({
 
     const openProfile = useCallback(() => {
         const tabNav = navigation.getParent?.();
-        // if (tabNav?.navigate) {
-        //     tabNav.navigate('Profile');
-        //     return;
-        // }
         stackNavigation.navigate('TabStack', { screen: 'Profile' });
     }, [navigation, stackNavigation]);
 

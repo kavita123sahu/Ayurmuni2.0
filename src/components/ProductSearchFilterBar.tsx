@@ -14,10 +14,24 @@ import { Fonts } from '../common/Fonts';
 import {
   PRODUCT_SORT_OPTIONS,
   PRICE_RANGE_OPTIONS,
+  PRODUCT_RATING_OPTIONS,
+  DOSHA_OPTIONS,
   ProductSortKey,
   PriceRangeKey,
+  ProductRatingKey,
+  DoshaKey,
   getSortLabel,
 } from '../utils/productSearchUtils';
+
+type SheetKey = 'sort' | 'brand' | 'price' | 'rating' | 'dosha';
+
+const SHEET_TITLES: Record<SheetKey, string> = {
+  sort: 'Sort by',
+  brand: 'Brand',
+  price: 'Price range',
+  rating: 'Customer rating',
+  dosha: 'Dosha type',
+};
 
 export type BrandFilterOption = {
   id: string;
@@ -35,6 +49,12 @@ type Props = {
   brands: BrandFilterOption[];
   activeFilterCount: number;
   onClearFilters: () => void;
+  /** Rating chip renders only when both rating props are passed. */
+  rating?: ProductRatingKey;
+  onRatingChange?: (key: ProductRatingKey) => void;
+  /** Dosha chip renders only when both dosha props are passed. */
+  dosha?: DoshaKey;
+  onDoshaChange?: (key: DoshaKey) => void;
 };
 
 const ProductSearchFilterBar: React.FC<Props> = ({
@@ -48,8 +68,16 @@ const ProductSearchFilterBar: React.FC<Props> = ({
   brands,
   activeFilterCount,
   onClearFilters,
+  rating,
+  onRatingChange,
+  dosha,
+  onDoshaChange,
 }) => {
-  const [sheet, setSheet] = useState<'sort' | 'brand' | 'price' | null>(null);
+  const [sheet, setSheet] = useState<SheetKey | null>(null);
+  const showRating = rating !== undefined && !!onRatingChange;
+  const showDosha = dosha !== undefined && !!onDoshaChange;
+  const ratingActive = showRating && rating !== 'all';
+  const doshaActive = showDosha && dosha !== 'all';
   const [draftBrandIds, setDraftBrandIds] = useState<string[]>([]);
 
   const closeSheet = () => setSheet(null);
@@ -103,8 +131,7 @@ const ProductSearchFilterBar: React.FC<Props> = ({
     setDraftBrandIds([]);
   };
 
-  const sheetTitle =
-    sheet === 'sort' ? 'Sort by' : sheet === 'brand' ? 'Brand' : 'Price range';
+  const sheetTitle = sheet ? SHEET_TITLES[sheet] : '';
 
   return (
     <>
@@ -137,6 +164,28 @@ const ProductSearchFilterBar: React.FC<Props> = ({
             active={priceActive}
             onPress={() => setSheet('price')}
           />
+          {showRating ? (
+            <FilterChip
+              label="Rating"
+              selectedText={
+                ratingActive
+                  ? PRODUCT_RATING_OPTIONS.find(o => o.key === rating)?.label
+                  : undefined
+              }
+              icon="star"
+              active={ratingActive}
+              onPress={() => setSheet('rating')}
+            />
+          ) : null}
+          {showDosha ? (
+            <FilterChip
+              label="Dosha"
+              selectedText={doshaActive ? dosha : undefined}
+              icon="leaf"
+              active={doshaActive}
+              onPress={() => setSheet('dosha')}
+            />
+          ) : null}
           {filtersActive ? (
             <TouchableOpacity
               style={[styles.chip, styles.clearChip]}
@@ -235,6 +284,32 @@ const ProductSearchFilterBar: React.FC<Props> = ({
                   }}
                 />
               ))}
+
+            {sheet === 'rating' &&
+              PRODUCT_RATING_OPTIONS.map(option => (
+                <OptionRow
+                  key={option.key}
+                  label={option.label}
+                  selected={rating === option.key}
+                  onPress={() => {
+                    onRatingChange?.(option.key);
+                    closeSheet();
+                  }}
+                />
+              ))}
+
+            {sheet === 'dosha' &&
+              DOSHA_OPTIONS.map(option => (
+                <OptionRow
+                  key={option.key}
+                  label={option.label}
+                  selected={dosha === option.key}
+                  onPress={() => {
+                    onDoshaChange?.(option.key);
+                    closeSheet();
+                  }}
+                />
+              ))}
           </Pressable>
         </Pressable>
       </Modal>
@@ -251,7 +326,7 @@ const FilterChip = ({
 }: {
   label: string;
   selectedText?: string;
-  icon: 'list' | 'package' | 'cash' | 'filter';
+  icon: 'list' | 'package' | 'cash' | 'filter' | 'star' | 'leaf';
   active: boolean;
   onPress: () => void;
 }) => (

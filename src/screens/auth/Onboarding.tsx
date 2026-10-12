@@ -37,7 +37,6 @@ import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import TablerIcon from '../../components/TablerIcon';
 import CommonModal from '../../components/LogoutModal';
 
-
 interface FormData {
     firstName: string;
     lastName: string;
@@ -56,7 +55,6 @@ interface FormErrors {
     gender: string;
     dob: string;
 }
-
 
 const Onboarding = (props: any) => {
 
@@ -137,7 +135,6 @@ const Onboarding = (props: any) => {
         user: ''
     });
 
-
     const [dob, setDob] = useState({ day: '', month: '', year: '' });
     const [errors, setErrors] = useState<FormErrors>({
         firstName: '',
@@ -152,7 +149,6 @@ const Onboarding = (props: any) => {
     useEffect(() => {
         getUser();
     }, [isFocused]);
-
 
     const getUser = async () => {
         try {
@@ -214,16 +210,12 @@ const Onboarding = (props: any) => {
             const res: any =
                 await _PROFILE_SERVICE.UploadProfilePhoto(
                     formDataImage,
-                    // hasExistingImage
-                    //     ? 'PUT'
-                    //     : 'POST'
                 );
 
             console.log(
                 'PROFILE IMAGE RESPONSE ===>',
                 res
             );
-
 
             /*
             ===================================
@@ -302,15 +294,11 @@ const Onboarding = (props: any) => {
         }
     };
 
-
     const handleAddImage = () => {
         showImagePicker(
             uploadProfileImage,
         );
     };
-
-
-
 
     const handleFieldChange = (field: keyof FormData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -319,7 +307,6 @@ const Onboarding = (props: any) => {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
     };
-
 
     const validateForm = () => {
 
@@ -505,7 +492,6 @@ const Onboarding = (props: any) => {
 
             console.log('Onboarding Response:', response);
 
-
             // ===================================================
             // ✅ SUCCESS
             // ===================================================
@@ -566,8 +552,6 @@ const Onboarding = (props: any) => {
             setIsLoading(false);
         }
     };
-
-
 
     return (
 
@@ -731,7 +715,6 @@ const Onboarding = (props: any) => {
                                     Email Address{' '}
                                     <Text style={styles.optionalText}>(optional)</Text>
                                 </Text>
-                                {/* <Text style={styles.label}>Email Address (optional)</Text> */}
                                 <TextInput
                                     ref={emailRef}
                                     placeholder="email@gmail.com"
@@ -971,7 +954,6 @@ const Onboarding = (props: any) => {
 
 export default Onboarding;
 
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -1058,11 +1040,6 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
         borderWidth: 1,
         borderColor: '#E4ECE8',
-        // shadowColor: '#0D614E',
-        // shadowOpacity: 0.06,
-        // shadowRadius: 12,
-        // shadowOffset: { width: 0, height: 4 },
-        // elevation: 2,
     },
 
     content: {

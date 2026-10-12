@@ -28,7 +28,6 @@ export type PlaceSuggestion = {
   secondary_text: string;
 };
 
-
 const GOOGLE_KEYS = [
   GOOGLE_MAPS_API_KEY,
 ].filter(Boolean);
@@ -144,7 +143,6 @@ export const openLocationSettings = () => {
     Linking.openSettings();
   }
 };
-
 
 const readPosition = (
   highAccuracy: boolean,

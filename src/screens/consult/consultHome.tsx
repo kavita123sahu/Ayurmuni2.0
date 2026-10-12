@@ -69,6 +69,7 @@ import { useHomeData } from '../../hooks/UseHomeData';
 import { getServiceCategoryId } from '../../utils/serviceCategoryUtils';
 import AyurmuniBrandShade from '../../components/AyurmuniBrandShade';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
+import { isDietitian } from '../../utils/doctorUtils';
 
 const SCREEN_PAD = getScreenPaddingH();
 const GRID_GAP = 10;
@@ -247,11 +248,6 @@ const ConsultHome = () => {
           );
           setHistory((response?.data?.results || []).slice(0, 3));
 
-          // setHistory(
-          //   response?.data?.results ||
-          //   [],
-          // );
-
         } catch (error) {
 
           console.log(
@@ -308,6 +304,7 @@ const ConsultHome = () => {
               uri: item?.doctor?.doctor_image,
             }}
             name={item?.doctor?.doctor_name}
+            isDietitian={isDietitian(item)}
             speciality={
               item?.doctor?.doctor_designation ||
               item?.doctor?.qualification ||
@@ -340,7 +337,6 @@ const ConsultHome = () => {
       [navigation, openDoctorSlot],
     );
 
-
   return (
     <SafeAreaView
       style={styles.container}>
@@ -357,10 +353,7 @@ const ConsultHome = () => {
         subtitle="Find best doctor"
         onBack={() => goBackToHomeTab(navigation)}
         onSearchPress={handleSearchPress}
-      // onSearchPress={() => setSearchExpanded(true)}
-      // onRefreshPress={onRefresh}
       />
-
 
       <FlatList
         data={[]}
@@ -441,7 +434,6 @@ const ConsultHome = () => {
               </>
             )}
 
-
           </>
         }
         ListEmptyComponent={() => null}
@@ -472,7 +464,7 @@ const ConsultHome = () => {
                 </>
               )}
 
-              <SectionHeader
+              {/* <SectionHeader
                 title="Health Lab"
                 actionText="View all"
                 onPress={() => navigation.navigate('OrangeLabScreen')}
@@ -480,7 +472,7 @@ const ConsultHome = () => {
               <OrangeLabHomeSection
                 onPressBanner={() => navigation.navigate('OrangeLabScreen')}
                 onPressTest={() => navigation.navigate('OrangeLabScreen')}
-              />
+              /> */}
 
               {filteredTopDoctors?.length > 0 && (
                 <>
