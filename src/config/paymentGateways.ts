@@ -1,7 +1,7 @@
 import type { TablerIconName } from '../components/TablerIcon';
 
-/** Online payment gateways available for consultation checkout. */
-export type PaymentGateway = 'pinelabs' | 'razorpay';
+/** Online payment gateways available for checkout / consultation. */
+export type PaymentGateway = 'pinelabs' | 'razorpay' | 'payphi';
 
 export type PaymentGatewayOption = {
   id: PaymentGateway;
@@ -23,15 +23,26 @@ export const PAYMENT_GATEWAY_OPTIONS: Record<PaymentGateway, PaymentGatewayOptio
     subtitle: 'UPI, cards, net banking & wallets',
     icon: 'credit-card',
   },
+  payphi: {
+    id: 'payphi',
+    title: 'PayPhi (ICICI)',
+    subtitle: 'ICICI PayPhi — UPI, cards & net banking',
+    icon: 'building',
+  },
 };
 
 /** Order shown in the picker; the first enabled one is preselected. */
-export const PAYMENT_GATEWAY_ORDER: PaymentGateway[] = ['pinelabs', 'razorpay'];
+export const PAYMENT_GATEWAY_ORDER: PaymentGateway[] = [
+  'pinelabs',
+  'razorpay',
+  'payphi',
+];
 
 /** Used until the profile API sends gateway flags. */
 export const DEFAULT_GATEWAY_FLAGS: Record<PaymentGateway, boolean> = {
   pinelabs: true,
   razorpay: true,
+  payphi: true,
 };
 
 const toFlag = (value: unknown, fallback: boolean): boolean => {
@@ -48,14 +59,23 @@ export const normalizeGateway = (value: unknown): PaymentGateway | null => {
   const s = String(value ?? '').trim().toLowerCase().replace(/[\s_-]/g, '');
   if (s === 'pinelabs' || s === 'pinelab' || s === 'plural') return 'pinelabs';
   if (s === 'razorpay') return 'razorpay';
+  if (
+    s === 'payphi' ||
+    s === 'payphisdk' ||
+    s === 'icici' ||
+    s === 'icicipayphi' ||
+    s === 'phicommerce'
+  ) {
+    return 'payphi';
+  }
   return null;
 };
 
 /**
  * Enabled gateways from the customer profile. Accepted shapes:
- * - `payment_gateways: { pinelabs: true, razorpay: false }`
- * - `payment_gateways: ['pinelabs', 'razorpay']` / `enabled_payment_gateways: [...]`
- * - `pinelabs_enabled` / `razorpay_enabled` booleans
+ * - `payment_gateways: { pinelabs: true, razorpay: false, payphi: true }`
+ * - `payment_gateways: ['pinelabs', 'razorpay', 'payphi']`
+ * - `pinelabs_enabled` / `razorpay_enabled` / `payphi_enabled` booleans
  * Missing flags fall back to DEFAULT_GATEWAY_FLAGS.
  */
 export const resolveEnabledGateways = (profile: any): PaymentGateway[] => {
@@ -76,7 +96,13 @@ export const resolveEnabledGateways = (profile: any): PaymentGateway[] => {
     });
   } else if (raw && typeof raw === 'object') {
     PAYMENT_GATEWAY_ORDER.forEach(id => {
-      const entry = raw[id] ?? (id === 'pinelabs' ? raw.pine_labs ?? raw.pinelab : undefined);
+      const entry =
+        raw[id] ??
+        (id === 'pinelabs'
+          ? raw.pine_labs ?? raw.pinelab
+          : id === 'payphi'
+            ? raw.pay_phi ?? raw.icici ?? raw.icici_payphi
+            : undefined);
       const value = entry && typeof entry === 'object' ? entry.enabled ?? entry.is_enabled : entry;
       flags[id] = toFlag(value, flags[id]);
     });
@@ -84,6 +110,13 @@ export const resolveEnabledGateways = (profile: any): PaymentGateway[] => {
 
   flags.pinelabs = toFlag(source?.pinelabs_enabled ?? settings?.pinelabs_enabled, flags.pinelabs);
   flags.razorpay = toFlag(source?.razorpay_enabled ?? settings?.razorpay_enabled, flags.razorpay);
+  flags.payphi = toFlag(
+    source?.payphi_enabled ??
+      source?.icici_enabled ??
+      settings?.payphi_enabled ??
+      settings?.icici_enabled,
+    flags.payphi,
+  );
 
   const enabled = PAYMENT_GATEWAY_ORDER.filter(id => flags[id]);
   return enabled.length ? enabled : ['razorpay'];

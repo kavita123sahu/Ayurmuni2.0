@@ -24,7 +24,8 @@ export const Images = {
     dietlifestyle: require('../assets/images/login/dietlifestyle.jpeg'),
     delivery: require('../assets/images/login/delivery.png'),
     lab: require('../assets/images/login/lab.png'),
-    online: require('../assets/images/login/10.png'),
+    // journeyConsult: require('../assets/images/login/10.png'),
+    
     journeyConsult: require('../assets/images/login/10.png'),
     journeyMedicine: require('../assets/images/login/9.png'),
     journeyDelivery: require('../assets/images/login/delivery.png'),
