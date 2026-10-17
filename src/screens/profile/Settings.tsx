@@ -258,8 +258,10 @@ const SettingsScreen = (props: any) => {
   const finishDeleteSession = useCallback(async () => {
     setDeleteAccountDoneVisible(false);
     const info = await Utils.getData('_USER_INFO');
-    const phone =
-      info?.phone_number || info?.phone || info?.mobile || null;
+    const rawPhone =
+      info?.phone_number || info?.phone || info?.mobile || '';
+    const digits = String(rawPhone).replace(/\D/g, '').slice(-10);
+    const phone = digits ? `+91${digits}` : null;
     await clearAppSession({ clearLocationSession });
     await Utils.storeData('_DELETED_ACCOUNT_HOLD', {
       phone,

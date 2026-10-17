@@ -8,7 +8,7 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from './GradientView';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon, { TablerIconName } from './TablerIcon';

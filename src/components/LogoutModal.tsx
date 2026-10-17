@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   ScrollView,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from './GradientView';
 import { Fonts } from '../common/Fonts';
 
 interface CommonModalProps {

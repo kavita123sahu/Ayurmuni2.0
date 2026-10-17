@@ -263,8 +263,8 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 2,
     fontSize: 10,
-    lineHeight: 12,
-    minHeight: 24,
+    lineHeight: 13,
+    minHeight: 26,
     textAlign: 'center',
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,

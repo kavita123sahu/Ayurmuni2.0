@@ -9,7 +9,7 @@ import {
   StatusBar,
   Dimensions,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     marginTop: 2,
     fontSize: 18,
-    lineHeight: 22,
+    lineHeight: 24,
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
   },

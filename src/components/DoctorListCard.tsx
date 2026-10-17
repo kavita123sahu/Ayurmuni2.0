@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   ratingText: {
     flexShrink: 1,
     fontSize: 12,
-    lineHeight: 14,
+    lineHeight: 16,
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,
     includeFontPadding: false,

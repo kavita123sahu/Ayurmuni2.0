@@ -16,7 +16,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';

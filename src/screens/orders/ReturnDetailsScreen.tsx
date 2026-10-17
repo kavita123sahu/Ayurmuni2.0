@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import AppHeader from '../../components/AppHeader';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { Colors } from '../../common/Colors';

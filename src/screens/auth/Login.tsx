@@ -19,7 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { MaterialCommunityIcons } from '../../common/Vector';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
@@ -258,14 +258,15 @@ const PhoneAuthScreen = (props: any) => {
       const fullPhone = `+91${phone}`;
 
       // Client hold after delete without recover — block same number during retention.
+      let localHoldDaysLeft: number | null = null;
       const hold = await Utils.getData('_DELETED_ACCOUNT_HOLD');
-      if (hold?.phone && String(hold.phone) === fullPhone) {
+      const holdDigits = String(hold?.phone ?? '').replace(/\D/g, '').slice(-10);
+      if (holdDigits && holdDigits === phone) {
         const days = Number(hold.retention_days) || 30;
         const heldAt = Number(hold.held_at) || 0;
         const msLeft = heldAt + days * 24 * 60 * 60 * 1000 - Date.now();
         if (msLeft > 0) {
-          const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
-          // Still allow OTP so they can open recover flow on verify
+          localHoldDaysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
         } else {
           await Utils.removeData('_DELETED_ACCOUNT_HOLD');
         }
@@ -278,7 +279,11 @@ const PhoneAuthScreen = (props: any) => {
       const response: any = await _AUTH_SERVICE.send_otp(send_data);
 
       const OTP = response?.data?.otp;
-      const deletedInfo = parseDeletedAccountInfo(response);
+      const deletedInfo =
+        parseDeletedAccountInfo(response) ||
+        (localHoldDaysLeft && response?.success
+          ? { retentionDays: localHoldDaysLeft }
+          : null);
 
       const isCustomer = response?.data?.user_roles?.some(
         (role: string) => role?.toLowerCase() === 'customer',

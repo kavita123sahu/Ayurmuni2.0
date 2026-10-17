@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#FFFFFF',
     fontSize: 9,
-    lineHeight: 11,
+    lineHeight: 12,
     fontFamily: Fonts.PoppinsSemiBold,
   },
   plusHint: {

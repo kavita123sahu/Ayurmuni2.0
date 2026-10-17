@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
@@ -28,6 +28,7 @@ import {
   formatAppointmentWeekday,
 } from '../../utils/appointmentUtils';
 import { showSuccessToast } from '../../config/Key';
+import { popToHomeAfterAddressSave } from '../../navigation/navigationUtils';
 
 type AppointmentStatus =
   | 'COMPLETED'
@@ -277,7 +278,7 @@ const AddCalendar = ({ navigation, route }: any) => {
               navigation.goBack();
               return;
             }
-            navigation.navigate('HomeStack', { screen: 'Home' });
+            popToHomeAfterAddressSave(navigation);
           }}
         >
           <LinearGradient

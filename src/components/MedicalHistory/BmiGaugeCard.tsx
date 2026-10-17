@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 28,
-    lineHeight: 32,
+    lineHeight: 37,
     color: '#111827',
     fontFamily: Fonts.PoppinsSemiBold,
   },

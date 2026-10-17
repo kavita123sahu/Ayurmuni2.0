@@ -49,7 +49,7 @@ import CommonModal from '../../components/LogoutModal';
 import { usePatientData } from '../../hooks/usePatientData';
 import DoctorAvatar from '../../components/DoctorAvatar';
 import DietitianBadge from '../../components/DietitianBadge';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import PaymentHistoryTimeline from '../../components/PaymentHistoryTimeline';
 import { getPaymentHistory } from '../../utils/paymentHistoryUtils';
 

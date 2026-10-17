@@ -18,7 +18,7 @@ import {
 import {
     SafeAreaView,
 } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import * as  _PROFILE_SERVICES from '../../services/ProfileServices';
 
 import TablerIcon from '../../components/TablerIcon';

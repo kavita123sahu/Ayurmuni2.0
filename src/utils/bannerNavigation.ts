@@ -385,9 +385,10 @@ export const resolveBannerNavigation = (
         },
       };
     }
+    case 'Home':
+      return { screen: 'TabStack', params: { screen: 'Home' } };
     case 'AllDoctors':
     case 'Rewards':
-    case 'Home':
       return { screen };
     default: {
       if (!entityId) return { screen };

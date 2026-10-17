@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { Colors } from '../../common/Colors';
@@ -339,6 +339,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
     const insets = useSafeAreaInsets();
     const footerBottomPad = Math.max(insets.bottom, 8);
+    const [stickyBarHeight, setStickyBarHeight] = useState(100 + footerBottomPad);
 
     const [loading, setLoading] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
@@ -1737,7 +1738,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             )}
                         </View>
 
-                        <View style={{ height: 108 }} />
+                        <View style={{ height: stickyBarHeight + 12 }} />
                     </ScrollView>
 
                     {/* Sticky pay bar */}
@@ -1746,6 +1747,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             styles.stickyBar,
                             { paddingBottom: footerBottomPad },
                         ]}
+                        onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
                     >
                         <View style={styles.stickyRow}>
                             <View style={styles.stickyPriceBox}>

@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     price: {
         marginTop: 4,
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 20,
+        lineHeight: 26,
         color: Colors.primaryColor,
         fontSize: 20,
     },

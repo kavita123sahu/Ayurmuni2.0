@@ -20,7 +20,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../GradientView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TablerIcon from '../TablerIcon';
 import { Fonts } from '../../common/Fonts';
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
     fontSize: 15,
     color: QUEST.ink,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   brandSub: {
     fontFamily: Fonts.PoppinsMedium,

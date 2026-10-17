@@ -13,7 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import DoctorAvatar from '../../components/DoctorAvatar';
@@ -28,6 +28,7 @@ import {
 import { formatAppointmentId } from '../../utils/formatDisplayId';
 import { formatRupee } from '../../utils/currencyUtils';
 import { Utils } from '../../common/Utils';
+import { popToHomeAfterAddressSave } from '../../navigation/navigationUtils';
 
 const { height } = Dimensions.get('window');
 const SHEET_HEIGHT = height / 2.1;
@@ -180,6 +181,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
   const fundedByPackage = SlotsDetail?.funded_by_package === true;
   const insets = useSafeAreaInsets();
   const footerBottomPad = Math.max(insets.bottom, 8);
+  const [stickyBarHeight, setStickyBarHeight] = useState(80 + footerBottomPad);
   const [visible, setVisible] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
@@ -377,7 +379,7 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
   );
 
   const goHome = useCallback(() => {
-    navigation.replace('HomeStack', { screen: 'Home' });
+    popToHomeAfterAddressSave(navigation);
   }, [navigation]);
 
   const viewAppointments = useCallback(() => {
@@ -539,11 +541,14 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 88 }} />
+        <View style={{ height: stickyBarHeight + 12 }} />
       </ScrollView>
 
       {/* Sticky home CTA */}
-      <View style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}>
+      <View
+        style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}
+        onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
+      >
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={goHome}

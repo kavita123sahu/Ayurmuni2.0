@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../GradientView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';

@@ -11,7 +11,7 @@ import {
     Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
@@ -247,6 +247,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
 
     const insets = useSafeAreaInsets();
     const footerBottomPad = Math.max(insets.bottom, 8);
+    const [stickyBarHeight, setStickyBarHeight] = useState(100 + footerBottomPad);
 
     const [refreshing, setRefreshing] = useState(false);
     const [showFullAbout, setShowFullAbout] = useState(false);
@@ -560,12 +561,14 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 }
             >
                 {/* Eye-catching hero */}
-                <LinearGradient
-                    colors={['#E8F8F2', '#FFFFFF']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={styles.heroCard}
-                >
+                <View style={styles.heroCard}>
+                    <LinearGradient
+                        colors={['#E8F8F2', '#FFFFFF']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                        pointerEvents="none"
+                    />
                     <View style={styles.heroRow}>
                         <View style={styles.avatarCol}>
                             <View style={styles.avatarRing}>
@@ -690,7 +693,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
                             </>
                         ) : null}
                     </View>
-                </LinearGradient>
+                </View>
 
                 {/* Availability banner */}
                 {(hasAvailability || slotsCount > 0 || earliestDate) && (
@@ -899,10 +902,13 @@ const DoctorProfile = ({ navigation, route }: any) => {
                 </View>
                 ) : null}
 
-                <View style={{ height: 108 }} />
+                <View style={{ height: stickyBarHeight + 12 }} />
             </ScrollView>
 
-            <View style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}>
+            <View
+                style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}
+                onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
+            >
                 <View style={styles.stickyRow}>
                     <View style={styles.stickyPriceBox}>
                         <RupeeAmount
@@ -1070,8 +1076,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 6,
+        maxWidth: '100%',
     },
     expChipText: {
+        flexShrink: 1,
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
         color: Colors.primaryColor,
@@ -1108,6 +1116,7 @@ const styles = StyleSheet.create({
     },
     feeBlock: {
         flex: 1,
+        minWidth: 0,
     },
     feeDivider: {
         width: 1,
@@ -1226,8 +1235,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 10,
+        maxWidth: '100%',
     },
     modeChipText: {
+        flexShrink: 1,
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         includeFontPadding: false,

@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../GradientView';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon, { TablerIconName } from '../TablerIcon';
 import { RupeeAmount } from '../../utils/currencyUtils';

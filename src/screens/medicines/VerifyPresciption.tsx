@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';

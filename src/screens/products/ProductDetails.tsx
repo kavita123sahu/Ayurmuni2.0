@@ -49,7 +49,7 @@ import {
 } from '../../utils/productStockUtils';
 import { formatDiscountOff, formatRupee, RupeeAmount, roundDiscountPercent } from '../../utils/currencyUtils';
 import { SCREEN } from '../../constants/responsive';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 
 const GALLERY_H = Math.round(Math.min(SCREEN.width * 0.7, 248));
 
@@ -218,6 +218,9 @@ const ProductDetails = (props: any) => {
     const cartQty = cartLoaded ? existingCartQty : existingCartQty || apiCartQuantity;
     const inCart = cartQty > 0;
     const insets = useSafeAreaInsets();
+    const [stickyBarHeight, setStickyBarHeight] = useState(
+        100 + Math.max(insets.bottom, 8),
+    );
     const [descExpanded, setDescExpanded] = useState(false);
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
     const [isWishlisted, setIsWishlisted] = useState(false);
@@ -1100,7 +1103,7 @@ const ProductDetails = (props: any) => {
                     </View>
                 )}
 
-                <View style={{ height: 108 }} />
+                <View style={{ height: stickyBarHeight + 12 }} />
             </ScrollView>
 
             <View
@@ -1108,6 +1111,7 @@ const ProductDetails = (props: any) => {
                     styles.stickyBar,
                     { paddingBottom: Math.max(insets.bottom, 8) },
                 ]}
+                onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
             >
                 <View style={styles.stickyRow}>
                     <View style={styles.stickyPriceBox}>
@@ -1459,7 +1463,7 @@ const styles = StyleSheet.create({
     highlightText: {
         flex: 1,
         fontSize: 12,
-        lineHeight: 14,
+        lineHeight: 16,
         color: '#334155',
         fontFamily: Fonts.PoppinsRegular,
     },

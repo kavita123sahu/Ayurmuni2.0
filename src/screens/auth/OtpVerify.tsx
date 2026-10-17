@@ -19,7 +19,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { useFocusEffect } from '@react-navigation/native';
 import { Images } from '../../common/Images';
 import { Colors } from '../../common/Colors';
@@ -127,6 +127,21 @@ const OtpVerify: React.FC<OTPVerificationProps> = props => {
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const phoneNumber = props.route?.params?.phone;
   const NEW_CUSTOMER = props.route?.params?.customer;
+  const [recoverPending, setRecoverPending] = useState(
+    Boolean(props.route?.params?.accountDeleted),
+  );
+  const [recoverDays, setRecoverDays] = useState<number>(
+    Number(props.route?.params?.retentionDays) || 30,
+  );
+  const [recoverVisible, setRecoverVisible] = useState(false);
+  const [recoverLoading, setRecoverLoading] = useState(false);
+  const [recoveredLogin, setRecoveredLogin] = useState(false);
+
+  const openRecoverPrompt = (days?: number) => {
+    if (days) setRecoverDays(days);
+    setRecoverPending(true);
+    setRecoverVisible(true);
+  };
 
   const recordPolicyAcceptance = async () => {
     try {
@@ -578,6 +593,12 @@ if (!isNotificationEnabled) {
           '✅ [STEP 15] Navigation successful',
         );
       } else {
+        const deleted = _PROFILE_SERVICES.parseDeletedAccountInfo(response);
+        if (deleted) {
+          openRecoverPrompt(deleted.retentionDays);
+          return;
+        }
+
         // ==========================================
         // OTP FAILURE
         // ==========================================
@@ -651,12 +672,13 @@ if (!isNotificationEnabled) {
     await submitRegisterWithNotificationPreference(false);
   };
 
-  const LoginVerfiyOTP = async () => {
+  /** `recoveredResponse`: tokens returned by account recover — skips the login API. */
+  const LoginVerfiyOTP = async (recoveredResponse?: any) => {
     Keyboard.dismiss();
 
     const otpCode = otp.join('');
 
-    if (otpCode.length !== 4) {
+    if (!recoveredResponse && otpCode.length !== 4) {
       showSuccessToast(
         'Please enter valid OTP',
         'error',
@@ -683,9 +705,10 @@ if (!isNotificationEnabled) {
        * 1️⃣ Existing Login API
        */
       const response: any =
-        await _AUTH_SERVICE.verify_otp_login(
+        recoveredResponse ??
+        (await _AUTH_SERVICE.verify_otp_login(
           send_data,
-        );
+        ));
 
       console.log(
         'LOGIN API RESPONSE:',
@@ -857,6 +880,14 @@ if (!isNotificationEnabled) {
           }
         }
       } else {
+        const deleted = recoveredResponse
+          ? null
+          : _PROFILE_SERVICES.parseDeletedAccountInfo(response);
+        if (deleted) {
+          openRecoverPrompt(deleted.retentionDays);
+          return;
+        }
+
         showSuccessToast(
           response?.message ||
           'Failed to verify OTP',
@@ -955,7 +986,84 @@ if (!isNotificationEnabled) {
   };
 
   const otpComplete = otp.join('').length === OTP_LEN;
-  const onVerify = NEW_CUSTOMER ? LoginVerfiyOTP : handleVerifyOTP;
+
+  const onVerify = () => {
+    if (otp.join('').length !== OTP_LEN) {
+      showSuccessToast('Please enter valid OTP', 'error');
+      shake();
+      return;
+    }
+    if (recoverPending) {
+      Keyboard.dismiss();
+      setRecoverVisible(true);
+      return;
+    }
+    if (NEW_CUSTOMER || recoveredLogin) {
+      LoginVerfiyOTP();
+    } else {
+      handleVerifyOTP();
+    }
+  };
+
+  const handleRecoverAccount = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== OTP_LEN) {
+      setRecoverVisible(false);
+      showSuccessToast('Please enter valid OTP', 'error');
+      shake();
+      return;
+    }
+
+    setRecoverLoading(true);
+    try {
+      const res: any = await _PROFILE_SERVICES.recoverAccount({
+        phone_number: `+91${phoneNumber}`,
+        otp: otpCode,
+      });
+
+      if (!res?.success) {
+        setRecoverVisible(false);
+        showSuccessToast(
+          res?.message ||
+          'Unable to recover account. Check the OTP or resend a new one.',
+          'error',
+        );
+        shake();
+        return;
+      }
+
+      await Utils.removeData('_DELETED_ACCOUNT_HOLD');
+      setRecoverPending(false);
+      setRecoverVisible(false);
+      setRecoveredLogin(true);
+
+      if (res?.data?.access) {
+        await LoginVerfiyOTP(res);
+        return;
+      }
+
+      // Recover consumed the OTP — send a fresh one for the normal login call.
+      showSuccessToast(
+        res?.message || 'Account recovered. Verify the new OTP to continue.',
+        'success',
+      );
+      setOtp(['', '', '', '']);
+      setFocusedIndex(0);
+      const otpRes: any = await _AUTH_SERVICE.send_otp({
+        phone_number: `+91${phoneNumber}`,
+      });
+      if (otpRes?.data?.otp) {
+        await Utils.storeData('_OTP', otpRes.data.otp);
+        await loadStoredOtp();
+      }
+      setResendTimer(60);
+    } catch {
+      setRecoverVisible(false);
+      showSuccessToast('Unable to recover account. Please try again.', 'error');
+    } finally {
+      setRecoverLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -1131,6 +1239,24 @@ if (!isNotificationEnabled) {
         onClose={onSkipNotifications}
         onConfirm={onEnableNotifications}
       />
+
+      {recoverVisible ? (
+        <CommonModal
+          visible={recoverVisible}
+          icon="♻️"
+          title="Recover your account?"
+          subtitle={`This number belongs to an Ayurmuni account that was deleted. You can recover it within ${recoverDays} days of deletion — your appointments, orders and records will be restored.`}
+          cancelText="Use another number"
+          confirmText="Recover account"
+          stackButtons
+          loading={recoverLoading}
+          onClose={() => {
+            setRecoverVisible(false);
+            changeMobileNumber();
+          }}
+          onConfirm={handleRecoverAccount}
+        />
+      ) : null}
     </View>
   );
 };

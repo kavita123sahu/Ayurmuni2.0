@@ -15,7 +15,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Fonts } from '../../common/Fonts';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
@@ -84,6 +84,7 @@ const DoctorSlot = (props: any) => {
     const { route, navigation } = props;
     const insets = useSafeAreaInsets();
     const footerBottomPad = Math.max(insets.bottom, 8);
+    const [stickyBarHeight, setStickyBarHeight] = useState(100 + footerBottomPad);
 
     const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
     const { doctorDetails } = route?.params || {};
@@ -417,12 +418,14 @@ const DoctorSlot = (props: any) => {
                     }
                 >
                     {/* Compact doctor hero */}
-                    <LinearGradient
-                        colors={['#E8F8F2', '#FFFFFF']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 0, y: 1 }}
-                        style={styles.heroCard}
-                    >
+                    <View style={styles.heroCard}>
+                        <LinearGradient
+                            colors={['#E8F8F2', '#FFFFFF']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                            pointerEvents="none"
+                        />
                         <View style={styles.heroRow}>
                             <View style={styles.avatarWrap}>
                                 {profileImageUri ? (
@@ -544,7 +547,7 @@ const DoctorSlot = (props: any) => {
                                 </View>
                             </View>
                         )}
-                    </LinearGradient>
+                    </View>
 
                     {/* Date + slots */}
                     <View style={styles.card}>
@@ -895,12 +898,13 @@ const DoctorSlot = (props: any) => {
                         onSubmit={submitRecord}
                     />
 
-                    <View style={{ height: 108 }} />
+                    <View style={{ height: stickyBarHeight + 12 }} />
                 </ScrollView>
 
                 {/* Sticky CTA */}
                 <View
                     style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}
+                    onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
                 >
                     <View style={styles.stickyRow}>
                         <View style={styles.stickyPriceBox}>
@@ -1056,6 +1060,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 7,
         paddingVertical: 2,
         borderRadius: 4,
+        maxWidth: '100%',
     },
     expChipText: {
         fontSize: 10,
@@ -1107,14 +1112,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 5,
         borderRadius: 8,
+        maxWidth: '100%',
     },
     modeChipText: {
+        flexShrink: 1,
         fontSize: 11,
         fontFamily: Fonts.PoppinsSemiBold,
         includeFontPadding: false,
     },
     feeMini: {
         alignItems: 'flex-end',
+        flexShrink: 0,
     },
     feeMiniLabel: {
         fontSize: 10,

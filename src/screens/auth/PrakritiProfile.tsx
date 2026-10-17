@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Fonts } from '../../common/Fonts';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../common/Colors';
@@ -23,6 +23,7 @@ import BackIconButton from '../../components/BackIconButton';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { PRAKRITI_IMAGES } from '../../common/DataInterface';
 import { requireAuth } from '../../services/guestAuth';
+import { popToHomeAfterAddressSave } from '../../navigation/navigationUtils';
 
 type DoshaItem = {
   id: number;
@@ -170,9 +171,9 @@ const DoshaMeter = ({ item, index }: { item: DoshaItem; index: number }) => {
       </View>
       <View style={styles.meterBody}>
         <View style={styles.meterTop}>
-          <View>
-            <Text style={styles.meterName}>{item.name}</Text>
-            <Text style={styles.meterLabel}>{item.label}</Text>
+          <View style={styles.meterNameWrap}>
+            <Text style={styles.meterName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.meterLabel} numberOfLines={2}>{item.label}</Text>
           </View>
           <Text style={[styles.meterPercent, { color: item.color }]}>
             {item.percentage}%
@@ -256,6 +257,9 @@ const GuidelineCard = React.memo(
 
 const PrakritiProfile = (props: any) => {
   const insets = useSafeAreaInsets();
+  const [stickyBarHeight, setStickyBarHeight] = useState(
+    76 + Math.max(insets.bottom, 12),
+  );
   const fromAssessment = Boolean(props?.route?.params?.fromAssessment);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -298,9 +302,7 @@ const PrakritiProfile = (props: any) => {
   );
 
   const handleGoHome = () => {
-    props.navigation.replace('HomeStack', {
-      screen: 'Home',
-    });
+    popToHomeAfterAddressSave(props.navigation);
   };
 
   const handleVikritiAssessment = () => {
@@ -361,10 +363,12 @@ const PrakritiProfile = (props: any) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <LinearGradient
-        colors={['#E8F8F2', '#F7FAF9']}
-        style={styles.emptyHero}
-      >
+      <View style={styles.emptyHero}>
+        <LinearGradient
+          colors={['#E8F8F2', '#F7FAF9']}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <View style={styles.emptyIconWrap}>
           <Image
             source={Images.FinalLogo}
@@ -378,7 +382,7 @@ const PrakritiProfile = (props: any) => {
           A short Ayurvedic assessment reveals your body constitution and unlocks
           personalized diet & lifestyle guidance.
         </Text>
-      </LinearGradient>
+      </View>
 
       <View style={styles.featureCard}>
         {[
@@ -435,12 +439,14 @@ const PrakritiProfile = (props: any) => {
 
     return (
       <>
-        <LinearGradient
-          colors={['#0B7358', '#0D614E', '#0A4F40']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
+        <View style={styles.hero}>
+          <LinearGradient
+            colors={['#0B7358', '#0D614E', '#0A4F40']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
           <View style={styles.heroBadge}>
             <TablerIcon name="circle-check" size={14} color="#6EE7B7" />
             <Text style={styles.completedText}>
@@ -451,7 +457,9 @@ const PrakritiProfile = (props: any) => {
           <View style={styles.heroMain}>
             <View style={styles.heroCopy}>
               <Text style={styles.heroKicker}>Your dominant type</Text>
-              <Text style={styles.mainTitle}>{analysisData.dominantLabel}</Text>
+              <Text style={styles.mainTitle} numberOfLines={2}>
+                {analysisData.dominantLabel}
+              </Text>
               <Text style={styles.subtitle}>
                 {analysisData.coreEssence.title} · personalized for your balance
               </Text>
@@ -477,7 +485,7 @@ const PrakritiProfile = (props: any) => {
               </View>
             )}
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={styles.doshaCard}>
           <View style={styles.doshaHeader}>
@@ -490,12 +498,14 @@ const PrakritiProfile = (props: any) => {
         </View>
 
         <View style={styles.essenceCard}>
-          <LinearGradient
-            colors={['#0D614E', '#117A64']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.essenceGradient}
-          >
+          <View style={styles.essenceGradient}>
+            <LinearGradient
+              colors={['#0D614E', '#117A64']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
             <Text style={styles.smallHeading}>Core essence</Text>
             <Text style={styles.essenceTitle}>
               {analysisData.coreEssence.title}
@@ -510,11 +520,11 @@ const PrakritiProfile = (props: any) => {
                 Follow the rituals below to stay in balance.
               </Text>
             )}
-          </LinearGradient>
+          </View>
         </View>
 
         <View style={styles.guidelineHeader}>
-          <View>
+          <View style={styles.meterNameWrap}>
             <Text style={styles.guidelineTitle}>Lifestyle guidelines</Text>
             <Text style={styles.guidelineLead}>
               Built around your {analysisData.dominantLabel} nature
@@ -564,7 +574,7 @@ const PrakritiProfile = (props: any) => {
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 88 + insets.bottom }} />
+        <View style={{ height: stickyBarHeight + 16 }} />
       </>
     );
   };
@@ -620,6 +630,7 @@ const PrakritiProfile = (props: any) => {
             styles.stickyBar,
             { paddingBottom: Math.max(insets.bottom, 12) },
           ]}
+          onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
         >
           <TouchableOpacity
             activeOpacity={0.9}
@@ -688,6 +699,7 @@ const styles = StyleSheet.create({
   },
   emptyHero: {
     borderRadius: 20,
+    overflow: 'hidden',
     paddingHorizontal: 22,
     paddingVertical: 28,
     alignItems: 'center',
@@ -795,6 +807,7 @@ const styles = StyleSheet.create({
     paddingBottom: 72,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   heroBadge: {
     alignSelf: 'flex-start',
@@ -830,7 +843,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   mainTitle: {
-    fontSize: 34,
+    fontSize: 30,
     lineHeight: 40,
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
@@ -919,6 +932,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 6,
+  },
+  meterNameWrap: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   meterName: {
     fontSize: 13,

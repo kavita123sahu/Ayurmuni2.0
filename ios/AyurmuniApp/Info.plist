@@ -38,11 +38,34 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Need camera access for video call</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Ayurmuni uses your location to show delivery addresses and nearby services.</string>
+	<string>Ayurmuni uses your location to provide relevant location-based services when you use the app.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Need microphone access for video call</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ayurmuni needs access to your photos so you can upload profile pictures and attach medical records or other images you choose to share.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Poppins-ExtraLight.ttf</string>
+		<string>Poppins-ThinItalic.ttf</string>
+		<string>Poppins-ExtraLightItalic.ttf</string>
+		<string>Poppins-BoldItalic.ttf</string>
+		<string>Poppins-Light.ttf</string>
+		<string>Poppins-Medium.ttf</string>
+		<string>Poppins-SemiBoldItalic.ttf</string>
+		<string>Poppins-ExtraBoldItalic.ttf</string>
+		<string>Poppins-ExtraBold.ttf</string>
+		<string>Poppins-BlackItalic.ttf</string>
+		<string>Poppins-Regular.ttf</string>
+		<string>Poppins-LightItalic.ttf</string>
+		<string>Poppins-Bold.ttf</string>
+		<string>Poppins-Black.ttf</string>
+		<string>Poppins-Thin.ttf</string>
+		<string>Poppins-SemiBold.ttf</string>
+		<string>Poppins-Italic.ttf</string>
+		<string>Poppins-MediumItalic.ttf</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

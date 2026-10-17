@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
   categoryLabel: {
     marginTop: 3,
     fontSize: 9,
-    lineHeight: 11,
+    lineHeight: 12,
     textAlign: 'center',
     color: '#64748B',
     fontFamily: Fonts.PoppinsMedium,

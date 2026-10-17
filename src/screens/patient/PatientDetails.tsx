@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Fonts.PoppinsMedium,
     color: Colors.subTextColor,
-    lineHeight: 14,
+    lineHeight: 16,
   },
   deleteButtonContainer: {
     position: 'relative',

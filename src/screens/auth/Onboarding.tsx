@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '../../common/Vector';
 import { Colors } from '../../common/Colors';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Fonts } from '../../common/Fonts';
 import * as _AUTH_SERVICES from '../../services/AuthService';
 import { showSuccessToast } from '../../config/Key';

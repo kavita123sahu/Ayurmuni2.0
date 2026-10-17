@@ -493,7 +493,7 @@ const ProductSearchScreen = (props: any) => {
       </View>
       <View style={styles.hitBadge}>
         <Text style={styles.hitBadgeText} numberOfLines={1}>
-          {hit.type.replace('_', ' ')}
+          {String(hit?.type ?? '').replace(/_/g, ' ')}
         </Text>
       </View>
       <TablerIcon name="chevron-right" size={16} color="#94A3B8" />

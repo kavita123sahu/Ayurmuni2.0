@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         color: '#0D614E',
         fontFamily: Fonts.PoppinsSemiBold,
-        lineHeight: 24,
+        lineHeight: 26,
     },
     btnTextDisabled: {
         color: '#CBD5E1',

@@ -54,8 +54,8 @@ export type PaymentHistoryFilters = Omit<
 /* -------------------------------------------------------------------------- */
 
 /** `refund_processed` → `Refund processed` */
-export const formatEventType = (eventType: string) => {
-  const text = eventType.replace(/_/g, ' ').trim();
+export const formatEventType = (eventType?: string | null) => {
+  const text = String(eventType ?? '').replace(/_/g, ' ').trim();
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 

@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontFamily: Fonts.PoppinsSemiBold,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   eyebrow: {
     fontSize: 10,

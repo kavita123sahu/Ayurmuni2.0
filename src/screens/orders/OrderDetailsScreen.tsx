@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, CommonActions } from '@react-navigation/native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { useAppDispatch } from '../../store/hooks';
 import { fetchCart } from '../../store/slices/cartSlice';
 import AppHeader from '../../components/AppHeader';

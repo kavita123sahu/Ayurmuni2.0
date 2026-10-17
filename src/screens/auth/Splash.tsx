@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { Images } from '../../common/Images';
 import { Utils } from '../../common/Utils';
 import { Fonts } from '../../common/Fonts';

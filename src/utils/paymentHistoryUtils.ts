@@ -93,9 +93,9 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   refund_failed: 'Refund failed',
 };
 
-export const formatPaymentStatusLabel = (status: string) =>
-  PAYMENT_STATUS_LABELS[status] ||
-  status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+export const formatPaymentStatusLabel = (status?: string | null) =>
+  PAYMENT_STATUS_LABELS[status ?? ''] ||
+  String(status ?? '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 /** Tone used for the timeline dot / text. */
 export const getPaymentStatusTone = (

@@ -1,4 +1,4 @@
-/** Shared auth / onboarding visual tokens — aligned with Doctor Profile. */
+
 export const AuthTheme = {
   page: '#F4F7F6',
   sheet: '#FFFFFF',

@@ -11,7 +11,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../components/GradientView';
 import * as _ASSESS_SERVICE from '../services/AssesmentService';
 import { Fonts } from '../common/Fonts';
 import { Images } from '../common/Images';

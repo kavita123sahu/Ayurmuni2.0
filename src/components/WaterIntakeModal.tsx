@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.textColor,
     fontFamily: Fonts.PoppinsSemiBold,
-    lineHeight: 26,
+    lineHeight: 29,
   },
   summaryGoal: {
     fontSize: TYPO.md,

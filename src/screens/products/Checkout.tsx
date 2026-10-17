@@ -11,7 +11,7 @@ import {
     Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { useFocusEffect } from '@react-navigation/native';
 
 import AppHeader from '../../components/AppHeader';
@@ -89,6 +89,7 @@ const Checkout: React.FC = (props: any) => {
     const { selectedProducts = [] } = props.route.params ?? {};
     const insets = useSafeAreaInsets();
     const footerBottomPad = Math.max(insets.bottom, 8);
+    const [stickyBarHeight, setStickyBarHeight] = useState(100 + footerBottomPad);
 
     const [deliveryMethod] = useState('standard');
     const [billExpanded, setBillExpanded] = useState(true);
@@ -936,15 +937,19 @@ const Checkout: React.FC = (props: any) => {
                         </>
                     ) : null}
 
-                    <LinearGradient
-                        colors={['#ECFDF5', '#D1FAE5']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                    <View
                         style={[
                             styles.totalStrip,
                             !feesReady && styles.totalStripMuted,
                         ]}
                     >
+                        <LinearGradient
+                            colors={['#ECFDF5', '#D1FAE5']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={StyleSheet.absoluteFill}
+                            pointerEvents="none"
+                        />
                         <Text style={styles.totalStripLabel}>
                             Grand total
                         </Text>
@@ -959,7 +964,7 @@ const Checkout: React.FC = (props: any) => {
                         ) : (
                             <Text style={styles.totalStripPending}>—</Text>
                         )}
-                    </LinearGradient>
+                    </View>
                 </View>
 
                 {/* Trust */}
@@ -998,12 +1003,13 @@ const Checkout: React.FC = (props: any) => {
                     </View>
                 ) : null}
 
-                <View style={{ height: 108 }} />
+                <View style={{ height: stickyBarHeight + SPACING.md }} />
             </ScrollView>
 
             {/* Sticky CTA */}
             <View
                 style={[styles.stickyBar, { paddingBottom: footerBottomPad }]}
+                onLayout={e => setStickyBarHeight(e.nativeEvent.layout.height)}
             >
                 <View style={styles.stickyRow}>
                     <View style={styles.stickyPriceBox}>
@@ -1428,6 +1434,8 @@ const styles = StyleSheet.create({
     },
     totalStrip: {
         borderRadius: RADIUS.sm,
+        overflow: 'hidden',
+        gap: SPACING.sm,
         paddingHorizontal: SPACING.md,
         paddingVertical: SPACING.sm,
         flexDirection: 'row',
@@ -1438,6 +1446,7 @@ const styles = StyleSheet.create({
         opacity: 0.55,
     },
     totalStripLabel: {
+        flexShrink: 1,
         fontSize: TYPO.subtitle,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#14532D',

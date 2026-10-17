@@ -64,7 +64,7 @@ const getStatusLabel = (status?: string) => {
     const normalized = String(status ?? '').toLowerCase();
     if (normalized === 'success') return 'Paid';
     if (!status) return 'Unknown';
-    const text = status.replace(/_/g, ' ');
+    const text = String(status).replace(/_/g, ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
 };
 

@@ -32,7 +32,7 @@ import {
     resolveAccessLikeProfile,
     signOutToChangeNumber,
 } from '../../services/guestAuth';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { goBackToHomeTab } from '../../navigation/navigationUtils';
 import { shouldRunThrottled } from '../../utils/fetchThrottle';
 import { useLocation } from '../../context/LocationContext';
@@ -172,7 +172,7 @@ const ProfilePage = ({ navigation }: any) => {
             icon: 'pill',
             color: '#B45309',
             bg: '#FEF3C7',
-            onPress: () => navigation.navigate('Medicine'),
+            onPress: () => navigation.navigate('Medicines'),
         },
         {
             id: 'products',

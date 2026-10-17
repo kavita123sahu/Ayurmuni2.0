@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Video from 'react-native-video';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from '../../components/GradientView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fonts } from '../../common/Fonts';
 import { Images } from '../../common/Images';
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   },
   storyTitle: {
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 37,
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
   },

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from './GradientView';
 import TablerIcon from './TablerIcon';
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';

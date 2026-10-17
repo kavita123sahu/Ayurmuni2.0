@@ -77,17 +77,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontFamily: Fonts.PoppinsSemiBold,
-    lineHeight: 12,
+    lineHeight: 13,
     textAlign: 'center',
     includeFontPadding: false,
   },
   textSm: {
     fontSize: 9,
-    lineHeight: 11,
+    lineHeight: 12,
   },
   textWide: {
     fontSize: 9,
-    lineHeight: 11,
+    lineHeight: 12,
   },
 });
 

@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   q: {
     flex: 1,
     fontSize: 16,
-    lineHeight: 19,
+    lineHeight: 21,
     fontFamily: Fonts.PoppinsSemiBold,
     color: Colors.textColor,
     paddingRight: 10,
