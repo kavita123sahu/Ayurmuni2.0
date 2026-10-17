@@ -647,7 +647,7 @@ export const createConsultationPayment = async (data: object) => {
  */
 export const retryConsultationPayment = async (
     appointmentId: string | number,
-    paymentGateway?: 'pinelabs' | 'razorpay' | 'payphi',
+    paymentGateway?: 'pinelabs' | 'razorpay' | 'icici',
 ) => {
     try {
         const id = encodeURIComponent(String(appointmentId));

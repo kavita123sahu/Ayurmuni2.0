@@ -447,7 +447,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     );
     const activePlans = useMemo(
         () => activePurchases.filter(isActivePlan),
-        [activePurchases],  
+        [activePurchases],
     );
     // fee-quote per plan → package_funding.can_fund decides if the plan is selectable
     const [planEligibility, setPlanEligibility] = useState<Record<string, PlanEligibility>>({});
@@ -1097,7 +1097,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             );
 
             // ── PayPhi (ICICI SDK) ─────────────────────────────────
-            if (orderGateway === 'payphi') {
+            if (orderGateway === 'icici') {
                 const appInfo = parsePayphiAppInfo(paymentData);
                 const payRequest = parsePayphiPaymentRequest(paymentData, {
                     amount: payableRupees,
@@ -1132,7 +1132,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     console.log('[PAY] PayPhi SDK error =>', error);
                     showSuccessToast(
                         error?.message ||
-                            'Unable to open ICICI PayPhi. Please try another payment method.',
+                        'Unable to open ICICI PayPhi. Please try another payment method.',
                         'error',
                     );
                     return;
@@ -1149,7 +1149,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 if (payphiResult.status === 'failed') {
                     showSuccessToast(
                         payphiResult.message ||
-                            'Payment failed at PayPhi. Please try again.',
+                        'Payment failed at PayPhi. Please try again.',
                         'error',
                     );
                     return;
@@ -1161,12 +1161,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         payment_id: String(paymentData?.payment_id ?? ''),
                         gateway_order_id:
                             payphiResult.gatewayOrderId ||
-                            getGatewayOrderId(paymentData, 'payphi'),
+                            getGatewayOrderId(paymentData, 'icici'),
                         gateway_payment_id: payphiResult.gatewayPaymentId,
                         gateway_signature: payphiResult.gatewaySignature,
-                        payment_gateway: 'payphi',
+                        // payment_gateway: 'icici',
                     });
-                logPayStep('5. payphi verify', verifyResponse);
+                logPayStep('5. icici verify', verifyResponse);
                 setIsVerifyingPayment(false);
 
                 if (verifyResponse?.success) {

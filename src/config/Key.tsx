@@ -2,8 +2,8 @@ import Toast from "react-native-toast-message";
 import { Fonts } from "../common/Fonts";
 import { Platform } from "react-native";
 
-export const BaseUrl = {
-    base_url: "https://ayurmuniproduction.aimantra.info/"
+export const BaseUrl = { 
+    base_url: "https://ayurmuni.aimantra.info/"
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/ 
     // https://6057-203-110-81-106.ngrok-free.app/

@@ -95,7 +95,7 @@ import EditProfile from "../screens/profile/EditProfile";
 import RazorpayScreen from "../screens/payment/RazorpayScreen";
 import AddEditPatientDetail from "../screens/patient/AddEditPatientDetail";
 import AllFavDoctors from "../screens/consult/AllFAvDoctor";
-import ConsultHome from "../screens/consult/consultHome";
+import ConsultHome from "../screens/consult/ConsultHome";
 import ReviewGalleryScreen from "../components/ReviewGalleryScreen";
 import { navigationRef } from "./navigationRef";
 import { flushPendingNotificationNavigation } from "../screens/notifications/notificationRouter";
