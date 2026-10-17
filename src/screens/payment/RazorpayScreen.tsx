@@ -61,6 +61,12 @@ import {
     resolveOrderGateway,
     type PineLabsCheckout,
 } from '../../services/PineLabsService';
+import {
+    isPayphiUserCancelled,
+    openPayphiPayment,
+    parsePayphiAppInfo,
+    parsePayphiPaymentRequest,
+} from '../../services/PayphiService';
 import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
 import PineLabsCheckoutModal, {
     type PineLabsCheckoutOutcome,
@@ -1071,11 +1077,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 paymentData,
                 totalAmount,
             );
-            const amountPaise = toRazorpayPaise(
-                paymentData?.amount ??
-                paymentData?.summary?.total_payable_amount,
-                payableRupees,
-            );
 
             const contactNumber = String(
                 activePatient?.phone_number ||
@@ -1083,6 +1084,118 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 doctorInfo?.phone_number ||
                 '',
             ).replace(/\D/g, '');
+            const customerName = String(
+                activePatient?.first_name ||
+                activePatient?.full_name ||
+                doctorInfo?.full_name ||
+                doctorName ||
+                'AyurMuni Customer',
+            );
+            const customerEmail = String(
+                activePatient?.email || doctorInfo?.email || 'customer@ayurmuni.com',
+            );
+
+            // ── PayPhi (ICICI SDK) ─────────────────────────────────
+            if (orderGateway === 'payphi') {
+                const appInfo = parsePayphiAppInfo(paymentData);
+                const payRequest = parsePayphiPaymentRequest(paymentData, {
+                    amount: payableRupees,
+                    customerName,
+                    customerEmail,
+                    customerMobile: contactNumber
+                        ? contactNumber.slice(-10)
+                        : undefined,
+                });
+
+                console.log('[PAY] 3. payphi checkout =>', {
+                    appInfo: appInfo
+                        ? { merchantId: appInfo.merchantId, environment: appInfo.environment }
+                        : null,
+                    invoiceNo: payRequest?.invoiceNo,
+                    amount: payRequest?.amount,
+                });
+
+                if (!payRequest) {
+                    showSuccessToast(
+                        'PayPhi checkout is not ready. Missing invoice or amount from server.',
+                        'error',
+                    );
+                    return;
+                }
+
+                let payphiResult;
+                try {
+                    payphiResult = await openPayphiPayment(appInfo, payRequest);
+                    console.log('[PAY] 4. payphi result =>', payphiResult);
+                } catch (error: any) {
+                    console.log('[PAY] PayPhi SDK error =>', error);
+                    showSuccessToast(
+                        error?.message ||
+                            'Unable to open ICICI PayPhi. Please try another payment method.',
+                        'error',
+                    );
+                    return;
+                }
+
+                if (isPayphiUserCancelled(payphiResult) || payphiResult.status === 'cancelled') {
+                    showSuccessToast(
+                        'Payment cancelled. You can try again anytime.',
+                        'error',
+                    );
+                    return;
+                }
+
+                if (payphiResult.status === 'failed') {
+                    showSuccessToast(
+                        payphiResult.message ||
+                            'Payment failed at PayPhi. Please try again.',
+                        'error',
+                    );
+                    return;
+                }
+
+                setIsVerifyingPayment(true);
+                const verifyResponse =
+                    await _CONSULT_SERVICES.verifyConsultationPayment({
+                        payment_id: String(paymentData?.payment_id ?? ''),
+                        gateway_order_id:
+                            payphiResult.gatewayOrderId ||
+                            getGatewayOrderId(paymentData, 'payphi'),
+                        gateway_payment_id: payphiResult.gatewayPaymentId,
+                        gateway_signature: payphiResult.gatewaySignature,
+                        payment_gateway: 'payphi',
+                    });
+                logPayStep('5. payphi verify', verifyResponse);
+                setIsVerifyingPayment(false);
+
+                if (verifyResponse?.success) {
+                    await onBookingSuccess(
+                        verifyResponse?.data,
+                        currentSlotId,
+                        payphiResult.status === 'pending'
+                            ? 'Payment pending — booking will confirm shortly'
+                            : 'Payment Successful',
+                    );
+                } else if (payphiResult.status === 'pending') {
+                    showSuccessToast(
+                        'Payment is pending. Check My Appointments in a moment.',
+                        'success',
+                    );
+                } else {
+                    showSuccessToast(
+                        verifyResponse?.message || 'Payment verification failed',
+                        'error',
+                    );
+                }
+                return;
+            }
+
+            // ── Razorpay ───────────────────────────────────────────
+            const amountPaise = toRazorpayPaise(
+                paymentData?.amount ??
+                paymentData?.summary?.total_payable_amount,
+                payableRupees,
+            );
 
             let razorpayResult: any;
 

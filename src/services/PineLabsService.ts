@@ -29,6 +29,15 @@ export const resolveOrderGateway = (data: any, requested: PaymentGateway): Payme
   );
   if (explicit) return explicit;
   if (data?.razorpay_order_id) return 'razorpay';
+  if (
+    data?.payphi ||
+    data?.sdk_payload ||
+    data?.make_payment ||
+    data?.invoice_no ||
+    data?.checkout?.invoice_no
+  ) {
+    return 'payphi';
+  }
   if (getPineLabsRedirectUrl(data)) return 'pinelabs';
   return requested;
 };
@@ -49,16 +58,28 @@ const getPineLabsRedirectUrl = (data: any): string => {
 
 /** Order id used by verify-payment as `gateway_order_id`. */
 export const getGatewayOrderId = (data: any, gateway: PaymentGateway): string => {
-  const checkout = data?.checkout ?? data?.pinelabs ?? data?.gateway_data ?? {};
-  return gateway === 'razorpay'
-    ? pickString(data?.razorpay_order_id, data?.gateway_order_id, data?.order_id)
-    : pickString(
-        data?.gateway_order_id,
-        data?.pinelabs_order_id,
-        checkout?.order_id,
-        checkout?.gateway_order_id,
-        data?.order_id,
-      );
+  const checkout = data?.checkout ?? data?.pinelabs ?? data?.payphi ?? data?.gateway_data ?? {};
+  if (gateway === 'razorpay') {
+    return pickString(data?.razorpay_order_id, data?.gateway_order_id, data?.order_id);
+  }
+  if (gateway === 'payphi') {
+    return pickString(
+      data?.gateway_order_id,
+      data?.invoice_no,
+      data?.invoiceNo,
+      data?.payphi_order_id,
+      checkout?.invoice_no,
+      checkout?.order_id,
+      data?.order_id,
+    );
+  }
+  return pickString(
+    data?.gateway_order_id,
+    data?.pinelabs_order_id,
+    checkout?.order_id,
+    checkout?.gateway_order_id,
+    data?.order_id,
+  );
 };
 
 /** True when book-slot created a gateway order that still needs to be paid. */
@@ -67,6 +88,10 @@ export const hasGatewayOrder = (data: any): boolean =>
     data?.razorpay_order_id ||
     data?.gateway_order_id ||
     data?.pinelabs_order_id ||
+    data?.invoice_no ||
+    data?.sdk_payload ||
+    data?.make_payment ||
+    data?.payphi ||
     getPineLabsRedirectUrl(data)
   );
 

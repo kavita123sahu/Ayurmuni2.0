@@ -42,6 +42,17 @@ import {
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import { ADDRESS_UPDATED, AddressEvents } from '../../common/Utils';
 import {
+    resolveDefaultGateway,
+    resolveEnabledGateways,
+    type PaymentGateway,
+} from '../../config/paymentGateways';
+import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
+import PineLabsCheckoutModal, {
+    type PineLabsCheckoutOutcome,
+    type PineLabsPageResult,
+} from '../../components/payment/PineLabsCheckoutModal';
+import type { PineLabsCheckout } from '../../services/PineLabsService';
+import {
     BUTTON,
     RADIUS,
     SPACING,
@@ -113,6 +124,46 @@ const Checkout: React.FC = (props: any) => {
     });
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
+
+    const enabledGateways = useMemo(
+        () => resolveEnabledGateways(customerData),
+        [customerData],
+    );
+    const [gateway, setGateway] = useState<PaymentGateway>(() =>
+        resolveDefaultGateway(customerData, enabledGateways),
+    );
+    useEffect(() => {
+        if (!enabledGateways.includes(gateway)) {
+            setGateway(resolveDefaultGateway(customerData, enabledGateways));
+        }
+    }, [enabledGateways, gateway, customerData]);
+
+    const [pineCheckout, setPineCheckout] = useState<PineLabsCheckout | null>(null);
+    const pineFinishRef = useRef<
+        ((result: {
+            outcome: PineLabsCheckoutOutcome;
+            pageResult?: PineLabsPageResult;
+        }) => void) | null
+    >(null);
+
+    const openPineLabsCheckout = useCallback((checkout: PineLabsCheckout) => {
+        return new Promise<{
+            outcome: PineLabsCheckoutOutcome;
+            pageResult?: PineLabsPageResult;
+        }>(resolve => {
+            pineFinishRef.current = resolve;
+            setPineCheckout(checkout);
+        });
+    }, []);
+
+    const onPineLabsFinish = useCallback(
+        (outcome: PineLabsCheckoutOutcome, pageResult?: PineLabsPageResult) => {
+            setPineCheckout(null);
+            pineFinishRef.current?.({ outcome, pageResult });
+            pineFinishRef.current = null;
+        },
+        [],
+    );
 
     // Address chosen by user tap on Manage Address (not AsyncStorage / GPS local)
     const routeSelectedAddress = props.route?.params?.selectedAddress ?? null;
@@ -431,6 +482,8 @@ const Checkout: React.FC = (props: any) => {
             shippingMethod: deliveryMethod === 'express' ? 'EXPRESS' : 'STD',
             coupon_code: appliedCoupon?.code,
             prepaidAmount: total,
+            gateway,
+            openPineLabsCheckout,
             onCouponRejected: () => {
                 removeCoupon();
             },
@@ -764,15 +817,13 @@ const Checkout: React.FC = (props: any) => {
                     </View>
 
                     {selectedMethod === 'online' ? (
-                        <View style={styles.onlineHint}>
-                            <TablerIcon
-                                name="bolt"
-                                size={13}
-                                color="#15803D"
+                        <View style={styles.gatewayWrap}>
+                            <PaymentGatewaySelector
+                                gateways={enabledGateways}
+                                selected={gateway}
+                                onSelect={setGateway}
+                                disabled={isPaying || isPlacing}
                             />
-                            <Text style={styles.onlineHintText}>
-                                Instant confirmation · Secure Razorpay checkout
-                            </Text>
                         </View>
                     ) : null}
                 </View>
@@ -1113,6 +1164,13 @@ const Checkout: React.FC = (props: any) => {
                     </View>
                 </SafeAreaView>
             </Modal>
+
+            <PineLabsCheckoutModal
+                visible={Boolean(pineCheckout?.redirectUrl)}
+                url={pineCheckout?.redirectUrl ?? ''}
+                returnUrl={pineCheckout?.returnUrl}
+                onFinish={onPineLabsFinish}
+            />
         </SafeAreaView>
     );
 };
@@ -1342,6 +1400,9 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    gatewayWrap: {
+        marginTop: 12,
     },
     onlineHint: {
         marginTop: 10,
