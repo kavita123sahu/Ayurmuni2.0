@@ -1,149 +1,109 @@
 import { BaseUrl } from '../config/Key';
-import { normalizeGateway, type PaymentGateway } from '../config/paymentGateways';
+import { parsePaymentGateway, type PaymentGateway } from '../config/paymentGateways';
 
-/** Pine Labs (Plural) hosted checkout details from book-slot / retry. */
+/** Pine Labs hosted checkout from book-slot / place-order. */
 export type PineLabsCheckout = {
   paymentId: string;
   orderId: string;
   redirectUrl: string;
-  /** Where Pine Labs returns after payment; reaching it closes the WebView. */
   returnUrl: string;
 };
 
-const pickString = (...values: unknown[]): string => {
-  for (const value of values) {
-    if (value == null) continue;
-    const s = String(value).trim();
-    if (s) return s;
-  }
-  return '';
+const str = (value: unknown): string => {
+  if (value == null) return '';
+  return String(value).trim();
 };
 
 /**
- * Which gateway the backend created the order on.
- * Falls back to the requested gateway, then to the presence of gateway-specific fields.
+ * Checkout gateway = what the user selected.
+ * Never override with response.gateway (retry can return a stale ICICI order).
  */
-export const resolveOrderGateway = (data: any, requested: PaymentGateway): PaymentGateway => {
-  const explicit = normalizeGateway(
-    data?.gateway ?? data?.payment_gateway ?? data?.gateway_name ?? data?.provider,
-  );
-  if (explicit) return explicit;
-  if (data?.razorpay_order_id) return 'razorpay';
-  if (
-    data?.payphi ||
-    data?.sdk_payload ||
-    data?.make_payment ||
-    data?.invoice_no ||
-    data?.checkout?.invoice_no
-  ) {
-    return 'payphi';
-  }
-  if (getPineLabsRedirectUrl(data)) return 'pinelabs';
-  return requested;
-};
+export const resolveOrderGateway = (
+  _data: any,
+  requested: PaymentGateway,
+): PaymentGateway => requested;
 
 const getPineLabsRedirectUrl = (data: any): string => {
-  const checkout = data?.checkout ?? data?.pinelabs ?? data?.gateway_data ?? {};
-  return pickString(
-    data?.redirect_url,
-    data?.checkout_url,
-    data?.payment_url,
-    data?.pinelabs_redirect_url,
-    data?.challenge_url,
-    checkout?.redirect_url,
-    checkout?.checkout_url,
-    checkout?.payment_url,
+  const checkout = data?.checkout ?? {};
+  return (
+    str(data?.redirect_url) ||
+    str(data?.checkout_url) ||
+    str(checkout?.redirect_url) ||
+    str(checkout?.checkout_url)
   );
 };
 
-/** Order id used by verify-payment as `gateway_order_id`. */
-export const getGatewayOrderId = (data: any, gateway: PaymentGateway): string => {
-  const checkout = data?.checkout ?? data?.pinelabs ?? data?.payphi ?? data?.gateway_data ?? {};
+/** Order id for verify-payment `gateway_order_id`. */
+export const getGatewayOrderId = (
+  data: any,
+  gateway: PaymentGateway,
+): string => {
   if (gateway === 'razorpay') {
-    return pickString(data?.razorpay_order_id, data?.gateway_order_id, data?.order_id);
+    return str(data?.razorpay_order_id) || str(data?.gateway_order_id);
   }
-  if (gateway === 'payphi') {
-    return pickString(
-      data?.gateway_order_id,
-      data?.invoice_no,
-      data?.invoiceNo,
-      data?.payphi_order_id,
-      checkout?.invoice_no,
-      checkout?.order_id,
-      data?.order_id,
+  if (gateway === 'icici') {
+    return (
+      str(data?.gateway_order_id) ||
+      str(data?.icici?.merchantTxnNo) ||
+      str(data?.invoice_no)
     );
   }
-  return pickString(
-    data?.gateway_order_id,
-    data?.pinelabs_order_id,
-    checkout?.order_id,
-    checkout?.gateway_order_id,
-    data?.order_id,
+  const checkout = data?.checkout ?? {};
+  return (
+    str(data?.gateway_order_id) ||
+    str(checkout?.order_id) ||
+    str(data?.order_id)
   );
 };
 
-/** True when book-slot created a gateway order that still needs to be paid. */
 export const hasGatewayOrder = (data: any): boolean =>
-  !!(
+  Boolean(
     data?.razorpay_order_id ||
-    data?.gateway_order_id ||
-    data?.pinelabs_order_id ||
-    data?.invoice_no ||
-    data?.sdk_payload ||
-    data?.make_payment ||
-    data?.payphi ||
-    getPineLabsRedirectUrl(data)
+      data?.gateway_order_id ||
+      data?.invoice_no ||
+      data?.icici ||
+      getPineLabsRedirectUrl(data),
   );
 
 export const parsePineLabsCheckout = (data: any): PineLabsCheckout => {
-  const checkout = data?.checkout ?? data?.pinelabs ?? data?.gateway_data ?? {};
+  const checkout = data?.checkout ?? {};
   return {
-    paymentId: pickString(data?.payment_id, data?.payment?.id, checkout?.payment_id),
+    paymentId: str(data?.payment_id) || str(checkout?.payment_id),
     orderId: getGatewayOrderId(data, 'pinelabs'),
     redirectUrl: getPineLabsRedirectUrl(data),
-    returnUrl: pickString(
-      data?.callback_url,
-      data?.return_url,
-      data?.redirect_back_url,
-      checkout?.callback_url,
-      checkout?.return_url,
-    ),
+    returnUrl: str(data?.return_url) || str(data?.callback_url) || str(checkout?.return_url),
   };
 };
 
 const PINELABS_HOST_RE = /(pinelabs|pluralpay|pluralonline|pinepg)\./i;
 const RETURN_PATH_RE =
-  /(payment[-_]?(status|success|failure|failed|cancel|callback|result|complete))|(\/callback)|(\/return)|(pinelabs\/(success|failure|return|callback))/i;
-
-/** Pine Labs' own result pages (when no merchant callback is configured). */
+  /(payment[-_]?(status|success|failure|failed|cancel|callback|result|complete))|(\/callback)|(\/return)/i;
 const PINELABS_RESULT_PATH_RE =
-  /\/(status|result|response|success|failure|failed|payment[-_]?(success|failure|failed|status|result)|order[-_]?status|complete|thank[-_]?you)(\/|\?|#|$)/i;
+  /\/(status|result|response|success|failure|failed|payment[-_]?(success|failure|status)|complete)(\/|\?|#|$)/i;
 
 const hostOf = (url: string) => {
   const match = /^[a-z]+:\/\/([^/?#]+)/i.exec(url);
   return match ? match[1].toLowerCase() : '';
 };
 
-export const isPineLabsHostUrl = (url: string) => PINELABS_HOST_RE.test(hostOf(url));
-
-/** Rough read of Pine Labs' result page text. */
-export const readPineLabsStatusText = (text: string): 'success' | 'failed' | 'unknown' => {
-  const t = text.toLowerCase();
-  if (/(fail|declin|unsuccess|cancel|rejected|error)/.test(t)) return 'failed';
-  if (/(success|successful|paid|completed|approved|processed)/.test(t)) return 'success';
-  return 'unknown';
-};
-
-/** `/status` from `https://host/status?x=1#y` — query and hash excluded. */
 const pathOf = (url: string) => {
   const match = /^[a-z]+:\/\/[^/?#]+([^?#]*)/i.exec(url);
   return match?.[1] || '/';
 };
 
-/**
- * Pine Labs finished and is sending the user back (to the backend callback / app return page).
- * Bank 3-D Secure pages are on other hosts, so only explicit return URLs or our own backend count.
- */
+export const isPineLabsHostUrl = (url: string) =>
+  PINELABS_HOST_RE.test(hostOf(url));
+
+export const readPineLabsStatusText = (
+  text: string,
+): 'success' | 'failed' | 'unknown' => {
+  const t = text.toLowerCase();
+  if (/(fail|declin|unsuccess|cancel|rejected|error)/.test(t)) return 'failed';
+  if (/(success|successful|paid|completed|approved)/.test(t)) return 'success';
+  return 'unknown';
+};
+
+/** True when Pine Labs is sending the user back to our app / callback. */
 export const isPineLabsReturnUrl = (url: string, returnUrl?: string): boolean => {
   if (!url || !/^https?:\/\//i.test(url)) return false;
   if (returnUrl && url.startsWith(returnUrl)) return true;

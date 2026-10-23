@@ -214,7 +214,7 @@ const HomePage: React.FC = (props: any) => {
             const stackNav =
               props.navigation.getParent?.() || props.navigation;
             navigateToCategoryProducts(stackNav, {
-              categoryMode: 'product',
+              categoryMode: 'both',
               brandOnly: true,
               brand_name_id: mapped.id,
               brandId: mapped.id,
@@ -609,7 +609,19 @@ const HomePage: React.FC = (props: any) => {
 
             {brandListData.length > 0 ? (
               <View style={styles.homeSection}>
-                <SectionHeader home title="Trusted Brands" />
+                <SectionHeader
+                  home
+                  title="Trusted Brands"
+                  actionText="View All"
+                  onPress={() => {
+                    const stackNav =
+                      props.navigation.getParent?.() || props.navigation;
+                    navigateToCategoryProducts(stackNav, {
+                      categoryMode: 'both',
+                      categoryName: 'Trusted Brands',
+                    });
+                  }}
+                />
                 <BrandList data={brandListData} />
               </View>
             ) : null}

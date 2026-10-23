@@ -226,6 +226,16 @@ const EditProfile = ({
     };
 
     const handleUpdateProfile = async () => {
+        const firstName = String(formData.first_name || '').trim();
+        const lastName = String(formData.last_name || '').trim();
+        if (!firstName) {
+            showSuccessToast('First name is required', 'error');
+            return;
+        }
+        if (!lastName) {
+            showSuccessToast('Last name is required', 'error');
+            return;
+        }
 
         try {
 
@@ -237,8 +247,8 @@ const EditProfile = ({
             );
 
             const payload = {
-                first_name: formData.first_name,
-                last_name: String(formData.last_name || '').trim(),
+                first_name: firstName,
+                last_name: lastName,
                 email: formData.email,
                 secondary_number: formData.secondary_number,
                 gender: formData.gender,
@@ -659,19 +669,13 @@ const EditProfile = ({
                                     <Text
                                         style={[
                                             styles.dateText,
-
+                                            styles.input,
                                             !formData.date_of_birth && {
-                                                color:
-                                                    '#98A2B3',
+                                                color: '#98A2B3',
                                             },
                                         ]}
                                     >
-
-                                        {
-                                            formData.date_of_birth ||
-                                            'Select DOB'
-                                        }
-
+                                        {formData.date_of_birth || 'Select DOB'}
                                     </Text>
                                 </TouchableOpacity>
 

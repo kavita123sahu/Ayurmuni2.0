@@ -42,6 +42,7 @@ import {
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import { ADDRESS_UPDATED, AddressEvents } from '../../common/Utils';
 import {
+    filterRunnableGateways,
     resolveDefaultGateway,
     resolveEnabledGateways,
     type PaymentGateway,
@@ -52,6 +53,7 @@ import PineLabsCheckoutModal, {
     type PineLabsPageResult,
 } from '../../components/payment/PineLabsCheckoutModal';
 import type { PineLabsCheckout } from '../../services/PineLabsService';
+import { isPayphiNativeLinked } from '../../services/PayphiService';
 import {
     BUTTON,
     RADIUS,
@@ -126,7 +128,10 @@ const Checkout: React.FC = (props: any) => {
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
 
     const enabledGateways = useMemo(
-        () => resolveEnabledGateways(customerData),
+        () =>
+            filterRunnableGateways(resolveEnabledGateways(customerData), {
+                payphiNativeLinked: isPayphiNativeLinked(),
+            }),
         [customerData],
     );
     const [gateway, setGateway] = useState<PaymentGateway>(() =>
@@ -298,6 +303,7 @@ const Checkout: React.FC = (props: any) => {
 
     const fetchOrderFees = useCallback(async () => {
         if (!cartItemIds.length) {
+            console.warn('[ORDER_FEE] skip — no cart_item_ids');
             setFeeConfig(null);
             setFeeQuoteError(null);
             setFeeQuoteLoading(false);
@@ -308,9 +314,18 @@ const Checkout: React.FC = (props: any) => {
         setFeeQuoteLoading(true);
         setFeeQuoteError(null);
         try {
+            console.warn('[ORDER_FEE] fetch', {
+                cart_item_ids: cartItemIds,
+                coupon_code: couponCode || null,
+            });
             let response = await getOrderFeeQuote({
                 cart_item_ids: cartItemIds,
                 ...(couponCode ? { coupon_code: couponCode } : {}),
+            });
+            console.warn('[ORDER_FEE] response', {
+                success: response?.success,
+                message: response?.message,
+                hasData: Boolean(response?.data),
             });
             if (reqId !== feeQuoteReqId.current) return;
 
@@ -319,14 +334,18 @@ const Checkout: React.FC = (props: any) => {
                     ? null
                     : parseQuoteResponse(response, couponCode);
 
-            // Coupon quote sometimes fails — fall back to base quote + local discount
+            // Coupon / product mismatch — fall back to base quote without coupon
             if (!parsed && couponCode) {
+                console.warn('[ORDER_FEE] coupon quote failed, retry without coupon', {
+                    message: response?.message,
+                    data: response?.data,
+                });
                 const baseResponse = await getOrderFeeQuote({
                     cart_item_ids: cartItemIds,
                 });
                 if (reqId !== feeQuoteReqId.current) return;
                 if (baseResponse?.success !== false) {
-                    parsed = parseQuoteResponse(baseResponse, couponCode);
+                    parsed = parseQuoteResponse(baseResponse, null);
                     response = baseResponse;
                 }
             }
@@ -338,15 +357,19 @@ const Checkout: React.FC = (props: any) => {
                 setFeeConfig(null);
                 setFeeQuoteError(
                     response?.message ||
+                    response?.data?.message ||
                     'Unable to load order fees. Please try again.',
                 );
             }
-        } catch (error) {
-            console.log('ORDER_FEE_QUOTE_ERROR', error);
+        } catch (error: any) {
+            console.warn('[ORDER_FEE] error', error?.message || error);
             if (reqId !== feeQuoteReqId.current) return;
             if (!feeConfigRef.current) {
                 setFeeConfig(null);
-                setFeeQuoteError('Unable to load order fees. Please try again.');
+                setFeeQuoteError(
+                    error?.message ||
+                    'Unable to load order fees. Please try again.',
+                );
             }
         } finally {
             if (reqId === feeQuoteReqId.current) {
@@ -376,13 +399,9 @@ const Checkout: React.FC = (props: any) => {
     const total = feeBreakdown.total;
     const isFreeShip = shippingFee === 0;
     const isLoading = isPlacing || isPaying;
-    // Keep breakdown visible while a coupon refetch is in flight
-    const feesReady = Boolean(feeConfig);
-    const payDisabled =
-        isLoading ||
-        (feeQuoteLoading && !feeConfig) ||
-        (!feeConfig && Boolean(feeQuoteError)) ||
-        !feeConfig;
+    // Allow place after fee-quote finishes (even if API failed — local subtotal fallback)
+    const feesReady = Boolean(feeConfig) || (!feeQuoteLoading && cartItemIds.length > 0);
+    const payDisabled = isLoading || feeQuoteLoading;
 
     const itemUnits = useMemo(
         () =>
@@ -511,12 +530,7 @@ const Checkout: React.FC = (props: any) => {
     };
 
     const handlePlaceOrder = () => {
-        if (!feesReady) {
-            showSuccessToast(
-                feeQuoteError ||
-                'Unable to load order fees. Please try again.',
-                'error',
-            );
+        if (feeQuoteLoading) {
             return;
         }
         if (!defaultAddress?.id) {

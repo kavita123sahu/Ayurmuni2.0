@@ -326,7 +326,11 @@ const Onboarding = (props: any) => {
             isValid = false;
         }
 
-        // LAST NAME — optional (backend must also accept empty last_name)
+        // LAST NAME — required for Complete Profile / backend identity
+        if (!formData.lastName.trim()) {
+            newErrors.lastName = 'Last name is required';
+            isValid = false;
+        }
 
         // EMAIL
         if (
@@ -471,13 +475,7 @@ const Onboarding = (props: any) => {
                 date_of_birth: `${dob.year}-${dob.month}-${dob.day}`,
             };
 
-            // Last name is optional — omit when empty so backend does not reject
-            const lastName = formData.lastName.trim();
-            if (lastName) {
-                send_data.last_name = lastName;
-            } else {
-                send_data.last_name = '';
-            }
+            send_data.last_name = formData.lastName.trim();
 
             console.log(
                 'IMAGE URL ===>',

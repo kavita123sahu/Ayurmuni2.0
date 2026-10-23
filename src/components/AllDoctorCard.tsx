@@ -30,6 +30,8 @@ import {
 
   formatConsultationFeeLabel,
 
+  formatDoctorSpecialization,
+
   isDietitian,
 
 } from '../utils/doctorUtils';
@@ -125,13 +127,10 @@ const AllDoctorCard: React.FC<Props> = ({
 
   const doctorId = getDoctorId(item);
 
-  const speciality = useMemo(() => {
-
-    if (!Array.isArray(item?.health_diseases)) return '';
-
-    return item.health_diseases.map(i => i?.name).filter(Boolean).join(', ');
-
-  }, [item?.health_diseases]);
+  const speciality = useMemo(
+    () => formatDoctorSpecialization(item),
+    [item],
+  );
 
   const rating = getDoctorRating(item);
 

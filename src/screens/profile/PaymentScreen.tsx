@@ -445,7 +445,7 @@ const PaymentsScreen = (props: any) => {
         <Pressable style={styles.sheetBackdrop} onPress={() => setShowDateSheet(false)}>
           <Pressable
             style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Filter by date</Text>

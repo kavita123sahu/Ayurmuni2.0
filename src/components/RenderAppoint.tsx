@@ -14,7 +14,7 @@ import { Fonts } from '../common/Fonts';
 import AppointAction from './AppointAction';
 import TablerIcon from './TablerIcon';
 import DoctorAvatar from './DoctorAvatar';
-import {
+import { 
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
   canOfferCancel,

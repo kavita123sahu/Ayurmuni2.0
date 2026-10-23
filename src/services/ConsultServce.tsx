@@ -87,7 +87,7 @@ import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";
 import { formatExperienceParam } from "../utils/searchUtils";
 import { applyDoctorFeesToResponse } from "../utils/doctorUtils";
-import { Buffer } from 'buffer';
+import { toApiPaymentGateway } from "../config/paymentGateways";
 
 export const filteredParams = (
     params?: Record<string, any>,
@@ -629,6 +629,10 @@ export const createConsultationPayment = async (data: object) => {
                     !(typeof v === 'string' && v.trim() === ''),
             ),
         );
+        // API accepts only: pinelabs | razorpay | icici (never "payphi")
+        if (clean.payment_gateway != null) {
+            clean.payment_gateway = toApiPaymentGateway(String(clean.payment_gateway));
+        }
         console.log('CONSULT_BOOK_PAYLOAD =>', JSON.stringify(clean, null, 2));
         const response = await apiClient('payments/customer/consultation/payment/book-slot/', {
             method: 'POST',
@@ -647,16 +651,19 @@ export const createConsultationPayment = async (data: object) => {
  */
 export const retryConsultationPayment = async (
     appointmentId: string | number,
-    paymentGateway?: 'pinelabs' | 'razorpay' | 'payphi',
+    paymentGateway?: 'pinelabs' | 'razorpay' | 'icici',
 ) => {
     try {
         const id = encodeURIComponent(String(appointmentId));
+        const apiGateway = paymentGateway
+            ? toApiPaymentGateway(paymentGateway)
+            : undefined;
         let url = `payments/customer/consultation/payment/retry/?appointment_id=${id}`;
-        if (paymentGateway) url += `&payment_gateway=${paymentGateway}`;
+        if (apiGateway) url += `&payment_gateway=${apiGateway}`;
         console.log('CONSULT_RETRY =>', url);
         const response = await apiClient(url, {
             method: 'POST',
-            body: JSON.stringify(paymentGateway ? { payment_gateway: paymentGateway } : {}),
+            body: JSON.stringify(apiGateway ? { payment_gateway: apiGateway } : {}),
         });
         return response;
     } catch (error) {
@@ -689,23 +696,33 @@ export const getConsultationFeeQuote = async (
  * POST payments/customer/consultation/payment/verify-payment/
  * PineLabs: { payment_id, gateway_order_id }
  * Razorpay: { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
+ * ICICI:    { payment_id, gateway_order_id } — also accepts icici_merchant_txn_no / merchantTxnNo
  */
-export type VerifyConsultationPaymentPayload =
-    | { payment_id: string; gateway_order_id: string; payment_gateway?: string }
-    | {
-        payment_id: string;
-        gateway_order_id: string;
-        gateway_payment_id: string;
-        gateway_signature: string;
-        payment_gateway?: string;
-    };
+export type VerifyConsultationPaymentPayload = {
+    payment_id: string;
+    gateway_order_id?: string;
+    gateway_payment_id?: string;
+    gateway_signature?: string;
+    payment_gateway?: 'pinelabs' | 'razorpay' | 'icici' | string;
+    /** ICICI aliases for the book-slot gateway_order_id / merchant txn */
+    icici_merchant_txn_no?: string;
+    merchantTxnNo?: string;
+};
 
 export const verifyConsultationPayment = async (data: VerifyConsultationPaymentPayload) => {
     try {
-        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(data));
+        const clean = Object.fromEntries(
+            Object.entries(data as Record<string, unknown>).filter(
+                ([, v]) =>
+                    v !== undefined &&
+                    v !== null &&
+                    !(typeof v === 'string' && v.trim() === ''),
+            ),
+        );
+        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(clean));
         const response = await apiClient('payments/customer/consultation/payment/verify-payment/', {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(clean)
         });
         console.log('CONSULT_VERIFY_RESPONSE =>', response);
         return response;

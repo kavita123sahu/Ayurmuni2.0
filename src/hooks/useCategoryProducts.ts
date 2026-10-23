@@ -8,6 +8,10 @@ import {
   ProductQuery,
   type ProductApiSort,
 } from '../services/ProductServices';
+import {
+  applyWishlistCache,
+  seedWishlistCacheFromList,
+} from './useWishlistSync';
 
 export type CategoryProductFilter = {
   id?: string | null;
@@ -168,9 +172,10 @@ export const useCategoryProducts = (
         setPage(pageNumber);
 
         if (apiResults.length > 0) {
+          seedWishlistCacheFromList(apiResults);
           setProducts(prev => {
             if (!append) {
-              return apiResults;
+              return applyWishlistCache(apiResults);
             }
             const seen = new Set(
               prev.map((p: any) => String(p.variant_id ?? p.id ?? '')),
@@ -184,7 +189,7 @@ export const useCategoryProducts = (
               seen.add(key);
               merged.push(item);
             });
-            return merged;
+            return applyWishlistCache(merged);
           });
         } else if (!append) {
           // No API rows — do not invent unrelated catalog items for concern filters
@@ -204,7 +209,8 @@ export const useCategoryProducts = (
 
           if (serviceOnly && fallback.length > 0) {
             // View-all / service-wide with no products from API yet
-            setProducts(fallback);
+            seedWishlistCacheFromList(fallback);
+            setProducts(applyWishlistCache(fallback));
           } else {
             setProducts([]);
           }
@@ -222,7 +228,12 @@ export const useCategoryProducts = (
           const fallback = Array.isArray(fallbackRef.current)
             ? fallbackRef.current
             : [];
-          setProducts(fallback.length > 0 ? fallback : []);
+          if (fallback.length > 0) {
+            seedWishlistCacheFromList(fallback);
+            setProducts(applyWishlistCache(fallback));
+          } else {
+            setProducts([]);
+          }
         }
         setHasMore(false);
       } finally {

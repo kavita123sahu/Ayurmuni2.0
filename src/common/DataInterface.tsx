@@ -243,10 +243,10 @@ export type Appointment = {
   rawData?: any;
 };
 export const UPCOMING_STATUS = [
+  "pending",
   "confirmed",
   "reschedule",
   "rescheduled",
-  "cancelled",
 ];
 
 export const PAST_STATUS = [
@@ -297,6 +297,14 @@ export const getStatusStyle = (status: string) => {
     pending: {
       backgroundColor: "#FFF7ED",
       color: "#EA580C",
+    },
+    testing: {
+      backgroundColor: "#F3F4F6",
+      color: "#64748B",
+    },
+    processing: {
+      backgroundColor: "#F3F4F6",
+      color: "#64748B",
     },
     cancelled: {
       backgroundColor: "#FEE2E2",

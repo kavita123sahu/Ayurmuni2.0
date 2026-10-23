@@ -47,6 +47,10 @@ import {
 import FloatingVideoOverlay from './src/components/FloatingVideoOverlay';
 
 import WishlistToastBar from './src/components/WishlistToastBar';
+import CustomNotification from './src/components/CustomNotification';
+import { registerInAppNotificationRef } from './src/services/inAppNotificationService';
+import { handleNotificationNavigation } from './src/screens/notifications/notificationRouter';
+import { navigationRef } from './src/navigation/navigationRef';
 
 import CartAddedToastBar from './src/components/CartAddedToastBar';
 
@@ -201,6 +205,13 @@ const App = () => {
                 <WishlistToastBar />
 
                 <CartAddedToastBar />
+
+                <CustomNotification
+                  ref={registerInAppNotificationRef}
+                  onPress={data =>
+                    handleNotificationNavigation(navigationRef, data)
+                  }
+                />
 
                 <InAppNotificationWatcher />
 

@@ -36,6 +36,8 @@ import { syncCartQuantity } from '../../store/slices/cartSlice';
 import { canAddProductWithoutPrescription } from '../../utils/prescriptionUtils';
 import { getAddQtyBlockMessage } from '../../utils/productStockUtils';
 import {
+  applyWishlistCache,
+  seedWishlistCacheFromList,
   toggleWishlistItem,
   useWishlistSync,
 } from '../../hooks/useWishlistSync';
@@ -612,7 +614,8 @@ const CategoryProductsScreen = (props: any) => {
 
   useEffect(() => {
     if (!isBrandAllView) {
-      setProducts(fetchedProducts);
+      seedWishlistCacheFromList(fetchedProducts);
+      setProducts(applyWishlistCache(fetchedProducts));
       return;
     }
     const seen = new Set<string>();
@@ -625,10 +628,12 @@ const CategoryProductsScreen = (props: any) => {
     });
     // Brand filter still applies on top (applyProductFilters), so local catalog is safe
     if (merged.length === 0 && !baseLoading && !brandAllLoading) {
-      setProducts(fallbackCatalog);
+      seedWishlistCacheFromList(fallbackCatalog);
+      setProducts(applyWishlistCache(fallbackCatalog));
       return;
     }
-    setProducts(merged);
+    seedWishlistCacheFromList(merged);
+    setProducts(applyWishlistCache(merged));
   }, [
     fetchedProducts,
     brandAllProducts,
@@ -811,7 +816,11 @@ const CategoryProductsScreen = (props: any) => {
     setDoshaFilter('all');
   }, []);
 
+  const productGridRef = useRef<FlatList>(null);
+
   const handleRefresh = useCallback(async () => {
+    clearFilters();
+    productGridRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     refreshTopCategories();
     if (activeCategoryId) {
       refreshSubcategories();
@@ -819,8 +828,9 @@ const CategoryProductsScreen = (props: any) => {
     if (isBrandAllView) {
       setBrandAllNonce(n => n + 1);
     }
-    refresh();
+    await refresh();
   }, [
+    clearFilters,
     refreshTopCategories,
     refreshSubcategories,
     refresh,
@@ -865,8 +875,8 @@ const CategoryProductsScreen = (props: any) => {
   useWishlistSync(setProducts);
 
   const handleWishlist = useCallback(async (item: any) => {
-    const ok = await toggleWishlistItem(item);
-    if (!ok && item?.variant_id) {
+    const result = await toggleWishlistItem(item);
+    if (result === 'error') {
       showSuccessToast('Unable to update wishlist', 'error');
     }
   }, []);
@@ -996,6 +1006,7 @@ const CategoryProductsScreen = (props: any) => {
               : subtitle
           }
           onRefreshPress={handleRefresh}
+          refreshing={refreshing}
           showCart
         />
       </View>
@@ -1136,6 +1147,7 @@ const CategoryProductsScreen = (props: any) => {
             <TopSellingListSkeleton />
           ) : (
             <FlatList
+              ref={productGridRef}
               data={filteredProducts}
               keyExtractor={(item, i) => String(item.variant_id || i)}
               numColumns={2}

@@ -7,7 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WishlistSkeleton } from '../../simmerScreen/ShimmerHook';
 import EmptyState from '../../components/EmptyState';
 import * as _PRODUCT_SERVICES from '../../services/ProductServices';
-import { useWishlistSync } from '../../hooks/useWishlistSync';
+import {
+  applyWishlistCache,
+  isItemWishlisted,
+  seedWishlistCacheFromList,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
 import { Colors } from '../../common/Colors';
 
 const Wishlist = (props: any) => {
@@ -25,16 +30,21 @@ const Wishlist = (props: any) => {
 
       const res = await _PRODUCT_SERVICES.getProduct();
       const data = res?.data?.results || [];
-      const wishlistItems = data
-        .filter((item: any) => item?.is_wishlist_item === true)
-        .map((item: any) => ({
+      seedWishlistCacheFromList(data);
+      const wishlistItems = applyWishlistCache(
+        data.map((item: any) => ({
           ...item,
-          is_wishlist_item: true,
           variant_id:
             item?.variant_id ??
             item?.variant?.variant_id ??
             item?.variant?.id ??
             item?.id,
+        })),
+      )
+        .filter((item: any) => isItemWishlisted(item))
+        .map((item: any) => ({
+          ...item,
+          is_wishlist_item: true,
         }));
 
       setWishlistData(wishlistItems);

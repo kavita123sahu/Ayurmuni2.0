@@ -69,7 +69,10 @@ const DoctorListCard = ({
       ? ` (${reviews})`
       : '';
   const expLabel = formatExperience(experience);
-  const statusLabel = (available ? 'Available' : '');
+  // Prefer patient-safe availabilityLabel from parent; fall back to Available/Unavailable.
+  const statusLabel = available
+    ? 'Available'
+    : String(availabilityLabel || '').trim() || 'Unavailable';
 
   const handleConsult = () => {
     if (onConsultPress) {

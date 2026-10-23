@@ -49,6 +49,10 @@
 # PayPhi / ICICI Customer SDK
 -keep class com.payphi.sdk.** { *; }
 -dontwarn com.payphi.sdk.**
+-keep class com.payphi.customersdk.** { *; }
+-dontwarn com.payphi.customersdk.**
+-keep class com.payphi.reactnative.sdk.** { *; }
+-dontwarn com.payphi.reactnative.sdk.**
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
 -keep class com.google.firebase.** { *; }

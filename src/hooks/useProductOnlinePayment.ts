@@ -29,10 +29,14 @@
 import { useCallback, useRef, useState } from 'react';
 import { showSuccessToast } from '../config/Key';
 import { Colors } from '../common/Colors';
-import type { PaymentGateway } from '../config/paymentGateways';
+import {
+  toApiPaymentGateway,
+  type PaymentGateway,
+} from '../config/paymentGateways';
 import {
   isRazorpayUserCancelled,
   openRazorpayPayment,
+  pickRazorpayKey,
   toRazorpayPaise,
 } from '../services/RazorpayService';
 import {
@@ -42,10 +46,14 @@ import {
   type PineLabsCheckout,
 } from '../services/PineLabsService';
 import {
+  buildIciciVerifyPayload,
+  isPayphiNativeLinked,
   isPayphiUserCancelled,
   openPayphiPayment,
   parsePayphiAppInfo,
+  parsePayphiHostedCheckout,
   parsePayphiPaymentRequest,
+  resolveIciciMerchantTxnNo,
 } from '../services/PayphiService';
 import * as _ORDER_SERVICES from '../services/OrderService';
 import {
@@ -80,7 +88,7 @@ type OnlinePaymentArgs = {
   /** Local UI discount only — not sent on place-order */
   couponDiscount?: number;
   prepaidAmount?: number;
-  /** pinelabs | razorpay | payphi — sent as payment_gateway on place-order */
+  /** pinelabs | razorpay | icici — sent as payment_gateway on place-order */
   gateway?: PaymentGateway;
   /** Opens Pine Labs WebView; required when gateway is pinelabs. */
   openPineLabsCheckout?: (
@@ -181,7 +189,6 @@ export const useProductOnlinePayment = () => {
         showSuccessToast('Cart item id missing. Please refresh cart.', 'error');
         return;
       }
-
       const subtotal = cartItems.reduce(
         (sum, item) => sum + Number(item.price) * Number(item.quantity),
         0,
@@ -207,45 +214,65 @@ export const useProductOnlinePayment = () => {
           coupon_code,
         });
         delete (placePayload as any).payment_method;
-        (placePayload as any).payment_gateway = gateway;
+        const apiGateway = toApiPaymentGateway(gateway);
+        (placePayload as any).payment_gateway = apiGateway;
 
         console.log(
           'ONLINE_ORDER_PAYLOAD =>',
           JSON.stringify(placePayload, null, 2),
         );
 
-        const orderResponse = await _ORDER_SERVICES.place_order_API(
+        let orderResponse = await _ORDER_SERVICES.place_order_API(
           placePayload,
         );
         console.log('ONLINE_ORDER_RESPONSE =>', orderResponse);
+        console.log('ONLINE_ORDER_RESPONSE_DATA =>', orderResponse?.data);
 
         if (!orderResponse?.success) {
-          const failMsg =
-            formatOrderStockError(orderResponse?.message) ||
-            formatOrderStockError(orderResponse?.data?.message) ||
+          const failMsg = String(
             orderResponse?.message ||
-            orderResponse?.data?.message ||
-            'Order failed';
+              orderResponse?.data?.message ||
+              orderResponse?.data?.detail ||
+              'Order failed',
+          );
           const lower = failMsg.toLowerCase();
-          if (
-            coupon_code &&
-            (lower.includes('coupon') ||
-              lower.includes('matching product') ||
-              lower.includes('does not apply'))
-          ) {
+          const productMissing =
+            lower.includes('product not found') ||
+            lower.includes('product_not_found') ||
+            orderResponse?.status === 404;
+
+          // Coupon often causes "Product not found" when it doesn't match cart products
+          if (coupon_code && (productMissing || lower.includes('coupon') || lower.includes('matching product') || lower.includes('does not apply'))) {
+            console.warn('[PAY] place-order failed with coupon — retry without coupon', {
+              coupon_code,
+              message: failMsg,
+              data: orderResponse?.data,
+            });
             onCouponRejected?.();
+            delete (placePayload as any).coupon_code;
+            orderResponse = await _ORDER_SERVICES.place_order_API(placePayload);
+            console.log('ONLINE_ORDER_RETRY_NO_COUPON =>', orderResponse);
+            if (!orderResponse?.success) {
+              const retryMsg = String(
+                orderResponse?.message ||
+                  orderResponse?.data?.message ||
+                  failMsg,
+              );
+              showSuccessToast(retryMsg, 'error');
+              return;
+            }
+            // success on retry — continue with payment below
+          } else {
             showSuccessToast(
-              'This coupon does not apply to items in your cart. Coupon removed — try again.',
+              formatOrderStockError(failMsg) || failMsg,
               'error',
             );
             return;
           }
-          showSuccessToast(failMsg, 'error');
-          return;
         }
 
         const paymentData = pickPaymentData(orderResponse);
-        const orderGateway = resolveOrderGateway(paymentData, gateway);
+        const orderGateway = resolveOrderGateway(paymentData, apiGateway);
 
         const contactNumber = String(
           customerInfo?.phone_number ??
@@ -286,8 +313,8 @@ export const useProductOnlinePayment = () => {
           );
         };
 
-        // ── Pine Labs (WebView) ───────────────────────────────────
-        if (orderGateway === 'pinelabs') {
+        // ── Pine Labs (WebView) — only when user selected it ─────
+        if (apiGateway === 'pinelabs') {
           if (!openPineLabsCheckout) {
             showSuccessToast(
               'Pine Labs checkout is not available on this screen.',
@@ -339,8 +366,8 @@ export const useProductOnlinePayment = () => {
           return;
         }
 
-        // ── PayPhi (ICICI SDK) ────────────────────────────────────
-        if (orderGateway === 'payphi') {
+        // ── ICICI PayPhi — only when user selected ICICI (never on Razorpay) ─
+        if (apiGateway === 'icici') {
           const appInfo = parsePayphiAppInfo(paymentData);
           const payRequest = parsePayphiPaymentRequest(paymentData, {
             amount: payableAmount,
@@ -350,101 +377,161 @@ export const useProductOnlinePayment = () => {
               ? contactNumber.slice(-10)
               : undefined,
           });
-          if (!payRequest) {
-            showSuccessToast(
-              'PayPhi checkout is not ready. Missing invoice or amount from server.',
-              'error',
-            );
-            return;
-          }
+          const hosted = parsePayphiHostedCheckout(paymentData);
 
-          let payphiResult;
-          try {
-            payphiResult = await openPayphiPayment(appInfo, payRequest);
-          } catch (error: any) {
-            console.log('ONLINE_PAYPHI_CATCH =>', error);
-            showSuccessToast(
-              error?.message ||
-                'Unable to open ICICI PayPhi. Please try another payment method.',
-              'error',
-            );
-            return;
-          } finally {
-            setIsPaying(false);
-          }
-
-          if (isPayphiUserCancelled(payphiResult) || payphiResult.status === 'cancelled') {
-            showSuccessToast(
-              'Payment cancelled. You can try again anytime.',
-              'error',
-            );
-            return;
-          }
-          if (payphiResult.status === 'failed') {
-            showSuccessToast(
-              payphiResult.message || 'Payment failed at PayPhi.',
-              'error',
-            );
-            return;
-          }
-
-          setIsVerifyingPayment(true);
-          const verifyBody: Record<string, any> = {
+          console.warn('[PAY] icici product start', {
             payment_id: paymentData?.payment_id,
-            gateway_order_id:
-              payphiResult.gatewayOrderId ||
-              getGatewayOrderId(paymentData, 'payphi'),
-            gateway_payment_id: payphiResult.gatewayPaymentId,
-            gateway_signature: payphiResult.gatewaySignature,
-            payment_gateway: 'payphi',
-          };
-          let verifyResponse: any;
-          try {
-            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(verifyBody);
-          } catch (verifyError: any) {
-            verifyResponse =
-              verifyError?.response ?? verifyError?.data ?? verifyError;
-          }
-          setIsVerifyingPayment(false);
+            merchantId: appInfo?.merchantId,
+            hosted: Boolean(hosted?.redirectUrl),
+            native: Boolean(isPayphiNativeLinked() && appInfo && payRequest),
+          });
 
-          if (verifyResponse?.success || payphiResult.status === 'success') {
-            finishSuccess(verifyResponse, {
-              gateway_payment_id: payphiResult.gatewayPaymentId,
+          if (hosted?.redirectUrl && openPineLabsCheckout) {
+            setIsPaying(false);
+            const { outcome } = await openPineLabsCheckout({
+              paymentId: hosted.paymentId,
+              orderId: hosted.orderId,
+              redirectUrl: hosted.redirectUrl,
+              returnUrl: hosted.returnUrl,
             });
-            return;
-          }
-          if (payphiResult.status === 'pending') {
+            console.warn('[PAY] icici product hosted', { outcome });
+            setIsVerifyingPayment(true);
+            let verifyResponse: any;
+            try {
+              verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
+                buildIciciVerifyPayload({
+                  paymentId: hosted.paymentId,
+                  merchantTxnNo: resolveIciciMerchantTxnNo(
+                    paymentData,
+                    hosted.orderId,
+                  ),
+                }),
+              );
+            } catch (verifyError: any) {
+              verifyResponse =
+                verifyError?.response ?? verifyError?.data ?? verifyError;
+            }
+            setIsVerifyingPayment(false);
+            if (verifyResponse?.success) {
+              finishSuccess(verifyResponse);
+              return;
+            }
+            if (outcome === 'closed') {
+              showSuccessToast(
+                'Payment cancelled. You can try again anytime.',
+                'error',
+              );
+              return;
+            }
             showSuccessToast(
-              'Payment is pending. Check My Orders in a moment.',
-              'success',
+              verifyResponse?.message || 'Payment verification failed.',
+              'error',
             );
             return;
           }
-          showSuccessToast(
-            verifyResponse?.message || 'Payment verification failed.',
-            'error',
-          );
+
+          if (isPayphiNativeLinked() && appInfo && payRequest) {
+            let payphiResult;
+            try {
+              payphiResult = await openPayphiPayment(appInfo, payRequest);
+            } catch (error: any) {
+              console.warn('[PAY] icici product native error', {
+                code: error?.code,
+                message: error?.message,
+                error,
+              });
+              setIsPaying(false);
+              if (error?.message || error?.code) {
+                showSuccessToast(String(error?.message || error?.code), 'error');
+              }
+              return;
+            } finally {
+              setIsPaying(false);
+            }
+
+            if (isPayphiUserCancelled(payphiResult) || payphiResult.status === 'cancelled') {
+              console.warn('[PAY] icici cancelled', payphiResult);
+              if (payphiResult?.message) {
+                showSuccessToast(payphiResult.message, 'error');
+              }
+              return;
+            }
+            if (payphiResult.status === 'failed') {
+              console.warn('[PAY] icici failed', payphiResult);
+              showSuccessToast(
+                payphiResult.message || String(payphiResult.raw ?? ''),
+                'error',
+              );
+              return;
+            }
+
+            setIsVerifyingPayment(true);
+            const merchantTxnNo = resolveIciciMerchantTxnNo(
+              paymentData,
+              payphiResult.gatewayOrderId,
+            );
+            const verifyBody = buildIciciVerifyPayload({
+              paymentId: String(paymentData?.payment_id ?? ''),
+              merchantTxnNo,
+              gatewayPaymentId: payphiResult.gatewayPaymentId,
+              gatewaySignature: payphiResult.gatewaySignature,
+            });
+            let verifyResponse: any;
+            try {
+              verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(verifyBody);
+            } catch (verifyError: any) {
+              verifyResponse =
+                verifyError?.response ?? verifyError?.data ?? verifyError;
+            }
+            setIsVerifyingPayment(false);
+
+            if (verifyResponse?.success || payphiResult.status === 'success') {
+              finishSuccess(verifyResponse, {
+                gateway_payment_id: payphiResult.gatewayPaymentId,
+              });
+              return;
+            }
+            if (payphiResult.status === 'pending') {
+              console.warn('[PAY] icici pending', payphiResult);
+              if (payphiResult.message) {
+                showSuccessToast(payphiResult.message, 'success');
+              }
+              return;
+            }
+            console.warn('[PAY] icici verify failed', verifyResponse);
+            if (verifyResponse?.message) {
+              showSuccessToast(verifyResponse.message, 'error');
+            }
+            return;
+          }
+
+          setIsPaying(false);
+          console.warn('[PAY] icici unavailable', {
+            native: isPayphiNativeLinked(),
+            hasAppInfo: Boolean(appInfo),
+            hasPayRequest: Boolean(payRequest),
+          });
           return;
         }
 
         // ── Razorpay ──────────────────────────────────────────────
-        const razorpayKey = String(
-          paymentData?.razorpay_key ||
-            paymentData?.gateway_key ||
-            paymentData?.key ||
-            paymentData?.key_id ||
-            paymentData?.checkout?.key ||
-            '',
-        ).trim();
+        const razorpayKey = pickRazorpayKey(paymentData);
         const razorpayOrderId = pickRazorpayOrderId(paymentData);
+
+        console.log('ONLINE_RAZORPAY_FIELDS =>', {
+          selected: apiGateway,
+          resolved: orderGateway,
+          hasKey: Boolean(razorpayKey),
+          orderId: razorpayOrderId,
+          payment_id: paymentData?.payment_id,
+          keys: paymentData ? Object.keys(paymentData) : [],
+        });
 
         if (!razorpayKey || !razorpayOrderId) {
           showSuccessToast(
-            orderGateway !== 'razorpay'
-              ? `Order was created on ${orderGateway}, not Razorpay. Please try again.`
-              : !razorpayKey
-                ? 'Payment gateway not ready: Razorpay key missing from server response.'
-                : 'Payment gateway not ready: Razorpay order was not created.',
+            !razorpayKey
+              ? 'Payment key missing from order response'
+              : 'Razorpay order was not created',
             'error',
           );
           return;

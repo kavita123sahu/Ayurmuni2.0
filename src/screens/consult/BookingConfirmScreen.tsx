@@ -17,7 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import DoctorAvatar from '../../components/DoctorAvatar';
-import { getAppointmentShareMessage } from '../../helper/shareMessage';
+import { getAppointmentShareMessage } from '../../utils/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import {
@@ -28,6 +28,7 @@ import {
 import { formatAppointmentId } from '../../utils/formatDisplayId';
 import { formatRupee } from '../../utils/currencyUtils';
 import { Utils } from '../../common/Utils';
+import { formatDoctorSpecialization } from '../../utils/doctorUtils';
 
 const { height } = Dimensions.get('window');
 const SHEET_HEIGHT = height / 2.1;
@@ -212,14 +213,15 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
       ? formatAppointmentTimeLabel(endTimeRaw)
       : '';
 
-    const specialization = Array.isArray(SlotsDetail?.doctor_specialization)
-      ? SlotsDetail.doctor_specialization.filter(Boolean).join(', ')
-      : pickFirst(
-          SlotsDetail?.doctor_specialization,
-          info?.specialization,
-          info?.speciality,
-          SlotsDetail?.specialization,
-        );
+    const specialization =
+      formatDoctorSpecialization(SlotsDetail?.doctor) ||
+      formatDoctorSpecialization(SlotsDetail) ||
+      formatDoctorSpecialization(info) ||
+      pickFirst(
+        info?.specialization,
+        info?.speciality,
+        SlotsDetail?.specialization,
+      );
 
     const status = pickFirst(
       SlotsDetail?.appointment_status,

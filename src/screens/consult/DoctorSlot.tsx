@@ -877,6 +877,12 @@ const DoctorSlot = (props: any) => {
                             textAlignVertical="top"
                         />
 
+                        <Text style={[styles.sectionHint, { marginTop: 12, marginBottom: 6 }]}>
+                            {concern?.trim()
+                                ? `Add reports related to “${concern.trim().slice(0, 48)}${concern.trim().length > 48 ? '…' : ''}” (optional)`
+                                : 'Add medical reports for your concern (optional)'}
+                        </Text>
+
                         <PrescriptionUpload
                             records={patientsRecord}
                             selectedRecords={selectedRecords}
@@ -1193,13 +1199,13 @@ const styles = StyleSheet.create({
     },
 
     daysContainer: {
-        gap: 8,
-        paddingBottom: 4,
+        gap: 6,
+        paddingBottom: 2,
     },
     dayCard: {
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-        borderRadius: 12,
+        borderRadius: 10,
         backgroundColor: '#F8FAFC',
         borderWidth: 1,
         borderColor: '#E2E8F0',

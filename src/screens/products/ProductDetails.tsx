@@ -22,11 +22,19 @@ import { requireAuth } from '../../services/guestAuth';
 import { showSuccessToast } from '../../config/Key';
 import { Colors } from '../../common/Colors';
 import { handleShareAction } from '../../hooks/DownloadFuction';
-import { getProductShareMessage } from '../../helper/shareMessage';
+import { getProductShareMessage } from '../../utils/shareMessage';
 import { ProductDetailShimmer } from '../../simmerScreen/ShimmerHook';
 import TablerIcon from '../../components/TablerIcon';
 import ProductDetailsDiscovery from '../../components/ProductDetailsDiscovery';
-import { TogglewishlistProduct } from '../../services/ProductServices';
+import {
+    isItemWishlisted,
+    toggleWishlistItem,
+} from '../../hooks/useWishlistSync';
+import {
+    WishlistEvents,
+    WISHLIST_UPDATED,
+    type WishlistUpdatedPayload,
+} from '../../common/Utils';
 import {
     buildProductGallery,
     cacheVariantImage,
@@ -237,17 +245,47 @@ const ProductDetails = (props: any) => {
     }, [ProductData, varientID]);
 
     useEffect(() => {
-        const wishlisted = Boolean(
-            activeVariant?.is_wishlist_item ??
-            ProductData?.is_wishlist_item ??
-            false,
+        const variantId = String(
+            activeVariant?.variant_id ??
+                activeVariant?.id ??
+                varientID ??
+                '',
+        ).trim();
+        setIsWishlisted(
+            isItemWishlisted({
+                variant_id: variantId,
+                is_wishlist_item:
+                    activeVariant?.is_wishlist_item ??
+                    ProductData?.is_wishlist_item,
+            }),
         );
-        setIsWishlisted(wishlisted);
     }, [
         activeVariant?.id,
+        activeVariant?.variant_id,
         activeVariant?.is_wishlist_item,
         ProductData?.is_wishlist_item,
+        varientID,
     ]);
+
+    useEffect(() => {
+        const variantId = String(
+            activeVariant?.variant_id ??
+                activeVariant?.id ??
+                varientID ??
+                '',
+        ).trim();
+        if (!variantId) return;
+        const sub = WishlistEvents.addListener(
+            WISHLIST_UPDATED,
+            (...args: unknown[]) => {
+                const payload = args[0] as WishlistUpdatedPayload | undefined;
+                if (payload && String(payload.variantId) === variantId) {
+                    setIsWishlisted(Boolean(payload.isWishlisted));
+                }
+            },
+        );
+        return () => sub.remove();
+    }, [activeVariant?.id, activeVariant?.variant_id, varientID]);
 
     const galleryImages = useMemo(
         () => buildProductGallery(activeVariant, ProductData),
@@ -376,28 +414,25 @@ const ProductDetails = (props: any) => {
         }
 
         const previous = isWishlisted;
-        setIsWishlisted(!previous);
         setWishlistBusy(true);
-
-        try {
-            const response = await TogglewishlistProduct(variantId as any, 'POST');
-            if (response?.success === false) {
-                throw new Error(response?.message || 'Wishlist update failed');
-            }
-
-            setSelectedVariant((prev: any) =>
-                prev ? { ...prev, is_wishlist_item: !previous } : prev,
-            );
+        const result = await toggleWishlistItem({
+            variant_id: variantId,
+            is_wishlist_item: previous,
+        });
+        const next = isItemWishlisted({ variant_id: variantId });
+        setIsWishlisted(next);
+        setSelectedVariant((prev: any) =>
+            prev ? { ...prev, is_wishlist_item: next } : prev,
+        );
+        if (result === 'ok') {
             showSuccessToast(
-                previous ? 'Removed from wishlist' : 'Added to wishlist',
+                next ? 'Added to wishlist' : 'Removed from wishlist',
                 'success',
             );
-        } catch {
-            setIsWishlisted(previous);
+        } else if (result === 'error') {
             showSuccessToast('Unable to update wishlist', 'error');
-        } finally {
-            setWishlistBusy(false);
         }
+        setWishlistBusy(false);
     };
 
     const stockDisplay = getProductStockDisplay(activeVariant);
@@ -549,9 +584,18 @@ const ProductDetails = (props: any) => {
             <SafeAreaView style={styles.safeArea}>
                 <AppHeader
                     title="Product Details"
+                    showCart
                     onLeftPress={() => props.navigation.goBack()}
                 />
-                <ProductDetailShimmer />
+                {!loading && ProductData && !activeVariant ? (
+                    <View style={{ padding: 24, alignItems: 'center' }}>
+                        <Text style={{ color: '#64748B', textAlign: 'center' }}>
+                            This product is currently unavailable.
+                        </Text>
+                    </View>
+                ) : (
+                    <ProductDetailShimmer />
+                )}
             </SafeAreaView>
         );
     }
@@ -567,6 +611,7 @@ const ProductDetails = (props: any) => {
 
             <AppHeader
                 title="Product Details"
+                showCart
                 rightIconName="share"
                 onLeftPress={() => props.navigation.goBack()}
                 onRightPress={() =>
