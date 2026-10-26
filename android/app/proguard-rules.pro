@@ -46,6 +46,24 @@
 }
 -dontwarn com.razorpay.**
 
+# PayPhi / ICICI Customer SDK
+-keep class com.payphi.sdk.** { *; }
+-dontwarn com.payphi.sdk.**
+-keep class com.payphi.customersdk.** { *; }
+-dontwarn com.payphi.customersdk.**
+-keep class com.payphi.reactnative.sdk.** { *; }
+-dontwarn com.payphi.reactnative.sdk.**
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+-keep class androidx.appcompat.** { *; }
+-dontwarn androidx.appcompat.**
+-keep class androidx.core.** { *; }
+-dontwarn androidx.core.**
+-keep class androidx.lifecycle.** { *; }
+-dontwarn androidx.lifecycle.**
+
 # Reanimated / Worklets
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.swmansion.worklets.** { *; }

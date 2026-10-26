@@ -297,12 +297,50 @@ export function buildVideoCallNavParams(
 ) {
   const ids = getAppointmentIds(source);
   const primaryId = ids.appointmentId || ids.consultationId;
+  const slot = resolveAppointmentSlot(source);
 
   return {
     appointmentId: primaryId,
     ...(ids.consultationId ? { consultationId: ids.consultationId } : {}),
+    ...(slot.date ? { appointmentDate: slot.date } : {}),
+    ...(slot.startTime ? { startTime: slot.startTime } : {}),
+    ...(slot.endTime ? { endTime: slot.endTime } : {}),
     ...extras,
   };
+}
+
+/** Date / start / end from list items, raw API rows or detail payloads. */
+export function resolveAppointmentSlot(source?: any): {
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+} {
+  if (!source) return {};
+  const root = source?.rawData ?? source;
+  const appt = source?.appointment ?? root?.appointment ?? root;
+  const pick = (...values: any[]) => {
+    const found = values.find(v => v != null && String(v).trim() !== '');
+    return found != null ? String(found).trim() : undefined;
+  };
+  return {
+    date: pick(source?.date, appt?.appointment_date, root?.appointment_date),
+    startTime: pick(source?.time, appt?.start_time, root?.start_time),
+    endTime: pick(source?.endTime, appt?.end_time, root?.end_time),
+  };
+}
+
+/** Slot start / end timestamps; `endMs` is null when end_time is missing or invalid. */
+export function getAppointmentSlotMs(
+  date?: string,
+  startTime?: string,
+  endTime?: string,
+): { startMs: number | null; endMs: number | null } {
+  const start = parseAppointmentStart(date, startTime);
+  const end = endTime ? parseAppointmentStart(date, endTime) : null;
+  const startMs = start ? start.getTime() : null;
+  const endMs =
+    end && (startMs == null || end.getTime() > startMs) ? end.getTime() : null;
+  return { startMs, endMs };
 }
 
 /** Params for AppointmentDetails screen. */
@@ -589,14 +627,21 @@ export function isAppointmentInPast(raw: any): boolean {
   const item = normalizeAppointmentListItem(raw);
   const now = Date.now();
 
-  const end = parseAppointmentStart(item.date, item.endTime || undefined);
+  const start = parseAppointmentStart(item.date, item.time);
+  const parsedEnd = item.endTime
+    ? parseAppointmentStart(item.date, item.endTime)
+    : null;
+  // Ignore bad end_time (missing / before start) so the slot is not hidden early
+  const end =
+    parsedEnd && (!start || parsedEnd.getTime() > start.getTime())
+      ? parsedEnd
+      : null;
   if (end && now >= end.getTime()) {
     return true;
   }
 
-  const start = parseAppointmentStart(item.date, item.time);
   // No usable end_time: treat as past ~60 min after start
-  if (start && (!item.endTime || !end) && now >= start.getTime() + 60 * 60 * 1000) {
+  if (start && !end && now >= start.getTime() + 60 * 60 * 1000) {
     return true;
   }
 
@@ -728,27 +773,6 @@ export const formatAppointmentTimeLabel = (timeStr?: string) => {
 //     '';
 // const endTime = item?.end_time || item?.appointment?.end_time || null;
 
-//   const weekday = formatAppointmentWeekday(dateRaw);
-//   const dayLabel = formatAppointmentDayLabel(dateRaw);
-//   const dateLabel = formatAppointmentDateFull(dateRaw);
-//   const timeLabel = formatAppointmentTimeLabel(timeRaw);
-//   const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
-//   return {
-//     dateRaw,
-//     timeRaw,
-//     status: String(status || ''),
-//     weekday,
-//     dayLabel,
-//     dateLabel,
-//     timeLabel,
-//     endTimeLabel,
-//     /** Compact line: Today · 31 Jul 2026 · 10:30 AM */
-//     scheduleLine: [dayLabel || weekday, dateLabel, timeLabel]
-//       .filter(Boolean)
-//       .join(' · '),
-//   };
-// };
-
 export const getConsultationScheduleLabels = (item: any) => {
   const dateRaw =
     item?.date ||
@@ -813,7 +837,6 @@ export const formatDoctorDisplayName = (name?: string) => {
   return /^dr\.?\s/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
 };
 
-
 export const getMinutesUntilAppointment = (
   dateStr?: string,
   timeStr?: string,
@@ -835,11 +858,92 @@ export type JoinableAppointment = {
 
 const DEFAULT_JOIN_WINDOW_MINUTES = 5;
 
+/** Call states that close the join window (patient `left` can still rejoin inside the slot). */
+const JOIN_CLOSED_CALL_STATUSES = new Set([
+  'ended',
+  'completed',
+  'cancelled',
+  'canceled',
+  'no_show',
+  'missed',
+  'rejected',
+]);
+
+/** Appointment states that can still have a live consultation. */
+const JOINABLE_APPOINTMENT_STATUSES = new Set([
+  'confirmed',
+  'upcoming',
+  'booked',
+  'scheduled',
+  'reschedule',
+  'rescheduled',
+  're-scheduled',
+  're_scheduled',
+  'cancellation_requested',
+  'in_progress',
+  'ongoing',
+  'started',
+  'live',
+]);
+
+export const isActiveAppointmentStatus = (status?: string | null) =>
+  JOINABLE_APPOINTMENT_STATUSES.has(String(status || '').trim().toLowerCase());
+
+/** Start / effective end (end_time, or start + 15 min) of an appointment slot. */
+const getSlotBounds = (item: ReturnType<typeof normalizeAppointmentListItem>) => {
+  const start = parseAppointmentStart(item.date, item.time);
+  if (!start) return null;
+  const end = item.endTime ? parseAppointmentStart(item.date, item.endTime) : null;
+  const endMs =
+    end && end.getTime() > start.getTime()
+      ? end.getTime()
+      : start.getTime() + 15 * 60 * 1000;
+  return { startMs: start.getTime(), endMs };
+};
+
+/** True while the appointment is inside its join window (5 min before start → end). */
+export function isAppointmentJoinable(
+  raw: any,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
+): boolean {
+  if (!raw) return false;
+  const item = normalizeAppointmentListItem(raw);
+  const callStatus = String(item.call_status || '').toLowerCase().trim();
+  if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) return false;
+  if (callStatus !== 'in_progress' && !isActiveAppointmentStatus(item.status)) {
+    return false;
+  }
+  const bounds = getSlotBounds(item);
+  if (!bounds) return callStatus === 'in_progress';
+  const now = Date.now();
+  if (now >= bounds.endMs) return false;
+  if (callStatus === 'in_progress') return true;
+  return bounds.startMs - now <= windowMinutes * 60 * 1000;
+}
+
+/** ms until the join window opens or closes (null when nothing changes anymore). */
+export function getMsUntilJoinWindowChange(
+  raw: any,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
+): number | null {
+  if (!raw) return null;
+  const item = normalizeAppointmentListItem(raw);
+  const bounds = getSlotBounds(item);
+  if (!bounds) return null;
+  const now = Date.now();
+  const opensAt = bounds.startMs - windowMinutes * 60 * 1000;
+  const next = [opensAt, bounds.endMs].find(t => t > now);
+  return next != null ? next - now : null;
+}
+
+/** Only a cancelled call removes the Home banner early; otherwise it stays until end_time. */
+const BANNER_CLOSED_CALL_STATUSES = new Set(['cancelled', 'canceled', 'rejected']);
+
 /**
- * Home "Join Now" banner rules:
- * - Hide ONLY when: end_time has passed, OR call_status is completed/ended
- * - Show when call_status is `in_progress` (and not past end)
- * - Or show within `windowMinutes` (default 5) before start until end_time
+ * Home "Join Now" banner rules (time based):
+ * - Show from `windowMinutes` (default 5) before start until end_time
+ *   (no end_time → start + 15 min)
+ * - Ending / leaving the call does NOT hide it; only reaching end_time does
  */
 export function getJoinableAppointment(
   items: any[] = [],
@@ -852,8 +956,7 @@ export function getJoinableAppointment(
     const item = normalizeAppointmentListItem(raw);
     const callStatus = String(item.call_status || '').toLowerCase().trim();
 
-    // Hide when call is completed / ended (only this call-status condition)
-    if (ENDED_CALL_STATUSES.has(callStatus)) {
+    if (BANNER_CLOSED_CALL_STATUSES.has(callStatus)) {
       continue;
     }
 

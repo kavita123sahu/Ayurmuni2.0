@@ -1,13 +1,8 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import DoctorListCard from '../../components/DoctorListCard';
-import HomeDoctorCard from '../../components/HomeDoctorCard';
-import {
-  HOME_DOCTOR,
-  getDoctorGridCardWidth,
-  getHomeDoctorCardWidth,
-} from '../../constants/doctorGridLayout';
-import { formatConsultationFeeLabel } from '../../utils/doctorUtils';
+import { DOCTOR_GRID, getDoctorGridCardWidth } from '../../constants/doctorGridLayout';
+import { formatConsultationFeeLabel, isDietitian } from '../../utils/doctorUtils';
 
 const toLabelList = (value: any): string[] => {
   if (value == null || value === '') return [];
@@ -79,7 +74,6 @@ type Props = {
   navigation: any;
   layout?: 'grid' | 'horizontal';
   limit?: number;
-  home?: boolean;
 };
 
 const resolveImageUri = (item: Doctor): string => {
@@ -92,13 +86,8 @@ const TopDoctorsCard = ({
   data = [],
   navigation,
   limit,
-  home = false,
 }: Props) => {
-  const cardWidth = useMemo(
-    () => (home ? getHomeDoctorCardWidth() : getDoctorGridCardWidth()),
-    [home],
-  );
-  console.log('homehomehomehome', home);
+  const cardWidth = useMemo(() => getDoctorGridCardWidth(), []);
   const openDoctorProfile = useCallback(
     (item: Doctor) => {
       navigation?.navigate?.('DoctorProfile', { doctorData: item });
@@ -118,7 +107,6 @@ const TopDoctorsCard = ({
     return null;
   }
 
-  console.log("datadatadatadatadatadata,", data);
   return (
     <View style={styles.grid}>
       {list.map((item, index) => {
@@ -127,9 +115,11 @@ const TopDoctorsCard = ({
         const rating = Number(item?.average_rating ?? item?.ranking_score ?? 0);
 
         const ratingLabel = Number.isFinite(rating) ? rating.toFixed(1) : '0.0';
+        const dietitian = isDietitian(item);
         const cardProps = {
-          name: item.full_name || item.name || 'Doctor',
-          speciality: labels[0] || 'Ayurveda Specialist',
+          name: item.full_name || item.name || (dietitian ? 'Dietitian' : 'Doctor'),
+          speciality: labels[0] || (dietitian ? 'Diet & Nutrition' : 'Ayurveda Specialist'),
+          isDietitian: dietitian,
           ratingLabel,
           reviews: item?.total_reviews,
           totalPatients:
@@ -142,20 +132,6 @@ const TopDoctorsCard = ({
           available: item?.has_availability === true,
           onPress: () => openDoctorProfile(item),
         };
-
-        // if (home) {
-        //   return (
-        //     <HomeDoctorCard
-        //       key={String(item?.id ?? `top-doc-${index}`)}
-        //       cardWidth={cardWidth}
-        //       qualification={
-        //         String(item?.qualification || item?.designation || '').trim() ||
-        //         undefined
-        //       }
-        //       {...cardProps}
-        //     />
-        //   );
-        // }
 
         return (
           <DoctorListCard
@@ -178,9 +154,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: HOME_DOCTOR.gap,
-    // marginBottom:10
-    // gap: 10,
-
+    rowGap: DOCTOR_GRID.gap,
   },
 });

@@ -2,7 +2,6 @@ import { Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import {
   GOOGLE_MAPS_API_KEY,
-  GOOGLE_PLACES_API_KEY,
 } from '../config/Key';
 
 export type Coordinates = {
@@ -29,9 +28,7 @@ export type PlaceSuggestion = {
   secondary_text: string;
 };
 
-
 const GOOGLE_KEYS = [
-  GOOGLE_PLACES_API_KEY,
   GOOGLE_MAPS_API_KEY,
 ].filter(Boolean);
 
@@ -146,7 +143,6 @@ export const openLocationSettings = () => {
     Linking.openSettings();
   }
 };
-
 
 const readPosition = (
   highAccuracy: boolean,

@@ -14,7 +14,23 @@ export type ProductQuery = {
   section?: ProductSectionType | string;
   page?: number;
   page_size?: number;
+  min_price?: number | string;
+  max_price?: number | string;
+  /** `4` → 4★ and above, or a range like `3-5`. */
+  min_rating?: number | string;
+  /** Vata | Pitta | Kapha */
+  dosha_type?: string;
+  sort?: ProductApiSort;
 };
+
+export type ProductApiSort =
+  | 'price_asc'
+  | 'price_desc'
+  | 'price_low_to_high'
+  | 'price_high_to_low'
+  | 'popularity'
+  | 'rating'
+  | 'latest';
 
 export type ProductSectionType =
   | 'home'
@@ -66,6 +82,11 @@ const buildProductQuery = (params: ProductQuery = {}) => {
   appendQueryParam(query, 'service_category_id', params.service_category_id);
   appendQueryParam(query, 'variant_id', params.variant_id);
   appendQueryParam(query, 'search', params.search);
+  appendQueryParam(query, 'min_price', params.min_price);
+  appendQueryParam(query, 'max_price', params.max_price);
+  appendQueryParam(query, 'min_rating', params.min_rating);
+  appendQueryParam(query, 'dosha_type', params.dosha_type);
+  appendQueryParam(query, 'sort', params.sort);
   // Only send section when caller asks — do not default on every catalog query
   appendQueryParam(query, 'section', params.section);
   appendQueryParam(query, 'page', params.page);

@@ -5,6 +5,7 @@ import React, {
     useRef,
     useState,
 } from 'react';
+
 import {
     View,
     Text,
@@ -23,11 +24,11 @@ import LinearGradient from 'react-native-linear-gradient';
 
 import * as _CONSULT_SERVICES from '../../services/ConsultServce';
 import { Colors } from '../../common/Colors';
-import { Fonts } from '../../common/Fonts';
 import { showSuccessToast } from '../../config/Key';
 import {
     isRazorpayUserCancelled,
     openRazorpayPayment,
+    pickRazorpayKey,
     toRazorpayPaise,
 } from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
@@ -37,8 +38,57 @@ import CouponApplyCard from '../../components/CouponApplyCard';
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import TablerIcon from '../../components/TablerIcon';
 import AppHeader from '../../components/AppHeader';
-import { getDoctorDisplayName, resolveDoctorProfileImageUri } from '../../utils/doctorUtils';
+import DietitianBadge from '../../components/DietitianBadge';
+import {
+    formatDoctorSpecialization,
+    getDoctorDisplayName,
+    resolveDoctorProfileImageUri,
+} from '../../utils/doctorUtils';
 import { usePatientData } from '../../hooks/usePatientData';
+import { useMyPackages } from '../../hooks/usePackagePlans';
+import ActivePlanPickerSheet from '../../components/packages/ActivePlanPickerSheet';
+import {
+    getConsultBenefit,
+    getPlanConsultState,
+    isActivePlan,
+    type PlanEligibility,
+} from '../../components/packages/packageUi';
+import type { MyPlan } from '../../services/PackageServices';
+import { useAppSelector } from '../../store/hooks';
+import {
+    filterRunnableGateways,
+    resolveDefaultGateway,
+    resolveEnabledGateways,
+    toApiPaymentGateway,
+    type PaymentGateway,
+} from '../../config/paymentGateways';
+import {
+    getGatewayOrderId,
+    hasGatewayOrder,
+    parsePineLabsCheckout,
+    resolveOrderGateway,
+    type PineLabsCheckout,
+} from '../../services/PineLabsService';
+import {
+    buildIciciVerifyPayload,
+    isPayphiNativeLinked,
+    isPayphiUserCancelled,
+    openPayphiPayment,
+    parsePayphiAppInfo,
+    parsePayphiHostedCheckout,
+    parsePayphiPaymentRequest,
+    resolveIciciMerchantTxnNo,
+} from '../../services/PayphiService';
+import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
+import PineLabsCheckoutModal, {
+    type PineLabsCheckoutOutcome,
+    type PineLabsPageResult,
+} from '../../components/payment/PineLabsCheckoutModal';
+
+type PineLabsFinishResult = {
+    outcome: PineLabsCheckoutOutcome;
+    pageResult?: PineLabsPageResult;
+};
 import {
     calculateFeeBreakdown,
     feeRateLabel,
@@ -46,6 +96,7 @@ import {
     roundMoney,
     type FeeQuoteConfig,
 } from '../../utils/feeQuote';
+import { styles } from './RazorpayScreen.styles';
 
 const STORAGE_KEY = 'SELECTED_SLOT';
 /** Persists first book-slot payment so a return visit can call retry. */
@@ -60,6 +111,7 @@ type PendingConsultPayment = {
     slot_id: string;
     appointment_id: string;
     payment_id?: string;
+    gateway?: PaymentGateway;
 };
 
 const getPendingConsultPayment = async (
@@ -80,6 +132,7 @@ const getPendingConsultPayment = async (
             payment_id: stored.payment_id
                 ? String(stored.payment_id)
                 : undefined,
+            gateway: stored.gateway || undefined,
         };
     } catch {
         return null;
@@ -90,6 +143,7 @@ const savePendingConsultPayment = async (
     slotId: string | number | undefined,
     appointmentId: string | number | undefined,
     paymentId?: string | number | undefined,
+    gateway?: PaymentGateway,
 ) => {
     if (slotId == null || appointmentId == null || appointmentId === '') return;
     await Utils.storeData(PENDING_PAYMENT_KEY, {
@@ -98,6 +152,7 @@ const savePendingConsultPayment = async (
         ...(paymentId != null && paymentId !== ''
             ? { payment_id: String(paymentId) }
             : {}),
+        ...(gateway ? { gateway } : {}),
     });
 };
 
@@ -126,15 +181,74 @@ const isApiSuccess = (response: any) =>
     response?.success === 'true' ||
     response?.success === 1;
 
-const isPendingPaymentStatus = (data: any) => {
-    const status = String(
-        data?.status ?? data?.payment_status ?? '',
-    ).toLowerCase();
+/** Gateway rejected the order because one already exists for this merchant reference. */
+const isDuplicateGatewayOrder = (response: any) => {
+    const errors = response?.data?.errors ?? response?.errors ?? {};
+    const code = String(errors?.error_code ?? response?.data?.error_code ?? '').toUpperCase();
+    const text = String(errors?.error_message ?? '').toLowerCase();
+    return code === 'DUPLICATE_REQUEST' || text.includes('duplicate merchant reference');
+};
+
+const readAppointmentId = (data: any) =>
+    String(
+        data?.appointment_id ||
+        data?.appointmentId ||
+        data?.consultation_id ||
+        data?.appointment?.id ||
+        '',
+    ).trim();
+
+const PAID_STATUSES = ['success', 'paid', 'captured', 'completed', 'confirmed'];
+
+/** book-slot finished the booking itself — nothing to pay at a gateway. */
+const isBookingAlreadyPaid = (data: any) => {
+    if (hasGatewayOrder(data)) return false;
+    const status = String(data?.status ?? data?.payment_status ?? '').toLowerCase();
+    const bookingStatus = String(data?.booking?.status ?? '').toLowerCase();
     return (
-        status === 'pending' ||
-        status === 'created' ||
-        status === 'initiated'
+        PAID_STATUSES.includes(status) ||
+        PAID_STATUSES.includes(bookingStatus) ||
+        data?.funded_by_package === true ||
+        !!data?.package_purchase_id
     );
+};
+
+/** book-slot / retry may put fields on `data` or at the top level. */
+const pickConsultPaymentData = (response: any) => {
+    if (!response || typeof response !== 'object') return {};
+    const data =
+        response.data && typeof response.data === 'object' ? response.data : {};
+    return {
+        ...response,
+        ...data,
+        payment_id: data.payment_id ?? response.payment_id,
+        appointment_id: data.appointment_id ?? response.appointment_id,
+        gateway: data.payment_gateway ?? data.gateway ?? response.gateway,
+        payment_gateway: data.payment_gateway ?? data.gateway ?? response.gateway,
+        gateway_order_id: data.gateway_order_id ?? response.gateway_order_id,
+        razorpay_order_id: data.razorpay_order_id ?? response.razorpay_order_id,
+        razorpay_key: data.razorpay_key ?? response.razorpay_key,
+        key_id: data.key_id ?? response.key_id,
+        icici: data.icici ?? response.icici,
+        summary: data.summary ?? response.summary,
+        status: data.status ?? response.status,
+        payment_status: data.payment_status ?? response.payment_status,
+    };
+};
+
+/** One-line summary of an API response for the payment debug logs. */
+const logPayStep = (step: string, response: any) => {
+    const data = pickConsultPaymentData(response);
+    console.log(`[PAY] ${step} =>`, {
+        success: response?.success,
+        status: response?.status,
+        message: response?.message,
+        payment_id: data.payment_id,
+        appointment_id: readAppointmentId(data),
+        gateway: data.payment_gateway ?? data.gateway,
+        gateway_order_id: data.gateway_order_id ?? data.razorpay_order_id,
+        payment_status: data.payment_status ?? data.status,
+    });
 };
 
 /** Book-slot no longer sends data.amount. Use summary / configurations, then the screen total. */
@@ -168,6 +282,79 @@ const resolveConsultPayableRupees = (data: any, fallback: number) => {
     return fallback > 0 ? fallback : 0;
 };
 
+/** Payable after the plan is applied (fee-quote with package_purchase_id). Missing → covered (0). */
+const resolvePlanPayableRupees = (data: any): number => {
+    const summary = data?.summary ?? {};
+    const candidates = [
+        summary?.total_payable_amount,
+        data?.total_payable_amount,
+        summary?.payable_amount,
+        data?.payable_amount,
+        data?.amount,
+    ];
+    for (const value of candidates) {
+        if (value == null || value === '') continue;
+        const n = Number(value);
+        if (Number.isFinite(n) && n >= 0) return roundMoney(n);
+    }
+    return 0;
+};
+
+const PLAN_NOT_ELIGIBLE = 'This package cannot be used for this doctor.';
+
+/** fee-quote `data.package_funding` → selectable only when `can_fund` is true. */
+const readPlanFunding = (res: any): PlanEligibility => {
+    const data = res?.data ?? {};
+    const funding = data?.package_funding ?? {};
+    const canFund = isApiSuccess(res) && funding?.can_fund === true;
+    const payableRaw = funding?.total_payable_amount;
+    const payable =
+        payableRaw != null && payableRaw !== '' && Number.isFinite(Number(payableRaw))
+            ? roundMoney(Number(payableRaw))
+            : canFund
+                ? resolvePlanPayableRupees(data)
+                : null;
+    const remaining = funding?.quantity_remaining;
+    return {
+        loading: false,
+        canFund,
+        reason: canFund
+            ? ''
+            : String(funding?.ineligible_reason || res?.message || PLAN_NOT_ELIGIBLE),
+        payable,
+        quantityRemaining:
+            remaining != null && Number.isFinite(Number(remaining)) ? Number(remaining) : null,
+    };
+};
+
+const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/**
+ * verify-payment for Pine Labs `{ payment_id, gateway_order_id }`.
+ * The backend webhook may land a moment after the redirect, so a returned checkout is re-checked briefly.
+ */
+const verifyPineLabsPayment = async (
+    checkout: PineLabsCheckout,
+    outcome: PineLabsCheckoutOutcome,
+) => {
+    const attempts = outcome === 'returned' ? 4 : 1;
+    let last: any = null;
+    for (let i = 0; i < attempts; i += 1) {
+        try {
+            last = await _CONSULT_SERVICES.verifyConsultationPayment({
+                payment_id: checkout.paymentId,
+                gateway_order_id: checkout.orderId,
+            });
+            logPayStep(`5. verify attempt ${i + 1}/${attempts}`, last);
+            if (isApiSuccess(last)) return last;
+        } catch (e) {
+            console.log('[PAY] 5. verify error =>', e);
+        }
+        if (i < attempts - 1) await wait(2500);
+    }
+    return last;
+};
+
 const formatDisplayDate = (value?: string) => {
     if (!value) return '';
     const d = new Date(value);
@@ -183,6 +370,7 @@ const formatDisplayDate = (value?: string) => {
 const RazorpayScreen = ({ route, navigation }: any) => {
     const {
         doctorInfo,
+        doctorId,
         slotId,
         date,
         concern,
@@ -204,6 +392,163 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const [activePatient, setActivePatient] = useState<any>(patientsList || null);
     const [patientPickerVisible, setPatientPickerVisible] = useState(false);
     const [switchingPatient, setSwitchingPatient] = useState(false);
+    const [planSheetVisible, setPlanSheetVisible] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<MyPlan | null>(null);
+    const [planPayable, setPlanPayable] = useState<number | null>(null);
+    const [planQuoteLoading, setPlanQuoteLoading] = useState(false);
+    const planPromptShownRef = useRef(false);
+
+    const customerData = useAppSelector(s => s.home.customerData);
+    const enabledGateways = useMemo(
+        () =>
+            filterRunnableGateways(resolveEnabledGateways(customerData), {
+                payphiNativeLinked: isPayphiNativeLinked(),
+            }),
+        [customerData],
+    );
+    const [gateway, setGateway] = useState<PaymentGateway>(() =>
+        resolveDefaultGateway(customerData, enabledGateways),
+    );
+    useEffect(() => {
+        if (!enabledGateways.includes(gateway)) {
+            setGateway(resolveDefaultGateway(customerData, enabledGateways));
+        }
+    }, [enabledGateways, gateway, customerData]);
+    const [pineCheckout, setPineCheckout] = useState<PineLabsCheckout | null>(null);
+
+    const pineResolveRef = useRef<
+        ((result: PineLabsFinishResult) => void) | null
+    >(null);
+
+    const openPineLabsCheckout = useCallback(
+        (checkout: PineLabsCheckout) =>
+            new Promise<PineLabsFinishResult>(resolve => {
+                pineResolveRef.current = resolve;
+                setPineCheckout(checkout);
+            }),
+        [],
+    );
+
+    const pineVerifiedRef = useRef<any>(null);
+
+    const checkPineLabsOnResume = useCallback(async () => {
+        if (!pineCheckout) return false;
+
+        try {
+            const res =
+                await _CONSULT_SERVICES.verifyConsultationPayment({
+                    payment_id: pineCheckout.paymentId,
+                    gateway_order_id: pineCheckout.orderId,
+                });
+
+            logPayStep('4a. verify on app resume', res);
+
+            if (isApiSuccess(res)) {
+                pineVerifiedRef.current = res;
+            }
+
+            return isApiSuccess(res);
+        } catch (e) {
+            console.log('[PAY] 4a. verify on resume error =>', e);
+            return false;
+        }
+    }, [pineCheckout]);
+
+    const onPineLabsFinish = useCallback(
+        (
+            outcome: PineLabsCheckoutOutcome,
+            pageResult?: PineLabsPageResult,
+        ) => {
+            console.log('[PAY] Pine Labs modal finished =>', {
+                outcome,
+                pageResult,
+            });
+
+            setPineCheckout(null);
+
+            pineResolveRef.current?.({
+                outcome,
+                pageResult,
+            });
+
+            pineResolveRef.current = null;
+        },
+        [],
+    );
+
+    const planDoctorId = String(
+        doctorId || doctorInfo?.doctor_id || doctorInfo?.id || '',
+    ).trim();
+
+    const { purchases: activePurchases } = useMyPackages(
+        { status: 'active', doctor_id: planDoctorId },
+        !!planDoctorId,
+    );
+    const activePlans = useMemo(
+        () => activePurchases.filter(isActivePlan),
+        [activePurchases],
+    );
+    // fee-quote per plan → package_funding.can_fund decides if the plan is selectable
+    const [planEligibility, setPlanEligibility] = useState<Record<string, PlanEligibility>>({});
+    const activePlanKey = activePlans.map(p => p.id).join(',');
+
+    useEffect(() => {
+        const id = slotId?.id;
+        if (!id || activePlans.length === 0) return;
+        let cancelled = false;
+        setPlanEligibility(
+            Object.fromEntries(
+                activePlans.map(p => [
+                    p.id,
+                    { loading: true, canFund: false, reason: '', payable: null, quantityRemaining: null },
+                ]),
+            ),
+        );
+        Promise.all(
+            activePlans.map(async plan => {
+                try {
+                    const res = await _CONSULT_SERVICES.getConsultationFeeQuote(id, undefined, plan.id);
+                    return [plan.id, readPlanFunding(res)] as const;
+                } catch (e: any) {
+                    return [
+                        plan.id,
+                        {
+                            loading: false,
+                            canFund: false,
+                            reason: e?.message || 'Unable to check this plan',
+                            payable: null,
+                            quantityRemaining: null,
+                        },
+                    ] as const;
+                }
+            }),
+        ).then(entries => {
+            if (cancelled) return;
+            const next = Object.fromEntries(entries);
+            console.log('CONSULT_PLAN_ELIGIBILITY =>', next);
+            setPlanEligibility(next);
+        });
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activePlanKey, slotId?.id]);
+
+    const usablePlans = useMemo(
+        () => activePlans.filter(p => planEligibility[p.id]?.canFund),
+        [activePlans, planEligibility],
+    );
+
+    useEffect(() => {
+        console.log(
+            'CONSULT_ACTIVE_PLANS =>',
+            activePlans.map(p => ({ id: p.id, name: p.name, state: getPlanConsultState(p) })),
+        );
+        if (activePlans.length > 0 && !planPromptShownRef.current) {
+            planPromptShownRef.current = true;
+            setPlanSheetVisible(true);
+        }
+    }, [activePlans]);
 
     const {
         patients,
@@ -241,6 +586,24 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             ).trim(),
         [doctorInfo],
     );
+    const specialization = useMemo(
+        () => formatDoctorSpecialization(doctorInfo),
+        [doctorInfo],
+    );
+    const attachedDocs = useMemo(() => {
+        if (Array.isArray(medical_records) && medical_records.length > 0) {
+            return medical_records;
+        }
+        // Fallback: IDs only — still show a placeholder row per attachment
+        if (Array.isArray(medical_record_ids) && medical_record_ids.length > 0) {
+            return medical_record_ids.map((id: any, index: number) => ({
+                id,
+                description: `Document ${index + 1}`,
+                file_type: 'file',
+            }));
+        }
+        return [];
+    }, [medical_records, medical_record_ids]);
     const patientName = useMemo(
         () => getPatientDisplayName(activePatient),
         [activePatient],
@@ -345,7 +708,56 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         };
     }, [feeQuote, consultationFee, couponDiscount, appliedCoupon, quotedCouponCode]);
 
-    const totalAmount = feeBreakdown.total;
+    const handleSelectPlan = useCallback(
+        async (plan: MyPlan) => {
+            setPlanSheetVisible(false);
+            const id = slotId?.id;
+            if (!id) return;
+            setSelectedPlan(plan);
+            const cached = planEligibility[plan.id];
+            if (cached && !cached.loading && cached.canFund) {
+                setPlanPayable(cached.payable ?? 0);
+                console.log('CONSULT_PLAN_PAYABLE (cached) =>', plan.id, cached.payable);
+                return;
+            }
+            setPlanQuoteLoading(true);
+            try {
+                const response = await _CONSULT_SERVICES.getConsultationFeeQuote(
+                    id,
+                    undefined,
+                    plan.id,
+                );
+                const funding = readPlanFunding(response);
+                if (!funding.canFund) {
+                    showSuccessToast(funding.reason, 'error');
+                    setSelectedPlan(null);
+                    setPlanPayable(null);
+                    return;
+                }
+                console.log('CONSULT_PLAN_PAYABLE =>', plan.id, funding.payable);
+                setPlanPayable(funding.payable ?? 0);
+            } catch (error: any) {
+                console.log('CONSULT_PLAN_QUOTE_ERROR =>', error);
+                showSuccessToast(error?.message || 'Unable to apply plan', 'error');
+                setSelectedPlan(null);
+                setPlanPayable(null);
+            } finally {
+                setPlanQuoteLoading(false);
+            }
+        },
+        [slotId?.id, planEligibility],
+    );
+
+    const clearSelectedPlan = useCallback(() => {
+        setSelectedPlan(null);
+        setPlanPayable(null);
+    }, []);
+
+    const usingPlan = !!selectedPlan && planPayable != null;
+    const totalAmount = usingPlan ? planPayable : feeBreakdown.total;
+    const planCoveredAmount = usingPlan
+        ? Math.max(0, roundMoney(feeBreakdown.total - planPayable))
+        : 0;
 
     useFocusEffect(
         React.useCallback(() => {
@@ -359,6 +771,59 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         }, [isVerifyingPayment]),
     );
 
+    const onBookingSuccess = async (
+        SlotsDetail: any,
+        currentSlotId: string | number | undefined,
+        message: string,
+    ) => {
+        showSuccessToast(message, 'success');
+        try {
+            const { showInAppNotification } = require('../../services/inAppNotificationService');
+            showInAppNotification({
+                title: 'Appointment confirmed',
+                message:
+                    message ||
+                    `Your consultation with ${doctorName} is booked.`,
+                type: 'APPOINTMENT_CONFIRMED',
+                appointment_id:
+                    SlotsDetail?.appointment_id ||
+                    SlotsDetail?.id ||
+                    SlotsDetail?.consultation_id,
+            });
+        } catch {
+            // ignore
+        }
+        try {
+            const { OneSignal } = require('react-native-onesignal');
+            OneSignal.User.pushSubscription.optIn();
+        } catch {
+            // ignore
+        }
+        try {
+            const {
+                refreshUnreadBadge,
+            } = require('../../screens/notifications/notificationRouter');
+            refreshUnreadBadge();
+        } catch {
+            // ignore
+        }
+        try {
+            await Utils.storeData(STORAGE_KEY, null);
+            await clearPendingConsultPayment(currentSlotId);
+        } catch (e) {
+            console.log('clear storage on success error', e);
+        }
+        // Plan bookings return no concern / patient — fill from this screen so both flows match
+        navigation.navigate('BookingConfrimScreen', {
+            SlotsDetail: {
+                concern,
+                patient_name: patientName,
+                patient_phone: activePatient?.phone_number || activePatient?.phone,
+                ...(SlotsDetail ?? {}),
+            },
+        });
+    };
+
     const handlePayment = async () => {
         if (loading || paymentStartedRef.current) return;
 
@@ -367,91 +832,358 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             paymentStartedRef.current = true;
 
             const currentSlotId = slotId?.id;
-            const pendingPayment = await getPendingConsultPayment(currentSlotId);
+            const planPurchaseId = usingPlan ? selectedPlan?.id : undefined;
+            const pendingPayment = planPurchaseId
+                ? null
+                : await getPendingConsultPayment(currentSlotId);
+            const apiGateway = toApiPaymentGateway(gateway);
 
             let paymentResponse: any;
-            if (pendingPayment?.appointment_id) {
-                paymentResponse =
-                    await _CONSULT_SERVICES.retryConsultationPayment(
-                        pendingPayment.appointment_id,
-                    );
-            } else {
+            if (planPurchaseId) {
                 paymentResponse =
                     await _CONSULT_SERVICES.createConsultationPayment({
                         slot_id: currentSlotId,
+                        package_purchase_id: planPurchaseId,
                         concern: concern,
                         medical_record_ids: medical_record_ids,
-                        coupon_code: appliedCoupon?.code,
+                        ...(planPayable && planPayable > 0
+                            ? { payment_gateway: apiGateway }
+                            : {}),
                     });
-            }
-            console.log('ConsultationPaymentResponse =>', paymentResponse);
+                console.log('ConsultationPlanBookingResponse =>', paymentResponse);
+                if (!isApiSuccess(paymentResponse)) {
+                    showSuccessToast(
+                        paymentResponse?.message || 'Unable to book with this plan',
+                        'error',
+                    );
+                    return;
+                }
+                // Plan covers the consultation — appointment is confirmed, no gateway
+                if (!hasGatewayOrder(paymentResponse?.data)) {
+                    await onBookingSuccess(
+                        paymentResponse?.data,
+                        currentSlotId,
+                        paymentResponse?.message || 'Appointment confirmed with your plan',
+                    );
+                    return;
+                }
+            } else {
+                console.log('[PAY] 1. start =>', {
+                    slot_id: currentSlotId,
+                    gateway: apiGateway,
+                    saved_pending: pendingPayment,
+                });
 
-            // success: true with status pending is a created Razorpay order, not a failure.
-            if (!isApiSuccess(paymentResponse)) {
-                if (pendingPayment?.appointment_id) {
+                // Retry ONLY if pending was created for the SAME gateway.
+                // Old ICICI pending + Razorpay select was returning gateway:icici (no razorpay_key).
+                const canRetry =
+                    Boolean(pendingPayment?.appointment_id) &&
+                    (!pendingPayment?.gateway ||
+                        pendingPayment.gateway === apiGateway);
+
+                if (canRetry && pendingPayment?.appointment_id) {
+                    try {
+                        paymentResponse =
+                            await _CONSULT_SERVICES.retryConsultationPayment(
+                                pendingPayment.appointment_id,
+                                apiGateway,
+                            );
+                    } catch (retryError) {
+                        console.log('[PAY] 2. retry error =>', retryError);
+                        paymentResponse = null;
+                    }
+                    logPayStep('2. retry (same gateway pending)', paymentResponse);
+                    const retryData = pickConsultPaymentData(paymentResponse);
+                    const retryGateway = String(
+                        retryData?.payment_gateway ?? retryData?.gateway ?? '',
+                    ).toLowerCase();
+                    // Backend ignored payment_gateway and returned another gateway → book-slot fresh
+                    if (
+                        !isApiSuccess(paymentResponse) ||
+                        (retryGateway && retryGateway !== apiGateway)
+                    ) {
+                        console.warn('[PAY] 2. retry gateway mismatch — clear & book-slot', {
+                            selected: apiGateway,
+                            returned: retryGateway,
+                        });
+                        await clearPendingConsultPayment(currentSlotId);
+                        paymentResponse = null;
+                    }
+                } else if (pendingPayment?.appointment_id) {
+                    console.warn('[PAY] skip retry — pending gateway differs', {
+                        pending: pendingPayment.gateway,
+                        selected: apiGateway,
+                    });
                     await clearPendingConsultPayment(currentSlotId);
                 }
+
+                // book-slot: slot_id + payment_gateway (required), concern / medical_record_ids / coupon_code optional
+                if (!paymentResponse) {
+                    paymentResponse =
+                        await _CONSULT_SERVICES.createConsultationPayment({
+                            slot_id: currentSlotId,
+                            concern: concern,
+                            medical_record_ids: medical_record_ids,
+                            coupon_code: appliedCoupon?.code,
+                            payment_gateway: apiGateway,
+                        });
+                    logPayStep('2. book-slot', paymentResponse);
+
+                    const duplicateAppointmentId = isDuplicateGatewayOrder(paymentResponse)
+                        ? readAppointmentId(pickConsultPaymentData(paymentResponse)) ||
+                          readAppointmentId(paymentResponse?.data?.errors)
+                        : '';
+                    if (duplicateAppointmentId) {
+                        try {
+                            const retryResponse =
+                                await _CONSULT_SERVICES.retryConsultationPayment(
+                                    duplicateAppointmentId,
+                                    apiGateway,
+                                );
+                            logPayStep('2b. retry (duplicate order)', retryResponse);
+                            if (isApiSuccess(retryResponse)) {
+                                paymentResponse = retryResponse;
+                            }
+                        } catch (retryError) {
+                            console.log('[PAY] 2b. retry error =>', retryError);
+                        }
+                    }
+                }
+            }
+
+            if (!isApiSuccess(paymentResponse)) {
+                console.log('[PAY] stop: order not created =>', paymentResponse);
                 showSuccessToast(
-                    paymentResponse?.message || 'Unable to start payment',
+                    isDuplicateGatewayOrder(paymentResponse)
+                        ? 'A payment for this slot is already in progress. Please try again in a minute or choose another payment method.'
+                        : paymentResponse?.message || 'Unable to start payment',
                     'error',
                 );
                 return;
             }
 
-            let paymentData = paymentResponse?.data ?? {};
-            const appointmentId = String(
-                paymentData?.appointment_id ||
-                paymentData?.appointmentId ||
-                paymentData?.consultation_id ||
-                pendingPayment?.appointment_id ||
-                '',
-            ).trim();
+            const paymentData = pickConsultPaymentData(paymentResponse);
+            const appointmentId =
+                readAppointmentId(paymentData) || pendingPayment?.appointment_id || '';
+
+            // Backend already confirmed the booking (e.g. auto-applied package / zero payable) — no gateway.
+            if (isBookingAlreadyPaid(paymentData)) {
+                console.log('[PAY] 3. already paid / no gateway order → booking success');
+                await onBookingSuccess(
+                    paymentData,
+                    currentSlotId,
+                    paymentResponse?.message || 'Appointment confirmed',
+                );
+                return;
+            }
 
             if (appointmentId) {
                 await savePendingConsultPayment(
                     currentSlotId,
                     appointmentId,
                     paymentData?.payment_id,
+                    apiGateway,
                 );
             }
 
-            // Pending order already exists — refresh checkout via retry before opening Razorpay.
-            if (
-                appointmentId &&
-                !pendingPayment?.appointment_id &&
-                isPendingPaymentStatus(paymentData)
-            ) {
-                try {
-                    const retryResponse =
-                        await _CONSULT_SERVICES.retryConsultationPayment(
-                            appointmentId,
-                        );
-                    console.log('ConsultationRetryResponse =>', retryResponse);
-                    if (isApiSuccess(retryResponse) && retryResponse?.data) {
-                        paymentData = {
-                            ...paymentData,
-                            ...retryResponse.data,
-                            summary:
-                                retryResponse.data?.summary ??
-                                paymentData?.summary,
-                            configurations:
-                                retryResponse.data?.configurations ??
-                                paymentData?.configurations,
-                        };
-                    }
-                } catch (retryError) {
-                    console.log('CONSULT_RETRY_ERROR =>', retryError);
+            // Always use the gateway the user selected (not stale response.gateway)
+            const orderGateway = resolveOrderGateway(paymentData, apiGateway);
+            console.log('[PAY] 3. order gateway =>', {
+                selected: apiGateway,
+                resolved: orderGateway,
+                api_returned: paymentData?.gateway ?? paymentData?.payment_gateway,
+            });
+
+            if (apiGateway === 'pinelabs') {
+                const checkout = parsePineLabsCheckout(paymentData);
+
+                console.log('[PAY] 3. pine labs checkout =>', checkout);
+
+                if (
+                    !checkout.redirectUrl ||
+                    !checkout.orderId ||
+                    !checkout.paymentId
+                ) {
+                    console.log(
+                        '[PAY] stop: checkout fields missing =>',
+                        {
+                            redirectUrl: checkout.redirectUrl,
+                            orderId: checkout.orderId,
+                            paymentId: checkout.paymentId,
+                        },
+                    );
+
+                    showSuccessToast(
+                        'Pine Labs checkout is not available right now',
+                        'error',
+                    );
+
+                    return;
                 }
+
+                console.log('[PAY] Opening Pine Labs checkout =>', {
+                    paymentId: checkout.paymentId,
+                    orderId: checkout.orderId,
+                    redirectUrl: checkout.redirectUrl,
+                });
+
+                // Reset previous verification result
+                pineVerifiedRef.current = null;
+
+                // Open Pine Labs WebView
+                const { outcome, pageResult } =
+                    await openPineLabsCheckout(checkout);
+
+                console.log('[PAY] 4. Pine Labs checkout finished =>', {
+                    outcome,
+                    pageStatus: pageResult?.status,
+                    pageText: pageResult?.text,
+                });
+
+                setIsVerifyingPayment(true);
+
+                let verifyResponse: any = null;
+
+                try {
+                    // First priority:
+                    // If payment was already verified while app resumed,
+                    // use that response.
+                    if (pineVerifiedRef.current) {
+                        verifyResponse = pineVerifiedRef.current;
+
+                        console.log(
+                            '[PAY] 4a. using resume verification response =>',
+                            verifyResponse,
+                        );
+                    } else {
+                        // IMPORTANT:
+                        // Do NOT convert failed into "closed".
+                        // Send the actual checkout outcome.
+                        verifyResponse = await verifyPineLabsPayment(
+                            checkout,
+                            outcome,
+                        );
+
+                        console.log(
+                            '[PAY] 4b. final Pine Labs verification =>',
+                            verifyResponse,
+                        );
+                    }
+                } catch (verifyError) {
+                    console.log(
+                        '[PAY] Pine Labs verification error =>',
+                        verifyError,
+                    );
+                }
+
+                pineVerifiedRef.current = null;
+
+                setIsVerifyingPayment(false);
+
+                // --------------------------------------------------
+                // SUCCESS
+                // --------------------------------------------------
+
+                if (verifyResponse?.success) {
+                    console.log(
+                        '[PAY] result: Pine Labs payment SUCCESS',
+                    );
+
+                    await onBookingSuccess(
+                        verifyResponse?.data,
+                        currentSlotId,
+                        'Payment Successful',
+                    );
+
+                    return;
+                }
+
+                // --------------------------------------------------
+                // PINE LABS PAYMENT FAILED
+                // --------------------------------------------------
+
+                if (pageResult?.status === 'failed') {
+                    console.log(
+                        '[PAY] result: Pine Labs payment FAILED',
+                        {
+                            outcome,
+                            pageResult,
+                            verifyResponse,
+                        },
+                    );
+
+                    showSuccessToast(
+                        'Payment failed at Pine Labs. Please try again or use another payment method.',
+                        'error',
+                    );
+
+                    return;
+                }
+
+                // --------------------------------------------------
+                // PINE LABS SHOWED SUCCESS BUT BACKEND VERIFY FAILED
+                // --------------------------------------------------
+
+                if (pageResult?.status === 'success') {
+                    console.log(
+                        '[PAY] Pine Labs shows SUCCESS but backend verification failed',
+                        {
+                            status: verifyResponse?.status,
+                            message: verifyResponse?.message,
+                            response: verifyResponse,
+                        },
+                    );
+
+                    showSuccessToast(
+                        'Payment received. Your booking is being confirmed — check My Appointments in a moment.',
+                        'success',
+                    );
+
+                    return;
+                }
+
+                // --------------------------------------------------
+                // USER CLOSED / CANCELLED CHECKOUT
+                // --------------------------------------------------
+
+                if (outcome === 'closed') {
+                    console.log(
+                        '[PAY] result: Pine Labs checkout closed by user',
+                    );
+
+                    showSuccessToast(
+                        'Payment cancelled. You can try again anytime.',
+                        'error',
+                    );
+
+                    return;
+                }
+
+                // --------------------------------------------------
+                // UNKNOWN / VERIFICATION FAILURE
+                // --------------------------------------------------
+
+                console.log(
+                    '[PAY] result: Pine Labs payment verification failed',
+                    {
+                        outcome,
+                        pageResult,
+                        verifyResponse,
+                    },
+                );
+
+                showSuccessToast(
+                    verifyResponse?.message ||
+                    'Payment verification failed. Please try again.',
+                    'error',
+                );
+
+                return;
             }
 
             const payableRupees = resolveConsultPayableRupees(
                 paymentData,
                 totalAmount,
-            );
-            const amountPaise = toRazorpayPaise(
-                paymentData?.amount ??
-                paymentData?.summary?.total_payable_amount,
-                payableRupees,
             );
 
             const contactNumber = String(
@@ -460,24 +1192,256 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 doctorInfo?.phone_number ||
                 '',
             ).replace(/\D/g, '');
+            const customerName = String(
+                activePatient?.first_name ||
+                activePatient?.full_name ||
+                doctorInfo?.full_name ||
+                doctorName ||
+                'AyurMuni Customer',
+            );
+            const customerEmail = String(
+                activePatient?.email || doctorInfo?.email || 'customer@ayurmuni.com',
+            );
+
+            // ── ICICI PayPhi only when user selected ICICI (never on Razorpay) ──
+            if (apiGateway === 'icici') {
+                const appInfo = parsePayphiAppInfo(paymentData);
+                const payRequest = parsePayphiPaymentRequest(paymentData, {
+                    amount: payableRupees,
+                    customerName,
+                    customerEmail,
+                    customerMobile: contactNumber
+                        ? contactNumber.slice(-10)
+                        : undefined,
+                });
+                const hosted = parsePayphiHostedCheckout(paymentData);
+
+                console.warn('[PAY] icici start', {
+                    payment_id: paymentData?.payment_id,
+                    merchantId: appInfo?.merchantId,
+                    appId: appInfo?.appId,
+                    hosted: Boolean(hosted?.redirectUrl),
+                    native: Boolean(isPayphiNativeLinked() && appInfo && payRequest),
+                });
+
+                const finishIciciVerify = async (args: {
+                    merchantTxnNo: string;
+                    gatewayPaymentId?: string;
+                    gatewaySignature?: string;
+                    pendingMessage?: string;
+                }) => {
+                    if (!paymentData?.payment_id || !args.merchantTxnNo) {
+                        showSuccessToast(
+                            'ICICI verify failed: missing payment_id or gateway_order_id.',
+                            'error',
+                        );
+                        return;
+                    }
+                    setIsVerifyingPayment(true);
+                    const verifyResponse =
+                        await _CONSULT_SERVICES.verifyConsultationPayment(
+                            buildIciciVerifyPayload({
+                                paymentId: String(paymentData.payment_id),
+                                merchantTxnNo: args.merchantTxnNo,
+                                gatewayPaymentId: args.gatewayPaymentId,
+                                gatewaySignature: args.gatewaySignature,
+                            }),
+                        );
+                    logPayStep('5. icici verify', verifyResponse);
+                    setIsVerifyingPayment(false);
+
+                    if (verifyResponse?.success) {
+                        await onBookingSuccess(
+                            verifyResponse?.data,
+                            currentSlotId,
+                            args.pendingMessage || 'Payment Successful',
+                        );
+                        return;
+                    }
+                    if (args.pendingMessage) {
+                        showSuccessToast(args.pendingMessage, 'success');
+                        return;
+                    }
+                    showSuccessToast(
+                        verifyResponse?.message || 'Payment verification failed',
+                        'error',
+                    );
+                };
+
+                if (hosted?.redirectUrl) {
+                    pineVerifiedRef.current = null;
+                    const { outcome } = await openPineLabsCheckout({
+                        paymentId: hosted.paymentId,
+                        orderId: hosted.orderId,
+                        redirectUrl: hosted.redirectUrl,
+                        returnUrl: hosted.returnUrl,
+                    });
+                    console.warn('[PAY] icici hosted', { outcome });
+
+                    if (outcome === 'closed') {
+                        showSuccessToast(
+                            'Payment cancelled. You can try again anytime.',
+                            'error',
+                        );
+                        return;
+                    }
+
+                    try {
+                        pineVerifiedRef.current =
+                            pineVerifiedRef.current ||
+                            (await _CONSULT_SERVICES.verifyConsultationPayment(
+                                buildIciciVerifyPayload({
+                                    paymentId: hosted.paymentId,
+                                    merchantTxnNo: resolveIciciMerchantTxnNo(
+                                        paymentData,
+                                        hosted.orderId,
+                                    ),
+                                }),
+                            ));
+                    } catch (verifyError) {
+                        console.warn('[PAY] icici hosted verify error', verifyError);
+                    }
+
+                    const verifyResponse = pineVerifiedRef.current;
+                    pineVerifiedRef.current = null;
+
+                    if (verifyResponse?.success) {
+                        await onBookingSuccess(
+                            verifyResponse?.data,
+                            currentSlotId,
+                            'Payment Successful',
+                        );
+                        return;
+                    }
+                    showSuccessToast(
+                        verifyResponse?.message || 'Payment verification failed',
+                        'error',
+                    );
+                    return;
+                }
+
+                let nativeOpenFailed: any = null;
+                if (isPayphiNativeLinked() && appInfo && payRequest) {
+                    try {
+                        const payphiResult = await openPayphiPayment(
+                            appInfo,
+                            payRequest,
+                        );
+                        console.warn('[PAY] icici native', payphiResult);
+
+                        if (
+                            isPayphiUserCancelled(payphiResult) ||
+                            payphiResult.status === 'cancelled'
+                        ) {
+                            console.warn('[PAY] icici cancelled', payphiResult);
+                            if (payphiResult.message) {
+                                showSuccessToast(payphiResult.message, 'error');
+                            }
+                            return;
+                        }
+
+                        if (payphiResult.status === 'failed') {
+                            console.warn('[PAY] icici failed', payphiResult);
+                            showSuccessToast(
+                                payphiResult.message || String(payphiResult.raw ?? ''),
+                                'error',
+                            );
+                            return;
+                        }
+
+                        await finishIciciVerify({
+                            merchantTxnNo: resolveIciciMerchantTxnNo(
+                                paymentData,
+                                payphiResult.gatewayOrderId,
+                            ),
+                            gatewayPaymentId: payphiResult.gatewayPaymentId,
+                            gatewaySignature: payphiResult.gatewaySignature,
+                            pendingMessage:
+                                payphiResult.status === 'pending'
+                                    ? payphiResult.message || undefined
+                                    : undefined,
+                        });
+                        return;
+                    } catch (error: any) {
+                        nativeOpenFailed = error;
+                        console.warn('[PAY] icici native error', {
+                            code: error?.code,
+                            message: error?.message,
+                            error,
+                        });
+                    }
+                }
+
+                console.warn('[PAY] icici stop', {
+                    code: nativeOpenFailed?.code,
+                    message: nativeOpenFailed?.message,
+                    native: isPayphiNativeLinked(),
+                });
+                if (nativeOpenFailed?.message || nativeOpenFailed?.code) {
+                    showSuccessToast(
+                        String(nativeOpenFailed?.message || nativeOpenFailed?.code),
+                        'error',
+                    );
+                }
+                return;
+            }
+
+            // ── Razorpay native SDK ────────────────────────────────
+            // book-slot → openRazorpayPayment → verify-payment
+            if (apiGateway !== 'razorpay') {
+                console.warn('[PAY] stop: unsupported gateway', {
+                    selected: apiGateway,
+                    resolved: orderGateway,
+                });
+                return;
+            }
+
+            const razorpayKey = pickRazorpayKey(paymentData);
+            const razorpayOrderId = getGatewayOrderId(paymentData, 'razorpay');
+            console.warn('[PAY] razorpay fields', {
+                hasKey: Boolean(razorpayKey),
+                orderId: razorpayOrderId,
+                payment_id: paymentData?.payment_id,
+            });
+            if (!razorpayKey || !razorpayOrderId) {
+                showSuccessToast(
+                    !razorpayKey
+                        ? 'Payment key missing from order response'
+                        : 'Razorpay order was not created',
+                    'error',
+                );
+                return;
+            }
+
+            const amountPaise = toRazorpayPaise(
+                paymentData?.amount ??
+                paymentData?.summary?.total_payable_amount,
+                payableRupees,
+            );
 
             let razorpayResult: any;
-            
+
             try {
                 razorpayResult = await openRazorpayPayment({
-                    key: paymentData?.razorpay_key,
+                    key: razorpayKey,
                     amount: amountPaise,
-                    order_id: paymentData?.razorpay_order_id,
+                    order_id: razorpayOrderId,
                     name: doctorInfo?.full_name || doctorName,
-                    email: doctorInfo?.email || 'customer@ayurmuni.com',
+                    email:
+                        activePatient?.email ||
+                        doctorInfo?.email ||
+                        'customer@ayurmuni.com',
                     contact: contactNumber,
                     description: 'Consultation payment',
                     themeColor: Colors.primaryColor,
                 });
-                console.log("razorpayResultrazorpayResultrazorpayResult",razorpayResult);
+                console.log('[PAY] 4. razorpay SDK result =>', {
+                    order_id: razorpayResult?.razorpay_order_id,
+                    payment_id: razorpayResult?.razorpay_payment_id,
+                });
             } catch (error: any) {
                 setIsVerifyingPayment(false);
-                console.log('CONSULT_RAZORPAY_CATCH =>', error);
+                console.log('[PAY] razorpay SDK error =>', error);
 
                 if (isRazorpayUserCancelled(error)) {
                     showSuccessToast(
@@ -498,46 +1462,37 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
             setIsVerifyingPayment(true);
 
+            // verify-payment: payment_id, gateway_order_id, gateway_payment_id, gateway_signature
             const verifyResponse =
                 await _CONSULT_SERVICES.verifyConsultationPayment({
-                    payment_id: paymentData?.payment_id,
-                    razorpay_order_id: paymentData?.razorpay_order_id,
-                    razorpay_payment_id:
-                        razorpayResult?.razorpay_payment_id,
-                    razorpay_signature:
-                        razorpayResult?.razorpay_signature,
+                    payment_id: String(paymentData?.payment_id ?? ''),
+                    gateway_order_id: String(
+                        razorpayResult?.razorpay_order_id ||
+                            getGatewayOrderId(paymentData, 'razorpay') ||
+                            '',
+                    ),
+                    gateway_payment_id: String(
+                        razorpayResult?.razorpay_payment_id ?? '',
+                    ),
+                    gateway_signature: String(
+                        razorpayResult?.razorpay_signature ?? '',
+                    ),
                 });
+            logPayStep('5. razorpay verify', verifyResponse);
 
             setIsVerifyingPayment(false);
 
-            const SlotsDetail = verifyResponse?.data;
             if (verifyResponse?.success) {
-                showSuccessToast('Payment Successful', 'success');
-                try {
-                    const { OneSignal } = require('react-native-onesignal');
-                    OneSignal.User.pushSubscription.optIn();
-                } catch {
-                    // ignore
-                }
-                try {
-                    const {
-                        refreshUnreadBadge,
-                    } = require('../../screens/notifications/notificationRouter');
-                    refreshUnreadBadge();
-                } catch {
-                    // ignore
-                }
-                try {
-                    await Utils.storeData(STORAGE_KEY, null);
-                    await clearPendingConsultPayment(currentSlotId);
-                } catch (e) {
-                    console.log('clear storage on success error', e);
-                }
-                navigation.navigate('BookingConfrimScreen', {
-                    SlotsDetail,
-                });
+                await onBookingSuccess(
+                    verifyResponse?.data,
+                    currentSlotId,
+                    'Payment Successful',
+                );
             } else {
-                showSuccessToast('Payment verification failed', 'error');
+                showSuccessToast(
+                    verifyResponse?.message || 'Payment verification failed',
+                    'error',
+                );
             }
         } catch (error: any) {
             setIsVerifyingPayment(false);
@@ -561,7 +1516,18 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         }
     };
 
-    const payDisabled = loading || feeQuoteLoading || !feeQuote;
+    const payDisabled =
+        loading ||
+        planQuoteLoading ||
+        (usingPlan ? false : feeQuoteLoading || !feeQuote);
+    const priceLoading = usingPlan ? planQuoteLoading : feeQuoteLoading || planQuoteLoading;
+    const planIsFree = usingPlan && planPayable === 0;
+    const selectedPlanRemaining = (() => {
+        const benefit = selectedPlan ? getConsultBenefit(selectedPlan) : null;
+        if (!benefit) return '';
+        if (benefit.quantity_remaining == null) return 'Unlimited consultations';
+        return `${benefit.quantity_remaining} consultation${benefit.quantity_remaining === 1 ? '' : 's'} left`;
+    })();
 
     return (
         <>
@@ -617,6 +1583,15 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                     <Text style={styles.doctorName} numberOfLines={2}>
                                         {doctorName}
                                     </Text>
+                                    <DietitianBadge doctor={doctorInfo} />
+                                    {!!specialization && (
+                                        <Text
+                                            style={styles.qualification}
+                                            numberOfLines={1}
+                                        >
+                                            {specialization}
+                                        </Text>
+                                    )}
                                     {!!qualification && (
                                         <Text
                                             style={styles.qualification}
@@ -625,66 +1600,9 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             {qualification}
                                         </Text>
                                     )}
-                                    <View style={styles.secureChip}>
-                                        <TablerIcon
-                                            name="shield"
-                                            size={11}
-                                            color={Colors.primaryColor}
-                                        />
-                                        <Text style={styles.secureChipText}>
-                                            Secure checkout
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            <View style={styles.slotStrip}>
-                                <View style={styles.slotItem}>
-                                    <View
-                                        style={[
-                                            styles.slotIcon,
-                                            { backgroundColor: '#EAF8F4' },
-                                        ]}
-                                    >
-                                        <TablerIcon
-                                            name="calendar"
-                                            size={14}
-                                            color={Colors.primaryColor}
-                                        />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.slotLabel}>Date</Text>
-                                        <Text
-                                            style={styles.slotValue}
-                                            numberOfLines={1}
-                                        >
-                                            {dateLabel}
-                                        </Text>
-                                    </View>
-                                </View>
-                                <View style={styles.slotDivider} />
-                                <View style={styles.slotItem}>
-                                    <View
-                                        style={[
-                                            styles.slotIcon,
-                                            { backgroundColor: '#E0F2FE' },
-                                        ]}
-                                    >
-                                        <TablerIcon
-                                            name="clock"
-                                            size={14}
-                                            color="#0369A1"
-                                        />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.slotLabel}>Time</Text>
-                                        <Text
-                                            style={styles.slotValue}
-                                            numberOfLines={1}
-                                        >
-                                            {timeLabel}
-                                        </Text>
-                                    </View>
+                                    <Text style={styles.secureChipText} numberOfLines={1}>
+                                        {dateLabel} · {timeLabel}
+                                    </Text>
                                 </View>
                             </View>
                         </LinearGradient>
@@ -772,13 +1690,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                 </View>
                             ) : null}
 
-                            {Array.isArray(medical_records) &&
-                                medical_records.length > 0 ? (
-                                <View style={styles.docsSection}>
-                                    <Text style={styles.docsTitle}>
-                                        Attached documents
-                                    </Text>
-                                    {medical_records.map(
+                            <View style={styles.docsSection}>
+                                <Text style={styles.docsTitle}>
+                                    Attached documents
+                                </Text>
+                                {attachedDocs.length > 0 ? (
+                                    attachedDocs.map(
                                         (doc: any, index: number) => (
                                             <View
                                                 key={String(doc?.id ?? index)}
@@ -804,27 +1721,118 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                                 </Text>
                                             </View>
                                         ),
-                                    )}
-                                </View>
-                            ) : null}
+                                    )
+                                ) : (
+                                    <Text style={styles.concernValue}>
+                                        No documents attached
+                                    </Text>
+                                )}
+                            </View>
                         </View>
 
+                        {/* Active plan */}
+                        {activePlans.length > 0 ? (
+                            selectedPlan ? (
+                                <LinearGradient
+                                    colors={['#0A4A3C', '#0D614E', '#178A6E']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.planCard}
+                                >
+                                    <View style={styles.planIcon}>
+                                        <TablerIcon name="star-filled" size={16} color="#E8C27A" />
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text style={styles.planEyebrow}>Booking with your plan</Text>
+                                        <Text style={styles.planName} numberOfLines={1}>
+                                            {selectedPlan.name}
+                                        </Text>
+                                        {planQuoteLoading ? (
+                                            <Text style={styles.planMeta}>Checking plan benefit…</Text>
+                                        ) : (
+                                            <Text style={styles.planMeta} numberOfLines={1}>
+                                                {[
+                                                    planIsFree ? 'No payment needed' : null,
+                                                    selectedPlanRemaining,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <View style={styles.planActions}>
+                                        <TouchableOpacity
+                                            disabled={loading}
+                                            onPress={() => setPlanSheetVisible(true)}
+                                            style={styles.planChangeBtn}
+                                        >
+                                            <Text style={styles.planChangeText}>Change</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            disabled={loading}
+                                            onPress={clearSelectedPlan}
+                                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                        >
+                                            <Text style={styles.planRemoveText}>Remove</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </LinearGradient>
+                            ) : (
+                                <TouchableOpacity
+                                    activeOpacity={0.85}
+                                    onPress={() => setPlanSheetVisible(true)}
+                                    style={styles.planPrompt}
+                                >
+                                    <View style={styles.planPromptIcon}>
+                                        <TablerIcon name="star-filled" size={15} color="#B7791F" />
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text style={styles.planPromptTitle}>
+                                            You have {activePlans.length} active plan
+                                            {activePlans.length > 1 ? 's' : ''}
+                                        </Text>
+                                        <Text style={styles.planPromptSub}>
+                                            {usablePlans.length > 0
+                                                ? 'Book this consultation without paying'
+                                                : 'Consultations in your plans are used up'}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.planPromptCta}>
+                                        {usablePlans.length > 0 ? 'Use plan' : 'View'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        ) : null}
+
                         {/* Coupons */}
-                        <View style={styles.card}>
-                            <CouponApplyCard
-                                coupons={coupons}
-                                eligibleCoupons={eligibleCoupons}
-                                cartAmount={consultationFee}
-                                loading={couponsLoading}
-                                applied={appliedCoupon}
-                                discount={feeBreakdown.discount || couponDiscount}
-                                payable={totalAmount}
-                                error={couponError}
-                                checkoutScope="consultation"
-                                onApply={applyCode}
-                                onRemove={removeCoupon}
-                            />
-                        </View>
+                        {usingPlan ? null : (
+                            <View style={styles.card}>
+                                <CouponApplyCard
+                                    coupons={coupons}
+                                    eligibleCoupons={eligibleCoupons}
+                                    cartAmount={consultationFee}
+                                    loading={couponsLoading}
+                                    applied={appliedCoupon}
+                                    discount={feeBreakdown.discount || couponDiscount}
+                                    payable={totalAmount}
+                                    error={couponError}
+                                    checkoutScope="consultation"
+                                    onApply={applyCode}
+                                    onRemove={removeCoupon}
+                                />
+                            </View>
+                        )}
+
+                        {!planIsFree && enabledGateways.length > 1 ? (
+                            <View style={styles.card}>
+                                <PaymentGatewaySelector
+                                    gateways={enabledGateways}
+                                    selected={gateway}
+                                    onSelect={setGateway}
+                                    disabled={loading}
+                                />
+                            </View>
+                        ) : null}
 
                         {/* Amount summary */}
                         <View style={styles.card}>
@@ -846,12 +1854,69 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                 </Text>
                             </View>
 
-                            {feeQuoteLoading ? (
+                            {priceLoading ? (
                                 <ActivityIndicator
                                     size="small"
                                     color={Colors.primaryColor}
                                     style={{ marginVertical: 14 }}
                                 />
+                            ) : usingPlan ? (
+                                <>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>
+                                            Consultation total
+                                        </Text>
+                                        <RupeeAmount
+                                            value={feeBreakdown.total}
+                                            style={styles.summaryValue}
+                                            decimals={2}
+                                        />
+                                    </View>
+                                    {planCoveredAmount > 0 ? (
+                                        <View style={styles.summaryRow}>
+                                            <Text style={styles.summaryDiscountLabel} numberOfLines={1}>
+                                                Covered by plan
+                                            </Text>
+                                            <View style={styles.discountRow}>
+                                                <Text style={styles.summaryDiscountValue}>−{' '}</Text>
+                                                <RupeeAmount
+                                                    value={planCoveredAmount}
+                                                    style={styles.summaryDiscountValue}
+                                                    decimals={2}
+                                                />
+                                            </View>
+                                        </View>
+                                    ) : null}
+                                    <LinearGradient
+                                        colors={['#ECFDF5', '#D1FAE5']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.totalStrip}
+                                    >
+                                        <View>
+                                            <Text style={styles.totalLabel}>
+                                                Total payable
+                                            </Text>
+                                            <View style={styles.secureRow}>
+                                                <TablerIcon
+                                                    name="star-filled"
+                                                    size={12}
+                                                    color={Colors.primaryColor}
+                                                />
+                                                <Text style={styles.secureText}>
+                                                    Paid via {selectedPlan?.name || 'plan'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <RupeeAmount
+                                            value={totalAmount}
+                                            style={styles.totalAmount}
+                                            decimals={2}
+                                            iconSize={16}
+                                            iconColor={Colors.primaryColor}
+                                        />
+                                    </LinearGradient>
+                                </>
                             ) : (
                                 <>
                                     <View style={styles.summaryRow}>
@@ -925,16 +1990,16 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                     </View>
 
                                     {feeBreakdown.gst > 0 ? (
-                                      <View style={styles.summaryRow}>
-                                          <Text style={styles.summaryLabel}>
-                                              {feeBreakdown.gstLabel}
-                                          </Text>
-                                          <RupeeAmount
-                                              value={feeBreakdown.gst}
-                                              style={styles.summaryValue}
-                                              decimals={2}
-                                          />
-                                      </View>
+                                        <View style={styles.summaryRow}>
+                                            <Text style={styles.summaryLabel}>
+                                                {feeBreakdown.gstLabel}
+                                            </Text>
+                                            <RupeeAmount
+                                                value={feeBreakdown.gst}
+                                                style={styles.summaryValue}
+                                                decimals={2}
+                                            />
+                                        </View>
                                     ) : null}
 
                                     <LinearGradient
@@ -982,7 +2047,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     >
                         <View style={styles.stickyRow}>
                             <View style={styles.stickyPriceBox}>
-                                {feeQuoteLoading ? (
+                                {priceLoading ? (
                                     <ActivityIndicator
                                         size="small"
                                         color={Colors.primaryColor}
@@ -1025,29 +2090,41 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                     ) : (
                                         <>
                                             <TablerIcon
-                                                name="credit-card"
+                                                name={planIsFree ? 'circle-check' : 'credit-card'}
                                                 size={16}
                                                 color="#FFFFFF"
                                             />
                                             <Text style={styles.primaryBtnText}>
-                                                Pay now
+                                                {planIsFree ? 'Confirm booking' : 'Pay now'}
                                             </Text>
                                         </>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
-                        {/* <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.cancelLink}
-                            onPress={() => navigation.goBack()}
-                            disabled={loading}
-                        >
-                            <Text style={styles.cancelLinkText}>Cancel</Text>
-                        </TouchableOpacity> */}
                     </View>
                 </SafeAreaView>
             )}
+
+            <PineLabsCheckoutModal
+                visible={!!pineCheckout}
+                url={pineCheckout?.redirectUrl ?? ''}
+                returnUrl={pineCheckout?.returnUrl}
+                onFinish={onPineLabsFinish}
+                checkOnResume={checkPineLabsOnResume}
+            />
+            <ActivePlanPickerSheet
+                visible={planSheetVisible && !isVerifyingPayment}
+                plans={activePlans}
+                eligibility={planEligibility}
+                selectedId={selectedPlan?.id}
+                onSelect={handleSelectPlan}
+                onPayNormally={() => {
+                    setPlanSheetVisible(false);
+                    clearSelectedPlan();
+                }}
+                onClose={() => setPlanSheetVisible(false)}
+            />
 
             <Modal
                 visible={patientPickerVisible}
@@ -1188,510 +2265,3 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 };
 
 export default RazorpayScreen;
-
-const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#F4F7F6',
-    },
-    scrollContent: {
-        paddingBottom: 8,
-    },
-
-    heroCard: {
-        paddingHorizontal: 14,
-        paddingTop: 12,
-        paddingBottom: 12,
-    },
-    heroRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    avatarWrap: {
-        width: 64,
-        height: 64,
-        borderRadius: 14,
-        overflow: 'hidden',
-        backgroundColor: '#F0F7F4',
-        borderWidth: 2,
-        borderColor: '#A7E0CF',
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    avatarFallback: {
-        flex: 1,
-        backgroundColor: '#DFE5E7',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarLetter: {
-        fontSize: 24,
-        color: '#FFFFFF',
-        fontFamily: Fonts.PoppinsBold,
-    },
-    heroInfo: {
-        flex: 1,
-        minWidth: 0,
-    },
-    doctorName: {
-        fontSize: 16,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        lineHeight: 21,
-    },
-    qualification: {
-        marginTop: 1,
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#64748B',
-    },
-    secureChip: {
-        marginTop: 6,
-        alignSelf: 'flex-start',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#ECF8F3',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-    },
-    secureChipText: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: Colors.primaryColor,
-        includeFontPadding: false,
-    },
-
-    slotStrip: {
-        marginTop: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#D7EBE3',
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-    },
-    slotItem: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    slotIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    slotDivider: {
-        width: StyleSheet.hairlineWidth,
-        height: 28,
-        backgroundColor: '#E2E8F0',
-        marginHorizontal: 8,
-    },
-    slotLabel: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
-        includeFontPadding: false,
-    },
-    slotValue: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        includeFontPadding: false,
-    },
-
-    card: {
-        marginTop: 8,
-        marginHorizontal: 10,
-        paddingHorizontal: 12,
-        paddingTop: 12,
-        paddingBottom: 12,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: '#E8EEF2',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 10,
-    },
-    sectionIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    sectionTitle: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-        includeFontPadding: false,
-    },
-
-    patientRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    patientAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#EEF2FF',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    patientInitial: {
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#4F46E5',
-    },
-    patientName: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-    },
-    patientMeta: {
-        marginTop: 1,
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#64748B',
-    },
-    changePatientBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 2,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: Colors.bgborderColor,
-        backgroundColor: Colors.onfillColor,
-        minWidth: 72,
-        justifyContent: 'center',
-    },
-    changePatientText: {
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: Colors.primaryColor,
-        includeFontPadding: false,
-    },
-
-    pickerOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.4)',
-        justifyContent: 'flex-end',
-    },
-    pickerSheet: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 18,
-        borderTopRightRadius: 18,
-        paddingHorizontal: 14,
-        paddingTop: 12,
-        paddingBottom: 20,
-        maxHeight: '62%',
-        zIndex: 1,
-    },
-    pickerHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-        paddingHorizontal: 2,
-    },
-    pickerTitle: {
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-    },
-    pickerList: {
-        maxHeight: 360,
-    },
-    pickerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E8EEF2',
-        marginBottom: 8,
-        backgroundColor: '#FFFFFF',
-    },
-    pickerRowSelected: {
-        borderColor: Colors.bgborderColor,
-        backgroundColor: Colors.onfillColor,
-    },
-    pickerAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#F1F5F9',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    pickerAvatarSelected: {
-        backgroundColor: Colors.primaryColor,
-    },
-    pickerInitial: {
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#475569',
-    },
-    pickerInitialSelected: {
-        color: '#FFFFFF',
-    },
-    pickerName: {
-        fontSize: 13,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#0F172A',
-    },
-    pickerMeta: {
-        marginTop: 1,
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#64748B',
-    },
-
-    concernBox: {
-        marginTop: 10,
-        padding: 10,
-        borderRadius: 10,
-        backgroundColor: '#F8FAFC',
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: '#E2E8F0',
-    },
-    concernLabel: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#94A3B8',
-        textTransform: 'uppercase',
-        letterSpacing: 0.3,
-        marginBottom: 3,
-    },
-    concernValue: {
-        fontSize: 12,
-        lineHeight: 18,
-        fontFamily: Fonts.PoppinsRegular,
-        color: '#334155',
-    },
-
-    docsSection: {
-        marginTop: 10,
-    },
-    docsTitle: {
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#64748B',
-        marginBottom: 6,
-    },
-    docRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        marginBottom: 6,
-        borderRadius: 10,
-        backgroundColor: '#F8FAFC',
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: '#E2E8F0',
-    },
-    docName: {
-        flex: 1,
-        fontSize: 12,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    docType: {
-        fontSize: 10,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-
-    summaryRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-        gap: 8,
-    },
-    summaryLabel: {
-        flex: 1,
-        fontSize: 12,
-        color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    summaryValue: {
-        fontSize: 13,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    summaryDiscountLabel: {
-        flex: 1,
-        fontSize: 12,
-        color: '#15803D',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    summaryDiscountValue: {
-        fontSize: 13,
-        color: '#15803D',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    discountRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    totalStrip: {
-        marginTop: 6,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
-    },
-    totalLabel: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#14532D',
-    },
-    secureRow: {
-        marginTop: 3,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    secureText: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#3F6212',
-    },
-    totalAmount: {
-        fontSize: 20,
-        fontFamily: Fonts.PoppinsBold,
-        color: Colors.primaryColor,
-        includeFontPadding: false,
-    },
-
-    stickyBar: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: '#FFFFFF',
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: '#E8F2EE',
-        paddingTop: 8,
-        paddingHorizontal: 12,
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    stickyRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    stickyPriceBox: {
-        minWidth: 96,
-    },
-    stickyPrice: {
-        fontSize: 18,
-        fontFamily: Fonts.PoppinsBold,
-        color: Colors.primaryColor,
-        includeFontPadding: false,
-    },
-    stickyHint: {
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
-        includeFontPadding: false,
-    },
-    primaryBtnWrap: {
-        flex: 1,
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    primaryBtn: {
-        minHeight: 50,
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingHorizontal: 14,
-    },
-    primaryBtnText: {
-        fontSize: 15,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#FFFFFF',
-    },
-    cancelLink: {
-        marginTop: 6,
-        alignItems: 'center',
-        paddingVertical: 4,
-    },
-    cancelLinkText: {
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#EF4444',
-    },
-
-    verificationScreen: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    verificationContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 28,
-    },
-    verificationTitle: {
-        marginTop: 20,
-        fontSize: 20,
-        color: '#0F172A',
-        fontFamily: Fonts.PoppinsSemiBold,
-    },
-    verificationSubtitle: {
-        marginTop: 8,
-        fontSize: 13,
-        color: '#64748B',
-        textAlign: 'center',
-        lineHeight: 20,
-        fontFamily: Fonts.PoppinsRegular,
-    },
-    verificationInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 22,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: '#F5F8F6',
-        gap: 8,
-    },
-    verificationInfoText: {
-        color: '#475569',
-        fontSize: 12,
-        fontFamily: Fonts.PoppinsMedium,
-    },
-});

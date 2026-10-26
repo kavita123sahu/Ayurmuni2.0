@@ -7,11 +7,12 @@ export const BaseUrl = {
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/ 
     // https://6057-203-110-81-106.ngrok-free.app/
-    // 'https://ayurmuni.aimantra.info/'
+    // 'https://ayurmuni.aimantra.info/' 
     //"https://ayurmuni-backend.onrender.com/"
     //"https://ayurmunistaging.aimantra.info"
-    // https://scarce-derby-voice.ngrok-free.dev    
+    // https://scarce-derby-voice.ngrok-free.dev     
     //https://ayurmuniproduction.aimantra.info
+    //https://ranged-reimburse-pentagram.ngrok-free.dev
 };
 
 export const Method = {
@@ -21,6 +22,7 @@ export const Method = {
     PATCH: 'PATCH',
     PUT: 'PUT'
 }
+
 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';       //Google Map
 
@@ -59,4 +61,3 @@ export const showSuccessToast = (
         },
     });
 };
-

@@ -48,6 +48,7 @@ import { SCREEN_THEME } from '../../constants/screenTheme';
 import CommonModal from '../../components/LogoutModal';
 import { usePatientData } from '../../hooks/usePatientData';
 import DoctorAvatar from '../../components/DoctorAvatar';
+import DietitianBadge from '../../components/DietitianBadge';
 import LinearGradient from 'react-native-linear-gradient';
 import PaymentHistoryTimeline from '../../components/PaymentHistoryTimeline';
 import { getPaymentHistory } from '../../utils/paymentHistoryUtils';
@@ -128,6 +129,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
               </View>
             ) : null}
           </View>
+          <DietitianBadge doctor={data} />
           {!!data?.doctor?.doctor_specialization && (
             <Text numberOfLines={1} style={styles.specialtyText}>
               {Array.isArray(data?.doctor?.doctor_specialization)
@@ -439,12 +441,10 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     confirmed: { bg: Theme.emeraldSoft, text: Theme.emerald },
     pending: { bg: '#F1EEE7', text: Theme.subInk },
   };
-  // const statusStyle = statusStyleMap[appointmentStatus || ''] || statusStyleMap.pending;
 
   const statusStyle = useMemo(
     () => getStatusStyle(appointmentStatus),
     [appointmentStatus]
-
 
   );
 
@@ -576,7 +576,6 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     setShowCancelModal(false);
     showSuccessToast(res?.message || 'Something went wrong', 'error');
   };
-
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -789,7 +788,6 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               </>
             ) : null}
 
-
             {/* {(consultationHasPrescription(detail) ||
               hasPrescribedData({
                 prescription:
@@ -820,14 +818,12 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               </View>
             ) : null}
 
-
             {appointmentStatus === 'completed' ? (
               <>
                 <View style={styles.sectionHeaderRow}>
                   <Ionicons name="star-outline" size={15} color={Theme.gold} />
                   <Text style={styles.sectionTitle}>Your Review</Text>
                 </View>
-
 
                 <View style={styles.card}>
                   {detail?.appointment?.review?.is_rated ? (
@@ -852,9 +848,6 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                         {detail?.appointment?.review?.review}
                       </Text>
 
-                      {/* <Text style={styles.reviewSubmittedHint}>
-                        Review submitted — editing is not allowed
-                      </Text> */}
                     </View>
                   ) : (
                     <Pressable
@@ -965,7 +958,6 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           }}
         />
 
-
         <FeedbackModal
           visible={showModal && !alreadyReviewed}
           loading={false}
@@ -977,7 +969,6 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           }}
           onContinue={handleRatingContinue}
         />
-
 
         <CancelAppointmentModal
           visible={showCancelModal}

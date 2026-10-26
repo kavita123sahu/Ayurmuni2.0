@@ -23,6 +23,7 @@ import { formatDate } from '../../common/DataInterface';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import { formatDisplayIdHash, formatReceiptId } from '../../utils/formatDisplayId';
 import { parseConsultationReceiptBreakdown } from '../../utils/consultationReceiptUtils';
+import { formatDoctorSpecialization } from '../../utils/doctorUtils';
 const { width } = Dimensions.get('window');
 
 interface ReceiptData {
@@ -60,9 +61,14 @@ interface ReceiptData {
 
 const MedicalReceipt = (props: any) => {
 
-    const consultationId =
-        props?.route?.params
-            ?.consultationId;
+    const consultationId = String(
+        props?.route?.params?.consultationId ??
+            props?.route?.params?.consultation_id ??
+            props?.route?.params?.appointment_id ??
+            props?.route?.params?.appointmentId ??
+            props?.route?.params?.id ??
+            '',
+    ).trim();
     const [loading, setLoading] =
         useState(true);
 
@@ -70,7 +76,6 @@ const MedicalReceipt = (props: any) => {
         useState<ReceiptData | null>(
             null,
         );
-
 
     const fetchReceipt =
         async () => {
@@ -120,17 +125,20 @@ const MedicalReceipt = (props: any) => {
         }
     };
 
-
     useEffect(() => {
         if (consultationId) {
             fetchReceipt();
+        } else {
+            setLoading(false);
+            setReceipt(null);
         }
     }, [consultationId]);
 
     const specialization =
-        Array.isArray(receipt?.info?.doctor_specialization)
+        formatDoctorSpecialization(receipt?.info) ||
+        (Array.isArray(receipt?.info?.doctor_specialization)
             ? receipt.info.doctor_specialization.join(', ')
-            : receipt?.info?.doctor_specialization || '';
+            : receipt?.info?.doctor_specialization || '');
 
     const breakdown = parseConsultationReceiptBreakdown(receipt);
     const receiptNoSource =
@@ -155,25 +163,41 @@ const MedicalReceipt = (props: any) => {
 
             />
 
-            {loading ?
-
-                (<SafeAreaView
+            {loading ? (
+                <View
                     style={{
                         flex: 1,
-                        justifyContent:
-                            'center',
-                        alignItems:
-                            'center',
-                    }}>
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}
+                >
                     <ActivityIndicator
                         size="large"
-                        color={
-                            Colors.primaryColor
-                        }
+                        color={Colors.primaryColor}
                     />
-                </SafeAreaView>)
-                :
-                (
+                </View>
+            ) : !consultationId || !receipt ? (
+                <View
+                    style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 24,
+                    }}
+                >
+                    <Text
+                        style={{
+                            textAlign: 'center',
+                            color: '#64748B',
+                            fontFamily: Fonts.PoppinsMedium,
+                        }}
+                    >
+                        {!consultationId
+                            ? 'Receipt is unavailable — appointment id is missing.'
+                            : 'Unable to load this medical receipt.'}
+                    </Text>
+                </View>
+            ) : (
                     <>
                         <ScrollView contentContainerStyle={styles.scroll}
                             showsVerticalScrollIndicator={false} >
@@ -396,7 +420,6 @@ const MedicalReceipt = (props: any) => {
 
 export default MedicalReceipt;
 
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -610,10 +633,6 @@ const styles = StyleSheet.create({
     },
 
     downloadBtn: {
-        // position: 'absolute',
-        // // bottom: 0,
-        // left: 16,
-        // right: 16,
         flexDirection: 'row',
         justifyContent: 'center',
         gap: 5,

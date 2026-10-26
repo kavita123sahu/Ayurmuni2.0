@@ -4,6 +4,7 @@ import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon from '../components/TablerIcon';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 
 type DoctorCardProps = {
   data: {
@@ -15,6 +16,7 @@ type DoctorCardProps = {
     profile_image?: any;
     doctor_image?: string;
     available?: boolean;
+    is_dietitian?: boolean;
   };
 
   showConsultBtn?: boolean;
@@ -71,6 +73,7 @@ export default function DoctorCard({
           <Text style={styles.name} numberOfLines={1}>
             {data.name}
           </Text>
+          <DietitianBadge doctor={data} />
           <Text style={styles.speciality} numberOfLines={1}>
             {data.speciality}
           </Text>

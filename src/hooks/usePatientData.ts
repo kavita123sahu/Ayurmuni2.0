@@ -26,7 +26,6 @@ const requestCameraPermission = async (): Promise<boolean> => {
     }
 };
 
-
 export const usePatientData = () => {
 
     const [loading, setLoading] =
@@ -153,9 +152,6 @@ export const usePatientData = () => {
     };
 };
 
-
-
-
 export const usePatientForm = (
     patientId?: string,
 ) => {
@@ -212,8 +208,6 @@ export const usePatientForm = (
     };
 };
 
-
-
 export const uploadImage = async (
     image: any,
     dir = 'customer_avatar',
@@ -245,9 +239,6 @@ export const uploadImage = async (
     return response;
 };
 
-
-
-
 export const useMedicalRecord = () => {
 
     const [loading, setLoading] =
@@ -277,7 +268,6 @@ export const useMedicalRecord = () => {
 
                 setPatientRecord(data);
 
-
             } catch (error) {
 
                 console.log(
@@ -293,7 +283,6 @@ export const useMedicalRecord = () => {
             }
 
         }, []);
-
 
     const fetchPatientData =
         useCallback(async () => {
@@ -311,7 +300,6 @@ export const useMedicalRecord = () => {
                 console.log("activepatienttt", activePatient);
 
                 setPatientList(activePatient || null);
-
 
             } catch (error) {
 
@@ -345,8 +333,6 @@ export const useMedicalRecord = () => {
 
         }, [fetchPatientsRecord]);
 
-
-
     return {
         loading,
         refreshing,
@@ -356,7 +342,6 @@ export const useMedicalRecord = () => {
         onRefresh,
     };
 };
-
 
 export const useMedicalUpload = (
     fetchPatientsRecord?: () => void,

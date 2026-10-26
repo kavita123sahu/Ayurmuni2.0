@@ -72,8 +72,6 @@ const LocationPickerScreen = () => {
   const [searching, setSearching] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  // const [searching, setSearching] = useState(false);
-  // const [locationError, setLocationError] = useState('');
   const [pincodeInput, setPincodeInput] = useState('');
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const lastPincodeLookupRef = useRef('');
@@ -273,17 +271,6 @@ const LocationPickerScreen = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
-        {/* <View style={styles.searchWrap}>
-          <TablerIcon name="search" size={18} color="#64748B" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search area, street, landmark..."
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searching && <ActivityIndicator size="small" color={Colors.primaryColor} />}
-        </View> */}
 
         <View style={styles.pincodeWrap}>
           <TablerIcon name="map-pin" size={18} color="#64748B" />
@@ -343,8 +330,6 @@ const LocationPickerScreen = () => {
         </TouchableOpacity>
 
         <Text style={styles.hint}>Move the map — pin stays at center</Text>
-
-        {/* {!!locationError && <Text style={styles.errorText}>{locationError}</Text>} */}
 
         <View style={styles.addressCard}>
           {geocoding ? (

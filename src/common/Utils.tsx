@@ -27,15 +27,11 @@ export const Utils = {
         try {
             const jsonValue = JSON.stringify(value);
              
-
             await AsyncStorage.setItem(key, jsonValue)
         } catch (e) {
             // saving error
         }
     },
-
-
-
 
     async getData(key: any) {
         try {
@@ -45,7 +41,6 @@ export const Utils = {
             // error reading value
         }
     },
-
 
     async storeStringData(key: any, value: any) {
         try {
@@ -63,7 +58,6 @@ export const Utils = {
             // error reading value
         }
     },
-
 
     async clearAllData() {
         try {
@@ -90,7 +84,6 @@ export const Utils = {
         return (val !== null && val !== undefined && val !== "NULL" && val !== "null" && val !== "undefined" && val !== "UNDEFINED" && (val + "").trim() !== "")
     }
 }
-
 
 export const AddressEvents = new SimpleEventEmitter();
 

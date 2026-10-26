@@ -21,7 +21,6 @@ const TopCategories = (props: any) => {
     stackNav.navigate('SearchScreen');
   }, [stackNav]);
 
-
    const topSelling = [
     {
       id: '1',
@@ -235,7 +234,6 @@ const TopCategories = (props: any) => {
     <SafeAreaView style={{ flex: 1,  marginBottom: 30,
             paddingHorizontal: 20, backgroundColor: '#FDFDFB' }}>
 
-
   <StatusBar barStyle={'dark-content'} backgroundColor={Colors.background}  />
 
       <Header
@@ -249,16 +247,12 @@ const TopCategories = (props: any) => {
       <View style={styles.flexContain}>
       <TopSellingList data={topSelling} header ={true} isGrid={true} setProductData={()=>""} navigation={props.navigation}  />
       
-  
-
-
       </View>
     </SafeAreaView>
   );
 };
 
 export default TopCategories;
-
 
 const styles = StyleSheet.create({
   flexContain:{

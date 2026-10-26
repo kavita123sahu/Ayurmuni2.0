@@ -1,6 +1,5 @@
 import { Actions } from "../types/Types"
 
-
 export const add_to_art = (payload: any) => {
     return {
         type: Actions.ADD_TO_CART,

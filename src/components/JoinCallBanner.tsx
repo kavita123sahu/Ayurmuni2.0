@@ -1,22 +1,15 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native';
 import { Fonts } from '../common/Fonts';
+import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 import DoctorAvatar from './DoctorAvatar';
 import {
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
-  formatAppointmentDayLabel,
   formatAppointmentTimeLabel,
   formatDoctorDisplayName,
-  getMinutesUntilAppointment,
+  getAppointmentSlotMs,
   JoinableAppointment,
 } from '../utils/appointmentUtils';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
@@ -26,65 +19,64 @@ type Props = {
   navigation: any;
 };
 
+const PRE_WINDOW_MS = 5 * 60 * 1000;
+const FALLBACK_SLOT_MS = 15 * 60 * 1000;
+const TICK_MS = 15_000;
+
+/** Home "go live" card — same layout language as the active diet card. */
 const JoinCallBanner = ({ joinable, navigation }: Props) => {
-  const { item, minutesLeft: initialMinutes, isLive } = joinable;
-  const [minutesLeft, setMinutesLeft] = useState(initialMinutes);
+  const { item, isLive: initialLive } = joinable;
+  const [now, setNow] = useState(Date.now());
+  const pulse = useRef(new Animated.Value(0)).current;
 
   const doctorName = formatDoctorDisplayName(item.doctorName);
-  const specialty = item.specialty || item.therapies || '';
-  const dayLabel = formatAppointmentDayLabel(item.date);
   const timeLabel = formatAppointmentTimeLabel(item.time);
-  const endTimeLabel =
-    item.endTimeLabel ||
-    formatAppointmentTimeLabel(item.endTime) ||
-    null;
+  const endTimeLabel = item.endTimeLabel || formatAppointmentTimeLabel(item.endTime || '');
+  const scheduleLabel =
+    timeLabel && endTimeLabel ? `${timeLabel} – ${endTimeLabel}` : timeLabel;
 
-  const scheduleTimeLabel = useMemo(() => {
-    if (timeLabel && endTimeLabel) {
-      return `${timeLabel} – ${endTimeLabel}`;
+  const { startMs, endMs: rawEndMs } = getAppointmentSlotMs(
+    item.date,
+    item.time,
+    item.endTime || undefined,
+  );
+  const endMs = rawEndMs ?? (startMs != null ? startMs + FALLBACK_SLOT_MS : null);
+  const msUntilStart = startMs != null ? startMs - now : 0;
+  const isLive = initialLive || msUntilStart <= 0;
+  const minutesToStart = Math.max(0, Math.ceil(msUntilStart / 60000));
+  const minutesToEnd =
+    endMs != null ? Math.max(0, Math.ceil((endMs - now) / 60000)) : null;
+
+  const progress = useMemo(() => {
+    if (startMs == null) return isLive ? 100 : 0;
+    if (!isLive) {
+      return Math.min(100, Math.max(4, ((PRE_WINDOW_MS - msUntilStart) / PRE_WINDOW_MS) * 100));
     }
-    return timeLabel || endTimeLabel || '';
-  }, [timeLabel, endTimeLabel]);
-
-  const imageUri = item.image?.trim?.() ? item.image : null;
+    if (endMs == null) return 100;
+    const total = endMs - startMs;
+    return Math.min(100, Math.max(4, ((now - startMs) / total) * 100));
+  }, [startMs, endMs, now, isLive, msUntilStart]);
 
   useEffect(() => {
-    setMinutesLeft(initialMinutes);
-  }, [initialMinutes]);
-
-  useEffect(() => {
-    if (isLive) {
-      return;
-    }
-
-    const refreshMinutes = () => {
-      const next = getMinutesUntilAppointment(item.date, item.time);
-      if (next != null) {
-        setMinutesLeft(next);
-      }
-    };
-
-    refreshMinutes();
-    const timer = setInterval(refreshMinutes, 30000);
+    const timer = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(timer);
-  }, [isLive, item.date, item.time]);
+  }, []);
 
-  const countdownLabel = useMemo(() => {
-    if (isLive) {
-      return 'Live now';
-    }
-    if (minutesLeft <= 0) {
-      return 'Starting now';
-    }
-    return `${String(minutesLeft).padStart(2, '0')} min left`;
-  }, [isLive, minutesLeft]);
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 1300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
 
   const handleJoin = useCallback(() => {
-    const callStatus = String(item.call_status || '').toLowerCase();
-    const isCallLive = isLive || callStatus === 'in_progress';
-
-    // Video join only when call is actually in progress
-    if (isCallLive) {
+    if (isLive) {
       navigateToStackScreen(
         navigation,
         'PatientVideoCallScreen',
@@ -96,7 +88,6 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
       );
       return;
     }
-
     navigateToStackScreen(
       navigation,
       'AppointmentDetails',
@@ -104,191 +95,209 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
     );
   }, [navigation, item, doctorName, isLive]);
 
+  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] });
+
+  const rightLabel = isLive
+    ? minutesToEnd != null
+      ? `${minutesToEnd} min left`
+      : 'Live now'
+    : `Starts in ${String(minutesToStart).padStart(2, '0')} min`;
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.92}
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={handleJoin}
-      style={styles.wrap}
     >
-      <LinearGradient
-        colors={['#0B5A47', '#12856A', '#1A9B7D']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.card}
-      >
-        <View style={styles.avatarRing}>
-          <DoctorAvatar
-            uri={imageUri}
-            name={doctorName}
-            size={48}
-            shape="circle"
-            emptyMode="icon"
-          />
-          {isLive ? (
-            <View style={styles.liveDot}>
-              <View style={styles.liveDotInner} />
+      <View style={styles.content}>
+        <View style={styles.headerRow}>
+          <View style={styles.eyebrowRow}>
+            <View style={styles.dotWrap}>
+              <Animated.View
+                style={[
+                  styles.dotPulse,
+                  { transform: [{ scale: pulseScale }], opacity: pulseOpacity },
+                ]}
+              />
+              <View style={styles.dot} />
             </View>
+            <Text style={styles.eyebrow}>
+              {isLive ? 'Live consultation' : 'Consultation starting'}
+            </Text>
+          </View>
+          <Text style={styles.rightLabel}>{rightLabel}</Text>
+        </View>
+
+        <Text style={styles.title} numberOfLines={1}>
+          {doctorName}
+        </Text>
+
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${progress}%` }]} />
+        </View>
+
+        <View style={styles.footerRow}>
+          <View style={styles.ctaPill}>
+            <TablerIcon name="video" size={13} color={Colors.primaryColor} />
+            <Text style={styles.ctaText}>{isLive ? 'Join now' : 'View details'}</Text>
+          </View>
+          {scheduleLabel ? (
+            <Text style={styles.timeText} numberOfLines={1}>
+              {scheduleLabel}
+            </Text>
           ) : null}
         </View>
+      </View>
 
-        <View style={styles.meta}>
-          <Text style={styles.doctorName} numberOfLines={1}>
-            {doctorName}
-          </Text>
-
-          {/* {specialty ? (
-            <Text style={styles.speciality} numberOfLines={1}>
-              {specialty}
-            </Text>
-          ) : null} */}
-
-          <View style={styles.timingRow}>
-            {dayLabel ? (
-              <View style={styles.timingItem}>
-                <TablerIcon name="calendar" size={12} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.timingText}>{dayLabel}</Text>
-              </View>
-            ) : null}
-
-            {scheduleTimeLabel ? (
-              <View style={styles.timingItem}>
-                <TablerIcon name="clock" size={12} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.timingText}>{scheduleTimeLabel}</Text>
-              </View>
-            ) : null}
+      <View style={styles.imageWrap}>
+        <DoctorAvatar
+          uri={item.image?.trim?.() ? item.image : null}
+          name={doctorName}
+          size={68}
+          shape="circle"
+          emptyMode="icon"
+        />
+        {isLive ? (
+          <View style={styles.liveBadge}>
+            <Text style={styles.liveBadgeText}>LIVE</Text>
           </View>
-
-          <View style={styles.countdownPill}>
-            <TablerIcon name="video" size={12} color="#FFFFFF" />
-            <Text style={styles.countdownText}>{countdownLabel}</Text>
-          </View>
-        </View>
-
-        <View style={styles.joinBtn}>
-          <Text style={styles.joinText}>Join Now</Text>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
+        ) : null}
+      </View>
+    </Pressable>
   );
 };
 
 export default memo(JoinCallBanner);
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginBottom: 12,
-    borderRadius: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0D614E',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-      },
-      android: { elevation: 5 },
-    }),
-  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: Colors.primaryColor,
     borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    gap: 10,
+    padding: 12,
+    overflow: 'hidden',
+    minHeight: 108,
+    marginBottom: 12,
   },
-  avatarRing: {
-    padding: 2,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    position: 'relative',
+  pressed: {
+    opacity: 0.96,
   },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 12,
-    backgroundColor: '#E8F5F1',
+  content: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 10,
   },
-  liveDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  dotWrap: {
+    width: 8,
+    height: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  liveDotInner: {
+  dotPulse: {
+    position: 'absolute',
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#22C55E',
+    backgroundColor: '#4ADE80',
   },
-  meta: {
-    flex: 1,
-    minWidth: 0,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ADE80',
   },
-  doctorName: {
+  eyebrow: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.78)',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  rightLabel: {
+    fontSize: 11,
+    color: '#F6D365',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+  title: {
+    marginTop: 3,
     fontSize: 15,
     color: '#FFFFFF',
     fontFamily: Fonts.PoppinsSemiBold,
-    lineHeight: 20,
   },
-  speciality: {
-    marginTop: 1,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.82)',
-    fontFamily: Fonts.PoppinsMedium,
-    lineHeight: 14,
+  track: {
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginTop: 8,
+    overflow: 'hidden',
   },
-  timingRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 6,
+  fill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#F6D365',
   },
-  timingItem: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+    marginTop: 9,
   },
-  timingText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.92)',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  countdownPill: {
-    alignSelf: 'flex-start',
+  ctaPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#F6D365',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 11,
+    paddingVertical: 5,
   },
-  countdownText: {
-    fontSize: 11,
-    color: '#FFFFFF',
+  ctaText: {
+    fontSize: 12,
+    color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
   },
-  joinBtn: {
-    backgroundColor: '#F5A623',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minWidth: 82,
+  timeText: {
+    flex: 1,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.88)',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+  imageWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
-  joinText: {
+  liveBadge: {
+    position: 'absolute',
+    bottom: -6,
+    backgroundColor: '#EF4444',
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryColor,
+  },
+  liveBadgeText: {
+    fontSize: 9,
     color: '#FFFFFF',
-    fontSize: 11,
     fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.5,
   },
 });

@@ -33,7 +33,6 @@ const MentorProfile = (props: any) => {
 
     const [activeId, setActiveId] = useState(sessions[0]?.id);
 
-
     const ProfileSection = () => (
         <View style={styles.content}>
             <Text style={styles.name}>Elena Vance</Text>
@@ -155,7 +154,6 @@ const MentorProfile = (props: any) => {
         </View>
     )
 
-
     return (
         <SafeAreaView style={styles.card}>
 
@@ -203,8 +201,6 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: 24,
         backgroundColor: "#FDFDFB",
-        // overflow: "hidden",
-        // paddingBottom: 90,
         flex: 1,
         paddingHorizontal: 20,
     },

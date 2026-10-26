@@ -6,7 +6,12 @@ import {
   normalizeApiList,
   PRODUCT_PAGE_SIZE,
   ProductQuery,
+  type ProductApiSort,
 } from '../services/ProductServices';
+import {
+  applyWishlistCache,
+  seedWishlistCacheFromList,
+} from './useWishlistSync';
 
 export type CategoryProductFilter = {
   id?: string | null;
@@ -16,6 +21,11 @@ export type CategoryProductFilter = {
   brand_name_id?: string | null;
   service_category_id?: string | null;
   search?: string;
+  min_price?: number | null;
+  max_price?: number | null;
+  min_rating?: number | string | null;
+  dosha_type?: string | null;
+  sort?: ProductApiSort | null;
 };
 
 const toProductQuery = (
@@ -28,9 +38,19 @@ const toProductQuery = (
     page,
   };
 
-  // When searching, only send search so results come from the full catalog
+  // User-chosen filters apply to both browse and search results.
+  if (filter.min_price != null) query.min_price = filter.min_price;
+  if (filter.max_price != null) query.max_price = filter.max_price;
+  if (filter.min_rating != null && filter.min_rating !== '') {
+    query.min_rating = filter.min_rating;
+  }
+  if (filter.dosha_type) query.dosha_type = filter.dosha_type;
+  if (filter.sort) query.sort = filter.sort;
+
+  // When searching, drop category scoping so results come from the full catalog
   if (filter.search?.trim()) {
     query.search = filter.search.trim();
+    if (filter.brand_name_id) query.brand_name_id = filter.brand_name_id;
     return query;
   }
 
@@ -82,6 +102,11 @@ export const useCategoryProducts = (
         brand_name_id: filter.brand_name_id ?? '',
         service_category_id: filter.service_category_id ?? '',
         search: filter.search ?? '',
+        min_price: filter.min_price ?? null,
+        max_price: filter.max_price ?? null,
+        min_rating: filter.min_rating ?? null,
+        dosha_type: filter.dosha_type ?? null,
+        sort: filter.sort ?? null,
         pageSize,
       }),
     [
@@ -92,6 +117,11 @@ export const useCategoryProducts = (
       filter.brand_name_id,
       filter.service_category_id,
       filter.search,
+      filter.min_price,
+      filter.max_price,
+      filter.min_rating,
+      filter.dosha_type,
+      filter.sort,
       pageSize,
     ],
   );
@@ -142,9 +172,10 @@ export const useCategoryProducts = (
         setPage(pageNumber);
 
         if (apiResults.length > 0) {
+          seedWishlistCacheFromList(apiResults);
           setProducts(prev => {
             if (!append) {
-              return apiResults;
+              return applyWishlistCache(apiResults);
             }
             const seen = new Set(
               prev.map((p: any) => String(p.variant_id ?? p.id ?? '')),
@@ -158,7 +189,7 @@ export const useCategoryProducts = (
               seen.add(key);
               merged.push(item);
             });
-            return merged;
+            return applyWishlistCache(merged);
           });
         } else if (!append) {
           // No API rows — do not invent unrelated catalog items for concern filters
@@ -178,7 +209,8 @@ export const useCategoryProducts = (
 
           if (serviceOnly && fallback.length > 0) {
             // View-all / service-wide with no products from API yet
-            setProducts(fallback);
+            seedWishlistCacheFromList(fallback);
+            setProducts(applyWishlistCache(fallback));
           } else {
             setProducts([]);
           }
@@ -196,7 +228,12 @@ export const useCategoryProducts = (
           const fallback = Array.isArray(fallbackRef.current)
             ? fallbackRef.current
             : [];
-          setProducts(fallback.length > 0 ? fallback : []);
+          if (fallback.length > 0) {
+            seedWishlistCacheFromList(fallback);
+            setProducts(applyWishlistCache(fallback));
+          } else {
+            setProducts([]);
+          }
         }
         setHasMore(false);
       } finally {

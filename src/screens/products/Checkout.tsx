@@ -42,6 +42,19 @@ import {
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import { ADDRESS_UPDATED, AddressEvents } from '../../common/Utils';
 import {
+    filterRunnableGateways,
+    resolveDefaultGateway,
+    resolveEnabledGateways,
+    type PaymentGateway,
+} from '../../config/paymentGateways';
+import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
+import PineLabsCheckoutModal, {
+    type PineLabsCheckoutOutcome,
+    type PineLabsPageResult,
+} from '../../components/payment/PineLabsCheckoutModal';
+import type { PineLabsCheckout } from '../../services/PineLabsService';
+import { isPayphiNativeLinked } from '../../services/PayphiService';
+import {
     BUTTON,
     RADIUS,
     SPACING,
@@ -113,6 +126,49 @@ const Checkout: React.FC = (props: any) => {
     });
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
+
+    const enabledGateways = useMemo(
+        () =>
+            filterRunnableGateways(resolveEnabledGateways(customerData), {
+                payphiNativeLinked: isPayphiNativeLinked(),
+            }),
+        [customerData],
+    );
+    const [gateway, setGateway] = useState<PaymentGateway>(() =>
+        resolveDefaultGateway(customerData, enabledGateways),
+    );
+    useEffect(() => {
+        if (!enabledGateways.includes(gateway)) {
+            setGateway(resolveDefaultGateway(customerData, enabledGateways));
+        }
+    }, [enabledGateways, gateway, customerData]);
+
+    const [pineCheckout, setPineCheckout] = useState<PineLabsCheckout | null>(null);
+    const pineFinishRef = useRef<
+        ((result: {
+            outcome: PineLabsCheckoutOutcome;
+            pageResult?: PineLabsPageResult;
+        }) => void) | null
+    >(null);
+
+    const openPineLabsCheckout = useCallback((checkout: PineLabsCheckout) => {
+        return new Promise<{
+            outcome: PineLabsCheckoutOutcome;
+            pageResult?: PineLabsPageResult;
+        }>(resolve => {
+            pineFinishRef.current = resolve;
+            setPineCheckout(checkout);
+        });
+    }, []);
+
+    const onPineLabsFinish = useCallback(
+        (outcome: PineLabsCheckoutOutcome, pageResult?: PineLabsPageResult) => {
+            setPineCheckout(null);
+            pineFinishRef.current?.({ outcome, pageResult });
+            pineFinishRef.current = null;
+        },
+        [],
+    );
 
     // Address chosen by user tap on Manage Address (not AsyncStorage / GPS local)
     const routeSelectedAddress = props.route?.params?.selectedAddress ?? null;
@@ -187,6 +243,8 @@ const Checkout: React.FC = (props: any) => {
     const [feeQuoteLoading, setFeeQuoteLoading] = useState(false);
     const [feeQuoteError, setFeeQuoteError] = useState<string | null>(null);
 
+
+
     const subtotal = useMemo(
         () =>
             cartItems.reduce(
@@ -219,9 +277,12 @@ const Checkout: React.FC = (props: any) => {
         remove: removeCoupon,
     } = useCheckoutCoupons('product', subtotal);
 
+    console.log("couponscouponscouponscouponscouponscoupons", coupons)
     const feeQuoteReqId = useRef(0);
     const feeConfigRef = useRef<FeeQuoteConfig | null>(null);
     feeConfigRef.current = feeConfig;
+
+    console.log('Checkout: feeConfigReffeeConfigRef', feeConfig);
 
     const parseQuoteResponse = useCallback(
         (response: any, couponCode?: string | null) => {
@@ -242,6 +303,7 @@ const Checkout: React.FC = (props: any) => {
 
     const fetchOrderFees = useCallback(async () => {
         if (!cartItemIds.length) {
+            console.warn('[ORDER_FEE] skip — no cart_item_ids');
             setFeeConfig(null);
             setFeeQuoteError(null);
             setFeeQuoteLoading(false);
@@ -252,9 +314,18 @@ const Checkout: React.FC = (props: any) => {
         setFeeQuoteLoading(true);
         setFeeQuoteError(null);
         try {
+            console.warn('[ORDER_FEE] fetch', {
+                cart_item_ids: cartItemIds,
+                coupon_code: couponCode || null,
+            });
             let response = await getOrderFeeQuote({
                 cart_item_ids: cartItemIds,
                 ...(couponCode ? { coupon_code: couponCode } : {}),
+            });
+            console.warn('[ORDER_FEE] response', {
+                success: response?.success,
+                message: response?.message,
+                hasData: Boolean(response?.data),
             });
             if (reqId !== feeQuoteReqId.current) return;
 
@@ -263,14 +334,18 @@ const Checkout: React.FC = (props: any) => {
                     ? null
                     : parseQuoteResponse(response, couponCode);
 
-            // Coupon quote sometimes fails — fall back to base quote + local discount
+            // Coupon / product mismatch — fall back to base quote without coupon
             if (!parsed && couponCode) {
+                console.warn('[ORDER_FEE] coupon quote failed, retry without coupon', {
+                    message: response?.message,
+                    data: response?.data,
+                });
                 const baseResponse = await getOrderFeeQuote({
                     cart_item_ids: cartItemIds,
                 });
                 if (reqId !== feeQuoteReqId.current) return;
                 if (baseResponse?.success !== false) {
-                    parsed = parseQuoteResponse(baseResponse, couponCode);
+                    parsed = parseQuoteResponse(baseResponse, null);
                     response = baseResponse;
                 }
             }
@@ -282,15 +357,19 @@ const Checkout: React.FC = (props: any) => {
                 setFeeConfig(null);
                 setFeeQuoteError(
                     response?.message ||
-                        'Unable to load order fees. Please try again.',
+                    response?.data?.message ||
+                    'Unable to load order fees. Please try again.',
                 );
             }
-        } catch (error) {
-            console.log('ORDER_FEE_QUOTE_ERROR', error);
+        } catch (error: any) {
+            console.warn('[ORDER_FEE] error', error?.message || error);
             if (reqId !== feeQuoteReqId.current) return;
             if (!feeConfigRef.current) {
                 setFeeConfig(null);
-                setFeeQuoteError('Unable to load order fees. Please try again.');
+                setFeeQuoteError(
+                    error?.message ||
+                    'Unable to load order fees. Please try again.',
+                );
             }
         } finally {
             if (reqId === feeQuoteReqId.current) {
@@ -320,13 +399,9 @@ const Checkout: React.FC = (props: any) => {
     const total = feeBreakdown.total;
     const isFreeShip = shippingFee === 0;
     const isLoading = isPlacing || isPaying;
-    // Keep breakdown visible while a coupon refetch is in flight
-    const feesReady = Boolean(feeConfig);
-    const payDisabled =
-        isLoading ||
-        (feeQuoteLoading && !feeConfig) ||
-        (!feeConfig && Boolean(feeQuoteError)) ||
-        !feeConfig;
+    // Allow place after fee-quote finishes (even if API failed — local subtotal fallback)
+    const feesReady = Boolean(feeConfig) || (!feeQuoteLoading && cartItemIds.length > 0);
+    const payDisabled = isLoading || feeQuoteLoading;
 
     const itemUnits = useMemo(
         () =>
@@ -426,6 +501,8 @@ const Checkout: React.FC = (props: any) => {
             shippingMethod: deliveryMethod === 'express' ? 'EXPRESS' : 'STD',
             coupon_code: appliedCoupon?.code,
             prepaidAmount: total,
+            gateway,
+            openPineLabsCheckout,
             onCouponRejected: () => {
                 removeCoupon();
             },
@@ -453,12 +530,7 @@ const Checkout: React.FC = (props: any) => {
     };
 
     const handlePlaceOrder = () => {
-        if (!feesReady) {
-            showSuccessToast(
-                feeQuoteError ||
-                    'Unable to load order fees. Please try again.',
-                'error',
-            );
+        if (feeQuoteLoading) {
             return;
         }
         if (!defaultAddress?.id) {
@@ -759,15 +831,13 @@ const Checkout: React.FC = (props: any) => {
                     </View>
 
                     {selectedMethod === 'online' ? (
-                        <View style={styles.onlineHint}>
-                            <TablerIcon
-                                name="bolt"
-                                size={13}
-                                color="#15803D"
+                        <View style={styles.gatewayWrap}>
+                            <PaymentGatewaySelector
+                                gateways={enabledGateways}
+                                selected={gateway}
+                                onSelect={setGateway}
+                                disabled={isPaying || isPlacing}
                             />
-                            <Text style={styles.onlineHintText}>
-                                Instant confirmation · Secure Razorpay checkout
-                            </Text>
                         </View>
                     ) : null}
                 </View>
@@ -871,7 +941,7 @@ const Checkout: React.FC = (props: any) => {
                                 />
                             ) : null}
                             {feeBreakdown.discount > 0 ||
-                            feeBreakdown.itemsAfterDiscount !==
+                                feeBreakdown.itemsAfterDiscount !==
                                 feeBreakdown.baseAmount ? (
                                 <SummaryRow
                                     label="Sub total"
@@ -1020,13 +1090,13 @@ const Checkout: React.FC = (props: any) => {
                                 ? feeQuoteLoading
                                     ? 'Calculating fees…'
                                     : feeQuoteError
-                                      ? 'Fees unavailable'
-                                      : selectedMethod === 'cod'
-                                        ? 'Pay on delivery'
-                                        : 'Pay now'
+                                        ? 'Fees unavailable'
+                                        : selectedMethod === 'cod'
+                                            ? 'Pay on delivery'
+                                            : 'Pay now'
                                 : selectedMethod === 'cod'
-                                  ? 'Pay on delivery'
-                                  : 'Pay now'}
+                                    ? 'Pay on delivery'
+                                    : 'Pay now'}
                             {' · '}
                             {itemUnits} {itemUnits === 1 ? 'item' : 'items'}
                         </Text>
@@ -1108,6 +1178,13 @@ const Checkout: React.FC = (props: any) => {
                     </View>
                 </SafeAreaView>
             </Modal>
+
+            <PineLabsCheckoutModal
+                visible={Boolean(pineCheckout?.redirectUrl)}
+                url={pineCheckout?.redirectUrl ?? ''}
+                returnUrl={pineCheckout?.returnUrl}
+                onFinish={onPineLabsFinish}
+            />
         </SafeAreaView>
     );
 };
@@ -1337,6 +1414,9 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    gatewayWrap: {
+        marginTop: 12,
     },
     onlineHint: {
         marginTop: 10,

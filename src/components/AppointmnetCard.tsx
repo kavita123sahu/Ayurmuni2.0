@@ -17,6 +17,8 @@ import {
   canOfferReschedule,
 } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
+import { formatDoctorSpecialization } from '../utils/doctorUtils';
 
 export type AppointmentStatus =
   | 'confirmed'
@@ -59,10 +61,16 @@ interface AppointmentCardProps {
   style?: ViewStyle;
 }
 
-const formatStatusLabel = (status?: string) =>
-  String(status || '')
+const formatStatusLabel = (status?: string) => {
+  const raw = String(status || '')
     .replace(/_/g, ' ')
     .trim();
+  const lower = raw.toLowerCase();
+  // Patient-facing labels for internal statuses
+  if (lower === 'testing' || lower === 'test') return 'Processing';
+  if (lower === 'pending') return 'Pending';
+  return raw;
+};
 
 const AppointmentCard = ({
   item,
@@ -74,7 +82,8 @@ const AppointmentCard = ({
   const doctorName =
     doctor?.doctor_name || item?.doctorName || 'Doctor';
   const specialty =
-    doctor?.doctor_specialization ||
+    formatDoctorSpecialization(doctor) ||
+    formatDoctorSpecialization(item) ||
     doctor?.doctor_designation ||
     doctor?.qualification ||
     item?.specialty ||
@@ -149,10 +158,12 @@ const AppointmentCard = ({
               </View>
             ) : null}
           </View>
-
-          <Text style={styles.specialty} numberOfLines={1}>
-            {specialty}
-          </Text>
+          <View style={styles.specialtyRow}>
+            <DietitianBadge doctor={item} style={styles.inlineDietitianBadge} />
+            <Text style={[styles.specialty, styles.specialtyInline]} numberOfLines={1}>
+              {specialty}
+            </Text>
+          </View>
 
           <View style={styles.metaChips}>
             {schedule.dayLabel || schedule.weekday ? (
@@ -280,6 +291,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsMedium,
+  },
+  specialtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minWidth: 0,
+  },
+  specialtyInline: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inlineDietitianBadge: {
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
   },
   metaChips: {
     flexDirection: 'row',

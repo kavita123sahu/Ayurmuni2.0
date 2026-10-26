@@ -195,15 +195,6 @@ export const DUMMY_PANCHAKARMA: PanchakarmaDummy[] = [
     image:
       'https://i.pinimg.com/736x/2e/19/2c/2e192ca18c526af9fd31954bd1c90d71.jpg',
   },
-  // {
-  //   id: 'pk-udvartana',
-  //   name: 'Udvartana',
-  //   description: 'Herbal powder massage',
-  //   duration: '40–55 min',
-  //   price: 1199,
-  //   image:
-  //     'https://images.unsplash.com/photo-1519823551278-64ac92781be1?auto=format&fit=crop&w=800&q=80',
-  // },
 ];
 
 /** Tata 1mg–style lab test rail */

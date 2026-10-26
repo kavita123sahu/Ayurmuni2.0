@@ -98,10 +98,21 @@ const ConsultHistory = (props: any) => {
     }, [activeTab, fetchConsultHistory]);
 
     const filteredHistory = useMemo(() => {
-        const keyword = debouncedSearch.trim().toLowerCase();
-        if (!keyword) return history || [];
+        // Hide internal / unfinished statuses from patient history.
+        const HIDDEN = new Set(['testing', 'test', 'draft']);
+        const base = (history || []).filter((item: any) => {
+            const status = String(
+                item?.status || item?.appointment_status || '',
+            )
+                .toLowerCase()
+                .trim();
+            return !HIDDEN.has(status);
+        });
 
-        return (history || []).filter((item: any) => {
+        const keyword = debouncedSearch.trim().toLowerCase();
+        if (!keyword) return base;
+
+        return base.filter((item: any) => {
             const doctorName = item?.doctor?.doctor_name?.toLowerCase?.() || '';
             const concern = item?.concern?.toLowerCase?.() || '';
             const status = String(item?.status || '').toLowerCase();
@@ -224,34 +235,6 @@ const ConsultHistory = (props: any) => {
                 />
             ) : (
                 <>
-                  {/* Pagination — 5 records per page */}
-                  {totalPages > 1 ? (
-                  <View style={styles.paginationRow}>
-                    <TouchableOpacity
-                      disabled={page <= 0}
-                      onPress={() => setPage(p => Math.max(0, p - 1))}
-                      style={[styles.pageBtn, page <= 0 && styles.pageBtnDisabled]}
-                    >
-                      <TablerIcon name="chevron-left" size={16} color={Colors.primaryColor} />
-                    </TouchableOpacity>
-
-                    <Text style={styles.pageLabel}>
-                      {`Page ${page + 1} of ${totalPages}`}
-                    </Text>
-
-                    <TouchableOpacity
-                      disabled={page >= totalPages - 1}
-                      onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                      style={[
-                        styles.pageBtn,
-                        page >= totalPages - 1 && styles.pageBtnDisabled,
-                      ]}
-                    >
-                      <TablerIcon name="chevron-right" size={16} color={Colors.primaryColor} />
-                    </TouchableOpacity>
-                  </View>
-                  ) : null}
-
                   <FlatList
                     data={pagedData}
                     renderItem={renderItem}
@@ -272,6 +255,32 @@ const ConsultHistory = (props: any) => {
                             tintColor={Colors.primaryColor}
                         />
                     }
+                    ListFooterComponent={
+                      totalPages > 1 ? (
+                        <View style={styles.paginationRow}>
+                          <TouchableOpacity
+                            disabled={page <= 0}
+                            onPress={() => setPage(p => Math.max(0, p - 1))}
+                            style={[styles.pageBtn, page <= 0 && styles.pageBtnDisabled]}
+                          >
+                            <TablerIcon name="chevron-left" size={16} color={Colors.primaryColor} />
+                          </TouchableOpacity>
+                          <Text style={styles.pageLabel}>
+                            {`Page ${page + 1} of ${totalPages}`}
+                          </Text>
+                          <TouchableOpacity
+                            disabled={page >= totalPages - 1}
+                            onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                            style={[
+                              styles.pageBtn,
+                              page >= totalPages - 1 && styles.pageBtnDisabled,
+                            ]}
+                          >
+                            <TablerIcon name="chevron-right" size={16} color={Colors.primaryColor} />
+                          </TouchableOpacity>
+                        </View>
+                      ) : null
+                    }
                   />
                 </>
             )}
@@ -288,25 +297,26 @@ const styles = StyleSheet.create({
         paddingHorizontal: getScreenPaddingH(),
     },
     filtersBlock: {
-        marginTop: 4,
-        marginBottom: 8,
-        gap: 8,
+        marginTop: 2,
+        marginBottom: 4,
+        gap: 6,
     },
     tabs: {
         marginTop: 0,
         marginBottom: 0,
     },
     listContent: {
-        gap: SPACING.md,
+        gap: SPACING.sm,
         paddingBottom: SPACING.xxl,
-        paddingTop: SPACING.xs,
+        paddingTop: 4,
     },
     paginationRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         gap: 8,
-        marginBottom: 8,
+        marginTop: 12,
+        marginBottom: 4,
     },
     pageBtn: {
         paddingVertical: 6,

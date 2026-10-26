@@ -80,7 +80,7 @@ const TopSellingList: React.FC<Props> = ({
       ? [...displayData, { id: 'empty', empty: true }]
       : displayData;
 
-      console.log('formattedData', formattedData);
+  console.log('formattedData', formattedData);
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       hideOnScroll(e);
@@ -239,10 +239,10 @@ const TopSellingList: React.FC<Props> = ({
       columnWrapperStyle={
         isGrid
           ? {
-              justifyContent: 'space-between',
-              paddingHorizontal: SPACING,
-              gap: SPACING,
-            }
+            justifyContent: 'space-between',
+            paddingHorizontal: SPACING,
+            gap: SPACING,
+          }
           : undefined
       }
       renderItem={renderItem}

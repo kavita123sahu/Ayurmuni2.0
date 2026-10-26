@@ -39,8 +39,12 @@ export type FeeQuoteConfig = {
   variationFactors: any[];
   /** Extra free-delivery rules from configurations.delivery.free_delivery_conditions. */
   freeDeliveryConditions: any[];
-  /** Coupon sent with the quote request, when known. */
+  /** Coupon the quote was priced with (response `coupon_code` / `coupon.code`). */
   quotedCouponCode?: string;
+  /** Response `coupon.valid`; null when the quote carried no coupon. */
+  couponValid: boolean | null;
+  /** Response `coupon.message`. */
+  couponMessage: string;
 };
 
 export type OrderFeeItem = {
@@ -289,6 +293,16 @@ export const parseFeeQuoteConfig = (
   const resolvedBase =
     baseAmount > 0 ? baseAmount : roundMoney(Math.max(0, fallbackBase));
 
+  const couponInfo =
+    data.coupon && typeof data.coupon === 'object' ? data.coupon : null;
+  const couponValid =
+    typeof couponInfo?.valid === 'boolean' ? couponInfo.valid : null;
+  const couponDiscountRaw =
+    summary?.coupon_discount ?? data?.coupon_discount ?? couponInfo?.discount;
+  const quotedCouponCode = String(
+    data?.coupon_code ?? couponInfo?.code ?? '',
+  ).trim();
+
   // List delivery charge (before free-delivery waiver)
   const listDeliveryCharge = firstPositive(
     summary?.delivery_charges,
@@ -308,9 +322,14 @@ export const parseFeeQuoteConfig = (
     currency: String(summary?.currency || data?.currency || 'INR'),
     durationMinutes: toNumber(config?.consultation?.duration_minutes) || null,
     couponDiscount:
-      summary?.coupon_discount == null && data?.coupon_discount == null
-        ? null
-        : roundMoney(toNumber(summary?.coupon_discount ?? data?.coupon_discount)),
+      couponValid === false
+        ? 0
+        : couponDiscountRaw == null || couponDiscountRaw === ''
+          ? null
+          : roundMoney(toNumber(couponDiscountRaw)),
+    quotedCouponCode,
+    couponValid,
+    couponMessage: String(couponInfo?.message ?? ''),
     itemsAfterDiscount,
     deliveryCharge: listDeliveryCharge,
     freeDeliveryMinimum: firstPositive(
@@ -514,37 +533,42 @@ export const calculateOrderFees = ({
   couponCode?: string;
 }): FeeBreakdown => {
   const items = quote?.items ?? [];
-  // Prefer summary items_after_discount as the bill base when present
-  const itemTotal =
-    quote?.itemsAfterDiscount != null && quote.itemsAfterDiscount > 0
-      ? roundMoney(quote.itemsAfterDiscount)
-      : items.length
-        ? roundMoney(
-            items.reduce(
-              (sum, item) => sum + item.sellingPrice * item.quantity,
-              0,
-            ),
-          )
-        : roundMoney(quote?.baseAmount || fallbackSubtotal);
-
   const requestedCoupon = String(couponCode || '').trim();
   const quoteMatchesCoupon =
     (quote?.quotedCouponCode || '') === requestedCoupon;
   const apiDiscount =
     quoteMatchesCoupon && quote?.couponDiscount != null
-      ? Number(quote.couponDiscount)
+      ? roundMoney(Math.max(0, quote.couponDiscount))
       : null;
-  const resolvedDiscount =
-    apiDiscount != null && apiDiscount >= 0 && quote?.couponDiscount != null
-      ? apiDiscount
-      : localDiscount;
-  const discount = roundMoney(
-    Math.min(Math.max(0, resolvedDiscount), itemTotal),
-  );
-  const taxable = roundMoney(Math.max(0, itemTotal - discount));
-  const itemsAfterDiscount = roundMoney(
-    quote?.itemsAfterDiscount != null ? quote.itemsAfterDiscount : taxable,
-  );
+  const useApiSummary =
+    quote?.itemsAfterDiscount != null &&
+    quoteMatchesCoupon &&
+    (apiDiscount != null || !requestedCoupon);
+
+  let itemTotal: number;
+  let discount: number;
+  let itemsAfterDiscount: number;
+  if (useApiSummary) {
+    // summary.items_after_discount already has summary.coupon_discount removed.
+    discount = apiDiscount ?? 0;
+    itemsAfterDiscount = roundMoney(Math.max(0, quote!.itemsAfterDiscount!));
+    itemTotal = roundMoney(itemsAfterDiscount + discount);
+  } else {
+    // Quote was priced without the applied coupon: apply the local discount on top.
+    itemTotal =
+      quote?.itemsAfterDiscount != null && quote.itemsAfterDiscount > 0
+        ? roundMoney(quote.itemsAfterDiscount)
+        : items.length
+          ? roundMoney(
+              items.reduce(
+                (sum, item) => sum + item.sellingPrice * item.quantity,
+                0,
+              ),
+            )
+          : roundMoney(quote?.baseAmount || fallbackSubtotal);
+    discount = roundMoney(Math.min(Math.max(0, localDiscount), itemTotal));
+    itemsAfterDiscount = roundMoney(Math.max(0, itemTotal - discount));
+  }
   const discountRatio = itemTotal > 0 ? itemsAfterDiscount / itemTotal : 1;
 
   // Prefer explicit summary.product_gst (0 means no GST — do not invent from items)
@@ -613,9 +637,12 @@ export const calculateOrderFees = ({
     itemsAfterDiscount + gst + platformFee + shipping + cod,
   );
   // Prefer API total_payable_amount when it matches the same coupon context
+  // summary.total_payable_amount includes summary.cod_charges; swap in the COD the user actually chose.
   const total =
     quote?.summaryTotalPayable != null && quoteMatchesCoupon
-      ? roundMoney(Math.max(0, quote.summaryTotalPayable))
+      ? roundMoney(
+          Math.max(0, quote.summaryTotalPayable - (quote.summaryCod ?? 0) + cod),
+        )
       : computedTotal;
 
   return {
@@ -700,516 +727,3 @@ export const calculateFeeBreakdown = ({
     freeDeliveryNote: '',
   };
 };
-
-
-
-// export type FeeRate = {
-//   flat: number;
-//   percent: number;
-// };
-
-// export type FeeQuoteConfig = {
-//   baseAmount: number;
-//   gst: FeeRate;
-//   platformFee: FeeRate;
-//   shipping: FeeRate;
-//   cod: FeeRate;
-//   currency: string;
-//   durationMinutes: number | null;
-//   /** Coupon amount returned by the quote, when the API applied one. */
-//   couponDiscount: number | null;
-//   /** Items total after coupon from fee-quote summary.items_after_discount. */
-//   itemsAfterDiscount: number | null;
-//   /** Standard delivery charge before the free-delivery check. */
-//   deliveryCharge: number;
-//   freeDeliveryMinimum: number;
-//   items: OrderFeeItem[];
-//   summaryCod: number;
-//   summaryProductGst: number;
-//   /** Delivery slabs from configurations.delivery.variation_factors. */
-//   variationFactors: any[];
-//   /** Extra free-delivery rules from configurations.delivery.free_delivery_conditions. */
-//   freeDeliveryConditions: any[];
-//   /** Coupon sent with the quote request, when known. */
-//   quotedCouponCode?: string;
-// };
-
-// export type OrderFeeItem = {
-//   sellingPrice: number;
-//   quantity: number;
-//   gstPercent: number;
-// };
-
-// export type FeeBreakdown = {
-//   baseAmount: number;
-//   discount: number;
-//   taxable: number;
-//   /** Prefer API summary.items_after_discount when present. */
-//   itemsAfterDiscount: number;
-//   gst: number;
-//   gstRate: FeeRate;
-//   platformFee: number;
-//   platformRate: FeeRate;
-//   shipping: number;
-//   shippingRate: FeeRate;
-//   cod: number;
-//   codRate: FeeRate;
-//   total: number;
-//   deliveryCharge: number;
-//   freeDeliveryMinimum: number;
-//   freeDelivery: boolean;
-//   freeDeliveryNote: string;
-// };
-
-// const EMPTY_RATE: FeeRate = { flat: 0, percent: 0 };
-
-// export const roundMoney = (value: number) =>
-//   Math.round((Number(value) || 0) * 100) / 100;
-
-// const toNumber = (value: unknown): number => {
-//   const n = Number(value);
-//   return Number.isFinite(n) ? n : 0;
-// };
-
-// export const readFeeRate = (source: any): FeeRate => ({
-//   flat: Math.max(0, toNumber(source?.flat ?? source?.amount ?? source?.fixed)),
-//   percent: Math.max(0, toNumber(source?.percent ?? source?.percentage)),
-// });
-
-// /**
-//  * Configuration-driven charge.
-//  * Flat wins when it is set (matches fee-quote summary: gst flat 10, platform flat 30).
-//  * Otherwise the percent is applied to the taxable base.
-//  */
-// export const chargeFromRate = (rate: FeeRate | undefined, taxableBase: number): number => {
-//   const flat = rate?.flat ?? 0;
-//   const percent = rate?.percent ?? 0;
-//   if (flat > 0) return roundMoney(flat);
-//   if (percent > 0) return roundMoney((Math.max(0, taxableBase) * percent) / 100);
-//   return 0;
-// };
-
-// export const feeRateLabel = (prefix: string, rate: FeeRate | undefined): string => {
-//   if ((rate?.percent ?? 0) > 0 && !(rate?.flat && rate.flat > 0)) {
-//     return `${prefix} (${rate?.percent}%)`;
-//   }
-//   return prefix;
-// };
-
-// const firstRate = (...sources: any[]): FeeRate => {
-//   for (const source of sources) {
-//     if (!source || typeof source !== 'object') continue;
-//     const rate = readFeeRate(source);
-//     if (rate.flat > 0 || rate.percent > 0) return rate;
-//   }
-//   return { ...EMPTY_RATE };
-// };
-
-// const firstPositive = (...values: unknown[]): number => {
-//   for (const value of values) {
-//     const n = toNumber(value);
-//     if (n > 0) return roundMoney(n);
-//   }
-//   return 0;
-// };
-
-// export const parseFeeQuoteConfig = (
-//   data: any,
-//   fallbackBase = 0,
-//   options?: { ignoreConsultationFee?: boolean },
-// ): FeeQuoteConfig | null => {
-//   if (!data || typeof data !== 'object') return null;
-
-//   const config = data.configurations ?? data.configuration ?? {};
-//   const summary = data.summary ?? {};
-
-//   const baseAmount = firstPositive(
-//     ...(options?.ignoreConsultationFee
-//       ? []
-//       : [
-//           config?.consultation?.global_fee,
-//           summary?.consultation_fee,
-//           summary?.taxable_consultation_fee,
-//           data?.consultation_fee,
-//         ]),
-//     summary?.item_total,
-//     summary?.subtotal,
-//     summary?.order_amount,
-//     summary?.cart_total,
-//     fallbackBase,
-//   );
-
-//   const itemsAfterDiscountRaw =
-//     summary?.items_after_discount ?? data?.items_after_discount;
-//   const itemsAfterDiscount =
-//     itemsAfterDiscountRaw == null || itemsAfterDiscountRaw === ''
-//       ? null
-//       : roundMoney(toNumber(itemsAfterDiscountRaw));
-
-//   const gst = firstRate(
-//     config?.gst,
-//     data?.gst_percent != null || data?.gst_amount != null
-//       ? { flat: data?.gst_amount, percent: data?.gst_percent }
-//       : null,
-//   );
-//   const platformFee = firstRate(
-//     config?.platform_fee,
-//     config?.platformFee,
-//     data?.platform_fee_percent != null || data?.platform_fee != null
-//       ? { flat: data?.platform_fee, percent: data?.platform_fee_percent }
-//       : null,
-//   );
-//   const shipping = firstRate(
-//     config?.shipping,
-//     config?.delivery,
-//     config?.shipping_charges,
-//     config?.delivery_fee,
-//   );
-//   const cod = firstRate(
-//     config?.cod,
-//     config?.cod_charges,
-//     config?.cash_on_delivery,
-//   );
-
-//   if (baseAmount <= 0 && gst.flat <= 0 && gst.percent <= 0 && platformFee.flat <= 0 && platformFee.percent <= 0) {
-//     return null;
-//   }
-
-//   const delivery = readDeliveryRules(config?.delivery, summary);
-
-//   return {
-//     baseAmount,
-//     gst,
-//     platformFee,
-//     shipping,
-//     cod,
-//     currency: String(summary?.currency || data?.currency || 'INR'),
-//     durationMinutes: toNumber(config?.consultation?.duration_minutes) || null,
-//     couponDiscount:
-//       summary?.coupon_discount == null && data?.coupon_discount == null
-//         ? null
-//         : roundMoney(toNumber(summary?.coupon_discount ?? data?.coupon_discount)),
-//     itemsAfterDiscount,
-//     deliveryCharge: delivery.charge,
-//     freeDeliveryMinimum: delivery.minimum,
-//     items: readOrderItems(data?.items),
-//     summaryCod: firstPositive(summary?.cod_charges, summary?.cod_charge),
-//     summaryProductGst: firstPositive(summary?.product_gst, summary?.gst),
-//     variationFactors: delivery.factors,
-//     freeDeliveryConditions: delivery.conditions,
-//   };
-// };
-
-// const gstPercentFromClass = (source: any): number => {
-//   if (source == null || source === '') return 0;
-//   if (Array.isArray(source)) {
-//     const percents = source
-//       .map(entry => gstPercentFromClass(entry))
-//       .filter(n => n > 0);
-//     if (!percents.length) return 0;
-//     const looksLikeSplit = percents.every(n => n <= 50) && percents.length > 1;
-//     return looksLikeSplit
-//       ? Math.min(100, percents.reduce((sum, n) => sum + n, 0))
-//       : percents[0];
-//   }
-//   if (typeof source === 'number') return source > 0 && source <= 100 ? source : 0;
-//   if (typeof source === 'string') {
-//     const match = source.match(/(\d+(?:\.\d+)?)/);
-//     const n = match ? Number(match[1]) : 0;
-//     return n > 0 && n <= 100 ? n : 0;
-//   }
-//   if (typeof source !== 'object') return 0;
-
-//   const direct = firstPositive(
-//     source.tax_percentage,
-//     source.taxPercentage,
-//     source.gst_percentage,
-//     source.gstPercentage,
-//     source.percentage,
-//     source.percent,
-//     source.igst,
-//     source.integrated_gst,
-//     source.integratedGst,
-//     source.rate,
-//   );
-//   if (direct > 0 && direct <= 100) return direct;
-
-//   const split =
-//     toNumber(source.cgst ?? source.central_gst ?? source.centralGst) +
-//     toNumber(source.sgst ?? source.state_gst ?? source.stateGst);
-//   if (split > 0 && split <= 100) return split;
-
-//   const nested = gstPercentFromClass(
-//     source.tax_type ||
-//       source.taxType ||
-//       source.gst_tax_type ||
-//       source.gstTaxType ||
-//       source.components,
-//   );
-//   if (nested > 0) return nested;
-
-//   return gstPercentFromClass(
-//     source.code ||
-//       source.gst_tax_type_code ||
-//       source.gstTaxTypeCode ||
-//       source.name,
-//   );
-// };
-
-// const readOrderItems = (items: any): OrderFeeItem[] => {
-//   if (!Array.isArray(items)) return [];
-//   return items
-//     .map((item: any) => ({
-//       sellingPrice: toNumber(item?.selling_price ?? item?.price ?? item?.unit_price),
-//       quantity: Math.max(0, toNumber(item?.quantity) || 1),
-//       gstPercent: gstPercentFromClass(
-//         item?.unicommerce_gst_class ?? item?.gst_class ?? item?.gst,
-//       ),
-//     }))
-//     .filter(item => item.sellingPrice > 0 && item.quantity > 0);
-// };
-
-// const readMoneyField = (source: any): number => {
-//   if (source == null || source === '') return 0;
-//   if (typeof source === 'number' || typeof source === 'string') {
-//     return firstPositive(source);
-//   }
-//   if (typeof source !== 'object') return 0;
-//   return firstPositive(
-//     source.amount,
-//     source.flat,
-//     source.charge,
-//     source.charges,
-//     source.value,
-//     source.fee,
-//     source.standard,
-//     source.base,
-//     source.delivery_charge,
-//     source.delivery_charges,
-//     source.shipping_charge,
-//   );
-// };
-
-// const readDeliveryRules = (delivery: any, summary: any) => {
-//   const charge = firstPositive(
-//     readMoneyField(delivery?.charges),
-//     readMoneyField(delivery?.charge),
-//     summary?.delivery_charges,
-//     summary?.delivery_charge,
-//   );
-//   const minimum = firstPositive(
-//     delivery?.free_delivery_minimum_order_value,
-//     summary?.free_delivery_minimum_order_value,
-//   );
-//   return {
-//     charge,
-//     minimum,
-//     factors: Array.isArray(delivery?.variation_factors)
-//       ? delivery.variation_factors
-//       : [],
-//     conditions: Array.isArray(delivery?.free_delivery_conditions)
-//       ? delivery.free_delivery_conditions
-//       : delivery?.free_delivery_conditions &&
-//           typeof delivery.free_delivery_conditions === 'object'
-//         ? [delivery.free_delivery_conditions]
-//         : [],
-//   };
-// };
-
-// /** Charge from a variation slab when the order value falls in its range. */
-// const chargeFromVariation = (factor: any, orderValue: number): number | null => {
-//   if (!factor || typeof factor !== 'object') return null;
-//   const min = firstPositive(
-//     factor.min_order_value,
-//     factor.minimum_order_value,
-//     factor.min,
-//     factor.from,
-//   );
-//   const max = firstPositive(
-//     factor.max_order_value,
-//     factor.maximum_order_value,
-//     factor.max,
-//     factor.to,
-//   );
-//   if (min > 0 && orderValue < min) return null;
-//   if (max > 0 && orderValue > max) return null;
-
-//   const markedFree = factor.free === true || factor.is_free === true;
-//   const charge = readMoneyField(
-//     factor.charge ??
-//       factor.charges ??
-//       factor.amount ??
-//       factor.delivery_charge ??
-//       factor.delivery_charges ??
-//       factor.fee,
-//   );
-//   if (markedFree) return 0;
-//   if (charge > 0) return charge;
-//   return null;
-// };
-
-// const matchesFreeDeliveryCondition = (condition: any, orderValue: number) => {
-//   if (!condition || typeof condition !== 'object') return false;
-//   const min = firstPositive(
-//     condition.min_order_value,
-//     condition.minimum_order_value,
-//     condition.free_delivery_minimum_order_value,
-//     condition.order_value,
-//   );
-//   if (min > 0) return orderValue >= min;
-//   return (
-//     condition.free === true ||
-//     condition.is_free === true ||
-//     condition.applicable === true
-//   );
-// };
-
-// /** Item GST, platform fee, and delivery from the order fee-quote configuration. */
-// export const calculateOrderFees = ({
-//   quote,
-//   fallbackSubtotal = 0,
-//   localDiscount = 0,
-//   includeCod = false,
-//   couponCode,
-// }: {
-//   quote: FeeQuoteConfig | null;
-//   fallbackSubtotal?: number;
-//   localDiscount?: number;
-//   includeCod?: boolean;
-//   couponCode?: string;
-// }): FeeBreakdown => {
-//   const items = quote?.items ?? [];
-//   const itemTotal = items.length
-//     ? roundMoney(
-//         items.reduce((sum, item) => sum + item.sellingPrice * item.quantity, 0),
-//       )
-//     : roundMoney(quote?.baseAmount || fallbackSubtotal);
-
-//   const requestedCoupon = String(couponCode || '').trim();
-//   const quoteMatchesCoupon =
-//     (quote?.quotedCouponCode || '') === requestedCoupon;
-//   const resolvedDiscount =
-//     quoteMatchesCoupon && quote?.couponDiscount != null
-//       ? quote.couponDiscount
-//       : localDiscount;
-//   const discount = roundMoney(
-//     Math.min(Math.max(0, resolvedDiscount), itemTotal),
-//   );
-//   const taxable = roundMoney(Math.max(0, itemTotal - discount));
-//   const itemsAfterDiscount = roundMoney(
-//     quote?.itemsAfterDiscount != null ? quote.itemsAfterDiscount : taxable,
-//   );
-//   const discountRatio = itemTotal > 0 ? itemsAfterDiscount / itemTotal : 1;
-
-//   const computedGst = items.reduce((sum, item) => {
-//     if (item.gstPercent <= 0) return sum;
-//     const line = item.sellingPrice * item.quantity * discountRatio;
-//     return sum + (line * item.gstPercent) / 100;
-//   }, 0);
-//   const gst = roundMoney(
-//     computedGst > 0 ? computedGst : (quote?.summaryProductGst ?? 0) * discountRatio,
-//   );
-
-//   const platformFee = chargeFromRate(quote?.platformFee, itemsAfterDiscount);
-//   const slabCharge = (quote?.variationFactors ?? [])
-//     .map(factor => chargeFromVariation(factor, itemsAfterDiscount))
-//     .find((charge): charge is number => charge != null);
-//   const deliveryCharge =
-//     slabCharge != null ? slabCharge : quote?.deliveryCharge ?? 0;
-//   const freeDeliveryMinimum = quote?.freeDeliveryMinimum ?? 0;
-//   const meetsMinimum =
-//     freeDeliveryMinimum > 0 && itemsAfterDiscount >= freeDeliveryMinimum;
-//   const meetsCondition = (quote?.freeDeliveryConditions ?? []).some(condition =>
-//     matchesFreeDeliveryCondition(condition, itemsAfterDiscount),
-//   );
-//   const freeFromSlab = slabCharge === 0;
-//   const freeDelivery = meetsMinimum || meetsCondition || freeFromSlab;
-//   const shipping = freeDelivery ? 0 : roundMoney(deliveryCharge);
-//   const configuredCod = chargeFromRate(quote?.cod, itemsAfterDiscount);
-//   const cod = includeCod
-//     ? roundMoney(configuredCod > 0 ? configuredCod : quote?.summaryCod ?? 0)
-//     : 0;
-
-//   const freeDeliveryNote = freeDelivery && freeDeliveryMinimum > 0
-//     ? `Free delivery on orders of ₹${freeDeliveryMinimum}+`
-//     : freeDeliveryMinimum > 0 && itemsAfterDiscount < freeDeliveryMinimum
-//       ? `Add ₹${roundMoney(freeDeliveryMinimum - itemsAfterDiscount)} more for free delivery`
-//       : '';
-
-//   return {
-//     baseAmount: itemTotal,
-//     discount,
-//     taxable: itemsAfterDiscount,
-//     itemsAfterDiscount,
-//     gst,
-//     platformFee,
-//     platformRate: quote?.platformFee ?? EMPTY_RATE,
-//     shipping,
-//     shippingRate: { flat: shipping, percent: 0 },
-//     cod,
-//     codRate: quote?.cod ?? EMPTY_RATE,
-//     gstRate: (() => {
-//       const percents = [
-//         ...new Set(items.map(item => item.gstPercent).filter(n => n > 0)),
-//       ];
-//       return percents.length === 1
-//         ? { flat: 0, percent: percents[0] }
-//         : quote?.gst ?? EMPTY_RATE;
-//     })(),
-//     total: roundMoney(itemsAfterDiscount + gst + platformFee + shipping + cod),
-//     deliveryCharge,
-//     freeDeliveryMinimum,
-//     freeDelivery,
-//     freeDeliveryNote,
-//   };
-// };
-
-// export const calculateFeeBreakdown = ({
-//   baseAmount,
-//   discount = 0,
-//   gst,
-//   platformFee,
-//   shipping,
-//   cod,
-//   includeShipping = true,
-//   includeCod = false,
-// }: {
-//   baseAmount: number;
-//   discount?: number;
-//   gst: FeeRate;
-//   platformFee: FeeRate;
-//   shipping?: FeeRate;
-//   cod?: FeeRate;
-//   includeShipping?: boolean;
-//   includeCod?: boolean;
-// }): FeeBreakdown => {
-//   const base = roundMoney(Math.max(0, baseAmount));
-//   const appliedDiscount = roundMoney(Math.min(Math.max(0, discount), base));
-//   const taxable = roundMoney(Math.max(0, base - appliedDiscount));
-//   const gstAmount = chargeFromRate(gst, taxable);
-//   const platformAmount = chargeFromRate(platformFee, taxable);
-//   const shippingAmount = includeShipping
-//     ? chargeFromRate(shipping, taxable)
-//     : 0;
-//   const codAmount = includeCod ? chargeFromRate(cod, taxable) : 0;
-
-//   return {
-//     baseAmount: base,
-//     discount: appliedDiscount,
-//     taxable,
-//     itemsAfterDiscount: taxable,
-//     gst: gstAmount,
-//     gstRate: gst,
-//     platformFee: platformAmount,
-//     platformRate: platformFee,
-//     shipping: shippingAmount,
-//     shippingRate: shipping ?? EMPTY_RATE,
-//     cod: codAmount,
-//     codRate: cod ?? EMPTY_RATE,
-//     total: roundMoney(taxable + gstAmount + platformAmount + shippingAmount + codAmount),
-//     deliveryCharge: shipping?.flat ?? 0,
-//     freeDeliveryMinimum: 0,
-//     freeDelivery: false,
-//     freeDeliveryNote: '',
-//   };
-// };

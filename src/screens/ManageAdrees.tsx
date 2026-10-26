@@ -43,8 +43,6 @@ interface AddressItem {
 
 const ManageAddress: React.FC<any> = ({ navigation, route }) => {
 
-
-
     const { currentAddress, loadingLocation } = useLocation();
     const returnTo = route?.params?.returnTo as string | undefined;
     const dispatch = useAppDispatch();
@@ -93,7 +91,6 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
             );
         }
     };
-
 
     const DeleteAddresses = async (addressId: string) => {
 
@@ -191,7 +188,6 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
         [addressData, selectedId, navigation, returnTo, dispatch],
     );
 
-
     const formatTitle = (text: string) => {
         if (!text) return '';
         return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
@@ -233,7 +229,6 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
 
         const isSelected =
             selectedId === item?.id;
-
 
         console.log("itemitemitemaddresss", item)
 
@@ -296,7 +291,6 @@ const ManageAddress: React.FC<any> = ({ navigation, route }) => {
                             <Text style={styles.editText}>
                                 Edit
                             </Text>
-
 
                         </TouchableOpacity>
 
@@ -621,7 +615,6 @@ const styles = StyleSheet.create({
             Colors.primaryColor,
     },
 
-
     footer: {
         backgroundColor: '#FFFFFF',
 
@@ -633,7 +626,6 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
     },
-
 
     addButton: {
         minHeight: 56,

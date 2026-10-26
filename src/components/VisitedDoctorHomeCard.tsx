@@ -9,6 +9,7 @@ import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 import { RupeeAmount } from '../utils/currencyUtils';
 import {
   formatAppointmentDateFull,
@@ -96,7 +97,6 @@ const VisitedDoctorHomeCard = ({
               </Text>
             )}
 
-
           </View>
 
 
@@ -109,6 +109,8 @@ const VisitedDoctorHomeCard = ({
               {specialty}
             </Text>
           )}
+
+          <DietitianBadge doctor={item} style={styles.nameBadge} />
 
           {/* RATING + REVIEWS + EXPERIENCE SAME LINE */}
           {(hasRating ||
@@ -293,6 +295,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsSemiBold,
   },
 
+  nameBadge: {
+    marginTop: 0,
+    marginLeft: 5,
+    flexShrink: 0,
+  },
+
   /* AVAILABLE BADGE */
   availableBadge: {
     flexDirection: 'row',
@@ -306,7 +314,7 @@ const styles = StyleSheet.create({
     borderColor: '#A7F3D0',
   },
 
- 
+
   availableText: {
     fontSize: 8,
     lineHeight: 11,

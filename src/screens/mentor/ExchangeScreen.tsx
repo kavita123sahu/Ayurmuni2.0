@@ -53,7 +53,6 @@ const ExchangeScreen = (props: any) => {
       <View style={[styles.radiocircle, selected && styles.activeCircle]}>
         {selected && <TablerIcon name="check" size={15} color={'#FFFF'} />}
       </View>
-      {/* <View style={[styles.dot, selected && styles.dotActive]} /> */}
     </TouchableOpacity>
   );
 
@@ -82,7 +81,6 @@ const ExchangeScreen = (props: any) => {
           </View>
         </View>
 
-
         <Section number={1} title="Why are you exchanging this item?">
           {reasons.map((item) => (
             <RadioItem
@@ -109,16 +107,12 @@ const ExchangeScreen = (props: any) => {
 
             </View>
 
-
-
             <TouchableOpacity
               style={{ flexDirection: 'row', marginTop: 30, justifyContent: 'space-between' }}
             >
               <Text style={styles.variantText}>NEW VARIENT</Text>
-              {/* <Image source={require('../../assets/images/dropdowncenter.png')} style={{ height: 18, width: 9 }} /> */}
 
             </TouchableOpacity>
-
 
             <TouchableOpacity style={styles.dropdown}>
               <Text style={styles.dropdownText}>
@@ -139,9 +133,7 @@ const ExchangeScreen = (props: any) => {
             value={note}
             onChangeText={setNote}
 
-
           />
-
 
         </Section>
 
@@ -155,7 +147,6 @@ const ExchangeScreen = (props: any) => {
 };
 
 export default ExchangeScreen;
-
 
 const styles = StyleSheet.create({
   container: {
@@ -191,7 +182,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#E8EEF2',
   },
-
 
   orderTitle: {
     fontSize: 12,

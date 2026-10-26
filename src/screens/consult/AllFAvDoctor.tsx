@@ -29,10 +29,7 @@ import EmptyState from '../../components/EmptyState';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { doctorListKey } from '../../utils/listKeys';
 
-
 const AllFavDoctors = (props: any) => {
-
-
 
     const [search, setSearch] =
         useState('');
@@ -64,7 +61,6 @@ const AllFavDoctors = (props: any) => {
 
         return list;
     }, [favDoctor, debouncedSearch]);
-
 
     const renderDoctorItem =
         useCallback(
@@ -100,8 +96,6 @@ const AllFavDoctors = (props: any) => {
                 backgroundColor={
                     Colors.white
 
-
-
                 }
             />
 
@@ -113,8 +107,6 @@ const AllFavDoctors = (props: any) => {
                 onSearchPress={() => setSearchExpanded(true)}
                 onRefreshPress={onRefresh}
             />
-
-
 
             {
                 loading ? (
@@ -156,11 +148,8 @@ const AllFavDoctors = (props: any) => {
                             styles.listContent
                         }
 
-
-
                         ListHeaderComponent={
                             <>
-
 
                                 {/* SEARCH */}
 

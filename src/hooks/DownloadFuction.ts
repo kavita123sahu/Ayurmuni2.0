@@ -1,6 +1,4 @@
 
-
-
 import Share, {
   Social,
 } from 'react-native-share';
@@ -59,5 +57,3 @@ export const handleShareAction = async ({
     );
   }
 };
-
-

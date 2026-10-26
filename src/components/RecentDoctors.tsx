@@ -13,6 +13,7 @@ import TablerIcon from './TablerIcon';
 import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
 import { canOfferReschedule } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
 
 interface Props {
   image: ImageSourcePropType;
@@ -32,6 +33,7 @@ interface Props {
   /** Compact card for horizontal recent-consultation rails */
   variant?: 'default' | 'compact';
   cardWidth?: number;
+  isDietitian?: boolean;
 }
 
 const AVATAR = 56;
@@ -55,6 +57,7 @@ const RecentDoctors: React.FC<Props> = ({
   onPress,
   variant = 'default',
   cardWidth,
+  isDietitian = false,
 }) => {
   const hasImage =
     image &&
@@ -101,12 +104,21 @@ const RecentDoctors: React.FC<Props> = ({
           />
           <View style={styles.compactInfo}>
             <Text style={styles.compactName} numberOfLines={1}>
-              {name || 'Doctor'}
+              {name || (isDietitian ? 'Dietitian' : 'Doctor')}
             </Text>
-            {speciality ? (
-              <Text style={styles.compactSpeciality} numberOfLines={1}>
-                {speciality}
-              </Text>
+            {speciality || isDietitian ? (
+              <View style={styles.inlineRow}>
+                <DietitianBadge
+                  visible={isDietitian}
+                  style={styles.inlineDietitianBadge}
+                />
+                <Text
+                  style={[styles.compactSpeciality, styles.inlineText]}
+                  numberOfLines={1}
+                >
+                  {speciality || (isDietitian ? 'Diet & Nutrition' : '')}
+                </Text>
+              </View>
             ) : null}
             {statusLabel ? (
               <View
@@ -163,8 +175,9 @@ const RecentDoctors: React.FC<Props> = ({
         <View style={styles.info}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>
-              {name || 'Doctor'}
+              {name || (isDietitian ? 'Dietitian' : 'Doctor')}
             </Text>
+            <DietitianBadge visible={isDietitian} style={styles.nameDietitianBadge} />
             {statusLabel ? (
               <View
                 style={[
@@ -332,6 +345,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  nameDietitianBadge: {
+    marginTop: 0,
+    flexShrink: 0,
+  },
+  inlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 0,
+  },
+  inlineText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inlineDietitianBadge: {
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
   },
   name: {
     flex: 1,

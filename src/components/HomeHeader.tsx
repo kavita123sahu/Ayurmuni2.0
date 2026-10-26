@@ -254,8 +254,8 @@ const HomeHeader = ({
             activeLocation.city && area !== activeLocation.city
                 ? `, ${activeLocation.city}`
                 : activeLocation.state
-                  ? `, ${activeLocation.state}`
-                  : '';
+                    ? `, ${activeLocation.state}`
+                    : '';
         return `${area}${suffix}`.slice(0, 44);
     }, [activeLocation, defaultAddress, loadingLocation, locationEnabled]);
 

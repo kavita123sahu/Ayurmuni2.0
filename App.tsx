@@ -4,7 +4,6 @@ import React, {
 } from 'react';
 
 import {
-  Text,
   View,
 } from 'react-native';
 
@@ -48,6 +47,10 @@ import {
 import FloatingVideoOverlay from './src/components/FloatingVideoOverlay';
 
 import WishlistToastBar from './src/components/WishlistToastBar';
+import CustomNotification from './src/components/CustomNotification';
+import { registerInAppNotificationRef } from './src/services/inAppNotificationService';
+import { handleNotificationNavigation } from './src/screens/notifications/notificationRouter';
+import { navigationRef } from './src/navigation/navigationRef';
 
 import CartAddedToastBar from './src/components/CartAddedToastBar';
 
@@ -63,14 +66,6 @@ import {
 import {
   setupOneSignalInAppListeners,
 } from './src/services/inAppNotificationService';
-
-// Keep layout identical across devices — ignore OS font-size scaling
-(Text as any).defaultProps = {
-  ...((Text as any).defaultProps || {}),
-  allowFontScaling: false,
-  maxFontSizeMultiplier: 1,
-};
-
 
 // =====================================================
 // TOAST CONFIG
@@ -153,8 +148,12 @@ const toastConfig = {
 // console.error = () => { };
 
 
+// Sentry.init({
+//   dsn: 'https://207c5547f95ff58010564e7a7677c49a@o4512060861972480.ingest.us.sentry.io/4512060889104384',
+// });
+
 Sentry.init({
-  dsn: 'https://207c5547f95ff58010564e7a7677c49a@o4512060861972480.ingest.us.sentry.io/4512060889104384',
+  dsn: 'https://9001d42ecc147294f70d0b65cfefbde5@o4512179016237056.ingest.us.sentry.io/4512179028295680',
 });
 
 const App = () => {
@@ -206,6 +205,13 @@ const App = () => {
                 <WishlistToastBar />
 
                 <CartAddedToastBar />
+
+                <CustomNotification
+                  ref={registerInAppNotificationRef}
+                  onPress={data =>
+                    handleNotificationNavigation(navigationRef, data)
+                  }
+                />
 
                 <InAppNotificationWatcher />
 
