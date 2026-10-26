@@ -41,6 +41,8 @@ type Props = {
   error?: string | null;
   /** product = order checkout, consultation = booking */
   checkoutScope?: 'product' | 'consultation';
+  /** Strip outer card chrome when nested inside another section */
+  embedded?: boolean;
   onApply: (
     code: string,
   ) => boolean | Promise<boolean | ApplyCouponResult>;
@@ -57,6 +59,7 @@ const CouponApplyCard = ({
   payable,
   error,
   checkoutScope,
+  embedded,
   onApply,
   onRemove,
 }: Props) => {
@@ -160,39 +163,54 @@ const CouponApplyCard = ({
     }
   };
 
+  const compactPreview = embedded ? preview.slice(0, 1) : preview;
+
   return (
-    <View style={styles.card}>
-      <View style={styles.headRow}>
+    <View style={embedded ? styles.embedded : styles.card}>
+      <View style={[styles.headRow, embedded && styles.headRowTight]}>
         <View style={styles.headLeft}>
-          <View style={styles.headIcon}>
-            <TablerIcon name="receipt" size={16} color={Colors.primaryColor} />
-          </View>
-          <View>
-            <Text style={styles.headTitle}>Apply coupon</Text>
-            <Text style={styles.headSub}>
-              {checkoutScope === 'consultation'
-                ? scopedCoupons.length
-                  ? `${scopedCoupons.length} consult offer${scopedCoupons.length > 1 ? 's' : ''}`
-                  : 'No consultation coupons available'
-                : scopedCoupons.length
-                  ? `${scopedCoupons.length} order offer${scopedCoupons.length > 1 ? 's' : ''}`
-                  : 'Enter a code or browse offers'}
+          {!embedded ? (
+            <View style={styles.headIcon}>
+              <TablerIcon name="receipt" size={16} color={Colors.primaryColor} />
+            </View>
+          ) : null}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.headTitle, embedded && styles.headTitleSm]}>
+              {embedded ? 'Coupon' : 'Apply coupon'}
             </Text>
+            {!embedded ? (
+              <Text style={styles.headSub}>
+                {checkoutScope === 'consultation'
+                  ? scopedCoupons.length
+                    ? `${scopedCoupons.length} consult offer${scopedCoupons.length > 1 ? 's' : ''}`
+                    : 'No consultation coupons available'
+                  : scopedCoupons.length
+                    ? `${scopedCoupons.length} order offer${scopedCoupons.length > 1 ? 's' : ''}`
+                    : 'Enter a code or browse offers'}
+              </Text>
+            ) : null}
           </View>
         </View>
         <TouchableOpacity
           onPress={() => setSheetOpen(true)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.viewAll}>View all</Text>
+          <Text style={[styles.viewAll, embedded && styles.viewAllSm]}>
+            View all
+          </Text>
         </TouchableOpacity>
       </View>
 
       {applied ? (
-        <View style={styles.appliedRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.appliedCode}>{applied.code}</Text>
-            <Text style={styles.appliedSave}>
+        <View style={[styles.appliedRow, embedded && styles.appliedRowSm]}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.appliedCode, embedded && styles.appliedCodeSm]}>
+              {applied.code}
+            </Text>
+            <Text
+              style={[styles.appliedSave, embedded && styles.appliedSaveSm]}
+              numberOfLines={1}
+            >
               You save {formatRupee(discount)}
               {Number(payable) > 0
                 ? ` · Payable ${formatRupee(payable, { decimals: 2 })}`
@@ -200,7 +218,9 @@ const CouponApplyCard = ({
             </Text>
           </View>
           <TouchableOpacity onPress={onRemove}>
-            <Text style={styles.remove}>Remove</Text>
+            <Text style={[styles.remove, embedded && styles.removeSm]}>
+              Remove
+            </Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -209,40 +229,49 @@ const CouponApplyCard = ({
             <TextInput
               value={code}
               onChangeText={text => setCode(text.toUpperCase())}
-              placeholder="Enter coupon code"
+              placeholder="Enter code"
               placeholderTextColor="#94A3B8"
               autoCapitalize="characters"
               autoCorrect={false}
-              style={styles.input}
+              style={[styles.input, embedded && styles.inputSm]}
               returnKeyType="done"
               onSubmitEditing={() => submit()}
             />
             <TouchableOpacity
-              style={styles.applyBtn}
+              style={[styles.applyBtn, embedded && styles.applyBtnSm]}
               onPress={() => submit()}
               disabled={applying}
             >
               {applying ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.applyText}>Apply</Text>
+                <Text
+                  style={[styles.applyText, embedded && styles.applyTextSm]}
+                >
+                  Apply
+                </Text>
               )}
             </TouchableOpacity>
           </View>
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text style={[styles.error, embedded && styles.errorSm]}>
+              {error}
+            </Text>
+          )}
         </>
       )}
 
-      {/* Top 2 valid coupons — always visible; View all opens full list */}
-      {preview.length ? (
-        <View style={styles.previewList}>
-          {preview.map(item => (
+      {/* Preview offers — 1 when embedded, 2 otherwise */}
+      {compactPreview.length ? (
+        <View style={[styles.previewList, embedded && styles.previewListSm]}>
+          {compactPreview.map(item => (
             <CouponTicket
               key={item.id}
               coupon={item}
               onApply={submit}
               onCopy={copyCode}
               notchColor="#F4F7F6"
+              compact={embedded}
               applied={
                 !!applied &&
                 applied.code.toUpperCase() === item.code.toUpperCase()
@@ -326,11 +355,19 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
   },
+  embedded: {
+    backgroundColor: 'transparent',
+    padding: 0,
+    marginBottom: 0,
+  },
   headRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  headRowTight: {
+    marginBottom: 8,
   },
   headLeft: {
     flexDirection: 'row',
@@ -352,6 +389,10 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  headTitleSm: {
+    fontSize: 12,
+    includeFontPadding: false,
+  },
   headSub: {
     marginTop: 1,
     fontSize: 11,
@@ -362,6 +403,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  viewAllSm: {
+    fontSize: 11,
   },
   inputRow: {
     flexDirection: 'row',
@@ -379,6 +423,12 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
     backgroundColor: '#F8FAFC',
+  },
+  inputSm: {
+    height: 36,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 12,
   },
   pasteBtn: {
     height: 44,
@@ -403,10 +453,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  applyBtnSm: {
+    height: 36,
+    minWidth: 56,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
   applyText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  applyTextSm: {
+    fontSize: 12,
   },
   error: {
     marginTop: 8,
@@ -414,9 +473,17 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontFamily: Fonts.PoppinsMedium,
   },
+  errorSm: {
+    marginTop: 4,
+    fontSize: 11,
+  },
   previewList: {
     marginTop: 10,
     gap: 8,
+  },
+  previewListSm: {
+    marginTop: 6,
+    gap: 6,
   },
   appliedRow: {
     flexDirection: 'row',
@@ -425,10 +492,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
   },
+  appliedRowSm: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
   appliedCode: {
     fontSize: 14,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  appliedCodeSm: {
+    fontSize: 12,
+    includeFontPadding: false,
   },
   appliedSave: {
     marginTop: 2,
@@ -436,10 +512,17 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsMedium,
   },
+  appliedSaveSm: {
+    fontSize: 10,
+    includeFontPadding: false,
+  },
   remove: {
     fontSize: 12,
     color: '#B91C1C',
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  removeSm: {
+    fontSize: 11,
   },
   sheetBackdrop: {
     flex: 1,

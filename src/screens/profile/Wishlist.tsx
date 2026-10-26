@@ -28,24 +28,25 @@ const Wishlist = (props: any) => {
         setLoading(true);
       }
 
-      const res = await _PRODUCT_SERVICES.getProduct();
-      const data = res?.data?.results || [];
-      seedWishlistCacheFromList(data);
-      const wishlistItems = applyWishlistCache(
-        data.map((item: any) => ({
-          ...item,
-          variant_id:
-            item?.variant_id ??
-            item?.variant?.variant_id ??
-            item?.variant?.id ??
-            item?.id,
-        })),
-      )
-        .filter((item: any) => isItemWishlisted(item))
-        .map((item: any) => ({
-          ...item,
-          is_wishlist_item: true,
-        }));
+      const res = await _PRODUCT_SERVICES.getWishlistProduct();
+      const wishlistItems = res?.data || [];
+      console.log('wishlistData', wishlistItems);
+      // seedWishlistCacheFromList(data);
+      // const wishlistItems = applyWishlistCache(
+      //   data.map((item: any) => ({
+      //     ...item,
+      //     variant_id:
+      //       item?.variant_id ??
+      //       item?.variant?.variant_id ??
+      //       item?.variant?.id ??
+      //       item?.id,
+      //   })),
+      // )
+      //   .filter((item: any) => isItemWishlisted(item))
+      //   .map((item: any) => ({
+      //     ...item,
+      //     is_wishlist_item: true,
+      //   }));
 
       setWishlistData(wishlistItems);
     } catch (error) {

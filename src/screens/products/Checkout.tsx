@@ -48,11 +48,6 @@ import {
     type PaymentGateway,
 } from '../../config/paymentGateways';
 import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
-import PineLabsCheckoutModal, {
-    type PineLabsCheckoutOutcome,
-    type PineLabsPageResult,
-} from '../../components/payment/PineLabsCheckoutModal';
-import type { PineLabsCheckout } from '../../services/PineLabsService';
 import { isPayphiNativeLinked } from '../../services/PayphiService';
 import {
     BUTTON,
@@ -83,6 +78,7 @@ const SummaryRow = ({
                 emphasize && styles.summaryLabelStrong,
                 success && styles.summarySuccess,
             ]}
+            numberOfLines={2}
         >
             {label}
         </Text>
@@ -92,6 +88,7 @@ const SummaryRow = ({
                 emphasize && styles.summaryValueStrong,
                 success && styles.summarySuccess,
             ]}
+            numberOfLines={1}
         >
             {value}
         </Text>
@@ -104,7 +101,7 @@ const Checkout: React.FC = (props: any) => {
     const footerBottomPad = Math.max(insets.bottom, 8);
 
     const [deliveryMethod] = useState('standard');
-    const [billExpanded, setBillExpanded] = useState(true);
+    const [billExpanded, setBillExpanded] = useState(false);
 
     const codAvailable = useMemo(
         () => isCodAvailableForItems(selectedProducts),
@@ -142,33 +139,6 @@ const Checkout: React.FC = (props: any) => {
             setGateway(resolveDefaultGateway(customerData, enabledGateways));
         }
     }, [enabledGateways, gateway, customerData]);
-
-    const [pineCheckout, setPineCheckout] = useState<PineLabsCheckout | null>(null);
-    const pineFinishRef = useRef<
-        ((result: {
-            outcome: PineLabsCheckoutOutcome;
-            pageResult?: PineLabsPageResult;
-        }) => void) | null
-    >(null);
-
-    const openPineLabsCheckout = useCallback((checkout: PineLabsCheckout) => {
-        return new Promise<{
-            outcome: PineLabsCheckoutOutcome;
-            pageResult?: PineLabsPageResult;
-        }>(resolve => {
-            pineFinishRef.current = resolve;
-            setPineCheckout(checkout);
-        });
-    }, []);
-
-    const onPineLabsFinish = useCallback(
-        (outcome: PineLabsCheckoutOutcome, pageResult?: PineLabsPageResult) => {
-            setPineCheckout(null);
-            pineFinishRef.current?.({ outcome, pageResult });
-            pineFinishRef.current = null;
-        },
-        [],
-    );
 
     // Address chosen by user tap on Manage Address (not AsyncStorage / GPS local)
     const routeSelectedAddress = props.route?.params?.selectedAddress ?? null;
@@ -502,7 +472,6 @@ const Checkout: React.FC = (props: any) => {
             coupon_code: appliedCoupon?.code,
             prepaidAmount: total,
             gateway,
-            openPineLabsCheckout,
             onCouponRejected: () => {
                 removeCoupon();
             },
@@ -575,7 +544,7 @@ const Checkout: React.FC = (props: any) => {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-                {/* Delivery address — Blinkit style */}
+                {/* Deliver to — hero strip */}
                 <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.addressCard}
@@ -586,12 +555,12 @@ const Checkout: React.FC = (props: any) => {
                             <View
                                 style={[
                                     styles.addressIcon,
-                                    { backgroundColor: '#EAF8F4' },
+                                    { backgroundColor: '#ECF8F3' },
                                 ]}
                             >
                                 <TablerIcon
                                     name="map-pin"
-                                    size={16}
+                                    size={15}
                                     color={Colors.primaryColor}
                                 />
                             </View>
@@ -630,7 +599,7 @@ const Checkout: React.FC = (props: any) => {
                             >
                                 <TablerIcon
                                     name="map-pin"
-                                    size={16}
+                                    size={15}
                                     color="#B45309"
                                 />
                             </View>
@@ -649,27 +618,13 @@ const Checkout: React.FC = (props: any) => {
                     )}
                 </TouchableOpacity>
 
-                {/* Items strip */}
+                {/* Items — list rows */}
                 <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardHeaderLeft}>
-                            <View
-                                style={[
-                                    styles.sectionIcon,
-                                    { backgroundColor: '#EEF2FF' },
-                                ]}
-                            >
-                                <TablerIcon
-                                    name="package"
-                                    size={14}
-                                    color="#4F46E5"
-                                />
-                            </View>
-                            <Text style={styles.cardTitle}>
-                                {itemUnits}{' '}
-                                {itemUnits === 1 ? 'item' : 'items'} in order
-                            </Text>
-                        </View>
+                    <View style={[styles.cardHeader, styles.cardHeaderTight]}>
+                        <Text style={styles.cardTitle}>
+                            {itemUnits}{' '}
+                            {itemUnits === 1 ? 'item' : 'items'} in order
+                        </Text>
                     </View>
 
                     {cartItems.map((item: any) => (
@@ -685,6 +640,7 @@ const Checkout: React.FC = (props: any) => {
                                 <Image
                                     source={{ uri: item.image }}
                                     style={styles.itemImage}
+                                    resizeMode="cover"
                                 />
                             ) : (
                                 <View style={styles.itemImagePlaceholder}>
@@ -703,74 +659,59 @@ const Checkout: React.FC = (props: any) => {
                                     Qty {item.quantity}
                                 </Text>
                             </View>
-                            <RupeeAmount
-                                value={Math.round(
-                                    Number(item.price) * Number(item.quantity),
-                                )}
-                                style={styles.itemPrice}
-                            />
+                            <View style={styles.itemPriceWrap}>
+                                <RupeeAmount
+                                    value={Math.round(
+                                        Number(item.price) *
+                                            Number(item.quantity),
+                                    )}
+                                    style={styles.itemPrice}
+                                    iconSize={12}
+                                />
+                            </View>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                {/* Payment — compact chips */}
+                {/* Pay + gateway + coupon — one card */}
                 <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardHeaderLeft}>
-                            <View
-                                style={[
-                                    styles.sectionIcon,
-                                    { backgroundColor: '#ECFDF5' },
-                                ]}
-                            >
-                                <TablerIcon
-                                    name="wallet"
-                                    size={14}
-                                    color="#15803D"
-                                />
-                            </View>
-                            <Text style={styles.cardTitle}>Payment method</Text>
-                        </View>
-                    </View>
+                    <Text style={[styles.cardTitle, { marginBottom: 8 }]}>
+                        Payment
+                    </Text>
 
                     <View style={styles.payRow}>
                         <TouchableOpacity
                             style={[
                                 styles.payChip,
                                 selectedMethod === 'online' &&
-                                styles.payChipActive,
+                                    styles.payChipActive,
                             ]}
                             onPress={() => setSelectedMethod('online')}
                             activeOpacity={0.85}
                         >
                             <TablerIcon
                                 name="credit-card"
-                                size={16}
+                                size={15}
                                 color={
                                     selectedMethod === 'online'
                                         ? Colors.primaryColor
                                         : '#64748B'
                                 }
                             />
-                            <View style={{ flex: 1 }}>
-                                <Text
-                                    style={[
-                                        styles.payChipTitle,
-                                        selectedMethod === 'online' &&
+                            <Text
+                                style={[
+                                    styles.payChipTitle,
+                                    selectedMethod === 'online' &&
                                         styles.payChipTitleActive,
-                                    ]}
-                                >
-                                    Pay online
-                                </Text>
-                                <Text style={styles.payChipSub}>
-                                    UPI · Card · Wallet
-                                </Text>
-                            </View>
+                                ]}
+                            >
+                                Online
+                            </Text>
                             {selectedMethod === 'online' ? (
                                 <View style={styles.checkDot}>
                                     <TablerIcon
                                         name="check"
-                                        size={12}
+                                        size={10}
                                         color="#FFF"
                                     />
                                 </View>
@@ -792,37 +733,30 @@ const Checkout: React.FC = (props: any) => {
                         >
                             <TablerIcon
                                 name="cash"
-                                size={16}
+                                size={15}
                                 color={
                                     !codAvailable
                                         ? '#94A3B8'
                                         : selectedMethod === 'cod'
-                                            ? Colors.primaryColor
-                                            : '#64748B'
+                                          ? Colors.primaryColor
+                                          : '#64748B'
                                 }
                             />
-                            <View style={{ flex: 1 }}>
-                                <Text
-                                    style={[
-                                        styles.payChipTitle,
-                                        selectedMethod === 'cod' &&
+                            <Text
+                                style={[
+                                    styles.payChipTitle,
+                                    selectedMethod === 'cod' &&
                                         styles.payChipTitleActive,
-                                        !codAvailable && styles.payChipMuted,
-                                    ]}
-                                >
-                                    Cash on delivery
-                                </Text>
-                                <Text style={styles.payChipSub}>
-                                    {codAvailable
-                                        ? 'Pay when delivered'
-                                        : 'Not available'}
-                                </Text>
-                            </View>
+                                    !codAvailable && styles.payChipMuted,
+                                ]}
+                            >
+                                COD
+                            </Text>
                             {selectedMethod === 'cod' && codAvailable ? (
                                 <View style={styles.checkDot}>
                                     <TablerIcon
                                         name="check"
-                                        size={12}
+                                        size={10}
                                         color="#FFF"
                                     />
                                 </View>
@@ -830,20 +764,21 @@ const Checkout: React.FC = (props: any) => {
                         </TouchableOpacity>
                     </View>
 
-                    {selectedMethod === 'online' ? (
+                    {selectedMethod === 'online' && enabledGateways.length > 1 ? (
                         <View style={styles.gatewayWrap}>
+                            <Text style={styles.sectionLabel}>Pay using</Text>
                             <PaymentGatewaySelector
                                 gateways={enabledGateways}
                                 selected={gateway}
                                 onSelect={setGateway}
                                 disabled={isPaying || isPlacing}
+                                compact
                             />
                         </View>
                     ) : null}
-                </View>
 
-                {/* Coupons */}
-                <View style={styles.card}>
+                    <View style={styles.sectionDivider} />
+
                     <CouponApplyCard
                         coupons={coupons}
                         eligibleCoupons={eligibleCoupons}
@@ -854,6 +789,7 @@ const Checkout: React.FC = (props: any) => {
                         payable={total}
                         error={couponError}
                         checkoutScope="product"
+                        embedded
                         onApply={applyCode}
                         onRemove={removeCoupon}
                     />
@@ -862,30 +798,27 @@ const Checkout: React.FC = (props: any) => {
                 {/* Bill summary */}
                 <View style={styles.card}>
                     <TouchableOpacity
-                        style={styles.cardHeader}
+                        style={[styles.cardHeader, styles.cardHeaderTight]}
                         activeOpacity={0.8}
                         onPress={() => setBillExpanded(v => !v)}
                     >
-                        <View style={styles.cardHeaderLeft}>
-                            <View
-                                style={[
-                                    styles.sectionIcon,
-                                    { backgroundColor: '#FEF3C7' },
-                                ]}
-                            >
-                                <TablerIcon
-                                    name="receipt"
-                                    size={14}
-                                    color="#B45309"
+                        <Text style={styles.cardTitle}>Bill details</Text>
+                        <View style={styles.billHeaderRight}>
+                            {feesReady ? (
+                                <RupeeAmount
+                                    value={total}
+                                    decimals={2}
+                                    style={styles.billPeekTotal}
+                                    iconSize={12}
+                                    iconColor={Colors.primaryColor}
                                 />
-                            </View>
-                            <Text style={styles.cardTitle}>Bill details</Text>
+                            ) : null}
+                            <TablerIcon
+                                name={billExpanded ? 'chevron-up' : 'chevron-down'}
+                                size={16}
+                                color="#94A3B8"
+                            />
                         </View>
-                        <TablerIcon
-                            name={billExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={16}
-                            color="#94A3B8"
-                        />
                     </TouchableOpacity>
 
                     {feeQuoteLoading && !feesReady ? (
@@ -941,7 +874,7 @@ const Checkout: React.FC = (props: any) => {
                                 />
                             ) : null}
                             {feeBreakdown.discount > 0 ||
-                                feeBreakdown.itemsAfterDiscount !==
+                            feeBreakdown.itemsAfterDiscount !==
                                 feeBreakdown.baseAmount ? (
                                 <SummaryRow
                                     label="Sub total"
@@ -951,24 +884,21 @@ const Checkout: React.FC = (props: any) => {
                                     )}
                                 />
                             ) : null}
-                            {/* {feeBreakdown.freeDeliveryNote ? (
-                                <Text style={styles.freeDeliveryNote}>
-                                    {feeBreakdown.freeDeliveryNote}
-                                </Text>
-                            ) : null} */}
 
                             <SummaryRow
                                 label={
                                     feeBreakdown.freeDelivery
                                         ? `Delivery · free above ${formatRupee(
-                                            feeBreakdown.freeDeliveryMinimum,
-                                        )}`
+                                              feeBreakdown.freeDeliveryMinimum,
+                                          )}`
                                         : 'Delivery'
                                 }
                                 value={
                                     isFreeShip
                                         ? 'FREE'
-                                        : formatRupee(shippingFee, { decimals: 2 })
+                                        : formatRupee(shippingFee, {
+                                              decimals: 2,
+                                          })
                                 }
                                 success={isFreeShip}
                             />
@@ -979,22 +909,27 @@ const Checkout: React.FC = (props: any) => {
                                 />
                             ) : null}
 
-
                             {feeBreakdown.platformFee > 0 ? (
                                 <SummaryRow
                                     label={feeRateLabel(
                                         'Platform fee',
                                         feeBreakdown.platformRate,
                                     )}
-                                    value={formatRupee(feeBreakdown.platformFee, {
-                                        decimals: 2,
-                                    })}
+                                    value={formatRupee(
+                                        feeBreakdown.platformFee,
+                                        { decimals: 2 },
+                                    )}
                                 />
                             ) : null}
                             {feeBreakdown.gstPresent && feeBreakdown.gst > 0 ? (
                                 <SummaryRow
-                                    label={feeRateLabel('GST', feeBreakdown.gstRate)}
-                                    value={formatRupee(feeBreakdown.gst, { decimals: 2 })}
+                                    label={feeRateLabel(
+                                        'GST',
+                                        feeBreakdown.gstRate,
+                                    )}
+                                    value={formatRupee(feeBreakdown.gst, {
+                                        decimals: 2,
+                                    })}
                                 />
                             ) : null}
                             <View style={styles.billDivider} />
@@ -1010,46 +945,32 @@ const Checkout: React.FC = (props: any) => {
                             !feesReady && styles.totalStripMuted,
                         ]}
                     >
-                        <Text style={styles.totalStripLabel}>
-                            Grand total
-                        </Text>
-                        {feesReady ? (
-                            <RupeeAmount
-                                value={total}
-                                decimals={2}
-                                style={styles.totalStripValue}
-                                iconSize={15}
-                                iconColor={Colors.primaryColor}
-                            />
-                        ) : (
-                            <Text style={styles.totalStripPending}>—</Text>
-                        )}
+                        <Text style={styles.totalStripLabel}>Grand total</Text>
+                        <View style={styles.amountCol}>
+                            {feesReady ? (
+                                <RupeeAmount
+                                    value={total}
+                                    decimals={2}
+                                    style={styles.totalStripValue}
+                                    iconSize={14}
+                                    iconColor={Colors.primaryColor}
+                                />
+                            ) : (
+                                <Text style={styles.totalStripPending}>—</Text>
+                            )}
+                        </View>
                     </LinearGradient>
                 </View>
 
-                {/* Trust */}
-                <View style={styles.trustStrip}>
-                    <View style={styles.trustItem}>
-                        <TablerIcon
-                            name="shield"
-                            size={14}
-                            color={Colors.primaryColor}
-                        />
-                        <Text style={styles.trustText}>Secure</Text>
-                    </View>
-                    <View style={styles.trustDivider} />
-                    <View style={styles.trustItem}>
-                        <TablerIcon name="truck" size={14} color="#0369A1" />
-                        <Text style={styles.trustText}>
-                            Your order will be delivered in 24 hours between
-                            appropriate delivery slots
-                        </Text>
-                    </View>
-                    <View style={styles.trustDivider} />
-                    <View style={styles.trustItem}>
-                        <TablerIcon name="leaf" size={14} color="#15803D" />
-                        <Text style={styles.trustText}>Genuine</Text>
-                    </View>
+                <View style={styles.trustLine}>
+                    <TablerIcon
+                        name="shield"
+                        size={13}
+                        color={Colors.primaryColor}
+                    />
+                    <Text style={styles.trustLineText}>
+                        Secure checkout · Delivered in 24 hrs · Genuine Ayurveda
+                    </Text>
                 </View>
 
                 {!!orderError ? (
@@ -1063,7 +984,7 @@ const Checkout: React.FC = (props: any) => {
                     </View>
                 ) : null}
 
-                <View style={{ height: 108 }} />
+                <View style={{ height: 100 }} />
             </ScrollView>
 
             {/* Sticky CTA */}
@@ -1178,13 +1099,6 @@ const Checkout: React.FC = (props: any) => {
                     </View>
                 </SafeAreaView>
             </Modal>
-
-            <PineLabsCheckoutModal
-                visible={Boolean(pineCheckout?.redirectUrl)}
-                url={pineCheckout?.redirectUrl ?? ''}
-                returnUrl={pineCheckout?.returnUrl}
-                onFinish={onPineLabsFinish}
-            />
         </SafeAreaView>
     );
 };
@@ -1198,7 +1112,7 @@ const styles = StyleSheet.create({
     },
     content: {
         paddingHorizontal: getScreenPaddingH(),
-        paddingTop: SPACING.sm,
+        paddingTop: 6,
         paddingBottom: SPACING.sm,
     },
 
@@ -1209,15 +1123,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
         paddingHorizontal: 12,
-        paddingVertical: 12,
+        paddingVertical: 10,
         borderWidth: StyleSheet.hairlineWidth,
         borderColor: '#E8EEF2',
         marginBottom: 8,
     },
     addressIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: 32,
+        height: 32,
+        borderRadius: 9,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1229,7 +1143,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 2,
+        marginBottom: 1,
     },
     deliverTo: {
         fontSize: 11,
@@ -1250,7 +1164,7 @@ const styles = StyleSheet.create({
     },
     addressText: {
         fontSize: 12,
-        lineHeight: 17,
+        lineHeight: 16,
         fontFamily: Fonts.PoppinsMedium,
         color: '#0F172A',
     },
@@ -1291,8 +1205,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
         paddingHorizontal: 12,
-        paddingTop: 12,
-        paddingBottom: 12,
+        paddingTop: 10,
+        paddingBottom: 10,
         borderWidth: StyleSheet.hairlineWidth,
         borderColor: '#E8EEF2',
         marginBottom: 8,
@@ -1303,24 +1217,26 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 10,
     },
-    cardHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        flex: 1,
-    },
-    sectionIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
+    cardHeaderTight: {
+        marginBottom: 8,
     },
     cardTitle: {
-        fontSize: 14,
+        fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
         includeFontPadding: false,
+    },
+    sectionLabel: {
+        fontSize: 11,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+        marginBottom: 6,
+        includeFontPadding: false,
+    },
+    sectionDivider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: '#E8EEF2',
+        marginVertical: 10,
     },
 
     itemRow: {
@@ -1332,16 +1248,20 @@ const styles = StyleSheet.create({
         borderTopColor: '#F1F5F9',
     },
     itemImage: {
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         borderRadius: 10,
         backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E8EEF2',
     },
     itemImagePlaceholder: {
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         borderRadius: 10,
         backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E8EEF2',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1354,31 +1274,41 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
         lineHeight: 16,
+        includeFontPadding: false,
     },
     itemQty: {
         marginTop: 2,
         fontSize: 11,
         fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
+        includeFontPadding: false,
+    },
+    itemPriceWrap: {
+        minWidth: 64,
+        alignItems: 'flex-end',
     },
     itemPrice: {
         fontSize: 13,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
+        includeFontPadding: false,
     },
 
     payRow: {
+        flexDirection: 'row',
         gap: 8,
     },
     payChip: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        borderRadius: 12,
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+        borderRadius: 10,
         backgroundColor: '#F8FAFC',
-        borderWidth: 1.5,
+        borderWidth: 1.2,
         borderColor: '#E2E8F0',
     },
     payChipActive: {
@@ -1386,10 +1316,10 @@ const styles = StyleSheet.create({
         borderColor: Colors.primaryColor,
     },
     payChipDisabled: {
-        opacity: 0.55,
+        opacity: 0.5,
     },
     payChipTitle: {
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#334155',
         includeFontPadding: false,
@@ -1400,65 +1330,51 @@ const styles = StyleSheet.create({
     payChipMuted: {
         color: '#94A3B8',
     },
-    payChipSub: {
-        marginTop: 1,
-        fontSize: 10,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#94A3B8',
-        includeFontPadding: false,
-    },
     checkDot: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
         backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
     },
     gatewayWrap: {
-        marginTop: 12,
-    },
-    onlineHint: {
         marginTop: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: '#ECFDF5',
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    onlineHintText: {
-        flex: 1,
-        fontSize: 11,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#15803D',
     },
 
     summaryRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
         marginBottom: 8,
-        gap: 8,
+        gap: 12,
+        minHeight: 18,
     },
     summaryLabel: {
         flex: 1,
+        flexShrink: 1,
         fontSize: 12,
+        lineHeight: 18,
         fontFamily: Fonts.PoppinsMedium,
         color: '#64748B',
+        includeFontPadding: false,
+        paddingRight: 4,
     },
     summaryLabelStrong: {
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
     },
     summaryValue: {
-        fontSize: 13,
+        width: 92,
+        fontSize: 12,
+        lineHeight: 18,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#0F172A',
+        textAlign: 'right',
+        includeFontPadding: false,
     },
     summaryValueStrong: {
-        fontSize: 15,
+        fontSize: 13,
         color: Colors.primaryColor,
     },
     summarySuccess: {
@@ -1468,20 +1384,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        paddingTop: 4,
-        paddingBottom: 8,
+        paddingTop: 2,
+        paddingBottom: 6,
     },
     feeLoadingText: {
         fontSize: 12,
         color: '#64748B',
-        fontFamily: Fonts.PoppinsMedium,
-    },
-    freeDeliveryNote: {
-        marginTop: -4,
-        marginBottom: 8,
-        fontSize: 11,
-        lineHeight: 15,
-        color: '#15803D',
         fontFamily: Fonts.PoppinsMedium,
     },
     feeQuoteError: {
@@ -1496,66 +1404,76 @@ const styles = StyleSheet.create({
         color: Colors.primaryColor,
         fontFamily: Fonts.PoppinsSemiBold,
     },
+    billHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    billPeekTotal: {
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsSemiBold,
+        color: Colors.primaryColor,
+        includeFontPadding: false,
+    },
     billDivider: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: '#E2E8F0',
-        marginVertical: SPACING.xs,
+        marginVertical: 6,
     },
     totalStrip: {
-        borderRadius: RADIUS.sm,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.sm,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 9,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 12,
     },
     totalStripMuted: {
         opacity: 0.55,
     },
     totalStripLabel: {
-        fontSize: TYPO.subtitle,
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 18,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#14532D',
+        includeFontPadding: false,
+    },
+    amountCol: {
+        width: 92,
+        alignItems: 'flex-end',
+        justifyContent: 'center',
     },
     totalStripValue: {
-        fontSize: TYPO.lg,
+        fontSize: 15,
+        lineHeight: 20,
         fontFamily: Fonts.PoppinsBold,
         color: Colors.primaryColor,
         includeFontPadding: false,
     },
     totalStripPending: {
-        fontSize: TYPO.lg,
+        fontSize: 15,
+        lineHeight: 20,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#94A3B8',
+        textAlign: 'right',
+        includeFontPadding: false,
     },
 
-    trustStrip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 8,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: '#E8EEF2',
-        marginBottom: 8,
-    },
-    trustItem: {
-        flex: 1,
+    trustLine: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 5,
+        gap: 6,
+        paddingVertical: 6,
+        marginBottom: 4,
     },
-    trustDivider: {
-        width: StyleSheet.hairlineWidth,
-        height: 18,
-        backgroundColor: '#E2E8F0',
-    },
-    trustText: {
+    trustLineText: {
         fontSize: 10,
-        fontFamily: Fonts.PoppinsSemiBold,
-        color: '#475569',
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#64748B',
+        includeFontPadding: false,
     },
 
     errorBox: {

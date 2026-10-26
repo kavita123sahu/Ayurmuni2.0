@@ -87,6 +87,44 @@ const logPayphi = (step: string, data?: Record<string, unknown>) => {
   console.warn('[PAYPHI]', step, data ?? '');
 };
 
+/** ICICI /merapp/login often returns HTTP 200 with this business error body. */
+const isSoftLoginFailure = (error: any): boolean => {
+  const code = str(error?.code || error?.userInfo?.code).toLowerCase();
+  const msg = str(error?.message || error).toLowerCase();
+  return (
+    code.includes('server communication error') ||
+    msg.includes('server communication error') ||
+    (/\b200\b/.test(code) && msg.includes('setappinfo')) ||
+    (/\b200\b/.test(msg) && msg.includes('communication'))
+  );
+};
+
+/** Copy-paste block for ICICI when login fails. */
+const logIciciLoginReport = (
+  title: string,
+  details: Record<string, unknown>,
+) => {
+  const lines = [
+    '',
+    '========== ICICI PAYPHI — SEND THIS TO ICICI TEAM ==========',
+    `TITLE: ${title}`,
+    `TIME: ${new Date().toISOString()}`,
+    'APP: Ayurmuni | package: com.ayurmuniecosystem',
+    'loginUrl: https://pgpayuat.icicibank.com/merapp/login/',
+    'debugSHA1: 5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25',
+    'NOTE: setAppInfo login uses MID+AppId+env only — Key/Agg are for makePayment',
+    '---',
+    ...Object.entries(details).map(([k, v]) => {
+      const val =
+        typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v ?? '');
+      return `${k}: ${val}`;
+    }),
+    '============================================================',
+    '',
+  ];
+  console.warn(lines.join('\n'));
+};
+
 let cachedSdk: any | undefined;
 
 const getSdk = (): any => {
@@ -104,7 +142,7 @@ const getSdk = (): any => {
 export const isPayphiNativeLinked = (): boolean =>
   Boolean(NativeModules?.PayphiSdk);
 
-/** `data.icici` from book-slot / place-order */
+/** `data.icici` from book-slot / place-order (may be missing — then use top-level + config). */
 export const getIciciPayload = (data: any): Record<string, any> | null => {
   const icici = data?.icici;
   if (!icici || typeof icici !== 'object' || Array.isArray(icici)) return null;
@@ -115,18 +153,29 @@ export const getIciciPayload = (data: any): Record<string, any> | null => {
 export const parsePayphiAppInfo = (data: any): PayphiAppInfo | null => {
   const creds = getPayphiCredentials();
   const icici = getIciciPayload(data);
-  const merchantId = str(icici?.merchantId) || creds.merchantId;
+  const merchantId =
+    str(icici?.merchantId) ||
+    str(data?.merchant_id) ||
+    str(data?.merchantId) ||
+    creds.merchantId;
   if (!merchantId) return null;
 
   return {
     merchantId,
-    appId: str(icici?.appId) || creds.appId || merchantId,
-    environment: sdkEnv(str(icici?.environment) || creds.environment),
+    appId:
+      str(icici?.appId) ||
+      str(data?.app_id) ||
+      str(data?.appId) ||
+      creds.appId ||
+      merchantId,
+    environment: sdkEnv(
+      str(icici?.environment) || str(data?.environment) || creds.environment,
+    ),
     merchantName: str(icici?.merchantName) || 'Ayurmuni',
   };
 };
 
-/** Build makePayment payload from `data.icici` (exact SDK keys). */
+/** Build makePayment payload from `data.icici` (exact SDK keys) + config fallbacks. */
 export const parsePayphiPaymentRequest = (
   data: any,
   fallback?: {
@@ -136,18 +185,35 @@ export const parsePayphiPaymentRequest = (
     customerMobile?: string;
   },
 ): PayphiPaymentRequest | null => {
-  const icici = getIciciPayload(data);
-  if (!icici) return null;
-
+  const icici = getIciciPayload(data) || {};
   const creds = getPayphiCredentials();
   const merchantId = str(icici.merchantId) || creds.merchantId;
   const merchantTxnNo =
-    str(icici.merchantTxnNo) || str(data?.gateway_order_id);
-  const amount = toAmount(icici.amount ?? fallback?.amount);
+    str(icici.merchantTxnNo) ||
+    str(data?.gateway_order_id) ||
+    str(data?.invoice_no) ||
+    str(data?.invoiceNo);
+  const amount = toAmount(
+    icici.amount ??
+      data?.amount ??
+      data?.summary?.total_payable_amount ??
+      fallback?.amount,
+  );
   const customerEmailID =
-    str(icici.customerEmailID) || str(fallback?.customerEmail);
+    str(icici.customerEmailID) ||
+    str(data?.customer_email) ||
+    str(fallback?.customerEmail);
 
-  if (!merchantId || !merchantTxnNo || !amount || !customerEmailID) return null;
+  if (!merchantId || !merchantTxnNo || !amount || !customerEmailID) {
+    logPayphi('parsePayphiPaymentRequest missing fields', {
+      hasMerchantId: Boolean(merchantId),
+      hasMerchantTxnNo: Boolean(merchantTxnNo),
+      hasAmount: Boolean(amount),
+      hasEmail: Boolean(customerEmailID),
+      hasIciciObject: Boolean(getIciciPayload(data)),
+    });
+    return null;
+  }
 
   const secretKey = str(icici.secretKey) || creds.secretKey;
   const secureToken = str(icici.secureToken);
@@ -158,8 +224,14 @@ export const parsePayphiPaymentRequest = (
     merchantTxnNo,
     currencyCode: str(icici.currencyCode) || '356',
     customerEmailID,
-    customerMobileNo: str(icici.customerMobileNo) || str(fallback?.customerMobile),
-    customerName: str(icici.customerName) || str(fallback?.customerName),
+    customerMobileNo:
+      str(icici.customerMobileNo) ||
+      str(data?.customer_mobile) ||
+      str(fallback?.customerMobile),
+    customerName:
+      str(icici.customerName) ||
+      str(data?.customer_name) ||
+      str(fallback?.customerName),
     aggregatorID: str(icici.aggregatorID) || creds.aggregatorID,
     addlParam1: str(icici.addlParam1),
     addlParam2: str(icici.addlParam2),
@@ -292,7 +364,8 @@ const setAppInfo = async (info: PayphiAppInfo): Promise<void> => {
 
 /**
  * Open native PayPhi payment sheet.
- * Requires successful setAppInfo. On login fail, rethrow exact SDK message (do not open empty sheet).
+ * setAppInfo = SDK login. On "server communication error 200", MID/AppId are usually
+ * already stored by the AAR — still open makePayment so the payment screen can show.
  */
 export const openPayphiPayment = async (
   appInfo: PayphiAppInfo | null,
@@ -322,20 +395,58 @@ export const openPayphiPayment = async (
     merchantTxnNo: request.merchantTxnNo,
     amount,
     merchantName: appInfo.merchantName,
+    hasSecretKey: Boolean(str(request.secretKey) || creds.secretKey),
+    aggregatorID: str(request.aggregatorID) || creds.aggregatorID,
   });
 
   await waitForUi();
 
+  let loginSoftContinued = false;
   try {
     await setAppInfo(appInfo);
   } catch (initError: any) {
-    // Exact SDK code/message — no custom text
-    logPayphi('setAppInfo error (makePayment blocked)', {
-      code: initError?.code,
-      message: sdkMessage(null, initError),
-      error: initError,
+    const code = str(initError?.code);
+    const msg = sdkMessage(null, initError);
+
+    logIciciLoginReport('2) LOGIN FAILED — setAppInfo /merapp/login', {
+      step: 'setAppInfo FAILED',
+      environment: sdkEnv(appInfo.environment),
+      merchantId: appInfo.merchantId,
+      appId: appInfo.appId,
+      errorCode: code,
+      errorMessage: msg,
+      askIcici:
+        'Confirm Customer App SDK enabled on INT, App ID (may differ from MID), whitelist package com.ayurmuniecosystem + debug SHA1',
     });
-    throw initError;
+
+    if (!isSoftLoginFailure(initError)) {
+      throw initError;
+    }
+
+    // Retry once on QA if INT returned the known 200 business error
+    if (sdkEnv(appInfo.environment) === 'INT') {
+      try {
+        logPayphi('setAppInfo retry on QA after INT login error');
+        await setAppInfo({ ...appInfo, environment: 'QA' });
+        logPayphi('setAppInfo OK on QA retry');
+      } catch (qaError: any) {
+        if (!isSoftLoginFailure(qaError)) {
+          throw qaError;
+        }
+        loginSoftContinued = true;
+        logPayphi('soft-continue after login fail — opening makePayment sheet', {
+          intCode: code,
+          qaCode: str(qaError?.code),
+          qaMessage: sdkMessage(null, qaError),
+        });
+      }
+    } else {
+      loginSoftContinued = true;
+      logPayphi('soft-continue after login fail — opening makePayment sheet', {
+        code,
+        message: msg,
+      });
+    }
   }
 
   await waitForUi();
@@ -424,6 +535,7 @@ export const openPayphiPayment = async (
         aggregatorID: payload.aggregatorID,
         hasSecretKey: Boolean(secretKey),
         hasSecureToken: Boolean(secureToken),
+        loginSoftContinued,
       });
 
       sdk.makePayment(payload);
@@ -450,6 +562,7 @@ export const isPayphiUserCancelled = (
 };
 
 /** Verify-payment body for consult / order APIs. */
+/** Consult verify-payment: payment_id, gateway_order_id, gateway_payment_id, gateway_signature */
 export const buildIciciVerifyPayload = (args: {
   paymentId: string;
   merchantTxnNo: string;
@@ -458,34 +571,14 @@ export const buildIciciVerifyPayload = (args: {
 }): {
   payment_id: string;
   gateway_order_id: string;
-  icici_merchant_txn_no: string;
-  merchantTxnNo: string;
-  payment_gateway: 'icici';
-  gateway_payment_id?: string;
-  gateway_signature?: string;
-} => {
-  const merchantTxnNo = str(args.merchantTxnNo);
-  const body: {
-    payment_id: string;
-    gateway_order_id: string;
-    icici_merchant_txn_no: string;
-    merchantTxnNo: string;
-    payment_gateway: 'icici';
-    gateway_payment_id?: string;
-    gateway_signature?: string;
-  } = {
-    payment_id: str(args.paymentId),
-    gateway_order_id: merchantTxnNo,
-    icici_merchant_txn_no: merchantTxnNo,
-    merchantTxnNo,
-    payment_gateway: 'icici',
-  };
-  const payId = str(args.gatewayPaymentId);
-  const sig = str(args.gatewaySignature);
-  if (payId) body.gateway_payment_id = payId;
-  if (sig) body.gateway_signature = sig;
-  return body;
-};
+  gateway_payment_id: string;
+  gateway_signature: string;
+} => ({
+  payment_id: str(args.paymentId),
+  gateway_order_id: str(args.merchantTxnNo),
+  gateway_payment_id: str(args.gatewayPaymentId),
+  gateway_signature: str(args.gatewaySignature),
+});
 
 export const resolveIciciMerchantTxnNo = (
   paymentData: any,

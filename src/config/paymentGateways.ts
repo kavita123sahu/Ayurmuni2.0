@@ -1,10 +1,10 @@
 import type { TablerIconName } from '../components/TablerIcon';
 
 /**
- * API `payment_gateway` values only:
- *   pinelabs | razorpay | icici
+ * API `payment_gateway` values:
+ *   cashfree | razorpay | icici
  */
-export type PaymentGateway = 'pinelabs' | 'razorpay' | 'icici';
+export type PaymentGateway = 'cashfree' | 'razorpay' | 'icici';
 
 export type PaymentGatewayOption = {
   id: PaymentGateway;
@@ -14,6 +14,12 @@ export type PaymentGatewayOption = {
 };
 
 export const PAYMENT_GATEWAY_OPTIONS: Record<PaymentGateway, PaymentGatewayOption> = {
+  cashfree: {
+    id: 'cashfree',
+    title: 'Cashfree',
+    subtitle: 'UPI, cards, net banking & wallets',
+    icon: 'credit-card',
+  },
   razorpay: {
     id: 'razorpay',
     title: 'Razorpay',
@@ -26,24 +32,14 @@ export const PAYMENT_GATEWAY_OPTIONS: Record<PaymentGateway, PaymentGatewayOptio
     subtitle: 'Native PayPhi SDK — UPI, cards, net banking',
     icon: 'building',
   },
-  pinelabs: {
-    id: 'pinelabs',
-    title: 'Pine Labs',
-    subtitle: 'Hosted checkout — UPI, cards, wallets',
-    icon: 'wallet',
-  },
 };
 
-export const PAYMENT_GATEWAY_ORDER: PaymentGateway[] = [
-  'razorpay',
-  'icici',
-  'pinelabs',
-];
+const GATEWAY_ORDER: PaymentGateway[] = ['cashfree', 'razorpay', 'icici'];
 
-export const DEFAULT_GATEWAY_FLAGS: Record<PaymentGateway, boolean> = {
+const DEFAULT_FLAGS: Record<PaymentGateway, boolean> = {
+  cashfree: true,
   razorpay: true,
   icici: true,
-  pinelabs: true,
 };
 
 /** Hide ICICI when PayPhi native module is not in this build. */
@@ -54,25 +50,24 @@ export function filterRunnableGateways(
   const list = (Array.isArray(gateways) ? gateways : []).filter(id =>
     id === 'icici' ? Boolean(opts?.payphiNativeLinked) : true,
   );
-  return list.length ? list : ['razorpay'];
+  return list.length ? list : ['cashfree'];
 }
 
-/** Parse API gateway id. Exact: pinelabs | razorpay | icici (legacy "payphi" → icici). */
+/** Parse API / UI gateway id → cashfree | razorpay | icici. */
 export const parsePaymentGateway = (value: unknown): PaymentGateway | null => {
-  const s = String(value ?? '').trim().toLowerCase();
-  if (s === 'pinelabs') return 'pinelabs';
+  const s = String(value ?? '')
+    .trim()
+    .toLowerCase();
   if (s === 'razorpay') return 'razorpay';
+  if (s === 'cashfree') return 'cashfree';
   if (s === 'icici' || s === 'payphi') return 'icici';
   return null;
 };
 
-/** @deprecated Prefer parsePaymentGateway */
-export const normalizeGateway = parsePaymentGateway;
-
 /** Value to send on book-slot / place-order / verify. */
 export const toApiPaymentGateway = (
   gateway?: PaymentGateway | string | null,
-): PaymentGateway => parsePaymentGateway(gateway) ?? 'razorpay';
+): PaymentGateway => parsePaymentGateway(gateway) ?? 'cashfree';
 
 const asBool = (value: unknown, fallback: boolean): boolean => {
   if (value == null || value === '') return fallback;
@@ -86,44 +81,85 @@ const asBool = (value: unknown, fallback: boolean): boolean => {
 
 /**
  * Enabled gateways from customer profile.
- * Prefers `payment_gateways` with keys: pinelabs, razorpay, icici.
+ * Prefers `payment_gateways` with keys: cashfree, razorpay, icici.
  */
 export const resolveEnabledGateways = (profile: any): PaymentGateway[] => {
   const source = profile?.customer ?? profile ?? {};
   const raw = source?.payment_gateways;
-  const flags = { ...DEFAULT_GATEWAY_FLAGS };
+  const flags = { ...DEFAULT_FLAGS };
 
   if (Array.isArray(raw)) {
     const listed = new Set(
       raw.map(parsePaymentGateway).filter(Boolean) as PaymentGateway[],
     );
-    PAYMENT_GATEWAY_ORDER.forEach(id => {
+    GATEWAY_ORDER.forEach(id => {
       flags[id] = listed.has(id);
     });
   } else if (raw && typeof raw === 'object') {
-    PAYMENT_GATEWAY_ORDER.forEach(id => {
+    GATEWAY_ORDER.forEach(id => {
       flags[id] = asBool(raw[id], flags[id]);
     });
   }
 
-  flags.pinelabs = asBool(source?.pinelabs_enabled, flags.pinelabs);
+  flags.cashfree = asBool(source?.cashfree_enabled, flags.cashfree);
   flags.razorpay = asBool(source?.razorpay_enabled, flags.razorpay);
   flags.icici = asBool(
     source?.icici_enabled ?? source?.payphi_enabled,
     flags.icici,
   );
 
-  const enabled = PAYMENT_GATEWAY_ORDER.filter(id => flags[id]);
-  return enabled.length ? enabled : ['razorpay'];
+  const enabled = GATEWAY_ORDER.filter(id => flags[id]);
+  return enabled.length ? enabled : ['cashfree'];
 };
 
 export const resolveDefaultGateway = (
   profile: any,
   enabled: PaymentGateway[],
 ): PaymentGateway => {
-  // Prefer Razorpay whenever it is enabled (stable default; ICICI SDK may be unavailable)
+  if (enabled.includes('cashfree')) return 'cashfree';
   if (enabled.includes('razorpay')) return 'razorpay';
   const source = profile?.customer ?? profile ?? {};
   const preferred = parsePaymentGateway(source?.default_payment_gateway);
   return preferred && enabled.includes(preferred) ? preferred : enabled[0];
 };
+
+const str = (value: unknown): string => {
+  if (value == null) return '';
+  return String(value).trim();
+};
+
+/** Order id for verify-payment `gateway_order_id`. */
+export const getGatewayOrderId = (
+  data: any,
+  gateway: PaymentGateway,
+): string => {
+  if (gateway === 'razorpay') {
+    return str(data?.razorpay_order_id) || str(data?.gateway_order_id);
+  }
+  if (gateway === 'cashfree') {
+    return (
+      str(data?.cashfree_order_id) ||
+      str(data?.cf_order_id) ||
+      str(data?.cashfree?.order_id) ||
+      str(data?.payment_session_id ? data?.order_id : '') ||
+      str(data?.gateway_order_id)
+    );
+  }
+  // icici
+  return (
+    str(data?.gateway_order_id) ||
+    str(data?.icici?.merchantTxnNo) ||
+    str(data?.invoice_no)
+  );
+};
+
+export const hasGatewayOrder = (data: any): boolean =>
+  Boolean(
+    data?.razorpay_order_id ||
+      data?.gateway_order_id ||
+      data?.payment_session_id ||
+      data?.cashfree_order_id ||
+      data?.cashfree ||
+      data?.invoice_no ||
+      data?.icici,
+  );

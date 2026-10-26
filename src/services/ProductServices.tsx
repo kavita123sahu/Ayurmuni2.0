@@ -306,41 +306,41 @@ const resolveImageUrl = (item: any): string => {
 export const mapProductCategory = (item: any) => ({
   id: String(
     item?.id ??
-      item?.health_disease_id ??
-      item?.product_category_id ??
-      item?.category_id ??
-      item?.health_category_id ??
-      '',
+    item?.health_disease_id ??
+    item?.product_category_id ??
+    item?.category_id ??
+    item?.health_category_id ??
+    '',
   ),
   name: String(
     item?.name ??
-      item?.disease_name ??
-      item?.category_name ??
-      item?.product_category_name ??
-      item?.title ??
-      'Category',
+    item?.disease_name ??
+    item?.category_name ??
+    item?.product_category_name ??
+    item?.title ??
+    'Category',
   ),
   description: String(
     item?.description ??
-      item?.short_description ??
-      item?.category_description ??
-      item?.desc ??
-      item?.about ??
-      '',
+    item?.short_description ??
+    item?.category_description ??
+    item?.desc ??
+    item?.about ??
+    '',
   ).trim(),
   subscription: String(
     item?.subscription ??
-      item?.subscription_text ??
-      item?.subtitle ??
-      item?.tagline ??
-      item?.short_title ??
-      '',
+    item?.subscription_text ??
+    item?.subtitle ??
+    item?.tagline ??
+    item?.short_title ??
+    '',
   ).trim(),
   symptoms: parseHealthSymptoms(
     item?.symptoms ??
-      item?.symptom_list ??
-      item?.common_symptoms ??
-      item?.symptoms_list,
+    item?.symptom_list ??
+    item?.common_symptoms ??
+    item?.symptoms_list,
   ),
   image_url: resolveImageUrl(item),
   parent_id:
@@ -366,6 +366,20 @@ export const getProduct = async (params: ProductQuery = {}) => {
     throw error;
   }
 };
+
+
+export const getWishlistProduct = async () => {
+  try {
+    const response = await apiClient('favorites/products/', {
+      method: 'GET',
+    });
+    console.log("getWishlistProductresponse", response)
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 
 /**
  * Discovery / ecommerce rails (catalog list).
@@ -448,11 +462,11 @@ export const getHealthCategories = async (
           ? { id: options }
           : {}
         : {
-            ...(options?.id ? { id: options.id } : {}),
-            ...(options?.service_category_id
-              ? { service_category_id: options.service_category_id }
-              : {}),
-          };
+          ...(options?.id ? { id: options.id } : {}),
+          ...(options?.service_category_id
+            ? { service_category_id: options.service_category_id }
+            : {}),
+        };
 
     const response = await apiClient(buildHealthCategoryQuery(params), {
       method: 'GET',

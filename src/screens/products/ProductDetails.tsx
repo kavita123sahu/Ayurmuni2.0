@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -163,7 +163,9 @@ const DETAIL_SHEET_META: Record<
 
 const ProductDetails = (props: any) => {
     const { varientID } = props?.route?.params;
-    const { ProductData, loading, ReviewAll } = useProductData(varientID);
+    const variantKey = String(varientID ?? '');
+    const { ProductData, loading, ReviewAll } = useProductData(variantKey);
+    const scrollRef = useRef<ScrollView>(null);
 
     const variants = ProductData?.variants || [];
     const routeVariant = useMemo(
@@ -230,6 +232,17 @@ const ProductDetails = (props: any) => {
     const [expandedDetail, setExpandedDetail] = useState<DetailSheetKey>(null);
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [wishlistBusy, setWishlistBusy] = useState(false);
+
+    // Related / trending / best: reset UI + jump to top while skeleton loads
+    useEffect(() => {
+        setSelectedVariant(null);
+        setPendingCta(null);
+        setDescExpanded(false);
+        setExpandedDetail(null);
+        setIsWishlisted(false);
+        setWishlistBusy(false);
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [variantKey]);
 
     useEffect(() => {
         if (!variants?.length) {
@@ -633,6 +646,8 @@ const ProductDetails = (props: any) => {
             />
 
             <ScrollView
+                key={variantKey}
+                ref={scrollRef}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >

@@ -40,21 +40,19 @@ import {
   toRazorpayPaise,
 } from '../services/RazorpayService';
 import {
-  getGatewayOrderId,
-  parsePineLabsCheckout,
-  resolveOrderGateway,
-  type PineLabsCheckout,
-} from '../services/PineLabsService';
-import {
   buildIciciVerifyPayload,
   isPayphiNativeLinked,
   isPayphiUserCancelled,
   openPayphiPayment,
   parsePayphiAppInfo,
-  parsePayphiHostedCheckout,
   parsePayphiPaymentRequest,
   resolveIciciMerchantTxnNo,
 } from '../services/PayphiService';
+import {
+  buildCashfreeVerifyPayload,
+  openCashfreePayment,
+  resolveCashfreeCheckout,
+} from '../services/CashfreeService';
 import * as _ORDER_SERVICES from '../services/OrderService';
 import {
   buildPrepaidOrderPayload,
@@ -63,10 +61,6 @@ import {
   OrderCartLine,
 } from '../utils/orderPayload';
 import { formatOrderStockError } from '../utils/productStockUtils';
-import type {
-  PineLabsCheckoutOutcome,
-  PineLabsPageResult,
-} from '../components/payment/PineLabsCheckoutModal';
 
 type CartLine = OrderCartLine & {
   variant_id: string | number;
@@ -88,12 +82,8 @@ type OnlinePaymentArgs = {
   /** Local UI discount only — not sent on place-order */
   couponDiscount?: number;
   prepaidAmount?: number;
-  /** pinelabs | razorpay | icici — sent as payment_gateway on place-order */
+  /** cashfree | razorpay | icici — sent as payment_gateway on POST /order/ */
   gateway?: PaymentGateway;
-  /** Opens Pine Labs WebView; required when gateway is pinelabs. */
-  openPineLabsCheckout?: (
-    checkout: PineLabsCheckout,
-  ) => Promise<{ outcome: PineLabsCheckoutOutcome; pageResult?: PineLabsPageResult }>;
   onCouponRejected?: () => void;
   onSuccess: (
     orderResult: any,
@@ -151,7 +141,7 @@ const pickRazorpayOrderId = (paymentData: any): string => {
 /**
  * Online flow:
  * 1) Place prepaid order with selected payment_gateway
- * 2) Open Pine Labs WebView / Razorpay / ICICI PayPhi SDK
+ * 2) Open Cashfree / Razorpay / ICICI PayPhi SDK
  * 3) Verify payment
  */
 export const useProductOnlinePayment = () => {
@@ -170,8 +160,7 @@ export const useProductOnlinePayment = () => {
       coupon_code,
       couponDiscount,
       prepaidAmount,
-      gateway = 'razorpay',
-      openPineLabsCheckout,
+      gateway = 'cashfree',
       onCouponRejected,
       onSuccess,
     }: OnlinePaymentArgs) => {
@@ -202,8 +191,8 @@ export const useProductOnlinePayment = () => {
         setIsPaying(true);
         paymentStartedRef.current = true;
 
-        // Online place-order: do NOT send payment_method (Razorpay chooses later)
-        // Match Postman: coupon_code optional only — no coupon_discount field
+        // POST /order/ — include payment_gateway (e.g. "cashfree")
+        const apiGateway = toApiPaymentGateway(gateway);
         const placePayload = buildPrepaidOrderPayload({
           delivery_address_id: address.id,
           cartItems,
@@ -212,10 +201,10 @@ export const useProductOnlinePayment = () => {
           shipping_method: shippingMethod,
           prepaid_amount: payableAmount,
           coupon_code,
+          payment_gateway: apiGateway,
         });
         delete (placePayload as any).payment_method;
-        const apiGateway = toApiPaymentGateway(gateway);
-        (placePayload as any).payment_gateway = apiGateway;
+        placePayload.payment_gateway = apiGateway;
 
         console.log(
           'ONLINE_ORDER_PAYLOAD =>',
@@ -272,7 +261,6 @@ export const useProductOnlinePayment = () => {
         }
 
         const paymentData = pickPaymentData(orderResponse);
-        const orderGateway = resolveOrderGateway(paymentData, apiGateway);
 
         const contactNumber = String(
           customerInfo?.phone_number ??
@@ -313,59 +301,6 @@ export const useProductOnlinePayment = () => {
           );
         };
 
-        // ── Pine Labs (WebView) — only when user selected it ─────
-        if (apiGateway === 'pinelabs') {
-          if (!openPineLabsCheckout) {
-            showSuccessToast(
-              'Pine Labs checkout is not available on this screen.',
-              'error',
-            );
-            return;
-          }
-          const checkout = parsePineLabsCheckout(paymentData);
-          if (!checkout.redirectUrl || !checkout.orderId || !checkout.paymentId) {
-            showSuccessToast(
-              'Pine Labs checkout is not available right now',
-              'error',
-            );
-            return;
-          }
-          setIsPaying(false);
-          const { outcome, pageResult } = await openPineLabsCheckout(checkout);
-          setIsVerifyingPayment(true);
-          let verifyResponse: any = null;
-          try {
-            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment({
-              payment_id: checkout.paymentId,
-              gateway_order_id: checkout.orderId,
-              payment_gateway: 'pinelabs',
-              outcome,
-            });
-          } catch (verifyError: any) {
-            verifyResponse =
-              verifyError?.response ?? verifyError?.data ?? verifyError;
-          }
-          setIsVerifyingPayment(false);
-          if (verifyResponse?.success) {
-            finishSuccess(verifyResponse);
-            return;
-          }
-          if (outcome === 'closed' || pageResult?.status === 'failed') {
-            showSuccessToast(
-              outcome === 'closed'
-                ? 'Payment cancelled. You can try again anytime.'
-                : 'Payment failed at Pine Labs. Please try again.',
-              'error',
-            );
-            return;
-          }
-          showSuccessToast(
-            verifyResponse?.message || 'Payment verification failed.',
-            'error',
-          );
-          return;
-        }
-
         // ── ICICI PayPhi — only when user selected ICICI (never on Razorpay) ─
         if (apiGateway === 'icici') {
           const appInfo = parsePayphiAppInfo(paymentData);
@@ -377,58 +312,12 @@ export const useProductOnlinePayment = () => {
               ? contactNumber.slice(-10)
               : undefined,
           });
-          const hosted = parsePayphiHostedCheckout(paymentData);
 
           console.warn('[PAY] icici product start', {
             payment_id: paymentData?.payment_id,
             merchantId: appInfo?.merchantId,
-            hosted: Boolean(hosted?.redirectUrl),
             native: Boolean(isPayphiNativeLinked() && appInfo && payRequest),
           });
-
-          if (hosted?.redirectUrl && openPineLabsCheckout) {
-            setIsPaying(false);
-            const { outcome } = await openPineLabsCheckout({
-              paymentId: hosted.paymentId,
-              orderId: hosted.orderId,
-              redirectUrl: hosted.redirectUrl,
-              returnUrl: hosted.returnUrl,
-            });
-            console.warn('[PAY] icici product hosted', { outcome });
-            setIsVerifyingPayment(true);
-            let verifyResponse: any;
-            try {
-              verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(
-                buildIciciVerifyPayload({
-                  paymentId: hosted.paymentId,
-                  merchantTxnNo: resolveIciciMerchantTxnNo(
-                    paymentData,
-                    hosted.orderId,
-                  ),
-                }),
-              );
-            } catch (verifyError: any) {
-              verifyResponse =
-                verifyError?.response ?? verifyError?.data ?? verifyError;
-            }
-            setIsVerifyingPayment(false);
-            if (verifyResponse?.success) {
-              finishSuccess(verifyResponse);
-              return;
-            }
-            if (outcome === 'closed') {
-              showSuccessToast(
-                'Payment cancelled. You can try again anytime.',
-                'error',
-              );
-              return;
-            }
-            showSuccessToast(
-              verifyResponse?.message || 'Payment verification failed.',
-              'error',
-            );
-            return;
-          }
 
           if (isPayphiNativeLinked() && appInfo && payRequest) {
             let payphiResult;
@@ -514,13 +403,97 @@ export const useProductOnlinePayment = () => {
           return;
         }
 
+        // ── Cashfree ──────────────────────────────────────────────
+        if (apiGateway === 'cashfree') {
+          let cfSession;
+          try {
+            cfSession = await resolveCashfreeCheckout(paymentData, {
+              amount: payableAmount,
+              customerName,
+              customerEmail,
+              customerMobile: contactNumber
+                ? contactNumber.slice(-10)
+                : undefined,
+            });
+          } catch (sessionError: any) {
+            console.warn('ONLINE_CASHFREE_SESSION =>', sessionError);
+            showSuccessToast(
+              sessionError?.message ||
+                'Cashfree session was not created. Backend must return payment_session_id.',
+              'error',
+            );
+            return;
+          }
+
+          setIsPaying(false);
+          const cfResult = await openCashfreePayment(cfSession);
+          console.warn('ONLINE_CASHFREE_RESULT =>', cfResult);
+
+          if (cfResult.status === 'cancelled') {
+            showSuccessToast(
+              cfResult.message || 'Payment cancelled. You can try again anytime.',
+              'error',
+            );
+            return;
+          }
+          if (cfResult.status === 'failed') {
+            showSuccessToast(
+              cfResult.message || 'Cashfree payment failed',
+              'error',
+            );
+            return;
+          }
+
+          setIsVerifyingPayment(true);
+          const cfOrderId = cfResult.orderId || cfSession.orderId;
+          const verifyBody = buildCashfreeVerifyPayload({
+            paymentId: String(
+              paymentData?.payment_id || cfSession.paymentId || '',
+            ),
+            orderId: cfOrderId,
+            gatewayPaymentId: cfResult.gatewayPaymentId || cfOrderId,
+            gatewaySignature:
+              cfResult.gatewaySignature ||
+              cfSession.paymentSessionId ||
+              cfOrderId,
+          });
+          let verifyResponse: any;
+          try {
+            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(verifyBody);
+          } catch (verifyError: any) {
+            verifyResponse =
+              verifyError?.response ?? verifyError?.data ?? verifyError;
+          }
+          setIsVerifyingPayment(false);
+
+          if (verifyResponse?.success || cfResult.status === 'success') {
+            finishSuccess(verifyResponse, {
+              cashfree_order_id: cfResult.orderId,
+              payment_gateway: 'cashfree',
+            });
+            return;
+          }
+          showSuccessToast(
+            verifyResponse?.message || 'Payment verification failed.',
+            'error',
+          );
+          return;
+        }
+
         // ── Razorpay ──────────────────────────────────────────────
+        if (apiGateway !== 'razorpay') {
+          showSuccessToast(
+            `Unsupported payment gateway: ${apiGateway}`,
+            'error',
+          );
+          return;
+        }
+
         const razorpayKey = pickRazorpayKey(paymentData);
         const razorpayOrderId = pickRazorpayOrderId(paymentData);
 
         console.log('ONLINE_RAZORPAY_FIELDS =>', {
           selected: apiGateway,
-          resolved: orderGateway,
           hasKey: Boolean(razorpayKey),
           orderId: razorpayOrderId,
           payment_id: paymentData?.payment_id,

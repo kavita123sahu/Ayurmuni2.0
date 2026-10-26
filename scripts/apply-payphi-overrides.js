@@ -16,6 +16,10 @@ const copies = [
     path.join('android', 'src', 'main', 'java', 'com', 'payphi', 'reactnative', 'sdk', 'PayphiModule.kt'),
     path.join('android', 'src', 'main', 'java', 'com', 'payphi', 'reactnative', 'sdk', 'PayphiModule.kt'),
   ],
+  [
+    path.join('android', 'src', 'main', 'java', 'com', 'payphi', 'reactnative', 'sdk', 'PayphiPackage.kt'),
+    path.join('android', 'src', 'main', 'java', 'com', 'payphi', 'reactnative', 'sdk', 'PayphiPackage.kt'),
+  ],
   [path.join('android', 'build.gradle'), path.join('android', 'build.gradle')],
 ];
 

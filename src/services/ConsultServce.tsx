@@ -629,7 +629,7 @@ export const createConsultationPayment = async (data: object) => {
                     !(typeof v === 'string' && v.trim() === ''),
             ),
         );
-        // API accepts only: pinelabs | razorpay | icici (never "payphi")
+        // API accepts only: cashfree | razorpay | icici (never "payphi")
         if (clean.payment_gateway != null) {
             clean.payment_gateway = toApiPaymentGateway(String(clean.payment_gateway));
         }
@@ -651,7 +651,7 @@ export const createConsultationPayment = async (data: object) => {
  */
 export const retryConsultationPayment = async (
     appointmentId: string | number,
-    paymentGateway?: 'pinelabs' | 'razorpay' | 'icici',
+    paymentGateway?: 'cashfree' | 'razorpay' | 'icici',
 ) => {
     try {
         const id = encodeURIComponent(String(appointmentId));
@@ -694,35 +694,35 @@ export const getConsultationFeeQuote = async (
 
 /**
  * POST payments/customer/consultation/payment/verify-payment/
- * PineLabs: { payment_id, gateway_order_id }
- * Razorpay: { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
- * ICICI:    { payment_id, gateway_order_id } — also accepts icici_merchant_txn_no / merchantTxnNo
+ * Required:
+ *   { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
+ * Optional (needed so backend picks Cashfree vs Razorpay verifier):
+ *   payment_gateway
  */
 export type VerifyConsultationPaymentPayload = {
     payment_id: string;
-    gateway_order_id?: string;
-    gateway_payment_id?: string;
-    gateway_signature?: string;
-    payment_gateway?: 'pinelabs' | 'razorpay' | 'icici' | string;
-    /** ICICI aliases for the book-slot gateway_order_id / merchant txn */
-    icici_merchant_txn_no?: string;
-    merchantTxnNo?: string;
+    gateway_order_id: string;
+    gateway_payment_id: string;
+    gateway_signature: string;
+    payment_gateway?: 'cashfree' | 'razorpay' | 'icici' | string;
 };
 
 export const verifyConsultationPayment = async (data: VerifyConsultationPaymentPayload) => {
     try {
-        const clean = Object.fromEntries(
-            Object.entries(data as Record<string, unknown>).filter(
-                ([, v]) =>
-                    v !== undefined &&
-                    v !== null &&
-                    !(typeof v === 'string' && v.trim() === ''),
-            ),
-        );
-        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(clean));
+        // Keep all 4 required keys always (do not strip empty strings).
+        const body: Record<string, string> = {
+            payment_id: String(data.payment_id ?? '').trim(),
+            gateway_order_id: String(data.gateway_order_id ?? '').trim(),
+            gateway_payment_id: String(data.gateway_payment_id ?? '').trim(),
+            gateway_signature: String(data.gateway_signature ?? '').trim(),
+        };
+        const gateway = String(data.payment_gateway ?? '').trim();
+        if (gateway) body.payment_gateway = gateway;
+
+        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(body));
         const response = await apiClient('payments/customer/consultation/payment/verify-payment/', {
             method: 'POST',
-            body: JSON.stringify(clean)
+            body: JSON.stringify(body)
         });
         console.log('CONSULT_VERIFY_RESPONSE =>', response);
         return response;

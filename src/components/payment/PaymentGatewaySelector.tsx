@@ -13,45 +13,94 @@ type Props = {
   selected: PaymentGateway;
   onSelect: (gateway: PaymentGateway) => void;
   disabled?: boolean;
+  /** Compact chips (checkout) — no heavy rows / duplicate headers */
+  compact?: boolean;
+  hideHeader?: boolean;
 };
 
-/** "Pay using" card on Confirm Booking — one row per enabled gateway. */
-const PaymentGatewaySelector = ({ gateways, selected, onSelect, disabled }: Props) => (
-  <View>
-    <View style={styles.header}>
-      <View style={styles.headerIcon}>
-        <TablerIcon name="credit-card" size={14} color={Colors.primaryColor} />
+const PaymentGatewaySelector = ({
+  gateways,
+  selected,
+  onSelect,
+  disabled,
+  compact,
+  hideHeader,
+}: Props) => {
+  if (compact) {
+    return (
+      <View style={styles.chipRow}>
+        {gateways.map(id => {
+          const option = PAYMENT_GATEWAY_OPTIONS[id];
+          const active = id === selected;
+          return (
+            <TouchableOpacity
+              key={id}
+              activeOpacity={0.85}
+              disabled={disabled}
+              onPress={() => onSelect(id)}
+              style={[styles.chip, active && styles.chipActive]}
+            >
+              <TablerIcon
+                name={option.icon}
+                size={14}
+                color={active ? Colors.primaryColor : '#64748B'}
+              />
+              <Text
+                style={[styles.chipText, active && styles.chipTextActive]}
+                numberOfLines={1}
+              >
+                {option.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-      <Text style={styles.headerTitle}>Pay using</Text>
+    );
+  }
+
+  return (
+    <View>
+      {!hideHeader ? (
+        <View style={styles.header}>
+          <View style={styles.headerIcon}>
+            <TablerIcon name="credit-card" size={14} color={Colors.primaryColor} />
+          </View>
+          <Text style={styles.headerTitle}>Pay using</Text>
+        </View>
+      ) : null}
+      {gateways.map(id => {
+        const option = PAYMENT_GATEWAY_OPTIONS[id];
+        const active = id === selected;
+        return (
+          <TouchableOpacity
+            key={id}
+            activeOpacity={0.85}
+            disabled={disabled}
+            onPress={() => onSelect(id)}
+            style={[styles.row, active && styles.rowActive]}
+          >
+            <View style={[styles.rowIcon, active && styles.rowIconActive]}>
+              <TablerIcon
+                name={option.icon}
+                size={16}
+                color={active ? '#FFFFFF' : Colors.primaryColor}
+              />
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowTitle}>{option.title}</Text>
+              <Text style={styles.rowSub} numberOfLines={1}>
+                {option.subtitle}
+              </Text>
+            </View>
+            <View style={[styles.radio, active && styles.radioOn]}>
+              {active ? <View style={styles.radioDot} /> : null}
+            </View>
+          </TouchableOpacity>
+        );
+      })}
     </View>
-    {gateways.map(id => {
-      const option = PAYMENT_GATEWAY_OPTIONS[id];
-      const active = id === selected;
-      return (
-        <TouchableOpacity
-          key={id}
-          activeOpacity={0.85}
-          disabled={disabled}
-          onPress={() => onSelect(id)}
-          style={[styles.row, active && styles.rowActive]}
-        >
-          <View style={[styles.rowIcon, active && styles.rowIconActive]}>
-            <TablerIcon name={option.icon} size={16} color={active ? '#FFFFFF' : Colors.primaryColor} />
-          </View>
-          <View style={styles.rowBody}>
-            <Text style={styles.rowTitle}>{option.title}</Text>
-            <Text style={styles.rowSub} numberOfLines={1}>
-              {option.subtitle}
-            </Text>
-          </View>
-          <View style={[styles.radio, active && styles.radioOn]}>
-            {active ? <View style={styles.radioDot} /> : null}
-          </View>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+  );
+};
 
 export default memo(PaymentGatewaySelector);
 
@@ -132,5 +181,34 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: Colors.primaryColor,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+  },
+  chipActive: {
+    backgroundColor: '#ECF8F3',
+    borderColor: Colors.primaryColor,
+  },
+  chipText: {
+    fontSize: 12,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#64748B',
+    includeFontPadding: false,
+  },
+  chipTextActive: {
+    color: Colors.primaryColor,
   },
 });

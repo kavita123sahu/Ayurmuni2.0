@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import com.facebook.react.bridge.*
+import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.payphi.customersdk.utils.HmacUtility
 import com.payphi.customersdk.utils.PayPhiSecurePrefConst
@@ -23,11 +24,17 @@ import javax.crypto.spec.SecretKeySpec
  * - Never pass null SecureToken / invalid amount to native sheet
  * - Catch Throwable and emit payment_response instead of killing the app
  */
-class PayphiModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+@ReactModule(name = PayphiModule.NAME)
+class PayphiModule(private val reactContext: ReactApplicationContext) :
+    ReactContextBaseJavaModule(reactContext) {
+
+    companion object {
+        const val NAME = "PayphiSdk"
+    }
 
     private val TAG = "PayphiModule"
 
-    override fun getName(): String = "PayphiSdk"
+    override fun getName(): String = NAME
 
     private fun sendEvent(eventName: String, params: String) {
         try {
