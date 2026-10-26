@@ -540,7 +540,7 @@ const DoctorProfile = ({ navigation, route }: any) => {
             <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
             <AppHeader
-                title={dietitian ? 'Dietitian Details' : 'Doctor Details'}
+                title={dietitian ? 'Doctor Details' : 'Doctor Details'}
                 onLeftPress={() => navigation.goBack()}
                 rightIconName={isFavourite ? 'heart-filled' : 'heart'}
                 rightIconColor={isFavourite ? Colors.primaryColor : '#0F172A'}

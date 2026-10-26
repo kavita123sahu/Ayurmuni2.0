@@ -210,6 +210,7 @@ const App = () => {
                   config={toastConfig}
                 />
 
+
               </View>
 
             </LocationProvider>

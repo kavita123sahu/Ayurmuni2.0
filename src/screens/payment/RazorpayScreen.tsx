@@ -201,18 +201,90 @@ const isBookingAlreadyPaid = (data: any) => {
     );
 };
 
+/** book-slot / retry may put fields on `data` or at the top level. */
+const pickConsultPaymentData = (response: any) => {
+    if (!response || typeof response !== 'object') return {};
+    const data =
+        response.data && typeof response.data === 'object' ? response.data : {};
+    const nestedPayment =
+        (data.payment && typeof data.payment === 'object' && data.payment) ||
+        (data.checkout && typeof data.checkout === 'object' && data.checkout) ||
+        {};
+    return {
+        ...response,
+        ...data,
+        ...nestedPayment,
+        payment_id: data.payment_id ?? nestedPayment.payment_id ?? response.payment_id,
+        appointment_id:
+            data.appointment_id ?? response.appointment_id ?? nestedPayment.appointment_id,
+        gateway: data.payment_gateway ?? data.gateway ?? response.gateway,
+        payment_gateway: data.payment_gateway ?? data.gateway ?? response.gateway,
+        gateway_order_id: data.gateway_order_id ?? nestedPayment.gateway_order_id ?? response.gateway_order_id,
+        razorpay_order_id:
+            data.razorpay_order_id ?? nestedPayment.razorpay_order_id ?? response.razorpay_order_id,
+        razorpay_key: data.razorpay_key ?? nestedPayment.razorpay_key ?? response.razorpay_key,
+        gateway_key: data.gateway_key ?? nestedPayment.gateway_key ?? response.gateway_key,
+        key_id: data.key_id ?? nestedPayment.key_id ?? response.key_id,
+        key: data.key ?? nestedPayment.key ?? response.key,
+        summary: data.summary ?? response.summary,
+        status: data.status ?? response.status,
+        payment_status: data.payment_status ?? response.payment_status,
+    };
+};
+
+const pickConsultRazorpayKey = (paymentData: any): string =>
+    String(
+        paymentData?.razorpay_key ||
+            paymentData?.gateway_key ||
+            paymentData?.key ||
+            paymentData?.key_id ||
+            paymentData?.checkout?.key ||
+            paymentData?.checkout?.razorpay_key ||
+            '',
+    ).trim();
+
+/** Razorpay needs order_xxxxx — never fall back to app appointment/order UUID. */
+const pickConsultRazorpayOrderId = (paymentData: any): string => {
+    const candidates = [
+        paymentData?.razorpay_order_id,
+        paymentData?.razorpayOrderId,
+        paymentData?.rzp_order_id,
+        paymentData?.gateway_order_id,
+        paymentData?.checkout?.razorpay_order_id,
+    ];
+    for (const value of candidates) {
+        const id = String(value ?? '').trim();
+        if (id.startsWith('order_')) return id;
+    }
+    for (const value of candidates) {
+        const id = String(value ?? '').trim();
+        // Prefer Razorpay-style ids; skip UUID-looking app order ids
+        if (
+            id &&
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+                id,
+            )
+        ) {
+            return id;
+        }
+    }
+    return '';
+};
+
 /** One-line summary of an API response for the payment debug logs. */
-const logPayStep = (step: string, response: any) =>
+const logPayStep = (step: string, response: any) => {
+    const data = pickConsultPaymentData(response);
     console.log(`[PAY] ${step} =>`, {
         success: response?.success,
         status: response?.status,
         message: response?.message,
-        payment_id: response?.data?.payment_id,
-        appointment_id: readAppointmentId(response?.data),
-        gateway: response?.data?.payment_gateway ?? response?.data?.gateway,
-        gateway_order_id: response?.data?.gateway_order_id ?? response?.data?.razorpay_order_id,
-        payment_status: response?.data?.status ?? response?.data?.payment_status,
+        payment_id: data.payment_id,
+        appointment_id: readAppointmentId(data),
+        gateway: data.payment_gateway ?? data.gateway,
+        gateway_order_id: data.gateway_order_id ?? data.razorpay_order_id,
+        payment_status: data.payment_status ?? data.status,
     });
+};
 
 /** Book-slot no longer sends data.amount. Use summary / configurations, then the screen total. */
 const resolveConsultPayableRupees = (data: any, fallback: number) => {
@@ -799,8 +871,14 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     gateway,
                     saved_pending: pendingPayment,
                 });
-                // A payment was already created for this slot on an earlier tap → retry only.
-                if (pendingPayment?.appointment_id) {
+
+                // Retry ONLY if pending was created for the SAME gateway.
+                // Old ICICI pending + Razorpay select returned gateway:icici (no razorpay_key).
+                const canRetry =
+                    Boolean(pendingPayment?.appointment_id) &&
+                    (!pendingPayment?.gateway || pendingPayment.gateway === gateway);
+
+                if (canRetry && pendingPayment?.appointment_id) {
                     try {
                         paymentResponse =
                             await _CONSULT_SERVICES.retryConsultationPayment(
@@ -811,13 +889,44 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         console.log('[PAY] 2. retry error =>', retryError);
                         paymentResponse = null;
                     }
-                    logPayStep('2. retry (earlier attempt for this slot)', paymentResponse);
-                    if (!isApiSuccess(paymentResponse)) {
+                    logPayStep('2. retry (same gateway pending)', paymentResponse);
+                    const retryData = pickConsultPaymentData(paymentResponse);
+                    const retryGateway = String(
+                        retryData?.payment_gateway ?? retryData?.gateway ?? '',
+                    )
+                        .trim()
+                        .toLowerCase()
+                        .replace(/[\s_-]/g, '');
+                    const selectedNorm = String(gateway)
+                        .trim()
+                        .toLowerCase()
+                        .replace(/[\s_-]/g, '');
+                    const retryMatches =
+                        !retryGateway ||
+                        retryGateway === selectedNorm ||
+                        (selectedNorm === 'icici' &&
+                            (retryGateway === 'payphi' || retryGateway === 'icici')) ||
+                        (selectedNorm === 'razorpay' &&
+                            (Boolean(retryData?.razorpay_order_id) ||
+                                Boolean(retryData?.razorpay_key)));
+
+                    if (!isApiSuccess(paymentResponse) || !retryMatches) {
+                        console.warn('[PAY] 2. retry gateway mismatch — clear & book-slot', {
+                            selected: gateway,
+                            returned: retryGateway,
+                        });
                         await clearPendingConsultPayment(currentSlotId);
                         paymentResponse = null;
                     }
+                } else if (pendingPayment?.appointment_id) {
+                    console.warn('[PAY] skip retry — pending gateway differs', {
+                        pending: pendingPayment.gateway,
+                        selected: gateway,
+                    });
+                    await clearPendingConsultPayment(currentSlotId);
                 }
-                // First tap for this slot → book-slot only (no retry right after).
+
+                // book-slot: first tap or after clearing mismatched pending
                 if (!paymentResponse) {
                     paymentResponse =
                         await _CONSULT_SERVICES.createConsultationPayment({
@@ -827,11 +936,11 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             coupon_code: appliedCoupon?.code,
                             payment_gateway: gateway,
                         });
-                    logPayStep('2. book-slot (first attempt)', paymentResponse);
+                    logPayStep('2. book-slot', paymentResponse);
 
                     const duplicateAppointmentId = isDuplicateGatewayOrder(paymentResponse)
-                        ? readAppointmentId(paymentResponse?.data) ||
-                        readAppointmentId(paymentResponse?.data?.errors)
+                        ? readAppointmentId(pickConsultPaymentData(paymentResponse)) ||
+                          readAppointmentId(paymentResponse?.data?.errors)
                         : '';
                     if (duplicateAppointmentId) {
                         try {
@@ -860,7 +969,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 return;
             }
 
-            const paymentData = paymentResponse?.data ?? {};
+            const paymentData = pickConsultPaymentData(paymentResponse);
             const appointmentId =
                 readAppointmentId(paymentData) || pendingPayment?.appointment_id || '';
 
@@ -884,10 +993,15 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 );
             }
 
+            // Always honor the gateway the user selected (never open ICICI on Razorpay pick)
             const orderGateway = resolveOrderGateway(paymentData, gateway);
-            console.log('[PAY] 3. order gateway =>', orderGateway);
+            console.log('[PAY] 3. order gateway =>', {
+                selected: gateway,
+                resolved: orderGateway,
+                api_returned: paymentData?.gateway ?? paymentData?.payment_gateway,
+            });
 
-            if (orderGateway === 'pinelabs') {
+            if (gateway === 'pinelabs') {
                 const checkout = parsePineLabsCheckout(paymentData);
 
                 console.log('[PAY] 3. pine labs checkout =>', checkout);
@@ -1096,8 +1210,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 activePatient?.email || doctorInfo?.email || 'customer@ayurmuni.com',
             );
 
-            // ── PayPhi (ICICI SDK) ─────────────────────────────────
-            if (orderGateway === 'icici') {
+            // ── PayPhi (ICICI SDK) — only when user selected ICICI ─
+            if (gateway === 'icici') {
                 const appInfo = parsePayphiAppInfo(paymentData);
                 const payRequest = parsePayphiPaymentRequest(paymentData, {
                     amount: payableRupees,
@@ -1191,10 +1305,31 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 return;
             }
 
-            // ── Razorpay ───────────────────────────────────────────
+            // ── Razorpay (default path when selected) ──────────────
+            const razorpayKey = pickConsultRazorpayKey(paymentData);
+            const razorpayOrderId =
+                pickConsultRazorpayOrderId(paymentData) ||
+                getGatewayOrderId(paymentData, 'razorpay');
+
+            if (!razorpayKey || !razorpayOrderId) {
+                console.log('[PAY] stop: razorpay fields missing =>', {
+                    hasKey: Boolean(razorpayKey),
+                    hasOrderId: Boolean(razorpayOrderId),
+                    payment_id: paymentData?.payment_id,
+                    api_gateway: paymentData?.payment_gateway ?? paymentData?.gateway,
+                });
+                showSuccessToast(
+                    !razorpayKey
+                        ? 'Payment gateway not ready: Razorpay key missing from server response.'
+                        : 'Payment gateway not ready: Razorpay order was not created.',
+                    'error',
+                );
+                return;
+            }
+
             const amountPaise = toRazorpayPaise(
                 paymentData?.amount ??
-                paymentData?.summary?.total_payable_amount,
+                    paymentData?.summary?.total_payable_amount,
                 payableRupees,
             );
 
@@ -1202,19 +1337,20 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
             try {
                 razorpayResult = await openRazorpayPayment({
-                    key:
-                        paymentData?.razorpay_key ||
-                        paymentData?.gateway_key ||
-                        paymentData?.key_id,
+                    key: razorpayKey,
                     amount: amountPaise,
-                    order_id: getGatewayOrderId(paymentData, 'razorpay'),
-                    name: doctorInfo?.full_name || doctorName,
-                    email: doctorInfo?.email || 'customer@ayurmuni.com',
-                    contact: contactNumber,
+                    order_id: razorpayOrderId,
+                    name: customerName,
+                    email: customerEmail,
+                    contact: contactNumber
+                        ? `91${contactNumber.slice(-10)}`
+                        : '919999999999',
                     description: 'Consultation payment',
                     themeColor: Colors.primaryColor,
                 });
-                console.log("razorpayResultrazorpayResultrazorpayResult", razorpayResult);
+                console.log('[PAY] 4. razorpay result =>', {
+                    payment_id: razorpayResult?.razorpay_payment_id,
+                });
             } catch (error: any) {
                 setIsVerifyingPayment(false);
                 console.log('CONSULT_RAZORPAY_CATCH =>', error);
@@ -1229,8 +1365,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
                 showSuccessToast(
                     error?.description ||
-                    error?.message ||
-                    'Payment failed. Please try again.',
+                        error?.message ||
+                        'Payment failed. Please try again.',
                     'error',
                 );
                 return;
@@ -1238,12 +1374,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
             setIsVerifyingPayment(true);
 
+            const gatewayOrderId =
+                razorpayResult?.razorpay_order_id || razorpayOrderId;
             const verifyResponse =
                 await _CONSULT_SERVICES.verifyConsultationPayment({
                     payment_id: String(paymentData?.payment_id ?? ''),
-                    gateway_order_id:
-                        razorpayResult?.razorpay_order_id ||
-                        getGatewayOrderId(paymentData, 'razorpay'),
+                    gateway_order_id: String(gatewayOrderId || ''),
                     gateway_payment_id: String(
                         razorpayResult?.razorpay_payment_id ?? '',
                     ),

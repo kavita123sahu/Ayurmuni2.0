@@ -1,5 +1,5 @@
 import { BaseUrl } from '../config/Key';
-import { normalizeGateway, type PaymentGateway } from '../config/paymentGateways';
+import type { PaymentGateway } from '../config/paymentGateways';
 
 /** Pine Labs (Plural) hosted checkout details from book-slot / retry. */
 export type PineLabsCheckout = {
@@ -20,27 +20,14 @@ const pickString = (...values: unknown[]): string => {
 };
 
 /**
- * Which gateway the backend created the order on.
- * Falls back to the requested gateway, then to the presence of gateway-specific fields.
+ * Which checkout UI to open.
+ * Prefer the gateway the user selected — stale retry responses often still say
+ * `gateway: icici` even when the user picked Razorpay.
  */
-export const resolveOrderGateway = (data: any, requested: PaymentGateway): PaymentGateway => {
-  const explicit = normalizeGateway(
-    data?.gateway ?? data?.payment_gateway ?? data?.gateway_name ?? data?.provider,
-  );
-  if (explicit) return explicit;
-  if (data?.razorpay_order_id) return 'razorpay';
-  if (
-    data?.payphi ||
-    data?.sdk_payload ||
-    data?.make_payment ||
-    data?.invoice_no ||
-    data?.checkout?.invoice_no
-  ) {
-    return 'payphi';
-  }
-  if (getPineLabsRedirectUrl(data)) return 'pinelabs';
-  return requested;
-};
+export const resolveOrderGateway = (
+  _data: any,
+  requested: PaymentGateway,
+): PaymentGateway => requested;
 
 const getPineLabsRedirectUrl = (data: any): string => {
   const checkout = data?.checkout ?? data?.pinelabs ?? data?.gateway_data ?? {};
@@ -60,9 +47,16 @@ const getPineLabsRedirectUrl = (data: any): string => {
 export const getGatewayOrderId = (data: any, gateway: PaymentGateway): string => {
   const checkout = data?.checkout ?? data?.pinelabs ?? data?.payphi ?? data?.gateway_data ?? {};
   if (gateway === 'razorpay') {
-    return pickString(data?.razorpay_order_id, data?.gateway_order_id, data?.order_id);
+    // Never fall back to app order_id (UUID) — Razorpay needs order_xxxxx
+    return pickString(
+      data?.razorpay_order_id,
+      data?.razorpayOrderId,
+      data?.rzp_order_id,
+      data?.gateway_order_id,
+      checkout?.razorpay_order_id,
+    );
   }
-  if (gateway === 'payphi') {
+  if (gateway === 'icici') {
     return pickString(
       data?.gateway_order_id,
       data?.invoice_no,

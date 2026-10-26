@@ -286,8 +286,8 @@ export const useProductOnlinePayment = () => {
           );
         };
 
-        // ── Pine Labs (WebView) ───────────────────────────────────
-        if (orderGateway === 'pinelabs') {
+        // ── Pine Labs (WebView) — only when user selected it ─────
+        if (gateway === 'pinelabs') {
           if (!openPineLabsCheckout) {
             showSuccessToast(
               'Pine Labs checkout is not available on this screen.',
@@ -339,8 +339,8 @@ export const useProductOnlinePayment = () => {
           return;
         }
 
-        // ── PayPhi (ICICI SDK) ────────────────────────────────────
-        if (orderGateway === 'payphi') {
+        // ── PayPhi (ICICI SDK) — only when user selected ICICI ────
+        if (gateway === 'icici') {
           const appInfo = parsePayphiAppInfo(paymentData);
           const payRequest = parsePayphiPaymentRequest(paymentData, {
             amount: payableAmount,

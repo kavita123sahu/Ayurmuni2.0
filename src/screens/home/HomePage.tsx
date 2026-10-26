@@ -822,7 +822,7 @@ const HomePage: React.FC = (props: any) => {
               </View>
             ) : null}
 
-            {/* <View style={styles.homeSection}>
+            <View style={styles.homeSection}>
               <SectionHeader
                 home
                 title="Lab"
@@ -845,7 +845,7 @@ const HomePage: React.FC = (props: any) => {
                   stackNav.navigate('OrangeLabScreen');
                 }}
               />
-            </View> */}
+            </View>
 
             <View style={styles.homeSection}>
               <SectionHeader home title="Panchakarma" actionText="View all" />
