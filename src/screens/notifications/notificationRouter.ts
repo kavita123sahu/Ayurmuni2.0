@@ -67,6 +67,15 @@ export const handleNotificationNavigation = (
       : null,
   );
 
+  const nestedData =
+    data?.data && typeof data.data === 'object' ? data.data : null;
+  const additional =
+    data?.additionalData && typeof data.additionalData === 'object'
+      ? data.additionalData
+      : data?.additional_data && typeof data.additional_data === 'object'
+        ? data.additional_data
+        : null;
+
   const appointmentId = pickId(
     data?.appointment_id,
     data?.appointmentId,
@@ -75,6 +84,23 @@ export const handleNotificationNavigation = (
     data?.appointment?.id,
     data?.appointment?.appointment_id,
     data?.appointment?.consultation_id,
+    nestedData?.appointment_id,
+    nestedData?.appointmentId,
+    nestedData?.consultation_id,
+    nestedData?.consultationId,
+    nestedData?.id,
+    additional?.appointment_id,
+    additional?.appointmentId,
+    additional?.consultation_id,
+    additional?.consultationId,
+    // Generic id only when the payload clearly targets an appointment
+    data?.id &&
+      (routeKey.includes('appointment') ||
+        type.includes('appointment') ||
+        type.includes('consult') ||
+        blob.includes('appointment'))
+      ? data.id
+      : null,
   );
 
   const productId = pickId(
@@ -248,9 +274,18 @@ export const handleNotificationNavigation = (
   };
 
   const goMedicalReceipt = () => {
+    const lookup =
+      pickId(
+        data?.consultation_id,
+        data?.consultationId,
+        nestedData?.consultation_id,
+        nestedData?.consultationId,
+        appointmentId,
+      ) || '';
     goHomeStack(nav, 'MedicalReceipt', {
-      appointment_id: appointmentId,
-      consultation_id: data?.consultation_id ?? appointmentId,
+      consultationId: lookup,
+      consultation_id: lookup,
+      appointment_id: appointmentId ?? lookup,
       ...(data || {}),
     });
   };
@@ -524,13 +559,34 @@ export const handleNotificationNavigation = (
       goPrescription();
       return;
     }
+    // Appointment reminder (e.g. 5 min before) — open details, not follow-up
+    if (
+      type === 'appointmentreminder' ||
+      type === 'reminder' ||
+      blob.includes('appointmentreminder') ||
+      (blob.includes('reminder') &&
+        (blob.includes('appointment') || Boolean(appointmentId)))
+    ) {
+      goAppointment();
+      return;
+    }
     if (
       blob.includes('followup') ||
       type === 'follow' ||
-      type === 'followup' ||
-      type === 'reminder'
+      type === 'followup'
     ) {
       goFollowUp();
+      return;
+    }
+    if (
+      type === 'callstarted' ||
+      type === 'doctorcall' ||
+      blob.includes('callstarted') ||
+      (blob.includes('call') &&
+        (blob.includes('started') || blob.includes('join')) &&
+        Boolean(appointmentId))
+    ) {
+      goAppointment();
       return;
     }
     if (blob.includes('receipt') || type === 'receipt') {

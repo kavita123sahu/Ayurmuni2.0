@@ -200,6 +200,10 @@ export const applyDoctorFeesToResponse = (response: any) => {
   return { ...response, data: stamp(data) };
 };
 
+/** Patient-facing availability only — never show admin approval strings. */
+const APPROVAL_STATUS_RE =
+  /not\s*approved|unapproved|pending\s*approval|rejected|inactive|disabled/i;
+
 /** Availability label for doctor cards. */
 export const getDoctorAvailabilityLabel = (
   item: any,
@@ -211,9 +215,70 @@ export const getDoctorAvailabilityLabel = (
       item?.is_available === true ||
       String(item?.availability_status || '').toLowerCase() === 'available');
   if (isAvailable) return 'Available';
-  const status = String(
+
+  const raw = String(
     item?.availability_status || item?.availability || '',
   ).trim();
-  if (status) return status;
+  if (!raw || APPROVAL_STATUS_RE.test(raw)) return 'Unavailable';
+
+  const lower = raw.toLowerCase();
+  if (lower === 'available' || lower === 'online') return 'Available';
+  if (lower.includes('limited') || lower.includes('few')) return 'Limited slots';
+  if (lower === 'unavailable' || lower === 'offline' || lower === 'busy') {
+    return 'Unavailable';
+  }
+  // Unknown backend copy — keep UI patient-safe
   return 'Unavailable';
 };
+
+/** Flatten doctor specializations from any API shape (including doctor-added). */
+export const resolveDoctorSpecializationLabels = (doctor: any): string[] => {
+  if (!doctor || typeof doctor !== 'object') return [];
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (value: unknown) => {
+    if (value == null) return;
+    if (typeof value === 'string') {
+      value
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .forEach(label => {
+          const key = label.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          out.push(label);
+        });
+      return;
+    }
+    if (typeof value === 'object') {
+      const label = String(
+        (value as any)?.name ??
+          (value as any)?.title ??
+          (value as any)?.label ??
+          (value as any)?.specialization ??
+          '',
+      ).trim();
+      if (label) push(label);
+    }
+  };
+
+  const sources = [
+    doctor.doctor_specialization,
+    doctor.specializations,
+    doctor.specialization,
+    doctor.custom_specializations,
+    doctor.other_specializations,
+    doctor.health_diseases,
+  ];
+  sources.forEach(source => {
+    if (Array.isArray(source)) source.forEach(push);
+    else push(source);
+  });
+
+  return out;
+};
+
+export const formatDoctorSpecialization = (doctor: any): string =>
+  resolveDoctorSpecializationLabels(doctor).join(', ');

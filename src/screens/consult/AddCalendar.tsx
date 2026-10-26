@@ -165,7 +165,13 @@ const AddCalendar = ({ navigation, route }: any) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-      <AppHeader title="Add to Calendar" onLeftPress={() => navigation.goBack()} />
+      <AppHeader
+        title="Add to Calendar"
+        onLeftPress={() => {
+          if (navigation.canGoBack?.()) navigation.goBack();
+          else navigation.navigate('HomeStack', { screen: 'Home' });
+        }}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -290,16 +296,6 @@ const AddCalendar = ({ navigation, route }: any) => {
             <Text style={styles.primaryText}>Done</Text>
           </LinearGradient>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.laterBtn}
-          onPress={() => {
-            if (navigation.canGoBack?.()) navigation.goBack();
-          }}
-        >
-          <Text style={styles.bottomText}>I'll do it later</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -314,8 +310,8 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 28,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
   hero: {
     borderRadius: 18,

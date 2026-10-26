@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "start": "react-native start --max-workers=1",
     "start:reset": "react-native start --reset-cache --max-workers=1",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "node scripts/apply-payphi-overrides.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -25,11 +26,13 @@
     "@sentry/react-native": "^8.26.0",
     "@tabler/icons-react-native": "^3.44.0",
     "buffer": "^6.0.3",
+    "cashfree-pg-api-contract": "^2.2.0",
     "dayjs": "^1.11.23",
     "pdf-lib": "^1.17.1",
     "react": "19.2.3",
     "react-native": "0.84.1",
     "react-native-agora": "^4.6.2",
+    "react-native-cashfree-pg-sdk": "^3.0.0",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.29.1",
     "react-native-image-picker": "^8.2.1",
@@ -37,6 +40,7 @@
     "react-native-linear-gradient": "^2.8.3",
     "react-native-modal-datetime-picker": "^18.0.0",
     "react-native-onesignal": "5.5.6",
+    "react-native-payphi-sdk": "file:vendor/react-native-payphi-sdk-1.0.1.tgz",
     "react-native-razorpay": "^2.3.1",
     "react-native-reanimated": "^4.3.0",
     "react-native-safe-area-context": "^5.5.2",

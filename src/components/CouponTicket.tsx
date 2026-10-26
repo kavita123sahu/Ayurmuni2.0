@@ -25,6 +25,8 @@ type Props = {
   applied?: boolean;
   applyLabel?: string;
   notchColor?: string;
+  /** Denser row for checkout embed */
+  compact?: boolean;
 };
 
 /** Compact coupon row — all key details, minimal height */
@@ -34,37 +36,59 @@ const CouponTicket = ({
   onCopy,
   applied,
   applyLabel = 'APPLY',
+  compact,
 }: Props) => {
   const minNote = couponMinNote(coupon);
   const maxNote = couponMaxNote(coupon);
 
   return (
-    <View style={[styles.wrap, applied && styles.wrapApplied]}>
-      <View style={styles.logoWrap}>
-        {coupon.image_url ? (
-          <Image
-            source={{ uri: coupon.image_url }}
-            style={styles.logo}
-            resizeMode="cover"
-          />
-        ) : (
-          <TablerIcon name="receipt" size={16} color={Colors.primaryColor} />
-        )}
-      </View>
+    <View
+      style={[
+        styles.wrap,
+        compact && styles.wrapCompact,
+        applied && styles.wrapApplied,
+      ]}
+    >
+      {!compact ? (
+        <View style={styles.logoWrap}>
+          {coupon.image_url ? (
+            <Image
+              source={{ uri: coupon.image_url }}
+              style={styles.logo}
+              resizeMode="cover"
+            />
+          ) : (
+            <TablerIcon name="receipt" size={16} color={Colors.primaryColor} />
+          )}
+        </View>
+      ) : null}
 
       <View style={styles.body}>
         <View style={styles.topRow}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text
+            style={[styles.title, compact && styles.titleCompact]}
+            numberOfLines={1}
+          >
             {couponOfferTitle(coupon)}
           </Text>
           {onApply ? (
             <TouchableOpacity
-              style={[styles.applyBtn, applied && styles.applyBtnOn]}
+              style={[
+                styles.applyBtn,
+                compact && styles.applyBtnCompact,
+                applied && styles.applyBtnOn,
+              ]}
               onPress={() => onApply(coupon.code)}
               disabled={applied}
               activeOpacity={0.85}
             >
-              <Text style={[styles.applyText, applied && styles.applyTextOn]}>
+              <Text
+                style={[
+                  styles.applyText,
+                  compact && styles.applyTextCompact,
+                  applied && styles.applyTextOn,
+                ]}
+              >
                 {applied ? 'APPLIED' : applyLabel}
               </Text>
             </TouchableOpacity>
@@ -78,24 +102,31 @@ const CouponTicket = ({
             }
             activeOpacity={0.85}
           >
-            <Text style={styles.code}>{coupon.code}</Text>
+            <Text style={[styles.code, compact && styles.codeCompact]}>
+              {coupon.code}
+            </Text>
           </TouchableOpacity>
           <Text style={styles.dot}>·</Text>
-          <Text style={styles.save} numberOfLines={1}>
+          <Text
+            style={[styles.save, compact && styles.saveCompact]}
+            numberOfLines={1}
+          >
             {couponSavingsLabel(coupon)}
           </Text>
         </View>
 
-        <Text style={styles.meta} numberOfLines={1}>
-          {[
-            maxNote,
-            minNote,
-            couponExpiryLabel(coupon),
-            coupon.visibility === 'private' ? 'For you' : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </Text>
+        {!compact ? (
+          <Text style={styles.meta} numberOfLines={1}>
+            {[
+              maxNote,
+              minNote,
+              couponExpiryLabel(coupon),
+              coupon.visibility === 'private' ? 'For you' : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -114,6 +145,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     gap: 8,
+  },
+  wrapCompact: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 0,
   },
   wrapApplied: {
     borderColor: Colors.primaryColor,
@@ -148,11 +185,21 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  titleCompact: {
+    fontSize: 11,
+    lineHeight: 14,
+    includeFontPadding: false,
+  },
   applyBtn: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
     backgroundColor: Colors.primaryColor,
+  },
+  applyBtnCompact: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
   },
   applyBtnOn: {
     backgroundColor: '#D7E8E1',
@@ -162,6 +209,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 0.3,
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  applyTextCompact: {
+    fontSize: 9,
+    includeFontPadding: false,
   },
   applyTextOn: {
     color: Colors.primaryColor,
@@ -178,6 +229,10 @@ const styles = StyleSheet.create({
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsSemiBold,
   },
+  codeCompact: {
+    fontSize: 10,
+    includeFontPadding: false,
+  },
   dot: {
     fontSize: 11,
     color: '#CBD5E1',
@@ -187,6 +242,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#15803D',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  saveCompact: {
+    fontSize: 10,
+    includeFontPadding: false,
   },
   meta: {
     marginTop: 2,

@@ -24,6 +24,7 @@ import {
 import { showSuccessToast } from '../config/Key';
 import { canAddProductWithoutPrescription } from '../utils/prescriptionUtils';
 import { formatDiscountOff, RupeeAmount, roundDiscountPercent } from '../utils/currencyUtils';
+import { isItemWishlisted } from '../hooks/useWishlistSync';
 
 const GRID_GAP = 10;
 const IMAGE_HEIGHT_GRID = 136;
@@ -186,7 +187,7 @@ const ProductCard: React.FC<Props> = ({
 
         {showWishlist && onWishlist && !actionsLocked && (
           <WishlistButton
-            isWishlisted={item?.is_wishlist_item}
+            isWishlisted={isItemWishlisted(item)}
             onPress={onWishlist}
           />
         )}

@@ -5,6 +5,7 @@ import React, {
     useRef,
     useState,
 } from 'react';
+
 import {
     View,
     Text,
@@ -27,6 +28,7 @@ import { showSuccessToast } from '../../config/Key';
 import {
     isRazorpayUserCancelled,
     openRazorpayPayment,
+    pickRazorpayKey,
     toRazorpayPaise,
 } from '../../services/RazorpayService';
 import { Utils } from '../../common/Utils';
@@ -37,7 +39,11 @@ import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import TablerIcon from '../../components/TablerIcon';
 import AppHeader from '../../components/AppHeader';
 import DietitianBadge from '../../components/DietitianBadge';
-import { getDoctorDisplayName, resolveDoctorProfileImageUri } from '../../utils/doctorUtils';
+import {
+    formatDoctorSpecialization,
+    getDoctorDisplayName,
+    resolveDoctorProfileImageUri,
+} from '../../utils/doctorUtils';
 import { usePatientData } from '../../hooks/usePatientData';
 import { useMyPackages } from '../../hooks/usePackagePlans';
 import ActivePlanPickerSheet from '../../components/packages/ActivePlanPickerSheet';
@@ -50,33 +56,29 @@ import {
 import type { MyPlan } from '../../services/PackageServices';
 import { useAppSelector } from '../../store/hooks';
 import {
+    filterRunnableGateways,
+    getGatewayOrderId,
+    hasGatewayOrder,
     resolveDefaultGateway,
     resolveEnabledGateways,
+    toApiPaymentGateway,
     type PaymentGateway,
 } from '../../config/paymentGateways';
 import {
-    getGatewayOrderId,
-    hasGatewayOrder,
-    parsePineLabsCheckout,
-    resolveOrderGateway,
-    type PineLabsCheckout,
-} from '../../services/PineLabsService';
-import {
+    buildIciciVerifyPayload,
+    isPayphiNativeLinked,
     isPayphiUserCancelled,
     openPayphiPayment,
     parsePayphiAppInfo,
     parsePayphiPaymentRequest,
+    resolveIciciMerchantTxnNo,
 } from '../../services/PayphiService';
+import {
+    buildCashfreeVerifyPayload,
+    openCashfreePayment,
+    resolveCashfreeCheckout,
+} from '../../services/CashfreeService';
 import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
-import PineLabsCheckoutModal, {
-    type PineLabsCheckoutOutcome,
-    type PineLabsPageResult,
-} from '../../components/payment/PineLabsCheckoutModal';
-
-type PineLabsFinishResult = {
-    outcome: PineLabsCheckoutOutcome;
-    pageResult?: PineLabsPageResult;
-};
 import {
     calculateFeeBreakdown,
     feeRateLabel,
@@ -206,26 +208,18 @@ const pickConsultPaymentData = (response: any) => {
     if (!response || typeof response !== 'object') return {};
     const data =
         response.data && typeof response.data === 'object' ? response.data : {};
-    const nestedPayment =
-        (data.payment && typeof data.payment === 'object' && data.payment) ||
-        (data.checkout && typeof data.checkout === 'object' && data.checkout) ||
-        {};
     return {
         ...response,
         ...data,
-        ...nestedPayment,
-        payment_id: data.payment_id ?? nestedPayment.payment_id ?? response.payment_id,
-        appointment_id:
-            data.appointment_id ?? response.appointment_id ?? nestedPayment.appointment_id,
+        payment_id: data.payment_id ?? response.payment_id,
+        appointment_id: data.appointment_id ?? response.appointment_id,
         gateway: data.payment_gateway ?? data.gateway ?? response.gateway,
         payment_gateway: data.payment_gateway ?? data.gateway ?? response.gateway,
-        gateway_order_id: data.gateway_order_id ?? nestedPayment.gateway_order_id ?? response.gateway_order_id,
-        razorpay_order_id:
-            data.razorpay_order_id ?? nestedPayment.razorpay_order_id ?? response.razorpay_order_id,
-        razorpay_key: data.razorpay_key ?? nestedPayment.razorpay_key ?? response.razorpay_key,
-        gateway_key: data.gateway_key ?? nestedPayment.gateway_key ?? response.gateway_key,
-        key_id: data.key_id ?? nestedPayment.key_id ?? response.key_id,
-        key: data.key ?? nestedPayment.key ?? response.key,
+        gateway_order_id: data.gateway_order_id ?? response.gateway_order_id,
+        razorpay_order_id: data.razorpay_order_id ?? response.razorpay_order_id,
+        razorpay_key: data.razorpay_key ?? response.razorpay_key,
+        key_id: data.key_id ?? response.key_id,
+        icici: data.icici ?? response.icici,
         summary: data.summary ?? response.summary,
         status: data.status ?? response.status,
         payment_status: data.payment_status ?? response.payment_status,
@@ -362,34 +356,6 @@ const readPlanFunding = (res: any): PlanEligibility => {
     };
 };
 
-const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-
-/**
- * verify-payment for Pine Labs `{ payment_id, gateway_order_id }`.
- * The backend webhook may land a moment after the redirect, so a returned checkout is re-checked briefly.
- */
-const verifyPineLabsPayment = async (
-    checkout: PineLabsCheckout,
-    outcome: PineLabsCheckoutOutcome,
-) => {
-    const attempts = outcome === 'returned' ? 4 : 1;
-    let last: any = null;
-    for (let i = 0; i < attempts; i += 1) {
-        try {
-            last = await _CONSULT_SERVICES.verifyConsultationPayment({
-                payment_id: checkout.paymentId,
-                gateway_order_id: checkout.orderId,
-            });
-            logPayStep(`5. verify attempt ${i + 1}/${attempts}`, last);
-            if (isApiSuccess(last)) return last;
-        } catch (e) {
-            console.log('[PAY] 5. verify error =>', e);
-        }
-        if (i < attempts - 1) await wait(2500);
-    }
-    return last;
-};
-
 const formatDisplayDate = (value?: string) => {
     if (!value) return '';
     const d = new Date(value);
@@ -436,7 +402,10 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
     const customerData = useAppSelector(s => s.home.customerData);
     const enabledGateways = useMemo(
-        () => resolveEnabledGateways(customerData),
+        () =>
+            filterRunnableGateways(resolveEnabledGateways(customerData), {
+                payphiNativeLinked: isPayphiNativeLinked(),
+            }),
         [customerData],
     );
     const [gateway, setGateway] = useState<PaymentGateway>(() =>
@@ -447,67 +416,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             setGateway(resolveDefaultGateway(customerData, enabledGateways));
         }
     }, [enabledGateways, gateway, customerData]);
-    const [pineCheckout, setPineCheckout] = useState<PineLabsCheckout | null>(null);
-
-    const pineResolveRef = useRef<
-        ((result: PineLabsFinishResult) => void) | null
-    >(null);
-
-    const openPineLabsCheckout = useCallback(
-        (checkout: PineLabsCheckout) =>
-            new Promise<PineLabsFinishResult>(resolve => {
-                pineResolveRef.current = resolve;
-                setPineCheckout(checkout);
-            }),
-        [],
-    );
-
-    const pineVerifiedRef = useRef<any>(null);
-
-    const checkPineLabsOnResume = useCallback(async () => {
-        if (!pineCheckout) return false;
-
-        try {
-            const res =
-                await _CONSULT_SERVICES.verifyConsultationPayment({
-                    payment_id: pineCheckout.paymentId,
-                    gateway_order_id: pineCheckout.orderId,
-                });
-
-            logPayStep('4a. verify on app resume', res);
-
-            if (isApiSuccess(res)) {
-                pineVerifiedRef.current = res;
-            }
-
-            return isApiSuccess(res);
-        } catch (e) {
-            console.log('[PAY] 4a. verify on resume error =>', e);
-            return false;
-        }
-    }, [pineCheckout]);
-
-    const onPineLabsFinish = useCallback(
-        (
-            outcome: PineLabsCheckoutOutcome,
-            pageResult?: PineLabsPageResult,
-        ) => {
-            console.log('[PAY] Pine Labs modal finished =>', {
-                outcome,
-                pageResult,
-            });
-
-            setPineCheckout(null);
-
-            pineResolveRef.current?.({
-                outcome,
-                pageResult,
-            });
-
-            pineResolveRef.current = null;
-        },
-        [],
-    );
 
     const planDoctorId = String(
         doctorId || doctorInfo?.doctor_id || doctorInfo?.id || '',
@@ -619,6 +527,24 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             ).trim(),
         [doctorInfo],
     );
+    const specialization = useMemo(
+        () => formatDoctorSpecialization(doctorInfo),
+        [doctorInfo],
+    );
+    const attachedDocs = useMemo(() => {
+        if (Array.isArray(medical_records) && medical_records.length > 0) {
+            return medical_records;
+        }
+        // Fallback: IDs only — still show a placeholder row per attachment
+        if (Array.isArray(medical_record_ids) && medical_record_ids.length > 0) {
+            return medical_record_ids.map((id: any, index: number) => ({
+                id,
+                description: `Document ${index + 1}`,
+                file_type: 'file',
+            }));
+        }
+        return [];
+    }, [medical_records, medical_record_ids]);
     const patientName = useMemo(
         () => getPatientDisplayName(activePatient),
         [activePatient],
@@ -793,6 +719,22 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     ) => {
         showSuccessToast(message, 'success');
         try {
+            const { showInAppNotification } = require('../../services/inAppNotificationService');
+            showInAppNotification({
+                title: 'Appointment confirmed',
+                message:
+                    message ||
+                    `Your consultation with ${doctorName} is booked.`,
+                type: 'APPOINTMENT_CONFIRMED',
+                appointment_id:
+                    SlotsDetail?.appointment_id ||
+                    SlotsDetail?.id ||
+                    SlotsDetail?.consultation_id,
+            });
+        } catch {
+            // ignore
+        }
+        try {
             const { OneSignal } = require('react-native-onesignal');
             OneSignal.User.pushSubscription.optIn();
         } catch {
@@ -835,6 +777,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             const pendingPayment = planPurchaseId
                 ? null
                 : await getPendingConsultPayment(currentSlotId);
+            const apiGateway = toApiPaymentGateway(gateway);
 
             let paymentResponse: any;
             if (planPurchaseId) {
@@ -845,7 +788,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         concern: concern,
                         medical_record_ids: medical_record_ids,
                         ...(planPayable && planPayable > 0
-                            ? { payment_gateway: gateway }
+                            ? { payment_gateway: apiGateway }
                             : {}),
                     });
                 console.log('ConsultationPlanBookingResponse =>', paymentResponse);
@@ -868,22 +811,23 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             } else {
                 console.log('[PAY] 1. start =>', {
                     slot_id: currentSlotId,
-                    gateway,
+                    gateway: apiGateway,
                     saved_pending: pendingPayment,
                 });
 
                 // Retry ONLY if pending was created for the SAME gateway.
-                // Old ICICI pending + Razorpay select returned gateway:icici (no razorpay_key).
+                // Old ICICI pending + Razorpay select was returning gateway:icici (no razorpay_key).
                 const canRetry =
                     Boolean(pendingPayment?.appointment_id) &&
-                    (!pendingPayment?.gateway || pendingPayment.gateway === gateway);
+                    (!pendingPayment?.gateway ||
+                        pendingPayment.gateway === apiGateway);
 
                 if (canRetry && pendingPayment?.appointment_id) {
                     try {
                         paymentResponse =
                             await _CONSULT_SERVICES.retryConsultationPayment(
                                 pendingPayment.appointment_id,
-                                gateway,
+                                apiGateway,
                             );
                     } catch (retryError) {
                         console.log('[PAY] 2. retry error =>', retryError);
@@ -893,26 +837,14 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     const retryData = pickConsultPaymentData(paymentResponse);
                     const retryGateway = String(
                         retryData?.payment_gateway ?? retryData?.gateway ?? '',
-                    )
-                        .trim()
-                        .toLowerCase()
-                        .replace(/[\s_-]/g, '');
-                    const selectedNorm = String(gateway)
-                        .trim()
-                        .toLowerCase()
-                        .replace(/[\s_-]/g, '');
-                    const retryMatches =
-                        !retryGateway ||
-                        retryGateway === selectedNorm ||
-                        (selectedNorm === 'icici' &&
-                            (retryGateway === 'payphi' || retryGateway === 'icici')) ||
-                        (selectedNorm === 'razorpay' &&
-                            (Boolean(retryData?.razorpay_order_id) ||
-                                Boolean(retryData?.razorpay_key)));
-
-                    if (!isApiSuccess(paymentResponse) || !retryMatches) {
+                    ).toLowerCase();
+                    // Backend ignored payment_gateway and returned another gateway → book-slot fresh
+                    if (
+                        !isApiSuccess(paymentResponse) ||
+                        (retryGateway && retryGateway !== apiGateway)
+                    ) {
                         console.warn('[PAY] 2. retry gateway mismatch — clear & book-slot', {
-                            selected: gateway,
+                            selected: apiGateway,
                             returned: retryGateway,
                         });
                         await clearPendingConsultPayment(currentSlotId);
@@ -921,12 +853,13 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 } else if (pendingPayment?.appointment_id) {
                     console.warn('[PAY] skip retry — pending gateway differs', {
                         pending: pendingPayment.gateway,
-                        selected: gateway,
+                        selected: apiGateway,
                     });
                     await clearPendingConsultPayment(currentSlotId);
                 }
 
                 // book-slot: first tap or after clearing mismatched pending
+                // book-slot: slot_id + payment_gateway (required), concern / medical_record_ids / coupon_code optional
                 if (!paymentResponse) {
                     paymentResponse =
                         await _CONSULT_SERVICES.createConsultationPayment({
@@ -934,7 +867,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             concern: concern,
                             medical_record_ids: medical_record_ids,
                             coupon_code: appliedCoupon?.code,
-                            payment_gateway: gateway,
+                            payment_gateway: apiGateway,
                         });
                     logPayStep('2. book-slot', paymentResponse);
 
@@ -947,10 +880,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             const retryResponse =
                                 await _CONSULT_SERVICES.retryConsultationPayment(
                                     duplicateAppointmentId,
-                                    gateway,
+                                    apiGateway,
                                 );
                             logPayStep('2b. retry (duplicate order)', retryResponse);
-                            if (isApiSuccess(retryResponse)) paymentResponse = retryResponse;
+                            if (isApiSuccess(retryResponse)) {
+                                paymentResponse = retryResponse;
+                            }
                         } catch (retryError) {
                             console.log('[PAY] 2b. retry error =>', retryError);
                         }
@@ -989,204 +924,15 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     currentSlotId,
                     appointmentId,
                     paymentData?.payment_id,
-                    gateway,
+                    apiGateway,
                 );
             }
 
-            // Always honor the gateway the user selected (never open ICICI on Razorpay pick)
-            const orderGateway = resolveOrderGateway(paymentData, gateway);
+            // Always use the gateway the user selected (not stale response.gateway)
             console.log('[PAY] 3. order gateway =>', {
-                selected: gateway,
-                resolved: orderGateway,
+                selected: apiGateway,
                 api_returned: paymentData?.gateway ?? paymentData?.payment_gateway,
             });
-
-            if (gateway === 'pinelabs') {
-                const checkout = parsePineLabsCheckout(paymentData);
-
-                console.log('[PAY] 3. pine labs checkout =>', checkout);
-
-                if (
-                    !checkout.redirectUrl ||
-                    !checkout.orderId ||
-                    !checkout.paymentId
-                ) {
-                    console.log(
-                        '[PAY] stop: checkout fields missing =>',
-                        {
-                            redirectUrl: checkout.redirectUrl,
-                            orderId: checkout.orderId,
-                            paymentId: checkout.paymentId,
-                        },
-                    );
-
-                    showSuccessToast(
-                        'Pine Labs checkout is not available right now',
-                        'error',
-                    );
-
-                    return;
-                }
-
-                console.log('[PAY] Opening Pine Labs checkout =>', {
-                    paymentId: checkout.paymentId,
-                    orderId: checkout.orderId,
-                    redirectUrl: checkout.redirectUrl,
-                });
-
-                // Reset previous verification result
-                pineVerifiedRef.current = null;
-
-                // Open Pine Labs WebView
-                const { outcome, pageResult } =
-                    await openPineLabsCheckout(checkout);
-
-                console.log('[PAY] 4. Pine Labs checkout finished =>', {
-                    outcome,
-                    pageStatus: pageResult?.status,
-                    pageText: pageResult?.text,
-                });
-
-                setIsVerifyingPayment(true);
-
-                let verifyResponse: any = null;
-
-                try {
-                    // First priority:
-                    // If payment was already verified while app resumed,
-                    // use that response.
-                    if (pineVerifiedRef.current) {
-                        verifyResponse = pineVerifiedRef.current;
-
-                        console.log(
-                            '[PAY] 4a. using resume verification response =>',
-                            verifyResponse,
-                        );
-                    } else {
-                        // IMPORTANT:
-                        // Do NOT convert failed into "closed".
-                        // Send the actual checkout outcome.
-                        verifyResponse = await verifyPineLabsPayment(
-                            checkout,
-                            outcome,
-                        );
-
-                        console.log(
-                            '[PAY] 4b. final Pine Labs verification =>',
-                            verifyResponse,
-                        );
-                    }
-                } catch (verifyError) {
-                    console.log(
-                        '[PAY] Pine Labs verification error =>',
-                        verifyError,
-                    );
-                }
-
-                pineVerifiedRef.current = null;
-
-                setIsVerifyingPayment(false);
-
-                // --------------------------------------------------
-                // SUCCESS
-                // --------------------------------------------------
-
-                if (verifyResponse?.success) {
-                    console.log(
-                        '[PAY] result: Pine Labs payment SUCCESS',
-                    );
-
-                    await onBookingSuccess(
-                        verifyResponse?.data,
-                        currentSlotId,
-                        'Payment Successful',
-                    );
-
-                    return;
-                }
-
-                // --------------------------------------------------
-                // PINE LABS PAYMENT FAILED
-                // --------------------------------------------------
-
-                if (pageResult?.status === 'failed') {
-                    console.log(
-                        '[PAY] result: Pine Labs payment FAILED',
-                        {
-                            outcome,
-                            pageResult,
-                            verifyResponse,
-                        },
-                    );
-
-                    showSuccessToast(
-                        'Payment failed at Pine Labs. Please try again or use another payment method.',
-                        'error',
-                    );
-
-                    return;
-                }
-
-                // --------------------------------------------------
-                // PINE LABS SHOWED SUCCESS BUT BACKEND VERIFY FAILED
-                // --------------------------------------------------
-
-                if (pageResult?.status === 'success') {
-                    console.log(
-                        '[PAY] Pine Labs shows SUCCESS but backend verification failed',
-                        {
-                            status: verifyResponse?.status,
-                            message: verifyResponse?.message,
-                            response: verifyResponse,
-                        },
-                    );
-
-                    showSuccessToast(
-                        'Payment received. Your booking is being confirmed — check My Appointments in a moment.',
-                        'success',
-                    );
-
-                    return;
-                }
-
-                // --------------------------------------------------
-                // USER CLOSED / CANCELLED CHECKOUT
-                // --------------------------------------------------
-
-                if (outcome === 'closed') {
-                    console.log(
-                        '[PAY] result: Pine Labs checkout closed by user',
-                    );
-
-                    showSuccessToast(
-                        'Payment cancelled. You can try again anytime.',
-                        'error',
-                    );
-
-                    return;
-                }
-
-                // --------------------------------------------------
-                // UNKNOWN / VERIFICATION FAILURE
-                // --------------------------------------------------
-
-                console.log(
-                    '[PAY] result: Pine Labs payment verification failed',
-                    {
-                        outcome,
-                        pageResult,
-                        verifyResponse,
-                    },
-                );
-
-                showSuccessToast(
-                    verifyResponse?.message ||
-                    'Payment verification failed. Please try again.',
-                    'error',
-                );
-
-                return;
-            }
 
             const payableRupees = resolveConsultPayableRupees(
                 paymentData,
@@ -1221,107 +967,250 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         ? contactNumber.slice(-10)
                         : undefined,
                 });
-
-                console.log('[PAY] 3. payphi checkout =>', {
-                    appInfo: appInfo
-                        ? { merchantId: appInfo.merchantId, environment: appInfo.environment }
-                        : null,
-                    invoiceNo: payRequest?.invoiceNo,
-                    amount: payRequest?.amount,
+                console.warn('[PAY] icici start', {
+                    payment_id: paymentData?.payment_id,
+                    merchantId: appInfo?.merchantId,
+                    appId: appInfo?.appId,
+                    native: Boolean(isPayphiNativeLinked() && appInfo && payRequest),
                 });
 
-                if (!payRequest) {
-                    showSuccessToast(
-                        'PayPhi checkout is not ready. Missing invoice or amount from server.',
-                        'error',
-                    );
-                    return;
-                }
+                const finishIciciVerify = async (args: {
+                    merchantTxnNo: string;
+                    gatewayPaymentId?: string;
+                    gatewaySignature?: string;
+                    pendingMessage?: string;
+                }) => {
+                    if (!paymentData?.payment_id || !args.merchantTxnNo) {
+                        showSuccessToast(
+                            'ICICI verify failed: missing payment_id or gateway_order_id.',
+                            'error',
+                        );
+                        return;
+                    }
+                    setIsVerifyingPayment(true);
+                    const verifyResponse =
+                        await _CONSULT_SERVICES.verifyConsultationPayment(
+                            buildIciciVerifyPayload({
+                                paymentId: String(paymentData.payment_id),
+                                merchantTxnNo: args.merchantTxnNo,
+                                gatewayPaymentId: args.gatewayPaymentId,
+                                gatewaySignature: args.gatewaySignature,
+                            }),
+                        );
+                    logPayStep('5. icici verify', verifyResponse);
+                    setIsVerifyingPayment(false);
 
-                let payphiResult;
-                try {
-                    payphiResult = await openPayphiPayment(appInfo, payRequest);
-                    console.log('[PAY] 4. payphi result =>', payphiResult);
-                } catch (error: any) {
-                    console.log('[PAY] PayPhi SDK error =>', error);
-                    showSuccessToast(
-                        error?.message ||
-                        'Unable to open ICICI PayPhi. Please try another payment method.',
-                        'error',
-                    );
-                    return;
-                }
-
-                if (isPayphiUserCancelled(payphiResult) || payphiResult.status === 'cancelled') {
-                    showSuccessToast(
-                        'Payment cancelled. You can try again anytime.',
-                        'error',
-                    );
-                    return;
-                }
-
-                if (payphiResult.status === 'failed') {
-                    showSuccessToast(
-                        payphiResult.message ||
-                        'Payment failed at PayPhi. Please try again.',
-                        'error',
-                    );
-                    return;
-                }
-
-                setIsVerifyingPayment(true);
-                const verifyResponse =
-                    await _CONSULT_SERVICES.verifyConsultationPayment({
-                        payment_id: String(paymentData?.payment_id ?? ''),
-                        gateway_order_id:
-                            payphiResult.gatewayOrderId ||
-                            getGatewayOrderId(paymentData, 'icici'),
-                        gateway_payment_id: payphiResult.gatewayPaymentId,
-                        gateway_signature: payphiResult.gatewaySignature,
-                        // payment_gateway: 'icici',
-                    });
-                logPayStep('5. icici verify', verifyResponse);
-                setIsVerifyingPayment(false);
-
-                if (verifyResponse?.success) {
-                    await onBookingSuccess(
-                        verifyResponse?.data,
-                        currentSlotId,
-                        payphiResult.status === 'pending'
-                            ? 'Payment pending — booking will confirm shortly'
-                            : 'Payment Successful',
-                    );
-                } else if (payphiResult.status === 'pending') {
-                    showSuccessToast(
-                        'Payment is pending. Check My Appointments in a moment.',
-                        'success',
-                    );
-                } else {
+                    if (verifyResponse?.success) {
+                        await onBookingSuccess(
+                            verifyResponse?.data,
+                            currentSlotId,
+                            args.pendingMessage || 'Payment Successful',
+                        );
+                        return;
+                    }
+                    if (args.pendingMessage) {
+                        showSuccessToast(args.pendingMessage, 'success');
+                        return;
+                    }
                     showSuccessToast(
                         verifyResponse?.message || 'Payment verification failed',
+                        'error',
+                    );
+                };
+
+                let nativeOpenFailed: any = null;
+                if (isPayphiNativeLinked() && appInfo && payRequest) {
+                    try {
+                        const payphiResult = await openPayphiPayment(
+                            appInfo,
+                            payRequest,
+                        );
+                        console.warn('[PAY] icici native', payphiResult);
+
+                        if (
+                            isPayphiUserCancelled(payphiResult) ||
+                            payphiResult.status === 'cancelled'
+                        ) {
+                            console.warn('[PAY] icici cancelled', payphiResult);
+                            if (payphiResult.message) {
+                                showSuccessToast(payphiResult.message, 'error');
+                            }
+                            return;
+                        }
+
+                        if (payphiResult.status === 'failed') {
+                            console.warn('[PAY] icici failed', payphiResult);
+                            showSuccessToast(
+                                payphiResult.message || String(payphiResult.raw ?? ''),
+                                'error',
+                            );
+                            return;
+                        }
+
+                        await finishIciciVerify({
+                            merchantTxnNo: resolveIciciMerchantTxnNo(
+                                paymentData,
+                                payphiResult.gatewayOrderId,
+                            ),
+                            gatewayPaymentId: payphiResult.gatewayPaymentId,
+                            gatewaySignature: payphiResult.gatewaySignature,
+                            pendingMessage:
+                                payphiResult.status === 'pending'
+                                    ? payphiResult.message || undefined
+                                    : undefined,
+                        });
+                        return;
+                    } catch (error: any) {
+                        nativeOpenFailed = error;
+                        console.warn('[PAY] icici native error', {
+                            code: error?.code,
+                            message: error?.message,
+                            error,
+                        });
+                    }
+                }
+
+                console.warn('[PAY] icici stop', {
+                    code: nativeOpenFailed?.code,
+                    message: nativeOpenFailed?.message,
+                    native: isPayphiNativeLinked(),
+                    hasAppInfo: Boolean(appInfo),
+                    hasPayRequest: Boolean(payRequest),
+                });
+                if (!isPayphiNativeLinked()) {
+                    showSuccessToast(
+                        "ICICI PayPhi SDK is not linked in this build. Rebuild the app (npx react-native run-android) after installing react-native-payphi-sdk.",
+                        'error',
+                    );
+                } else if (!appInfo || !payRequest) {
+                    showSuccessToast(
+                        'ICICI payment data incomplete (merchantId / txn / email). Try again or contact support.',
+                        'error',
+                    );
+                } else if (nativeOpenFailed?.message || nativeOpenFailed?.code) {
+                    // Exact SDK / bridge message only
+                    showSuccessToast(
+                        String(nativeOpenFailed?.message || nativeOpenFailed?.code),
                         'error',
                     );
                 }
                 return;
             }
 
-            // ── Razorpay (default path when selected) ──────────────
-            const razorpayKey = pickConsultRazorpayKey(paymentData);
-            const razorpayOrderId =
-                pickConsultRazorpayOrderId(paymentData) ||
-                getGatewayOrderId(paymentData, 'razorpay');
+            // ── Cashfree SDK ───────────────────────────────────────
+            // book-slot → (session from API or SANDBOX create) → doWebPayment → verify
+            if (apiGateway === 'cashfree') {
+                let cfSession;
+                try {
+                    cfSession = await resolveCashfreeCheckout(paymentData, {
+                        amount: payableRupees,
+                        customerName,
+                        customerEmail,
+                        customerMobile: contactNumber
+                            ? contactNumber.slice(-10)
+                            : undefined,
+                    });
+                } catch (sessionError: any) {
+                    console.warn('[PAY] cashfree session error', sessionError);
+                    showSuccessToast(
+                        sessionError?.message ||
+                            'Cashfree session was not created. Backend must return payment_session_id.',
+                        'error',
+                    );
+                    return;
+                }
 
-            if (!razorpayKey || !razorpayOrderId) {
-                console.log('[PAY] stop: razorpay fields missing =>', {
-                    hasKey: Boolean(razorpayKey),
-                    hasOrderId: Boolean(razorpayOrderId),
-                    payment_id: paymentData?.payment_id,
-                    api_gateway: paymentData?.payment_gateway ?? paymentData?.gateway,
+                console.warn('[PAY] cashfree start', {
+                    orderId: cfSession.orderId,
+                    paymentId: paymentData?.payment_id || cfSession.paymentId,
+                    env: cfSession.environment,
                 });
+
+                const cfResult = await openCashfreePayment(cfSession);
+                console.warn('[PAY] cashfree result', cfResult);
+
+                if (cfResult.status === 'cancelled') {
+                    showSuccessToast(
+                        cfResult.message ||
+                            'Payment cancelled. You can try again anytime.',
+                        'error',
+                    );
+                    return;
+                }
+                if (cfResult.status === 'failed') {
+                    showSuccessToast(
+                        cfResult.message || 'Cashfree payment failed',
+                        'error',
+                    );
+                    return;
+                }
+
+                const cfPaymentId = String(
+                    paymentData?.payment_id || cfSession.paymentId || '',
+                );
+                if (!cfPaymentId) {
+                    showSuccessToast(
+                        'Cashfree paid, but payment_id missing for verify. Check My Appointments.',
+                        'success',
+                    );
+                    return;
+                }
+
+                setIsVerifyingPayment(true);
+                const cfOrderId = cfResult.orderId || cfSession.orderId;
+                const verifyResponse =
+                    await _CONSULT_SERVICES.verifyConsultationPayment(
+                        buildCashfreeVerifyPayload({
+                            paymentId: cfPaymentId,
+                            orderId: cfOrderId,
+                            gatewayPaymentId:
+                                cfResult.gatewayPaymentId || cfOrderId,
+                            gatewaySignature:
+                                cfResult.gatewaySignature ||
+                                cfSession.paymentSessionId ||
+                                cfOrderId,
+                        }),
+                    );
+                logPayStep('5. cashfree verify', verifyResponse);
+                setIsVerifyingPayment(false);
+
+                if (verifyResponse?.success) {
+                    await onBookingSuccess(
+                        verifyResponse?.data,
+                        currentSlotId,
+                        'Payment Successful',
+                    );
+                } else {
+                    showSuccessToast(
+                        verifyResponse?.message ||
+                            'Payment received. Booking will confirm shortly — check My Appointments.',
+                        verifyResponse?.success === false ? 'error' : 'success',
+                    );
+                }
+                return;
+            }
+
+            // ── Razorpay native SDK ────────────────────────────────
+            // book-slot → openRazorpayPayment → verify-payment
+            if (apiGateway !== 'razorpay') {
+                console.warn('[PAY] stop: unsupported gateway', {
+                    selected: apiGateway,
+                });
+                return;
+            }
+
+            const razorpayKey = pickRazorpayKey(paymentData);
+            const razorpayOrderId = getGatewayOrderId(paymentData, 'razorpay');
+            console.warn('[PAY] razorpay fields', {
+                hasKey: Boolean(razorpayKey),
+                orderId: razorpayOrderId,
+                payment_id: paymentData?.payment_id,
+            });
+            if (!razorpayKey || !razorpayOrderId) {
                 showSuccessToast(
                     !razorpayKey
-                        ? 'Payment gateway not ready: Razorpay key missing from server response.'
-                        : 'Payment gateway not ready: Razorpay order was not created.',
+                        ? 'Payment key missing from order response'
+                        : 'Razorpay order was not created',
                     'error',
                 );
                 return;
@@ -1353,7 +1242,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 });
             } catch (error: any) {
                 setIsVerifyingPayment(false);
-                console.log('CONSULT_RAZORPAY_CATCH =>', error);
+                console.log('[PAY] razorpay SDK error =>', error);
 
                 if (isRazorpayUserCancelled(error)) {
                     showSuccessToast(
@@ -1374,12 +1263,15 @@ const RazorpayScreen = ({ route, navigation }: any) => {
 
             setIsVerifyingPayment(true);
 
-            const gatewayOrderId =
-                razorpayResult?.razorpay_order_id || razorpayOrderId;
+            // verify-payment: payment_id, gateway_order_id, gateway_payment_id, gateway_signature
             const verifyResponse =
                 await _CONSULT_SERVICES.verifyConsultationPayment({
                     payment_id: String(paymentData?.payment_id ?? ''),
-                    gateway_order_id: String(gatewayOrderId || ''),
+                    gateway_order_id: String(
+                        razorpayResult?.razorpay_order_id ||
+                            getGatewayOrderId(paymentData, 'razorpay') ||
+                            '',
+                    ),
                     gateway_payment_id: String(
                         razorpayResult?.razorpay_payment_id ?? '',
                     ),
@@ -1398,7 +1290,10 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     'Payment Successful',
                 );
             } else {
-                showSuccessToast('Payment verification failed', 'error');
+                showSuccessToast(
+                    verifyResponse?.message || 'Payment verification failed',
+                    'error',
+                );
             }
         } catch (error: any) {
             setIsVerifyingPayment(false);
@@ -1490,6 +1385,14 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                         {doctorName}
                                     </Text>
                                     <DietitianBadge doctor={doctorInfo} />
+                                    {!!specialization && (
+                                        <Text
+                                            style={styles.qualification}
+                                            numberOfLines={1}
+                                        >
+                                            {specialization}
+                                        </Text>
+                                    )}
                                     {!!qualification && (
                                         <Text
                                             style={styles.qualification}
@@ -1498,66 +1401,9 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             {qualification}
                                         </Text>
                                     )}
-                                    <View style={styles.secureChip}>
-                                        <TablerIcon
-                                            name="shield"
-                                            size={11}
-                                            color={Colors.primaryColor}
-                                        />
-                                        <Text style={styles.secureChipText}>
-                                            Secure checkout
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            <View style={styles.slotStrip}>
-                                <View style={styles.slotItem}>
-                                    <View
-                                        style={[
-                                            styles.slotIcon,
-                                            { backgroundColor: '#EAF8F4' },
-                                        ]}
-                                    >
-                                        <TablerIcon
-                                            name="calendar"
-                                            size={14}
-                                            color={Colors.primaryColor}
-                                        />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.slotLabel}>Date</Text>
-                                        <Text
-                                            style={styles.slotValue}
-                                            numberOfLines={1}
-                                        >
-                                            {dateLabel}
-                                        </Text>
-                                    </View>
-                                </View>
-                                <View style={styles.slotDivider} />
-                                <View style={styles.slotItem}>
-                                    <View
-                                        style={[
-                                            styles.slotIcon,
-                                            { backgroundColor: '#E0F2FE' },
-                                        ]}
-                                    >
-                                        <TablerIcon
-                                            name="clock"
-                                            size={14}
-                                            color="#0369A1"
-                                        />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.slotLabel}>Time</Text>
-                                        <Text
-                                            style={styles.slotValue}
-                                            numberOfLines={1}
-                                        >
-                                            {timeLabel}
-                                        </Text>
-                                    </View>
+                                    <Text style={styles.secureChipText} numberOfLines={1}>
+                                        {dateLabel} · {timeLabel}
+                                    </Text>
                                 </View>
                             </View>
                         </LinearGradient>
@@ -1645,13 +1491,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                 </View>
                             ) : null}
 
-                            {Array.isArray(medical_records) &&
-                                medical_records.length > 0 ? (
-                                <View style={styles.docsSection}>
-                                    <Text style={styles.docsTitle}>
-                                        Attached documents
-                                    </Text>
-                                    {medical_records.map(
+                            <View style={styles.docsSection}>
+                                <Text style={styles.docsTitle}>
+                                    Attached documents
+                                </Text>
+                                {attachedDocs.length > 0 ? (
+                                    attachedDocs.map(
                                         (doc: any, index: number) => (
                                             <View
                                                 key={String(doc?.id ?? index)}
@@ -1677,9 +1522,13 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                                 </Text>
                                             </View>
                                         ),
-                                    )}
-                                </View>
-                            ) : null}
+                                    )
+                                ) : (
+                                    <Text style={styles.concernValue}>
+                                        No documents attached
+                                    </Text>
+                                )}
+                            </View>
                         </View>
 
                         {/* Active plan */}
@@ -2059,13 +1908,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 </SafeAreaView>
             )}
 
-            <PineLabsCheckoutModal
-                visible={!!pineCheckout}
-                url={pineCheckout?.redirectUrl ?? ''}
-                returnUrl={pineCheckout?.returnUrl}
-                onFinish={onPineLabsFinish}
-                checkOnResume={checkPineLabsOnResume}
-            />
             <ActivePlanPickerSheet
                 visible={planSheetVisible && !isVerifyingPayment}
                 plans={activePlans}

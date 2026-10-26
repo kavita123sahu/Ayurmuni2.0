@@ -53,8 +53,8 @@ const formatShortDate = (value: string) => {
 
 const SOURCE_LABELS: Record<string, string> = {
   razorpay: 'Razorpay',
-  pinelabs: 'Pine Labs',
-  pine_labs: 'Pine Labs',
+  cashfree: 'Cashfree',
+  icici: 'ICICI PayPhi',
   upi: 'UPI',
   card: 'Card',
   credit_card: 'Credit card',

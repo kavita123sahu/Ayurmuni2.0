@@ -104,7 +104,7 @@ export const buildBothCategoryProductsParams = (bannerItem?: any) => {
     Boolean(brandId) && !categoryId && !productSubcategoryId;
 
   return {
-    categoryMode: (brandOnly ? 'product' : 'both') as 'product' | 'both',
+    categoryMode: 'both' as 'product' | 'both',
     ...(serviceCategoryId ? { serviceCategoryId } : {}),
     ...(categoryId && !brandOnly ? { categoryId } : {}),
     ...(productSubcategoryId && !brandOnly ? { productSubcategoryId } : {}),

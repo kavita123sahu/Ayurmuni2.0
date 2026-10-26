@@ -1,37 +1,32 @@
 declare module 'react-native-payphi-sdk' {
-  export type PayphiAppInfo = {
-    merchantId: string;
-    environment?: string;
-    aggregatorId?: string;
-    appName?: string;
-    appVersion?: string;
-    [key: string]: unknown;
-  };
-
   export type PayphiPaymentRequest = {
-    amount: number | string;
-    invoiceNo: string;
-    currencyCode?: string;
-    customerEmail?: string;
-    customerMobile?: string;
-    customerName?: string;
+    amount: string | number;
+    merchantId: string;
+    merchantTxnNo: string;
+    currencyCode: string;
+    customerEmailID: string;
+    secretKey: string;
+    addlParam1?: string;
+    addlParam2?: string;
+    aggregatorID?: string;
+    apiVersion?: string;
     [key: string]: unknown;
   };
 
   export type PayphiSdkModule = {
-    setAppInfo?: (info: PayphiAppInfo) => void | Promise<void>;
-    setAppinfo?: (info: PayphiAppInfo) => void | Promise<void>;
-    init?: (info: PayphiAppInfo) => void | Promise<void>;
-    makePayment?: (
-      request: PayphiPaymentRequest,
-    ) => void | Promise<any>;
-    startPayment?: (
-      request: PayphiPaymentRequest,
-    ) => void | Promise<any>;
-    pay?: (request: PayphiPaymentRequest) => void | Promise<any>;
+    getPlatformVersion?: () => Promise<string>;
+    setAppInfo: (
+      environment: string,
+      merchantId: string,
+      appId: string,
+      merchantName?: string,
+    ) => Promise<string>;
+    makePayment: (request: PayphiPaymentRequest) => void;
+    addPaymentResponseListener: (
+      callback: (event: any) => void,
+    ) => { remove: () => void };
   };
 
   const PayphiSdk: PayphiSdkModule;
   export default PayphiSdk;
-  export const PayphiSdk: PayphiSdkModule;
 }

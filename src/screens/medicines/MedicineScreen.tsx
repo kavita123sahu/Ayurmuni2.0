@@ -129,7 +129,7 @@ const MedicineScreen = (props: any) => {
           onPress: () => {
             if (!mapped.id) return;
             navigateToCategoryProducts(navigation, {
-              categoryMode: 'product',
+              categoryMode: 'both',
               brandOnly: true,
               brand_name_id: mapped.id,
               brandId: mapped.id,
@@ -332,7 +332,16 @@ const MedicineScreen = (props: any) => {
 
         {brandListData.length > 0 ? (
           <>
-            <SectionHeader title="Trusted Brands" />
+            <SectionHeader
+              title="Trusted Brands"
+              actionText="View All"
+              onPress={() =>
+                navigateToCategoryProducts(navigation, {
+                  categoryMode: 'both',
+                  categoryName: 'Trusted Brands',
+                })
+              }
+            />
             <BrandList data={brandListData} />
           </>
         ) : null}

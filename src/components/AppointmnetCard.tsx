@@ -18,6 +18,7 @@ import {
 } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
 import DietitianBadge from './DietitianBadge';
+import { formatDoctorSpecialization } from '../utils/doctorUtils';
 
 export type AppointmentStatus =
   | 'confirmed'
@@ -60,10 +61,16 @@ interface AppointmentCardProps {
   style?: ViewStyle;
 }
 
-const formatStatusLabel = (status?: string) =>
-  String(status || '')
+const formatStatusLabel = (status?: string) => {
+  const raw = String(status || '')
     .replace(/_/g, ' ')
     .trim();
+  const lower = raw.toLowerCase();
+  // Patient-facing labels for internal statuses
+  if (lower === 'testing' || lower === 'test') return 'Processing';
+  if (lower === 'pending') return 'Pending';
+  return raw;
+};
 
 const AppointmentCard = ({
   item,
@@ -75,7 +82,8 @@ const AppointmentCard = ({
   const doctorName =
     doctor?.doctor_name || item?.doctorName || 'Doctor';
   const specialty =
-    doctor?.doctor_specialization ||
+    formatDoctorSpecialization(doctor) ||
+    formatDoctorSpecialization(item) ||
     doctor?.doctor_designation ||
     doctor?.qualification ||
     item?.specialty ||

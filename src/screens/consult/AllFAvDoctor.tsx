@@ -1,343 +1,142 @@
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
-
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-    View,
-    StyleSheet,
-    FlatList,
-    StatusBar,
-    ActivityIndicator,
-    RefreshControl,
+  View,
+  StyleSheet,
+  FlatList,
+  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '../../common/Colors';
-import { Fonts } from '../../common/Fonts';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import AllDoctorCard from '../../components/AllDoctorCard';
-
-import * as _CONSULT_SERVICES
-    from '../../services/ConsultServce';
 import { ExpandableSearch } from '../../components/SearchBar';
-import { useConsultData } from '../../hooks/useConsultData';
 import EmptyState from '../../components/EmptyState';
+import { useConsultData } from '../../hooks/useConsultData';
 import { useDebounce } from '../../hooks/useDebaunce';
 import { doctorListKey } from '../../utils/listKeys';
 
+const H_PAD = 12;
+const COL_GAP = 10;
+const NUM_COLUMNS = 2;
+
 const AllFavDoctors = (props: any) => {
+  const { width } = useWindowDimensions();
+  const cardWidth =
+    (width - H_PAD * 2 - COL_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
 
-    const [search, setSearch] =
-        useState('');
-    const [searchExpanded, setSearchExpanded] = useState(false);
+  const [search, setSearch] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const debouncedSearch = useDebounce(search, 400);
 
-    const debouncedSearch = useDebounce(search, 400);
+  const { favDoctor, onRefresh, loading, refreshing } = useConsultData({
+    fetchCategories: false,
+    fetchDoctors: true,
+  });
 
-    const { favDoctor, onRefresh, loading, refreshing } = useConsultData({
-        fetchCategories: false,
-        fetchDoctors: true,
-    });
-
-    const filteredDoctors = useMemo(() => {
-        let list = favDoctor.filter(item => item?.is_favorite);
-
-        if (debouncedSearch.trim()) {
-            const keyword = debouncedSearch.trim().toLowerCase();
-
-            list = list.filter((doctor) => {
-                const name = doctor?.full_name?.toLowerCase() || '';
-                const qualification = doctor?.qualification?.toLowerCase() || '';
-
-                return (
-                    name.includes(keyword) ||
-                    qualification.includes(keyword)
-                );
-            });
-        }
-
-        return list;
-    }, [favDoctor, debouncedSearch]);
-
-    const renderDoctorItem =
-        useCallback(
-            ({ item }: any) => (
-
-                <AllDoctorCard
-                    item={item}
-                    onPress={() =>
-                        props.navigation.navigate(
-                            'DoctorProfile',
-                            { doctorData: item },
-                        )
-                    }
-                />
-            ),
-            [],
-        );
-
-    /*
-    ====================================
-    LOADER
-    ====================================
-    */
-
-    return (
-
-        <SafeAreaView
-            style={styles.container}
-        >
-
-            <StatusBar
-                barStyle={'dark-content'}
-                backgroundColor={
-                    Colors.white
-
-                }
-            />
-
-            <AppHeader
-                title="Favourite Doctor"
-                onLeftPress={() =>
-                    props.navigation.goBack()
-                }
-                onSearchPress={() => setSearchExpanded(true)}
-                onRefreshPress={onRefresh}
-            />
-
-            {
-                loading ? (
-
-                    <View
-                        style={
-                            styles.loaderContainer
-                        }
-                    >
-                        <ActivityIndicator
-                            size="large"
-                            color={
-                                Colors.primaryColor
-                            }
-                        />
-                    </View>
-
-                )
-                    : (<FlatList
-                        data={filteredDoctors
-
-                        }
-                        keyExtractor={(item, index) =>
-                            doctorListKey(item, index)
-                        }
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[Colors.primaryColor]}
-                                tintColor={Colors.primaryColor}
-                            />
-                        }
-                        showsVerticalScrollIndicator={
-                            false
-                        }
-
-                        contentContainerStyle={
-                            styles.listContent
-                        }
-
-                        ListHeaderComponent={
-                            <>
-
-                                {/* SEARCH */}
-
-                                <ExpandableSearch
-                                    placeholder="Search doctors..."
-                                    value={search}
-                                    onChangeText={setSearch}
-                                    showTrigger={false}
-                                    expanded={searchExpanded}
-                                    onExpandedChange={setSearchExpanded}
-                                />
-                            </>
-                        }
-
-                        renderItem={renderDoctorItem}
-
-                        ListEmptyComponent={() => (
-
-                            <EmptyState title='No doctor found' />
-                        )}
-                    />)}
-        </SafeAreaView>
+  const filteredDoctors = useMemo(() => {
+    let list = (favDoctor || []).filter(
+      item => item?.is_favorite || item?.is_favourite,
     );
+
+    const keyword = debouncedSearch.trim().toLowerCase();
+    if (!keyword) return list;
+
+    return list.filter(doctor => {
+      const name = String(doctor?.full_name || doctor?.name || '').toLowerCase();
+      const qualification = String(doctor?.qualification || '').toLowerCase();
+      return name.includes(keyword) || qualification.includes(keyword);
+    });
+  }, [favDoctor, debouncedSearch]);
+
+  const renderDoctorItem = useCallback(
+    ({ item }: any) => (
+      <View style={{ width: cardWidth }}>
+        <AllDoctorCard
+          item={item}
+          variant="grid"
+          cardWidth={cardWidth}
+          onPress={() =>
+            props.navigation.navigate('DoctorProfile', { doctorData: item })
+          }
+        />
+      </View>
+    ),
+    [cardWidth, props.navigation],
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+
+      <AppHeader
+        title="Favourite Doctors"
+        onLeftPress={() => props.navigation.goBack()}
+        onSearchPress={() => setSearchExpanded(true)}
+        onRefreshPress={onRefresh}
+      />
+
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={Colors.primaryColor} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredDoctors}
+          keyExtractor={(item, index) => doctorListKey(item, index)}
+          numColumns={NUM_COLUMNS}
+          columnWrapperStyle={styles.row}
+          renderItem={renderDoctorItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primaryColor]}
+              tintColor={Colors.primaryColor}
+            />
+          }
+          ListHeaderComponent={
+            <ExpandableSearch
+              placeholder="Search doctors..."
+              value={search}
+              onChangeText={setSearch}
+              showTrigger={false}
+              expanded={searchExpanded}
+              onExpandedChange={setSearchExpanded}
+            />
+          }
+          ListEmptyComponent={<EmptyState title="No favourite doctor found" />}
+        />
+      )}
+    </SafeAreaView>
+  );
 };
 
 export default AllFavDoctors;
 
 const styles = StyleSheet.create({
-
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-
-    listContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 120,
-        paddingTop: 20
-    },
-
-    loaderContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-    },
-
-    tabs: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-    },
-
-    tabBtn: {
-        flex: 1,
-
-        marginHorizontal: 4,
-
-        flexDirection: 'row',
-
-        alignItems: 'center',
-
-        justifyContent: 'space-between',
-
-        paddingHorizontal: 10,
-
-        paddingVertical: 12,
-
-        minHeight: 50,
-
-        borderRadius: 14,
-
-        borderWidth: 1,
-
-        borderColor: '#E2E8F0',
-
-        backgroundColor: '#FFF',
-    },
-
-    activeTab: {
-        backgroundColor:
-            Colors.primaryColor,
-
-        borderColor:
-            Colors.primaryColor,
-    },
-
-    tabText: {
-        flexShrink: 1,
-
-        fontSize: 13,
-
-        fontFamily:
-            Fonts.PoppinsMedium,
-
-        color: '#0F172A',
-
-        marginRight: 6,
-    },
-
-    activeTabText: {
-        color: '#FFFFFF',
-    },
-
-    dropdown: {
-        marginTop: 8,
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-
-        maxHeight: 250,
-
-        elevation: 5,
-
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-    },
-
-    dropdownScroll: {
-        maxHeight: 260,
-    },
-
-    dropdownContent: {
-        paddingVertical: 6,
-    },
-
-    option: {
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-    },
-
-    optionText: {
-        fontSize: 14,
-        fontFamily:
-            Fonts.PoppinsMedium,
-
-        color: '#1E293B',
-    },
-
-    customDatePanel: {
-        padding: 16,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 16,
-    },
-
-    dateButton: {
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        marginBottom: 12,
-    },
-
-    dateButtonText: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#0F172A',
-    },
-
-    applyButton: {
-        backgroundColor: Colors.primaryColor,
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: 'center',
-    },
-
-    applyButtonText: {
-        fontSize: 14,
-        fontFamily: Fonts.PoppinsMedium,
-        color: '#FFFFFF',
-    },
-
-    emptyContainer: {
-        alignItems: 'center',
-        marginTop: 100,
-    },
-
-    emptyText: {
-        fontSize: 15,
-        color: '#64748B',
-        fontFamily:
-            Fonts.PoppinsMedium,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#F4F7F6',
+  },
+  listContent: {
+    paddingHorizontal: H_PAD,
+    paddingTop: 8,
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
+  row: {
+    gap: COL_GAP,
+    marginBottom: COL_GAP,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

@@ -23,10 +23,13 @@ import { ProductGridSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getScreenBottomPadding, SCREEN_PADDING_H } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { syncCartQuantity } from '../../store/slices/cartSlice';
-import { TogglewishlistProduct } from '../../services/ProductServices';
 import { showSuccessToast } from '../../config/Key';
 import { Fonts } from '../../common/Fonts';
 import { requireAuth } from '../../services/guestAuth';
+import {
+  toggleWishlistItem,
+  useWishlistSync,
+} from '../../hooks/useWishlistSync';
 import { safeGoBack } from '../../navigation/navigationUtils';
 import {
   navigateToCategoryProducts,
@@ -313,31 +316,11 @@ const ProductSearchScreen = (props: any) => {
     [dispatch, variantQuantities],
   );
 
-  const handleWishlist = useCallback(
-    async (item: any) => {
-      if (!(await requireAuth('Please login to save wishlist items'))) return;
-      const old = item?.is_wishlist_item;
-      setProducts((prev: any[]) =>
-        prev.map(p =>
-          p.variant_id === item.variant_id
-            ? { ...p, is_wishlist_item: !old }
-            : p,
-        ),
-      );
-      try {
-        await TogglewishlistProduct(item.variant_id, 'POST');
-      } catch {
-        setProducts((prev: any[]) =>
-          prev.map(p =>
-            p.variant_id === item.variant_id
-              ? { ...p, is_wishlist_item: old }
-              : p,
-          ),
-        );
-      }
-    },
-    [setProducts],
-  );
+  useWishlistSync(setProducts);
+
+  const handleWishlist = useCallback(async (item: any) => {
+    await toggleWishlistItem(item);
+  }, []);
 
   const openHit = useCallback(
     (hit: GlobalSearchHit) => {
@@ -370,7 +353,7 @@ const ProductSearchScreen = (props: any) => {
         }
         case 'brand': {
           navigateToCategoryProducts(props.navigation, {
-            categoryMode: 'product',
+            categoryMode: 'both',
             brandOnly: true,
             brand_name_id: String(raw.brand_id ?? raw.brand_name_id ?? raw.id ?? hit.id),
             brandId: String(raw.brand_id ?? raw.brand_name_id ?? raw.id ?? hit.id),

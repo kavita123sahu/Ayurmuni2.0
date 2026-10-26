@@ -39,6 +39,17 @@ export const getOrderFeeQuote = async (payload: {
 
 export const place_order_API = async (data: Object) => {
   try {
+    console.log(
+      'PLACE_ORDER_API =>',
+      JSON.stringify(
+        {
+          payment_gateway: (data as any)?.payment_gateway,
+          payment_type: (data as any)?.payment_type,
+        },
+        null,
+        2,
+      ),
+    );
     const response = await apiClient('order/', {
       method: 'POST',
       body: JSON.stringify(data),

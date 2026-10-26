@@ -87,7 +87,7 @@ import { Utils } from "../common/Utils";
 import { apiClient } from "./APIconfig";
 import { formatExperienceParam } from "../utils/searchUtils";
 import { applyDoctorFeesToResponse } from "../utils/doctorUtils";
-import { Buffer } from 'buffer';
+import { toApiPaymentGateway } from "../config/paymentGateways";
 
 export const filteredParams = (
     params?: Record<string, any>,
@@ -629,6 +629,10 @@ export const createConsultationPayment = async (data: object) => {
                     !(typeof v === 'string' && v.trim() === ''),
             ),
         );
+        // API accepts only: cashfree | razorpay | icici (never "payphi")
+        if (clean.payment_gateway != null) {
+            clean.payment_gateway = toApiPaymentGateway(String(clean.payment_gateway));
+        }
         console.log('CONSULT_BOOK_PAYLOAD =>', JSON.stringify(clean, null, 2));
         const response = await apiClient('payments/customer/consultation/payment/book-slot/', {
             method: 'POST',
@@ -647,16 +651,19 @@ export const createConsultationPayment = async (data: object) => {
  */
 export const retryConsultationPayment = async (
     appointmentId: string | number,
-    paymentGateway?: 'pinelabs' | 'razorpay' | 'icici',
+    paymentGateway?: 'cashfree' | 'razorpay' | 'icici',
 ) => {
     try {
         const id = encodeURIComponent(String(appointmentId));
+        const apiGateway = paymentGateway
+            ? toApiPaymentGateway(paymentGateway)
+            : undefined;
         let url = `payments/customer/consultation/payment/retry/?appointment_id=${id}`;
-        if (paymentGateway) url += `&payment_gateway=${paymentGateway}`;
+        if (apiGateway) url += `&payment_gateway=${apiGateway}`;
         console.log('CONSULT_RETRY =>', url);
         const response = await apiClient(url, {
             method: 'POST',
-            body: JSON.stringify(paymentGateway ? { payment_gateway: paymentGateway } : {}),
+            body: JSON.stringify(apiGateway ? { payment_gateway: apiGateway } : {}),
         });
         return response;
     } catch (error) {
@@ -687,25 +694,35 @@ export const getConsultationFeeQuote = async (
 
 /**
  * POST payments/customer/consultation/payment/verify-payment/
- * PineLabs: { payment_id, gateway_order_id }
- * Razorpay: { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
+ * Required:
+ *   { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
+ * Optional (needed so backend picks Cashfree vs Razorpay verifier):
+ *   payment_gateway
  */
-export type VerifyConsultationPaymentPayload =
-    | { payment_id: string; gateway_order_id: string; payment_gateway?: string }
-    | {
-        payment_id: string;
-        gateway_order_id: string;
-        gateway_payment_id: string;
-        gateway_signature: string;
-        payment_gateway?: string;
-    };
+export type VerifyConsultationPaymentPayload = {
+    payment_id: string;
+    gateway_order_id: string;
+    gateway_payment_id: string;
+    gateway_signature: string;
+    payment_gateway?: 'cashfree' | 'razorpay' | 'icici' | string;
+};
 
 export const verifyConsultationPayment = async (data: VerifyConsultationPaymentPayload) => {
     try {
-        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(data));
+        // Keep all 4 required keys always (do not strip empty strings).
+        const body: Record<string, string> = {
+            payment_id: String(data.payment_id ?? '').trim(),
+            gateway_order_id: String(data.gateway_order_id ?? '').trim(),
+            gateway_payment_id: String(data.gateway_payment_id ?? '').trim(),
+            gateway_signature: String(data.gateway_signature ?? '').trim(),
+        };
+        const gateway = String(data.payment_gateway ?? '').trim();
+        if (gateway) body.payment_gateway = gateway;
+
+        console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(body));
         const response = await apiClient('payments/customer/consultation/payment/verify-payment/', {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(body)
         });
         console.log('CONSULT_VERIFY_RESPONSE =>', response);
         return response;

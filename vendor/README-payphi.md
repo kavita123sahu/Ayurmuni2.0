@@ -1,22 +1,31 @@
-# PayPhi (ICICI) Customer SDK
+# ICICI PayPhi
 
-1. Copy `react-native-payphi-sdk-v1.0.0.tgz` into this `vendor/` folder.
-2. Install:
+## App behaviour
 
-```bash
-npm install ./vendor/react-native-payphi-sdk-v1.0.0.tgz
-```
+- Uses book-slot `data.icici` **as-is** (no frontend remapping).
+- **`secretKey` is never required in the app** — it stays on the backend.
+- SDK opens with `merchantId`, `merchantTxnNo`, `amount`, `currencyCode`, `customerEmailID`, etc. from `data.icici`.
+- Optional: backend may send `secureToken` / `SecureToken` / `secureHash` on `data.icici` (HMAC computed server-side). If present, the native bridge uses it.
 
-3. Rebuild the native app (required — not a JS-only change):
+## Overrides
+
+`vendor/payphi-sdk-overrides/` patches the installed SDK so `secretKey` is not mandatory.  
+Applied automatically via `npm postinstall` (`scripts/apply-payphi-overrides.js`).
+
+After changing overrides, rebuild:
 
 ```bash
 npx react-native run-android
-# and for iOS: link the framework per the PayPhi installation guide, then
-npx react-native run-ios
 ```
 
-The app already wires:
+## verify-payment
 
-- `payment_gateway: 'payphi'` on place-order / book-slot
-- `PayphiSdk.setAppInfo()` + `PayphiSdk.makePayment()`
-- `payment_response` → verify-payment
+```json
+{
+  "payment_id": "<book-slot>",
+  "gateway_order_id": "<book-slot gateway_order_id>",
+  "icici_merchant_txn_no": "<same>",
+  "merchantTxnNo": "<same>",
+  "payment_gateway": "icici"
+}
+```

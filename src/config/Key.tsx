@@ -23,6 +23,7 @@ export const Method = {
     PUT: 'PUT'
 }
 
+
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA';       //Google Map
 
 /** Google Places / Geocoding API key */
