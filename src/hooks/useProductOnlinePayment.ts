@@ -52,6 +52,7 @@ import {
   buildCashfreeVerifyPayload,
   openCashfreePayment,
   resolveCashfreeCheckout,
+  resolveCashfreeCfPaymentId,
 } from '../services/CashfreeService';
 import * as _ORDER_SERVICES from '../services/OrderService';
 import {
@@ -407,14 +408,7 @@ export const useProductOnlinePayment = () => {
         if (apiGateway === 'cashfree') {
           let cfSession;
           try {
-            cfSession = await resolveCashfreeCheckout(paymentData, {
-              amount: payableAmount,
-              customerName,
-              customerEmail,
-              customerMobile: contactNumber
-                ? contactNumber.slice(-10)
-                : undefined,
-            });
+            cfSession = await resolveCashfreeCheckout(paymentData);
           } catch (sessionError: any) {
             console.warn('ONLINE_CASHFREE_SESSION =>', sessionError);
             showSuccessToast(
@@ -444,19 +438,51 @@ export const useProductOnlinePayment = () => {
             return;
           }
 
+          const cfOrderId =
+            String(paymentData?.gateway_order_id || '').trim() ||
+            cfResult.orderId ||
+            cfSession.orderId;
+          const djangoPaymentId = String(
+            paymentData?.payment_id || cfSession.paymentId || '',
+          ).trim();
+
+          let cfGatewayPaymentId = String(
+            cfResult.gatewayPaymentId || '',
+          ).trim();
+          if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
+            cfGatewayPaymentId = await resolveCashfreeCfPaymentId({
+              orderId: cfOrderId,
+              appId: cfSession.appId,
+              appSecret: cfSession.appSecret,
+              hintPaymentId: cfResult.gatewayPaymentId,
+            });
+          }
+          if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
+            showSuccessToast(
+              'Payment received, but Cashfree cf_payment_id is missing. Ensure book-slot/order returns cashfree credentials.',
+              'error',
+            );
+            return;
+          }
+
           setIsVerifyingPayment(true);
-          const cfOrderId = cfResult.orderId || cfSession.orderId;
-          const verifyBody = buildCashfreeVerifyPayload({
-            paymentId: String(
-              paymentData?.payment_id || cfSession.paymentId || '',
-            ),
-            orderId: cfOrderId,
-            gatewayPaymentId: cfResult.gatewayPaymentId || cfOrderId,
-            gatewaySignature:
-              cfResult.gatewaySignature ||
-              cfSession.paymentSessionId ||
-              cfOrderId,
-          });
+          let verifyBody;
+          try {
+            verifyBody = buildCashfreeVerifyPayload({
+              paymentId: djangoPaymentId,
+              orderId: cfOrderId,
+              gatewayPaymentId: cfGatewayPaymentId,
+              gatewaySignature: cfGatewayPaymentId,
+            });
+          } catch (buildError: any) {
+            setIsVerifyingPayment(false);
+            showSuccessToast(
+              buildError?.message || 'Unable to build Cashfree verify payload.',
+              'error',
+            );
+            return;
+          }
+
           let verifyResponse: any;
           try {
             verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(verifyBody);

@@ -169,9 +169,14 @@ const ReviewSection = ({
               <Text style={styles.scoreText}>
                 {ratingData.average.toFixed(1)}
               </Text>
-              <TablerIcon name="star-filled" size={12} color="#FFFFFF" />
+              <TablerIcon
+                name="star-filled"
+                size={12}
+                color="#FFFFFF"
+                style={{ marginTop: -1 }}
+              />
             </View>
-            <StarRow rating={ratingData.average} size={13} />
+            <StarRow rating={ratingData.average} size={12} />
             <Text style={styles.totalReviews}>
               {ratingData.totalReviews.toLocaleString()} verified{' '}
               {isProduct ? 'buyers' : 'patients'}
@@ -425,29 +430,35 @@ const styles = StyleSheet.create({
     borderColor: '#EEF2F0',
   },
   summaryLeft: {
-    width: 92,
-    alignItems: 'flex-start',
-    gap: 4,
+    width: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   scorePill: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    minHeight: 28,
   },
   scoreText: {
     fontSize: 16,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#FFFFFF',
     includeFontPadding: false,
+    lineHeight: 20,
+    textAlignVertical: 'center',
   },
   totalReviews: {
     fontSize: 10,
     fontFamily: Fonts.PoppinsMedium,
     color: '#64748B',
     lineHeight: 14,
+    textAlign: 'center',
   },
   bars: {
     flex: 1,
@@ -459,11 +470,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   barLabel: {
-    width: 8,
+    width: 10,
     fontSize: 10,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#475569',
     textAlign: 'right',
+    includeFontPadding: false,
   },
   barTrack: {
     flex: 1,
@@ -477,16 +489,18 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   barCount: {
-    width: 16,
+    width: 18,
     fontSize: 9,
     fontFamily: Fonts.PoppinsMedium,
     color: '#94A3B8',
     textAlign: 'right',
+    includeFontPadding: false,
   },
   starRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 1,
+    justifyContent: 'center',
+    gap: 2,
   },
   emptyBox: {
     alignItems: 'center',

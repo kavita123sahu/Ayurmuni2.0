@@ -1,44 +1,46 @@
 /**
- * Cashfree Payments — client-safe config only.
+ * Cashfree client config.
  *
- * Mobile SDK needs from Django Create Order:
- *   - payment_session_id
- *   - order_id
- * Plus local env: SANDBOX | PRODUCTION
+ * Create Order: Django (book-slot) returns payment_session_id + gateway_order_id.
+ * After pay: app calls Cashfree Get Payments (needs APP_SECRET) to get cf_payment_id
+ * for verify-payment — same as when verify worked earlier.
  *
- * Never put CASHFREE_APP_SECRET / x-client-secret in this app.
- * Create Order + Get Payments stay on the Django backend.
+ * APP_SECRET lives in gitignored `cashfree.local.ts` (not committed).
  */
 
 export type CashfreeEnvMode = 'SANDBOX' | 'PRODUCTION';
 
 export type CashfreeClientConfig = {
-  /** Public client id (optional; SDK checkout uses session from backend). */
   appId: string;
+  /** Sandbox Get Payments only — from cashfree.local.ts */
+  appSecret: string;
   environment: CashfreeEnvMode;
 };
 
-/** Flip to PRODUCTION when Django serves live Cashfree sessions. */
 export const CASHFREE_ENVIRONMENT: CashfreeEnvMode = 'SANDBOX';
 
-/**
- * Optional public App ID for logs / future SDK helpers.
- * Leave empty if unused — never add the secret here.
- */
-export const CASHFREE_APP_ID = '';
+/** Public App ID (x-client-id). */
+export const CASHFREE_APP_ID =
+  'TEST11316999e2fd8b8aca2f940e69d699961311';
+
+const loadLocalAppSecret = (): string => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const local = require('./cashfree.local');
+    return String(local?.CASHFREE_APP_SECRET ?? '').trim();
+  } catch {
+    return '';
+  }
+};
 
 export const getCashfreeCredentials = (): CashfreeClientConfig => ({
   appId: CASHFREE_APP_ID,
+  appSecret: loadLocalAppSecret(),
   environment: CASHFREE_ENVIRONMENT,
 });
 
-/** Client must never Create Order — secret lives on Django. */
+/** Client Create Order stays off — book-slot creates the Cashfree order. */
 export const CASHFREE_ALLOW_CLIENT_CREATE_ORDER = false;
 
-/**
- * Preferred methods when Django sets order_meta.payment_methods.
- * UPI = Intent + Dynamic QR (Collect deprecated). Never use CFUPI Collect.
- * Codes: cc,dc | nb | upi | app | emi | paylater
- */
 export const CASHFREE_ALLOWED_PAYMENT_METHODS =
   'cc,dc,nb,upi,app,emi,paylater';

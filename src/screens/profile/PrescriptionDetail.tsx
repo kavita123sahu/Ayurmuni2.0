@@ -902,26 +902,26 @@ const PrescriptionDetail = (props: any) => {
             )}
 
             {/* Follow-up */}
-            {followUp.hasContent && (
-              <View style={styles.followCard}>
-                <View style={styles.followIcon}>
-                  <TablerIcon name="calendar" size={18} color={C.primary} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.followEyebrow}>
-                    {followUp.schedule
-                      ? 'Follow-up scheduled'
-                      : 'Follow-up advised'}
-                  </Text>
-                  <Text style={styles.followDate}>
-                    {followUp.dateLabel || 'Date to be confirmed'}
-                  </Text>
-                  {!!followUp.reason && (
-                    <Text style={styles.followReason}>{followUp.reason}</Text>
-                  )}
-                </View>
+            <View style={styles.followCard}>
+              <View style={styles.followIcon}>
+                <TablerIcon name="calendar" size={18} color={C.primary} />
               </View>
-            )}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.followEyebrow}>
+                  {followUp.dateLabel
+                    ? followUp.schedule
+                      ? 'Follow-up scheduled'
+                      : 'Follow-up advised'
+                    : 'Follow-up'}
+                </Text>
+                <Text style={styles.followDate}>
+                  {followUp.dateLabel || 'No follow-up given'}
+                </Text>
+                {!!followUp.reason && (
+                  <Text style={styles.followReason}>{followUp.reason}</Text>
+                )}
+              </View>
+            </View>
 
             {/* Help / contact */}
             <View style={styles.helpCard}>

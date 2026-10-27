@@ -1,0 +1,15 @@
+﻿# ICICI / PayPhi payment-only ADB logcat
+# Device: ZN52276GXS
+# Package: com.ayurmuniecosystem (pid 22423)
+# Captured: 2026-10-27 ~14:11 IST
+# Source: adb logcat -d -v time (9051 lines scanned)
+# Filter: ICICI|PayPhi|payphi|CustomerSDK|openPayphi|[PAY]|authRedirect|merchantId|tranCtx
+
+RESULT: 0 matching lines
+
+No ICICI PayPhi payment log lines were present in the device log buffer.
+JS/[PAY] console tags are also absent (React context not ready; Metro not on :8081).
+
+To capture next attempt (run yourself, no app code changes needed):
+  adb logcat -c
+  adb logcat -v time | findstr /I "ICICI PayPhi payphi PAY CustomerSDK openPayphi authRedirect [PAY]"

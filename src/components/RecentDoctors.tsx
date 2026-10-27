@@ -11,7 +11,10 @@ import { Colors } from '../common/Colors';
 import { getStatusStyle } from '../common/DataInterface';
 import TablerIcon from './TablerIcon';
 import { CARD_RADIUS_MD, CARD_SURFACE } from '../constants/cardStyles';
-import { canOfferReschedule } from '../utils/appointmentUtils';
+import {
+  canOfferReschedule,
+  formatAppointmentStatusLabel,
+} from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
 import DietitianBadge from './DietitianBadge';
 
@@ -38,11 +41,6 @@ interface Props {
 
 const AVATAR = 56;
 
-const formatStatusLabel = (status?: string) =>
-  String(status || '')
-    .replace(/_/g, ' ')
-    .trim();
-
 const RecentDoctors: React.FC<Props> = ({
   image,
   name,
@@ -66,7 +64,7 @@ const RecentDoctors: React.FC<Props> = ({
     Boolean((image as { uri?: string }).uri);
   const imageUri = hasImage ? String((image as { uri?: string }).uri || '') : '';
 
-  const statusLabel = formatStatusLabel(status);
+  const statusLabel = formatAppointmentStatusLabel(status);
   const statusStyle = useMemo(
     () => getStatusStyle(String(status || '').toLowerCase()),
     [status],

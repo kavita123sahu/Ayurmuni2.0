@@ -334,12 +334,20 @@ export const getStatusStyle = (status: string) => {
       backgroundColor: "#FEF3C7",
       color: "#B45309",
     },
+    cancellation_requested: {
+      backgroundColor: "#FEF3C7",
+      color: "#B45309",
+    },
   };
 
+  const key = String(status || "")
+    .trim()
+    .toLowerCase();
+
   return (
-    styles[status as keyof typeof styles] || {
+    styles[key as keyof typeof styles] || {
       backgroundColor: "#F3F4F6",
-      color: "#000",
+      color: "#64748B",
     }
   );
 };

@@ -1,0 +1,58 @@
+﻿10-27 13:11:58.874 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:17:00.998 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:22:21.293 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:29:44.782 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:35:22.539 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:40:28.815 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:42:07.209 E/AndroidRuntime(19565): FATAL EXCEPTION: main
+10-27 13:42:07.209 E/AndroidRuntime(19565): Process: com.ayurmuniecosystem, PID: 19565
+10-27 13:42:07.209 E/AndroidRuntime(19565): java.lang.RuntimeException: Unable to start activity ComponentInfo{com.ayurmuniecosystem/com.ayurmuniecosystem.MainActivity}: androidx.fragment.app.Fragment$InstantiationException: Unable to instantiate fragment com.swmansion.rnscreens.ScreenStackFragment: calling Fragment constructor caused an exception
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4444)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4638)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2966)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.os.Handler.dispatchMessage(Handler.java:115)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.os.Looper.loopOnce(Looper.java:304)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.os.Looper.loop(Looper.java:430)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.ActivityThread.main(ActivityThread.java:9345)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at java.lang.reflect.Method.invoke(Native Method)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:953)
+10-27 13:42:07.209 E/AndroidRuntime(19565): Caused by: androidx.fragment.app.Fragment$InstantiationException: Unable to instantiate fragment com.swmansion.rnscreens.ScreenStackFragment: calling Fragment constructor caused an exception
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.Fragment.instantiate(Fragment.java:695)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentContainer.instantiate(FragmentContainer.java:57)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentManager$3.instantiate(FragmentManager.java:663)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentState.instantiate(FragmentState.java:87)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentStateManager.<init>(FragmentStateManager.java:92)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentManager.restoreSaveStateInternal(FragmentManager.java:2849)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentManager.attachController(FragmentManager.java:3008)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentController.attachHost(FragmentController.java:117)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentActivity.lambda$init$3$androidx-fragment-app-FragmentActivity(FragmentActivity.java:139)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentActivity$$ExternalSyntheticLambda3.onContextAvailable(D8$$SyntheticClass:0)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.activity.contextaware.ContextAwareHelper.dispatchOnContextAvailable(ContextAwareHelper.kt:84)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.activity.ComponentActivity.onCreate(ComponentActivity.kt:331)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.FragmentActivity.onCreate(FragmentActivity.java:216)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at com.facebook.react.ReactActivity.onCreate(ReactActivity.java:60)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.Activity.performCreate(Activity.java:9300)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.Activity.performCreate(Activity.java:9278)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1521)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4426)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	... 13 more
+10-27 13:42:07.209 E/AndroidRuntime(19565): Caused by: java.lang.reflect.InvocationTargetException
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at java.lang.reflect.Constructor.newInstance0(Native Method)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at java.lang.reflect.Constructor.newInstance(Constructor.java:343)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at androidx.fragment.app.Fragment.instantiate(Fragment.java:677)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	... 30 more
+10-27 13:42:07.209 E/AndroidRuntime(19565): Caused by: java.lang.IllegalStateException: Screen fragments should never be restored. Follow instructions from https://github.com/software-mansion/react-native-screens/issues/17#issuecomment-424704067 to properly configure your main activity.
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at com.swmansion.rnscreens.ScreenFragment.<init>(ScreenFragment.kt:66)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	at com.swmansion.rnscreens.ScreenStackFragment.<init>(ScreenStackFragment.kt:91)
+10-27 13:42:07.209 E/AndroidRuntime(19565): 	... 33 more
+10-27 13:45:29.813 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:51:29.065 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 13:56:57.020 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 14:00:00.056 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 14:01:07.271 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11
+10-27 14:02:07.583 E/BluetoothPowerStatsCollector( 2769): Caused by: java.lang.RuntimeException: error: 11

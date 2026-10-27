@@ -1,6 +1,8 @@
 import { NativeModules, Platform } from 'react-native';
 import {
   CASHFREE_ALLOWED_PAYMENT_METHODS,
+  CASHFREE_APP_ID,
+  CASHFREE_ENVIRONMENT,
   getCashfreeCredentials,
 } from '../config/cashfreeConfig';
 import { Colors } from '../common/Colors';
@@ -10,15 +12,18 @@ export type CashfreeCheckoutSession = {
   orderId: string;
   environment: 'SANDBOX' | 'PRODUCTION';
   paymentId?: string;
+  /** Optional — only if book-slot returns them (never hardcode secret in app). */
+  appId?: string;
+  appSecret?: string;
 };
 
 export type CashfreePaymentResult = {
   status: 'success' | 'failed' | 'cancelled';
   orderId: string;
-  /** Cashfree `cf_payment_id` when available */
+  /** Cashfree numeric cf_payment_id */
   gatewayPaymentId: string;
-  /** Non-empty stand-in for verify API (Cashfree has no Razorpay signature) */
   gatewaySignature: string;
+  paymentSessionId: string;
   message: string;
   raw?: any;
 };
@@ -32,6 +37,110 @@ const logCf = (step: string, data?: Record<string, unknown>) => {
   console.warn('[CASHFREE]', step, data ?? '');
 };
 
+/** Cashfree cf_payment_id is a long numeric id (never session_…). */
+export const isCashfreePaymentId = (value: unknown): boolean =>
+  /^\d{8,}$/.test(str(value));
+
+const pickCfPaymentId = (source: any): string => {
+  if (!source) return '';
+  if (isCashfreePaymentId(source)) return str(source);
+
+  const candidates = [
+    source?.cf_payment_id,
+    source?.cfPaymentId,
+    source?.gateway_payment_id,
+    source?.payment_id,
+    source?.paymentId,
+    source?.data?.cf_payment_id,
+    source?.data?.gateway_payment_id,
+    source?.data?.payment?.cf_payment_id,
+    source?.payment?.cf_payment_id,
+    source?.cashfree?.cf_payment_id,
+  ];
+  for (const c of candidates) {
+    if (isCashfreePaymentId(c)) return str(c);
+  }
+
+  const lists = [
+    source,
+    source?.data,
+    source?.payments,
+    source?.data?.payments,
+    source?.results,
+  ];
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    const paid =
+      list.find((p: any) =>
+        ['SUCCESS', 'PAID', 'success', 'paid'].includes(
+          String(p?.payment_status ?? p?.status ?? '').toUpperCase(),
+        ),
+      ) || list[0];
+    const id = pickCfPaymentId(paid);
+    if (id) return id;
+  }
+
+  if (typeof source === 'object') {
+    for (const value of Object.values(source)) {
+      if (isCashfreePaymentId(value)) return str(value);
+      if (value && typeof value === 'object') {
+        const nested = pickCfPaymentId(value);
+        if (nested) return nested;
+      }
+    }
+  }
+  return '';
+};
+
+const pickCfPaymentIdFromMeta = (meta: any): string => {
+  if (!meta) return '';
+  if (typeof meta?.get === 'function') {
+    for (const key of [
+      'cf_payment_id',
+      'cfPaymentId',
+      'payment_id',
+      'paymentId',
+      'transaction_id',
+      'txn_id',
+    ]) {
+      const v = meta.get(key);
+      if (isCashfreePaymentId(v)) return str(v);
+    }
+    try {
+      return pickCfPaymentId(Object.fromEntries(meta.entries?.() ?? []));
+    } catch {
+      return '';
+    }
+  }
+  return pickCfPaymentId(meta);
+};
+
+const pickCashfreeSecretFromBookSlot = (data: any): {
+  appId: string;
+  appSecret: string;
+} => {
+  const nested =
+    (data?.cashfree && typeof data.cashfree === 'object' && data.cashfree) ||
+    {};
+  return {
+    appId: str(
+      nested.app_id ??
+        nested.client_id ??
+        nested.x_client_id ??
+        data?.cashfree_app_id ??
+        data?.x_client_id ??
+        CASHFREE_APP_ID,
+    ),
+    appSecret: str(
+      nested.app_secret ??
+        nested.client_secret ??
+        nested.x_client_secret ??
+        data?.cashfree_app_secret ??
+        data?.x_client_secret,
+    ),
+  };
+};
+
 export const isCashfreeNativeLinked = (): boolean => {
   const mods = NativeModules as Record<string, unknown>;
   return Boolean(
@@ -41,7 +150,7 @@ export const isCashfreeNativeLinked = (): boolean => {
   );
 };
 
-/** Pull session fields from book-slot / place-order `data` (Django Create Order). */
+/** Session from book-slot only (payment_session_id + gateway_order_id). */
 export const parseCashfreeCheckout = (
   data: any,
 ): CashfreeCheckoutSession | null => {
@@ -57,69 +166,127 @@ export const parseCashfreeCheckout = (
       data?.paymentSessionId ??
       data?.cf_payment_session_id,
   );
+
   const orderId = str(
-    nested.order_id ??
+    data?.gateway_order_id ??
+      nested.order_id ??
       nested.cf_order_id ??
       nested.cashfree_order_id ??
       data?.cashfree_order_id ??
       data?.cf_order_id ??
-      data?.gateway_order_id ??
       data?.order_id,
   );
 
   if (!paymentSessionId || !orderId) return null;
 
-  const creds = getCashfreeCredentials();
+  const creds = pickCashfreeSecretFromBookSlot(data);
   return {
     paymentSessionId,
     orderId,
-    environment: creds.environment,
+    environment: getCashfreeCredentials().environment,
     paymentId: str(data?.payment_id) || undefined,
+    appId: creds.appId || undefined,
+    appSecret: creds.appSecret || undefined,
   };
 };
 
-/**
- * Require backend `payment_session_id`. Client never Create-Orders (secret on Django).
- */
 export const resolveCashfreeCheckout = async (
   paymentData: any,
-  _fallback?: {
-    amount: number;
-    customerName?: string;
-    customerEmail?: string;
-    customerMobile?: string;
-  },
 ): Promise<CashfreeCheckoutSession> => {
   const fromApi = parseCashfreeCheckout(paymentData);
   if (fromApi) {
-    logCf('using backend payment_session_id', {
+    logCf('using book-slot session', {
       orderId: fromApi.orderId,
       paymentId: fromApi.paymentId,
+      hasAppSecret: Boolean(fromApi.appSecret),
     });
     return fromApi;
   }
 
   throw new Error(
-    'Cashfree payment_session_id missing from server. Backend must create the Cashfree order.',
+    'Cashfree payment_session_id missing from book-slot. Backend must return payment_session_id + gateway_order_id.',
   );
 };
 
 /**
- * Client no longer calls Cashfree Get Payments (needs secret).
- * Django verify should resolve cf_payment_id; SDK onVerify may only return order_id.
+ * Cashfree Get Payments (not a Django API).
+ * Needs app id + secret — prefer values returned on book-slot, never commit secret.
  */
-export const fetchCashfreePaymentRefs = async (
-  orderId: string,
-): Promise<{ gatewayPaymentId: string; gatewaySignature: string }> => {
-  const id = str(orderId);
-  return { gatewayPaymentId: '', gatewaySignature: id };
+export const fetchCashfreeCfPaymentId = async (args: {
+  orderId: string;
+  appId?: string;
+  appSecret?: string;
+}): Promise<string> => {
+  const cfg = getCashfreeCredentials();
+  const orderId = str(args.orderId);
+  const appId = str(args.appId) || cfg.appId || CASHFREE_APP_ID;
+  // Prefer book-slot secret, else local cashfree.local.ts (same as earlier working flow)
+  const appSecret = str(args.appSecret) || cfg.appSecret;
+  if (!orderId || !appId || !appSecret) {
+    logCf('skip Get Payments — missing orderId/appId/appSecret', {
+      hasOrderId: Boolean(orderId),
+      hasAppId: Boolean(appId),
+      hasAppSecret: Boolean(appSecret),
+    });
+    return '';
+  }
+
+  const base =
+    CASHFREE_ENVIRONMENT === 'PRODUCTION'
+      ? 'https://api.cashfree.com/pg'
+      : 'https://sandbox.cashfree.com/pg';
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, 900));
+    }
+    try {
+      const response = await fetch(
+        `${base}/orders/${encodeURIComponent(orderId)}/payments`,
+        {
+          method: 'GET',
+          headers: {
+            'x-api-version': '2023-08-01',
+            'x-client-id': appId,
+            'x-client-secret': appSecret,
+          },
+        },
+      );
+      const json: any = await response.json().catch(() => null);
+      const id = pickCfPaymentId(json);
+      logCf('Get Payments', {
+        attempt: attempt + 1,
+        http: response.status,
+        cf_payment_id: id,
+      });
+      if (id) return id;
+    } catch (error) {
+      logCf('Get Payments error', { error: String(error), attempt: attempt + 1 });
+    }
+  }
+  return '';
+};
+
+/** Resolve numeric cf_payment_id after SDK success (events + Cashfree Get Payments). */
+export const resolveCashfreeCfPaymentId = async (args: {
+  orderId: string;
+  appId?: string;
+  appSecret?: string;
+  hintPaymentId?: string;
+}): Promise<string> => {
+  if (isCashfreePaymentId(args.hintPaymentId)) {
+    return str(args.hintPaymentId);
+  }
+  return fetchCashfreeCfPaymentId({
+    orderId: args.orderId,
+    appId: args.appId,
+    appSecret: args.appSecret,
+  });
 };
 
 /**
  * Open Cashfree hosted Web Checkout.
- * - doWebPayment(session) — NOT makePayment
- * - Hosted UI: Card, NB, Wallet, EMI, Pay Later + UPI Intent/QR
- * - Optional mode 'upi_intent' → CFUPIIntentCheckoutPayment
+ * Captures cf_payment_id from SDK analytics events when present.
  */
 export const openCashfreePayment = (
   session: CashfreeCheckoutSession,
@@ -133,13 +300,14 @@ export const openCashfreePayment = (
     CFUPIIntentCheckoutPayment,
   } = require('cashfree-pg-api-contract');
 
-  const creds = getCashfreeCredentials();
   const env =
-    session.environment === 'PRODUCTION' || creds.environment === 'PRODUCTION'
+    session.environment === 'PRODUCTION' ||
+    CASHFREE_ENVIRONMENT === 'PRODUCTION'
       ? CFEnvironment.PRODUCTION
       : CFEnvironment.SANDBOX;
 
   const mode = opts?.mode || 'web';
+  let capturedCfPaymentId = '';
 
   logCf('openCheckout', {
     orderId: session.orderId,
@@ -152,48 +320,80 @@ export const openCashfreePayment = (
 
   return new Promise(resolve => {
     let settled = false;
-    const finish = async (
-      result: Omit<
-        CashfreePaymentResult,
-        'gatewayPaymentId' | 'gatewaySignature'
-      > & {
-        gatewayPaymentId?: string;
-        gatewaySignature?: string;
-      },
-    ) => {
-      if (settled) return;
-      settled = true;
+
+    const cleanup = () => {
       try {
         CFPaymentGatewayService.removeCallback?.();
       } catch {
         // ignore
       }
-
-      let gatewayPaymentId = str(result.gatewayPaymentId);
-      let gatewaySignature = str(result.gatewaySignature);
-
-      if (result.status === 'success') {
-        const refs = await fetchCashfreePaymentRefs(result.orderId);
-        gatewayPaymentId =
-          refs.gatewayPaymentId || gatewayPaymentId || result.orderId;
-        gatewaySignature =
-          refs.gatewaySignature ||
-          gatewaySignature ||
-          session.paymentSessionId ||
-          result.orderId;
+      try {
+        CFPaymentGatewayService.removeEventSubscriber?.();
+      } catch {
+        // ignore
       }
+    };
+
+    const finish = async (
+      result: Omit<
+        CashfreePaymentResult,
+        'gatewayPaymentId' | 'gatewaySignature' | 'paymentSessionId'
+      > & { gatewayPaymentId?: string },
+    ) => {
+      if (settled) return;
+      settled = true;
+
+      const orderId = str(result.orderId) || session.orderId;
+      let cfPaymentId =
+        str(result.gatewayPaymentId) || capturedCfPaymentId || '';
+
+      if (result.status === 'success' && !isCashfreePaymentId(cfPaymentId)) {
+        await new Promise(r => setTimeout(r, 500));
+        cfPaymentId = capturedCfPaymentId || cfPaymentId;
+      }
+
+      if (result.status === 'success' && !isCashfreePaymentId(cfPaymentId)) {
+        const cfg = getCashfreeCredentials();
+        cfPaymentId = await fetchCashfreeCfPaymentId({
+          orderId,
+          appId: session.appId || cfg.appId,
+          appSecret: session.appSecret || cfg.appSecret,
+        });
+      }
+
+      cleanup();
 
       const finalResult: CashfreePaymentResult = {
         status: result.status,
-        orderId: result.orderId,
-        gatewayPaymentId,
-        gatewaySignature,
+        orderId,
+        gatewayPaymentId: isCashfreePaymentId(cfPaymentId) ? cfPaymentId : '',
+        gatewaySignature: isCashfreePaymentId(cfPaymentId) ? cfPaymentId : '',
+        paymentSessionId: session.paymentSessionId,
         message: result.message,
         raw: result.raw,
       };
-      logCf('checkout finished', finalResult as any);
+      logCf('checkout finished', {
+        status: finalResult.status,
+        orderId: finalResult.orderId,
+        cf_payment_id: finalResult.gatewayPaymentId,
+      });
       resolve(finalResult);
     };
+
+    try {
+      CFPaymentGatewayService.setEventSubscriber({
+        onReceivedEvent(eventName: string, meta: any) {
+          const id = pickCfPaymentIdFromMeta(meta);
+          logCf('sdk event', {
+            eventName,
+            cf_payment_id: id || undefined,
+          });
+          if (id) capturedCfPaymentId = id;
+        },
+      });
+    } catch (error) {
+      logCf('setEventSubscriber failed', { error: String(error) });
+    }
 
     CFPaymentGatewayService.setCallback({
       onVerify(orderID: string) {
@@ -222,7 +422,6 @@ export const openCashfreePayment = (
           status: cancelled ? 'cancelled' : 'failed',
           orderId: str(orderID) || session.orderId,
           gatewayPaymentId: '',
-          gatewaySignature: '',
           message:
             message || (cancelled ? 'Payment cancelled' : 'Payment failed'),
           raw: error,
@@ -252,8 +451,9 @@ export const openCashfreePayment = (
           .setPrimaryTextColor('#212121')
           .setSecondaryTextColor('#757575')
           .build();
-        const upiPayment = new CFUPIIntentCheckoutPayment(cfSession, theme);
-        CFPaymentGatewayService.doUPIPayment(upiPayment);
+        CFPaymentGatewayService.doUPIPayment(
+          new CFUPIIntentCheckoutPayment(cfSession, theme),
+        );
         return;
       }
 
@@ -263,7 +463,6 @@ export const openCashfreePayment = (
         status: 'failed',
         orderId: session.orderId,
         gatewayPaymentId: '',
-        gatewaySignature: '',
         message: str(error?.message) || 'Unable to open Cashfree checkout',
         raw: error,
       });
@@ -271,29 +470,39 @@ export const openCashfreePayment = (
   });
 };
 
-/** Consult verify-payment body — Django verifies via Cashfree APIs. */
+/**
+ * Exact verify-payment body (no payment_gateway, no session_ ids):
+ * {
+ *   payment_id, gateway_order_id,
+ *   gateway_payment_id: cf_payment_id,
+ *   gateway_signature: cf_payment_id
+ * }
+ */
 export const buildCashfreeVerifyPayload = (args: {
   paymentId: string;
   orderId: string;
-  gatewayPaymentId?: string;
+  gatewayPaymentId: string;
   gatewaySignature?: string;
 }): {
   payment_id: string;
   gateway_order_id: string;
   gateway_payment_id: string;
   gateway_signature: string;
-  payment_gateway: 'cashfree';
 } => {
   const orderId = str(args.orderId);
-  const gatewayPaymentId = str(args.gatewayPaymentId) || orderId;
-  const gatewaySignature =
-    str(args.gatewaySignature) || gatewayPaymentId || orderId;
+  const cfPaymentId = str(args.gatewayPaymentId);
+  if (!isCashfreePaymentId(cfPaymentId)) {
+    throw new Error(
+      'Cashfree cf_payment_id missing. Cannot verify without numeric gateway_payment_id.',
+    );
+  }
 
   return {
     payment_id: str(args.paymentId),
     gateway_order_id: orderId,
-    gateway_payment_id: gatewayPaymentId,
-    gateway_signature: gatewaySignature,
-    payment_gateway: 'cashfree',
+    gateway_payment_id: cfPaymentId,
+    gateway_signature: isCashfreePaymentId(args.gatewaySignature)
+      ? str(args.gatewaySignature)
+      : cfPaymentId,
   };
 };

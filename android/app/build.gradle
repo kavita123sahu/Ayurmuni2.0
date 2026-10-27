@@ -92,6 +92,9 @@ dependencies {
     implementation("androidx.databinding:viewbinding:8.7.3")
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // PayPhi customersdk.aar — must live on the app (not the RN library AAR)
+    implementation files("${rootDir}/../node_modules/react-native-payphi-sdk/android/libs/customersdk.aar")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -19,7 +19,9 @@ import {
   buildVideoCallNavParams,
   canOfferCancel,
   canOfferReschedule,
+  formatAppointmentStatusLabel,
   resolveAppointmentDateTime,
+  resolveAppointmentStatus,
 } from '../utils/appointmentUtils';
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
@@ -31,14 +33,6 @@ import {
 import { formatRupee } from '../utils/currencyUtils';
 import { useJoinWindow } from '../hooks/useJoinWindow';
 
-const formatStatusLabel = (status?: string) => {
-  if (status === 'cancellation_requested') return 'Confirmed';
-  const raw = String(status || '')
-    .replace(/_/g, ' ')
-    .trim();
-  if (!raw) return '';
-  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-};
 
 const ScheduleRow = ({ item }: any) => (
   <View style={styles.scheduleRow}>
@@ -77,7 +71,8 @@ const RenderAppoint = ({
   isHorizontal = false,
   onCancel,
 }: any) => {
-  const statusStyle = useMemo(() => getStatusStyle(item?.status), [item]);
+  const status = resolveAppointmentStatus(item);
+  const statusStyle = useMemo(() => getStatusStyle(status), [status]);
 
   const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
     ? item.rawData.doctor.health_diseases
@@ -90,16 +85,16 @@ const RenderAppoint = ({
     ? therapies.split(',').slice(0, 2).join(', ')
     : item?.specialty || 'Ayurvedic consultation';
 
-  const statusLabel = formatStatusLabel(item.status);
+  const statusLabel = formatAppointmentStatusLabel(status);
   const schedule = resolveAppointmentDateTime(item);
   const showRescheduleAction = canOfferReschedule(
-    item.status,
+    status,
     schedule.date,
     schedule.time,
     item,
   );
   const showCancelAction = canOfferCancel(
-    item.status,
+    status,
     schedule.date,
     schedule.time,
   );
@@ -126,10 +121,10 @@ const RenderAppoint = ({
       'expired',
       'no_show',
       'noshow',
-    ].includes(String(item.status || '').toLowerCase());
+    ].includes(String(status || '').toLowerCase());
   const refund = useMemo(
-    () => getCompletedRefund(item?.status, item?.rawData, item),
-    [item],
+    () => getCompletedRefund(status, item?.rawData, item),
+    [item, status],
   );
   const canJoin = useJoinWindow(item);
   const showJoinCall = canJoin;
@@ -317,7 +312,7 @@ const RenderAppoint = ({
       {showActionRow ? <View style={styles.actionDivider} /> : null}
 
       <AppointAction
-        status={item.status}
+        status={status}
         date={schedule.date}
         time={schedule.time}
         item={item}

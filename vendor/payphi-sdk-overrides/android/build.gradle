@@ -51,8 +51,9 @@ repositories {
 dependencies {
     implementation "com.facebook.react:react-native:+"
 
-    // Prefer files() over flatDir to avoid Gradle meta-data warning
-    implementation files('libs/customersdk.aar')
+    // AGP 8+ forbids local .aar as implementation on a library module
+    // (breaks :bundleReleaseAar). Compile against it here; app packages it.
+    compileOnly files('libs/customersdk.aar')
 
     def kotlin_version = safeExtGet('kotlinVersion', '2.1.0')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"

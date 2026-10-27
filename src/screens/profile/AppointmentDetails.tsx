@@ -33,6 +33,7 @@ import {
   canOfferCancel,
   canOfferReschedule,
   formatAppointmentDateFull,
+  formatAppointmentStatusLabel,
   getAppointmentIds,
   getAppointmentPatientId,
   resolveAppointmentLookupId,
@@ -591,8 +592,11 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const patient = detail?.appointment?.patient;
   const appointment = detail?.appointment;
 
-  const formatLabel = (value?: string | null) => {
+  const formatLabel = (value?: string | null, field?: string) => {
     if (!value) return '';
+    if (field === 'status' || String(value).toLowerCase() === 'cancellation_requested') {
+      return formatAppointmentStatusLabel(value);
+    }
     return String(value)
       .replace(/_/g, ' ')
       .replace(/\b\w/g, char => char.toUpperCase());
@@ -626,7 +630,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     { icon: 'calendar-outline', label: 'Date', value: appointment?.appointment_date },
     { icon: 'time-outline', label: 'Start Time', value: appointment?.start_time },
     { icon: 'time-outline', label: 'End Time', value: appointment?.end_time },
-    { icon: 'flag-outline', label: 'Status', value: formatLabel(appointment?.appointment_status) },
+    { icon: 'flag-outline', label: 'Status', value: formatLabel(appointment?.appointment_status, 'status') },
     { icon: 'videocam-outline', label: 'Call Status', value: formatLabel(appointment?.call_status) },
     {
       icon: 'medkit-outline',
@@ -730,7 +734,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                 <View style={[styles.statusPill, { backgroundColor: statusStyle.backgroundColor }]}>
                   <View style={[styles.statusDot, { backgroundColor: statusStyle.color }]} />
                   <Text style={[styles.statusPillText, { color: statusStyle.color }]}>
-                    {normalizedAppointment.status}
+                    {formatAppointmentStatusLabel(normalizedAppointment.status)}
                   </Text>
                 </View>
               </View>

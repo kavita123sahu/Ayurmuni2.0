@@ -2,7 +2,6 @@ import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 
 const { PayphiSdk } = NativeModules;
 
-/** Lazy emitter — avoid constructing NativeEventEmitter when module is missing (New Arch crash). */
 let payphiEmitter = null;
 const getEmitter = () => {
   if (!PayphiSdk) return null;
@@ -12,7 +11,7 @@ const getEmitter = () => {
   return payphiEmitter;
 };
 
-/** RN HostFunction rejects undefined/null map values → "Invalid Parameter!!" */
+/** Drop null/undefined — New Arch rejects them as Invalid Parameter. */
 const cleanStringMap = (input = {}) => {
   const out = {};
   Object.keys(input || {}).forEach(key => {
@@ -20,13 +19,12 @@ const cleanStringMap = (input = {}) => {
     if (value === undefined || value === null) return;
     if (typeof value === 'object') return;
     const asString = String(value).trim();
-    if (asString === '' && key !== 'payType') return;
+    if (asString === '') return;
     out[key] = asString;
   });
   return out;
 };
 
-/** PayPhi expects amount as "##.##" for HMAC + sheet. */
 const formatAmount = raw => {
   if (raw === undefined || raw === null || raw === '') return '';
   const cleaned = String(raw)
@@ -56,30 +54,27 @@ export default {
 
   setAppInfo: async (environment, merchantId, appId, merchantName = '') => {
     assertNative();
-    const payload = cleanStringMap({
-      environment: environment || 'UAT',
-      merchantId,
-      appId: appId || merchantId,
-      merchantName: merchantName || 'Ayurmuni',
-    });
-    return PayphiSdk.setAppInfo(payload);
+    return PayphiSdk.setAppInfo(
+      cleanStringMap({
+        environment: environment || 'INT',
+        merchantId,
+        appId: appId || merchantId,
+        merchantName: merchantName || 'Ayurmuni',
+      }),
+    );
   },
 
-  /**
-   * Only bridge-safe string fields — never spread raw book-slot objects.
-   * Must not throw native "Invalid Parameter!!" under New Architecture.
-   */
   makePayment: (payload = {}) => {
     assertNative();
 
     const amount = formatAmount(payload.amount);
-    const secureToken = payload.secureToken || payload.SecureToken || '';
-    const secretKey = payload.secretKey || payload.secret_key || '';
-
     if (!amount) {
       console.warn('[PAYPHI] makePayment blocked: invalid amount', payload.amount);
       return;
     }
+
+    const secureToken = payload.secureToken || payload.SecureToken || '';
+    const secretKey = payload.secretKey || payload.secret_key || '';
 
     const nativePayload = cleanStringMap({
       amount,
@@ -92,17 +87,12 @@ export default {
       aggregatorID: payload.aggregatorID || payload.aggregatorId,
       addlParam1: payload.addlParam1 || '',
       addlParam2: payload.addlParam2 || '',
-      apiVersion: payload.apiVersion || '1.0',
-      transactionType: payload.transactionType || 'SALE',
-      payType:
-        payload.payType !== undefined && payload.payType !== null
-          ? String(payload.payType)
-          : '0',
+      apiVersion: payload.apiVersion || '4',
       ...(secureToken ? { secureToken: String(secureToken) } : {}),
       ...(secretKey ? { secretKey: String(secretKey) } : {}),
     });
 
-    console.log('[PAYPHI] makePayment bridge payload =>', {
+    console.warn('[PAYPHI] makePayment bridge =>', {
       ...nativePayload,
       secretKey: nativePayload.secretKey ? '[set]' : undefined,
       secureToken: nativePayload.secureToken ? '[set]' : undefined,
@@ -113,15 +103,11 @@ export default {
 
   addPaymentResponseListener: callback => {
     const emitter = getEmitter();
-    if (!emitter) {
-      return { remove: () => {} };
-    }
+    if (!emitter) return { remove: () => {} };
     return emitter.addListener('payment_response', event => {
       try {
-        const parsedEvent =
-          typeof event === 'string' ? JSON.parse(event) : event;
-        callback(parsedEvent);
-      } catch (e) {
+        callback(typeof event === 'string' ? JSON.parse(event) : event);
+      } catch {
         callback(event);
       }
     });

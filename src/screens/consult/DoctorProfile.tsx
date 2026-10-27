@@ -598,8 +598,9 @@ const DoctorProfile = ({ navigation, route }: any) => {
                                     <View style={styles.ratingPill}>
                                         <TablerIcon
                                             name="star-filled"
-                                            size={10}
+                                            size={11}
                                             color="#FFFFFF"
+                                            style={{ marginTop: -0.5 }}
                                         />
                                         <Text style={styles.ratingText}>
                                             {ratingValue.toFixed(1)}
@@ -1026,17 +1027,21 @@ const styles = StyleSheet.create({
     ratingPill: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#15803D',
-        paddingHorizontal: 7,
-        paddingVertical: 3,
-        borderRadius: 5,
-        gap: 3,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        gap: 4,
+        minHeight: 22,
     },
     ratingText: {
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#FFFFFF',
         includeFontPadding: false,
+        lineHeight: 16,
+        textAlignVertical: 'center',
     },
     reviewCount: {
         fontSize: 11,

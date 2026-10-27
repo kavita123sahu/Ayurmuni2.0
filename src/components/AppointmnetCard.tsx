@@ -15,6 +15,8 @@ import {
   buildAppointmentDetailsParams,
   getConsultationScheduleLabels,
   canOfferReschedule,
+  formatAppointmentStatusLabel,
+  resolveAppointmentStatus,
 } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
 import DietitianBadge from './DietitianBadge';
@@ -61,17 +63,6 @@ interface AppointmentCardProps {
   style?: ViewStyle;
 }
 
-const formatStatusLabel = (status?: string) => {
-  const raw = String(status || '')
-    .replace(/_/g, ' ')
-    .trim();
-  const lower = raw.toLowerCase();
-  // Patient-facing labels for internal statuses
-  if (lower === 'testing' || lower === 'test') return 'Processing';
-  if (lower === 'pending') return 'Pending';
-  return raw;
-};
-
 const AppointmentCard = ({
   item,
   onAction,
@@ -94,9 +85,9 @@ const AppointmentCard = ({
     () => getConsultationScheduleLabels(item),
     [item],
   );
-  const status = schedule.status || String(item?.appointment_status || '');
+  const status = resolveAppointmentStatus(item) || schedule.status;
   const statusStyle = useMemo(() => getStatusStyle(status.toLowerCase()), [status]);
-  const statusLabel = formatStatusLabel(status);
+  const statusLabel = formatAppointmentStatusLabel(status);
 
   const showReschedule = canOfferReschedule(
     status,

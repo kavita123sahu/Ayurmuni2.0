@@ -77,6 +77,7 @@ import {
     buildCashfreeVerifyPayload,
     openCashfreePayment,
     resolveCashfreeCheckout,
+    resolveCashfreeCfPaymentId,
 } from '../../services/CashfreeService';
 import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
 import {
@@ -1006,11 +1007,22 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             return;
                         }
 
+                        const verifyTxnNo = resolveIciciMerchantTxnNo(
+                            paymentData,
+                            payphiResult.gatewayOrderId,
+                        );
+                        console.warn('[PAY] icici verify prep', {
+                            payment_id: paymentData?.payment_id,
+                            book_slot_gateway_order_id:
+                                paymentData?.gateway_order_id ||
+                                paymentData?.icici?.merchantTxnNo,
+                            sdk_merchantTxnNo: payphiResult.gatewayOrderId,
+                            verify_gateway_order_id: verifyTxnNo,
+                            gateway_payment_id: payphiResult.gatewayPaymentId,
+                            has_signature: Boolean(payphiResult.gatewaySignature),
+                        });
                         await finishIciciVerify({
-                            merchantTxnNo: resolveIciciMerchantTxnNo(
-                                paymentData,
-                                payphiResult.gatewayOrderId,
-                            ),
+                            merchantTxnNo: verifyTxnNo,
                             gatewayPaymentId: payphiResult.gatewayPaymentId,
                             gatewaySignature: payphiResult.gatewaySignature,
                             pendingMessage:
@@ -1061,14 +1073,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             if (apiGateway === 'cashfree') {
                 let cfSession;
                 try {
-                    cfSession = await resolveCashfreeCheckout(paymentData, {
-                        amount: payableRupees,
-                        customerName,
-                        customerEmail,
-                        customerMobile: contactNumber
-                            ? contactNumber.slice(-10)
-                            : undefined,
-                    });
+                    cfSession = await resolveCashfreeCheckout(paymentData);
                 } catch (sessionError: any) {
                     console.warn('[PAY] cashfree session error', sessionError);
                     showSuccessToast(
@@ -1104,10 +1109,10 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     return;
                 }
 
-                const cfPaymentId = String(
+                const djangoPaymentId = String(
                     paymentData?.payment_id || cfSession.paymentId || '',
                 );
-                if (!cfPaymentId) {
+                if (!djangoPaymentId) {
                     showSuccessToast(
                         'Cashfree paid, but payment_id missing for verify. Check My Appointments.',
                         'success',
@@ -1115,21 +1120,53 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     return;
                 }
 
-                setIsVerifyingPayment(true);
-                const cfOrderId = cfResult.orderId || cfSession.orderId;
-                const verifyResponse =
-                    await _CONSULT_SERVICES.verifyConsultationPayment(
-                        buildCashfreeVerifyPayload({
-                            paymentId: cfPaymentId,
-                            orderId: cfOrderId,
-                            gatewayPaymentId:
-                                cfResult.gatewayPaymentId || cfOrderId,
-                            gatewaySignature:
-                                cfResult.gatewaySignature ||
-                                cfSession.paymentSessionId ||
-                                cfOrderId,
-                        }),
+                const cfOrderId =
+                    String(paymentData?.gateway_order_id || '').trim() ||
+                    cfResult.orderId ||
+                    cfSession.orderId;
+
+                // cf_payment_id from SDK events or Cashfree Get Payments (not a Django API)
+                let cfGatewayPaymentId = String(
+                    cfResult.gatewayPaymentId || '',
+                ).trim();
+                if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
+                    cfGatewayPaymentId = await resolveCashfreeCfPaymentId({
+                        orderId: cfOrderId,
+                        appId: cfSession.appId,
+                        appSecret: cfSession.appSecret,
+                        hintPaymentId: cfResult.gatewayPaymentId,
+                    });
+                }
+                if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
+                    showSuccessToast(
+                        'Payment received, but Cashfree cf_payment_id is missing. Ensure book-slot returns cashfree credentials, or check My Appointments.',
+                        'error',
                     );
+                    return;
+                }
+
+                setIsVerifyingPayment(true);
+                let verifyResponse;
+                try {
+                    // Exact body — no payment_gateway, no session_ ids
+                    verifyResponse =
+                        await _CONSULT_SERVICES.verifyConsultationPayment(
+                            buildCashfreeVerifyPayload({
+                                paymentId: djangoPaymentId,
+                                orderId: cfOrderId,
+                                gatewayPaymentId: cfGatewayPaymentId,
+                                gatewaySignature: cfGatewayPaymentId,
+                            }),
+                        );
+                } catch (verifyError: any) {
+                    setIsVerifyingPayment(false);
+                    showSuccessToast(
+                        verifyError?.message ||
+                            'Cashfree verify payload failed.',
+                        'error',
+                    );
+                    return;
+                }
                 logPayStep('5. cashfree verify', verifyResponse);
                 setIsVerifyingPayment(false);
 

@@ -5,6 +5,44 @@ const normalizeStatus = (status?: string | null): string =>
     .trim()
     .toLowerCase();
 
+/**
+ * Prefer appointment_status over generic status so list cards match
+ * detail (e.g. cancellation_requested vs confirmed).
+ */
+export const resolveAppointmentStatus = (item?: any): string => {
+  if (item == null) return '';
+  if (typeof item === 'string') return normalizeStatus(item);
+
+  const root = item?.rawData ?? item;
+  const appt = root?.appointment ?? item?.appointment ?? root;
+  const candidates = [
+    appt?.appointment_status,
+    root?.appointment_status,
+    item?.appointment_status,
+    appt?.status,
+    root?.status,
+    item?.status,
+  ]
+    .map(normalizeStatus)
+    .filter(Boolean);
+
+  if (candidates.includes('cancellation_requested')) {
+    return 'cancellation_requested';
+  }
+  return candidates[0] || '';
+};
+
+/** Patient-facing status label — keeps Cancellation Request consistent. */
+export const formatAppointmentStatusLabel = (status?: string | null): string => {
+  const key = normalizeStatus(status);
+  if (!key) return '';
+  if (key === 'cancellation_requested') return 'Cancellation Request';
+  if (key === 'testing' || key === 'test') return 'Processing';
+  if (key === 'pending') return 'Pending';
+  const raw = key.replace(/_/g, ' ').trim();
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+};
+
 /** Statuses where the patient can still reschedule the same appointment. */
 export const RESCHEDULABLE_STATUSES = [
   ...UPCOMING_STATUS,
@@ -430,7 +468,12 @@ export function normalizeAppointmentListItem(item: any) {
     time,
     endTime,
     endTimeLabel,
-    status: appointment?.appointment_status ?? item?.appointment_status ?? item?.status,
+    status: resolveAppointmentStatus({
+      appointment,
+      appointment_status: item?.appointment_status ?? appointment?.appointment_status,
+      status: item?.status ?? appointment?.status,
+      rawData: root,
+    }),
     call_status:
       appointment?.call_status ??
       item?.call_status ??
@@ -786,11 +829,7 @@ export const getConsultationScheduleLabels = (item: any) => {
     item?.appointment?.start_time ||
     '';
 
-  const status =
-    item?.status ||
-    item?.appointment_status ||
-    item?.appointment?.appointment_status ||
-    '';
+  const status = resolveAppointmentStatus(item);
 
   const endTime =
     item?.end_time ||
