@@ -20,6 +20,7 @@ import {
   canOfferCancel,
   canOfferReschedule,
   formatAppointmentStatusLabel,
+  formatAppointmentTimeLabel,
   resolveAppointmentDateTime,
   resolveAppointmentStatus,
 } from '../utils/appointmentUtils';
@@ -57,7 +58,9 @@ const ScheduleRow = ({ item }: any) => (
       <View style={styles.scheduleTextWrap}>
         <Text style={styles.scheduleLabel}>Time</Text>
         <Text style={styles.scheduleValue} numberOfLines={1}>
-          {item.time}
+          {item.timeRangeLabel ||
+            item.timeLabel ||
+            formatAppointmentTimeLabel(item.time)}
         </Text>
       </View>
     </View>
@@ -203,7 +206,7 @@ const RenderAppoint = ({
                   color={Colors.primaryColor}
                 />
                 <Text style={styles.hMetaText} numberOfLines={1}>
-                  {item.time}
+                  {item.timeLabel || formatAppointmentTimeLabel(item.time)}
                 </Text>
               </View>
             </View>
@@ -292,9 +295,20 @@ const RenderAppoint = ({
 
       {refund ? (
         <View style={styles.refundRow}>
-          <TablerIcon name="circle-check" size={14} color="#15803D" />
-          <Text style={styles.refundText} numberOfLines={1}>
-            Refunded {refund.amount != null ? formatRupee(refund.amount) : ''}
+          <TablerIcon
+            name={refund.pending ? 'clock' : 'circle-check'}
+            size={14}
+            color={refund.pending ? '#B45309' : '#15803D'}
+          />
+          <Text
+            style={[
+              styles.refundText,
+              refund.pending ? styles.refundPendingText : null,
+            ]}
+            numberOfLines={1}
+          >
+            {refund.label || 'Refunded'}
+            {refund.amount != null ? ` ${formatRupee(refund.amount)}` : ''}
             {refund.at ? ` · ${formatPaymentTimestamp(refund.at)}` : ''}
           </Text>
         </View>
@@ -319,6 +333,11 @@ const RenderAppoint = ({
         call_status={item.call_status}
         canJoin={canJoin}
         hasPrescription={hasPrescription}
+        canRequestRefund={
+          ['missed', 'no_show', 'noshow', 'expired'].includes(
+            String(status || '').toLowerCase(),
+          ) && !refund
+        }
         onReschedule={onReschedule}
         onCancel={onCancel}
         onJoinCall={() => {
@@ -453,6 +472,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  refundPendingText: {
+    color: '#B45309',
   },
   refundText: {
     flex: 1,

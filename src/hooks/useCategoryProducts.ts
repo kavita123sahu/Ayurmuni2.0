@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getProduct,
   hasMoreProductPages,
+  isCatalogItemPurchasable,
   mapCatalogProductItem,
   normalizeApiList,
   PRODUCT_PAGE_SIZE,
@@ -165,7 +166,8 @@ export const useCategoryProducts = (
 
         const apiResults = normalizeApiList(response)
           .map(mapCatalogProductItem)
-          .filter(Boolean);
+          .filter(Boolean)
+          .filter(isCatalogItemPurchasable);
         const more = hasMoreProductPages(response, apiResults.length, size);
 
         setHasMore(more);

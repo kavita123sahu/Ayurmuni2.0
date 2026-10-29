@@ -20,6 +20,7 @@ import { useHomeData } from '../hooks/UseHomeData';
 import { requireAuth, isGuestUser } from '../services/guestAuth';
 import { useLocation } from '../context/LocationContext';
 import { savedAddressToParsed } from '../services/locationService';
+import { showSuccessToast } from '../config/Key';
 import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
 import { useUnreadNotificationCount } from '../hooks/useNotification';
@@ -201,6 +202,7 @@ const HomeHeader = ({
 
     const {
         currentAddress,
+        deliveryLocation,
         loadingLocation,
         locationEnabled,
         setDeliveryLocation,
@@ -213,19 +215,40 @@ const HomeHeader = ({
         [savedAddresses],
     );
 
-    // Saved profile address first; live GPS only when permission is enabled
+    // Live / user-chosen delivery first, then saved default, then raw GPS
     const activeLocation = useMemo(() => {
-        if (defaultAddress) {
-            return savedAddressToParsed(defaultAddress);
+        if (deliveryLocation) {
+            return deliveryLocation;
         }
         if (locationEnabled && currentAddress) {
             return currentAddress;
         }
+        if (defaultAddress) {
+            return savedAddressToParsed(defaultAddress);
+        }
         return null;
-    }, [defaultAddress, currentAddress, locationEnabled]);
+    }, [deliveryLocation, currentAddress, defaultAddress, locationEnabled]);
 
     const shortAddress = useMemo(() => {
-        if (defaultAddress) {
+        if (loadingLocation && !activeLocation) {
+            return 'Detecting location...';
+        }
+        if (activeLocation) {
+            const area =
+                activeLocation.address_line_1 ||
+                activeLocation.city ||
+                activeLocation.formatted_address ||
+                '';
+            const suffix =
+                activeLocation.city && area !== activeLocation.city
+                    ? `, ${activeLocation.city}`
+                    : activeLocation.state
+                        ? `, ${activeLocation.state}`
+                        : '';
+            const text = `${area}${suffix}`.trim();
+            if (text) return text.slice(0, 44);
+        }
+        if (defaultAddress && !deliveryLocation) {
             const line =
                 defaultAddress.address_line_1 ||
                 (defaultAddress as any).address ||
@@ -239,25 +262,14 @@ const HomeHeader = ({
         if (!locationEnabled) {
             return 'Select location';
         }
-        if (loadingLocation && !activeLocation) {
-            return 'Detecting location...';
-        }
-        if (!activeLocation) {
-            return 'Select location';
-        }
-        const area =
-            activeLocation.address_line_1 ||
-            activeLocation.city ||
-            activeLocation.formatted_address ||
-            '';
-        const suffix =
-            activeLocation.city && area !== activeLocation.city
-                ? `, ${activeLocation.city}`
-                : activeLocation.state
-                    ? `, ${activeLocation.state}`
-                    : '';
-        return `${area}${suffix}`.slice(0, 44);
-    }, [activeLocation, defaultAddress, loadingLocation, locationEnabled]);
+        return 'Select location';
+    }, [
+        activeLocation,
+        defaultAddress,
+        deliveryLocation,
+        loadingLocation,
+        locationEnabled,
+    ]);
 
     const prakritiProgress = stablePrakritiProgress;
     const isPrakritiComplete = prakritiProgress >= 100;
@@ -393,10 +405,20 @@ const HomeHeader = ({
                     await setDeliveryLocation(savedAddressToParsed(item));
                     await fetchCustomerData();
                     AddressEvents.emit(ADDRESS_UPDATED, res);
+                    return;
                 }
-            } catch (error) {
+                setLocalAddresses(previousAddresses);
+                showSuccessToast(
+                    res?.message || 'Could not update selected address',
+                    'error',
+                );
+            } catch (error: any) {
                 setLocalAddresses(previousAddresses);
                 console.log('DEFAULT_ADDRESS_ERROR', error);
+                showSuccessToast(
+                    error?.message || 'Could not update selected address',
+                    'error',
+                );
             }
         },
         [fetchCustomerData, setDeliveryLocation, localAddresses],

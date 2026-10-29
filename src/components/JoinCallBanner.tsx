@@ -42,7 +42,20 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
   );
   const endMs = rawEndMs ?? (startMs != null ? startMs + FALLBACK_SLOT_MS : null);
   const msUntilStart = startMs != null ? startMs - now : 0;
-  const isLive = initialLive || msUntilStart <= 0;
+  const callStatus = String(item.call_status || '').toLowerCase().trim();
+  const callClosed = [
+    'ended',
+    'completed',
+    'cancelled',
+    'canceled',
+    'no_show',
+    'missed',
+    'rejected',
+  ].includes(callStatus);
+  const slotExpired = endMs != null && now >= endMs;
+  // Live only when the doctor has actually started the call
+  const isLive = initialLive || callStatus === 'in_progress';
+  const afterStart = msUntilStart <= 0;
   const minutesToStart = Math.max(0, Math.ceil(msUntilStart / 60000));
   const minutesToEnd =
     endMs != null ? Math.max(0, Math.ceil((endMs - now) / 60000)) : null;
@@ -98,11 +111,21 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
   const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] });
   const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] });
 
+  // Slot over or consultation finished → hide (parent may lag one tick)
+  if (callClosed || slotExpired) {
+    return null;
+  }
+
+  // Pre-start: countdown to start. In-slot / live: countdown to end_time.
   const rightLabel = isLive
     ? minutesToEnd != null
       ? `${minutesToEnd} min left`
       : 'Live now'
-    : `Starts in ${String(minutesToStart).padStart(2, '0')} min`;
+    : !afterStart
+      ? `Starts in ${String(minutesToStart).padStart(2, '0')} min`
+      : minutesToEnd != null
+        ? `${minutesToEnd} min left`
+        : 'Ready to join';
 
   return (
     <Pressable

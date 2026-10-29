@@ -108,6 +108,74 @@ const buildProductCategoryQuery = (params: ProductCategoryQuery = {}) => {
 };
 
 export const PRODUCT_PAGE_SIZE = 20;
+/** Both-mode / brand All — fetch enough rows so products + medicines merge in one pass. */
+export const BOTH_CATALOG_PAGE_SIZE = 100;
+
+/** Drop inactive / unavailable catalog rows and deactivated vendors. */
+export const isCatalogItemPurchasable = (item: any): boolean => {
+  if (!item || typeof item !== 'object') return false;
+
+  const status = String(
+    item.status ?? item.product_status ?? item.availability_status ?? '',
+  )
+    .trim()
+    .toLowerCase();
+  if (
+    [
+      'inactive',
+      'deactivated',
+      'disabled',
+      'unavailable',
+      'out_of_stock_vendor',
+      'deleted',
+      'draft',
+    ].includes(status)
+  ) {
+    return false;
+  }
+
+  if (
+    item.is_active === false ||
+    item.active === false ||
+    item.is_available === false ||
+    item.is_purchasable === false ||
+    item.is_deactivated === true ||
+    item.vendor_is_active === false ||
+    item.is_vendor_active === false
+  ) {
+    return false;
+  }
+
+  const vendor =
+    item.vendor && typeof item.vendor === 'object'
+      ? item.vendor
+      : item.seller && typeof item.seller === 'object'
+        ? item.seller
+        : item.merchant && typeof item.merchant === 'object'
+          ? item.merchant
+          : null;
+
+  if (vendor) {
+    const vendorStatus = String(vendor.status ?? '').trim().toLowerCase();
+    if (
+      ['inactive', 'deactivated', 'disabled', 'deleted', 'blocked'].includes(
+        vendorStatus,
+      )
+    ) {
+      return false;
+    }
+    if (
+      vendor.is_active === false ||
+      vendor.active === false ||
+      vendor.is_deactivated === true ||
+      vendor.is_blocked === true
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
 
 export const normalizeApiList = (response: any): any[] => {
   if (response?.success === false) {
@@ -229,7 +297,7 @@ export const mapCatalogProductItem = (item: any) => {
 
   if (!variantId && !productId) return null;
 
-  return {
+  const mapped = {
     ...nestedProduct,
     ...def,
     ...item,
@@ -247,6 +315,9 @@ export const mapCatalogProductItem = (item: any) => {
       item.is_wishlist_item ??
       nestedProduct?.is_wishlist_item,
   };
+
+  if (!isCatalogItemPurchasable(mapped)) return null;
+  return mapped;
 };
 
 export const hasMoreProductPages = (
@@ -510,25 +581,36 @@ export const getHealthDiseases = async (params?: {
   }
 };
 
-export const getProductCategories = async (
-  parentId?: string,
-  serviceCategoryId?: string | null,
-) => {
+// export const getProductCategories = async (
+//   parentId?: string,
+//   serviceCategoryId?: string | null,
+// ) => {
+//   try {
+//     const response = await apiClient(
+//       buildProductCategoryQuery({
+//         ...(parentId ? { id: parentId } : {}),
+//         ...(serviceCategoryId
+//           ? { service_category_id: String(serviceCategoryId) }
+//           : {}),
+//       }),
+//       { method: 'GET' },
+//     );
+//     return response;
+//   } catch (error) {
+//     throw error;
+//   }
+// };
+
+export const getProductCategories = async () => {
   try {
-    const response = await apiClient(
-      buildProductCategoryQuery({
-        ...(parentId ? { id: parentId } : {}),
-        ...(serviceCategoryId
-          ? { service_category_id: String(serviceCategoryId) }
-          : {}),
-      }),
-      { method: 'GET' },
-    );
+    const response = await apiClient('customers/product-categories', { method: 'GET' });
+    console.log('getProductCategoriesresponse', response);
     return response;
   } catch (error) {
     throw error;
   }
 };
+
 
 export const getProductsByCategory = async (
   categoryId?: string,

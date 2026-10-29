@@ -432,11 +432,12 @@ const DoctorSlot = (props: any) => {
                                     />
                                 ) : (
                                     <View style={styles.avatarFallback}>
-                                        <TablerIcon
-                                            name="user-filled"
-                                            size={28}
-                                            color="#FFFFFF"
-                                        />
+                                        <Text style={styles.avatarLetter}>
+                                            {(doctorName || 'D')
+                                              .trim()
+                                              .charAt(0)
+                                              .toUpperCase() || 'D'}
+                                        </Text>
                                     </View>
                                 )}
                                 {isVerified ? (
@@ -1003,7 +1004,7 @@ const styles = StyleSheet.create({
     },
     avatarFallback: {
         flex: 1,
-        backgroundColor: '#DFE5E7',
+        backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1011,6 +1012,7 @@ const styles = StyleSheet.create({
         fontSize: 26,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsBold,
+        includeFontPadding: false,
     },
     verifiedDot: {
         position: 'absolute',

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   FlatList,
@@ -129,10 +129,11 @@ const OrderHistory = (props: any) => {
     error,
     hasMore,
     refresh,
+    silentRefresh,
     loadMore,
   } = useOrders({ search: debouncedSearch });
 
-  // Refresh when returning to this screen (not on first mount — useOrders already loads)
+  // Soft revalidate after Order Details — keep list visible (no full reload flash)
   const isFirstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -140,17 +141,22 @@ const OrderHistory = (props: any) => {
         isFirstFocus.current = false;
         return;
       }
-      refresh();
-    }, [refresh]),
+      silentRefresh();
+    }, [silentRefresh]),
   );
+
+  const requestsLoadedRef = useRef(false);
+  const hasRequestsRef = useRef(false);
+  hasRequestsRef.current = requests.length > 0;
 
   const loadRequests = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') setRequestsRefreshing(true);
-    else setRequestsLoading(true);
+    else if (!hasRequestsRef.current) setRequestsLoading(true);
     setRequestsError(null);
     try {
       const response = await getPrescriptionRequests();
       setRequests(normalizePrescriptionRequestList(response));
+      requestsLoadedRef.current = true;
     } catch {
       setRequests([]);
       setRequestsError('Could not load requested orders.');
@@ -166,9 +172,19 @@ const OrderHistory = (props: any) => {
       if (tab === 'requested' || tab === 'returns') {
         setActiveTab(tab);
       }
-      loadRequests();
+      // Only fetch when opening on Requested — not on every Orders return
+      if (tab === 'requested') {
+        loadRequests(requestsLoadedRef.current ? 'refresh' : 'initial');
+      }
     }, [loadRequests, props.route?.params?.tab]),
   );
+
+  // Lazy-load Requested when user switches tab
+  useEffect(() => {
+    if (activeTab === 'requested' && !requestsLoadedRef.current) {
+      loadRequests('initial');
+    }
+  }, [activeTab, loadRequests]);
 
   // ── Returns tab ────────────────────────────────────────────────────────────
   const [returns, setReturns] = useState<ReturnRequest[]>([]);

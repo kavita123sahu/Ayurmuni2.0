@@ -1,11 +1,14 @@
 import { NativeModules, Platform } from 'react-native';
 import {
-  CASHFREE_ALLOWED_PAYMENT_METHODS,
-  CASHFREE_APP_ID,
-  CASHFREE_ENVIRONMENT,
   getCashfreeCredentials,
-} from '../config/cashfreeConfig';
+  ThirdParty,
+} from '../config/thirdParty';
 import { Colors } from '../common/Colors';
+
+const CASHFREE_APP_ID = ThirdParty.cashfree.appId;
+const CASHFREE_ENVIRONMENT = ThirdParty.cashfree.environment;
+const CASHFREE_ALLOWED_PAYMENT_METHODS =
+  ThirdParty.cashfree.allowedPaymentMethods;
 
 export type CashfreeCheckoutSession = {
   paymentSessionId: string;

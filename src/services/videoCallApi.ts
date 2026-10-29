@@ -1,23 +1,27 @@
-
 import { PermissionsAndroid, Platform } from 'react-native';
 import { Utils } from '../common/Utils';
 import { BaseUrl } from '../config/Key';
+import { getAgoraAppId } from '../config/thirdParty';
 import { apiClient } from './APIconfig';
 
-export const FALLBACK_APP_ID = 'b717053bd3f14a819ffd0c7b6490f169';
+export const FALLBACK_APP_ID = getAgoraAppId();
 
 const callUrl = (appointmentId: string, action: string) =>
   `${BaseUrl?.base_url}doctors/appointments/${appointmentId}/call/${action}/`;
+
 async function getAuthHeaders() {
   const token = await Utils.getData('_TOKEN');
-  console.log("tokentokentoken", token)
   return {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 }
 
-async function apiFetch(url: string, options: RequestInit = {}, timeoutMs = 15000) {
+async function apiFetch(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = 15000,
+) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -37,7 +41,9 @@ async function apiFetch(url: string, options: RequestInit = {}, timeoutMs = 1500
     }
 
     if (!response.ok) {
-      const error: any = new Error(body?.message || `Request failed (${response.status})`);
+      const error: any = new Error(
+        body?.message || `Request failed (${response.status})`,
+      );
       error.status = response.status;
       error.data = body?.data ?? body;
       throw error;
@@ -50,14 +56,12 @@ async function apiFetch(url: string, options: RequestInit = {}, timeoutMs = 1500
   } catch (e: any) {
     clearTimeout(timeoutId);
     if (e.name === 'AbortError') {
-      const timeoutError: any = new Error('Request timed out — network dheema ya server slow hai.');
+      const timeoutError: any = new Error('Request timed out');
       timeoutError.status = 0;
       throw timeoutError;
     }
     if (e.message === 'Network request failed') {
-      const networkError: any = new Error(
-        'Network error — internet connection check karo, ya API_BASE_URL galat ho sakta hai.',
-      );
+      const networkError: any = new Error('Network error');
       networkError.status = 0;
       throw networkError;
     }
@@ -68,35 +72,22 @@ async function apiFetch(url: string, options: RequestInit = {}, timeoutMs = 1500
 export async function apiGetCallStatus(appointmentId: string) {
   const res = await apiClient(
     `doctors/appointments/${appointmentId}/call/status/`,
-    {
-      method: 'GET',
-    },
+    { method: 'GET' },
   );
-  console.log("resresresresres", res)
-  if (!res.success) {
-    throw res;
-  }
-
+  if (!res.success) throw res;
   return res.data;
 }
 
 export async function apiStartCall(appointmentId: string) {
   const res = await apiClient(
     `doctors/appointments/${appointmentId}/call/start/`,
-    {
-      method: 'POST',
-      body: '{}',
-    },
+    { method: 'POST', body: '{}' },
   );
 
   if (!res.success) {
-    if (
-      res.data?.call_status === 'in_progress' ||
-      res.status === 409
-    ) {
+    if (res.data?.call_status === 'in_progress' || res.status === 409) {
       return res.data;
     }
-
     throw res;
   }
 
@@ -106,18 +97,12 @@ export async function apiStartCall(appointmentId: string) {
 export async function apiGetCallToken(appointmentId: string) {
   const res = await apiClient(
     `doctors/appointments/${appointmentId}/call/token/`,
-    {
-      method: 'POST',
-      body: '{}',
-    },
+    { method: 'POST', body: '{}' },
   );
-
-  if (!res.success) {
-    throw res;
-  }
-
+  if (!res.success) throw res;
   return res.data;
 }
+
 export async function apiPostCallEvent(
   appointmentId: string,
   event: 'joined' | 'left',
@@ -134,8 +119,8 @@ export async function apiPostCallEvent(
         metadata: { source: 'agora_sdk' },
       }),
     });
-  } catch (e) {
-    console.log(`[API] events(${event}) failed:`, e);
+  } catch {
+    // ignore event post failures
   }
 }
 

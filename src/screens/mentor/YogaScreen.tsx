@@ -99,6 +99,8 @@ const YogaScreen = (props: any) => {
       healthCategoryId: routeHealthCategoryId || null,
       healthDiseaseId: routeHealthDiseaseId || null,
       categoryName: routeCategoryName || null,
+      diseaseName: routeHealthDiseaseId ? routeCategoryName || null : null,
+      strict: Boolean(routeHealthCategoryId || routeHealthDiseaseId),
     }),
     [routeHealthCategoryId, routeHealthDiseaseId, routeCategoryName],
   );

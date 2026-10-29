@@ -19,10 +19,12 @@ type Props = {
   onJoinCall?: () => void;
   onViewDetails?: () => void;
   call_status?: string;
-  /** True inside the join window (5 min before start → end) or while the call is live. */
+  /** True inside the join window (5 min before → end), or live before end_time. */
   canJoin?: boolean;
   /** Show "View details" only when a prescription exists for this appointment. */
   hasPrescription?: boolean;
+  /** Missed appointments with no refund yet can request one via cancel flow. */
+  canRequestRefund?: boolean;
 };
 
 const AppointmentActions = ({
@@ -37,6 +39,7 @@ const AppointmentActions = ({
   call_status,
   canJoin,
   hasPrescription = false,
+  canRequestRefund = false,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
   const schedule = resolveAppointmentDateTime({ date, time, status, ...item });
@@ -50,6 +53,7 @@ const AppointmentActions = ({
     item ?? { status, date: dateVal, time: timeVal },
   );
   const showCancel = canOfferCancel(status, dateVal, timeVal);
+  const showRequestRefund = Boolean(canRequestRefund && onCancel);
 
   const showViewDetails =
     hasPrescription &&
@@ -62,8 +66,11 @@ const AppointmentActions = ({
       'noshow',
     ].includes(appointmentStatus);
 
-  const isCallLive = String(call_status || '').toLowerCase() === 'in_progress';
-  const showJoinCall = canJoin ?? isCallLive;
+  // Do not OR raw in_progress — that kept Join after end_time / after doctor ended
+  const isCallLive =
+    Boolean(canJoin) &&
+    String(call_status || '').toLowerCase() === 'in_progress';
+  const showJoinCall = Boolean(canJoin);
 
   if (showJoinCall) {
     return (
@@ -114,6 +121,25 @@ const AppointmentActions = ({
           </TouchableOpacity>
         )}
       </View>
+    );
+  }
+
+  if (showRequestRefund) {
+    return (
+      <TouchableOpacity
+        style={styles.standaloneWrap}
+        onPress={onCancel}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#0D614E', '#14937A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.gradientBtn}
+        >
+          <Text style={styles.primaryText}>Request refund</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     );
   }
 

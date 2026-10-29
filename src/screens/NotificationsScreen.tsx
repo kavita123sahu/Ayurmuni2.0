@@ -28,6 +28,7 @@ import { normalizeNotificationPayload } from '../services/inAppNotificationServi
 import { navigationRef } from '../navigation/navigationRef';
 import { getDetailBottomPadding } from '../constants/layout';
 import SectionHeader from '../components/SectionHeader';
+import { formatCancellationReasonLabel } from '../components/CancelAppointModal';
 
 const getNotificationImageSource = (image: unknown) => {
     if (!image) return null;
@@ -309,7 +310,16 @@ const NotificationDetailModal = ({
     const isUnread = !item.isRead;
     const patient = item.patientName ?? item?.rawData?.data?.patient_name;
     const doctor = item.doctorName ?? item?.rawData?.data?.doctor_name;
-    const reason = item.reason ?? item?.rawData?.data?.reason;
+    const data = item?.rawData?.data ?? {};
+    const rawReason =
+        item.reason ??
+        data.cancellation_reason_detail ??
+        data.patient_cancellation_reason ??
+        data.user_reason ??
+        data.cancellation_reason;
+    const reason = rawReason
+        ? formatCancellationReasonLabel(String(rawReason))
+        : undefined;
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

@@ -414,7 +414,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 44,
+    // height: 44,
+    justifyContent:'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,
@@ -425,7 +426,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   inputSm: {
-    height: 36,
+    // height: 36,
     borderRadius: 8,
     paddingHorizontal: 10,
     fontSize: 12,

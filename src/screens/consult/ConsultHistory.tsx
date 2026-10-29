@@ -155,7 +155,12 @@ const ConsultHistory = (props: any) => {
             return !HIDDEN.has(status);
         });
 
-        const keyword = debouncedSearch.trim().toLowerCase();
+        // Clear must apply immediately — don't wait for debounce
+        const keyword = (
+          searchText.trim() === '' ? '' : debouncedSearch
+        )
+          .trim()
+          .toLowerCase();
         if (!keyword) return base;
 
         return base.filter((item: any) => {
@@ -168,7 +173,7 @@ const ConsultHistory = (props: any) => {
                 status.includes(keyword)
             );
         });
-    }, [history, debouncedSearch]);
+    }, [history, debouncedSearch, searchText]);
 
     useEffect(() => {
         pageRef.current = 1;

@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Switch,
   BackHandler,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -301,8 +303,14 @@ const VerifyPresciption = (props: any) => {
         onLeftPress={handleBack}
       />
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 88 },
@@ -562,6 +570,7 @@ const VerifyPresciption = (props: any) => {
           )}
         </LinearGradient>
       </TouchableOpacity>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

@@ -76,27 +76,34 @@ const LocationBottomSheet: React.FC<Props> = ({
   );
 
   const useCurrentLocation = useCallback(async () => {
-    onClose();
-    let addr = currentAddress;
-    if (!addr) {
-      addr = await refreshCurrentLocation();
+    try {
+      // Always fetch live GPS — never reuse a previously saved address
+      const addr = await refreshCurrentLocation();
+      if (addr) {
+        await setDeliveryLocation(addr);
+        onClose();
+        return;
+      }
+      Alert.alert(
+        'Location unavailable',
+        'Could not detect your current GPS location. Check that location is on, then try again or pick on the map.',
+        [
+          { text: 'Open map', onPress: () => openMapPicker(true) },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Location error',
+        error?.message ||
+          'Unable to read GPS. Enable location permission and try again.',
+        [
+          { text: 'Open map', onPress: () => openMapPicker(true) },
+          { text: 'OK', style: 'cancel' },
+        ],
+      );
     }
-    if (addr) {
-      await setDeliveryLocation(addr);
-      return;
-    }
-    Alert.alert(
-      'Location unavailable',
-      'Could not detect GPS. Pick your location on the map instead.',
-      [{ text: 'Open map', onPress: () => openMapPicker(true) }],
-    );
-  }, [
-    onClose,
-    currentAddress,
-    refreshCurrentLocation,
-    setDeliveryLocation,
-    openMapPicker,
-  ]);
+  }, [onClose, refreshCurrentLocation, setDeliveryLocation, openMapPicker]);
 
   const gpsPreview = currentAddress?.formatted_address
     || (loadingLocation ? 'Detecting your location...' : 'Enable GPS to detect location');

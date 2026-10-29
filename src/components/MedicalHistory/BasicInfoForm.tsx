@@ -56,6 +56,9 @@ const InputCard = memo(({
             value={value}
             onChangeText={onChangeText}
             style={styles.singleInput}
+            autoComplete="off"
+            textContentType="none"
+            importantForAutofill="no"
           />
         </View>
         <Text style={styles.unitText}>{unit}</Text>

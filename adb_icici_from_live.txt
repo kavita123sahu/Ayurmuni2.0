@@ -1,1 +1,0 @@
-﻿command: "adb logcat -c; Write-Host \"LOGCAT_CLEARED\"; if (Test-Path \"c:\\NewProjects\\AyurmuniApp\\payphi_live_logcat.txt\") { Remove-Item \"c:\\NewProjects\\AyurmuniApp\\payphi_live_logcat.txt\" -Force }; adb logcat -v time *:V"

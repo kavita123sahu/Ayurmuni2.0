@@ -122,6 +122,7 @@ import OrangeLabHomeSection from '../../components/home/OrangeLabHomeSection';
 const { width } = Dimensions.get('window');
 let prakritiModalShownThisSession = false;
 let diseaseModalShownThisSession = false;
+let lastAssessmentProfileKey: string | null = null;
 
 const HomePage: React.FC = (props: any) => {
 
@@ -218,12 +219,11 @@ const HomePage: React.FC = (props: any) => {
               brandOnly: true,
               brand_name_id: mapped.id,
               brandId: mapped.id,
-              serviceCategoryId: medicineCategoryId || undefined,
             });
           },
         };
       }),
-    [brands, props.navigation, medicineCategoryId],
+    [brands, props.navigation],
   );
 
   const [showDiseaseModal, setShowDiseaseModal] = useState(false);
@@ -332,13 +332,26 @@ const HomePage: React.FC = (props: any) => {
       if (shouldRunThrottled('home-appointments-preview', 45_000)) {
         refreshPreview();
       }
-      // Guest / empty catalog: reload so products show when token is ready
+      // Refresh catalogs on tab focus so new / inactive products & vendors update
       const noProducts =
         !(storeProducts?.length > 0) && !(medicineProducts?.length > 0);
-      if (noProducts && shouldRunThrottled('home-catalog-empty-refresh', 20_000)) {
+      if (
+        noProducts
+          ? shouldRunThrottled('home-catalog-empty-refresh', 20_000)
+          : shouldRunThrottled('home-catalog-focus-refresh', 30_000)
+      ) {
         refreshHomeData();
       }
-    }, [refreshPreview, refreshHomeData, storeProducts?.length, medicineProducts?.length]),
+      if (shouldRunThrottled('home-brands-focus-refresh', 45_000)) {
+        refreshBrands();
+      }
+    }, [
+      refreshPreview,
+      refreshHomeData,
+      refreshBrands,
+      storeProducts?.length,
+      medicineProducts?.length,
+    ]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -366,6 +379,23 @@ const HomePage: React.FC = (props: any) => {
     if (loadingCustomer || !customerData) {
       return;
     }
+
+    const profileKey = String(
+      customerData?.active_patient_id ||
+        customerData?.patient_id ||
+        customerData?.id ||
+        customerData?.user_id ||
+        '',
+    ).trim();
+    if (profileKey && profileKey !== lastAssessmentProfileKey) {
+      lastAssessmentProfileKey = profileKey;
+      prakritiModalShownThisSession = false;
+      diseaseModalShownThisSession = false;
+      setShowPrakritiModal(false);
+      setShowDiseaseModal(false);
+      setActiveHomeModal('none');
+    }
+
     if (activeHomeModal !== 'none') {
       return;
     }
@@ -385,10 +415,22 @@ const HomePage: React.FC = (props: any) => {
       return;
     }
 
-    // 3rd modal: prakriti assessment
+    // 3rd modal: prakriti — only when progress is known and incomplete
+    const prakritiProgress = Number(customerData?.prakriti_progress);
     const prakritiIncomplete =
-      customerData?.prakriti_progress != null &&
-      Number(customerData.prakriti_progress) < 100;
+      Number.isFinite(prakritiProgress) && prakritiProgress < 100;
+    const prakritiComplete =
+      Number.isFinite(prakritiProgress) && prakritiProgress >= 100;
+    const vikritiProgress = Number(
+      customerData?.vikriti_progress ?? customerData?.medical_history_progress,
+    );
+    const assessmentsComplete =
+      prakritiComplete &&
+      (!Number.isFinite(vikritiProgress) || vikritiProgress >= 100);
+
+    if (assessmentsComplete) {
+      return;
+    }
 
     if (prakritiIncomplete && !prakritiModalShownThisSession) {
       prakritiModalShownThisSession = true;

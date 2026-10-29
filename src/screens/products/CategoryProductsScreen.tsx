@@ -53,9 +53,14 @@ import {
 } from '../../hooks/useCategoryProducts';
 import {
   getProduct,
+  hasMoreProductPages,
+  isCatalogItemPurchasable,
   mapCatalogProductItem,
   normalizeApiList,
+  PRODUCT_PAGE_SIZE,
 } from '../../services/ProductServices';
+import { useFocusEffect } from '@react-navigation/native';
+import { shouldRunThrottled } from '../../utils/fetchThrottle';
 import {
   ProductCategoryItem,
   useProductCategories,
@@ -396,10 +401,12 @@ const CategoryProductsScreen = (props: any) => {
 
   const isBrandAllView =
     isBrandLanding && selectedCategoryId === 'all' && !!apiBrandNameId;
+  /** Shop-all / brand-all in both mode — need products + medicines services. */
+  const isBothAllView = useBothRail && selectedCategoryId === 'all';
 
   const baseProductFilter = useMemo((): CategoryProductFilter => {
-    // Brand landing + All → every product of the selected brand(s), any service
-    if (isBrandAllView) {
+    // Brand / Shop-all → unscoped first page; dual-service merge fills medicines
+    if (isBrandAllView || isBothAllView) {
       return {
         id: null,
         product_subcategory_id: null,
@@ -418,7 +425,7 @@ const CategoryProductsScreen = (props: any) => {
     }
 
     if (useBothRail) {
-      // All → full merged catalog; product row → product category filter
+      // Product/health row → category filter; omit service so both catalogs can match
       return {
         id: activeRail === 'product' ? activeCategoryId : null,
         product_subcategory_id:
@@ -436,6 +443,7 @@ const CategoryProductsScreen = (props: any) => {
     };
   }, [
     isBrandAllView,
+    isBothAllView,
     useHealthRail,
     useBothRail,
     activeRail,
@@ -499,149 +507,281 @@ const CategoryProductsScreen = (props: any) => {
     refreshing,
     refresh,
     loadMore,
-  } = useCategoryProducts(productFilter, fallbackCatalog);
+  } = useCategoryProducts(productFilter, fallbackCatalog, {
+    // Skip unscoped page in both-All — dual-service merge is the source of truth
+    enabled: !isBothAllView,
+  });
   const [products, setProducts] = useState<any[]>([]);
 
   /**
-   * Brand + All: the brand-only catalog query can come back empty, while
-   * brand + category works. Query every sidebar category with the brand too
-   * and merge, so All = every product of that brand.
+   * Both-mode All (Trusted Brands / Browse more / brand tap):
+   * Fetch products + medicines in parallel, show each page as it arrives,
+   * then load more on scroll (do not wait for a full merge).
    */
-  const [brandAllProducts, setBrandAllProducts] = useState<any[]>([]);
-  const [brandAllLoading, setBrandAllLoading] = useState(false);
-  const [brandAllNonce, setBrandAllNonce] = useState(0);
+  const [bothAllProducts, setBothAllProducts] = useState<any[]>([]);
+  const [bothAllLoading, setBothAllLoading] = useState(false);
+  const [bothAllLoadingMore, setBothAllLoadingMore] = useState(false);
+  const [bothAllRefreshing, setBothAllRefreshing] = useState(false);
+  const [bothAllHasMore, setBothAllHasMore] = useState(true);
+  const [bothAllNonce, setBothAllNonce] = useState(0);
+  const bothAllSeenRef = useRef(new Set<string>());
+  const bothAllServiceHasMoreRef = useRef(new Map<string, boolean>());
+  const bothAllPageRef = useRef(1);
+  const bothAllSharedRef = useRef<Record<string, unknown>>({});
+  const bothAllServiceIdsRef = useRef<string[]>([]);
+  const bothAllLoadLockRef = useRef(false);
 
-  const brandAllTargets = useMemo(() => {
-    if (!isBrandAllView) return [];
-    return topCategories
-      .map(item => {
-        const sourceId = String(item.sourceId || item.id || '');
-        if (!sourceId || sourceId === 'all') return null;
-        const rail: CategoryRail =
-          item.rail || (useHealthRail ? 'health' : 'product');
-        return { sourceId, rail };
-      })
-      .filter(Boolean) as { sourceId: string; rail: CategoryRail }[];
-  }, [isBrandAllView, topCategories, useHealthRail]);
-
-  const brandAllKey = useMemo(
+  const bothAllKey = useMemo(
     () =>
-      isBrandAllView
+      isBothAllView
         ? JSON.stringify({
-          brand: apiBrandNameId,
-          targets: brandAllTargets,
-          service: useBothRail ? null : serviceCategoryId,
-          nonce: brandAllNonce,
+          brand: apiBrandNameId || null,
+          productsServiceId: productsServiceId || null,
+          medicineServiceId: medicineServiceId || null,
+          price: getPriceRangeBounds(priceRange),
+          rating: ratingFilter === 'all' ? null : ratingFilter,
+          dosha: doshaFilter === 'all' ? null : doshaFilter,
+          sort: toProductApiSort(sortBy),
+          nonce: bothAllNonce,
         })
         : '',
     [
-      isBrandAllView,
+      isBothAllView,
       apiBrandNameId,
-      brandAllTargets,
-      useBothRail,
-      serviceCategoryId,
-      brandAllNonce,
+      productsServiceId,
+      medicineServiceId,
+      priceRange,
+      ratingFilter,
+      doshaFilter,
+      sortBy,
+      bothAllNonce,
     ],
   );
 
+  const mapBothAllItems = useCallback((response: any) => {
+    return normalizeApiList(response)
+      .map(mapCatalogProductItem)
+      .filter(Boolean)
+      .filter(isCatalogItemPurchasable);
+  }, []);
+
+  const appendBothAllItems = useCallback((items: any[]) => {
+    const seen = bothAllSeenRef.current;
+    const added: any[] = [];
+    items.forEach((item: any) => {
+      const key = String(item?.variant_id ?? item?.id ?? '');
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      added.push(item);
+    });
+    if (added.length === 0) return;
+    setBothAllProducts(prev => [...prev, ...added]);
+  }, []);
+
   useEffect(() => {
-    if (!brandAllKey) {
-      setBrandAllProducts([]);
-      setBrandAllLoading(false);
+    if (!bothAllKey) {
+      setBothAllProducts([]);
+      setBothAllLoading(false);
+      setBothAllLoadingMore(false);
+      setBothAllRefreshing(false);
+      setBothAllHasMore(false);
+      bothAllSeenRef.current = new Set();
+      bothAllServiceHasMoreRef.current = new Map();
+      bothAllPageRef.current = 1;
+      bothAllServiceIdsRef.current = [];
       return;
     }
-    const { brand, targets, service } = JSON.parse(brandAllKey) as {
-      brand: string;
-      targets: { sourceId: string; rail: CategoryRail }[];
-      service: string | null;
+
+    const parsed = JSON.parse(bothAllKey) as {
+      brand: string | null;
+      productsServiceId: string | null;
+      medicineServiceId: string | null;
+      price: { min_price: number | null; max_price: number | null };
+      rating: number | string | null;
+      dosha: string | null;
+      sort: string | null;
     };
-    if (!targets.length) return;
+
+    const serviceIds = [
+      parsed.productsServiceId,
+      parsed.medicineServiceId,
+    ].filter(Boolean) as string[];
+
+    // Wait until dashboard service ids are known
+    if (!serviceIds.length) {
+      setBothAllLoading(true);
+      return;
+    }
+
+    const shared: Record<string, unknown> = {
+      page_size: PRODUCT_PAGE_SIZE,
+    };
+    if (parsed.brand) shared.brand_name_id = parsed.brand;
+    if (parsed.price?.min_price != null) shared.min_price = parsed.price.min_price;
+    if (parsed.price?.max_price != null) shared.max_price = parsed.price.max_price;
+    if (parsed.rating != null && parsed.rating !== '') {
+      shared.min_rating = parsed.rating;
+    }
+    if (parsed.dosha) shared.dosha_type = parsed.dosha;
+    if (parsed.sort) shared.sort = parsed.sort;
+
+    bothAllSharedRef.current = shared;
+    bothAllServiceIdsRef.current = serviceIds;
+    bothAllSeenRef.current = new Set();
+    bothAllPageRef.current = 1;
+    bothAllLoadLockRef.current = false;
+    const hasMoreMap = new Map<string, boolean>();
+    serviceIds.forEach(id => hasMoreMap.set(id, true));
+    bothAllServiceHasMoreRef.current = hasMoreMap;
 
     let cancelled = false;
-    setBrandAllLoading(true);
+    setBothAllLoading(true);
+    setBothAllLoadingMore(false);
+    setBothAllProducts([]);
+    setBothAllHasMore(true);
+
+    const fetchServicePage = async (serviceId: string, page: number) => {
+      const res = await getProduct({
+        ...shared,
+        page,
+        service_category_id: serviceId,
+      });
+      if (cancelled) return;
+      const items = mapBothAllItems(res);
+      const more = hasMoreProductPages(res, items.length, PRODUCT_PAGE_SIZE);
+      hasMoreMap.set(serviceId, more);
+      appendBothAllItems(items);
+      // Show the first page as soon as either service returns
+      setBothAllLoading(false);
+      setBothAllRefreshing(false);
+    };
 
     Promise.allSettled(
-      targets.map(target =>
-        getProduct(
-          target.rail === 'health'
-            ? {
-              health_category_id: target.sourceId,
-              brand_name_id: brand,
-              ...(service ? { service_category_id: service } : {}),
-              page: 1,
-              page_size: 50,
-            }
-            : {
-              id: target.sourceId,
-              brand_name_id: brand,
-              ...(service ? { service_category_id: service } : {}),
-              page: 1,
-              page_size: 50,
-            },
-        ),
+      serviceIds.map(serviceId =>
+        fetchServicePage(serviceId, 1).catch(() => {
+          if (!cancelled) hasMoreMap.set(serviceId, false);
+        }),
       ),
-    )
-      .then(results => {
-        if (cancelled) return;
-        const seen = new Set<string>();
-        const merged: any[] = [];
-        results.forEach(result => {
-          if (result.status !== 'fulfilled') return;
-          normalizeApiList(result.value)
-            .map(mapCatalogProductItem)
-            .filter(Boolean)
-            .forEach((item: any) => {
-              const key = String(item?.variant_id ?? item?.id ?? '');
-              if (!key || seen.has(key)) return;
-              seen.add(key);
-              merged.push(item);
-            });
-        });
-        setBrandAllProducts(merged);
-      })
-      .finally(() => {
-        if (!cancelled) setBrandAllLoading(false);
-      });
+    ).then(() => {
+      if (cancelled) return;
+      setBothAllLoading(false);
+      setBothAllRefreshing(false);
+      setBothAllHasMore([...hasMoreMap.values()].some(Boolean));
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [brandAllKey]);
+  }, [bothAllKey, mapBothAllItems, appendBothAllItems]);
 
-  const loading = isBrandAllView
-    ? (baseLoading || brandAllLoading) && products.length === 0
-    : baseLoading;
+  const loadBothAllMore = useCallback(async () => {
+    if (
+      !isBothAllView ||
+      bothAllLoading ||
+      bothAllLoadingMore ||
+      bothAllRefreshing ||
+      !bothAllHasMore ||
+      bothAllLoadLockRef.current
+    ) {
+      return;
+    }
+
+    const serviceIds = bothAllServiceIdsRef.current;
+    const hasMoreMap = bothAllServiceHasMoreRef.current;
+    const toFetch = serviceIds.filter(id => hasMoreMap.get(id));
+    if (toFetch.length === 0) {
+      setBothAllHasMore(false);
+      return;
+    }
+
+    bothAllLoadLockRef.current = true;
+    setBothAllLoadingMore(true);
+    const nextPage = bothAllPageRef.current + 1;
+    const shared = bothAllSharedRef.current;
+
+    try {
+      await Promise.allSettled(
+        toFetch.map(async serviceId => {
+          try {
+            const res = await getProduct({
+              ...shared,
+              page: nextPage,
+              page_size: PRODUCT_PAGE_SIZE,
+              service_category_id: serviceId,
+            });
+            const items = mapBothAllItems(res);
+            const more = hasMoreProductPages(
+              res,
+              items.length,
+              PRODUCT_PAGE_SIZE,
+            );
+            hasMoreMap.set(serviceId, more);
+            appendBothAllItems(items);
+          } catch {
+            hasMoreMap.set(serviceId, false);
+          }
+        }),
+      );
+      bothAllPageRef.current = nextPage;
+      setBothAllHasMore([...hasMoreMap.values()].some(Boolean));
+    } finally {
+      setBothAllLoadingMore(false);
+      bothAllLoadLockRef.current = false;
+    }
+  }, [
+    isBothAllView,
+    bothAllLoading,
+    bothAllLoadingMore,
+    bothAllRefreshing,
+    bothAllHasMore,
+    mapBothAllItems,
+    appendBothAllItems,
+  ]);
+
+  const loading = isBothAllView ? bothAllLoading : baseLoading;
+  const listRefreshing = isBothAllView ? bothAllRefreshing : refreshing;
+  const listLoadingMore = isBothAllView ? bothAllLoadingMore : loadingMore;
+  const handleEndReached = isBothAllView ? loadBothAllMore : loadMore;
 
   useEffect(() => {
-    if (!isBrandAllView) {
+    if (!isBothAllView) {
       seedWishlistCacheFromList(fetchedProducts);
       setProducts(applyWishlistCache(fetchedProducts));
       return;
     }
-    const seen = new Set<string>();
-    const merged: any[] = [];
-    [...fetchedProducts, ...brandAllProducts].forEach(item => {
-      const key = String(item?.variant_id ?? item?.id ?? '');
-      if (key && seen.has(key)) return;
-      if (key) seen.add(key);
-      merged.push(item);
-    });
-    // Brand filter still applies on top (applyProductFilters), so local catalog is safe
-    if (merged.length === 0 && !baseLoading && !brandAllLoading) {
-      seedWishlistCacheFromList(fallbackCatalog);
-      setProducts(applyWishlistCache(fallbackCatalog));
+    // Progressive: publish as soon as either service page arrives
+    if (bothAllProducts.length > 0) {
+      seedWishlistCacheFromList(bothAllProducts);
+      setProducts(applyWishlistCache(bothAllProducts));
       return;
     }
-    seedWishlistCacheFromList(merged);
-    setProducts(applyWishlistCache(merged));
+    if (bothAllLoading || bothAllRefreshing) {
+      return;
+    }
+    const filteredFallback = fallbackCatalog.filter(isCatalogItemPurchasable);
+    seedWishlistCacheFromList(filteredFallback);
+    setProducts(applyWishlistCache(filteredFallback));
   }, [
     fetchedProducts,
-    brandAllProducts,
-    isBrandAllView,
-    baseLoading,
-    brandAllLoading,
+    bothAllProducts,
+    bothAllLoading,
+    bothAllRefreshing,
+    isBothAllView,
     fallbackCatalog,
   ]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!shouldRunThrottled('category-products-focus-refresh', 30_000)) {
+        return;
+      }
+      if (isBothAllView) {
+        setBothAllNonce(n => n + 1);
+        return;
+      }
+      refresh();
+    }, [isBothAllView, refresh]),
+  );
 
   const prevCategoryRef = useRef(selectedCategoryId);
 
@@ -819,23 +959,24 @@ const CategoryProductsScreen = (props: any) => {
   const productGridRef = useRef<FlatList>(null);
 
   const handleRefresh = useCallback(async () => {
-    clearFilters();
+    // Keep selected filters — only refresh catalog data
     productGridRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     refreshTopCategories();
     if (activeCategoryId) {
       refreshSubcategories();
     }
-    if (isBrandAllView) {
-      setBrandAllNonce(n => n + 1);
+    if (isBothAllView) {
+      setBothAllRefreshing(true);
+      setBothAllNonce(n => n + 1);
+      return;
     }
     await refresh();
   }, [
-    clearFilters,
     refreshTopCategories,
     refreshSubcategories,
     refresh,
     activeCategoryId,
-    isBrandAllView,
+    isBothAllView,
   ]);
 
   const handleCartUpdate = useCallback(
@@ -1006,7 +1147,7 @@ const CategoryProductsScreen = (props: any) => {
               : subtitle
           }
           onRefreshPress={handleRefresh}
-          refreshing={refreshing}
+          refreshing={listRefreshing}
           showCart
         />
       </View>
@@ -1156,18 +1297,18 @@ const CategoryProductsScreen = (props: any) => {
               contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
               columnWrapperStyle={styles.columnWrap}
               showsVerticalScrollIndicator={false}
-              onEndReached={loadMore}
+              onEndReached={handleEndReached}
               onEndReachedThreshold={0.35}
               refreshControl={
                 <RefreshControl
-                  refreshing={refreshing}
+                  refreshing={listRefreshing}
                   onRefresh={handleRefresh}
                   colors={[Colors.primaryColor]}
                   tintColor={Colors.primaryColor}
                 />
               }
               ListFooterComponent={
-                loadingMore ? (
+                listLoadingMore ? (
                   <ActivityIndicator
                     size="small"
                     color={Colors.primaryColor}

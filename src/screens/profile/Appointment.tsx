@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { Fonts } from '../../common/Fonts';
 import Header from '../../components/Header';
@@ -27,7 +28,10 @@ import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import {
   canOfferReschedule,
   getAppointmentPatientId,
+  isAppointmentInPast,
+  isCancelRefundEligible,
   normalizeAppointmentListItem,
+  resolveAppointmentDateTime,
 } from '../../utils/appointmentUtils';
 import SegmentTabs from '../../components/SegmentTabs';
 import { usePatientData } from '../../hooks/usePatientData';
@@ -159,21 +163,25 @@ const AppointmentScreen = (props: any) => {
   const appointmentData = useMemo(() => {
     return normalizedData.filter(item => {
       const status = String(item.status ?? '').toLowerCase();
+      const slotPast = isAppointmentInPast(item);
 
       if (statusFilter === 'all') {
-        const inScope =
-          listScope === 'upcoming'
-            ? UPCOMING_STATUS.includes(status) ||
+        if (listScope === 'upcoming') {
+          // Expired slots leave Upcoming (end_time reached → Past)
+          if (PAST_STATUS.includes(status)) return false;
+          if (slotPast) return false;
+          const inScope =
+            UPCOMING_STATUS.includes(status) ||
             status === 'upcoming' ||
-            !PAST_STATUS.includes(status)
-            : PAST_STATUS.includes(status) || status === 'past';
-        if (!inScope && listScope === 'past') return false;
-        if (
-          listScope === 'upcoming' &&
-          PAST_STATUS.includes(status) &&
-          statusFilter === 'all'
-        ) {
-          return false;
+            !PAST_STATUS.includes(status);
+          if (!inScope) return false;
+        } else {
+          // Past tab: API past statuses OR client-expired upcoming slots
+          const inPastBucket =
+            PAST_STATUS.includes(status) ||
+            status === 'past' ||
+            slotPast;
+          if (!inPastBucket) return false;
         }
       } else if (status !== statusFilter && status !== `${statusFilter}d`) {
         if (
@@ -184,6 +192,7 @@ const AppointmentScreen = (props: any) => {
         ) {
           return false;
         }
+        if (listScope === 'upcoming' && slotPast) return false;
       }
 
       if (followUpFilter !== 'all') {
@@ -343,32 +352,42 @@ const AppointmentScreen = (props: any) => {
         cancellation_reason_detail?: string;
       },
     ) => {
-      const res = await handleAppointmentAction({
-        appointmentId,
-        payload: {
-          action: 'cancel',
-          cancellation_reason: payload.cancellation_reason,
-          ...(payload.cancellation_reason_detail
-            ? {
-              cancellation_reason_detail:
-                payload.cancellation_reason_detail,
-            }
-            : {}),
-        },
-      });
-      console.log('CancelResponse =>', res);
-      if (res?.success) {
-        refreshUpcoming?.();
-        setShowCancelModal(false);
-        setSelectedAppointment(null);
-        showSuccessToast(res?.message, 'success');
-        return;
+      try {
+        const res = await handleAppointmentAction({
+          appointmentId,
+          payload: {
+            action: 'cancel',
+            cancellation_reason: payload.cancellation_reason,
+            ...(payload.cancellation_reason_detail
+              ? {
+                cancellation_reason_detail:
+                  payload.cancellation_reason_detail,
+              }
+              : {}),
+          },
+        });
+        if (res?.success) {
+          setShowCancelModal(false);
+          setSelectedAppointment(null);
+          refreshUpcoming?.();
+          showSuccessToast(res?.message, 'success');
+          return;
+        }
+        showSuccessToast(res?.message || 'Something went wrong', 'error');
+      } catch (error: any) {
+        showSuccessToast(
+          error?.message || 'Something went wrong while cancelling',
+          'error',
+        );
       }
-
-      setShowCancelModal(false);
-      showSuccessToast(res?.message || 'Something went wrong', 'error');
     },
     [refreshUpcoming],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshUpcoming?.();
+    }, [refreshUpcoming]),
   );
 
   const keyExtractor = useCallback(
@@ -420,6 +439,17 @@ const AppointmentScreen = (props: any) => {
     ? 'Loading…'
     : `${appointmentData.length} ${appointmentData.length === 1 ? 'appointment' : 'appointments'
     }`;
+
+  const selectedCancelSchedule = useMemo(() => {
+    if (!selectedAppointment) {
+      return { date: undefined as string | undefined, time: undefined as string | undefined };
+    }
+    const resolved = resolveAppointmentDateTime(selectedAppointment);
+    return {
+      date: resolved.date || selectedAppointment?.date,
+      time: resolved.time || selectedAppointment?.time,
+    };
+  }, [selectedAppointment]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -531,8 +561,21 @@ const AppointmentScreen = (props: any) => {
           setShowCancelModal(false);
           setSelectedAppointment(null);
         }}
+        appointmentDate={selectedCancelSchedule.date}
+        appointmentTime={selectedCancelSchedule.time}
+        refundEligible={isCancelRefundEligible(
+          selectedCancelSchedule.date,
+          selectedCancelSchedule.time,
+        )}
         onSubmit={(payload: any) => {
-          handleCancel(selectedAppointment?.consultation_id, payload);
+          const appointmentId =
+            selectedAppointment?.appointment_id ||
+            selectedAppointment?.consultation_id;
+          if (!appointmentId) {
+            showSuccessToast('Appointment id missing', 'error');
+            return;
+          }
+          void handleCancel(String(appointmentId), payload);
         }}
       />
 

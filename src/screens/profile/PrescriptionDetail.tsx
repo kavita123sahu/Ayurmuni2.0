@@ -168,14 +168,11 @@ const ExpandableList = ({
           />
         </View>
         <Text style={[styles.adviceTitle, { color: accent }]}>{title}</Text>
-        <Text style={styles.adviceCount}>{items.length}</Text>
       </View>
 
       {shown.map((item, index) => (
         <View key={`${title}-${index}`} style={styles.adviceItem}>
-          <Text style={[styles.adviceIndex, { color: accent }]}>
-            {index + 1}.
-          </Text>
+          <View style={[styles.adviceBullet, { backgroundColor: accent }]} />
           <Text style={styles.adviceText}>{item}</Text>
         </View>
       ))}
@@ -751,7 +748,6 @@ const PrescriptionDetail = (props: any) => {
               <SectionLabel
                 title="Prescribed medicines"
                 icon="pill"
-                badge={medicines.length ? String(medicines.length) : undefined}
               />
               {medicines.length === 0 ? (
                 <Text style={styles.emptySection}>No medicines prescribed</Text>
@@ -776,9 +772,6 @@ const PrescriptionDetail = (props: any) => {
                         index === medicines.length - 1 && styles.medItemLast,
                       ]}
                     >
-                      <View style={styles.medIndex}>
-                        <Text style={styles.medIndexText}>{index + 1}</Text>
-                      </View>
                       <View style={styles.medBody}>
                         <Text style={styles.medName}>
                           {medicine?.medicine_name ||
@@ -1530,11 +1523,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     gap: 6,
   },
-  adviceIndex: {
-    width: 18,
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginTop: 1,
+  adviceBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 7,
   },
   adviceText: {
     flex: 1,

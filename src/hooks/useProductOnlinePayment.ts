@@ -96,7 +96,7 @@ type OnlinePaymentArgs = {
   ) => void;
 };
 
-/** Merge top-level + data + nested payment — Razorpay fields can live in any of these. */
+/** Merge top-level + data + nested payment — Razorpay/ICICI fields can live in any of these. */
 const pickPaymentData = (orderResponse: any) => {
   if (!orderResponse || typeof orderResponse !== 'object') return null;
 
@@ -114,12 +114,26 @@ const pickPaymentData = (orderResponse: any) => {
       data.order.payment) ||
     {};
 
-  return {
+  // Do NOT spread `data.order` over payment fields — nested order often omits
+  // amount / payment_id / gateway_order_id and wiped them (ICICI SDK never opened).
+  const merged = {
     ...orderResponse,
     ...data,
-    ...(data.order && typeof data.order === 'object' ? data.order : {}),
     ...nestedPayment,
   };
+
+  // Keep order entity available without clobbering payment keys
+  if (data.order && typeof data.order === 'object') {
+    merged.order = data.order;
+  }
+  if (data.icici && typeof data.icici === 'object') {
+    merged.icici = data.icici;
+  }
+  if (data.summary && typeof data.summary === 'object') {
+    merged.summary = data.summary;
+  }
+
+  return merged;
 };
 
 const pickRazorpayOrderId = (paymentData: any): string => {
@@ -308,7 +322,10 @@ export const useProductOnlinePayment = () => {
           const payRequest = parsePayphiPaymentRequest(paymentData, {
             amount: payableAmount,
             customerName,
-            customerEmail,
+            customerEmail:
+              customerEmail && customerEmail.includes('@')
+                ? customerEmail
+                : 'customer@ayurmuni.com',
             customerMobile: contactNumber
               ? contactNumber.slice(-10)
               : undefined,
@@ -316,91 +333,178 @@ export const useProductOnlinePayment = () => {
 
           console.warn('[PAY] icici product start', {
             payment_id: paymentData?.payment_id,
+            gateway_order_id: paymentData?.gateway_order_id,
+            amount: paymentData?.amount ?? payableAmount,
             merchantId: appInfo?.merchantId,
-            native: Boolean(isPayphiNativeLinked() && appInfo && payRequest),
+            appId: appInfo?.appId,
+            merchantTxnNo: payRequest?.merchantTxnNo,
+            hasIciciBlock: Boolean(paymentData?.icici),
+            nativeLinked: isPayphiNativeLinked(),
+            hasAppInfo: Boolean(appInfo),
+            hasPayRequest: Boolean(payRequest),
           });
 
+          // Clear loader before native sheet so UI is not stuck if SDK is slow
+          setIsPaying(false);
+
+          let nativeOpenFailed: any = null;
           if (isPayphiNativeLinked() && appInfo && payRequest) {
-            let payphiResult;
             try {
-              payphiResult = await openPayphiPayment(appInfo, payRequest);
+              const payphiResult = await openPayphiPayment(appInfo, payRequest);
+              console.warn('[PAY] icici product native', payphiResult);
+
+              if (
+                isPayphiUserCancelled(payphiResult) ||
+                payphiResult.status === 'cancelled'
+              ) {
+                console.warn('[PAY] icici cancelled', payphiResult);
+                if (payphiResult?.message) {
+                  showSuccessToast(payphiResult.message, 'error');
+                }
+                return;
+              }
+              if (payphiResult.status === 'failed') {
+                console.warn('[PAY] icici failed', payphiResult);
+                showSuccessToast(
+                  payphiResult.message || String(payphiResult.raw ?? ''),
+                  'error',
+                );
+                return;
+              }
+
+              const merchantTxnNo = resolveIciciMerchantTxnNo(
+                paymentData,
+                payphiResult.gatewayOrderId || payRequest.merchantTxnNo,
+              );
+              if (!paymentData?.payment_id || !merchantTxnNo) {
+                showSuccessToast(
+                  'ICICI verify failed: missing payment_id or gateway_order_id.',
+                  'error',
+                );
+                return;
+              }
+
+              const txnPaymentId =
+                String(payphiResult.gatewayPaymentId || '').trim() ||
+                merchantTxnNo;
+
+              setIsVerifyingPayment(true);
+              // Same 4-key body as docs; signature = txn id (not PayPhi secureHash)
+              const verifyBody = buildIciciVerifyPayload({
+                paymentId: String(paymentData.payment_id),
+                merchantTxnNo,
+                gatewayPaymentId: txnPaymentId,
+              });
+              console.warn('[PAY] icici product verify prep', {
+                ...verifyBody,
+                sdk_secureHash: payphiResult.gatewaySignature || null,
+              });
+
+              let verifyResponse: any;
+              try {
+                verifyResponse =
+                  await _ORDER_SERVICES.verifyOrderPayment(verifyBody);
+              } catch (verifyError: any) {
+                verifyResponse =
+                  verifyError?.response ?? verifyError?.data ?? verifyError;
+              }
+
+              // If backend still rejects, retry once with original place-order
+              // gateway_order_id when it is a PayPhi-safe id (not Razorpay order_*).
+              const verifyMsg = String(
+                verifyResponse?.message ||
+                  verifyResponse?.data?.message ||
+                  '',
+              ).toLowerCase();
+              const placeOrderTxn = String(
+                paymentData?.icici?.merchantTxnNo ||
+                  paymentData?.gateway_order_id ||
+                  '',
+              ).trim();
+              if (
+                !verifyResponse?.success &&
+                verifyMsg.includes('signature') &&
+                placeOrderTxn &&
+                placeOrderTxn !== merchantTxnNo &&
+                !/^order_/i.test(placeOrderTxn)
+              ) {
+                const retryBody = buildIciciVerifyPayload({
+                  paymentId: String(paymentData.payment_id),
+                  merchantTxnNo: placeOrderTxn.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20),
+                  gatewayPaymentId: txnPaymentId,
+                });
+                console.warn('[PAY] icici product verify retry', retryBody);
+                try {
+                  verifyResponse =
+                    await _ORDER_SERVICES.verifyOrderPayment(retryBody);
+                } catch (verifyError: any) {
+                  verifyResponse =
+                    verifyError?.response ?? verifyError?.data ?? verifyError;
+                }
+              }
+
+              setIsVerifyingPayment(false);
+              console.warn('[PAY] icici product verify', verifyResponse);
+
+              if (verifyResponse?.success) {
+                finishSuccess(verifyResponse, {
+                  gateway_payment_id: txnPaymentId,
+                  payment_gateway: 'icici',
+                });
+                return;
+              }
+              if (payphiResult.status === 'pending') {
+                console.warn('[PAY] icici pending', payphiResult);
+                showSuccessToast(
+                  payphiResult.message ||
+                    'Payment is being processed. Check My Orders shortly.',
+                  'success',
+                );
+                return;
+              }
+              showSuccessToast(
+                verifyResponse?.message || 'Payment verification failed',
+                'error',
+              );
+              return;
             } catch (error: any) {
+              nativeOpenFailed = error;
               console.warn('[PAY] icici product native error', {
                 code: error?.code,
                 message: error?.message,
                 error,
               });
-              setIsPaying(false);
-              if (error?.message || error?.code) {
-                showSuccessToast(String(error?.message || error?.code), 'error');
-              }
-              return;
-            } finally {
-              setIsPaying(false);
             }
-
-            if (isPayphiUserCancelled(payphiResult) || payphiResult.status === 'cancelled') {
-              console.warn('[PAY] icici cancelled', payphiResult);
-              if (payphiResult?.message) {
-                showSuccessToast(payphiResult.message, 'error');
-              }
-              return;
-            }
-            if (payphiResult.status === 'failed') {
-              console.warn('[PAY] icici failed', payphiResult);
-              showSuccessToast(
-                payphiResult.message || String(payphiResult.raw ?? ''),
-                'error',
-              );
-              return;
-            }
-
-            setIsVerifyingPayment(true);
-            const merchantTxnNo = resolveIciciMerchantTxnNo(
-              paymentData,
-              payphiResult.gatewayOrderId,
-            );
-            const verifyBody = buildIciciVerifyPayload({
-              paymentId: String(paymentData?.payment_id ?? ''),
-              merchantTxnNo,
-              gatewayPaymentId: payphiResult.gatewayPaymentId,
-              gatewaySignature: payphiResult.gatewaySignature,
-            });
-            let verifyResponse: any;
-            try {
-              verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(verifyBody);
-            } catch (verifyError: any) {
-              verifyResponse =
-                verifyError?.response ?? verifyError?.data ?? verifyError;
-            }
-            setIsVerifyingPayment(false);
-
-            if (verifyResponse?.success || payphiResult.status === 'success') {
-              finishSuccess(verifyResponse, {
-                gateway_payment_id: payphiResult.gatewayPaymentId,
-              });
-              return;
-            }
-            if (payphiResult.status === 'pending') {
-              console.warn('[PAY] icici pending', payphiResult);
-              if (payphiResult.message) {
-                showSuccessToast(payphiResult.message, 'success');
-              }
-              return;
-            }
-            console.warn('[PAY] icici verify failed', verifyResponse);
-            if (verifyResponse?.message) {
-              showSuccessToast(verifyResponse.message, 'error');
-            }
-            return;
           }
 
-          setIsPaying(false);
-          console.warn('[PAY] icici unavailable', {
+          console.warn('[PAY] icici product stop', {
+            code: nativeOpenFailed?.code,
+            message: nativeOpenFailed?.message,
             native: isPayphiNativeLinked(),
             hasAppInfo: Boolean(appInfo),
             hasPayRequest: Boolean(payRequest),
           });
+          if (!isPayphiNativeLinked()) {
+            showSuccessToast(
+              'ICICI PayPhi SDK is not linked in this build. Rebuild the app after installing react-native-payphi-sdk.',
+              'error',
+            );
+          } else if (!appInfo || !payRequest) {
+            showSuccessToast(
+              'ICICI payment data incomplete (merchantId / amount / email). Try again or contact support.',
+              'error',
+            );
+          } else if (nativeOpenFailed?.message || nativeOpenFailed?.code) {
+            showSuccessToast(
+              String(nativeOpenFailed?.message || nativeOpenFailed?.code),
+              'error',
+            );
+          } else {
+            showSuccessToast(
+              'Unable to open ICICI payment. Please try again.',
+              'error',
+            );
+          }
           return;
         }
 

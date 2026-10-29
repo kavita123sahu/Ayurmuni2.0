@@ -29,7 +29,23 @@ export const resolveAppointmentStatus = (item?: any): string => {
   if (candidates.includes('cancellation_requested')) {
     return 'cancellation_requested';
   }
-  return candidates[0] || '';
+
+  const status = candidates[0] || '';
+  // Joined / ended call must not surface as Missed for dependent bookings
+  if (status === 'missed' || status === 'no_show' || status === 'noshow') {
+    const callStatus = normalizeStatus(
+      appt?.call_status ?? root?.call_status ?? item?.call_status,
+    );
+    if (
+      ['joined', 'ended', 'left', 'completed', 'in_progress'].includes(
+        callStatus,
+      )
+    ) {
+      return 'completed';
+    }
+  }
+
+  return status;
 };
 
 /** Patient-facing status label — keeps Cancellation Request consistent. */
@@ -144,10 +160,19 @@ export const hasAlreadyRescheduled = (source?: any): boolean => {
   return false;
 };
 
-const isWithinModifyWindow = (
+/** Reschedule only when start is MORE than 2 hours away. */
+export const RESCHEDULE_WINDOW_MINUTES = 120;
+/** Refund on cancel only when start is MORE than 3 hours away. */
+export const CANCEL_REFUND_WINDOW_MINUTES = 180;
+
+/**
+ * True when appointment start is still MORE than `windowMinutes` away
+ * (used for reschedule lock + refund eligibility).
+ */
+export const isWithinModifyWindow = (
   dateStr?: string,
   timeStr?: string,
-  windowMinutes = 180,
+  windowMinutes = CANCEL_REFUND_WINDOW_MINUTES,
 ): boolean => {
   const date = String(dateStr || '').trim();
   const time = String(timeStr || '').trim();
@@ -157,20 +182,30 @@ const isWithinModifyWindow = (
   if (mins == null || !Number.isFinite(mins)) return false;
   if (mins <= 0) return false;
 
-  const lockWindow = Math.max(1, Math.floor(Number(windowMinutes) || 180));
+  const lockWindow = Math.max(
+    1,
+    Math.floor(Number(windowMinutes) || CANCEL_REFUND_WINDOW_MINUTES),
+  );
   if (mins <= lockWindow) return false;
   return true;
 };
 
+/** Cancel refund initiates only outside the 3-hour lock window. */
+export const isCancelRefundEligible = (
+  dateStr?: string,
+  timeStr?: string,
+): boolean =>
+  isWithinModifyWindow(dateStr, timeStr, CANCEL_REFUND_WINDOW_MINUTES);
+
 /**
  * Allow reschedule when status is reschedulable, not already rescheduled once,
- * and start is MORE than `windowMinutes` away (default 3 hours).
+ * and start is MORE than `windowMinutes` away (default 2 hours).
  */
 export const canModifyAppointment = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
-  windowMinutes = 180,
+  windowMinutes = RESCHEDULE_WINDOW_MINUTES,
   item?: any,
 ): boolean => {
   if (hasAlreadyRescheduled(item ?? status)) return false;
@@ -178,21 +213,24 @@ export const canModifyAppointment = (
   return isWithinModifyWindow(dateStr, timeStr, windowMinutes);
 };
 
-/** Reschedule button — hidden after one successful reschedule. */
+/** Reschedule button — hidden inside 2h window and after one successful reschedule. */
 export const canOfferReschedule = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
   item?: any,
-  windowMinutes = 180,
+  windowMinutes = RESCHEDULE_WINDOW_MINUTES,
 ): boolean => canModifyAppointment(status, dateStr, timeStr, windowMinutes, item);
 
-/** Cancel stays available even after a one-time reschedule (within the time window). */
+/**
+ * Cancel stays available for cancelable statuses until the visit starts,
+ * even inside the 3-hour window (refund may not apply — see isCancelRefundEligible).
+ */
 export const canOfferCancel = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
-  windowMinutes = 180,
+  _windowMinutes?: number,
 ): boolean => {
   const value = normalizeStatus(status);
   if (!value) return false;
@@ -212,7 +250,15 @@ export const canOfferCancel = (
     return false;
   }
   if (!CANCELABLE_STATUSES.includes(value)) return false;
-  return isWithinModifyWindow(dateStr, timeStr, windowMinutes);
+
+  const date = String(dateStr || '').trim();
+  const time = String(timeStr || '').trim();
+  if (!date) return true;
+
+  const mins = getMinutesUntilAppointment(date, time || undefined);
+  if (mins == null || !Number.isFinite(mins)) return true;
+  // Hide cancel once the consultation has started / passed
+  return mins > 0;
 };
 
 /** Resolve date/time from list or detail appointment payloads. */
@@ -435,7 +481,12 @@ export function normalizeAppointmentListItem(item: any) {
     '';
 
   const endTime = appointment?.end_time || item?.end_time || null;
+  const timeLabel = formatAppointmentTimeLabel(time);
   const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
+  const timeRangeLabel =
+    timeLabel && endTimeLabel
+      ? `${timeLabel} – ${endTimeLabel}`
+      : timeLabel;
 
   const patient =
     appointment?.patient ?? root?.patient ?? item?.patient ?? null;
@@ -466,6 +517,8 @@ export function normalizeAppointmentListItem(item: any) {
       : specialty,
     date,
     time,
+    timeLabel,
+    timeRangeLabel,
     endTime,
     endTimeLabel,
     status: resolveAppointmentStatus({
@@ -775,26 +828,28 @@ export const formatAppointmentDateFull = (dateStr?: string): string => {
   });
 };
 
+/** Always 12-hour wall clock, e.g. `10:30 AM` (never 24-hour `22:30`). */
 export const formatAppointmentTimeLabel = (timeStr?: string) => {
   if (!timeStr) {
     return '';
   }
 
   const raw = String(timeStr).trim();
-  if (/am|pm/i.test(raw)) {
-    return raw;
-  }
-
-  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
   if (!match) {
     return raw;
   }
 
   let hours = Number(match[1]);
   const minutes = match[2];
+  const meridiemRaw = (match[4] || '').toUpperCase();
+
+  if (meridiemRaw === 'PM' && hours < 12) hours += 12;
+  if (meridiemRaw === 'AM' && hours === 12) hours = 0;
+
   const meridiem = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  return `${hours}:${minutes} ${meridiem}`;
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes} ${meridiem}`;
 };
 
 /** Normalize history/recent API item into display fields */
@@ -975,14 +1030,12 @@ export function getMsUntilJoinWindowChange(
   return next != null ? next - now : null;
 }
 
-/** Only a cancelled call removes the Home banner early; otherwise it stays until end_time. */
-const BANNER_CLOSED_CALL_STATUSES = new Set(['cancelled', 'canceled', 'rejected']);
-
 /**
- * Home "Join Now" banner rules (time based):
+ * Home "Join Now" banner — same rules as list/details Join:
  * - Show from `windowMinutes` (default 5) before start until end_time
  *   (no end_time → start + 15 min)
- * - Ending / leaving the call does NOT hide it; only reaching end_time does
+ * - Doctor started early (`in_progress`) → show until end_time
+ * - Hide when end_time is reached, or call is ended/completed/cancelled
  */
 export function getJoinableAppointment(
   items: any[] = [],
@@ -995,7 +1048,8 @@ export function getJoinableAppointment(
     const item = normalizeAppointmentListItem(raw);
     const callStatus = String(item.call_status || '').toLowerCase().trim();
 
-    if (BANNER_CLOSED_CALL_STATUSES.has(callStatus)) {
+    // Doctor finished / cancelled consultation → no Join (matches list/details)
+    if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) {
       continue;
     }
 
@@ -1015,30 +1069,44 @@ export function getJoinableAppointment(
       ? validEnd.getTime()
       : start.getTime() + 15 * 60 * 1000;
 
-    // Hide when appointment end_time is reached / matched
+    // Slot ended → remove banner (even if call_status stuck on in_progress)
     if (now >= endMs) {
       continue;
     }
 
     const msUntilStart = start.getTime() - now;
 
+    // Doctor already started — show even if before the 5‑min pre-window
+    if (callStatus === 'in_progress') {
+      return {
+        item,
+        minutesLeft: Math.max(0, Math.ceil((endMs - now) / 60000)),
+        isLive: true,
+      };
+    }
+
     // Not yet inside the pre-start window (e.g. 9:12 slot → visible from 9:07)
     if (msUntilStart > windowMs) {
       continue;
     }
 
-    if (callStatus === 'in_progress') {
-      return { item, minutesLeft: 0, isLive: true };
+    // Skip terminal appointment statuses
+    if (!isActiveAppointmentStatus(item.status)) {
+      continue;
     }
 
     const withinPreWindow = msUntilStart >= 0;
     const afterStartBeforeEnd = msUntilStart < 0 && now < endMs;
 
     if (withinPreWindow || afterStartBeforeEnd) {
+      // Before start → minutes until start; after start → minutes until end
+      const minutesLeft = withinPreWindow
+        ? Math.max(0, Math.ceil(msUntilStart / 60000))
+        : Math.max(0, Math.ceil((endMs - now) / 60000));
       return {
         item,
-        minutesLeft: Math.max(0, Math.ceil(msUntilStart / 60000)),
-        isLive: msUntilStart <= 0 || callStatus === 'in_progress',
+        minutesLeft,
+        isLive: false,
       };
     }
   }

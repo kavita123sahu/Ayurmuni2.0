@@ -47,19 +47,15 @@ const HomeJoinAppointmentsSection = ({
     };
   }, [onResume]);
 
-  // Banner keeps a just-completed slot until its end_time; the list does not
+  // Drop slots once end_time is reached (including stuck in_progress)
   const bannerCandidates = useMemo(
     () =>
       sortAppointmentsByDateTime(
         (appointments || []).filter(item => {
+          if (isAppointmentInPast(item)) return false;
           const callLive =
             String(item?.call_status || '').toLowerCase() === 'in_progress';
-          const completed =
-            String(item?.status || '').toLowerCase() === 'completed';
-          return (
-            (callLive || completed || isActiveAppointmentStatus(item?.status)) &&
-            !isAppointmentInPast(item)
-          );
+          return callLive || isActiveAppointmentStatus(item?.status);
         }),
       ),
     // tick drops appointments whose end_time has passed while Home stays open

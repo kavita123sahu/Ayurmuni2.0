@@ -56,10 +56,7 @@ import {
     LOW_STOCK_THRESHOLD,
 } from '../../utils/productStockUtils';
 import { formatDiscountOff, formatRupee, RupeeAmount, roundDiscountPercent } from '../../utils/currencyUtils';
-import { SCREEN } from '../../constants/responsive';
 import LinearGradient from 'react-native-linear-gradient';
-
-const GALLERY_H = Math.round(Math.min(SCREEN.width * 0.7, 248));
 
 const SectionHeader = ({ title }: { title: string }) => (
     <Text style={styles.sectionHeader}>{title}</Text>
@@ -653,9 +650,9 @@ const ProductDetails = (props: any) => {
             >
                 <View style={styles.galleryWrap}>
                     <Detailimages
-                        itemHeight={GALLERY_H}
-                        DynamicResize="contain"
                         fullBleed
+                        aspectRatio={1}
+                        DynamicResize="contain"
                         showPreviewChip={false}
                         images={galleryImages}
                     />
@@ -1270,10 +1267,12 @@ const styles = StyleSheet.create({
     },
 
     galleryWrap: {
+        width: '100%',
         backgroundColor: '#FFFFFF',
         position: 'relative',
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: '#EEF2F0',
+        overflow: 'hidden',
     },
     discountOverlay: {
         position: 'absolute',

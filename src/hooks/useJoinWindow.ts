@@ -20,13 +20,22 @@ export const useJoinWindow = (appointment: any, windowMinutes = 5): boolean => {
   const msUntilChange = getMsUntilJoinWindowChange(appointment, windowMinutes);
 
   useEffect(() => {
-    if (msUntilChange == null || msUntilChange > WATCH_HORIZON_MS) return;
-    const timer = setTimeout(
-      () => setTick(t => t + 1),
-      Math.min(msUntilChange + 500, MAX_TIMER_MS),
-    );
+    if (msUntilChange == null) return;
+    // Far from the slot — wake once we enter the watch horizon, then tick in chunks
+    const delay =
+      msUntilChange > WATCH_HORIZON_MS
+        ? msUntilChange - WATCH_HORIZON_MS + 500
+        : Math.min(msUntilChange + 500, MAX_TIMER_MS);
+    const timer = setTimeout(() => setTick(t => t + 1), Math.min(delay, MAX_TIMER_MS));
     return () => clearTimeout(timer);
   }, [msUntilChange, joinable]);
+
+  // While near / inside the join window, poll often so Join appears without refresh
+  useEffect(() => {
+    if (msUntilChange == null || msUntilChange > WATCH_HORIZON_MS) return;
+    const timer = setInterval(() => setTick(t => t + 1), 15_000);
+    return () => clearInterval(timer);
+  }, [msUntilChange]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {

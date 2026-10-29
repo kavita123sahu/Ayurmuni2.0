@@ -311,11 +311,13 @@ export const getMedicineScheduleChips = (
     chips.push({ key: 'dur', caption: 'Duration', label: duration });
   }
 
-  if (medicine.quantity != null && String(medicine.quantity).trim() !== '') {
+  const qtyRaw =
+    medicine.quantity ?? medicine.qty ?? medicine.Quantity ?? medicine.Qty;
+  if (qtyRaw != null && String(qtyRaw).trim() !== '') {
     chips.push({
       key: 'qty',
-      caption: 'Qty',
-      label: String(medicine.quantity),
+      caption: 'Quantity',
+      label: String(qtyRaw).trim(),
     });
   }
 
@@ -544,20 +546,48 @@ export const getFollowUpInfo = (
   prescription: any,
   appointment?: any,
 ): FollowUpInfo => {
-  const followUp =
-    (prescription?.follow_up && typeof prescription.follow_up === 'object'
+  // Prefer prescription follow_up — appointment copy can be stale after doctor clears it
+  const rxFollowUp =
+    prescription?.follow_up && typeof prescription.follow_up === 'object'
       ? prescription.follow_up
-      : null) ||
-    (appointment?.follow_up && typeof appointment.follow_up === 'object'
+      : null;
+  const apptFollowUp =
+    appointment?.follow_up && typeof appointment.follow_up === 'object'
       ? appointment.follow_up
-      : null) ||
-    null;
+      : null;
+  const followUp = rxFollowUp || apptFollowUp || null;
 
-  const dateRaw =
-    followUp?.date ||
-    followUp?.follow_up_date ||
-    appointment?.follow_up_date ||
-    null;
+  const explicitlyOff =
+    followUp?.schedule === false ||
+    followUp?.scheduled === false ||
+    followUp?.follow_up_active === false ||
+    followUp?.active === false ||
+    String(followUp?.status || '')
+      .toLowerCase()
+      .includes('cancel') ||
+    String(followUp?.status || '')
+      .toLowerCase()
+      .includes('removed');
+
+  if (explicitlyOff) {
+    return {
+      date: null,
+      dateLabel: null,
+      reason: null,
+      schedule: false,
+      notes: null,
+      status: null,
+      hasContent: false,
+    };
+  }
+
+  // If prescription has a follow_up object, do not fall back to appointment.follow_up_date
+  const dateRaw = rxFollowUp
+    ? rxFollowUp?.date || rxFollowUp?.follow_up_date || null
+    : followUp?.date ||
+      followUp?.follow_up_date ||
+      appointment?.follow_up_date ||
+      null;
   const date = dateRaw ? String(dateRaw).trim() : null;
   const reason = getClinicalText(
     followUp?.reason || followUp?.note || followUp?.notes || followUp?.purpose,
@@ -566,6 +596,22 @@ export const getFollowUpInfo = (
     followUp?.instructions || followUp?.advice || followUp?.description,
   );
   const status = getClinicalText(followUp?.status || followUp?.appointment_status);
+  // Doctor cleared date/reason but left schedule true — treat as removed
+  const fieldsCleared =
+    Boolean(rxFollowUp) && !date && !reason && !notes && !status;
+
+  if (fieldsCleared) {
+    return {
+      date: null,
+      dateLabel: null,
+      reason: null,
+      schedule: false,
+      notes: null,
+      status: null,
+      hasContent: false,
+    };
+  }
+
   const schedule = Boolean(
     followUp?.schedule ?? followUp?.scheduled ?? (date || reason || notes),
   );
@@ -577,7 +623,7 @@ export const getFollowUpInfo = (
     schedule,
     notes: notes || null,
     status: status || null,
-    hasContent: Boolean(date || reason || notes || status || followUp?.schedule),
+    hasContent: Boolean(date || reason || notes || status || schedule),
   };
 };
 

@@ -399,10 +399,17 @@ export const useUpcomingAppointmentsPreview = (
                 setLoading(true);
             }
 
-            // `confirmed` alone misses rescheduled / live (in_progress) slots
-            // `completed` keeps the live banner until end_time after the call ends early
-            const [confirmedRes, upcomingRes, completedRes] = await Promise.all(
-                ['confirmed', 'upcoming', 'completed'].map(appointment_status =>
+            // Include in_progress / reschedule so doctor-started calls appear on Home
+            const statusBuckets = [
+                'confirmed',
+                'upcoming',
+                'completed',
+                'in_progress',
+                'reschedule',
+                'rescheduled',
+            ];
+            const responses = await Promise.all(
+                statusBuckets.map(appointment_status =>
                     _CONSULT_SERVICES
                         .getConsultHistory({ page: 1, page_size: pageSize, appointment_status })
                         .catch((e: any) => {
@@ -413,11 +420,7 @@ export const useUpcomingAppointmentsPreview = (
             );
 
             const seen = new Set<string>();
-            const active = [
-                ...(confirmedRes?.data?.results || []),
-                ...(upcomingRes?.data?.results || []),
-                ...(completedRes?.data?.results || []),
-            ]
+            const active = responses.flatMap((res: any) => res?.data?.results || [])
                 .map((item: any) => normalizeAppointmentListItem(item))
                 .filter((item: any) => {
                     const key = String(item?.appointment_id || item?.consultation_id || '');
@@ -460,6 +463,15 @@ export const useUpcomingAppointmentsPreview = (
         () => fetchPreview({ silent: true }),
         [fetchPreview],
     );
+
+    // Poll so doctor-started calls (call_status in_progress) update the Home banner
+    useEffect(() => {
+        if (!(appointments || []).length) return;
+        const timer = setInterval(() => {
+            void fetchPreview({ silent: true });
+        }, 20_000);
+        return () => clearInterval(timer);
+    }, [appointments.length, fetchPreview]);
 
     return {
         loading,

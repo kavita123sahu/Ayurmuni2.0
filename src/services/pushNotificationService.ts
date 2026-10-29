@@ -1,9 +1,9 @@
 import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { apiClient } from './APIconfig';
+import { getOneSignalAppId } from '../config/thirdParty';
 
-const ONE_SIGNAL_APP_ID =
-  '5c79696d-81e8-46a7-922d-b0b08eef4e57';
+const ONE_SIGNAL_APP_ID = getOneSignalAppId();
 
 let initialized = false;
 
@@ -61,21 +61,9 @@ export const initializeOneSignal = async () => {
       return;
     }
 
-    console.log(
-      '[OneSignal] Initializing with App ID:',
-      ONE_SIGNAL_APP_ID,
-    );
-
-    OneSignal.Debug.setLogLevel(LogLevel.Verbose);
-
+    OneSignal.Debug.setLogLevel(LogLevel.Warn);
     OneSignal.initialize(ONE_SIGNAL_APP_ID);
-
     initialized = true;
-
-    console.log(
-      '[OneSignal] SDK initialized successfully',
-    );
-
     ensureHeadsUpChannels();
   } catch (error) {
     console.error(

@@ -22,24 +22,33 @@ import * as _CONSULT_SERVICE from '../../services/ConsultServce';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppointmentDetailSkeleton } from '../../simmerScreen/ShimmerHook';
 import RescheduleModal from '../../components/RescheduleModal';
-import CancelAppointmentModal from '../../components/CancelAppointModal';
+import CancelAppointmentModal, {
+  formatCancellationReasonLabel,
+} from '../../components/CancelAppointModal';
 import { handleAppointmentAction } from '../../hooks/AppointmentData';
 import { showSuccessToast } from '../../config/Key';
 import { Utils } from '../../common/Utils';
 import FeedbackModal from '../../components/FeedbackModal';
 import TablerIcon from '../../components/TablerIcon';
+import { getAppointmentShareMessage } from '../../utils/shareMessage';
+import { handleShareAction } from '../../hooks/DownloadFuction';
+import { getFollowUpInfo } from '../../utils/prescriptionDetailUtils';
 import {
   buildVideoCallNavParams,
   canOfferCancel,
   canOfferReschedule,
+  isCancelRefundEligible,
   formatAppointmentDateFull,
   formatAppointmentStatusLabel,
+  formatAppointmentTimeLabel,
   getAppointmentIds,
   getAppointmentPatientId,
   resolveAppointmentLookupId,
   resolveAppointmentDateTime,
+  resolveAppointmentStatus,
   isAppointmentInPast,
 } from '../../utils/appointmentUtils';
+import { useJoinWindow } from '../../hooks/useJoinWindow';
 import { getStatusStyle, shadow, Theme } from '../../common/DataInterface';
 import DoctorConsultationSection from '../../components/consult/DoctorConsultationSection';
 import { consultationHasPrescription } from '../../utils/prescriptionDetailUtils';
@@ -52,7 +61,10 @@ import DoctorAvatar from '../../components/DoctorAvatar';
 import DietitianBadge from '../../components/DietitianBadge';
 import LinearGradient from 'react-native-linear-gradient';
 import PaymentHistoryTimeline from '../../components/PaymentHistoryTimeline';
-import { getPaymentHistory } from '../../utils/paymentHistoryUtils';
+import {
+  getCompletedRefund,
+  getPaymentHistory,
+} from '../../utils/paymentHistoryUtils';
 
 const PrimaryButton = ({
   title,
@@ -85,9 +97,10 @@ type Props = {
   refreshData: () => void;
   navigation: any;
   token: any;
+  onOpenChat?: () => void;
 };
 
-const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
+const DoctorDetail = ({ data, refreshData, navigation, token, onOpenChat }: Props) => {
   const appointmentData = {
     doctorName: data?.doctor?.doctor_name || '',
     doctor_image: data?.doctor?.doctor_image || '',
@@ -99,8 +112,39 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
     patientAvatar: data?.appointment?.patient?.patient_image || '',
   };
 
-  const isLive = data?.appointment?.call_status === 'in_progress';
-  const canOpenChat = !!appointmentData.consultationId;
+  const isLive =
+    String(data?.appointment?.call_status || '').toLowerCase() ===
+    'in_progress';
+  const appointmentStatusKey = String(
+    data?.appointment?.appointment_status || '',
+  )
+    .trim()
+    .toLowerCase();
+  const isTerminalStatus = [
+    'cancelled',
+    'canceled',
+    'missed',
+    'expired',
+    'no_show',
+    'noshow',
+    'rejected',
+    'cancellation_requested',
+  ].includes(appointmentStatusKey);
+  const joinAppointment = {
+    ...data,
+    appointment: data?.appointment,
+    status: data?.appointment?.appointment_status,
+    call_status: data?.appointment?.call_status,
+    date: data?.appointment?.appointment_date,
+    time: data?.appointment?.start_time,
+    endTime: data?.appointment?.end_time,
+    end_time: data?.appointment?.end_time,
+  };
+  // Same 5‑min → end_time window as Home banner / appointment list
+  const canJoin = useJoinWindow(joinAppointment, 5);
+  // Chat follows the same window; never after cancel
+  const canOpenChat =
+    !!appointmentData.consultationId && !isTerminalStatus && canJoin;
 
   return (
     <LinearGradient
@@ -123,7 +167,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
             <Text numberOfLines={2} style={styles.doctorName}>
               {data?.doctor?.doctor_name}
             </Text>
-            {isLive ? (
+            {canJoin && isLive ? (
               <View style={styles.liveBadge}>
                 <View style={styles.liveBadgeDot} />
                 <Text style={styles.liveBadgeText}>LIVE</Text>
@@ -164,16 +208,16 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
             <View style={styles.textContainer}>
               <Text style={styles.label}>TIME</Text>
               <Text style={styles.value} numberOfLines={1}>
-                {data?.appointment?.start_time}
+                {formatAppointmentTimeLabel(data?.appointment?.start_time)}
               </Text>
             </View>
           </View>
         </View>
 
         <View style={styles.heroActions}>
-          {isLive && (
+          {canJoin && (
             <PrimaryButton
-              title="Join Video Call"
+              title={isLive ? 'Join Video Call · Live' : 'Join Video Call'}
               page="appoint"
               onPress={() => {
                 navigation.navigate(
@@ -196,6 +240,10 @@ const DoctorDetail = ({ data, refreshData, navigation, token }: Props) => {
               activeOpacity={0.85}
               style={styles.secondaryBtn}
               onPress={() => {
+                if (onOpenChat) {
+                  onOpenChat();
+                  return;
+                }
                 navigation.navigate('ChatScreen', {
                   doctorName: data?.doctor?.doctor_name,
                   doctorAvatar: data?.doctor?.doctor_image,
@@ -250,6 +298,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const [showActivatePatientModal, setShowActivatePatientModal] =
     useState(false);
   const [activatingPatient, setActivatingPatient] = useState(false);
+  const [pendingPatientAction, setPendingPatientAction] = useState<
+    'cancel' | 'chat' | null
+  >(null);
   const [refreshing, setRefreshing] = useState(false);
   const { fetchPatients, switchPatient } = usePatientData();
 
@@ -285,11 +336,19 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       return;
     }
 
+    const reviewAppointmentId =
+      getAppointmentIds({
+        rawData: detail,
+        appointment: detail?.appointment,
+      }).appointmentId ||
+      detail?.appointment?.appointment_id ||
+      routeLookupId;
+
     navigation.navigate('ShareExperienceScreen', {
       entityType: 'doctor',
       entityName: detail?.doctor?.doctor_name ?? 'Doctor',
       entitySubtitle: detail?.doctor?.doctor_specialization ?? '',
-      appointmentId: routeLookupId,
+      appointmentId: reviewAppointmentId,
       initialRating: rating,
       initialReview: '',
       initialImages: [],
@@ -416,13 +475,39 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     scheduleFields.date || normalizedAppointment?.date,
     scheduleFields.time || normalizedAppointment?.time,
   );
-  const showButtons = showRescheduleBtn || showCancelBtn;
+  const existingRefund = getCompletedRefund(
+    appointmentStatus,
+    detail,
+    detail?.appointment,
+  );
+  const showRequestRefundBtn =
+    !showCancelBtn &&
+    !existingRefund &&
+    ['missed', 'no_show', 'noshow', 'expired'].includes(
+      String(appointmentStatus || ''),
+    );
+  const showButtons = showRescheduleBtn || showCancelBtn || showRequestRefundBtn;
   const isRescheduleRequest = appointmentStatus === 'reschedule';
 
-  // Show Add to Calendar for upcoming visits (including completed if still future).
-  // Hide once the appointment datetime is in the past.
+  // Hide calendar for cancelled / terminal visits and once the slot is past.
   const showAddToCalendar = useMemo(() => {
     if (!detail?.appointment) return false;
+    const status = String(appointmentStatus || '').toLowerCase();
+    if (
+      [
+        'cancelled',
+        'canceled',
+        'missed',
+        'expired',
+        'no_show',
+        'noshow',
+        'rejected',
+        'cancellation_requested',
+        'completed',
+      ].includes(status)
+    ) {
+      return false;
+    }
     return !isAppointmentInPast({
       ...detail.appointment,
       appointment: detail.appointment,
@@ -431,7 +516,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       end_time: detail.appointment.end_time,
       endTime: detail.appointment.end_time,
     });
-  }, [detail, scheduleFields.date, scheduleFields.time]);
+  }, [detail, scheduleFields.date, scheduleFields.time, appointmentStatus]);
 
   // status pill color mapping — luxury muted tones instead of loud flat colors
   const statusStyleMap: Record<string, { bg: string; text: string }> = {
@@ -490,36 +575,79 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     showSuccessToast(res?.message || 'You cannot reschedule multiple times', 'error');
   };
 
+  const navigateToAppointmentChat = useCallback(() => {
+    const appt = detail?.appointment;
+    navigation.navigate('ChatScreen', {
+      doctorName: detail?.doctor?.doctor_name,
+      doctorAvatar: detail?.doctor?.doctor_image,
+      patientName: appt?.patient?.patient_name,
+      patientAvatar: appt?.patient?.patient_image,
+      appointmentId: resolveAppointmentLookupId({
+        rawData: detail,
+        appointment: appt,
+      }),
+      role: 'patient',
+      appointmentDate: appt?.appointment_date,
+      chatContext: {
+        call_status: appt?.call_status,
+        appointment_status: appt?.appointment_status,
+        appointment_date: appt?.appointment_date,
+        follow_up:
+          appt?.follow_up ||
+          detail?.prescription?.follow_up ||
+          detail?.follow_up,
+      },
+    });
+  }, [detail, navigation]);
+
+  const ensureAppointmentPatientActive = useCallback(
+    async (action: 'cancel' | 'chat') => {
+      const patientId = getAppointmentPatientId(
+        detail?.appointment
+          ? {
+              appointment: detail.appointment,
+              patient: detail.appointment?.patient,
+            }
+          : detail,
+      );
+
+      if (!patientId) {
+        if (action === 'cancel') setShowCancelModal(true);
+        else navigateToAppointmentChat();
+        return;
+      }
+
+      const list = (await fetchPatients()) || [];
+      const active = list.find((p: any) => p?.is_active_profile);
+      const appointmentPatient = list.find(
+        (p: any) => String(p?.id) === String(patientId),
+      );
+      const isActiveProfile =
+        String(active?.id || '') === String(patientId) ||
+        appointmentPatient?.is_active_profile === true;
+
+      if (!isActiveProfile) {
+        setPendingPatientAction(action);
+        setShowActivatePatientModal(true);
+        return;
+      }
+
+      if (action === 'cancel') setShowCancelModal(true);
+      else navigateToAppointmentChat();
+    },
+    [detail, fetchPatients, navigateToAppointmentChat],
+  );
+
   const openCancelFlow = useCallback(async () => {
-    const patientId = getAppointmentPatientId(
-      detail?.appointment
-        ? { appointment: detail.appointment, patient: detail.appointment?.patient }
-        : detail,
-    );
+    await ensureAppointmentPatientActive('cancel');
+  }, [ensureAppointmentPatientActive]);
 
-    if (!patientId) {
-      setShowCancelModal(true);
-      return;
-    }
+  const openChatFlow = useCallback(async () => {
+    await ensureAppointmentPatientActive('chat');
+  }, [ensureAppointmentPatientActive]);
 
-    const list = (await fetchPatients()) || [];
-    const active = list.find((p: any) => p?.is_active_profile);
-    const appointmentPatient = list.find(
-      (p: any) => String(p?.id) === String(patientId),
-    );
-    const isActiveProfile =
-      String(active?.id || '') === String(patientId) ||
-      appointmentPatient?.is_active_profile === true;
-
-    if (!isActiveProfile) {
-      setShowActivatePatientModal(true);
-      return;
-    }
-
-    setShowCancelModal(true);
-  }, [detail, fetchPatients]);
-
-  const confirmActivatePatientThenCancel = useCallback(async () => {
+  const confirmActivatePatientThenContinue = useCallback(async () => {
+    const action = pendingPatientAction || 'cancel';
     const patientId = getAppointmentPatientId(
       detail?.appointment
         ? { appointment: detail.appointment, patient: detail.appointment?.patient }
@@ -527,7 +655,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
     );
     if (!patientId) {
       setShowActivatePatientModal(false);
-      setShowCancelModal(true);
+      setPendingPatientAction(null);
+      if (action === 'cancel') setShowCancelModal(true);
+      else navigateToAppointmentChat();
       return;
     }
 
@@ -542,11 +672,13 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
         return;
       }
       setShowActivatePatientModal(false);
-      setShowCancelModal(true);
+      setPendingPatientAction(null);
+      if (action === 'cancel') setShowCancelModal(true);
+      else navigateToAppointmentChat();
     } finally {
       setActivatingPatient(false);
     }
-  }, [detail, switchPatient]);
+  }, [detail, navigateToAppointmentChat, pendingPatientAction, switchPatient]);
 
   const handleCancel = async (
     appointmentId: string,
@@ -556,27 +688,60 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       cancellation_reason_detail?: string;
     }
   ) => {
-    let payloadSend: any = {
-      action: 'cancel',
-      cancellation_reason: payload.cancellation_reason,
-    };
-    if (payload.cancellation_reason_detail) {
-      payloadSend.cancellation_reason_detail =
-        payload.cancellation_reason_detail;
+    try {
+      let payloadSend: any = {
+        action: 'cancel',
+        cancellation_reason: payload.cancellation_reason,
+      };
+      if (payload.cancellation_reason_detail) {
+        payloadSend.cancellation_reason_detail =
+          payload.cancellation_reason_detail;
+      }
+
+      const res = await handleAppointmentAction({
+        appointmentId,
+        payload: payloadSend,
+      });
+
+      if (res?.success) {
+        setShowCancelModal(false);
+        showSuccessToast(res?.message, 'success');
+        navigation.navigate('Appointments');
+        return;
+      }
+
+      showSuccessToast(res?.message || 'Something went wrong', 'error');
+    } catch (error: any) {
+      showSuccessToast(
+        error?.message || 'Something went wrong while cancelling',
+        'error',
+      );
     }
-
-    const res = await handleAppointmentAction({ appointmentId, payload: payloadSend });
-
-    if (res?.success) {
-      navigation.navigate('Appointments');
-      setShowCancelModal(false);
-      showSuccessToast(res?.message, 'success');
-      return;
-    }
-
-    setShowCancelModal(false);
-    showSuccessToast(res?.message || 'Something went wrong', 'error');
   };
+
+  const copyAppointmentDetails = useCallback(async () => {
+    const appt = detail?.appointment ?? {};
+    const doctor = detail?.doctor ?? {};
+    const message = getAppointmentShareMessage({
+      doctorName: doctor?.doctor_name,
+      patientPhone:
+        appt?.patient?.phone ||
+        appt?.patient?.phone_number ||
+        null,
+      date: formatAppointmentDateFull(appt?.appointment_date || appt?.date),
+      time: formatAppointmentTimeLabel(appt?.start_time || appt?.time),
+      status: formatAppointmentStatusLabel(
+        appt?.appointment_status || appt?.status,
+      ),
+      hospitalName: doctor?.hospital_name || appt?.hospital_name,
+      consultationMode: appt?.consultation_type || appt?.mode,
+    });
+    await handleShareAction({
+      type: 'copy',
+      message,
+      onComplete: () => showSuccessToast('Copied to clipboard', 'success'),
+    });
+  }, [detail]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -628,9 +793,30 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
   const appointmentFields = [
     { icon: 'document-text-outline', label: 'Appointment ID', value: appointment?.appointment_id ?? appointment?.id },
     { icon: 'calendar-outline', label: 'Date', value: appointment?.appointment_date },
-    { icon: 'time-outline', label: 'Start Time', value: appointment?.start_time },
-    { icon: 'time-outline', label: 'End Time', value: appointment?.end_time },
-    { icon: 'flag-outline', label: 'Status', value: formatLabel(appointment?.appointment_status, 'status') },
+    {
+      icon: 'time-outline',
+      label: 'Start Time',
+      value: formatAppointmentTimeLabel(appointment?.start_time),
+    },
+    {
+      icon: 'time-outline',
+      label: 'End Time',
+      value: formatAppointmentTimeLabel(appointment?.end_time),
+    },
+    {
+      icon: 'flag-outline',
+      label: 'Status',
+      value: formatLabel(
+        resolveAppointmentStatus({
+          appointment,
+          appointment_status: appointment?.appointment_status,
+          status: appointment?.status,
+          call_status: appointment?.call_status,
+          rawData: detail,
+        }) || appointment?.appointment_status,
+        'status',
+      ),
+    },
     { icon: 'videocam-outline', label: 'Call Status', value: formatLabel(appointment?.call_status) },
     {
       icon: 'medkit-outline',
@@ -653,25 +839,23 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
       icon: 'repeat-outline',
       label: 'Follow-up date',
       value: (() => {
-        const fu =
-          appointment?.follow_up ||
-          detail?.prescription?.follow_up ||
-          detail?.follow_up ||
-          null;
-        const raw =
-          fu?.date ??
-          fu?.follow_up_date ??
-          appointment?.follow_up_date ??
-          detail?.follow_up_date ??
-          null;
-        if (!raw) {
-          if (fu?.schedule) return 'Scheduled';
-          return null;
-        }
-        return formatAppointmentDateFull(String(raw)) || String(raw);
+        const fu = getFollowUpInfo(
+          detail?.prescription || appointment?.prescription,
+          appointment,
+        );
+        if (!fu.hasContent || !fu.date) return null;
+        return fu.dateLabel || formatAppointmentDateFull(String(fu.date)) || String(fu.date);
       })(),
     },
-    { icon: 'close-circle-outline', label: 'Cancellation Reason', value: appointment?.cancellation_reason },
+    {
+      icon: 'close-circle-outline',
+      label: 'Cancellation Reason',
+      value: formatCancellationReasonLabel(
+        appointment?.cancellation_reason_detail ||
+          appointment?.patient_cancellation_reason ||
+          appointment?.cancellation_reason,
+      ) || undefined,
+    },
     { icon: 'refresh-outline', label: 'Reschedule Reason', value: appointment?.reschedule_reason },
   ].filter(field => field.value !== undefined && field.value !== null && field.value !== '');
 
@@ -741,6 +925,7 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
             ) : null}
 
             <DoctorDetail
+              onOpenChat={openChatFlow}
               refreshData={() => fetchDetail?.()}
               data={detail}
               token={token}
@@ -866,8 +1051,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
               </>
             ) : null}
 
-            {showAddToCalendar ? (
-              <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 4 : 10 }}>
+            <View style={{ paddingHorizontal: 16, marginTop: showButtons ? 4 : 10, gap: 10 }}>
+              {showAddToCalendar ? (
                 <TouchableOpacity
                   activeOpacity={0.85}
                   style={styles.calendarBtn}
@@ -911,8 +1096,25 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
                 </TouchableOpacity>
-              </View>
-            ) : null}
+              ) : null}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.calendarBtn}
+                onPress={copyAppointmentDetails}
+              >
+                <View style={styles.calendarIconWrap}>
+                  <TablerIcon name="copy" size={18} color={Theme.emerald} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.calendarTitle}>Copy</Text>
+                  <Text style={styles.calendarSub}>
+                    Copy appointment details to clipboard
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
 
             {showButtons ? (
               <View style={styles.actionRow}>
@@ -937,6 +1139,18 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
                   >
                     <Text style={styles.cancelBtnText} numberOfLines={1}>
                       Cancel
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {showRequestRefundBtn ? (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={[styles.rescheduleBtn, !showRescheduleBtn && { flex: 1 }]}
+                    onPress={openCancelFlow}
+                  >
+                    <Text style={styles.rescheduleBtnText} numberOfLines={1}>
+                      Request Refund
                     </Text>
                   </TouchableOpacity>
                 ) : null}
@@ -977,14 +1191,30 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
         <CancelAppointmentModal
           visible={showCancelModal}
           onClose={() => setShowCancelModal(false)}
+          appointmentDate={
+            scheduleFields.date || normalizedAppointment?.date
+          }
+          appointmentTime={
+            scheduleFields.time || normalizedAppointment?.time
+          }
+          refundEligible={isCancelRefundEligible(
+            scheduleFields.date || normalizedAppointment?.date,
+            scheduleFields.time || normalizedAppointment?.time,
+          )}
           onSubmit={(payload: any) => {
             const appointmentId =
               normalizedAppointment?.appointment_id ||
+              getAppointmentIds({
+                rawData: detail,
+                appointment: detail?.appointment,
+              }).appointmentId ||
               normalizedAppointment?.consultation_id ||
               routeLookupId;
-            if (!appointmentId) return;
-            handleCancel(appointmentId, payload);
-            setShowCancelModal(false);
+            if (!appointmentId) {
+              showSuccessToast('Appointment id missing', 'error');
+              return;
+            }
+            void handleCancel(String(appointmentId), payload);
           }}
         />
 
@@ -993,8 +1223,8 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           title="Activate patient"
           subtitle={
             detail?.appointment?.patient?.patient_name
-              ? `${detail.appointment.patient.patient_name} is not the active profile. Activate this patient to cancel the appointment.`
-              : 'This appointment belongs to an inactive patient profile. Activate that patient to cancel the appointment.'
+              ? `${detail.appointment.patient.patient_name} is not the active profile. Activate this patient to continue.`
+              : 'This appointment belongs to an inactive patient profile. Activate that patient to continue.'
           }
           icon="👤"
           cancelText="Not now"
@@ -1004,8 +1234,9 @@ const AppointmentDetailScreen = ({ route, navigation }: any) => {
           onClose={() => {
             if (activatingPatient) return;
             setShowActivatePatientModal(false);
+            setPendingPatientAction(null);
           }}
-          onConfirm={confirmActivatePatientThenCancel}
+          onConfirm={confirmActivatePatientThenContinue}
         />
       </ScrollView>
     </SafeAreaView>
@@ -1473,6 +1704,10 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     paddingVertical: 13,
     borderRadius: 12,
+    
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Theme.dangerSoft,

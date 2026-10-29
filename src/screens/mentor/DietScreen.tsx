@@ -57,6 +57,7 @@ import {
   markDietPlanAssignmentReviewed,
 } from '../../utils/reviewedDietPlans';
 import { styles } from './DietScreen.styles';
+import { itemMatchesHealthConcern } from '../../utils/healthConcernMatch';
 
 const MACRO_COLORS = {
   Carbs: '#1FA77A',
@@ -216,7 +217,7 @@ const DietScreen = (props: any) => {
     props?.route?.params?.listOnly === true ||
     Boolean(routeHealthCategoryId) ||
     Boolean(routeHealthDiseaseId);
-  /** Banner / deep-link: stay on catalog list ‚Äî never auto-open detail. */
+  /** Banner / deep-link: stay on catalog list ó never auto-open detail. */
   const listOnly = props?.route?.params?.listOnly === true;
   // Prefer catalog diet_plan_id only for redirect; list-only never jumps to detail
   const redirectPlanId = (() => {
@@ -257,8 +258,8 @@ const DietScreen = (props: any) => {
   const debouncedSearch = useDebounce(searchQuery, 400);
 
   /**
-   * GET /patients/diet-plans/ ‚Äî suggested (common + doctor-suggested)
-   * GET ?type=all ‚Äî View all catalog (also used when search/filters are active)
+   * GET /patients/diet-plans/ ó suggested (common + doctor-suggested)
+   * GET ?type=all ó View all catalog (also used when search/filters are active)
    */
   const listType = routeWantsAll ? ('all' as const) : null;
   const [statusTab, setStatusTab] = useState<DietStatusTab>('all');
@@ -372,13 +373,13 @@ const DietScreen = (props: any) => {
     resolveActiveAssignment,
   } = useDietPlans({ initialPlanId: null, listType, listFilters });
 
-  // Banner DietScreen ‚Üí always stay on all-plans list (no detail / tracking)
+  // Banner DietScreen ? always stay on all-plans list (no detail / tracking)
   useEffect(() => {
     if (!listOnly) return;
     clearSelection();
   }, [listOnly, clearSelection]);
 
-  // Legacy deep-links that still open DietScreen with a plan ‚Üí detail route
+  // Legacy deep-links that still open DietScreen with a plan ? detail route
   useEffect(() => {
     if (!redirectPlanId || listOnly) return;
     props.navigation.replace('DietPlanDetail', {
@@ -405,7 +406,7 @@ const DietScreen = (props: any) => {
     targetId: string;
   } | null>(null);
   const [reviewCheckTick, setReviewCheckTick] = useState(0);
-  /** From list tap ‚Äî always show catalog detail (even when another plan is active). */
+  /** From list tap ó always show catalog detail (even when another plan is active). */
   const [browseDetailMode, setBrowseDetailMode] = useState(false);
   const [startWaterModalVisible, setStartWaterModalVisible] = useState(false);
   const pendingStartRef = useRef<{
@@ -455,13 +456,38 @@ const DietScreen = (props: any) => {
     (sortFilter && sortFilter !== ALL_VALUE),
   );
 
+  const concernMatch = useMemo(
+    () => ({
+      healthCategoryId: routeHealthCategoryId || null,
+      healthDiseaseId:
+        diseaseFilter?.id || routeHealthDiseaseId || null,
+      categoryName: routeCategoryName || null,
+      diseaseName: diseaseFilter?.name || null,
+      strict: Boolean(
+        routeHealthCategoryId ||
+          routeHealthDiseaseId ||
+          diseaseFilter?.id,
+      ),
+    }),
+    [
+      routeHealthCategoryId,
+      routeHealthDiseaseId,
+      routeCategoryName,
+      diseaseFilter?.id,
+      diseaseFilter?.name,
+    ],
+  );
+
   const visiblePlans = useMemo(() => {
     const minRating =
       ratingFilter && ratingFilter !== ALL_VALUE ? Number(ratingFilter) : 0;
+    const concernScoped = concernMatch.strict
+      ? plans.filter(p => itemMatchesHealthConcern(p, concernMatch))
+      : plans;
     const source =
       Number.isFinite(minRating) && minRating > 0
-        ? plans.filter(p => planRatingValue(p) >= minRating)
-        : plans;
+        ? concernScoped.filter(p => planRatingValue(p) >= minRating)
+        : concernScoped;
 
     const ranked = [...source].sort((a, b) => {
       const rank = (p: any) => {
@@ -485,7 +511,7 @@ const DietScreen = (props: any) => {
       return ranked.filter(p => getDietListStatus(p) === 'paused');
     }
     return ranked;
-  }, [plans, statusTab, ratingFilter, sortFilter]);
+  }, [plans, statusTab, ratingFilter, sortFilter, concernMatch]);
 
   useEffect(() => {
     if (selectedPlanId || loadingList) return;
@@ -510,7 +536,7 @@ const DietScreen = (props: any) => {
     setOpenFilter(null);
   }, []);
 
-  /** Detail / tracking back ‚Üí all diet list (not Home). */
+  /** Detail / tracking back ? all diet list (not Home). */
   const handleBackFromDetail = useCallback(() => {
     setBrowseDetailMode(false);
     clearSelection();
@@ -692,7 +718,7 @@ const DietScreen = (props: any) => {
     [openFilter, filterCatalog.diseases],
   );
 
-  // Soft refresh on focus ‚Äî avoid re-running when isStarted flips (e.g. after repeat)
+  // Soft refresh on focus ó avoid re-running when isStarted flips (e.g. after repeat)
   const refreshRef = useRef(refresh);
   const applyReviewRef = useRef(applyDietPlanReview);
   const selectedPlanIdRef = useRef(selectedPlanId);
@@ -1028,7 +1054,7 @@ const DietScreen = (props: any) => {
     setConfirmModal({
       title: 'Stop this run?',
       subtitle:
-        'Stopping ends this run. To use Repeat later you must Complete the plan first ‚Äî stopped plans use Start again instead.',
+        'Stopping ends this run. To use Repeat later you must Complete the plan first ó stopped plans use Start again instead.',
       confirmText: 'Stop plan',
       action: 'stop',
     });
@@ -1038,7 +1064,7 @@ const DietScreen = (props: any) => {
     setConfirmModal({
       title: 'Reset progress?',
       subtitle:
-        'Ends this run and starts a fresh active assignment from Day 1. Repeat count stays the same (only Complete ‚Üí Repeat increases it).',
+        'Ends this run and starts a fresh active assignment from Day 1. Repeat count stays the same (only Complete ? Repeat increases it).',
       confirmText: 'Reset',
       action: 'reset',
     });
@@ -1141,7 +1167,7 @@ const DietScreen = (props: any) => {
     if (Array.isArray(diseases) && diseases.length) {
       return diseases.map((d: any) => d?.name).filter(Boolean).join(', ');
     }
-    return selectedSummary?.short_description || '‚Äî';
+    return selectedSummary?.short_description || 'ó';
   }, [selectedSummary, planDetail]);
 
   const priceLabel =
@@ -1224,7 +1250,7 @@ const DietScreen = (props: any) => {
     </View>
   );
 
-  // ‚Äî‚Äî LIST ‚Äî‚Äî
+  // óó LIST óó
   if (redirectPlanId) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -1440,7 +1466,7 @@ const DietScreen = (props: any) => {
               loadingMore ? (
                 <View style={styles.listFooter}>
                   <ActivityIndicator color={Colors.primaryColor} />
-                  <Text style={styles.listFooterText}>Loading more‚Ä¶</Text>
+                  <Text style={styles.listFooterText}>Loading moreÖ</Text>
                 </View>
               ) : !hasMore && visiblePlans.length > 0 && statusTab === 'all' ? (
                 <Text style={styles.listEndText}>
@@ -1469,7 +1495,7 @@ const DietScreen = (props: any) => {
                 </Text>
                 <Text style={styles.emptySub}>
                   {statusTab === 'active'
-                    ? 'You don‚Äôt have a diet in progress. Open All and start a plan.'
+                    ? 'You donít have a diet in progress. Open All and start a plan.'
                     : statusTab === 'inactive'
                       ? 'No plans are currently paused.'
                       : hasActiveListFilters
@@ -1488,7 +1514,7 @@ const DietScreen = (props: any) => {
 
   const showDetailView = !isStarted || browseDetailMode;
 
-  // ‚Äî‚Äî DETAIL (catalog info ‚Äî all plans from list) ‚Äî‚Äî
+  // óó DETAIL (catalog info ó all plans from list) óó
   if (showDetailView) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -1585,20 +1611,20 @@ const DietScreen = (props: any) => {
                 </View>
               ) : null}
 
-              {!!diseaseText && diseaseText !== '‚Äî' && (
+              {!!diseaseText && diseaseText !== 'ó' && (
                 <Text style={styles.detailFocus}>Focus: {diseaseText}</Text>
               )}
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Prakriti</Text>
                 <Text style={styles.detailValue}>
-                  {selectedSummary?.prakriti || planDetail?.prakriti || '‚Äî'}
+                  {selectedSummary?.prakriti || planDetail?.prakriti || 'ó'}
                 </Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Season</Text>
                 <Text style={styles.detailValue}>
-                  {selectedSummary?.season || planDetail?.season || '‚Äî'}
+                  {selectedSummary?.season || planDetail?.season || 'ó'}
                 </Text>
               </View>
               <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
@@ -1623,7 +1649,7 @@ const DietScreen = (props: any) => {
             {isCompletedPlan ? (
               <View style={styles.detailSection}>
                 <View style={styles.congratsCard}>
-                  <Text style={styles.congratsEmoji}>üéâ</Text>
+                  <Text style={styles.congratsEmoji}>??</Text>
                   <Text style={styles.congratsTitle}>Plan completed</Text>
                   <Text style={styles.congratsSub}>
                     You finished "
@@ -1660,14 +1686,14 @@ const DietScreen = (props: any) => {
                             <Text style={styles.completeTrackVal}>
                               {typeof value === 'object'
                                 ? JSON.stringify(value)
-                                : String(value ?? '‚Äî')}
+                                : String(value ?? 'ó')}
                             </Text>
                           </View>
                         ))}
                     </View>
                   ) : (
                     <Text style={styles.completeEmptyText}>
-                      Your completed run is saved. Use Repeat below when you‚Äôre
+                      Your completed run is saved. Use Repeat below when youíre
                       ready for another cycle.
                     </Text>
                   )}
@@ -1718,7 +1744,7 @@ const DietScreen = (props: any) => {
                   onStartAgain={onStartPress}
                 />
                 <Text style={styles.startHint}>
-                  Stopped plans can‚Äôt use Repeat. Start again to begin a new
+                  Stopped plans canít use Repeat. Start again to begin a new
                   run, or complete a full plan first to unlock Repeat.
                 </Text>
                 <TouchableOpacity
@@ -1750,8 +1776,8 @@ const DietScreen = (props: any) => {
                 </TouchableOpacity>
                 <Text style={styles.startHint}>
                   {activePlan && String(activePlan.id) !== String(selectedPlanId)
-                    ? `"${activePlan.name}" is active now. Tap above to pause it and start this plan ‚Äî only one diet can be active.`
-                    : 'After starting, you‚Äôll track today‚Äôs meals and nutrition from this plan.'}
+                    ? `"${activePlan.name}" is active now. Tap above to pause it and start this plan ó only one diet can be active.`
+                    : 'After starting, youíll track todayís meals and nutrition from this plan.'}
                 </Text>
               </>
             ) : (
@@ -1767,7 +1793,7 @@ const DietScreen = (props: any) => {
                         String(activePlan.patient_diet_plan_id || '') !==
                         String(patientDietPlanId || '')
                         ? `"${activePlan.name}" is active. Resume will ask to pause it first.`
-                        : 'Status: Paused ‚Äî tap Resume to continue tracking'
+                        : 'Status: Paused ó tap Resume to continue tracking'
                       : listStatus === 'active' && !browseDetailMode
                         ? 'This plan is active. Pause it anytime to start another plan.'
                         : undefined
@@ -1784,7 +1810,7 @@ const DietScreen = (props: any) => {
 
         <CommonModal
           visible={switchModalVisible}
-          icon="‚è∏Ô∏è"
+          icon="??"
           title={
             switchConflict?.mode === 'resume'
               ? 'Pause active plan to resume?'
@@ -1827,7 +1853,7 @@ const DietScreen = (props: any) => {
 
         <CommonModal
           visible={!!confirmModal}
-          icon="‚ÑπÔ∏è"
+          icon="??"
           title={confirmModal?.title || ''}
           subtitle={confirmModal?.subtitle || ''}
           cancelText="Cancel"
@@ -1857,9 +1883,9 @@ const DietScreen = (props: any) => {
     );
   }
 
-  // ‚Äî‚Äî TRACKING (active / started) ‚Äî‚Äî
+  // óó TRACKING (active / started) óó
 
-  // ‚Äî‚Äî ACTIVE TRACKING (original Daily Vitality UI) ‚Äî‚Äî
+  // óó ACTIVE TRACKING (original Daily Vitality UI) óó
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
@@ -1888,7 +1914,7 @@ const DietScreen = (props: any) => {
             <View style={styles.activeBadge}>
               <View style={styles.activeDot} />
               <Text style={styles.activeBadgeText}>
-                Active ¬∑ {planDays.length || mealsByDay.length} days
+                Active ∑ {planDays.length || mealsByDay.length} days
               </Text>
             </View>
             <TouchableOpacity
@@ -2028,7 +2054,7 @@ const DietScreen = (props: any) => {
                           : item.isToday
                             ? 'Today'
                             : item.isCompleted
-                              ? 'Done ‚úì'
+                              ? 'Done ?'
                               : `${item.mealsDone}/${item.mealsTotal || 0}`}
                       </Text>
                       <View style={styles.dayChipTrack}>
@@ -2140,12 +2166,12 @@ const DietScreen = (props: any) => {
 
           {isPlanFullyComplete ? (
             <View style={styles.completeBanner}>
-              <Text style={styles.completeBannerEmoji}>üèÜ</Text>
+              <Text style={styles.completeBannerEmoji}>??</Text>
               <Text style={styles.completeBannerTitle}>
-                All meals tracked ‚Äî amazing!
+                All meals tracked ó amazing!
               </Text>
               <Text style={styles.completeBannerSub}>
-                You‚Äôve finished every meal in this plan. Complete it to save your
+                Youíve finished every meal in this plan. Complete it to save your
                 achievement.
               </Text>
               <TouchableOpacity
@@ -2173,7 +2199,7 @@ const DietScreen = (props: any) => {
                 canComplete={!!isPlanFullyComplete}
                 progressHint={
                   listStatus === 'paused'
-                    ? 'Status: Paused ‚Äî Resume only'
+                    ? 'Status: Paused ó Resume only'
                     : trackingDayLabel
                       ? `Tracking ${trackingDayLabel}`
                       : undefined
@@ -2206,7 +2232,7 @@ const DietScreen = (props: any) => {
             onPress={e => e.stopPropagation?.()}
           >
             <View style={styles.completeModalHeader}>
-              <Text style={styles.completeModalEmoji}>üéâ</Text>
+              <Text style={styles.completeModalEmoji}>??</Text>
               <Text style={styles.completeModalTitle}>Congratulations!</Text>
               <Text style={styles.completeModalSubtitle}>
                 {`You completed "${selectedSummary?.name || planDetail?.name || 'this diet plan'
@@ -2309,7 +2335,7 @@ const DietScreen = (props: any) => {
 
       <CommonModal
         visible={switchModalVisible}
-        icon="‚è∏Ô∏è"
+        icon="??"
         title={
           switchConflict?.mode === 'resume'
             ? 'Pause active plan to resume?'
@@ -2352,7 +2378,7 @@ const DietScreen = (props: any) => {
 
       <CommonModal
         visible={!!confirmModal}
-        icon="‚ÑπÔ∏è"
+        icon="??"
         title={confirmModal?.title || ''}
         subtitle={confirmModal?.subtitle || ''}
         cancelText="Cancel"

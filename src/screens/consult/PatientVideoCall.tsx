@@ -149,6 +149,25 @@ const PatientVideoCallScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (viewMode === 'fullscreen' && isJoined) {
+              minimizeCall();
+              requestAnimationFrame(() => {
+                // @ts-ignore
+                if (navigation.canGoBack?.()) {
+                  navigation.goBack();
+                }
+              });
+              return;
+            }
+            leaveCallAndGoToAppointments();
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <MaterialIcons name="chevron-left" size={28} color="#fff" />
+        </TouchableOpacity>
         {otherPartyImage ? (
           <Image source={{ uri: otherPartyImage }} style={styles.headerAvatar} />
         ) : (
@@ -350,6 +369,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#17171d',
     borderRadius: 16,
     padding: 10,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    backgroundColor: '#2a2a33',
   },
   headerAvatar: {
     width: 46,

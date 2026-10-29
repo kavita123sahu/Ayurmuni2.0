@@ -12,11 +12,11 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { HORIZONTAL_SCROLL_CONTENT, SCREEN_PADDING_H } from '../../constants/layout';
-import { navigateToCategoryProducts } from '../../navigation/productNavigation';
 import { resolveServiceCategoryKey } from '../../utils/serviceCategoryUtils';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -120,7 +120,7 @@ const CategoryTile = ({
 
   return (
     <Pressable onPress={onPress} style={styles.item}>
-      <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>+
+      <Animated.View style={[styles.tile, active && styles.tileActive, animStyle]}>
         {showImage ? (
           <Image
             source={{ uri: imageUri }}
@@ -154,18 +154,21 @@ type Props = {
 const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
   const [activeId, setActiveId] = useState('all');
 
+  useFocusEffect(
+    useCallback(() => {
+      setActiveId('all');
+    }, []),
+  );
+
   const services = useMemo(
     () => (Array.isArray(data) ? data.filter(Boolean) : []),
     [data],
   );
 
-  console.log("servicesservicesservices", services)
   const listData = useMemo(() => [ALL_ITEM, ...services], [services]);
 
   const handlePress = useCallback(
-
     (item: Category) => {
-      console.log("itessssssssssssss", item)
       setActiveId(item.id);
 
       const redirectUrl = item?.redirect_url?.trim();

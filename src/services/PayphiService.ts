@@ -1,10 +1,7 @@
 import { InteractionManager, NativeModules } from 'react-native';
-import { getPayphiCredentials } from '../config/payphiConfig';
+import { getPayphiCredentials } from '../config/thirdParty';
 
-/**
- * ICICI PayPhi — setAppInfo → makePayment → map response → verify-payment.
- * Credentials live in payphiConfig; API `data.icici` overrides when present.
- */
+/** ICICI PayPhi — setAppInfo → makePayment → verify. Creds: config/thirdParty. */
 
 export type PayphiAppInfo = {
   merchantId: string;
@@ -112,13 +109,48 @@ const getSdk = (): any => {
   return cachedSdk;
 };
 
-export const isPayphiNativeLinked = (): boolean =>
-  Boolean(NativeModules?.PayphiSdk);
+export const isPayphiNativeLinked = (): boolean => {
+  if (NativeModules?.PayphiSdk) return true;
+  // Some builds expose the module only after require()
+  try {
+    return Boolean(getSdk()?.makePayment || getSdk()?.setAppInfo);
+  } catch {
+    return false;
+  }
+};
 
 export const getIciciPayload = (data: any): Record<string, any> | null => {
   const icici = data?.icici;
   if (!icici || typeof icici !== 'object' || Array.isArray(icici)) return null;
   return icici;
+};
+
+/**
+ * Razorpay ids look like `order_XXXX` — PayPhi merchantTxnNo must be ≤20 alnum
+ * and must not reuse a Razorpay order id when payment_gateway is icici.
+ */
+export const isRazorpayStyleOrderId = (value?: string): boolean => {
+  const raw = str(value);
+  if (!raw) return false;
+  return /^order_/i.test(raw) || /^order[A-Za-z0-9]{10,}$/i.test(raw);
+};
+
+/** Prefer ICICI merchantTxnNo; skip Razorpay-style gateway_order_id. */
+export const pickPayphiMerchantTxnSource = (data: any): string => {
+  const icici = getIciciPayload(data);
+  const candidates = [
+    icici?.merchantTxnNo,
+    data?.invoice_no,
+    data?.invoiceNo,
+    data?.gateway_order_id,
+  ];
+  for (const value of candidates) {
+    const raw = str(value);
+    if (!raw) continue;
+    if (isRazorpayStyleOrderId(raw)) continue;
+    return raw;
+  }
+  return '';
 };
 
 export const parsePayphiAppInfo = (data: any): PayphiAppInfo | null => {
@@ -163,27 +195,29 @@ export const parsePayphiPaymentRequest = (
   const creds = getPayphiCredentials();
   const merchantId = str(icici.merchantId) || creds.merchantId;
   const merchantTxnNo = normalizePayphiMerchantTxnNo(
-    str(icici.merchantTxnNo) ||
-      str(data?.gateway_order_id) ||
-      str(data?.invoice_no) ||
-      str(data?.invoiceNo),
+    pickPayphiMerchantTxnSource(data),
   );
   const amount = toAmount(
     icici.amount ??
       data?.amount ??
       data?.summary?.total_payable_amount ??
+      data?.summary?.items_after_discount ??
+      data?.prepaid_amount ??
       fallback?.amount,
   );
   const customerEmailID =
     str(icici.customerEmailID) ||
     str(data?.customer_email) ||
-    str(fallback?.customerEmail);
+    str(fallback?.customerEmail) ||
+    'customer@ayurmuni.com';
 
   if (!merchantId || !amount || !customerEmailID) {
     logPayphi('parsePayphiPaymentRequest missing', {
       hasMerchantId: Boolean(merchantId),
       hasAmount: Boolean(amount),
       hasEmail: Boolean(customerEmailID),
+      amountRaw: icici.amount ?? data?.amount ?? fallback?.amount,
+      gateway_order_id: data?.gateway_order_id,
     });
     return null;
   }
@@ -480,8 +514,12 @@ export const isPayphiUserCancelled = (
 };
 
 /**
- * Exact verify-payment body (same 4 keys as Cashfree consult verify):
+ * Exact verify-payment body (same 4 keys as Cashfree):
  *   payment_id, gateway_order_id, gateway_payment_id, gateway_signature
+ *
+ * Backend rejects PayPhi response `secureHash` as gateway_signature
+ * ("Invalid payment signature"). Mirror Cashfree: signature = txn id.
+ * Prefer: gateway_payment_id (txnID) → optional override → merchantTxnNo.
  */
 export const buildIciciVerifyPayload = (args: {
   paymentId: string;
@@ -493,22 +531,40 @@ export const buildIciciVerifyPayload = (args: {
   gateway_order_id: string;
   gateway_payment_id: string;
   gateway_signature: string;
-} => ({
-  payment_id: str(args.paymentId),
-  gateway_order_id: str(args.merchantTxnNo),
-  gateway_payment_id: str(args.gatewayPaymentId),
-  gateway_signature: str(args.gatewaySignature),
-});
+} => {
+  const paymentId = str(args.paymentId);
+  const merchantTxnNo = str(args.merchantTxnNo);
+  const gatewayPaymentId = str(args.gatewayPaymentId) || merchantTxnNo;
+  // Do NOT send PayPhi secureHash — API validates like Cashfree (id as signature)
+  const gatewaySignature = gatewayPaymentId;
+
+  return {
+    payment_id: paymentId,
+    gateway_order_id: merchantTxnNo,
+    gateway_payment_id: gatewayPaymentId,
+    gateway_signature: gatewaySignature,
+  };
+};
 
 export const resolveIciciMerchantTxnNo = (
   paymentData: any,
   sdkGatewayOrderId?: string,
 ): string => {
-  // Backend stores gateway_order_id / merchantTxnNo at book-slot — prefer that.
-  const fromApi = str(
-    paymentData?.gateway_order_id || paymentData?.icici?.merchantTxnNo,
-  ).replace(/[^a-zA-Z0-9]/g, '');
-  if (fromApi) return fromApi.slice(0, 20);
+  // Prefer the txn actually sent to PayPhi (SDK), then ICICI payload.
+  // Never verify with a Razorpay-style `order_*` id when paying via ICICI.
   const fromSdk = str(sdkGatewayOrderId).replace(/[^a-zA-Z0-9]/g, '');
-  return fromSdk.slice(0, 20);
+  if (fromSdk) return fromSdk.slice(0, 20);
+
+  const fromIcici = str(paymentData?.icici?.merchantTxnNo).replace(
+    /[^a-zA-Z0-9]/g,
+    '',
+  );
+  if (fromIcici) return fromIcici.slice(0, 20);
+
+  const fromApi = str(paymentData?.gateway_order_id);
+  if (fromApi && !isRazorpayStyleOrderId(fromApi)) {
+    return fromApi.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+  }
+
+  return '';
 };

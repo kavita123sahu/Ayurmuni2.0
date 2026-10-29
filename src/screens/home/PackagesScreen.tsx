@@ -10,23 +10,30 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import AppHeader from '../../components/AppHeader';
 import TablerIcon from '../../components/TablerIcon';
 import PackagePlanCard from '../../components/packages/PackagePlanCard';
 import PackagePlanDetailSheet from '../../components/packages/PackagePlanDetailSheet';
-import { getDiscountPercent, isCarePlan } from '../../components/packages/packageUi';
+import { isCarePlan } from '../../components/packages/packageUi';
 import { usePackagePlans } from '../../hooks/usePackagePlans';
 import { usePackagePurchase } from '../../hooks/usePackagePurchase';
 import { useActivePlans } from '../../hooks/useActivePlans';
 import PlanTransferConfirmModal from '../../components/packages/PlanTransferConfirmModal';
 import type { PackagePlan } from '../../services/PackageServices';
 import { SCREEN_PADDING_H } from '../../constants/layout';
+import {
+  navigateToCompleteDetails,
+  requireAuth,
+  resolveAccessLikeProfile,
+} from '../../services/guestAuth';
 
 const ALL = 'All';
+const PROFILE_GATE_MESSAGE =
+  'Complete your profile to continue with care plans.';
 
 export default function PackagesScreen(props: any) {
   const { navigation, route } = props;
@@ -42,13 +49,37 @@ export default function PackagesScreen(props: any) {
   const [pendingPlanId, setPendingPlanId] = useState<string | undefined>(
     route?.params?.planId,
   );
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+
+  const refreshProfileStatus = useCallback(async () => {
+    try {
+      const { isComplete } = await resolveAccessLikeProfile();
+      setProfileComplete(isComplete);
+    } catch {
+      setProfileComplete(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfileStatus();
+      refresh();
+    }, [refreshProfileStatus, refresh]),
+  );
 
   useEffect(() => {
-    if (!pendingPlanId || plans.length === 0) return;
+    if (profileComplete === false) {
+      // Incomplete profile: send to Complete Your Profile first
+      navigateToCompleteDetails(PROFILE_GATE_MESSAGE);
+    }
+  }, [profileComplete]);
+
+  useEffect(() => {
+    if (profileComplete !== true || !pendingPlanId || plans.length === 0) return;
     const match = plans.find(plan => plan.id === pendingPlanId);
     if (match) setSelected(match);
     setPendingPlanId(undefined);
-  }, [pendingPlanId, plans]);
+  }, [pendingPlanId, plans, profileComplete]);
 
   const categories = useMemo(() => {
     const names = plans.map(plan => plan.category_name).filter(Boolean);
@@ -56,59 +87,61 @@ export default function PackagesScreen(props: any) {
   }, [plans]);
 
   const visiblePlans = useMemo(() => {
-    const list = category === ALL ? plans : plans.filter(p => p.category_name === category);
-    // Purchasable care plans first so they get the spotlight.
-    return [...list].sort((a, b) => Number(isCarePlan(b)) - Number(isCarePlan(a)));
+    const list =
+      category === ALL ? plans : plans.filter(p => p.category_name === category);
+    return [...list].sort(
+      (a, b) => Number(isCarePlan(b)) - Number(isCarePlan(a)),
+    );
   }, [plans, category]);
 
-  const maxSaving = useMemo(
-    () => plans.reduce((max, plan) => Math.max(max, getDiscountPercent(plan)), 0),
-    [plans],
+  const openPlan = useCallback(
+    async (plan: PackagePlan) => {
+      const ok = await requireAuth(PROFILE_GATE_MESSAGE);
+      if (!ok) {
+        setSelected(null);
+        setProfileComplete(false);
+        return;
+      }
+      setProfileComplete(true);
+      setSelected(plan);
+    },
+    [],
   );
 
   const onCta = useCallback(
-    (plan: PackagePlan) => {
+    async (plan: PackagePlan) => {
       setSelected(null);
+      const ok = await requireAuth(PROFILE_GATE_MESSAGE);
+      if (!ok) {
+        setProfileComplete(false);
+        return;
+      }
+      setProfileComplete(true);
       startPlan(plan);
     },
     [startPlan],
   );
 
-  const header = (
+  const listHeader = (
     <View>
-      <LinearGradient
-        colors={['#0D614E', '#15876C']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        <Text style={styles.heroEyebrow}>AYURVEDIC CARE PLANS</Text>
-        <Text style={styles.heroTitle}>Care that continues{'\n'}beyond one consult</Text>
-        <View style={styles.heroPoints}>
-          {[
-            { icon: 'stethoscope' as const, label: 'Doctor-led' },
-            { icon: 'salad-filled' as const, label: 'Diet guidance' },
-            {
-              icon: 'wallet' as const,
-              label: maxSaving > 0 ? `Save up to ${maxSaving}%` : 'Best value',
-            },
-          ].map(point => (
-            <View key={point.label} style={styles.heroPoint}>
-              <TablerIcon name={point.icon} size={13} color="#FFFFFF" />
-              <Text style={styles.heroPointText}>{point.label}</Text>
-            </View>
-          ))}
-        </View>
+      {profileComplete === false ? (
         <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.myPlansBtn}
-          onPress={() => navigation.navigate('MyPlansScreen')}
+          activeOpacity={0.9}
+          style={styles.profileGate}
+          onPress={() => navigateToCompleteDetails(PROFILE_GATE_MESSAGE)}
         >
-          <TablerIcon name="certificate" size={14} color={Colors.primaryColor} />
-          <Text style={styles.myPlansText}>My Plans</Text>
-          <TablerIcon name="chevron-right" size={14} color={Colors.primaryColor} />
+          <View style={styles.profileGateIcon}>
+            <TablerIcon name="user" size={18} color={Colors.primaryColor} />
+          </View>
+          <View style={styles.profileGateCopy}>
+            <Text style={styles.profileGateTitle}>Complete your profile</Text>
+            <Text style={styles.profileGateSub}>
+              Finish your details to purchase any care plan.
+            </Text>
+          </View>
+          <TablerIcon name="chevron-right" size={18} color={Colors.primaryColor} />
         </TouchableOpacity>
-      </LinearGradient>
+      ) : null}
 
       {categories.length > 2 ? (
         <ScrollView
@@ -125,7 +158,9 @@ export default function PackagesScreen(props: any) {
                 onPress={() => setCategory(name)}
                 style={[styles.chip, active && styles.chipActive]}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{name}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {name}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -141,21 +176,24 @@ export default function PackagesScreen(props: any) {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right','bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <AppHeader title="Care Plans" onLeftPress={() => navigation.goBack()} />
 
       <FlatList
-        data={loading ? [] : visiblePlans}
+        data={visiblePlans}
         keyExtractor={item => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
-        ListHeaderComponent={header}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
+        ListHeaderComponent={listHeader}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => (
           <PackagePlanCard
             plan={item}
-            onPress={setSelected}
-            onPressCta={setSelected}
+            onPress={openPlan}
+            onPressCta={openPlan}
             processing={processingId === item.id}
             owned={ownsPackage(item.id)}
           />
@@ -165,13 +203,16 @@ export default function PackagesScreen(props: any) {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={refresh}
+            onRefresh={() => {
+              void refreshProfileStatus();
+              refresh();
+            }}
             colors={[Colors.primaryColor]}
             tintColor={Colors.primaryColor}
           />
         }
         ListEmptyComponent={
-          loading ? (
+          loading || profileComplete === null ? (
             <View style={styles.center}>
               <ActivityIndicator color={Colors.primaryColor} />
             </View>
@@ -182,14 +223,19 @@ export default function PackagesScreen(props: any) {
                 {error ? 'Could not load plans' : 'No plans available'}
               </Text>
               <Text style={styles.emptySub}>
-                {error ? 'Pull down to try again.' : 'New care plans will appear here soon.'}
+                {error
+                  ? 'Pull down to try again.'
+                  : 'New care plans will appear here soon.'}
               </Text>
             </View>
           )
         }
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator style={styles.footerLoader} color={Colors.primaryColor} />
+            <ActivityIndicator
+              style={styles.footerLoader}
+              color={Colors.primaryColor}
+            />
           ) : null
         }
       />
@@ -220,59 +266,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING_H,
     paddingTop: 8,
   },
-  hero: {
-    borderRadius: 20,
-    padding: 18,
+  profileGate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#EAF8F4',
+    borderWidth: 1,
+    borderColor: '#D7E8E1',
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 14,
   },
-  heroEyebrow: {
-    fontFamily: Fonts.PoppinsSemiBold,
-    fontSize: 10.5,
-    letterSpacing: 1.2,
-    color: '#BFE5D8',
-  },
-  heroTitle: {
-    fontFamily: Fonts.PoppinsBold,
-    fontSize: 20,
-    lineHeight: 27,
-    color: '#FFFFFF',
-    marginTop: 4,
-  },
-  heroPoints: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  heroPoint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+  profileGateIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-  },
-  heroPointText: {
-    fontFamily: Fonts.PoppinsMedium,
-    fontSize: 11,
-    color: '#FFFFFF',
-  },
-  myPlansBtn: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginTop: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  myPlansText: {
+  profileGateCopy: {
+    flex: 1,
+  },
+  profileGateTitle: {
     fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  profileGateSub: {
+    marginTop: 2,
+    fontFamily: Fonts.PoppinsRegular,
     fontSize: 12,
-    color: Colors.primaryColor,
+    color: '#64748B',
+    lineHeight: 17,
   },
   chips: {
     gap: 8,

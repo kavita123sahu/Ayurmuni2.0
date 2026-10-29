@@ -37,7 +37,10 @@ type Props = {
   mode?: 'product' | 'banner';
   /** Disable fullscreen preview (banner default) */
   enablePreview?: boolean;
-  /** Accepted for callers; current layout does not use them. */
+  /**
+   * Product details gallery: width 100% of parent, height from aspect ratio
+   * (no tight max-height). Other screens keep fixed card sizing.
+   */
   fullBleed?: boolean;
   showPreviewChip?: boolean;
 };
@@ -64,27 +67,34 @@ const Detailimages: React.FC<Props> = ({
   autoSlide = true,
   embedded = false,
   mode = 'product',
-
+  fullBleed = false,
   enablePreview,
 }) => {
   const isBanner = mode === 'banner';
-  const resizeMode = DynamicResize ?? (isBanner ? 'cover' : 'cover');
+  const isProductFullBleed = fullBleed && !isBanner;
+  const resizeMode =
+    DynamicResize ?? (isProductFullBleed ? 'contain' : 'cover');
   const allowPreview = enablePreview ?? !isBanner;
 
   const { width: windowWidth } = useWindowDimensions();
   const paddingH = getScreenPaddingH(windowWidth);
   const fallbackWidth = itemWidth ?? getContentWidth(paddingH, windowWidth);
   const [layoutWidth, setLayoutWidth] = useState(0);
-  // Banners always page at full device width so snaps stay edge-to-edge.
-  const finalWidth = isBanner
-    ? Math.round(windowWidth)
+  // Banners / product-detail fullBleed page at full measured (or window) width.
+  const finalWidth = isBanner || isProductFullBleed
+    ? Math.round(layoutWidth > 0 ? layoutWidth : windowWidth)
     : layoutWidth > 0
       ? layoutWidth
       : fallbackWidth;
+  // Product details: loose height from full width × aspectRatio (no 248px   cap).
+  const productAspect = aspectRatio > 0 ? aspectRatio : 1;
   const finalHeight =
-    itemHeight ?? PixelRatio.roundToNearestPixel(finalWidth / aspectRatio);
+    itemHeight ??
+    PixelRatio.roundToNearestPixel(
+      isProductFullBleed ? finalWidth / productAspect : finalWidth / aspectRatio,
+    );
 
-  const slideGap = embedded ? 0 : SPACING;
+  const slideGap = isProductFullBleed || embedded || isBanner ? 0 : SPACING;
   const slideSize = finalWidth + slideGap;
 
   const navigation = useNavigation<any>();
@@ -258,6 +268,7 @@ const Detailimages: React.FC<Props> = ({
         style={[
           styles.slide,
           isBanner && styles.slideBanner,
+          isProductFullBleed && styles.slideFullBleed,
           {
             marginLeft: index === 0 ? 0 : slideGap,
             width: finalWidth,
@@ -276,6 +287,7 @@ const Detailimages: React.FC<Props> = ({
     ),
     [
       isBanner,
+      isProductFullBleed,
       allowPreview,
       handleBannerPress,
       openPreview,
@@ -294,9 +306,11 @@ const Detailimages: React.FC<Props> = ({
         styles.wrapper,
         embedded && styles.wrapperEmbedded,
         isBanner && styles.wrapperBanner,
+        isProductFullBleed && styles.wrapperFullBleed,
+        isProductFullBleed && { height: finalHeight },
       ]}
       onLayout={e => {
-        if (!isBanner) return;
+        if (!isBanner && !isProductFullBleed) return;
         const w = Math.round(e.nativeEvent.layout.width);
         if (w > 0 && w !== layoutWidth) {
           setLayoutWidth(w);
@@ -307,6 +321,7 @@ const Detailimages: React.FC<Props> = ({
         ref={flatListRef}
         data={resolvedImages}
         horizontal
+        style={isProductFullBleed ? { width: '100%', height: finalHeight } : undefined}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(entry, index) => `${entry.uri ?? 'slide'}-${index}`}
         getItemLayout={getItemLayout}
@@ -321,10 +336,12 @@ const Detailimages: React.FC<Props> = ({
         maxToRenderPerBatch={4}
         windowSize={7}
         contentContainerStyle={[
-          embedded ? styles.listContentEmbedded : styles.listContent,
+          embedded || isProductFullBleed
+            ? styles.listContentEmbedded
+            : styles.listContent,
           {
             paddingHorizontal:
-              embedded || isBanner ? 0 : SPACING,
+              embedded || isBanner || isProductFullBleed ? 0 : SPACING,
           },
         ]}
         onMomentumScrollEnd={e => {
@@ -431,6 +448,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 0,
   },
+  wrapperFullBleed: {
+    marginTop: 0,
+    marginBottom: 0,
+    width: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
   listContent: {
     paddingRight: SPACING,
   },
@@ -448,6 +472,12 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  slideFullBleed: {
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
   image: {

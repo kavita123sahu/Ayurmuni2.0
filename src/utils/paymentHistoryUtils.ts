@@ -64,21 +64,42 @@ export const getPaymentHistory = (
   return [];
 };
 
-/** Refund completed for a cancelled / missed appointment — list badge only. */
+export type RefundDisplay = RefundSummary & {
+  label: string;
+  pending?: boolean;
+};
+
+/** Refund paid or initiated for cancelled / missed — list badge. */
 export const getCompletedRefund = (
   appointmentStatus: string | undefined,
   ...sources: any[]
-): RefundSummary | null => {
+): RefundDisplay | null => {
   const status = String(appointmentStatus || '').trim().toLowerCase();
   if (!REFUND_ELIGIBLE_STATUSES.has(status)) return null;
   const history = getPaymentHistory(...sources);
-  const refund = [...history].reverse().find(e => e.status === 'refund_paid');
-  if (!refund) return null;
-  return {
-    amount: refund.amount,
-    at: refund.at,
-    refundId: refund.gateway_refund_id,
-  };
+  const paid = [...history].reverse().find(e => e.status === 'refund_paid');
+  if (paid) {
+    return {
+      amount: paid.amount,
+      at: paid.at,
+      refundId: paid.gateway_refund_id,
+      label: 'Refunded',
+      pending: false,
+    };
+  }
+  const pending = [...history]
+    .reverse()
+    .find(e => e.status === 'refund_pending');
+  if (pending) {
+    return {
+      amount: pending.amount,
+      at: pending.at,
+      refundId: pending.gateway_refund_id,
+      label: 'Refund initiated',
+      pending: true,
+    };
+  }
+  return null;
 };
 
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {

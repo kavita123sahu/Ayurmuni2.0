@@ -279,10 +279,20 @@ export const apiClient = async (
             };
         }
 
+        const payload =
+            data && typeof data === 'object' && !Array.isArray(data)
+                ? data
+                : {};
         return {
-            success: true,
+            ...payload,
+            // Do not let an absent body `success` wipe the HTTP OK signal;
+            // only honor an explicit success:false from the API body.
+            success: payload.success === false ? false : true,
             status: response.status,
-            ...(data || {}),
+            ...(data != null &&
+            (Array.isArray(data) || typeof data !== 'object')
+                ? { data }
+                : {}),
         };
     }
 

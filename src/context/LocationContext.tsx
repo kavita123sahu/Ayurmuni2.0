@@ -88,27 +88,34 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  const fetchLocationFromGps = useCallback(async () => {
-    setLoadingLocation(true);
-    try {
-      const coords = await getCurrentPosition();
-      const address = await reverseGeocode(coords);
-      setCurrentAddress(address);
-      setLocationEnabled(true);
+  const fetchLocationFromGps = useCallback(
+    async (opts?: { setAsDelivery?: boolean }) => {
+      setLoadingLocation(true);
+      try {
+        const coords = await getCurrentPosition();
+        const address = await reverseGeocode(coords);
+        setCurrentAddress(address);
+        setLocationEnabled(true);
 
-      const savedDelivery = await AsyncStorage.getItem(DELIVERY_LOCATION_KEY);
-      if (!savedDelivery) {
-        await setDeliveryLocation(address);
+        if (opts?.setAsDelivery) {
+          await setDeliveryLocation(address);
+        } else {
+          const savedDelivery = await AsyncStorage.getItem(DELIVERY_LOCATION_KEY);
+          if (!savedDelivery) {
+            await setDeliveryLocation(address);
+          }
+        }
+
+        return address;
+      } catch (error) {
+        console.log('GPS_FETCH_ERROR', error);
+        throw error;
+      } finally {
+        setLoadingLocation(false);
       }
-
-      return address;
-    } catch (error) {
-      console.log('GPS_FETCH_ERROR', error);
-      return null;
-    } finally {
-      setLoadingLocation(false);
-    }
-  }, [setDeliveryLocation]);
+    },
+    [setDeliveryLocation],
+  );
 
   const refreshCurrentLocation = useCallback(async () => {
     const hasPermission =
@@ -118,14 +125,24 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
       setLocationEnabled(false);
       return null;
     }
-    return fetchLocationFromGps();
+    try {
+      // Explicit refresh always applies live GPS as the selected delivery address
+      return await fetchLocationFromGps({ setAsDelivery: true });
+    } catch (error) {
+      console.log('REFRESH_CURRENT_LOCATION_ERROR', error);
+      return null;
+    }
   }, [fetchLocationFromGps]);
 
   const requestPermission = useCallback(async () => {
     const granted = await requestLocationPermission();
     setLocationEnabled(granted);
     if (granted) {
-      await fetchLocationFromGps();
+      try {
+        await fetchLocationFromGps({ setAsDelivery: true });
+      } catch {
+        // Permission granted but GPS failed — UI can retry
+      }
     }
     return granted;
   }, [fetchLocationFromGps]);
@@ -144,7 +161,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (granted) {
         setLocationEnabled(true);
         if (!currentAddress) {
-          fetchLocationFromGps();
+          void fetchLocationFromGps().catch(() => undefined);
         }
       }
       setLocationPromptSettled(true);

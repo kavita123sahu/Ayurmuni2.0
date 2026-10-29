@@ -997,8 +997,9 @@ const MyCart = ({ navigation }: any) => {
                                     activeOpacity={0.85}
                                     style={styles.shopNowBtn}
                                     onPress={() =>
-                                        navigation.replace('ProductsScreen', {
-                                            screen: 'Home',
+                                        navigateToCategoryProducts(navigation, {
+                                            categoryMode: 'both',
+                                            categoryName: 'Shop all',
                                         })
                                     }
                                 >

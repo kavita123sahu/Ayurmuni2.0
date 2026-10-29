@@ -29,12 +29,10 @@ export const getOrderFeeQuote = async (payload: {
     body.cod_charges = Number(payload.cod_charges);
   }
 
-  const response = await apiClient('order/fee-quote/', {
+  return apiClient('order/fee-quote/', {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  console.log("orderfessssss", response)
-  return response;
 };
 
 export const place_order_API = async (data: Object) => {
@@ -144,11 +142,9 @@ export const getOrders = async (params?: GetOrdersParams) => {
 
     const path = query.toString() ? `order/?${query.toString()}` : 'order/';
 
-    const response = await apiClient(path, {
+    return apiClient(path, {
       method: 'GET',
     });
-    console.log("getOrders", response)
-    return response;
   } catch (error) {
     throw error;
   }

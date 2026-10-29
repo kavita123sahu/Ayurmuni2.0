@@ -138,19 +138,20 @@ const LocationPickerScreen = () => {
   }, [updateLocation, refreshCurrentLocation, applyParsedAddress]);
 
   useEffect(() => {
-    if (initialCoords) {
+    // Always prefer a fresh GPS fix when opening the picker so the map
+    // does not stick on a previously saved delivery pin.
+    if (initialCoords && !useGpsOnly) {
       setLoading(false);
       if (currentAddress?.zipcode) {
         setPincodeInput(currentAddress.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
       } else if (deliveryLocation?.zipcode) {
-        setPincodeInput(deliveryLocation.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
+        setPincodeInput(
+          deliveryLocation.zipcode.replace(/[^0-9]/g, '').slice(0, 6),
+        );
       }
-      if (useGpsOnly) {
-        loadCurrentLocation();
-      }
-      return;
     }
-    loadCurrentLocation();
+    void loadCurrentLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -329,6 +330,13 @@ const LocationPickerScreen = () => {
           <Text style={styles.recenterText}>Use my current location</Text>
         </TouchableOpacity>
 
+        {!!locationError ? (
+          <View style={styles.errorBanner}>
+            <TablerIcon name="alert-circle" size={16} color="#B45309" />
+            <Text style={styles.errorText}>{locationError}</Text>
+          </View>
+        ) : null}
+
         <Text style={styles.hint}>Move the map — pin stays at center</Text>
 
         <View style={styles.addressCard}>
@@ -461,12 +469,24 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 6,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
   errorText: {
+    flex: 1,
     fontSize: 12,
+    lineHeight: 17,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#DC2626',
-    textAlign: 'center',
-    marginTop: 6,
+    color: '#B45309',
   },
   addressCard: {
     flexDirection: 'row',

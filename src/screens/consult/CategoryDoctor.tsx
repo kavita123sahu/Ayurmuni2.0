@@ -420,8 +420,9 @@ const CategoryDoctor = (props: any) => {
             : {}),
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       });
-      const list = normalizeDietPlanList(res)
-        .map(mapDietPlanForHome)
+      const list = filterByConcern(
+        normalizeDietPlanList(res).map(mapDietPlanForHome),
+      )
         .filter(item => item.id)
         .slice(0, DIET_YOGA_PREVIEW);
       setDietPlans(list);

@@ -66,7 +66,8 @@ const BrandList: React.FC<Props> = ({ data = [] }) => {
           <View style={styles.bottomOverlay}>
             <Text
               style={styles.name}
-              numberOfLines={2}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {item.name}
             </Text>
@@ -131,5 +132,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#FFFFFF',
+    width: '100%',
   },
 });

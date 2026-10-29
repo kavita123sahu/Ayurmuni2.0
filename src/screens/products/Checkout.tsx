@@ -12,8 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { useFocusEffect } from '@react-navigation/native';
-
 import AppHeader from '../../components/AppHeader';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
@@ -118,6 +116,7 @@ const Checkout: React.FC = (props: any) => {
         }
     }, [codAvailable, selectedMethod]);
 
+    // Soft focus refresh (throttled) — avoid force-fetch lag on every return
     const { customerData, refreshCustomer } = useCustomerProfile({
         refreshOnFocus: true,
     });
@@ -152,19 +151,13 @@ const Checkout: React.FC = (props: any) => {
         }
     }, [routeSelectedAddress]);
 
-    useFocusEffect(
-        useCallback(() => {
-            // Always pull fresh profile addresses after Manage Address
-            refreshCustomer(true);
-        }, [refreshCustomer]),
-    );
-
     useEffect(() => {
         const sub = AddressEvents.addListener(ADDRESS_UPDATED, (payload: any) => {
             if (payload?.id) {
                 setSelectedAddress(payload);
             }
-            refreshCustomer(true);
+            // Soft refresh is enough — list already updated via event payload
+            refreshCustomer(false);
         });
         return () => sub.remove();
     }, [refreshCustomer]);
@@ -247,12 +240,10 @@ const Checkout: React.FC = (props: any) => {
         remove: removeCoupon,
     } = useCheckoutCoupons('product', subtotal);
 
-    console.log("couponscouponscouponscouponscouponscoupons", coupons)
     const feeQuoteReqId = useRef(0);
     const feeConfigRef = useRef<FeeQuoteConfig | null>(null);
     feeConfigRef.current = feeConfig;
-
-    console.log('Checkout: feeConfigReffeeConfigRef', feeConfig);
+    const feeQuoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const parseQuoteResponse = useCallback(
         (response: any, couponCode?: string | null) => {
@@ -273,7 +264,6 @@ const Checkout: React.FC = (props: any) => {
 
     const fetchOrderFees = useCallback(async () => {
         if (!cartItemIds.length) {
-            console.warn('[ORDER_FEE] skip — no cart_item_ids');
             setFeeConfig(null);
             setFeeQuoteError(null);
             setFeeQuoteLoading(false);
@@ -281,21 +271,16 @@ const Checkout: React.FC = (props: any) => {
         }
         const reqId = ++feeQuoteReqId.current;
         const couponCode = String(appliedCoupon?.code || '').trim();
-        setFeeQuoteLoading(true);
+        // Keep previous fees on screen while revalidating — feels instant
+        const hadFees = Boolean(feeConfigRef.current);
+        if (!hadFees) {
+            setFeeQuoteLoading(true);
+        }
         setFeeQuoteError(null);
         try {
-            console.warn('[ORDER_FEE] fetch', {
-                cart_item_ids: cartItemIds,
-                coupon_code: couponCode || null,
-            });
             let response = await getOrderFeeQuote({
                 cart_item_ids: cartItemIds,
                 ...(couponCode ? { coupon_code: couponCode } : {}),
-            });
-            console.warn('[ORDER_FEE] response', {
-                success: response?.success,
-                message: response?.message,
-                hasData: Boolean(response?.data),
             });
             if (reqId !== feeQuoteReqId.current) return;
 
@@ -306,10 +291,6 @@ const Checkout: React.FC = (props: any) => {
 
             // Coupon / product mismatch — fall back to base quote without coupon
             if (!parsed && couponCode) {
-                console.warn('[ORDER_FEE] coupon quote failed, retry without coupon', {
-                    message: response?.message,
-                    data: response?.data,
-                });
                 const baseResponse = await getOrderFeeQuote({
                     cart_item_ids: cartItemIds,
                 });
@@ -332,7 +313,6 @@ const Checkout: React.FC = (props: any) => {
                 );
             }
         } catch (error: any) {
-            console.warn('[ORDER_FEE] error', error?.message || error);
             if (reqId !== feeQuoteReqId.current) return;
             if (!feeConfigRef.current) {
                 setFeeConfig(null);
@@ -348,8 +328,21 @@ const Checkout: React.FC = (props: any) => {
         }
     }, [cartItemIdsKey, cartItemIds, appliedCoupon?.code, parseQuoteResponse]);
 
+    // Debounce coupon-driven fee refetches; fetch immediately on first cart load
     useEffect(() => {
-        fetchOrderFees();
+        if (feeQuoteTimerRef.current) {
+            clearTimeout(feeQuoteTimerRef.current);
+            feeQuoteTimerRef.current = null;
+        }
+        const delay = feeConfigRef.current ? 280 : 0;
+        feeQuoteTimerRef.current = setTimeout(() => {
+            fetchOrderFees();
+        }, delay);
+        return () => {
+            if (feeQuoteTimerRef.current) {
+                clearTimeout(feeQuoteTimerRef.current);
+            }
+        };
     }, [fetchOrderFees]);
 
     const feeBreakdown = useMemo(
@@ -368,10 +361,13 @@ const Checkout: React.FC = (props: any) => {
     const codFee = feeBreakdown.cod;
     const total = feeBreakdown.total;
     const isFreeShip = shippingFee === 0;
-    const isLoading = isPlacing || isPaying;
-    // Allow place after fee-quote finishes (even if API failed — local subtotal fallback)
-    const feesReady = Boolean(feeConfig) || (!feeQuoteLoading && cartItemIds.length > 0);
-    const payDisabled = isLoading || feeQuoteLoading;
+    const isLoading = isPlacing || isPaying || isVerifyingPayment;
+    // Allow place when we have fees (or quote failed → local fallback). Don't block
+    // Pay while a background fee revalidation is in flight.
+    const feesReady =
+        Boolean(feeConfig) || (!feeQuoteLoading && cartItemIds.length > 0);
+    const payDisabled =
+        isLoading || (feeQuoteLoading && !feeConfig);
 
     const itemUnits = useMemo(
         () =>
@@ -499,7 +495,8 @@ const Checkout: React.FC = (props: any) => {
     };
 
     const handlePlaceOrder = () => {
-        if (feeQuoteLoading) {
+        // Only block first fee load — background revalidation must not stall COD/Online
+        if (feeQuoteLoading && !feeConfig) {
             return;
         }
         if (!defaultAddress?.id) {

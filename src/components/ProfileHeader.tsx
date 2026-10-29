@@ -28,6 +28,7 @@ import DiseaseSelectionModal from './DiseaseSelectionModal';
 import { getServiceCategoryId } from '../utils/serviceCategoryUtils';
 import { useHomeData } from '../hooks/UseHomeData';
 import { showImagePicker } from '../hooks/ImagePickerUtils';
+import { toTitleCase } from '../utils/textFormat';
 import { uploadImage } from '../hooks/usePatientData';
 import * as ProfileServices from '../services/ProfileServices';
 import { showSuccessToast } from '../config/Key';
@@ -313,7 +314,7 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
                   color={Colors.primaryColor}
                 />
               </View>
-              <Text style={styles.personalTitle}>Health concerns</Text>
+              <Text style={styles.personalTitle}>Health CONCERNS</Text>
             </View>
           </View>
 
@@ -324,7 +325,7 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
                   {diseases.slice(0, 4).map(item => (
                     <View key={item.id} style={styles.concernChip}>
                       <Text style={styles.concernChipText} numberOfLines={1}>
-                        {item.name}
+                        {toTitleCase(item.name)}
                       </Text>
                     </View>
                   ))}

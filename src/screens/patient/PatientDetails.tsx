@@ -254,15 +254,13 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
           />
         </View>
 
-        {/* Patient List Header */}
-        <View style={styles.rowBetween}>
+        {/* <View style={styles.rowBetween}>
           <Text style={Styles.sectionTitle}>PATIENT LIST</Text>
           <TouchableOpacity onPress={handleAddPatient} activeOpacity={0.7}>
             <Text style={Styles.addBtn}>+ Add Patient</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Patient List */}
         <View style={styles.patientListContainer}>
           <FlatList
             data={patients}
@@ -296,7 +294,6 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
           />
         </View>
 
-        {/* Info Box */}
         <View style={styles.infoBox}>
           <View style={styles.iconCircle}>
             <TablerIcon name="bell" size={20} color={Colors.primaryColor} />
@@ -308,12 +305,12 @@ const PatientDetails: React.FC<NavigationProps> = ({ navigation }) => {
               appointments for that profile.
             </Text>
           </View>
-        </View>
+        </View> */}
 
         {/* Delete Account Button */}
 
         {/* Version Text */}
-        <Text style={styles.version}>APP VERSION 1.0</Text>
+        {/* <Text style={styles.version}>APP VERSION 1.0</Text> */}
       </ScrollView>
 
       {/* Delete Patient Modal */}

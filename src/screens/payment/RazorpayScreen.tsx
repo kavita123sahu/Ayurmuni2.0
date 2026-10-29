@@ -678,23 +678,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         currentSlotId: string | number | undefined,
         message: string,
     ) => {
+        // Toast only — do NOT show CustomNotification modal; OneSignal push covers that
         showSuccessToast(message, 'success');
-        try {
-            const { showInAppNotification } = require('../../services/inAppNotificationService');
-            showInAppNotification({
-                title: 'Appointment confirmed',
-                message:
-                    message ||
-                    `Your consultation with ${doctorName} is booked.`,
-                type: 'APPOINTMENT_CONFIRMED',
-                appointment_id:
-                    SlotsDetail?.appointment_id ||
-                    SlotsDetail?.id ||
-                    SlotsDetail?.consultation_id,
-            });
-        } catch {
-            // ignore
-        }
         try {
             const { OneSignal } = require('react-native-onesignal');
             OneSignal.User.pushSubscription.optIn();
@@ -1023,8 +1008,10 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         });
                         await finishIciciVerify({
                             merchantTxnNo: verifyTxnNo,
+                            // Same as Cashfree: signature = txn id (not PayPhi secureHash)
                             gatewayPaymentId: payphiResult.gatewayPaymentId,
-                            gatewaySignature: payphiResult.gatewaySignature,
+                            gatewaySignature:
+                                payphiResult.gatewayPaymentId || verifyTxnNo,
                             pendingMessage:
                                 payphiResult.status === 'pending'
                                     ? payphiResult.message || undefined

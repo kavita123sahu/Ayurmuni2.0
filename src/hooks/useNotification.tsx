@@ -101,6 +101,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as _CONSULT_SERVICE from "../services/ConsultServce";
 import { Entypo, Fontisto } from "../common/Vector";
+import { formatCancellationReasonLabel } from "../components/CancelAppointModal";
 
 export interface NotificationItem {
     id: string;
@@ -168,7 +169,15 @@ const resolveNotificationContent = (item: any) => {
         if (data.doctor_name && !title.includes(data.doctor_name)) {
             parts.push(`Doctor: ${data.doctor_name}`);
         }
-        if (data.reason) parts.push(String(data.reason));
+        // Prefer the patient's cancel reason — skip doctor/reschedule-only fields
+        const userReason =
+            data.cancellation_reason_detail ||
+            data.patient_cancellation_reason ||
+            data.user_reason ||
+            data.cancellation_reason;
+        if (userReason) {
+            parts.push(formatCancellationReasonLabel(String(userReason)));
+        }
         if (data.appointment_date || data.date) {
             parts.push(`Date: ${data.appointment_date ?? data.date}`);
         }
@@ -179,6 +188,15 @@ const resolveNotificationContent = (item: any) => {
         }
     }
 
+    const userReason =
+        data.cancellation_reason_detail ||
+        data.patient_cancellation_reason ||
+        data.user_reason ||
+        data.cancellation_reason;
+    const reasonLabel = userReason
+        ? formatCancellationReasonLabel(String(userReason))
+        : undefined;
+
     return {
         title,
         description,
@@ -186,7 +204,7 @@ const resolveNotificationContent = (item: any) => {
         eventType: formatLabel(item.event_type),
         patientName: data.patient_name,
         doctorName: data.doctor_name,
-        reason: data.reason,
+        reason: reasonLabel,
         appointmentStatus: data.appointment_status,
         appointmentId: data.appointment_id ?? data.id,
     };

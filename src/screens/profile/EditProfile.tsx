@@ -417,6 +417,7 @@ const EditProfile = ({
                                     }
                                 >
                                     First Name
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -454,10 +455,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Last Name
-                                    <Text style={styles.optionalLabel}>
-                                        {' '}
-                                        (optional)
-                                    </Text>
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -495,6 +493,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Email
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -571,6 +570,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Gender
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -645,6 +645,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Date of Birth
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <TouchableOpacity
@@ -893,6 +894,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsRegular,
+    },
+
+    requiredMark: {
+        color: '#EF4444',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     inputContainer: {

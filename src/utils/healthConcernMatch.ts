@@ -81,7 +81,8 @@ export const itemMatchesHealthConcern = (
     return true;
   }
 
-  // If API already filtered and item has no health metadata, keep it.
+  // If API already filtered and item has no health metadata, keep it —
+  // unless strict (concern selected): then exclude untagged rows.
   const hasHealthMeta =
     ids.size > 0 ||
     names.size > 0 ||
@@ -90,6 +91,6 @@ export const itemMatchesHealthConcern = (
     Array.isArray(item?.health_diseases) ||
     Array.isArray(item?.health_categories);
 
-  // Prefer showing API-scoped rows even when metadata tags are missing
+  if (opts.strict) return false;
   return !hasHealthMeta;
 };
