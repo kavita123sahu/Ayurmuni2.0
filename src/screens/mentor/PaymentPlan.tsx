@@ -17,8 +17,6 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
         { id: "9", title: "9 Months", monthlyAmount: 205, sub: "15% p.a.", recommended: false },
     ];
 
-
-
     return (
         <SafeAreaView style={{ flex: 1 , backgroundColor :"#FFFFFF"}}>
 
@@ -40,12 +38,10 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
                 <Text style={styles.heading}>Select EMI Tenure</Text>
                 <Text style={styles.subheading}>Choose a plan that fits your recovery journey.</Text>
 
-
                 {plans.map((item) => {
                     const active = selected === item.id;
 
                     return (
-
 
                         <TouchableOpacity
                             activeOpacity={0.8}
@@ -114,7 +110,6 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
                         your bank's policy.</Text>
                 </TouchableOpacity>
 
-
                 <View style={styles.footer} >
                     <TouchableOpacity style={styles.confirmBtn} onPress={() => { navigation.navigate('MentorOrder') }}>
                         <Text style={{ color: "#fff", padding: 5, fontSize: 16, fontFamily: Fonts.PoppinsSemiBold }}>Confirm Plan</Text>
@@ -124,13 +119,11 @@ const PaymentPlan = ({ onClose, navigation }: any) => {
                 </View>
             </ScrollView>
 
-
         </SafeAreaView>
     );
 };
 
 export default PaymentPlan;
-
 
 const styles = StyleSheet.create({
 
@@ -148,8 +141,6 @@ const styles = StyleSheet.create({
         backgroundColor: "#fff",
     },
 
-
-
     // 🔹 Amount Section
     label: {
         textAlign: "center",
@@ -166,7 +157,6 @@ const styles = StyleSheet.create({
         color: "#0B6E4F",
         // marginVertical: 6,
     },
-
 
     badgeContainer: {
         flexDirection: 'row',
@@ -234,7 +224,6 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 20,
     },
-
 
     row: {
         flexDirection: "row",
@@ -312,16 +301,10 @@ const styles = StyleSheet.create({
 
     // 🔹 Footer
     footer: {
-        // position: "absolute",
-        // bottom: 0,
-        // left: 0,
-        // right: 0,
-        // padding: 16,
 
         marginTop: 25,
         backgroundColor: "#fff",
     },
-
 
     conversion: {
         backgroundColor: "#9FF2E14D",

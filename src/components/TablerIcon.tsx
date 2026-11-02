@@ -42,6 +42,7 @@ import IconCheck from '@tabler/icons-react-native/IconCheck';
 import IconTrash from '@tabler/icons-react-native/IconTrash';
 import IconFilter from '@tabler/icons-react-native/IconFilter';
 import IconShare from '@tabler/icons-react-native/IconShare';
+import IconCopy from '@tabler/icons-react-native/IconCopy';
 import IconClock from '@tabler/icons-react-native/IconClock';
 import IconCalendar from '@tabler/icons-react-native/IconCalendar';
 import IconPhone from '@tabler/icons-react-native/IconPhone';
@@ -162,6 +163,7 @@ const ICON_MAP = {
   trash: IconTrash,
   filter: IconFilter,
   share: IconShare,
+  copy: IconCopy,
   clock: IconClock,
   calendar: IconCalendar,
   phone: IconPhone,

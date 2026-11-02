@@ -30,8 +30,11 @@ import {
   getDoList,
   getDontList,
   getFamilyHistoryText,
+  getPersonalHistoryLines,
+  getGynaecologicalLines,
   getFollowUpInfo,
   getMedicineItems,
+  mergeMedicineItems,
   getMedicineScheduleChips,
   getPastIllnessText,
   getPaymentAmount,
@@ -48,13 +51,6 @@ import { RupeeAmount } from '../../utils/currencyUtils';
 import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
 import { createPrescriptionPdfBytes } from '../../utils/buildConsultationDocumentPdf';
 import { createPlainTextPdfBytes } from '../../utils/pdfPlainTextFallback';
-
-// if (
-//   Platform.OS === 'android' &&
-//   UIManager.setLayoutAnimationEnabledExperimental
-// ) {
-//   UIManager.setLayoutAnimationEnabledExperimental(true);
-// }
 
 const C = {
   primary: Colors.primaryColor,
@@ -172,14 +168,11 @@ const ExpandableList = ({
           />
         </View>
         <Text style={[styles.adviceTitle, { color: accent }]}>{title}</Text>
-        <Text style={styles.adviceCount}>{items.length}</Text>
       </View>
 
       {shown.map((item, index) => (
         <View key={`${title}-${index}`} style={styles.adviceItem}>
-          <Text style={[styles.adviceIndex, { color: accent }]}>
-            {index + 1}.
-          </Text>
+          <View style={[styles.adviceBullet, { backgroundColor: accent }]} />
           <Text style={styles.adviceText}>{item}</Text>
         </View>
       ))}
@@ -215,10 +208,10 @@ const PrescriptionDetail = (props: any) => {
 
   const lookupId = String(
     params.appointment_id ||
-      params.consultation_id ||
-      params.PrisData?.appointment_id ||
-      params.PrisData?.consultation_id ||
-      '',
+    params.consultation_id ||
+    params.PrisData?.appointment_id ||
+    params.PrisData?.consultation_id ||
+    '',
   ).trim();
 
   const [loading, setLoading] = useState(true);
@@ -226,9 +219,9 @@ const PrescriptionDetail = (props: any) => {
   const [payload, setPayload] = useState<any>(
     params.PrisData
       ? {
-          ...params.PrisData,
-          doctor: params.doctorData || params.PrisData?.doctor,
-        }
+        ...params.PrisData,
+        doctor: params.doctorData || params.PrisData?.doctor,
+      }
       : null,
   );
   const hasSeedData = useMemo(
@@ -298,21 +291,23 @@ const PrescriptionDetail = (props: any) => {
   const diagnosisText = getDiagnosisText(prescription);
   const prescriptionCode = formatPrescriptionId(
     prescription?.prescription_code ||
-      prescription?.id ||
-      normalized.prescriptionId,
+    prescription?.id ||
+    normalized.prescriptionId,
   );
   const symptomText = getSymptomDescription(prescription);
   const allergies = getAllergiesList(prescription);
   const pastIllnessText = getPastIllnessText(prescription);
   const familyHistoryText = getFamilyHistoryText(prescription);
+  const personalHistory = getPersonalHistoryLines(prescription);
+  const gynaecological = getGynaecologicalLines(prescription);
   const followUp = getFollowUpInfo(prescription, appointment);
 
   const paymentStatus = String(
     payload?.payment?.status ||
-      payload?.payment?.payment_status ||
-      appointment?.payment?.status ||
-      appointment?.payment?.payment_status ||
-      '',
+    payload?.payment?.payment_status ||
+    appointment?.payment?.status ||
+    appointment?.payment?.payment_status ||
+    '',
   ).trim();
 
   const doctorPhone =
@@ -328,10 +323,10 @@ const PrescriptionDetail = (props: any) => {
   const specialization = Array.isArray(doctor?.doctor_specialization)
     ? doctor.doctor_specialization.filter(Boolean).join(', ')
     : doctor?.doctor_specialization ||
-      doctor?.specialization ||
-      doctor?.speciality ||
-      diseaseTags.slice(0, 2).join(' · ') ||
-      '';
+    doctor?.specialization ||
+    doctor?.speciality ||
+    diseaseTags.slice(0, 2).join(' · ') ||
+    '';
 
   const patientLine = [
     patient?.age != null ? `${patient.age} yrs` : '',
@@ -347,8 +342,8 @@ const PrescriptionDetail = (props: any) => {
       : '',
     appointment?.start_time && appointment?.end_time
       ? `${String(appointment.start_time).slice(0, 5)}–${String(
-          appointment.end_time,
-        ).slice(0, 5)}`
+        appointment.end_time,
+      ).slice(0, 5)}`
       : '',
   ]
     .filter(Boolean)
@@ -436,15 +431,24 @@ const PrescriptionDetail = (props: any) => {
 
       const code = formatPrescriptionId(
         response.prescriptionData?.prescription_code ||
-          prescription?.prescription_code ||
-          prescriptionId,
+        prescription?.prescription_code ||
+        prescriptionId,
       ).replace(/[^a-zA-Z0-9._-]/g, '_');
 
       if (response.prescriptionData) {
         const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+        const downloadRx =
+          response.prescriptionData.prescription ?? response.prescriptionData;
+        const screenRx = prescription ?? {};
+        console.log('PRESCRIPTION_PDF_DOWNLOAD_ITEMS =>', JSON.stringify(getMedicineItems(downloadRx)));
+        console.log('PRESCRIPTION_PDF_SCREEN_ITEMS =>', JSON.stringify(getMedicineItems(screenRx)));
         const mergedPayload = {
           ...(payload ?? {}),
           ...response.prescriptionData,
+          payment:
+            response.prescriptionData.payment ??
+            payload?.payment ??
+            payload?.appointment?.payment,
           doctor:
             response.prescriptionData.doctor ??
             payload?.doctor ??
@@ -455,9 +459,14 @@ const PrescriptionDetail = (props: any) => {
             payload?.appointment?.patient,
           appointment:
             response.prescriptionData.appointment ?? payload?.appointment,
-          prescription:
-            response.prescriptionData.prescription ??
-            response.prescriptionData,
+          prescription: {
+            ...screenRx,
+            ...downloadRx,
+            items: mergeMedicineItems(
+              getMedicineItems(downloadRx),
+              getMedicineItems(screenRx),
+            ),
+          },
           diets:
             response.prescriptionData.diets ??
             payload?.diets ??
@@ -510,11 +519,7 @@ const PrescriptionDetail = (props: any) => {
 
   const stickyPad = Math.max(insets.bottom, 12);
 
-  const presentingComplaint =
-    concernText &&
-    concernText.toLowerCase() !== symptomText.toLowerCase()
-      ? concernText
-      : '';
+  const presentingComplaint = getSymptomDescription(prescription);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -670,57 +675,60 @@ const PrescriptionDetail = (props: any) => {
               !!clinicalNotes ||
               allergies.length > 0 ||
               !!pastIllnessText ||
-              !!familyHistoryText) && (
-              <View style={styles.card}>
-                <SectionLabel
-                  title="Clinical findings"
-                  icon="stethoscope"
-                />
-                {!!presentingComplaint && (
-                  <FindingRow
-                    icon="clipboard-list"
-                    label="Chief complaint"
-                    value={presentingComplaint}
+              !!familyHistoryText ||
+              personalHistory.length > 0 ||
+              gynaecological.length > 0) && (
+                <View style={styles.card}>
+                  <SectionLabel
+                    title="Clinical findings"
+                    icon="stethoscope"
                   />
-                )}
-                {!!symptomText && (
-                  <FindingRow
-                    icon="notes"
-                    label="Symptoms"
-                    value={symptomText}
-                  />
-                )}
-                {!!clinicalNotes && (
-                  <FindingRow
-                    icon="file-medical"
-                    label="Examination"
-                    value={clinicalNotes}
-                  />
-                )}
-                {allergies.length > 0 && (
-                  <FindingRow
-                    icon="alert-circle"
-                    label="Allergies"
-                    value={allergies.join(', ')}
-                    alert
-                  />
-                )}
-                {!!pastIllnessText && (
-                  <FindingRow
-                    icon="history"
-                    label="Past illness"
-                    value={pastIllnessText}
-                  />
-                )}
-                {!!familyHistoryText && (
-                  <FindingRow
-                    icon="users"
-                    label="Family history"
-                    value={familyHistoryText}
-                  />
-                )}
-              </View>
-            )}
+                  {!!presentingComplaint && (
+                    <FindingRow
+                      icon="clipboard-list"
+                      label="Chief complaint"
+                      value={presentingComplaint}
+                    />
+                  )}
+
+                  {allergies.length > 0 && (
+                    <FindingRow
+                      icon="alert-circle"
+                      label="Allergies"
+                      value={allergies.join(', ')}
+                      alert
+                    />
+                  )}
+                  {!!pastIllnessText && (
+                    <FindingRow
+                      icon="history"
+                      label="Past illness"
+                      value={pastIllnessText}
+                    />
+                  )}
+                  {!!familyHistoryText && (
+                    <FindingRow
+                      icon="users"
+                      label="Family history"
+                      value={familyHistoryText}
+                    />
+                  )}
+                  {personalHistory.length > 0 && (
+                    <FindingRow
+                      icon="user"
+                      label="Personal history"
+                      value={personalHistory.join('\n')}
+                    />
+                  )}
+                  {gynaecological.length > 0 && (
+                    <FindingRow
+                      icon="heart"
+                      label="Gynaecological history"
+                      value={gynaecological.join('\n')}
+                    />
+                  )}
+                </View>
+              )}
 
             {/* Diagnosis */}
             {!!diagnosisText && (
@@ -740,7 +748,6 @@ const PrescriptionDetail = (props: any) => {
               <SectionLabel
                 title="Prescribed medicines"
                 icon="pill"
-                badge={medicines.length ? String(medicines.length) : undefined}
               />
               {medicines.length === 0 ? (
                 <Text style={styles.emptySection}>No medicines prescribed</Text>
@@ -755,7 +762,7 @@ const PrescriptionDetail = (props: any) => {
                   const showSub =
                     !!subtitle &&
                     String(subtitle).toLowerCase() !==
-                      String(medicine?.medicine_name || '').toLowerCase();
+                    String(medicine?.medicine_name || '').toLowerCase();
 
                   return (
                     <View
@@ -765,9 +772,6 @@ const PrescriptionDetail = (props: any) => {
                         index === medicines.length - 1 && styles.medItemLast,
                       ]}
                     >
-                      <View style={styles.medIndex}>
-                        <Text style={styles.medIndexText}>{index + 1}</Text>
-                      </View>
                       <View style={styles.medBody}>
                         <Text style={styles.medName}>
                           {medicine?.medicine_name ||
@@ -891,26 +895,26 @@ const PrescriptionDetail = (props: any) => {
             )}
 
             {/* Follow-up */}
-            {followUp.hasContent && (
-              <View style={styles.followCard}>
-                <View style={styles.followIcon}>
-                  <TablerIcon name="calendar" size={18} color={C.primary} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.followEyebrow}>
-                    {followUp.schedule
-                      ? 'Follow-up scheduled'
-                      : 'Follow-up advised'}
-                  </Text>
-                  <Text style={styles.followDate}>
-                    {followUp.dateLabel || 'Date to be confirmed'}
-                  </Text>
-                  {!!followUp.reason && (
-                    <Text style={styles.followReason}>{followUp.reason}</Text>
-                  )}
-                </View>
+            <View style={styles.followCard}>
+              <View style={styles.followIcon}>
+                <TablerIcon name="calendar" size={18} color={C.primary} />
               </View>
-            )}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.followEyebrow}>
+                  {followUp.dateLabel
+                    ? followUp.schedule
+                      ? 'Follow-up scheduled'
+                      : 'Follow-up advised'
+                    : 'Follow-up'}
+                </Text>
+                <Text style={styles.followDate}>
+                  {followUp.dateLabel || 'No follow-up given'}
+                </Text>
+                {!!followUp.reason && (
+                  <Text style={styles.followReason}>{followUp.reason}</Text>
+                )}
+              </View>
+            </View>
 
             {/* Help / contact */}
             <View style={styles.helpCard}>
@@ -1519,11 +1523,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     gap: 6,
   },
-  adviceIndex: {
-    width: 18,
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginTop: 1,
+  adviceBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 7,
   },
   adviceText: {
     flex: 1,

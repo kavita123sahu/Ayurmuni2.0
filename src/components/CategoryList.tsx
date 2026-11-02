@@ -33,15 +33,16 @@ interface Category {
   description?: string;
   subscription?: string;
   symptoms?: string[];
-  image_url: any;
+  image_url: string | null | undefined;
   service_category_name?: string;
   _homeLoopKey?: string;
 }
-
-const getTileSource = (imageUrl: any): ImageSourcePropType =>
+const getTileSource = (
+  imageUrl: string | null | undefined,
+): ImageSourcePropType | null =>
   imageUrl && typeof imageUrl === 'string'
     ? { uri: imageUrl }
-    : Images.cardiology;
+    : null;
 
 const TileCard = ({
   name,
@@ -50,7 +51,7 @@ const TileCard = ({
   circleSize,
 }: {
   name: string;
-  imageUrl: any;
+  imageUrl: string | null | undefined;
   textStyle: any;
   circleSize: number;
 }) => {
@@ -68,14 +69,28 @@ const TileCard = ({
           },
         ]}
       >
-        <Image
-          source={source}
-          style={[
-            styles.cardImage,
-            { width: circleSize, height: circleSize },
-          ]}
-          resizeMode="contain"
-        />
+        
+{source ? (
+  <Image
+    source={source}
+    style={[
+      styles.cardImage,
+      { width: circleSize, height: circleSize },
+    ]}
+    resizeMode="contain"
+  />
+) : (
+  <View
+    style={[
+      styles.cardImage,
+      {
+        width: circleSize,
+        height: circleSize,
+      },
+    ]}
+  />
+)}
+
       </View>
 
       <Text

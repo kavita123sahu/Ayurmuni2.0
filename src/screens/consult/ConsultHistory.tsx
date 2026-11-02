@@ -2,6 +2,7 @@ import React, {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
 
@@ -11,8 +12,8 @@ import {
     FlatList,
     StatusBar,
     RefreshControl,
-    TouchableOpacity,
     Text,
+    ActivityIndicator,
 } from 'react-native';
 
 import {
@@ -29,7 +30,6 @@ import Header from '../../components/Header';
 import { ExpandableSearch } from '../../components/SearchBar';
 import AppointmentCard, { Appointment } from '../../components/AppointmnetCard';
 import SegmentTabs from '../../components/SegmentTabs';
-import TablerIcon from '../../components/TablerIcon';
 
 import {
     getConsultHistory,
@@ -58,79 +58,129 @@ const TABS = [
 
 type Tab = (typeof TABS)[number]['key'];
 
+const PAGE_SIZE = 20;
+
 const ConsultHistory = (props: any) => {
     const navigation = useNavigation<any>();
     const [searchText, setSearchText] = useState('');
     const [searchExpanded, setSearchExpanded] = useState(false);
     const debouncedSearch = useDebounce(searchText, 400);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>('all');
-    const [history, setHistory] = useState([]);
-    const historyLenRef = React.useRef(0);
+    const [history, setHistory] = useState<any[]>([]);
+    const [hasMore, setHasMore] = useState(true);
 
-    // Pagination state: show 5 items per page
-    const [page, setPage] = useState(0);
-    const PAGE_SIZE = 5;
+    const historyLenRef = useRef(0);
+    const pageRef = useRef(1);
+    const hasMoreRef = useRef(true);
+    const loadingMoreRef = useRef(false);
 
     useEffect(() => {
         historyLenRef.current = history.length;
     }, [history.length]);
 
-    const fetchConsultHistory = useCallback(async (period: Tab, isRefresh = false) => {
-        try {
-            if (!isRefresh) {
-                setLoading(historyLenRef.current === 0);
+    const fetchConsultHistory = useCallback(
+        async (period: Tab, pageNo = 1, opts?: { refresh?: boolean; loadMore?: boolean }) => {
+            const isRefresh = !!opts?.refresh;
+            const isLoadMore = !!opts?.loadMore;
+
+            try {
+                if (isLoadMore) {
+                    if (loadingMoreRef.current || !hasMoreRef.current) {
+                        return;
+                    }
+                    loadingMoreRef.current = true;
+                    setLoadingMore(true);
+                } else if (!isRefresh) {
+                    setLoading(historyLenRef.current === 0);
+                }
+
+                const response = await getConsultHistory({
+                    period,
+                    page: pageNo,
+                    page_size: PAGE_SIZE,
+                });
+
+                const results = response?.data?.results || [];
+                const nextExists = !!response?.data?.next;
+                const canLoadMore = nextExists && results.length > 0;
+
+                setHistory(prev => (isLoadMore ? [...prev, ...results] : results));
+                pageRef.current = pageNo;
+                hasMoreRef.current = canLoadMore;
+                setHasMore(canLoadMore);
+            } catch (error) {
+                console.log('CONSULT HISTORY ERROR => ', error);
+                if (!isLoadMore) {
+                    setHistory([]);
+                    hasMoreRef.current = false;
+                    setHasMore(false);
+                }
+            } finally {
+                setLoading(false);
+                setRefreshing(false);
+                setLoadingMore(false);
+                loadingMoreRef.current = false;
             }
-            const response = await getConsultHistory({ period });
-            setHistory(response?.data?.results || []);
-        } catch (error) {
-            console.log('CONSULT HISTORY ERROR => ', error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchConsultHistory(activeTab, true);
+        pageRef.current = 1;
+        hasMoreRef.current = true;
+        setHasMore(true);
+        fetchConsultHistory(activeTab, 1, { refresh: true });
     }, [activeTab, fetchConsultHistory]);
 
-    const filteredHistory = useMemo(() => {
-        const keyword = debouncedSearch.trim().toLowerCase();
-        if (!keyword) return history || [];
+    const onLoadMore = useCallback(() => {
+        if (loadingMoreRef.current || !hasMoreRef.current || loading) {
+            return;
+        }
+        fetchConsultHistory(activeTab, pageRef.current + 1, { loadMore: true });
+    }, [activeTab, fetchConsultHistory, loading]);
 
-        return (history || []).filter((item: any) => {
+    const filteredHistory = useMemo(() => {
+        // Hide internal / unfinished statuses from patient history.
+        const HIDDEN = new Set(['testing', 'test', 'draft']);
+        const base = (history || []).filter((item: any) => {
+            const status = String(
+                item?.status || item?.appointment_status || '',
+            )
+                .toLowerCase()
+                .trim();
+            return !HIDDEN.has(status);
+        });
+
+        // Clear must apply immediately — don't wait for debounce
+        const keyword = (
+          searchText.trim() === '' ? '' : debouncedSearch
+        )
+          .trim()
+          .toLowerCase();
+        if (!keyword) return base;
+
+        return base.filter((item: any) => {
             const doctorName = item?.doctor?.doctor_name?.toLowerCase?.() || '';
             const concern = item?.concern?.toLowerCase?.() || '';
-            const status = String(item?.status || '').toLowerCase();
+            const status = String(item?.status || item?.appointment_status || '').toLowerCase();
             return (
                 doctorName.includes(keyword) ||
                 concern.includes(keyword) ||
                 status.includes(keyword)
             );
         });
-    }, [history, debouncedSearch]);
-
-    // Derived pagination values — always 5 items per page
-    const totalPages = Math.max(1, Math.ceil((filteredHistory?.length || 0) / PAGE_SIZE));
+    }, [history, debouncedSearch, searchText]);
 
     useEffect(() => {
-        setPage(0);
-    }, [activeTab, debouncedSearch]);
-
-    useEffect(() => {
-        if (page >= totalPages) setPage(Math.max(0, totalPages - 1));
-    }, [filteredHistory.length, page, totalPages]);
-
-    const pagedData = useMemo(() => {
-        const start = page * PAGE_SIZE;
-        return (filteredHistory || []).slice(start, start + PAGE_SIZE);
-    }, [filteredHistory, page]);
-
-    useEffect(() => {
-        fetchConsultHistory(activeTab);
+        pageRef.current = 1;
+        hasMoreRef.current = true;
+        setHasMore(true);
+        setHistory([]);
+        fetchConsultHistory(activeTab, 1);
     }, [activeTab, fetchConsultHistory]);
 
     const handleAction = (actionKey: ActionKey, item: Appointment) => {
@@ -223,37 +273,8 @@ const ConsultHistory = (props: any) => {
                     }
                 />
             ) : (
-                <>
-                  {/* Pagination — 5 records per page */}
-                  {totalPages > 1 ? (
-                  <View style={styles.paginationRow}>
-                    <TouchableOpacity
-                      disabled={page <= 0}
-                      onPress={() => setPage(p => Math.max(0, p - 1))}
-                      style={[styles.pageBtn, page <= 0 && styles.pageBtnDisabled]}
-                    >
-                      <TablerIcon name="chevron-left" size={16} color={Colors.primaryColor} />
-                    </TouchableOpacity>
-
-                    <Text style={styles.pageLabel}>
-                      {`Page ${page + 1} of ${totalPages}`}
-                    </Text>
-
-                    <TouchableOpacity
-                      disabled={page >= totalPages - 1}
-                      onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                      style={[
-                        styles.pageBtn,
-                        page >= totalPages - 1 && styles.pageBtnDisabled,
-                      ]}
-                    >
-                      <TablerIcon name="chevron-right" size={16} color={Colors.primaryColor} />
-                    </TouchableOpacity>
-                  </View>
-                  ) : null}
-
-                  <FlatList
-                    data={pagedData}
+                <FlatList
+                    data={filteredHistory}
                     renderItem={renderItem}
                     keyExtractor={(item, index) =>
                         String(
@@ -264,6 +285,8 @@ const ConsultHistory = (props: any) => {
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    onEndReached={onLoadMore}
+                    onEndReachedThreshold={0.4}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -272,8 +295,21 @@ const ConsultHistory = (props: any) => {
                             tintColor={Colors.primaryColor}
                         />
                     }
-                  />
-                </>
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <View style={styles.footerLoader}>
+                                <ActivityIndicator
+                                    size="small"
+                                    color={Colors.primaryColor}
+                                />
+                            </View>
+                        ) : hasMore ? (
+                            <Text style={styles.footerHint}>Scroll for more</Text>
+                        ) : history.length > PAGE_SIZE ? (
+                            <Text style={styles.footerHint}>You're all caught up</Text>
+                        ) : null
+                    }
+                />
             )}
         </SafeAreaView>
     );
@@ -288,41 +324,28 @@ const styles = StyleSheet.create({
         paddingHorizontal: getScreenPaddingH(),
     },
     filtersBlock: {
-        marginTop: 4,
-        marginBottom: 8,
-        gap: 8,
+        marginTop: 2,
+        marginBottom: 4,
+        gap: 6,
     },
     tabs: {
         marginTop: 0,
         marginBottom: 0,
     },
     listContent: {
-        gap: SPACING.md,
+        gap: SPACING.sm,
         paddingBottom: SPACING.xxl,
-        paddingTop: SPACING.xs,
+        paddingTop: 4,
     },
-    paginationRow: {
-        flexDirection: 'row',
+    footerLoader: {
+        paddingVertical: 16,
         alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 8,
-        marginBottom: 8,
     },
-    pageBtn: {
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 8,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    pageBtnDisabled: {
-        opacity: 0.45,
-    },
-    pageLabel: {
-        fontSize: 13,
-        color: '#64748B',
+    footerHint: {
+        textAlign: 'center',
+        paddingVertical: 12,
+        fontSize: 12,
+        color: '#94A3B8',
         fontFamily: Fonts.PoppinsMedium,
-        paddingHorizontal: 4,
     },
 });

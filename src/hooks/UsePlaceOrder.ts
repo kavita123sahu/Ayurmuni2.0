@@ -52,7 +52,7 @@ export const usePlaceOrder = () => {
           cartItems,
           shipping_charges: config.shipping_charges,
           cod_charges: config.cod_charges,
-          shipping_method: config.shipping_method ?? 'STD',
+          shipping_method: config.shipping_method ,
           prepaid_amount: prepaidAmount,
           coupon_code: config.coupon_code,
         })
@@ -61,7 +61,7 @@ export const usePlaceOrder = () => {
           cartItems,
           shipping_charges: config.shipping_charges,
           cod_charges: 0,
-          shipping_method: config.shipping_method ?? 'STD',
+          shipping_method: config.shipping_method ,
           prepaid_amount: prepaidAmount,
           coupon_code: config.coupon_code,
         });
@@ -74,16 +74,16 @@ export const usePlaceOrder = () => {
         if (!response?.success) {
           setOrderError(
             formatOrderStockError(response?.message) ||
-              response?.message ||
-              'Order placement failed',
+            response?.message ||
+            'Order placement failed',
           );
         }
         return response;
       } catch (err: any) {
         setOrderError(
           formatOrderStockError(err?.message) ||
-            err?.message ||
-            'Order placement failed',
+          err?.message ||
+          'Order placement failed',
         );
         return null;
       } finally {

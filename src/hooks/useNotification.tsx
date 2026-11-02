@@ -1,95 +1,3 @@
-// import { useCallback, useEffect, useState } from "react";
-// import * as _CONSULT_SERVICE from "../services/ConsultServce";
-// import { Entypo, Fontisto } from "../common/Vector";
-
-// export interface NotificationItem {
-//     id: string;
-
-//     title: string;
-
-//     description: string;
-
-//     time: string;
-
-//     createdAt: string;
-
-//     icon: React.ReactNode;
-
-//     iconBg: string;
-
-//     type: string;
-
-//     section: string;
-
-//     is_read: boolean;
-
-//     rawData: any;
-// }
-
-// const getTimeAgo = (date: string) => {
-//     const now = new Date();
-//     const created = new Date(date);
-
-//     const diff = Math.floor((now.getTime() - created.getTime()) / 1000);
-
-//     if (diff < 60) return "Just now";
-//     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-//     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-
-//     return `${Math.floor(diff / 86400)}d ago`;
-// };
-
-// const getSection = (date: string) => {
-//     const created = new Date(date);
-//     const today = new Date();
-
-//     if (created.toDateString() === today.toDateString()) return "today";
-
-//     const yesterday = new Date();
-//     yesterday.setDate(today.getDate() - 1);
-
-//     if (created.toDateString() === yesterday.toDateString()) {
-//         return "yesterday";
-//     }
-
-//     return "older";
-// };
-
-// export const useNotifications = () => {
-//     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-//     const [loading, setLoading] = useState(false);
-//     const [loadingMore, setLoadingMore] = useState(false);
-
-//     const [page, setPage] = useState(1);
-//     const [hasMore, setHasMore] = useState(true);
-
-//     const [filter, setFilter] =
-//         useState<"all" | "read" | "unread">("all");
-
-//     const [typeFilter, setTypeFilter] =
-//         useState<string>("all");
-
-
-//     const fetchNotifications = useCallback(
-//         async (pageNo = 1, isLoadMore = false) => {
-//             try {
-//                 if (isLoadMore) {
-//                     setLoadingMore(true);
-//                 } else {
-//                     setLoading(true);
-//                 }
-
-//                 const res = await _CONSULT_SERVICE.getNotification({
-//                     page: pageNo,
-//                     // page_size: 10,
-//                     view: "list",
-//                     is_read: false,
-//                     notification_type: "appointment",
-//                 });
-
-//                 if (res?.success) {
-//                     const data: NotificationItem[] =
-//                         (res?.data?.results || []).map((item: any) => ({
 
 //                             id: item.id,
 
@@ -107,21 +15,6 @@
 
 //                             section: getSection(item.created_at),
 
-//                             icon:
-//                                 item.notification_type === "appointment"
-//                                     ?
-//                                     <Entypo
-//                                         name="calendar"
-//                                         size={18}
-//                                         color="#fff"
-//                                     />
-//                                     :
-//                                     <Fontisto
-//                                         name="bell"
-//                                         size={16}
-//                                         color="#fff"
-//                                     />,
-
 //                             iconBg:
 //                                 item.notification_type === "appointment"
 //                                     ?
@@ -131,34 +24,6 @@
 
 //                             rawData: item
 
-//                         }));
-
-//                     if (isLoadMore) {
-//                         setNotifications(prev => [...prev, ...data]);
-//                     } else {
-//                         setNotifications(data);
-//                     }
-
-//                     setPage(pageNo);
-//                     setHasMore(!!res?.data?.next);
-//                 }
-//             } catch (error) {
-//                 console.log("Notification Error:", error);
-//             } finally {
-//                 setLoading(false);
-//                 setLoadingMore(false);
-//             }
-//         },
-//         []
-//     );
-//     const unreadCount = notifications.filter(
-//         x => !x.is_read
-//     ).length;
-
-//     const filteredNotifications = notifications.filter(item => {
-
-//         const readPass =
-
 //             filter === "all"
 
 //             ||
@@ -167,21 +32,9 @@
 
 //             ||
 
-//             (filter === "unread" && !item.is_read);
-
-//         const typePass =
-
 //             typeFilter === "all"
 
 //             ||
-
-//             item.type === typeFilter;
-
-//         return readPass && typePass;
-
-//     });
-
-//     const markAsRead = async (id: string) => {
 
 //         try {
 
@@ -195,9 +48,6 @@
 
 //                         ?
 
-//                         {
-//                             ...item,
-
 //                             is_read: true
 //                         }
 
@@ -207,56 +57,24 @@
 
 //                 )
 
-//             );
-
 //         }
 
 //         catch (e) { }
 
 //     }
 
-//     const markAllRead = () => {
-
 //         setNotifications(prev =>
 
 //             prev.map(item =>
-
-//             ({
-//                 ...item,
 
 //                 is_read: true
 //             })
 
 //             )
 
-//         );
-
 //     }
 
-//     const clearNotifications = () => {
-
-//         setNotifications([]);
-
 //     }
-
-//     const loadMore = useCallback(() => {
-//         if (loadingMore || !hasMore) return;
-
-//         fetchNotifications(page + 1, true);
-//     }, [page, hasMore, loadingMore, fetchNotifications]);
-
-//     const refreshNotifications = useCallback(async () => {
-//         setPage(1);
-//         setHasMore(true);
-//         await fetchNotifications(1, false);
-//     }, [fetchNotifications]);
-
-//     useEffect(() => {
-//         fetchNotifications(1);
-//     }, [fetchNotifications]);
-
-//     return {
-//         notifications: filteredNotifications,
 
 //         loading,
 
@@ -280,13 +98,10 @@
 
 //         markAllRead,
 
-//         clearNotifications
-//     };
-// };
-
 import { useCallback, useEffect, useState } from "react";
 import * as _CONSULT_SERVICE from "../services/ConsultServce";
 import { Entypo, Fontisto } from "../common/Vector";
+import { formatCancellationReasonLabel } from "../components/CancelAppointModal";
 
 export interface NotificationItem {
     id: string;
@@ -354,7 +169,15 @@ const resolveNotificationContent = (item: any) => {
         if (data.doctor_name && !title.includes(data.doctor_name)) {
             parts.push(`Doctor: ${data.doctor_name}`);
         }
-        if (data.reason) parts.push(String(data.reason));
+        // Prefer the patient's cancel reason — skip doctor/reschedule-only fields
+        const userReason =
+            data.cancellation_reason_detail ||
+            data.patient_cancellation_reason ||
+            data.user_reason ||
+            data.cancellation_reason;
+        if (userReason) {
+            parts.push(formatCancellationReasonLabel(String(userReason)));
+        }
         if (data.appointment_date || data.date) {
             parts.push(`Date: ${data.appointment_date ?? data.date}`);
         }
@@ -365,6 +188,15 @@ const resolveNotificationContent = (item: any) => {
         }
     }
 
+    const userReason =
+        data.cancellation_reason_detail ||
+        data.patient_cancellation_reason ||
+        data.user_reason ||
+        data.cancellation_reason;
+    const reasonLabel = userReason
+        ? formatCancellationReasonLabel(String(userReason))
+        : undefined;
+
     return {
         title,
         description,
@@ -372,7 +204,7 @@ const resolveNotificationContent = (item: any) => {
         eventType: formatLabel(item.event_type),
         patientName: data.patient_name,
         doctorName: data.doctor_name,
-        reason: data.reason,
+        reason: reasonLabel,
         appointmentStatus: data.appointment_status,
         appointmentId: data.appointment_id ?? data.id,
     };
@@ -442,7 +274,6 @@ const getAppointmentIconConfig = (status?: string) => {
             };
     }
 };
-
 
 export const useNotifications = () => {
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);

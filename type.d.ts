@@ -67,7 +67,8 @@ export type RootStackParamList = {
     categoryTag?: string;
   };
   OrangeLabScreen: undefined;
-  PackagesScreen: undefined;
+  PackagesScreen: { planId?: string } | undefined;
+  MyPlansScreen: { highlightId?: string } | undefined;
   Splash: undefined;
   BookingConfrimScreen: undefined;
   Appointments:
@@ -77,6 +78,8 @@ export type RootStackParamList = {
   | undefined;
   OrderHistory: undefined;
   OrderDetailsScreen: { order?: any };
+  ReturnRequestScreen: { order: any };
+  ReturnDetailsScreen: { returnId: string; returnRequest?: any; order?: any };
   TabStack: undefined;
   MentorOrder: undefined;
   PatientDetails: undefined;

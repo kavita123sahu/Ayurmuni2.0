@@ -75,3 +75,7 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Local payment secrets (never commit)
+src/config/cashfree.local.ts
+

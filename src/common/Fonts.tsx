@@ -9,8 +9,3 @@ export const Fonts = {
     PoppinsExtraLight: 'Poppins-ExtraLight',
     PoppinsRegular: 'Poppins-Regular',
 }
-
-
-
-
- 

@@ -460,14 +460,11 @@ const SuggestedCard: React.FC<Props> = ({
       item?.difficulty || '',
     ).trim();
 
-
-
     const imageUri =
       resolveYogaThumbnailUri(item);
 
     const videoUri =
       resolveYogaVideoUri(item);
-
 
     return (
       <TouchableOpacity
@@ -570,8 +567,6 @@ const SuggestedCard: React.FC<Props> = ({
         />
       );
     }
-
-
 
     if (item?.type === 'diet') {
       return renderDietCard(item);

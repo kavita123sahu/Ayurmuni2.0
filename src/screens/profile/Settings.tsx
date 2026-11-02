@@ -130,23 +130,6 @@ const SettingsScreen = (props: any) => {
             type: 'arrow',
             screen: 'PrivacyCenter',
           },
-          // {
-          //   title: 'Clear Cache',
-          //   subtitle: 'Refresh home data and clear temporary cache',
-          //   iconName: 'trash',
-          //   type: 'arrow',
-          //   onPress: async () => {
-          //     try {
-          //       invalidateCache();
-          //       dispatch(resetHomeState());
-          //       await dispatch(fetchCustomerData(true));
-          //       await dispatch(fetchHomeData(true));
-          //       showSuccessToast('Cache cleared. Home data reloaded.', 'success');
-          //     } catch {
-          //       showSuccessToast('Unable to clear cache', 'error');
-          //     }
-          //   },
-          // },
           {
             title: 'Payments',
             subtitle: 'Saved payment methods',

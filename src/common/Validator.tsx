@@ -1,5 +1,4 @@
 
-
 export const EmailValidator = (email: string) => {
   // Basic format check
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -21,4 +20,3 @@ export const EmailValidator = (email: string) => {
   // Check if email ends with any valid domain
   return validDomains.some(domain => email.toLowerCase().endsWith(domain));
 };
-

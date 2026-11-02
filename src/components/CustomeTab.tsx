@@ -133,17 +133,6 @@ const CustomeTab = (props: any) => {
           </TouchableOpacity>
         </View>
 
-        {/* <TouchableOpacity
-          onPress={() => stackNavigation.navigate('ConsultScreen')}
-          activeOpacity={0.85}
-          style={[
-            styles.consultFab,
-            isConsultActive && styles.consultFabActive,
-          ]}
-        >
-          <TablerIcon name="stethoscope" size={20} color="#fff" />
-          <Text style={styles.consultLabel}>Consult</Text>
-        </TouchableOpacity> */}
       </View>
     </View>
   );
@@ -189,8 +178,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 6,
     overflow: 'visible',
-    // shadowColor: '#0F172A',
-    // shadowOpacity: 0.08,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 1,

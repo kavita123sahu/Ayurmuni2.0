@@ -19,8 +19,12 @@ type Props = {
   onJoinCall?: () => void;
   onViewDetails?: () => void;
   call_status?: string;
+  /** True inside the join window (5 min before → end), or live before end_time. */
+  canJoin?: boolean;
   /** Show "View details" only when a prescription exists for this appointment. */
   hasPrescription?: boolean;
+  /** Missed appointments with no refund yet can request one via cancel flow. */
+  canRequestRefund?: boolean;
 };
 
 const AppointmentActions = ({
@@ -33,7 +37,9 @@ const AppointmentActions = ({
   onJoinCall,
   onViewDetails,
   call_status,
+  canJoin,
   hasPrescription = false,
+  canRequestRefund = false,
 }: Props) => {
   const appointmentStatus = status?.toLowerCase();
   const schedule = resolveAppointmentDateTime({ date, time, status, ...item });
@@ -47,6 +53,7 @@ const AppointmentActions = ({
     item ?? { status, date: dateVal, time: timeVal },
   );
   const showCancel = canOfferCancel(status, dateVal, timeVal);
+  const showRequestRefund = Boolean(canRequestRefund && onCancel);
 
   const showViewDetails =
     hasPrescription &&
@@ -59,12 +66,38 @@ const AppointmentActions = ({
       'noshow',
     ].includes(appointmentStatus);
 
-  const showJoinCall = call_status === 'in_progress';
+  // Do not OR raw in_progress — that kept Join after end_time / after doctor ended
+  const isCallLive =
+    Boolean(canJoin) &&
+    String(call_status || '').toLowerCase() === 'in_progress';
+  const showJoinCall = Boolean(canJoin);
+
+  if (showJoinCall) {
+    return (
+      <TouchableOpacity
+        style={styles.standaloneWrap}
+        onPress={onJoinCall}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#0D614E', '#14937A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.gradientBtn, styles.joinBtn]}
+        >
+          <View style={styles.liveDot} />
+          <Text style={styles.primaryText}>
+            {isCallLive ? 'Join video call · Live' : 'Join video call'}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
 
   if (showReschedule || showCancel) {
     return (
       <View style={styles.btnRow}>
-        {!showJoinCall && showReschedule && (
+        {showReschedule && (
           <TouchableOpacity
             style={styles.outlineBtn}
             onPress={onReschedule}
@@ -78,33 +111,35 @@ const AppointmentActions = ({
           </TouchableOpacity>
         )}
 
-        {showJoinCall ? (
+        {showCancel && (
           <TouchableOpacity
-            style={styles.flexBtn}
-            onPress={onJoinCall}
-            activeOpacity={0.9}
+            style={[styles.cancelBtn, !showReschedule && styles.fullFlex]}
+            onPress={onCancel}
+            activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={['#0D614E', '#14937A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.gradientBtn}
-            >
-              <Text style={styles.primaryText}>Join call</Text>
-            </LinearGradient>
+            <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-        ) : (
-          showCancel && (
-            <TouchableOpacity
-              style={[styles.cancelBtn, !showReschedule && styles.fullFlex]}
-              onPress={onCancel}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          )
         )}
       </View>
+    );
+  }
+
+  if (showRequestRefund) {
+    return (
+      <TouchableOpacity
+        style={styles.standaloneWrap}
+        onPress={onCancel}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#0D614E', '#14937A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.gradientBtn}
+        >
+          <Text style={styles.primaryText}>Request refund</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     );
   }
 
@@ -158,10 +193,16 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  flexBtn: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
+  joinBtn: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ADE80',
   },
 
   fullFlex: {

@@ -1,6 +1,5 @@
 import { Actions } from "../types/Types";
 
-
 const initialState = {
     isConnected: true
 };
@@ -17,6 +16,5 @@ const internetReducer = (state = initialState, action: any) => {
         }
     }
 }
-
 
 export default internetReducer

@@ -14,7 +14,23 @@ export type ProductQuery = {
   section?: ProductSectionType | string;
   page?: number;
   page_size?: number;
+  min_price?: number | string;
+  max_price?: number | string;
+  /** `4` → 4★ and above, or a range like `3-5`. */
+  min_rating?: number | string;
+  /** Vata | Pitta | Kapha */
+  dosha_type?: string;
+  sort?: ProductApiSort;
 };
+
+export type ProductApiSort =
+  | 'price_asc'
+  | 'price_desc'
+  | 'price_low_to_high'
+  | 'price_high_to_low'
+  | 'popularity'
+  | 'rating'
+  | 'latest';
 
 export type ProductSectionType =
   | 'home'
@@ -66,6 +82,11 @@ const buildProductQuery = (params: ProductQuery = {}) => {
   appendQueryParam(query, 'service_category_id', params.service_category_id);
   appendQueryParam(query, 'variant_id', params.variant_id);
   appendQueryParam(query, 'search', params.search);
+  appendQueryParam(query, 'min_price', params.min_price);
+  appendQueryParam(query, 'max_price', params.max_price);
+  appendQueryParam(query, 'min_rating', params.min_rating);
+  appendQueryParam(query, 'dosha_type', params.dosha_type);
+  appendQueryParam(query, 'sort', params.sort);
   // Only send section when caller asks — do not default on every catalog query
   appendQueryParam(query, 'section', params.section);
   appendQueryParam(query, 'page', params.page);
@@ -87,6 +108,74 @@ const buildProductCategoryQuery = (params: ProductCategoryQuery = {}) => {
 };
 
 export const PRODUCT_PAGE_SIZE = 20;
+/** Both-mode / brand All — fetch enough rows so products + medicines merge in one pass. */
+export const BOTH_CATALOG_PAGE_SIZE = 100;
+
+/** Drop inactive / unavailable catalog rows and deactivated vendors. */
+export const isCatalogItemPurchasable = (item: any): boolean => {
+  if (!item || typeof item !== 'object') return false;
+
+  const status = String(
+    item.status ?? item.product_status ?? item.availability_status ?? '',
+  )
+    .trim()
+    .toLowerCase();
+  if (
+    [
+      'inactive',
+      'deactivated',
+      'disabled',
+      'unavailable',
+      'out_of_stock_vendor',
+      'deleted',
+      'draft',
+    ].includes(status)
+  ) {
+    return false;
+  }
+
+  if (
+    item.is_active === false ||
+    item.active === false ||
+    item.is_available === false ||
+    item.is_purchasable === false ||
+    item.is_deactivated === true ||
+    item.vendor_is_active === false ||
+    item.is_vendor_active === false
+  ) {
+    return false;
+  }
+
+  const vendor =
+    item.vendor && typeof item.vendor === 'object'
+      ? item.vendor
+      : item.seller && typeof item.seller === 'object'
+        ? item.seller
+        : item.merchant && typeof item.merchant === 'object'
+          ? item.merchant
+          : null;
+
+  if (vendor) {
+    const vendorStatus = String(vendor.status ?? '').trim().toLowerCase();
+    if (
+      ['inactive', 'deactivated', 'disabled', 'deleted', 'blocked'].includes(
+        vendorStatus,
+      )
+    ) {
+      return false;
+    }
+    if (
+      vendor.is_active === false ||
+      vendor.active === false ||
+      vendor.is_deactivated === true ||
+      vendor.is_blocked === true
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
 
 export const normalizeApiList = (response: any): any[] => {
   if (response?.success === false) {
@@ -208,7 +297,7 @@ export const mapCatalogProductItem = (item: any) => {
 
   if (!variantId && !productId) return null;
 
-  return {
+  const mapped = {
     ...nestedProduct,
     ...def,
     ...item,
@@ -226,6 +315,9 @@ export const mapCatalogProductItem = (item: any) => {
       item.is_wishlist_item ??
       nestedProduct?.is_wishlist_item,
   };
+
+  if (!isCatalogItemPurchasable(mapped)) return null;
+  return mapped;
 };
 
 export const hasMoreProductPages = (
@@ -285,41 +377,41 @@ const resolveImageUrl = (item: any): string => {
 export const mapProductCategory = (item: any) => ({
   id: String(
     item?.id ??
-      item?.health_disease_id ??
-      item?.product_category_id ??
-      item?.category_id ??
-      item?.health_category_id ??
-      '',
+    item?.health_disease_id ??
+    item?.product_category_id ??
+    item?.category_id ??
+    item?.health_category_id ??
+    '',
   ),
   name: String(
     item?.name ??
-      item?.disease_name ??
-      item?.category_name ??
-      item?.product_category_name ??
-      item?.title ??
-      'Category',
+    item?.disease_name ??
+    item?.category_name ??
+    item?.product_category_name ??
+    item?.title ??
+    'Category',
   ),
   description: String(
     item?.description ??
-      item?.short_description ??
-      item?.category_description ??
-      item?.desc ??
-      item?.about ??
-      '',
+    item?.short_description ??
+    item?.category_description ??
+    item?.desc ??
+    item?.about ??
+    '',
   ).trim(),
   subscription: String(
     item?.subscription ??
-      item?.subscription_text ??
-      item?.subtitle ??
-      item?.tagline ??
-      item?.short_title ??
-      '',
+    item?.subscription_text ??
+    item?.subtitle ??
+    item?.tagline ??
+    item?.short_title ??
+    '',
   ).trim(),
   symptoms: parseHealthSymptoms(
     item?.symptoms ??
-      item?.symptom_list ??
-      item?.common_symptoms ??
-      item?.symptoms_list,
+    item?.symptom_list ??
+    item?.common_symptoms ??
+    item?.symptoms_list,
   ),
   image_url: resolveImageUrl(item),
   parent_id:
@@ -345,6 +437,20 @@ export const getProduct = async (params: ProductQuery = {}) => {
     throw error;
   }
 };
+
+
+export const getWishlistProduct = async () => {
+  try {
+    const response = await apiClient('favorites/products/', {
+      method: 'GET',
+    });
+    console.log("getWishlistProductresponse", response)
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 
 /**
  * Discovery / ecommerce rails (catalog list).
@@ -427,11 +533,11 @@ export const getHealthCategories = async (
           ? { id: options }
           : {}
         : {
-            ...(options?.id ? { id: options.id } : {}),
-            ...(options?.service_category_id
-              ? { service_category_id: options.service_category_id }
-              : {}),
-          };
+          ...(options?.id ? { id: options.id } : {}),
+          ...(options?.service_category_id
+            ? { service_category_id: options.service_category_id }
+            : {}),
+        };
 
     const response = await apiClient(buildHealthCategoryQuery(params), {
       method: 'GET',
@@ -475,25 +581,36 @@ export const getHealthDiseases = async (params?: {
   }
 };
 
-export const getProductCategories = async (
-  parentId?: string,
-  serviceCategoryId?: string | null,
-) => {
+// export const getProductCategories = async (
+//   parentId?: string,
+//   serviceCategoryId?: string | null,
+// ) => {
+//   try {
+//     const response = await apiClient(
+//       buildProductCategoryQuery({
+//         ...(parentId ? { id: parentId } : {}),
+//         ...(serviceCategoryId
+//           ? { service_category_id: String(serviceCategoryId) }
+//           : {}),
+//       }),
+//       { method: 'GET' },
+//     );
+//     return response;
+//   } catch (error) {
+//     throw error;
+//   }
+// };
+
+export const getProductCategories = async () => {
   try {
-    const response = await apiClient(
-      buildProductCategoryQuery({
-        ...(parentId ? { id: parentId } : {}),
-        ...(serviceCategoryId
-          ? { service_category_id: String(serviceCategoryId) }
-          : {}),
-      }),
-      { method: 'GET' },
-    );
+    const response = await apiClient('customers/product-categories', { method: 'GET' });
+    console.log('getProductCategoriesresponse', response);
     return response;
   } catch (error) {
     throw error;
   }
 };
+
 
 export const getProductsByCategory = async (
   categoryId?: string,

@@ -34,7 +34,20 @@ export const normalizeNotificationPayload = (
     appointment_id:
       raw?.appointment_id ??
       raw?.appointmentId ??
-      raw?.data?.appointment_id,
+      raw?.consultation_id ??
+      raw?.consultationId ??
+      raw?.data?.appointment_id ??
+      raw?.data?.appointmentId ??
+      raw?.data?.consultation_id ??
+      raw?.data?.consultationId ??
+      raw?.data?.id ??
+      raw?.additionalData?.appointment_id ??
+      raw?.additional_data?.appointment_id,
+    consultation_id:
+      raw?.consultation_id ??
+      raw?.consultationId ??
+      raw?.data?.consultation_id ??
+      raw?.data?.consultationId,
     order_id: raw?.order_id ?? raw?.orderId ?? raw?.data?.order_id,
     product_id: raw?.product_id ?? raw?.productId ?? raw?.data?.product_id,
     doctor_id: raw?.doctor_id ?? raw?.doctorId ?? raw?.data?.doctor_id,

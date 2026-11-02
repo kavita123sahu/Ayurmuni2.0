@@ -6,4 +6,3 @@ export const setDarkMode = (payload: any) => {
         payload: payload
     }
 }
-

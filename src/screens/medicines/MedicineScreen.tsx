@@ -16,7 +16,8 @@ import SectionHeader from '../../components/SectionHeader';
 import ActionCards from '../../components/ActionCards';
 import BrandList from '../../components/BrandList';
 import ProductCard from '../../components/ProductCard';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { shouldRunThrottled } from '../../utils/fetchThrottle';
 import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
@@ -129,16 +130,15 @@ const MedicineScreen = (props: any) => {
           onPress: () => {
             if (!mapped.id) return;
             navigateToCategoryProducts(navigation, {
-              categoryMode: 'product',
+              categoryMode: 'both',
               brandOnly: true,
               brand_name_id: mapped.id,
               brandId: mapped.id,
-              serviceCategoryId: medicineCategoryId || undefined,
             });
           },
         };
       }),
-    [brands, navigation, medicineCategoryId],
+    [brands, navigation],
   );
 
   const handleSearchPress = useCallback(() => {
@@ -165,6 +165,13 @@ const MedicineScreen = (props: any) => {
     refreshBrands,
     refreshHealthConcerns,
   ]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!shouldRunThrottled('medicine-tab-focus-refresh', 30_000)) return;
+      void onRefresh();
+    }, [onRefresh]),
+  );
 
   const actionItems: ActionItem[] = useMemo(
     () => [
@@ -285,8 +292,6 @@ const MedicineScreen = (props: any) => {
           </View>
         ) : null}
 
-        {/* <ActionCards data={actionItems} onpress={handleActionPress} /> */}
-
         {(ordersLoading || recentProducts.length > 0) && (
           <>
             <SectionHeader
@@ -322,7 +327,6 @@ const MedicineScreen = (props: any) => {
                 })
               } />
 
-
             <CategoryList
               data={safeHealthConcerns}
               navigation={navigation}
@@ -335,7 +339,16 @@ const MedicineScreen = (props: any) => {
 
         {brandListData.length > 0 ? (
           <>
-            <SectionHeader title="Trusted Brands" />
+            <SectionHeader
+              title="Trusted Brands"
+              actionText="View All"
+              onPress={() =>
+                navigateToCategoryProducts(navigation, {
+                  categoryMode: 'both',
+                  categoryName: 'Trusted Brands',
+                })
+              }
+            />
             <BrandList data={brandListData} />
           </>
         ) : null}

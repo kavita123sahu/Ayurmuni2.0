@@ -2,7 +2,6 @@ import { Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import {
   GOOGLE_MAPS_API_KEY,
-  GOOGLE_PLACES_API_KEY,
 } from '../config/Key';
 
 export type Coordinates = {
@@ -29,9 +28,7 @@ export type PlaceSuggestion = {
   secondary_text: string;
 };
 
-
 const GOOGLE_KEYS = [
-  GOOGLE_PLACES_API_KEY,
   GOOGLE_MAPS_API_KEY,
 ].filter(Boolean);
 
@@ -147,7 +144,6 @@ export const openLocationSettings = () => {
   }
 };
 
-
 const readPosition = (
   highAccuracy: boolean,
   timeout: number,
@@ -180,18 +176,26 @@ const readPosition = (
     );
   });
 
-/** Fast cached fix first, then high-accuracy GPS. */
+/**
+ * Prefer a fresh high-accuracy GPS fix.
+ * Avoids returning a stale / low-accuracy network location as "current".
+ */
 export const getCurrentPosition = async (): Promise<Coordinates> => {
   try {
-    return await readPosition(false, 4000, undefined, 120000);
+    return await readPosition(true, 15000, 100, 0);
   } catch {
     // continue
   }
 
   try {
-    return await readPosition(true, 12000, 200);
+    return await readPosition(true, 20000, 250, 5000);
   } catch {
-    return watchPositionOnce(15000);
+    // last resort: short network fix, then watch
+    try {
+      return await readPosition(false, 8000, undefined, 0);
+    } catch {
+      return watchPositionOnce(20000);
+    }
   }
 };
 

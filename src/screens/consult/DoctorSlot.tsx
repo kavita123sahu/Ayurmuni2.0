@@ -45,7 +45,9 @@ import {
     getDoctorDisplayName,
     getDoctorRating,
     formatDoctorExperience,
+    isDietitian,
 } from '../../utils/doctorUtils';
+import DietitianBadge from '../../components/DietitianBadge';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(64, Math.max(54, Math.floor(SCREEN_WIDTH * 0.135)));
@@ -430,11 +432,12 @@ const DoctorSlot = (props: any) => {
                                     />
                                 ) : (
                                     <View style={styles.avatarFallback}>
-                                        <TablerIcon
-                                            name="user-filled"
-                                            size={28}
-                                            color="#FFFFFF"
-                                        />
+                                        <Text style={styles.avatarLetter}>
+                                            {(doctorName || 'D')
+                                              .trim()
+                                              .charAt(0)
+                                              .toUpperCase() || 'D'}
+                                        </Text>
                                     </View>
                                 )}
                                 {isVerified ? (
@@ -477,6 +480,7 @@ const DoctorSlot = (props: any) => {
                                 <Text style={styles.doctorName} numberOfLines={2}>
                                     {doctorName}
                                 </Text>
+                                <DietitianBadge doctor={doctor} />
 
                                 {!!qualification && (
                                     <Text
@@ -487,21 +491,6 @@ const DoctorSlot = (props: any) => {
                                     </Text>
                                 )}
 
-                                {/* {!!locationLabel && (
-                                    <View style={styles.locRow}>
-                                        <TablerIcon
-                                            name="map-pin"
-                                            size={12}
-                                            color="#B45309"
-                                        />
-                                        <Text
-                                            style={styles.locText}
-                                            numberOfLines={1}
-                                        >
-                                            {locationLabel}
-                                        </Text>
-                                    </View>
-                                )} */}
                             </View>
                         </View>
 
@@ -889,6 +878,12 @@ const DoctorSlot = (props: any) => {
                             textAlignVertical="top"
                         />
 
+                        <Text style={[styles.sectionHint, { marginTop: 12, marginBottom: 6 }]}>
+                            {concern?.trim()
+                                ? `Add reports related to “${concern.trim().slice(0, 48)}${concern.trim().length > 48 ? '…' : ''}” (optional)`
+                                : 'Add medical reports for your concern (optional)'}
+                        </Text>
+
                         <PrescriptionUpload
                             records={patientsRecord}
                             selectedRecords={selectedRecords}
@@ -1009,7 +1004,7 @@ const styles = StyleSheet.create({
     },
     avatarFallback: {
         flex: 1,
-        backgroundColor: '#DFE5E7',
+        backgroundColor: Colors.primaryColor,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1017,6 +1012,7 @@ const styles = StyleSheet.create({
         fontSize: 26,
         color: '#FFFFFF',
         fontFamily: Fonts.PoppinsBold,
+        includeFontPadding: false,
     },
     verifiedDot: {
         position: 'absolute',
@@ -1205,13 +1201,13 @@ const styles = StyleSheet.create({
     },
 
     daysContainer: {
-        gap: 8,
-        paddingBottom: 4,
+        gap: 6,
+        paddingBottom: 2,
     },
     dayCard: {
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-        borderRadius: 12,
+        borderRadius: 10,
         backgroundColor: '#F8FAFC',
         borderWidth: 1,
         borderColor: '#E2E8F0',

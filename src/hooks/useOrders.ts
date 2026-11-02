@@ -10,6 +10,7 @@ import {
   mapOrdersToRecentProducts,
   OrderListItem,
 } from '../utils/orderUtils';
+import { shouldRunThrottled } from '../utils/fetchThrottle';
 
 export function useOrders(options?: {
   pageSize?: number;
@@ -33,16 +34,21 @@ export function useOrders(options?: {
   const hasMoreRef = useRef(true);
   const pageRef = useRef(1);
   const requestIdRef = useRef(0);
+  const hasOrdersRef = useRef(false);
+  hasOrdersRef.current = orders.length > 0;
 
   const fetchPage = useCallback(
-    async (pageToLoad: number, mode: 'replace' | 'append' | 'refresh') => {
+    async (
+      pageToLoad: number,
+      mode: 'replace' | 'append' | 'refresh' | 'silent',
+    ) => {
       if (!enabled) {
         setLoading(false);
         return;
       }
 
       // Only block pagination while another request is in flight.
-      // Refresh / replace must always be allowed so the header button works.
+      // Refresh / replace / silent must always be allowed.
       if (loadingLockRef.current && mode === 'append') {
         return;
       }
@@ -55,9 +61,10 @@ export function useOrders(options?: {
           setLoading(true);
         } else if (mode === 'append') {
           setLoadingMore(true);
-        } else {
+        } else if (mode === 'refresh') {
           setRefreshing(true);
         }
+        // silent: keep existing rows visible — no spinner flash
         setError(null);
 
         const response = await _ORDER_SERVICES.getOrders({
@@ -99,7 +106,7 @@ export function useOrders(options?: {
           return;
         }
         setError('Unable to load orders');
-        if (mode !== 'append') {
+        if (mode !== 'append' && mode !== 'silent' && mode !== 'refresh') {
           setOrders([]);
           setHasMore(false);
           hasMoreRef.current = false;
@@ -121,7 +128,8 @@ export function useOrders(options?: {
     hasMoreRef.current = true;
     setPage(1);
     setHasMore(true);
-    fetchPage(1, 'replace');
+    // Keep painted rows when search/filter refetch — avoid skeleton flash
+    fetchPage(1, hasOrdersRef.current ? 'silent' : 'replace');
   }, [fetchPage]);
 
   const loadMore = useCallback(() => {
@@ -141,9 +149,25 @@ export function useOrders(options?: {
     pageRef.current = 1;
     hasMoreRef.current = true;
     setHasMore(true);
-    // Force a new request even if one is already in flight
     fetchPage(1, 'refresh');
   }, [fetchPage]);
+
+  /** Soft revalidate after Order Details — keep list painted, no pull spinner. */
+  const silentRefresh = useCallback(() => {
+    if (!enabled) return;
+    if (
+      !shouldRunThrottled(
+        `orders-silent:${search || 'all'}`,
+        12_000,
+      )
+    ) {
+      return;
+    }
+    pageRef.current = 1;
+    hasMoreRef.current = true;
+    setHasMore(true);
+    fetchPage(1, hasOrdersRef.current ? 'silent' : 'replace');
+  }, [enabled, fetchPage, search]);
 
   const orderListItems = useMemo(
     (): OrderListItem[] => orders.map(mapOrderToListItem),
@@ -166,6 +190,7 @@ export function useOrders(options?: {
     hasMore,
     page,
     refresh: onRefresh,
+    silentRefresh,
     loadMore,
   };
 }

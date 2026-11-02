@@ -26,20 +26,42 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
-	<key>NSCameraUsageDescription</key>
-   <string>Video call ke liye camera access chahiye</string>
-   <key>NSMicrophoneUsageDescription</key>
-   <string>Video call ke liye microphone access chahiye</string>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Video call ke liye camera access chahiye</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Ayurmuni uses your location to show delivery addresses and nearby services.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Video call ke liye microphone access chahiye</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -59,9 +81,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>UIFileSharingEnabled</key>
-	<true/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
 </dict>
 </plist>

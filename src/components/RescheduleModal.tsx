@@ -224,6 +224,25 @@ const RescheduleModal = ({
               </View>
             </View>
 
+            {!isRescheduleRequest ? (
+              <View style={styles.notesBox}>
+                <View style={styles.noteRow}>
+                  <TablerIcon name="clock" size={14} color={GREEN} />
+                  <Text style={styles.noteText}>
+                    Reschedule is available only up to 2 hours before the
+                    scheduled consultation.
+                  </Text>
+                </View>
+                <View style={styles.noteRow}>
+                  <TablerIcon name="alert-circle" size={14} color={GREEN} />
+                  <Text style={styles.noteText}>
+                    You can reschedule only once. After that, you may cancel
+                    (refund rules still apply).
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
             <Text style={styles.sectionLabel}>NEW DATE</Text>
             <TouchableOpacity
               style={styles.dateSelector}
@@ -412,6 +431,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     marginBottom: 18,
+  },
+  notesBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    padding: 12,
+    marginBottom: 16,
+    gap: 10,
+  },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  noteText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: MUTED,
+    fontFamily: Fonts.PoppinsRegular,
   },
   doctorName: {
     fontSize: 15,

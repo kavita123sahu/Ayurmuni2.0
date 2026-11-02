@@ -395,7 +395,6 @@ const MealDetails = (props: any) => {
           ))
         )}
 
-
       </ScrollView>
 
       <View

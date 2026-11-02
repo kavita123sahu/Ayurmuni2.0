@@ -19,9 +19,9 @@ import { CalenderCard } from '../../components/CalenderCard';
 import { generateDates } from '../../common/DataInterface';
 import TimeSlot from '../../components/TimeSlot';
 import TablerIcon from '../../components/TablerIcon';
-import AppHeader from '../../components/AppHeader';
 import DoctorAvatar from '../../components/DoctorAvatar';
 import { requireAuth } from '../../services/guestAuth';
+import AppHeader from '../../components/AppHeader';
 
 
 // ✅ TYPES

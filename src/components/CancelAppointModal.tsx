@@ -13,46 +13,56 @@ import {
 import { Fonts } from '../common/Fonts';
 import { Colors } from '../common/Colors';
 import TablerIcon from './TablerIcon';
+import { isCancelRefundEligible } from '../utils/appointmentUtils';
 
-/** API cancellation_reason enum values */
+/** API cancellation_reason enum values — patient-facing labels */
 export const APPOINTMENT_CANCEL_REASONS: {
   value: string;
   label: string;
 }[] = [
-    {
-      value: 'professional_or_medical_exigency',
-      label: 'Professional or medical exigency',
-    },
-    {
-      value: 'personal_or_unforeseen_circumstance',
-      label: 'Personal or unforeseen circumstance',
-    },
-    {
-      value: 'unavailability',
-      label: 'Unavailability',
-    },
-    {
-      value: 'technical_difficulty',
-      label: 'Technical difficulty',
-    },
-    {
-      value: 'unable_to_conduct_consultation',
-      label: 'Unable to conduct consultation',
-    },
-    {
-      value: 'requires_user_in_person_care',
-      label: 'Requires in-person care',
-    },
-    {
-      value: 'other_reasonable_circumstance',
-      label: 'Other reasonable circumstance',
-    },
-  ];
+  {
+    value: 'personal_or_unforeseen_circumstance',
+    label: 'Personal emergency / unforeseen circumstance',
+  },
+  {
+    value: 'unavailability',
+    label: 'Schedule conflict / I am unavailable',
+  },
+  {
+    value: 'technical_difficulty',
+    label: 'Technical difficulty on my side',
+  },
+  {
+    value: 'professional_or_medical_exigency',
+    label: 'Medical reason / feeling unwell',
+  },
+  {
+    value: 'other_reasonable_circumstance',
+    label: 'Other reason',
+  },
+];
 
-const CANCEL_NOTES = [
-  'Free cancellation up to 3 hours before the scheduled consultation.',
-  'Cancellations within 3 hours may be non-refundable, except when the doctor or Ayurmuni cannot provide the consultation.',
-  'Approved refunds are usually started within 72 hours and may take 5–7 business days to reflect.',
+/** Map API enum → readable patient label for notifications / details */
+export const formatCancellationReasonLabel = (value?: string | null): string => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const match = APPOINTMENT_CANCEL_REASONS.find(
+    r => r.value === raw || r.value === raw.toLowerCase(),
+  );
+  if (match) return match.label;
+  return raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
+const REFUND_ELIGIBLE_NOTES = [
+  'Free cancellation is available up to 3 hours before the scheduled consultation.',
+  'After you confirm, a refund will be initiated automatically to your original payment method.',
+  'Approved refunds usually start within 72 hours and may take 5–7 business days to reflect.',
+  'You can rebook another slot anytime from Appointments.',
+];
+
+const NO_REFUND_NOTES = [
+  'You are within 3 hours of the consultation — you can still cancel, but a refund will not be initiated.',
+  'A refund in this window applies only if the doctor or Ayurmuni cannot provide the consultation.',
   'You can rebook another slot anytime from Appointments.',
 ];
 
@@ -66,10 +76,17 @@ const CancelAppointmentModal = ({
   visible,
   onClose,
   onSubmit,
+  refundEligible: refundEligibleProp,
+  appointmentDate,
+  appointmentTime,
 }: {
   visible: boolean;
   onClose: () => void;
   onSubmit: (payload: CancelAppointmentPayload) => void;
+  /** When set, drives refund notes; otherwise derived from date/time. */
+  refundEligible?: boolean;
+  appointmentDate?: string;
+  appointmentTime?: string;
 }) => {
   const [selected, setSelected] = useState('');
   const [detail, setDetail] = useState('');
@@ -80,6 +97,13 @@ const CancelAppointmentModal = ({
       setDetail('');
     }
   }, [visible]);
+
+  const refundEligible = useMemo(() => {
+    if (typeof refundEligibleProp === 'boolean') return refundEligibleProp;
+    return isCancelRefundEligible(appointmentDate, appointmentTime);
+  }, [refundEligibleProp, appointmentDate, appointmentTime]);
+
+  const notes = refundEligible ? REFUND_ELIGIBLE_NOTES : NO_REFUND_NOTES;
 
   const needsDetail = selected === 'other_reasonable_circumstance';
   const canSubmit = useMemo(() => {
@@ -116,17 +140,48 @@ const CancelAppointmentModal = ({
 
               <Text style={styles.title}>Cancel Appointment</Text>
               <Text style={styles.warning}>
-                Please review the cancellation notes before confirming.
+                {refundEligible
+                  ? 'Please review the cancellation and refund notes before confirming.'
+                  : 'Please review the notes — cancelling now will not initiate a refund.'}
               </Text>
 
-              <View style={styles.notesBox}>
-                {CANCEL_NOTES.map(item => (
+              <View
+                style={[
+                  styles.notesBox,
+                  !refundEligible && styles.notesBoxWarn,
+                ]}
+              >
+                <View style={styles.notesHeader}>
+                  <TablerIcon
+                    name={refundEligible ? 'circle-check' : 'alert-circle'}
+                    size={16}
+                    color={refundEligible ? Colors.primaryColor : '#B45309'}
+                  />
+                  <Text
+                    style={[
+                      styles.notesHeaderText,
+                      !refundEligible && styles.notesHeaderTextWarn,
+                    ]}
+                  >
+                    {refundEligible
+                      ? 'Refund will be initiated'
+                      : 'No refund on this cancellation'}
+                  </Text>
+                </View>
+                {notes.map(item => (
                   <View key={item} style={styles.noteRow}>
-                    <View style={styles.bullet}>
+                    <View
+                      style={[
+                        styles.bullet,
+                        !refundEligible && styles.bulletWarn,
+                      ]}
+                    >
                       <TablerIcon
-                        name="check"
+                        name={refundEligible ? 'check' : 'alert-circle'}
                         size={11}
-                        color={Colors.primaryColor}
+                        color={
+                          refundEligible ? Colors.primaryColor : '#B45309'
+                        }
                       />
                     </View>
                     <Text style={styles.noteText}>{item}</Text>
@@ -186,7 +241,11 @@ const CancelAppointmentModal = ({
               onPress={handleSubmit}
               activeOpacity={0.85}
             >
-              <Text style={styles.cancelText}>Cancel Appointment</Text>
+              <Text style={styles.cancelText}>
+                {refundEligible
+                  ? 'Cancel & initiate refund'
+                  : 'Cancel without refund'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.keepBtn} onPress={onClose}>
@@ -248,6 +307,25 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 8,
   },
+  notesBoxWarn: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  notesHeaderText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: Colors.primaryColor,
+  },
+  notesHeaderTextWarn: {
+    color: '#B45309',
+  },
   noteRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -261,6 +339,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
+  },
+  bulletWarn: {
+    backgroundColor: '#FEF3C7',
   },
   noteText: {
     flex: 1,

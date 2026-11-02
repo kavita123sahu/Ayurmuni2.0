@@ -22,6 +22,19 @@ export const markThrottledRun = (key: string) => {
   lastRunAt.set(key, Date.now());
 };
 
+/** Focus-refresh keys of screens that display the user's profile or patient list. */
+const PROFILE_THROTTLE_KEYS = [
+  'patient-details-focus',
+  'customer-profile-focus',
+  'profile-page-access',
+  'home-header-focus',
+];
+
+/** Call after editing profile/patient data so those screens refetch on their next focus. */
+export const invalidateProfileThrottles = () => {
+  PROFILE_THROTTLE_KEYS.forEach(key => lastRunAt.delete(key));
+};
+
 export const clearThrottle = (key?: string) => {
   if (key) {
     lastRunAt.delete(key);

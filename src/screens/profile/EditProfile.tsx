@@ -31,6 +31,9 @@ import { Feather } from '../../common/Vector';
 import { showImagePicker } from '../../hooks/ImagePickerUtils';
 import { uploadImage } from '../../hooks/usePatientData';
 import { Utils } from '../../common/Utils';
+import { invalidateProfileThrottles } from '../../utils/fetchThrottle';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
 
 const toText = (value: unknown): string => {
     if (value == null) return '';
@@ -57,11 +60,10 @@ const normalizeProfileForm = (user: any) => ({
     date_of_birth: toText(user?.date_of_birth),
 });
 
-
 const EditProfile = ({
     navigation,
 }: any) => {
-
+    const dispatch = useAppDispatch();
 
     const [loading, setLoading] =
         useState(false);
@@ -94,7 +96,6 @@ const EditProfile = ({
             date_of_birth: "",
         });
 
-
     const imageUri =
         formData?.profile_picture?.trim();
 
@@ -118,9 +119,6 @@ const EditProfile = ({
             formData.profile_picture
         );
     }, [formData.profile_picture]);
-
-
-
 
     const updateField = (
         key: string,
@@ -183,8 +181,6 @@ const EditProfile = ({
             }
         };
 
-
-
     const handleAddImage = () => {
         showImagePicker(
             handleUploadImage,
@@ -229,14 +225,21 @@ const EditProfile = ({
         }
     };
 
-
-
     const handleUpdateProfile = async () => {
+        const firstName = String(formData.first_name || '').trim();
+        const lastName = String(formData.last_name || '').trim();
+        if (!firstName) {
+            showSuccessToast('First name is required', 'error');
+            return;
+        }
+        if (!lastName) {
+            showSuccessToast('Last name is required', 'error');
+            return;
+        }
 
         try {
 
             setLoading(true);
-
 
             console.log(
                 'PROFILE PICTURE PAYLOAD =>',
@@ -244,8 +247,8 @@ const EditProfile = ({
             );
 
             const payload = {
-                first_name: formData.first_name,
-                last_name: String(formData.last_name || '').trim(),
+                first_name: firstName,
+                last_name: lastName,
                 email: formData.email,
                 secondary_number: formData.secondary_number,
                 gender: formData.gender,
@@ -273,6 +276,8 @@ const EditProfile = ({
 
             if (res?.success) {
                 Utils.storeData('_USER_INFO', res?.data || {});
+                invalidateProfileThrottles();
+                dispatch(fetchCustomerData(true));
 
                 showSuccessToast(
                     'Profile updated successfully',
@@ -294,8 +299,6 @@ const EditProfile = ({
             setLoading(false);
         }
     };
-
-
 
     /*
     ---------------------------------
@@ -321,11 +324,6 @@ const EditProfile = ({
                     navigation.goBack()
                 }
             />
-
-
-
-
-
 
             {
                 profileLoading
@@ -419,6 +417,7 @@ const EditProfile = ({
                                     }
                                 >
                                     First Name
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -456,10 +455,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Last Name
-                                    <Text style={styles.optionalLabel}>
-                                        {' '}
-                                        (optional)
-                                    </Text>
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -497,6 +493,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Email
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -573,6 +570,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Gender
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View
@@ -647,6 +645,7 @@ const EditProfile = ({
                                     }
                                 >
                                     Date of Birth
+                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <TouchableOpacity
@@ -671,19 +670,13 @@ const EditProfile = ({
                                     <Text
                                         style={[
                                             styles.dateText,
-
+                                            styles.input,
                                             !formData.date_of_birth && {
-                                                color:
-                                                    '#98A2B3',
+                                                color: '#98A2B3',
                                             },
                                         ]}
                                     >
-
-                                        {
-                                            formData.date_of_birth ||
-                                            'Select DOB'
-                                        }
-
+                                        {formData.date_of_birth || 'Select DOB'}
                                     </Text>
                                 </TouchableOpacity>
 
@@ -866,8 +859,6 @@ const styles = StyleSheet.create({
     },
 
     profileContainer: {
-        //   width: 110,
-        //   height: 110,
         alignSelf: 'center',
         position: 'relative',
     },
@@ -903,6 +894,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#94A3B8',
         fontFamily: Fonts.PoppinsRegular,
+    },
+
+    requiredMark: {
+        color: '#EF4444',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
 
     inputContainer: {

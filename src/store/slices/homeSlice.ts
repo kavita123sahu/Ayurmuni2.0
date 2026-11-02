@@ -163,6 +163,15 @@ const mapHomeProductItem = (item: any) => {
   const mapped = mapCatalogProductItem(item);
   if (mapped) return mapped;
   if (!item || typeof item !== 'object') return null;
+  // mapCatalogProductItem already dropped inactive / deactivated vendors
+  if (
+    item.is_active === false ||
+    item.active === false ||
+    item.is_available === false ||
+    item.vendor_is_active === false
+  ) {
+    return null;
+  }
 
   const id =
     item.id ??

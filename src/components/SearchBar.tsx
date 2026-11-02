@@ -99,8 +99,12 @@ export const ExpandableSearch: React.FC<ExpandableSearchProps> = ({
   };
 
   const closeSearch = () => {
+    // Clear query but keep search open so users can type again
+    if (String(value || '').length > 0) {
+      onChangeText('');
+      return;
+    }
     setExpanded(false);
-    onChangeText('');
   };
 
   if (onNavigate) {
@@ -209,17 +213,6 @@ const SearchBar: React.FC<Props> = ({
           <TablerIcon name="x" size={compact ? 14 : 15} color="#64748B" />
         </TouchableOpacity>
       ) : null}
-
-      {/* {showMicIcon ? (
-        <TouchableOpacity
-          style={styles.trailing}
-          onPress={onMicPress ?? onPress}
-          activeOpacity={0.85}
-          disabled={!onMicPress && !onPress}
-        >
-          <TablerIcon name="mic" size={16} color={Colors.primaryColor} />
-        </TouchableOpacity>
-      ) : null} */}
 
       {showFilterIcon ? (
         <TouchableOpacity
