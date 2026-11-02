@@ -18,11 +18,13 @@ import AppHeader from '../../components/AppHeader';
 import TablerIcon from '../../components/TablerIcon';
 import PackagePlanCard from '../../components/packages/PackagePlanCard';
 import PackagePlanDetailSheet from '../../components/packages/PackagePlanDetailSheet';
+import CarePlansPromoCard from '../../components/packages/CarePlansPromoCard';
 import { isCarePlan } from '../../components/packages/packageUi';
 import { usePackagePlans } from '../../hooks/usePackagePlans';
 import { usePackagePurchase } from '../../hooks/usePackagePurchase';
 import { useActivePlans } from '../../hooks/useActivePlans';
 import PlanTransferConfirmModal from '../../components/packages/PlanTransferConfirmModal';
+import PackagePaymentGatewaySheet from '../../components/packages/PackagePaymentGatewaySheet';
 import type { PackagePlan } from '../../services/PackageServices';
 import { SCREEN_PADDING_H } from '../../constants/layout';
 import {
@@ -40,8 +42,16 @@ export default function PackagesScreen(props: any) {
   const insets = useSafeAreaInsets();
   const { plans, loading, loadingMore, refreshing, error, loadMore, refresh } =
     usePackagePlans();
-  const { startPlan, processingId, transferPrompt, confirmTransfer, cancelTransfer } =
-    usePackagePurchase(navigation);
+  const {
+    startPlan,
+    processingId,
+    transferPrompt,
+    confirmTransfer,
+    cancelTransfer,
+    payPlan,
+    confirmGatewayPay,
+    cancelGatewayPay,
+  } = usePackagePurchase(navigation);
   const { ownsPackage } = useActivePlans();
 
   const [category, setCategory] = useState(ALL);
@@ -142,6 +152,10 @@ export default function PackagesScreen(props: any) {
           <TablerIcon name="chevron-right" size={18} color={Colors.primaryColor} />
         </TouchableOpacity>
       ) : null}
+
+      <CarePlansPromoCard
+        onMyPlansPress={() => navigation.navigate('MyPlansScreen')}
+      />
 
       {categories.length > 2 ? (
         <ScrollView
@@ -252,6 +266,14 @@ export default function PackagesScreen(props: any) {
         prompt={transferPrompt}
         onYes={confirmTransfer}
         onNo={cancelTransfer}
+      />
+
+      <PackagePaymentGatewaySheet
+        visible={!!payPlan}
+        plan={payPlan}
+        processing={!!payPlan && processingId === payPlan.id}
+        onClose={cancelGatewayPay}
+        onConfirm={confirmGatewayPay}
       />
     </SafeAreaView>
   );

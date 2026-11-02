@@ -18,6 +18,7 @@ import { RupeeAmount } from '../../utils/currencyUtils';
 import type { PackagePlan } from '../../services/PackageServices';
 import {
   PLAN_GOLD,
+  getCatalogConsultCredits,
   getDiscountPercent,
   getPlanCtaLabel,
   getPlanDurationLabel,
@@ -65,6 +66,7 @@ export default function PackagePlanDetailSheet({
   const original = toAmount(plan.original_price);
   const selling = toAmount(plan.selling_price);
   const saving = original > selling ? original - selling : 0;
+  const consultCredits = getCatalogConsultCredits(plan);
 
   const facts: { icon: TablerIconName; label: string; value: string }[] = [
     {
@@ -75,7 +77,7 @@ export default function PackagePlanDetailSheet({
     {
       icon: 'calendar',
       label: 'Validity',
-      value: plan.validity_days ? `${plan.validity_days} days` : getPlanDurationLabel(plan),
+      value: getPlanDurationLabel(plan),
     },
     { icon: 'credit-card', label: 'Billing', value: getBillingLabel(plan) },
     {
@@ -83,6 +85,15 @@ export default function PackagePlanDetailSheet({
       label: 'Available for',
       value: plan.available_to_all_users ? 'All users' : 'Selected users',
     },
+    ...(consultCredits != null
+      ? [
+          {
+            icon: 'stethoscope' as TablerIconName,
+            label: 'Consultations',
+            value: `${consultCredits} included`,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -151,13 +162,22 @@ export default function PackagePlanDetailSheet({
           <Text style={styles.section}>Price details</Text>
           <View style={styles.priceBox}>
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Plan price</Text>
-              <RupeeAmount value={plan.original_price} style={styles.priceValue} />
+              <Text style={styles.priceLabel}>Selling price</Text>
+              <RupeeAmount value={plan.selling_price} style={styles.priceValue} />
             </View>
             {saving > 0 ? (
               <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Discount ({discount}%)</Text>
-                <RupeeAmount value={saving} prefix="- " style={[styles.priceValue, styles.green]} />
+                <Text style={styles.priceLabel}>You save ({discount}%)</Text>
+                <RupeeAmount value={saving} style={[styles.priceValue, styles.green]} />
+              </View>
+            ) : null}
+            {original > selling ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Original price</Text>
+                <RupeeAmount
+                  value={plan.original_price}
+                  style={[styles.priceValue, styles.strike]}
+                />
               </View>
             ) : null}
             <View style={[styles.priceRow, styles.totalRow]}>
@@ -169,7 +189,16 @@ export default function PackagePlanDetailSheet({
 
         <View style={styles.footer}>
           <View style={styles.footerPrice}>
-            <RupeeAmount value={plan.selling_price} style={styles.footerAmount} decimals={false} />
+            <View style={styles.footerPriceRow}>
+              <RupeeAmount value={plan.selling_price} style={styles.footerAmount} decimals={false} />
+              {original > selling ? (
+                <RupeeAmount
+                  value={plan.original_price}
+                  style={styles.footerOriginal}
+                  decimals={false}
+                />
+              ) : null}
+            </View>
             {saving > 0 ? (
               <Text style={styles.footerSave}>
                 You save ₹{Math.round(saving).toLocaleString('en-IN')}
@@ -369,6 +398,10 @@ const styles = StyleSheet.create({
   green: {
     color: '#15803D',
   },
+  strike: {
+    color: '#8A9591',
+    textDecorationLine: 'line-through',
+  },
   totalRow: {
     borderTopWidth: 1,
     borderTopColor: '#E4ECE8',
@@ -397,10 +430,21 @@ const styles = StyleSheet.create({
   footerPrice: {
     flex: 1,
   },
+  footerPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   footerAmount: {
     fontFamily: Fonts.PoppinsBold,
     fontSize: 20,
     color: '#1F2A27',
+  },
+  footerOriginal: {
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 13,
+    color: '#8A9591',
+    textDecorationLine: 'line-through',
   },
   footerSave: {
     fontFamily: Fonts.PoppinsMedium,

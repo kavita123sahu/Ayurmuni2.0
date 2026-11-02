@@ -40,13 +40,11 @@ import {
 import { useCheckoutCoupons } from '../../hooks/useCheckoutCoupons';
 import { ADDRESS_UPDATED, AddressEvents } from '../../common/Utils';
 import {
-    filterRunnableGateways,
     resolveDefaultGateway,
-    resolveEnabledGateways,
     type PaymentGateway,
 } from '../../config/paymentGateways';
 import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
-import { isPayphiNativeLinked } from '../../services/PayphiService';
+import { usePaymentGateways } from '../../hooks/usePaymentGateways';
 import {
     BUTTON,
     RADIUS,
@@ -123,16 +121,12 @@ const Checkout: React.FC = (props: any) => {
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
 
-    const enabledGateways = useMemo(
-        () =>
-            filterRunnableGateways(resolveEnabledGateways(customerData), {
-                payphiNativeLinked: isPayphiNativeLinked(),
-            }),
-        [customerData],
-    );
-    const [gateway, setGateway] = useState<PaymentGateway>(() =>
-        resolveDefaultGateway(customerData, enabledGateways),
-    );
+    const {
+        gateways: gatewayOptions,
+        activeGateways: enabledGateways,
+        defaultGateway,
+    } = usePaymentGateways();
+    const [gateway, setGateway] = useState<PaymentGateway>(defaultGateway);
     useEffect(() => {
         if (!enabledGateways.includes(gateway)) {
             setGateway(resolveDefaultGateway(customerData, enabledGateways));
@@ -761,11 +755,11 @@ const Checkout: React.FC = (props: any) => {
                         </TouchableOpacity>
                     </View>
 
-                    {selectedMethod === 'online' && enabledGateways.length > 1 ? (
+                    {selectedMethod === 'online' && gatewayOptions.length > 0 ? (
                         <View style={styles.gatewayWrap}>
                             <Text style={styles.sectionLabel}>Pay using</Text>
                             <PaymentGatewaySelector
-                                gateways={enabledGateways}
+                                options={gatewayOptions}
                                 selected={gateway}
                                 onSelect={setGateway}
                                 disabled={isPaying || isPlacing}

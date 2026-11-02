@@ -237,6 +237,19 @@ export const getCustomerPaymentHistory = async (
   );
 };
 
+export type CustomerPaymentGatewayRow = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+/** GET payments/customer/payment-gateways/ — active / inactive / maintenance flags. */
+export const getCustomerPaymentGateways = async () => {
+  return apiClient('payments/customer/payment-gateways/', {
+    method: 'GET',
+  });
+};
+
 export const cancelOrder = async (
   orderId: string | number,
   data: object,

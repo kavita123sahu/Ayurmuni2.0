@@ -14,7 +14,7 @@ export const ThirdParty = {
     appId: '5c79696d-81e8-46a7-922d-b0b08eef4e57',
   },
 
-  /** Google Maps + Places */
+  /** Google Maps + Places — geocode uses mapsApiKey; building/POI uses places fallback */
   google: {
     mapsApiKey: 'AIzaSyC6Z-IW1Fr-o4eqzCxgAbjHRa7tmU31RKA',
     placesApiKey: 'AIzaSyClCQ_htPKkUayS7yWuY9kNj54gIQSnXiE',

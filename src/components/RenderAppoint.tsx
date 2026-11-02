@@ -21,6 +21,7 @@ import {
   canOfferReschedule,
   formatAppointmentStatusLabel,
   formatAppointmentTimeLabel,
+  getAppointmentActorLabel,
   resolveAppointmentDateTime,
   resolveAppointmentStatus,
 } from '../utils/appointmentUtils';
@@ -89,6 +90,7 @@ const RenderAppoint = ({
     : item?.specialty || 'Ayurvedic consultation';
 
   const statusLabel = formatAppointmentStatusLabel(status);
+  const actorLabel = getAppointmentActorLabel(item);
   const schedule = resolveAppointmentDateTime(item);
   const showRescheduleAction = canOfferReschedule(
     status,
@@ -279,6 +281,11 @@ const RenderAppoint = ({
           <Text style={styles.vSpeciality} numberOfLines={1}>
             {therapyPreview}
           </Text>
+          {!!actorLabel ? (
+            <Text style={styles.actorLabel} numberOfLines={1}>
+              {actorLabel}
+            </Text>
+          ) : null}
 
           {item?.name ? (
             <View style={styles.patientRow}>
@@ -432,6 +439,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: '#64748B',
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
+  },
+  actorLabel: {
+    marginTop: 4,
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#B45309',
     fontFamily: Fonts.PoppinsMedium,
     includeFontPadding: false,
   },

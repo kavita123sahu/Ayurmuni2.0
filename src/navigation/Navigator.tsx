@@ -35,6 +35,7 @@ import ReturnDetailsScreen from "../screens/orders/ReturnDetailsScreen";
 import ProductsScreen from "../screens/products/ProductsScreen";
 import ProductSearchScreen from "../screens/products/ProductSearchScreen";
 import CategoryProductsScreen from "../screens/products/CategoryProductsScreen";
+import ProductSectionScreen from "../screens/products/ProductSectionScreen";
 import TopCategories from "../screens/products/TopCategories";
 import ProductDetails from "../screens/products/ProductDetails";
 import ReviewPage from "../screens/products/ReviewPage";
@@ -190,6 +191,11 @@ const HomeStackNavigator = () => (
     <Stack.Screen name="Prescription" component={Prescription} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="SearchScreen" component={ProductSearchScreen} />
     <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
+    <Stack.Screen
+      name="ProductSection"
+      component={ProductSectionScreen}
+      options={{ headerShown: false, animation: 'slide_from_right' }}
+    />
     <Stack.Screen name="ManageAdrees" component={ManageAdrees} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="VerifyPresciption" component={VerifyPresciption} options={{ headerShown: false, animation: 'slide_from_right' }} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false, animation: 'slide_from_right' }} />

@@ -72,7 +72,7 @@ const DoctorListCard = ({
   // Prefer patient-safe availabilityLabel from parent; fall back to Available/Unavailable.
   const statusLabel = available
     ? 'Available'
-    : String(availabilityLabel || '').trim() || 'Unavailable';
+    : String(availabilityLabel || '').trim() || '';
 
   const handleConsult = () => {
     if (onConsultPress) {
@@ -463,11 +463,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
+    alignSelf: 'stretch',
   },
   gridCtaText: {
     color: '#FFFFFF',
     fontSize: 12,
+    lineHeight: 16,
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+    textAlign: 'center',
   },
   listCard: {
     flexDirection: 'row',
@@ -551,10 +556,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 10,
+    alignSelf: 'stretch',
   },
   consultText: {
     color: '#FFFFFF',
     fontSize: 12,
+    lineHeight: 16,
     fontFamily: Fonts.PoppinsSemiBold,
+    includeFontPadding: false,
+    textAlign: 'center',
   },
 });

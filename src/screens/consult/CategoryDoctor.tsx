@@ -520,6 +520,8 @@ const CategoryDoctor = (props: any) => {
     : `${categoryName || 'Related'} Yoga`;
 
   const onRefresh = useCallback(async () => {
+    const { bumpGlobalRefresh } = await import('../../utils/forceRefresh');
+    bumpGlobalRefresh();
     await Promise.all([
       refreshDoctors(),
       refreshProducts(),

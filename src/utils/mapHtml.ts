@@ -98,7 +98,8 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
         map = L.map('map', {
           zoomControl: true,
           attributionControl: true,
-        }).setView([startLat, startLng], 17);
+          maxZoom: 19,
+        }).setView([startLat, startLng], 18);
 
         tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -125,8 +126,9 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
 
     window.moveMapTo = function(lat, lng) {
       if (!map) return;
-      map.setView([lat, lng], map.getZoom(), { animate: true });
-      postLocation(lat, lng);
+      // Programmatic move only — do not postLocation (avoids pin snap loops)
+      var z = Math.max(map.getZoom() || 18, 18);
+      map.setView([lat, lng], z, { animate: false });
     };
 
     if (document.readyState === 'loading') {

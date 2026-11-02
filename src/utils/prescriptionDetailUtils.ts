@@ -313,13 +313,15 @@ export const getMedicineScheduleChips = (
 
   const qtyRaw =
     medicine.quantity ?? medicine.qty ?? medicine.Quantity ?? medicine.Qty;
-  if (qtyRaw != null && String(qtyRaw).trim() !== '') {
-    chips.push({
-      key: 'qty',
-      caption: 'Quantity',
-      label: String(qtyRaw).trim(),
-    });
-  }
+  const qtyLabel =
+    qtyRaw != null && String(qtyRaw).trim() !== ''
+      ? String(qtyRaw).trim()
+      : String(getMedicineQuantity(medicine));
+  chips.push({
+    key: 'qty',
+    caption: 'Quantity',
+    label: qtyLabel,
+  });
 
   return chips;
 };
@@ -348,11 +350,17 @@ export const getPaymentAmount = (payload: any): string | number | null => {
     payload?.consultation?.payment ||
     null;
   if (!payment) return null;
+  const summary =
+    payment?.summary && typeof payment.summary === 'object'
+      ? payment.summary
+      : null;
   return (
-    payment.consultation_fee ??
+    summary?.total_payable_amount ??
     payment.amount ??
     payment.total_amount ??
     payment.paid_amount ??
+    summary?.consultation_fee ??
+    payment.consultation_fee ??
     null
   );
 };
@@ -469,9 +477,14 @@ export const getAllergiesList = (prescription: any): string[] => {
 export const getPastIllnessText = (prescription: any): string =>
   getClinicalText(
     prescription?.history_of_past_illness ||
+      prescription?.history_of_past_illnesses ||
       prescription?.past_illness ||
+      prescription?.past_illness_history ||
       prescription?.past_medical_history ||
-      prescription?.medical_history,
+      prescription?.medical_history ||
+      prescription?.hopi ||
+      prescription?.clinical_findings?.history_of_past_illness ||
+      prescription?.clinical_findings?.past_illness,
   );
 
 export const getFamilyHistoryText = (prescription: any): string =>
@@ -529,7 +542,9 @@ export const getSymptomDescription = (prescription: any): string =>
     prescription?.symptom_description ||
       prescription?.symptoms ||
       prescription?.chief_complaint ||
-      prescription?.presenting_complaint,
+      prescription?.presenting_complaint ||
+      prescription?.clinical_findings?.chief_complaint ||
+      prescription?.clinical_findings?.symptom_description,
   );
 
 export type FollowUpInfo = {

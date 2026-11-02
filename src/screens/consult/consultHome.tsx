@@ -366,6 +366,9 @@ const ConsultHome = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => {
+              void import('../../utils/forceRefresh').then(({ bumpGlobalRefresh }) => {
+                bumpGlobalRefresh();
+              });
               onRefresh();
               refreshProducts();
               fetchConsultHistory({});

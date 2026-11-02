@@ -18,6 +18,7 @@ import { MaterialIcons } from '../../common/Vector';
 import { useVideoCall, VideoCallParams } from '../../context/VideoCallContext';
 import { popVideoCallAndGoToAppointments } from '../../navigation/navigationUtils';
 import CallTimeWarning from '../../components/CallTimeWarning';
+import BackIconButton from '../../components/BackIconButton';
 
 const PatientVideoCallScreen: React.FC = () => {
   const route = useRoute();
@@ -149,8 +150,9 @@ const PatientVideoCallScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
+        <BackIconButton
           style={styles.backBtn}
+          iconStyle={styles.backIcon}
           onPress={() => {
             if (viewMode === 'fullscreen' && isJoined) {
               minimizeCall();
@@ -164,10 +166,7 @@ const PatientVideoCallScreen: React.FC = () => {
             }
             leaveCallAndGoToAppointments();
           }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <MaterialIcons name="chevron-left" size={28} color="#fff" />
-        </TouchableOpacity>
+        />
         {otherPartyImage ? (
           <Image source={{ uri: otherPartyImage }} style={styles.headerAvatar} />
         ) : (
@@ -371,13 +370,20 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 6,
     backgroundColor: '#2a2a33',
+    overflow: 'hidden',
+  },
+  backIcon: {
+    width: 28,
+    height: 28,
+    tintColor: '#FFFFFF',
+    resizeMode: 'contain',
   },
   headerAvatar: {
     width: 46,

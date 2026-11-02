@@ -130,6 +130,9 @@ export const useConsultData = (options: UseConsultDataOptions = {}) => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    void import('../utils/forceRefresh').then(({ bumpGlobalRefresh }) => {
+      bumpGlobalRefresh();
+    });
     fetchAllData({ isRefresh: true });
   }, [fetchAllData]);
 
@@ -586,6 +589,8 @@ export const useAppointmentHistory = (filters?: {
     const refreshUpcoming = useCallback(async () => {
         try {
             setRefreshing(true);
+            const { bumpGlobalRefresh } = await import('../utils/forceRefresh');
+            bumpGlobalRefresh();
             pageRef.current = 1;
             hasMoreRef.current = true;
             setPage(1);

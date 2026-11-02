@@ -95,7 +95,8 @@ const AppointmentCard = ({
     schedule.timeRaw || item?.time || item?.start_time,
     item,
   );
-  const showReceipt = Boolean(item?.consultation_id);
+  // Receipt / invoice lives on Appointment Details (not the list card)
+  const showReceipt = false;
   // Book again only for past visits — not for upcoming bookings outside the 3h window
   const showBookAgain =
     !showReschedule &&

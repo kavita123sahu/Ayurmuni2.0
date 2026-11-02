@@ -16,6 +16,7 @@ import { usePackagePlans } from '../../hooks/usePackagePlans';
 import { usePackagePurchase } from '../../hooks/usePackagePurchase';
 import { useActivePlans } from '../../hooks/useActivePlans';
 import PlanTransferConfirmModal from './PlanTransferConfirmModal';
+import PackagePaymentGatewaySheet from './PackagePaymentGatewaySheet';
 import type { PackagePlan } from '../../services/PackageServices';
 import { HORIZONTAL_SCROLL_CONTENT } from '../../constants/layout';
 import { PLAN_GOLD, isCarePlan } from './packageUi';
@@ -37,8 +38,16 @@ const PackagePlansSection = ({ navigation, home = false, title = 'Care Plans' }:
   const { width: screenWidth } = useWindowDimensions();
   const { plans, loading } = usePackagePlans();
   console.log('PackagePlansSection => plans.length', plans);
-  const { startPlan, processingId, transferPrompt, confirmTransfer, cancelTransfer } =
-    usePackagePurchase(navigation);
+  const {
+    startPlan,
+    processingId,
+    transferPrompt,
+    confirmTransfer,
+    cancelTransfer,
+    payPlan,
+    confirmGatewayPay,
+    cancelGatewayPay,
+  } = usePackagePurchase(navigation);
   const { ownsPackage } = useActivePlans();
   const [selected, setSelected] = useState<PackagePlan | null>(null);
 
@@ -158,6 +167,14 @@ const PackagePlansSection = ({ navigation, home = false, title = 'Care Plans' }:
         prompt={transferPrompt}
         onYes={confirmTransfer}
         onNo={cancelTransfer}
+      />
+
+      <PackagePaymentGatewaySheet
+        visible={!!payPlan}
+        plan={payPlan}
+        processing={!!payPlan && processingId === payPlan.id}
+        onClose={cancelGatewayPay}
+        onConfirm={confirmGatewayPay}
       />
     </View>
   );

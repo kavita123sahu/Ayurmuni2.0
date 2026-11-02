@@ -96,9 +96,17 @@ const TileCard = ({
       <Text
         style={textStyle}
         numberOfLines={2}
-        ellipsizeMode="clip"
+        ellipsizeMode="tail"
       >
-        {name}
+        {String(name || '')
+          .trim()
+          .split(/\s+/)
+          .map(word =>
+            word
+              ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+              : word,
+          )
+          .join(' ')}
       </Text>
     </View>
   );
@@ -381,22 +389,26 @@ const styles = StyleSheet.create({
 
   text: {
     fontSize: 12,
+    lineHeight: 16,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+    includeFontPadding: false,
     color: '#0D614E',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
     width: '100%',
-    lineHeight: 16,
-    includeFontPadding: false,
   },
 
   concernText: {
     fontSize: 11,
-    lineHeight: 14,
+    lineHeight: 15,
+    minHeight: 30,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
     color: '#0D614E',
     fontFamily: Fonts.PoppinsSemiBold,
     textAlign: 'center',
     width: '100%',
-    paddingHorizontal: 2,
     includeFontPadding: false,
   },
 });

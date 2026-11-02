@@ -60,11 +60,24 @@ const formatTime = (value: string | null) => {
   return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
+/** Calendar-day remaining from backend `expires_at` (avoids Math.ceil → 91 for a 90-day plan). */
 const daysLeft = (expiresAt: string | null) => {
   if (!expiresAt) return null;
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (!Number.isFinite(ms) || ms <= 0) return 0;
-  return Math.ceil(ms / 86400000);
+  const end = new Date(expiresAt);
+  if (Number.isNaN(end.getTime())) return null;
+  const today = new Date();
+  const startOfToday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  ).getTime();
+  const startOfEnd = new Date(
+    end.getFullYear(),
+    end.getMonth(),
+    end.getDate(),
+  ).getTime();
+  const diff = Math.round((startOfEnd - startOfToday) / 86400000);
+  return diff <= 0 ? 0 : diff;
 };
 
 const benefitIcon = (label: string): TablerIconName => {
@@ -78,21 +91,72 @@ const benefitIcon = (label: string): TablerIconName => {
 };
 
 function BenefitRow({ benefit, isLast }: { benefit: MyPlanBenefit; isLast: boolean }) {
-  const hasQuantity = benefit.quantity_total !== null && benefit.quantity_total > 0;
-  const remaining = benefit.quantity_remaining ?? 0;
-  const progress = hasQuantity ? Math.max(0, Math.min(1, remaining / benefit.quantity_total!)) : 1;
+  const total = benefit.quantity_total;
+  const remaining = benefit.quantity_remaining;
+  const hasQuantity = total != null && total > 0;
+  const used = hasQuantity ? Math.max(0, total! - (remaining ?? 0)) : 0;
+  const progress = hasQuantity
+    ? Math.max(0, Math.min(1, (remaining ?? 0) / total!))
+    : 1;
+  const exhausted = hasQuantity && (remaining ?? 0) <= 0;
+  const status = String(benefit.status || '').toLowerCase();
+  const statusLabel =
+    status === 'available'
+      ? exhausted
+        ? 'Used up'
+        : 'Available'
+      : humanize(benefit.status) || 'Included';
 
   return (
     <View style={[styles.benefit, !isLast && styles.benefitDivider]}>
-      <View style={styles.benefitIcon}>
-        <TablerIcon name={benefitIcon(benefit.label)} size={17} color={Colors.primaryColor} />
+      <View style={[styles.benefitIcon, exhausted && styles.benefitIconExhausted]}>
+        <TablerIcon
+          name={benefitIcon(benefit.label)}
+          size={17}
+          color={exhausted ? '#9CA3AF' : Colors.primaryColor}
+        />
       </View>
       <View style={styles.benefitBody}>
         <View style={styles.benefitTop}>
-          <Text style={styles.benefitLabel} numberOfLines={2}>
+          <Text style={[styles.benefitLabel, exhausted && styles.benefitLabelMuted]} numberOfLines={2}>
             {benefit.label}
           </Text>
+          <View
+            style={[
+              styles.benefitPill,
+              {
+                backgroundColor: exhausted ? '#F3F4F6' : '#E8F4EF',
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.benefitPillText,
+                { color: exhausted ? '#6B7280' : Colors.primaryColor },
+              ]}
+            >
+              {hasQuantity
+                ? exhausted
+                  ? `Used ${used}/${total}`
+                  : `${remaining} of ${total} left`
+                : statusLabel}
+            </Text>
+          </View>
         </View>
+        {hasQuantity ? (
+          <>
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${progress * 100}%` }, exhausted && styles.fillExhausted]} />
+            </View>
+            <Text style={styles.benefitMeta}>
+              {exhausted
+                ? `All ${total} credit${total === 1 ? '' : 's'} used`
+                : `${used} used · ${remaining} remaining`}
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.benefitMeta}>{statusLabel}</Text>
+        )}
       </View>
     </View>
   );
@@ -169,11 +233,13 @@ function MyPlanCard({
   plan,
   highlighted,
   planNames,
+  onBuyAgain,
 }: {
   plan: MyPlan;
   highlighted: boolean;
   /** purchase id → plan name, to show where a shifted benefit came from. */
   planNames: Record<string, string>;
+  onBuyAgain?: (plan: MyPlan) => void;
 }) {
   const expired = isPlanExpired(plan);
   const statusKey = expired ? 'expired' : plan.status;
@@ -195,7 +261,20 @@ function MyPlanCard({
   const expiryDate = formatDate(plan.expires_at);
   const expiryTime = formatTime(plan.expires_at);
   const benefits = (plan.benefits ?? []).filter(b => !!b?.label);
-  const available = benefits.filter(b => b.status === 'available').length;
+  const creditBenefits = benefits.filter(
+    b => b.quantity_total != null && b.quantity_total > 0,
+  );
+  const creditsRemaining = creditBenefits.reduce(
+    (sum, b) => sum + Math.max(0, b.quantity_remaining ?? 0),
+    0,
+  );
+  const creditsTotal = creditBenefits.reduce(
+    (sum, b) => sum + Math.max(0, b.quantity_total ?? 0),
+    0,
+  );
+  const consultBenefit = creditBenefits.find(b =>
+    /consult/i.test(String(b.label || '')),
+  );
   const showTimeline = !!startDate || !!expiryDate;
   const showValidity = !!expiryDate && remainingDays !== null && plan.status === 'active' && !expired;
 
@@ -242,14 +321,38 @@ function MyPlanCard({
               </Text>
             ) : null}
           </View>
-          {showValidity ? (
-            <View style={styles.validityBox}>
-              <Text style={styles.validityValue}>{remainingDays}</Text>
-              <Text style={styles.validityLabel}>
-                day{remainingDays === 1 ? '' : 's'} left
-              </Text>
-            </View>
-          ) : null}
+          <View style={styles.heroStats}>
+            {creditsTotal > 0 ? (
+              <View style={styles.validityBox}>
+                <Text style={styles.validityValue}>{creditsRemaining}</Text>
+                <Text style={styles.validityLabel}>
+                  credit{creditsRemaining === 1 ? '' : 's'} left
+                </Text>
+                {consultBenefit?.quantity_total != null ? (
+                  <Text style={styles.validitySub}>
+                    {Math.max(
+                      0,
+                      (consultBenefit.quantity_total ?? 0) -
+                        (consultBenefit.quantity_remaining ?? 0),
+                    )}
+                    /{consultBenefit.quantity_total} consults used
+                  </Text>
+                ) : (
+                  <Text style={styles.validitySub}>
+                    of {creditsTotal} total
+                  </Text>
+                )}
+              </View>
+            ) : null}
+            {showValidity ? (
+              <View style={styles.validityBox}>
+                <Text style={styles.validityValue}>{remainingDays}</Text>
+                <Text style={styles.validityLabel}>
+                  day{remainingDays === 1 ? '' : 's'} left
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
         <View style={styles.goldLine} />
       </LinearGradient>
@@ -327,6 +430,11 @@ function MyPlanCard({
           <View>
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Your benefits</Text>
+              {creditsTotal > 0 ? (
+                <Text style={styles.sectionMeta}>
+                  {creditsRemaining} of {creditsTotal} credits left
+                </Text>
+              ) : null}
             </View>
             <View style={styles.benefits}>
               {benefits.map((benefit, index) => (
@@ -357,6 +465,17 @@ function MyPlanCard({
               ))}
             </View>
           </View>
+        ) : null}
+
+        {onBuyAgain && plan.package_id ? (
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={styles.buyAgainBtn}
+            onPress={() => onBuyAgain(plan)}
+          >
+            <TablerIcon name="refresh" size={15} color={Colors.primaryColor} />
+            <Text style={styles.buyAgainText}>Buy again</Text>
+          </TouchableOpacity>
         ) : null}
 
         <Text style={styles.planId}>Plan ID · {plan.id.slice(0, 8).toUpperCase()}</Text>
@@ -430,7 +549,14 @@ export default function MyPlansScreen(props: any) {
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => (
-          <MyPlanCard plan={item} highlighted={item.id === highlightId} planNames={planNames} />
+          <MyPlanCard
+            plan={item}
+            highlighted={item.id === highlightId}
+            planNames={planNames}
+            onBuyAgain={plan =>
+              navigation.navigate('PackagesScreen', { planId: plan.package_id })
+            }
+          />
         )}
         onEndReachedThreshold={0.4}
         onEndReached={loadMore}
@@ -672,6 +798,27 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
     fontSize: 10,
     color: 'rgba(255,255,255,0.85)',
+  },
+  validitySub: {
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  heroStats: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+  benefitIconExhausted: {
+    backgroundColor: '#F3F4F6',
+  },
+  benefitLabelMuted: {
+    color: '#6B7280',
+  },
+  fillExhausted: {
+    backgroundColor: '#D1D5DB',
   },
   goldLine: {
     position: 'absolute',
@@ -925,12 +1072,30 @@ const styles = StyleSheet.create({
     color: '#8A9591',
     marginTop: 2,
   },
+  buyAgainBtn: {
+    marginTop: 14,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryColor,
+    backgroundColor: '#EAF8F4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  buyAgainText: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 13,
+    color: Colors.primaryColor,
+  },
   planId: {
     fontFamily: Fonts.PoppinsMedium,
     fontSize: 10.5,
     letterSpacing: 0.6,
     color: '#9AA5A1',
     textAlign: 'center',
+    marginTop: 12,
   },
 
   center: {

@@ -114,13 +114,17 @@ export type PackageCheckout = {
 export type PurchasePackagePayload = {
   package_id: string;
   patient_id?: string | null;
+  /** Same gateways as order / consultation: razorpay | cashfree | icici */
+  payment_gateway?: string | null;
 };
 
 export type VerifyPackagePaymentPayload = {
   purchase_id: string;
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+  /** Cashfree / ICICI fields are passed through as returned by their SDKs */
+  [key: string]: unknown;
 };
 
 export type MyPackagesQuery = {
@@ -161,6 +165,9 @@ export const purchasePackage = async (payload: PurchasePackagePayload) => {
     if (payload.patient_id) {
       body.patient_id = payload.patient_id;
     }
+    if (payload.payment_gateway) {
+      body.payment_gateway = payload.payment_gateway;
+    }
     console.log('PACKAGE_PURCHASE_PAYLOAD =>', body);
 
     const response = await apiClient('packages/purchase/', {
@@ -179,12 +186,7 @@ export const purchasePackage = async (payload: PurchasePackagePayload) => {
 /** POST packages/verify-payment/  { purchase_id, razorpay_order_id, razorpay_payment_id, razorpay_signature } */
 export const verifyPackagePayment = async (payload: VerifyPackagePaymentPayload) => {
   try {
-    const body = {
-      purchase_id: payload.purchase_id,
-      razorpay_order_id: payload.razorpay_order_id,
-      razorpay_payment_id: payload.razorpay_payment_id,
-      razorpay_signature: payload.razorpay_signature,
-    };
+    const body = { ...payload };
     console.log('PACKAGE_VERIFY_PAYLOAD =>', body);
 
     const response = await apiClient('packages/verify-payment/', {

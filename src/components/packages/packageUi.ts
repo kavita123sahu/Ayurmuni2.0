@@ -148,3 +148,37 @@ export const getPlanCtaLabel = (plan: PackagePlan, owned = false) =>
     : owned
       ? 'Buy again'
       : 'Buy now';
+
+/**
+ * Pull a count out of catalog benefit strings, e.g.
+ * "2 Doctor Consultations" → { count: 2, label: "Doctor Consultations" }
+ */
+export const parseBenefitCredit = (
+  benefit: string,
+): { count: number | null; label: string } => {
+  const raw = String(benefit || '').trim();
+  const match = raw.match(/^(\d+)\s*[x×]?\s*(.+)$/i);
+  if (match) {
+    return { count: Number(match[1]), label: match[2].trim() };
+  }
+  return { count: null, label: raw };
+};
+
+/** Sum of consultation credits advertised on a catalog plan. */
+export const getCatalogConsultCredits = (plan: PackagePlan): number | null => {
+  const includes = plan.benefits?.includes ?? [];
+  let total = 0;
+  let found = false;
+  includes.forEach(line => {
+    if (!/consult/i.test(line)) return;
+    const { count } = parseBenefitCredit(line);
+    if (count != null) {
+      total += count;
+      found = true;
+    } else {
+      found = true;
+      total += 1;
+    }
+  });
+  return found ? total : null;
+};

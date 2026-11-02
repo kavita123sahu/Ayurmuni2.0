@@ -12,11 +12,13 @@ import TablerIcon from '../TablerIcon';
 import { RupeeAmount } from '../../utils/currencyUtils';
 import type { PackagePlan } from '../../services/PackageServices';
 import {
+  getCatalogConsultCredits,
   getDiscountPercent,
   getPlanCtaLabel,
   getPlanDurationLabel,
   getPlanTheme,
   isCarePlan,
+  parseBenefitCredit,
   toAmount,
 } from './packageUi';
 
@@ -49,6 +51,7 @@ const PackagePlanCard = ({
   const shownBenefits = benefits.slice(0, maxBenefits);
   const extraBenefits = benefits.length - shownBenefits.length;
   const showOriginal = toAmount(plan.original_price) > toAmount(plan.selling_price);
+  const consultCredits = getCatalogConsultCredits(plan);
 
   return (
     <TouchableOpacity
@@ -88,6 +91,14 @@ const PackagePlanCard = ({
                 {getPlanDurationLabel(plan)}
               </Text>
             </View>
+            {consultCredits != null ? (
+              <View style={styles.creditRow}>
+                <TablerIcon name="credit-card" size={12} color={theme.accent} />
+                <Text style={[styles.duration, { color: theme.accent }]} numberOfLines={1}>
+                  {consultCredits} consultation{consultCredits === 1 ? '' : 's'} included
+                </Text>
+              </View>
+            ) : null}
           </View>
           {plan.image_url ? (
             <Image source={{ uri: plan.image_url }} style={styles.image} />
@@ -108,16 +119,28 @@ const PackagePlanCard = ({
 
         {shownBenefits.length > 0 ? (
           <View style={styles.benefits}>
-            {shownBenefits.map((benefit, index) => (
+            {shownBenefits.map((benefit, index) => {
+              const parsed = parseBenefitCredit(benefit);
+              return (
               <View key={`${plan.id}-b-${index}`} style={styles.benefitRow}>
                 <View style={[styles.checkDot, { backgroundColor: theme.tint }]}>
                   <TablerIcon name="check" size={10} color={theme.accent} strokeWidth={3} />
                 </View>
                 <Text style={styles.benefitText} numberOfLines={1}>
-                  {benefit}
+                  {parsed.count != null
+                    ? `${parsed.count}× ${parsed.label}`
+                    : benefit}
                 </Text>
+                {parsed.count != null ? (
+                  <View style={[styles.creditChip, { backgroundColor: theme.tint }]}>
+                    <Text style={[styles.creditChipText, { color: theme.accent }]}>
+                      {parsed.count} credit{parsed.count === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            ))}
+              );
+            })}
             {extraBenefits > 0 ? (
               <Text style={[styles.moreText, { color: theme.accent }]}>
                 +{extraBenefits} more benefit{extraBenefits > 1 ? 's' : ''}
@@ -254,6 +277,21 @@ const styles = StyleSheet.create({
   duration: {
     fontFamily: Fonts.PoppinsMedium,
     fontSize: 11,
+  },
+  creditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  creditChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  creditChipText: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 9.5,
   },
   image: {
     width: 46,

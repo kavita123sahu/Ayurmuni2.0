@@ -7,6 +7,7 @@ import { RupeeAmount } from '../../utils/currencyUtils';
 import type { PackagePlan } from '../../services/PackageServices';
 import {
   PLAN_GOLD,
+  getCatalogConsultCredits,
   getDiscountPercent,
   getPlanDurationLabel,
   getPlanTheme,
@@ -39,6 +40,7 @@ const PackagePlanRailCard = ({ plan, width, onPress, shine, owned = false }: Pro
   const carePlan = isCarePlan(plan);
   const discount = getDiscountPercent(plan);
   const showOriginal = toAmount(plan.original_price) > toAmount(plan.selling_price);
+  const consultCredits = getCatalogConsultCredits(plan);
 
   return (
     <TouchableOpacity
@@ -93,6 +95,9 @@ const PackagePlanRailCard = ({ plan, width, onPress, shine, owned = false }: Pro
         </Text>
         <Text style={styles.duration} numberOfLines={1}>
           {getPlanDurationLabel(plan)}
+          {consultCredits != null
+            ? ` · ${consultCredits} consult${consultCredits === 1 ? '' : 's'}`
+            : ''}
         </Text>
 
         <View style={styles.bottomRow}>

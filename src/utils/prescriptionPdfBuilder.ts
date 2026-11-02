@@ -235,6 +235,8 @@ export async function buildPrescriptionPdfFromData(
   const concernText = getConcernText(data);
   const diagnosisText = getDiagnosisText(prescription);
   const symptomText = getSymptomDescription(prescription);
+  // Match Prescription Detail UI — chief complaint uses symptom/chief fields first
+  const chiefComplaint = symptomText || concernText;
   const appointmentNotes = pick(
     appointment?.appointment_notes,
     data?.appointment_notes,
@@ -255,14 +257,13 @@ export async function buildPrescriptionPdfFromData(
 
   const sections: PdfTextSection[] = [];
 
-  if (concernText) {
-    pushSection(sections, 'Chief Complaint', [concernText]);
+  if (chiefComplaint) {
+    pushSection(sections, 'Chief Complaint', [chiefComplaint]);
   }
 
   if (
     diagnosisText &&
-    diagnosisText.toLowerCase() !== concernText.toLowerCase() &&
-    diagnosisText.toLowerCase() !== symptomText.toLowerCase()
+    diagnosisText.toLowerCase() !== chiefComplaint.toLowerCase()
   ) {
     pushSection(sections, 'Diagnosis', [diagnosisText]);
   }
@@ -281,7 +282,12 @@ export async function buildPrescriptionPdfFromData(
     pushSection(sections, 'Follow-up', followLines);
   }
 
-  if (symptomText) {
+  // Only add a separate Symptoms section when it differs from Chief Complaint
+  if (
+    symptomText &&
+    chiefComplaint &&
+    symptomText.toLowerCase() !== chiefComplaint.toLowerCase()
+  ) {
     pushSection(sections, 'Symptoms', [symptomText]);
   }
 
@@ -303,6 +309,10 @@ export async function buildPrescriptionPdfFromData(
 
   if (gynaecological.length) {
     pushSection(sections, 'Gynaecological History', gynaecological);
+  }
+
+  if (clinicalAdvisory) {
+    pushSection(sections, 'Clinical notes', [clinicalAdvisory]);
   }
 
   if (dietPlans.length) {

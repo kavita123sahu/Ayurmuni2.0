@@ -34,7 +34,8 @@ const HomeJoinAppointmentsSection = ({
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 15_000);
+    // 1s so banner drops exactly when end_time is reached
+    const timer = setInterval(() => setTick(t => t + 1), 1_000);
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') {
         setTick(t => t + 1);

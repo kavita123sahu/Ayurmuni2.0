@@ -70,20 +70,26 @@ const ProfilePage = ({ navigation }: any) => {
 
             const loadUser = async () => {
                 try {
-                    // Already have a full profile on this session — don't re-hit API every focus
-                    if (
-                        user &&
-                        isGuest === false &&
-                        !shouldRunThrottled('profile-page-access', 90_000)
-                    ) {
-                        return;
-                    }
-
                     const token = await Utils.getData('_TOKEN');
                     if (!token) {
                         if (!cancelled) {
                             setIsGuest(true);
                             setUser(null);
+                        }
+                        return;
+                    }
+
+                    // Always hit network on focus so Prakriti/retake updates header
+                    // Soft-throttle only skips when we already refreshed very recently
+                    const allowNetwork = shouldRunThrottled(
+                        'profile-page-access',
+                        8_000,
+                    );
+                    if (!allowNetwork && user && isGuest === false) {
+                        // Still refresh from storage in case another screen wrote _USER_INFO
+                        const cached = await Utils.getData('_USER_INFO');
+                        if (cached && !cancelled) {
+                            setUser(cached);
                         }
                         return;
                     }

@@ -622,6 +622,7 @@ const OrderHistory = (props: any) => {
                         fileName: item?.file_name || 'prescription',
                         fileType: item?.file_type || 'image',
                         existingRequest: item,
+                        fromOrderHistory: true,
                       })
                     }
                   >

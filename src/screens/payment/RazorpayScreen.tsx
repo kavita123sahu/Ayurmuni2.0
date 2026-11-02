@@ -56,11 +56,9 @@ import {
 import type { MyPlan } from '../../services/PackageServices';
 import { useAppSelector } from '../../store/hooks';
 import {
-    filterRunnableGateways,
     getGatewayOrderId,
     hasGatewayOrder,
     resolveDefaultGateway,
-    resolveEnabledGateways,
     toApiPaymentGateway,
     type PaymentGateway,
 } from '../../config/paymentGateways';
@@ -80,6 +78,7 @@ import {
     resolveCashfreeCfPaymentId,
 } from '../../services/CashfreeService';
 import PaymentGatewaySelector from '../../components/payment/PaymentGatewaySelector';
+import { usePaymentGateways } from '../../hooks/usePaymentGateways';
 import {
     calculateFeeBreakdown,
     feeRateLabel,
@@ -362,16 +361,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const planPromptShownRef = useRef(false);
 
     const customerData = useAppSelector(s => s.home.customerData);
-    const enabledGateways = useMemo(
-        () =>
-            filterRunnableGateways(resolveEnabledGateways(customerData), {
-                payphiNativeLinked: isPayphiNativeLinked(),
-            }),
-        [customerData],
-    );
-    const [gateway, setGateway] = useState<PaymentGateway>(() =>
-        resolveDefaultGateway(customerData, enabledGateways),
-    );
+    const {
+        gateways: gatewayOptions,
+        activeGateways: enabledGateways,
+        defaultGateway,
+    } = usePaymentGateways();
+    const [gateway, setGateway] = useState<PaymentGateway>(defaultGateway);
     useEffect(() => {
         if (!enabledGateways.includes(gateway)) {
             setGateway(resolveDefaultGateway(customerData, enabledGateways));
@@ -1439,7 +1434,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             .join(' · ') || '—'}
                                     </Text>
                                 </View>
-                                <TouchableOpacity
+                                {/* <TouchableOpacity
                                     activeOpacity={0.75}
                                     disabled={switchingPatient || loading}
                                     onPress={() => setPatientPickerVisible(true)}
@@ -1462,7 +1457,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             />
                                         </>
                                     )}
-                                </TouchableOpacity>
+                                </TouchableOpacity> */}
                             </View>
 
                             {!!concern ? (
@@ -1609,10 +1604,10 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             </View>
                         )}
 
-                        {!planIsFree && enabledGateways.length > 1 ? (
+                        {!planIsFree && gatewayOptions.length > 0 ? (
                             <View style={styles.card}>
                                 <PaymentGatewaySelector
-                                    gateways={enabledGateways}
+                                    options={gatewayOptions}
                                     selected={gateway}
                                     onSelect={setGateway}
                                     disabled={loading}

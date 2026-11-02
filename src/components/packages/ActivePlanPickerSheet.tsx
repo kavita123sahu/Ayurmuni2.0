@@ -138,11 +138,15 @@ const ActivePlanPickerSheet = ({
               const status = getRowStatus(plan);
               const usable = status.usable;
               const selected = usable && plan.id === pickedId;
-              // const remaining = status.label;
-              const remaining = 'Doctor is not eligible for this plan';
+              const remaining = status.label;
               const expires = formatDate(plan.expires_at);
               const payable = eligibility?.[plan.id]?.payable;
               const planPrice = Number(plan.paid_price || plan.original_price || 0);
+              const consult = getConsultBenefit(plan);
+              const consultUsage =
+                consult?.quantity_total != null
+                  ? `${Math.max(0, (consult.quantity_total ?? 0) - (consult.quantity_remaining ?? 0))}/${consult.quantity_total} consultations used`
+                  : '';
               return (
                 <TouchableOpacity
                   key={plan.id}
@@ -166,7 +170,7 @@ const ActivePlanPickerSheet = ({
                     <Text style={styles.rowName} numberOfLines={2}>
                       {plan.name}
                     </Text>
-                    {/* {remaining ? ( */}
+                    {remaining ? (
                     <Text
                       style={[
                         styles.rowRemaining,
@@ -174,10 +178,14 @@ const ActivePlanPickerSheet = ({
                       ]}
                       numberOfLines={2}
                     >
-                      {/* {remaining} */}
                       {remaining}
                     </Text>
-                    {/* ) : null} */}
+                    ) : null}
+                    {consultUsage && usable ? (
+                      <Text style={styles.rowMeta} numberOfLines={1}>
+                        {consultUsage}
+                      </Text>
+                    ) : null}
                     {expires ? (
                       <Text style={styles.rowMeta} numberOfLines={1}>
                         Valid till {expires}

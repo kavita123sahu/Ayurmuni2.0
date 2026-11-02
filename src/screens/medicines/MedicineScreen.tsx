@@ -151,6 +151,8 @@ const MedicineScreen = (props: any) => {
   }, [navigation]);
 
   const onRefresh = useCallback(async () => {
+    const { bumpGlobalRefresh } = await import('../../utils/forceRefresh');
+    bumpGlobalRefresh();
     await Promise.all([
       refreshHomeData(),
       refresh(),

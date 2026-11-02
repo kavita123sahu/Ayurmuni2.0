@@ -507,6 +507,43 @@ export function normalizeAppointmentListItem(item: any) {
       '',
   ).trim();
 
+  // Who cancelled / missed — support common API field names
+  const cancelledByRaw =
+    appointment?.cancelled_by ??
+    appointment?.canceled_by ??
+    appointment?.cancelled_by_role ??
+    appointment?.cancelled_by_type ??
+    appointment?.cancellation_actor ??
+    root?.cancelled_by ??
+    item?.cancelled_by ??
+    '';
+  const missedByRaw =
+    appointment?.missed_by ??
+    appointment?.missed_by_role ??
+    appointment?.no_show_by ??
+    root?.missed_by ??
+    item?.missed_by ??
+    '';
+  const formatActor = (raw: any) => {
+    const key = String(raw || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_');
+    if (!key) return '';
+    if (key.includes('doctor') || key === 'provider' || key === 'clinic') {
+      return 'Doctor';
+    }
+    if (key.includes('patient') || key.includes('user') || key === 'customer') {
+      return 'You';
+    }
+    if (key.includes('system') || key.includes('admin') || key.includes('auto')) {
+      return 'System';
+    }
+    return String(raw)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   return {
     consultation_id: ids.consultationId || ids.appointmentId,
     appointment_id: ids.appointmentId || ids.consultationId,
@@ -531,12 +568,38 @@ export function normalizeAppointmentListItem(item: any) {
       appointment?.call_status ??
       item?.call_status ??
       item?.rawData?.call_status,
+    cancelledBy: formatActor(cancelledByRaw),
+    missedBy: formatActor(missedByRaw),
     image,
     patientId,
     patientName,
     patient,
     rawData: root,
   };
+}
+
+/** Human label for who cancelled / missed (list + details). */
+export function getAppointmentActorLabel(item: any): string {
+  const normalized =
+    item?.cancelledBy || item?.missedBy
+      ? item
+      : normalizeAppointmentListItem(item);
+  const status = String(
+    normalized?.status || resolveAppointmentStatus(item) || '',
+  ).toLowerCase();
+  if (['cancelled', 'canceled', 'cancellation_requested'].includes(status)) {
+    return normalized?.cancelledBy
+      ? `Cancelled by ${normalized.cancelledBy}`
+      : '';
+  }
+  if (['missed', 'no_show', 'noshow'].includes(status)) {
+    return normalized?.missedBy
+      ? `Missed by ${normalized.missedBy}`
+      : normalized?.cancelledBy
+        ? `Missed by ${normalized.cancelledBy}`
+        : '';
+  }
+  return '';
 }
 
 /** Appointment patient id for active-profile / switch checks. */
@@ -1080,7 +1143,8 @@ export function getJoinableAppointment(
     if (callStatus === 'in_progress') {
       return {
         item,
-        minutesLeft: Math.max(0, Math.ceil((endMs - now) / 60000)),
+        // Floor so 3:45→3:48 shows 3 min left; 0 when under a minute
+        minutesLeft: Math.max(0, Math.floor((endMs - now) / 60000)),
         isLive: true,
       };
     }
@@ -1102,7 +1166,7 @@ export function getJoinableAppointment(
       // Before start → minutes until start; after start → minutes until end
       const minutesLeft = withinPreWindow
         ? Math.max(0, Math.ceil(msUntilStart / 60000))
-        : Math.max(0, Math.ceil((endMs - now) / 60000));
+        : Math.max(0, Math.floor((endMs - now) / 60000));
       return {
         item,
         minutesLeft,

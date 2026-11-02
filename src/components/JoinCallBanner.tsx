@@ -21,7 +21,15 @@ type Props = {
 
 const PRE_WINDOW_MS = 5 * 60 * 1000;
 const FALLBACK_SLOT_MS = 15 * 60 * 1000;
-const TICK_MS = 15_000;
+/** 1s tick so "X min left" and hide-at-end_time stay accurate. */
+const TICK_MS = 1_000;
+
+const formatMinutesLeft = (msRemaining: number) => {
+  if (msRemaining <= 0) return null;
+  const mins = Math.floor(msRemaining / 60000);
+  if (mins <= 0) return 'Less than 1 min left';
+  return `${mins} min left`;
+};
 
 /** Home "go live" card — same layout language as the active diet card. */
 const JoinCallBanner = ({ joinable, navigation }: Props) => {
@@ -42,6 +50,7 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
   );
   const endMs = rawEndMs ?? (startMs != null ? startMs + FALLBACK_SLOT_MS : null);
   const msUntilStart = startMs != null ? startMs - now : 0;
+  const msUntilEnd = endMs != null ? endMs - now : null;
   const callStatus = String(item.call_status || '').toLowerCase().trim();
   const callClosed = [
     'ended',
@@ -52,13 +61,15 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
     'missed',
     'rejected',
   ].includes(callStatus);
+  // Hide the moment wall-clock reaches end_time (e.g. 3:48)
   const slotExpired = endMs != null && now >= endMs;
   // Live only when the doctor has actually started the call
   const isLive = initialLive || callStatus === 'in_progress';
   const afterStart = msUntilStart <= 0;
+  // e.g. 3:45 with end 3:48 → "3 min left" (floor of remaining ms)
   const minutesToStart = Math.max(0, Math.ceil(msUntilStart / 60000));
-  const minutesToEnd =
-    endMs != null ? Math.max(0, Math.ceil((endMs - now) / 60000)) : null;
+  const endLeftLabel =
+    msUntilEnd != null ? formatMinutesLeft(msUntilEnd) : null;
 
   const progress = useMemo(() => {
     if (startMs == null) return isLive ? 100 : 0;
@@ -118,14 +129,10 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
 
   // Pre-start: countdown to start. In-slot / live: countdown to end_time.
   const rightLabel = isLive
-    ? minutesToEnd != null
-      ? `${minutesToEnd} min left`
-      : 'Live now'
+    ? endLeftLabel || 'Live now'
     : !afterStart
-      ? `Starts in ${String(minutesToStart).padStart(2, '0')} min`
-      : minutesToEnd != null
-        ? `${minutesToEnd} min left`
-        : 'Ready to join';
+      ? `Starts in ${minutesToStart} min`
+      : endLeftLabel || 'Ready to join';
 
   return (
     <Pressable

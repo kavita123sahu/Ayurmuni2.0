@@ -19,6 +19,7 @@ export const user_profile = async () => {
         const response = await apiClient('customers/profile/', {
             method: 'GET',
         });
+        console.log("responseuserporfileee", response);
         return response;
     } catch (error) {
         throw error;
@@ -333,6 +334,7 @@ export const get_prakriti_info = async () => {
         const response = await apiClient(`customers/prakriti/info/`, {
             method: 'GET',
         });
+        console.log("get_prakriti_info", response);
         return response;
     } catch (error) {
         throw error;

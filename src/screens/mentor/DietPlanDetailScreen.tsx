@@ -1565,7 +1565,7 @@ const DietPlanDetailScreen = (props: any) => {
                       images={gallery}
                       itemWidth={DETAIL_IMAGE_WIDTH}
                       itemHeight={DIET_UI.detailHeroHeight}
-                      DynamicResize="cover"
+                      DynamicResize="contain"
                       mode="product"
                       enablePreview
                       autoSlide={gallery.length > 1}

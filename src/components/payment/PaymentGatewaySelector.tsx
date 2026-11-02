@@ -6,10 +6,14 @@ import TablerIcon from '../TablerIcon';
 import {
   PAYMENT_GATEWAY_OPTIONS,
   type PaymentGateway,
+  type PaymentGatewayAvailability,
 } from '../../config/paymentGateways';
 
 type Props = {
-  gateways: PaymentGateway[];
+  /** Preferred: full availability rows from payment-gateways API. */
+  options?: PaymentGatewayAvailability[];
+  /** Legacy: active-only ids (all treated as selectable). */
+  gateways?: PaymentGateway[];
   selected: PaymentGateway;
   onSelect: (gateway: PaymentGateway) => void;
   disabled?: boolean;
@@ -19,6 +23,7 @@ type Props = {
 };
 
 const PaymentGatewaySelector = ({
+  options,
   gateways,
   selected,
   onSelect,
@@ -26,31 +31,68 @@ const PaymentGatewaySelector = ({
   compact,
   hideHeader,
 }: Props) => {
+  const rows: PaymentGatewayAvailability[] =
+    Array.isArray(options) && options.length
+      ? options
+      : (gateways || []).map(id => ({
+          id,
+          status: 'active',
+          enabled: true,
+          statusLabel: 'Available',
+        }));
+
+  if (!rows.length) return null;
+
   if (compact) {
     return (
       <View style={styles.chipRow}>
-        {gateways.map(id => {
-          const option = PAYMENT_GATEWAY_OPTIONS[id];
-          const active = id === selected;
+        {rows.map(row => {
+          const option = PAYMENT_GATEWAY_OPTIONS[row.id];
+          const active = row.id === selected && row.enabled;
+          const isDisabled = disabled || !row.enabled;
           return (
             <TouchableOpacity
-              key={id}
+              key={row.id}
               activeOpacity={0.85}
-              disabled={disabled}
-              onPress={() => onSelect(id)}
-              style={[styles.chip, active && styles.chipActive]}
+              disabled={isDisabled}
+              onPress={() => {
+                if (!row.enabled) return;
+                onSelect(row.id);
+              }}
+              style={[
+                styles.chip,
+                active && styles.chipActive,
+                !row.enabled && styles.chipDisabled,
+              ]}
             >
               <TablerIcon
                 name={option.icon}
                 size={14}
-                color={active ? Colors.primaryColor : '#64748B'}
+                color={
+                  !row.enabled
+                    ? '#94A3B8'
+                    : active
+                      ? Colors.primaryColor
+                      : '#64748B'
+                }
               />
-              <Text
-                style={[styles.chipText, active && styles.chipTextActive]}
-                numberOfLines={1}
-              >
-                {option.title}
-              </Text>
+              <View style={styles.chipTextCol}>
+                <Text
+                  style={[
+                    styles.chipText,
+                    active && styles.chipTextActive,
+                    !row.enabled && styles.chipTextDisabled,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {option.title}
+                </Text>
+                {!row.enabled ? (
+                  <Text style={styles.chipStatus} numberOfLines={1}>
+                    {row.statusLabel}
+                  </Text>
+                ) : null}
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -68,33 +110,65 @@ const PaymentGatewaySelector = ({
           <Text style={styles.headerTitle}>Pay using</Text>
         </View>
       ) : null}
-      {gateways.map(id => {
-        const option = PAYMENT_GATEWAY_OPTIONS[id];
-        const active = id === selected;
+      {rows.map(row => {
+        const option = PAYMENT_GATEWAY_OPTIONS[row.id];
+        const active = row.id === selected && row.enabled;
+        const isDisabled = disabled || !row.enabled;
         return (
           <TouchableOpacity
-            key={id}
+            key={row.id}
             activeOpacity={0.85}
-            disabled={disabled}
-            onPress={() => onSelect(id)}
-            style={[styles.row, active && styles.rowActive]}
+            disabled={isDisabled}
+            onPress={() => {
+              if (!row.enabled) return;
+              onSelect(row.id);
+            }}
+            style={[
+              styles.row,
+              active && styles.rowActive,
+              !row.enabled && styles.rowDisabled,
+            ]}
           >
-            <View style={[styles.rowIcon, active && styles.rowIconActive]}>
+            <View
+              style={[
+                styles.rowIcon,
+                active && styles.rowIconActive,
+                !row.enabled && styles.rowIconDisabled,
+              ]}
+            >
               <TablerIcon
                 name={option.icon}
                 size={16}
-                color={active ? '#FFFFFF' : Colors.primaryColor}
+                color={
+                  !row.enabled
+                    ? '#94A3B8'
+                    : active
+                      ? '#FFFFFF'
+                      : Colors.primaryColor
+                }
               />
             </View>
             <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{option.title}</Text>
+              <Text
+                style={[styles.rowTitle, !row.enabled && styles.rowTitleDisabled]}
+              >
+                {option.title}
+              </Text>
               <Text style={styles.rowSub} numberOfLines={1}>
-                {option.subtitle}
+                {row.enabled ? option.subtitle : row.statusLabel}
               </Text>
             </View>
-            <View style={[styles.radio, active && styles.radioOn]}>
-              {active ? <View style={styles.radioDot} /> : null}
-            </View>
+            {row.enabled ? (
+              <View style={[styles.radio, active && styles.radioOn]}>
+                {active ? <View style={styles.radioDot} /> : null}
+              </View>
+            ) : (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText} numberOfLines={1}>
+                  {row.statusLabel}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -138,6 +212,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryColor,
     backgroundColor: '#F0FAF6',
   },
+  rowDisabled: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    opacity: 0.92,
+  },
   rowIcon: {
     width: 34,
     height: 34,
@@ -149,6 +228,9 @@ const styles = StyleSheet.create({
   rowIconActive: {
     backgroundColor: Colors.primaryColor,
   },
+  rowIconDisabled: {
+    backgroundColor: '#E2E8F0',
+  },
   rowBody: {
     flex: 1,
     minWidth: 0,
@@ -157,6 +239,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
+  },
+  rowTitleDisabled: {
+    color: '#64748B',
   },
   rowSub: {
     marginTop: 1,
@@ -182,6 +267,18 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: Colors.primaryColor,
   },
+  badge: {
+    maxWidth: 110,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#FEF3C7',
+  },
+  badgeText: {
+    fontSize: 10,
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsMedium,
+  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -202,6 +299,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECF8F3',
     borderColor: Colors.primaryColor,
   },
+  chipDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+  },
+  chipTextCol: {
+    minWidth: 0,
+  },
   chipText: {
     fontSize: 12,
     fontFamily: Fonts.PoppinsSemiBold,
@@ -210,5 +314,15 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: Colors.primaryColor,
+  },
+  chipTextDisabled: {
+    color: '#94A3B8',
+  },
+  chipStatus: {
+    marginTop: 1,
+    fontSize: 9,
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
   },
 });

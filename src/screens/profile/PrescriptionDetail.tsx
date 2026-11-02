@@ -11,6 +11,7 @@ import {
   StatusBar,
   Platform,
   LayoutAnimation,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -48,6 +49,10 @@ import { formatPrescriptionId } from '../../utils/formatDisplayId';
 import { getDoctorLocationLine } from '../../utils/doctorSlipUtils';
 import { showSuccessToast } from '../../config/Key';
 import { RupeeAmount } from '../../utils/currencyUtils';
+import { getPaymentBreakdown } from '../../utils/paymentHistoryUtils';
+import PaymentBreakdownCard from '../../components/PaymentBreakdownCard';
+import { bumpGlobalRefresh } from '../../utils/forceRefresh';
+import { formatAppointmentTimeLabel } from '../../utils/appointmentUtils';
 import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
 import { createPrescriptionPdfBytes } from '../../utils/buildConsultationDocumentPdf';
 import { createPlainTextPdfBytes } from '../../utils/pdfPlainTextFallback';
@@ -215,6 +220,7 @@ const PrescriptionDetail = (props: any) => {
   ).trim();
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [payload, setPayload] = useState<any>(
     params.PrisData
@@ -230,7 +236,7 @@ const PrescriptionDetail = (props: any) => {
     [],
   );
 
-  const fetchPrescription = useCallback(async () => {
+  const fetchPrescription = useCallback(async (opts?: { silent?: boolean }) => {
     if (!lookupId) {
       if (!params.PrisData) {
         showSuccessToast('Appointment id missing', 'error');
@@ -240,7 +246,7 @@ const PrescriptionDetail = (props: any) => {
     }
 
     try {
-      if (!hasSeedData) setLoading(true);
+      if (!hasSeedData && !opts?.silent) setLoading(true);
       const res = await _CONSULT_SERVICE.getAppointmentDetail(lookupId);
       if (!res?.success) {
         if (!hasSeedData) {
@@ -258,6 +264,16 @@ const PrescriptionDetail = (props: any) => {
       setLoading(false);
     }
   }, [lookupId, hasSeedData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      bumpGlobalRefresh();
+      await fetchPrescription({ silent: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchPrescription]);
 
   useEffect(() => {
     fetchPrescription();
@@ -287,6 +303,10 @@ const PrescriptionDetail = (props: any) => {
   const doctorId = doctor?.doctor_id || doctor?.id || null;
   const hasContent = consultationHasPrescription(payload);
   const paymentAmount = getPaymentAmount(payload);
+  const paymentBreakdown = useMemo(
+    () => getPaymentBreakdown(payload, payload?.payment, appointment),
+    [payload, appointment],
+  );
   const concernText = getConcernText(payload);
   const diagnosisText = getDiagnosisText(prescription);
   const prescriptionCode = formatPrescriptionId(
@@ -340,11 +360,12 @@ const PrescriptionDetail = (props: any) => {
     appointment?.consultation_type
       ? String(appointment.consultation_type).replace(/_/g, ' ')
       : '',
-    appointment?.start_time && appointment?.end_time
-      ? `${String(appointment.start_time).slice(0, 5)}–${String(
-        appointment.end_time,
-      ).slice(0, 5)}`
-      : '',
+    (() => {
+      const start = formatAppointmentTimeLabel(appointment?.start_time);
+      const end = formatAppointmentTimeLabel(appointment?.end_time);
+      if (start && end) return `${start}–${end}`;
+      return start || end || '';
+    })(),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -462,6 +483,37 @@ const PrescriptionDetail = (props: any) => {
           prescription: {
             ...screenRx,
             ...downloadRx,
+            // Keep on-screen clinical values when download payload omits them
+            symptom_description:
+              downloadRx?.symptom_description ||
+              downloadRx?.chief_complaint ||
+              screenRx?.symptom_description ||
+              screenRx?.chief_complaint,
+            chief_complaint:
+              downloadRx?.chief_complaint ||
+              downloadRx?.symptom_description ||
+              screenRx?.chief_complaint ||
+              screenRx?.symptom_description,
+            history_of_past_illness:
+              downloadRx?.history_of_past_illness ||
+              downloadRx?.past_illness ||
+              screenRx?.history_of_past_illness ||
+              screenRx?.past_illness,
+            past_illness:
+              downloadRx?.past_illness ||
+              downloadRx?.history_of_past_illness ||
+              screenRx?.past_illness ||
+              screenRx?.history_of_past_illness,
+            family_history:
+              downloadRx?.family_history || screenRx?.family_history,
+            personal_history:
+              downloadRx?.personal_history || screenRx?.personal_history,
+            gynaecological:
+              downloadRx?.gynaecological ||
+              downloadRx?.gynaecological_history ||
+              screenRx?.gynaecological ||
+              screenRx?.gynaecological_history,
+            allergies: downloadRx?.allergies || screenRx?.allergies,
             items: mergeMedicineItems(
               getMedicineItems(downloadRx),
               getMedicineItems(screenRx),
@@ -577,6 +629,14 @@ const PrescriptionDetail = (props: any) => {
               paddingHorizontal: 14,
               paddingTop: 10,
             }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.primary}
+                colors={[C.primary]}
+              />
+            }
           >
             {/* ===== RX PAPER ===== */}
             <View style={styles.paper}>
@@ -654,7 +714,7 @@ const PrescriptionDetail = (props: any) => {
                   <View style={styles.statusPill}>
                     <Text style={styles.statusText}>{statusLabel}</Text>
                   </View>
-                  {paymentAmount != null ? (
+                  {!paymentBreakdown && paymentAmount != null ? (
                     <RupeeAmount
                       value={paymentAmount}
                       style={styles.feeText}
@@ -662,12 +722,19 @@ const PrescriptionDetail = (props: any) => {
                       iconSize={12}
                     />
                   ) : null}
-                  {!!paymentStatus && (
+                  {!paymentBreakdown && !!paymentStatus && (
                     <Text style={styles.payStatus}>{paymentStatus}</Text>
                   )}
                 </View>
               </View>
             </View>
+
+            {paymentBreakdown ? (
+              <View style={styles.card}>
+                <SectionLabel title="Payment breakdown" icon="receipt" />
+                <PaymentBreakdownCard breakdown={paymentBreakdown} />
+              </View>
+            ) : null}
 
             {/* Clinical findings */}
             {(!!presentingComplaint ||

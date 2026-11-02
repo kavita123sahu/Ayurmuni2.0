@@ -33,6 +33,7 @@ import {
     formatDoctorExperience,
     resolveDoctorProfileImageUri,
     resolveConsultationFee,
+    resolveFollowupRemaining,
     isDietitian,
 } from '../../utils/doctorUtils';
 import DietitianBadge from '../../components/DietitianBadge';
@@ -334,7 +335,8 @@ const DoctorProfile = ({ navigation, route }: any) => {
     const hiddenConditions = Math.max(0, healthDiseases.length - 6);
 
     const consultFee = resolveConsultationFee(doctor);
-    const followupFee = doctor?.followup_fee;
+    const followupFee = doctor?.followup_fee ?? doctor?.follow_up_fee;
+    const followupRemaining = resolveFollowupRemaining(doctor);
 
     const aboutText = useMemo(
         () =>
@@ -507,6 +509,8 @@ const DoctorProfile = ({ navigation, route }: any) => {
     const handleRefresh = useCallback(async () => {
         try {
             setRefreshing(true);
+            const { bumpGlobalRefresh } = await import('../../utils/forceRefresh');
+            bumpGlobalRefresh();
             await Promise.all([getDoctorDetails(), fetchDoctorReviews()]);
         } finally {
             setRefreshing(false);
@@ -525,9 +529,18 @@ const DoctorProfile = ({ navigation, route }: any) => {
     const handleBookAppointment = useCallback(async () => {
         if (!(await requireAuth('Please login to book an appointment'))) return;
         if (doctorDetails) {
-            navigation.navigate('DoctorSlot', { doctorDetails });
+            // Pass follow-up remaining so slot/checkout can apply free follow-up fee
+            navigation.navigate('DoctorSlot', {
+                doctorDetails: {
+                    ...doctorDetails,
+                    followup_count: followupRemaining ?? doctorDetails.followup_count,
+                    remaining_followups:
+                        followupRemaining ?? doctorDetails.remaining_followups,
+                    is_follow_up: (followupRemaining ?? 0) > 0,
+                },
+            });
         }
-    }, [navigation, doctorDetails]);
+    }, [navigation, doctorDetails, followupRemaining]);
 
     const openSocial = useCallback((url: string) => {
         const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
@@ -659,6 +672,21 @@ const DoctorProfile = ({ navigation, route }: any) => {
                             />
                         </View>
 
+                        {followupFee != null && Number(followupFee) >= 0 ? (
+                            <>
+                                <View style={styles.feeDivider} />
+                                <View style={styles.feeBlock}>
+                                    <Text style={styles.feeLabel}>Follow-up</Text>
+                                    <RupeeAmount
+                                        value={followupFee}
+                                        style={styles.feeValue}
+                                        iconSize={16}
+                                        iconColor={Colors.primaryColor}
+                                    />
+                                </View>
+                            </>
+                        ) : null}
+
                         {consultationModes.length > 0 ? (
                             <>
                                 <View style={styles.feeDivider} />
@@ -691,6 +719,18 @@ const DoctorProfile = ({ navigation, route }: any) => {
                             </>
                         ) : null}
                     </View>
+
+                    <TouchableOpacity
+                        activeOpacity={0.88}
+                        style={styles.packageLink}
+                        onPress={() => navigation.navigate('PackagesScreen')}
+                    >
+                        <TablerIcon name="certificate" size={14} color="#F6D365" />
+                        <Text style={styles.packageLinkText}>
+                          Save with Care Plans — view packages
+                        </Text>
+                        <TablerIcon name="chevron-right" size={14} color="#F6D365" />
+                    </TouchableOpacity>
                 </LinearGradient>
 
                 {/* Availability banner */}
@@ -913,9 +953,11 @@ const DoctorProfile = ({ navigation, route }: any) => {
                             iconColor={Colors.primaryColor}
                         />
                         <Text style={styles.stickyHint}>
-                            {hasAvailability && slotsCount > 0
-                                ? `${slotsCount} slots`
-                                : 'Consult fee'}
+                            {(followupRemaining ?? 0) > 0
+                                ? `${followupRemaining} follow-up left`
+                                : hasAvailability && slotsCount > 0
+                                  ? `${slotsCount} slots`
+                                  : 'Consult fee'}
                         </Text>
                     </View>
 
@@ -1136,6 +1178,24 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#334155',
+        includeFontPadding: false,
+    },
+    packageLink: {
+        marginTop: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        alignSelf: 'stretch',
+        backgroundColor: 'rgba(246,211,101,0.14)',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    packageLinkText: {
+        flex: 1,
+        fontSize: 12,
+        fontFamily: Fonts.PoppinsMedium,
+        color: '#F6D365',
         includeFontPadding: false,
     },
 

@@ -130,6 +130,9 @@ const ConsultHistory = (props: any) => {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
+        void import('../../utils/forceRefresh').then(({ bumpGlobalRefresh }) => {
+            bumpGlobalRefresh();
+        });
         pageRef.current = 1;
         hasMoreRef.current = true;
         setHasMore(true);

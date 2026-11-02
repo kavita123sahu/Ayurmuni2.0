@@ -6,11 +6,26 @@ import type { TablerIconName } from '../components/TablerIcon';
  */
 export type PaymentGateway = 'cashfree' | 'razorpay' | 'icici';
 
+export type PaymentGatewayStatus =
+  | 'active'
+  | 'inactive'
+  | 'server_down'
+  | 'maintenance'
+  | string;
+
 export type PaymentGatewayOption = {
   id: PaymentGateway;
   title: string;
   subtitle: string;
   icon: TablerIconName;
+};
+
+/** Gateway row for selector — includes live API status. */
+export type PaymentGatewayAvailability = {
+  id: PaymentGateway;
+  status: PaymentGatewayStatus;
+  enabled: boolean;
+  statusLabel: string;
 };
 
 export const PAYMENT_GATEWAY_OPTIONS: Record<PaymentGateway, PaymentGatewayOption> = {
@@ -111,6 +126,74 @@ export const resolveEnabledGateways = (profile: any): PaymentGateway[] => {
   const enabled = GATEWAY_ORDER.filter(id => flags[id]);
   return enabled.length ? enabled : ['cashfree'];
 };
+
+const GATEWAY_STATUS_LABELS: Record<string, string> = {
+  active: 'Available',
+  inactive: 'Unavailable',
+  server_down: 'Server down',
+  maintenance: 'Under maintenance',
+};
+
+export const formatGatewayStatusLabel = (status?: string | null): string => {
+  const key = String(status || '')
+    .trim()
+    .toLowerCase();
+  if (!key) return 'Unavailable';
+  return (
+    GATEWAY_STATUS_LABELS[key] ||
+    key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  );
+};
+
+export const isGatewayStatusActive = (status?: string | null): boolean =>
+  String(status || '')
+    .trim()
+    .toLowerCase() === 'active';
+
+/**
+ * Map `/payments/customer/payment-gateways/` rows → selectable options.
+ * Only `status: active` is enabled; others stay visible but disabled.
+ */
+export const mapCustomerPaymentGateways = (
+  rows: any[],
+  opts?: { payphiNativeLinked?: boolean },
+): PaymentGatewayAvailability[] => {
+  const byId = new Map<PaymentGateway, PaymentGatewayAvailability>();
+
+  (Array.isArray(rows) ? rows : []).forEach(row => {
+    const id = parsePaymentGateway(row?.name ?? row?.gateway ?? row?.id);
+    if (!id) return;
+    if (id === 'icici' && !opts?.payphiNativeLinked) {
+      byId.set(id, {
+        id,
+        status: 'inactive',
+        enabled: false,
+        statusLabel: 'Not available on this build',
+      });
+      return;
+    }
+    const status = String(row?.status || 'inactive')
+      .trim()
+      .toLowerCase();
+    byId.set(id, {
+      id,
+      status,
+      enabled: isGatewayStatusActive(status),
+      statusLabel: formatGatewayStatusLabel(status),
+    });
+  });
+
+  // Keep stable UI order for known gateways that API returned
+  const ordered = GATEWAY_ORDER.filter(id => byId.has(id)).map(
+    id => byId.get(id)!,
+  );
+  return ordered;
+};
+
+/** Active gateway ids only (for payment start). */
+export const getActiveGatewayIds = (
+  rows: PaymentGatewayAvailability[],
+): PaymentGateway[] => rows.filter(r => r.enabled).map(r => r.id);
 
 export const resolveDefaultGateway = (
   profile: any,

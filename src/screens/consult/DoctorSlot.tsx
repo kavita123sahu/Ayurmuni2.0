@@ -292,6 +292,8 @@ const DoctorSlot = (props: any) => {
     const onRefresh = useCallback(async () => {
         try {
             setRefreshing(true);
+            const { bumpGlobalRefresh } = await import('../../utils/forceRefresh');
+            bumpGlobalRefresh();
             await fetchSlotsForDate(selectedDate);
         } finally {
             setRefreshing(false);
@@ -350,6 +352,17 @@ const DoctorSlot = (props: any) => {
             (s: any) => String(s.id) === String(selectedSlot?.id),
         );
 
+        const followupsLeft =
+            Number(
+                doctorDetails?.followup_count ??
+                    doctorDetails?.remaining_followups ??
+                    doctor?.followup_count ??
+                    doctor?.remaining_followups ??
+                    0,
+            ) || 0;
+        const followUp =
+            doctorDetails?.is_follow_up === true || followupsLeft > 0;
+
         navigation.navigate('RazorpayScreen', {
             doctorInfo,
             doctorId: doctorIdParam,
@@ -366,19 +379,39 @@ const DoctorSlot = (props: any) => {
             medical_records: (patientsRecord || []).filter((item: any) =>
                 selectedRecords.includes(String(item?.id)),
             ),
+            is_follow_up: followUp,
+            followup_count: followupsLeft,
         });
     };
 
-    const consultFee =
-        readGlobalConsultationFee(slotsData) ??
-        readGlobalConsultationFee(doctorDetailData) ??
-        readGlobalConsultationFee(doctor) ??
-        readGlobalConsultationFee(doctorDetails) ??
-        resolveConsultationFee(slotsData) ??
-        resolveConsultationFee(doctor) ??
-        resolveConsultationFee(doctorDetails) ??
-        selectedSlot?.amount ??
-        0;
+    const followupRemaining =
+        Number(
+            doctorDetails?.followup_count ??
+                doctorDetails?.remaining_followups ??
+                doctor?.followup_count ??
+                doctor?.remaining_followups ??
+                0,
+        ) || 0;
+    const isFollowUpBooking =
+        doctorDetails?.is_follow_up === true || followupRemaining > 0;
+
+    const consultFee = isFollowUpBooking
+        ? Number(
+              doctorDetails?.followup_fee ??
+                  doctorDetails?.follow_up_fee ??
+                  doctor?.followup_fee ??
+                  doctor?.follow_up_fee ??
+                  0,
+          ) || 0
+        : readGlobalConsultationFee(slotsData) ??
+          readGlobalConsultationFee(doctorDetailData) ??
+          readGlobalConsultationFee(doctor) ??
+          readGlobalConsultationFee(doctorDetails) ??
+          resolveConsultationFee(slotsData) ??
+          resolveConsultationFee(doctor) ??
+          resolveConsultationFee(doctorDetails) ??
+          selectedSlot?.amount ??
+          0;
 
     const canContinue =
         !loadingSlots &&
@@ -920,7 +953,9 @@ const DoctorSlot = (props: any) => {
                             <Text style={styles.stickyHint} numberOfLines={1}>
                                 {selectedTimeLabel
                                     ? selectedTimeLabel
-                                    : 'Consult fee'}
+                                    : isFollowUpBooking
+                                      ? 'Follow-up fee'
+                                      : 'Consult fee'}
                             </Text>
                         </View>
 

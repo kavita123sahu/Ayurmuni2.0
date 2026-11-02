@@ -243,12 +243,14 @@ const styles = StyleSheet.create({
   container: {
     ...HORIZONTAL_SCROLL_CONTENT,
     paddingLeft: SCREEN_PADDING_H,
-    paddingVertical: 0,
+    paddingVertical: 6,
   },
   item: {
     width: ITEM_WIDTH - 16,
     alignItems: 'center',
     marginRight: ITEM_GAP,
+    paddingHorizontal: 2,
+    paddingBottom: 2,
   },
   tile: {
     width: TILE_W - 6,
@@ -264,15 +266,17 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   label: {
-    marginTop: 2,
+    marginTop: 4,
     fontSize: 10,
-    lineHeight: 12,
-    minHeight: 24,
+    lineHeight: 14,
+    minHeight: 28,
     textAlign: 'center',
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
     width: '100%',
-    paddingHorizontal: 1,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    includeFontPadding: false,
   },
   labelActive: {
     color: Colors.primaryColor,

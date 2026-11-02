@@ -332,6 +332,10 @@ const HomePage: React.FC = (props: any) => {
       if (shouldRunThrottled('home-appointments-preview', 45_000)) {
         refreshPreview();
       }
+      // Keep prakriti / medical progress header in sync after assessments
+      if (shouldRunThrottled('home-header-focus', 12_000)) {
+        fetchCustomerData?.(true);
+      }
       // Refresh catalogs on tab focus so new / inactive products & vendors update
       const noProducts =
         !(storeProducts?.length > 0) && !(medicineProducts?.length > 0);
@@ -347,6 +351,7 @@ const HomePage: React.FC = (props: any) => {
       }
     }, [
       refreshPreview,
+      fetchCustomerData,
       refreshHomeData,
       refreshBrands,
       storeProducts?.length,
@@ -357,6 +362,10 @@ const HomePage: React.FC = (props: any) => {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
+      const { bumpGlobalRefresh } = await import('../../utils/forceRefresh');
+      bumpGlobalRefresh();
+      // Customer first so header prakriti fields update before other rails
+      await fetchCustomerData?.(true);
       await Promise.all([
         refreshHomeData(),
         refreshPreview(),
@@ -369,7 +378,16 @@ const HomePage: React.FC = (props: any) => {
     } finally {
       setRefreshing(false);
     }
-  }, [refreshHomeData, refreshPreview, refreshBanners, refreshHealthConcerns, refreshActiveDiet, refreshVisitedDoctors, refreshBrands]);
+  }, [
+    refreshHomeData,
+    fetchCustomerData,
+    refreshPreview,
+    refreshBanners,
+    refreshHealthConcerns,
+    refreshActiveDiet,
+    refreshVisitedDoctors,
+    refreshBrands,
+  ]);
 
   useEffect(() => {
     // Wait for location prompt (1st modal) so we never stack overlays
@@ -825,16 +843,34 @@ const HomePage: React.FC = (props: any) => {
               section="featured"
               navigation={props.navigation}
               home
+              onViewAllPress={() =>
+                props.navigation.navigate('ProductSection', {
+                  section: 'featured',
+                  title: 'Featured Products',
+                })
+              }
             />
             <ProductDiscoverySection
               section="trending"
               navigation={props.navigation}
               home
+              onViewAllPress={() =>
+                props.navigation.navigate('ProductSection', {
+                  section: 'trending',
+                  title: 'Trending Now',
+                })
+              }
             />
             <ProductDiscoverySection
               section="recently_viewed"
               navigation={props.navigation}
               home
+              onViewAllPress={() =>
+                props.navigation.navigate('ProductSection', {
+                  section: 'recently_viewed',
+                  title: 'Recently Viewed',
+                })
+              }
             />
 
             {(YogaSession?.length ?? 0) > 0 && (

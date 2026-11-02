@@ -172,6 +172,29 @@ export const formatConsultationFeeLabel = (source: any): string | null => {
   return String(fee).replace(/\.0+$/, '');
 };
 
+/**
+ * Remaining follow-up visits for this doctor relationship (when API provides them).
+ * Users with follow-up count must still be able to book.
+ */
+export const resolveFollowupRemaining = (source: any): number | null => {
+  if (!source || typeof source !== 'object') return null;
+  const candidates = [
+    source.followup_count,
+    source.follow_up_count,
+    source.remaining_followups,
+    source.remaining_follow_ups,
+    source.free_followup_count,
+    source.followups_remaining,
+    source.follow_up?.remaining,
+    source.follow_up?.count,
+  ];
+  for (const raw of candidates) {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 0) return Math.floor(n);
+  }
+  return null;
+};
+
 /** Copy global_fee onto consultation_fee so every consumer of these APIs shows it. */
 export const applyDoctorFeesToResponse = (response: any) => {
   if (!response || typeof response !== 'object') return response;
@@ -225,10 +248,10 @@ export const getDoctorAvailabilityLabel = (
   if (lower === 'available' || lower === 'online') return 'Available';
   if (lower.includes('limited') || lower.includes('few')) return 'Limited slots';
   if (lower === 'unavailable' || lower === 'offline' || lower === 'busy') {
-    return 'Unavailable';
+    return '';
   }
   // Unknown backend copy — keep UI patient-safe
-  return 'Unavailable';
+  return '';
 };
 
 /** Flatten doctor specializations from any API shape (including doctor-added). */
